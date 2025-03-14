@@ -133,6 +133,11 @@ async function run(messages, args){
 	return embed = await doOsuEmbed(message, recent_scores);
 }
 
-run.description = "El >rs de toda la vida";
+run.description = 
+{
+    'header' : 'Obten la play reciente > En mania',
+    'body' : undefined,
+    'usage' : `s.rm : Obten la play reciente de mania del usuario linkeado al bot.\ns.rm 'usuario' : Obtiene del usuario en el argumento`
+}
 
 module.exports = { run, "description": run.description}

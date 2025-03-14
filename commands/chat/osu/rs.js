@@ -121,6 +121,11 @@ async function run(messages, args){
 	return {content: '', embeds: [embed]};
 }
 
-run.description = "El >rs de toda la vida";
+run.description = 
+{
+    'header' : 'Obten la play reciente',
+    'body' : undefined,
+    'usage' : `s.rs : Obten la play reciente del usuario linkeado al bot.\ns.rs 'usuario' : Obtiene del usuario en el argumento\ns.rs 'usuario' 'modo': Obtiene del usuario en el argumento con respecto al modo de juego.`
+}
 
 module.exports = { run, "description": run.description}

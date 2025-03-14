@@ -198,6 +198,11 @@ async function run(messages, args){
     return {content: content, embeds: [embed]};
 }
 
-run.description = "Un >compare entre los del server y obteniendo una lista entre los de mayor pp"
+run.description = 
+{
+    'header' : '>c Global entre el server',
+    'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, y mostrando el top 5 entre mayor score y pp.',
+    'usage' : `s.gap : Muestra el top 5 del server en el ultimo mapa dado.\ns.gap $reply : Hace el s.gap del mapa al que se le hizo el reply.`
+}
 
 module.exports = { run, "description": run.description}
