@@ -92,4 +92,11 @@ async function run(messages, args){
     return doOsuEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode));
 }
 
+run.description = 
+{
+    'header' : 'Para obtener el perfil de osu!',
+    'body' : 'Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o segun el argumento, con su banner bien hermoso.',
+    'usage' : `s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' 'modo_juego' : Muestra con respecto al modo de juego dado.`
+}
+
 module.exports = { run }
