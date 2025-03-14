@@ -1,9 +1,19 @@
 {
-	"OSU_CLIENT_SECRET" : "aqui va el token del cliente secreto de la api de osu",
-	"OSU_CLIENT_ID" : 0,
-	"TOKEN" : "aqui el token de la api de osu",
-	"BOT_PREFIX" : "el prefijo del bot",
-	"CLIENT_ID" : "ID del cliente del bot",
-	"DB_ADMIN": "nombre de usuario de la db de mongo",
-    "DB_PASS": "pass de la db de mongo"
+    // Se obtienen al crear una nueva OAuth Application
+    // https://osu.ppy.sh/home/account/edit 
+	"OSU_CLIENT_SECRET" : "Key del cliente secreto",
+	"OSU_CLIENT_ID" : 0, // Id del cliente 
+
+    // Aplicacion del lado de Discord
+    // Se crea una nueva app de Discord y se rellena lo necesario
+    // https://discord.com/developers/applications
+	"TOKEN" : "Key del apartado Bot", // Bot -> Token
+	"BOT_PREFIX" : "s.", // Prefijo del bot
+	"CLIENT_ID" : "Numeros", // OAuth -> Client information
+    // Client secret no necesario por ahora
+
+    // Se obtiene al crear una nueva DB en MongoDB
+    // Appname > Connect > Drivers > Conection string
+    // uri de ejemplo, copiarla y dejarla en una sola linea
+	"DB_URI": `mongodb+srv://${db_user}:${db_password}@${db_url}.net/?retryWrites=true&w=majority&appName=${app_name}`
 }

@@ -1,4 +1,5 @@
 const { mongoose } = require('mongoose');
+const CONFIG = require("../config.json");
 
 async function connectDB(config) {
 
@@ -9,7 +10,7 @@ async function connectDB(config) {
         osu_server: { type: String, default: "bancho" }
     });
     const User = mongoose.model('User', userSchema);
-    const uri = `mongodb+srv://${config.DB_ADMIN}:${config.DB_PASS}@sengobot.dhm05.mongodb.net/sengo_bot?retryWrites=true&w=majority&appName=SengoBot`;
+    const uri = CONFIG.DB_URI;
 
     try {
         console.log("# Conectando a MongoDB...");
