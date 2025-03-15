@@ -74,7 +74,7 @@ async function run(messages, args) {
 			// Crear el rol con el color adecuado
 			const created_role = await message.guild.roles.create({
 				name: role_name,
-				color: country_info.color,
+				color: country_info ? country_info.color : "#FFFF00",
 				mentionable: false,
 				reason: `Rol de país para ${osu_user.country_code}`,
 			});
