@@ -14,7 +14,7 @@ async function run(messages, args) {
     const discord_id = message.author.id;
 
     // Buscar el usuario linkeado con el bot 
-    user_found = await res.User.findOne({ discord_id });
+    const user_found = await res.User.findOne({ discord_id });
 
     // Si no está linkeado al bot
     if (!user_found) return `Para usar el comando primero tiene que linkearse al bot.`;
