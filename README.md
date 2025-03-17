@@ -44,5 +44,5 @@ npm install discord.js mongodb
 ```bash
 node .
 ```
-- Disfruta flexear al Sengo. 
+- Disfruta flexear al Sengo bot. 
 - *(Opcional)* Avisarle a `jeiden83` de que has hecho todo hasta aqui.
