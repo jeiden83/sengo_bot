@@ -114,7 +114,7 @@ async function run(messages, args){
     
     // Si no hay play reciente
 	if(typeof recent_scores === 'string') return recent_scores;
-    if(!recent_scores) return `pedazo de mogolico no jugaste nada`
+    if(!recent_scores) return `Pero si no has jugado nada`;
 
     // Se contruye el embed y se envia
 	const embed = await doOsuEmbed(message, recent_scores);
