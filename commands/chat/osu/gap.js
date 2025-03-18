@@ -167,22 +167,24 @@ async function getBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') {
 async function run(messages, args){
     const { message, res, reply } = messages;
 
-
     const usersArray = await getLinkedMembers(message, res);
 
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
 
-    
+    // Para revisar si es graveyard o no
+    const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
+    if(beatmap_metadata.status == "pending") return `El mapa es un mapa abandonado, por lo tanto no puede guardar scores.`;
+
     const user_scores = await getBeatmapUserScores(beatmap_url, usersArray);
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
 
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
-    let sorted_user_scores = user_scores.first().score.beatmap.status === "loved" ? 
+    let sorted_user_scores = beatmap_metadata.status === "loved" ? 
         user_scores.sort((a, b) => b.score.score - a.score.score) : 
         user_scores.sort((a, b) => b.score.pp - a.score.pp);
 
-    const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
+
     const content = await doContent(beatmap_metadata, usersArray, sorted_user_scores);
 
     // Si hay mas de 5 de usuarios con una score en el mapa
