@@ -29,7 +29,7 @@ async function doEmbed(message, user_scores){
         'SH': ['grade_s_s','1292652815734538281'],
         'XH': ['grade_ss_s','1292652831785877585']
     }
-    // const beatmap_metadata = getBeatmap(recent_scores.beatmap.id); // beatmap_metadata.max_combo
+    
     let embed_description = '';
 
     user_scores.forEach(score => {
