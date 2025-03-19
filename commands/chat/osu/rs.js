@@ -34,7 +34,7 @@ async function doOsuEmbed(message, recent_scores){
 	const arr_mods = recent_scores.mods;
 	const accuracy = (recent_scores.accuracy * 100).toFixed(2);
 	const user_max_combo = recent_scores.max_combo;
-	const user_pp = `${(recent_scores.pp).toFixed(2) || 0}` 
+	const user_pp = `${recent_scores.pp == 0 ? recent_scores.pp.toFixed(2) : 0}` 
  	const difficulty = recent_scores.beatmap.difficulty_rating;
 
 	const roleColor = message.member.roles.highest.color || '#ffffff';
