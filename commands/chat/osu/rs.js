@@ -48,7 +48,7 @@ async function doOsuEmbed(message, recent_scores){
 			url: user_url,
 			iconURL: `${avatar_url}`,
 		})
-		.setTitle(`${song_title} [${beatmap_difficulty}] / ${song_artist} - ${difficulty + '★'} `)
+		.setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
 		.setURL(beatmap_url)
 		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} **▸** ${mods_used}
 \`\`\`ansi
