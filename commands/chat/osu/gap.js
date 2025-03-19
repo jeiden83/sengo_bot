@@ -176,7 +176,7 @@ async function run(messages, args){
 
     // Para revisar si es graveyard o no
     const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
-    if(beatmap_metadata.status == "pending") return `El mapa es un mapa abandonado, por lo tanto no puede guardar scores.`;
+    if(beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") return `El mapa no esta rankeado, por lo tanto no puede guardar scores... Por ahora.`;
 
     const user_scores = await getBeatmapUserScores(beatmap_url, usersArray);
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
