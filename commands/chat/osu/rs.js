@@ -1,20 +1,6 @@
 const { argsParser, getRecentScores, getBeatmap } = require("../../utils/osu.js");
+const { colorear } = require("../../utils/admin.js");
 const { EmbedBuilder } = require("discord.js");
-
-// Para colorear
-function colorear(texto, color = "blanco", negritas = 1){
-	const lista_colores = {
-		"negro" : 30,
-		"rojo" : 31,
-		"verde" : 32,
-		"amarillo" : 33,
-		"azul" : 34,
-		"magenta" : 35,
-		"cyan" : 36,
-		"blanco" : 37
-	};
-	return `\x1b[${negritas?negritas:0};${lista_colores[color]};49m` + texto + `\x1b[0m`;
-}
 
 async function doOsuEmbed(message, recent_scores){
 	const beatmap_metadata = await getBeatmap(recent_scores.beatmap.id); // beatmap_metadata.max_combo
