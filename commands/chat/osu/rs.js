@@ -1,20 +1,22 @@
 const { argsParser, getRecentScores, getBeatmap } = require("../../utils/osu.js");
 const { EmbedBuilder } = require("discord.js");
-// const fs = require('fs/promises');
-// const path = require('path');   
+
+// Para colorear
+function colorear(texto, color = "blanco", negritas = 1){
+	const lista_colores = {
+		"negro" : 30,
+		"rojo" : 31,
+		"verde" : 32,
+		"amarillo" : 33,
+		"azul" : 34,
+		"magenta" : 35,
+		"cyan" : 36,
+		"blanco" : 37
+	};
+	return `\x1b[${negritas?negritas:0};${lista_colores[color]};49m` + texto + `\x1b[0m`;
+}
 
 async function doOsuEmbed(message, recent_scores){
-	/**
-	 * variables para el embed
-	 * 
-	 * por hacer:
-	 * max combo del mapa
-	 * pp if dead
-	 * ranking de la play
-	 * ranking country de la play
-	 * puntuacion del lazer
-	 * 
-	 */ 
 	const beatmap_metadata = await getBeatmap(recent_scores.beatmap.id); // beatmap_metadata.max_combo
 
 	const username = recent_scores.user.username;
@@ -25,16 +27,14 @@ async function doOsuEmbed(message, recent_scores){
 	const song_artist = recent_scores.beatmapset.artist;
 
 	const beatmap_difficulty = recent_scores.beatmap.version;
-	const difficulty_mapper = recent_scores.beatmapset.creator;
 	const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
 	const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
 
 	const score = recent_scores.score.toLocaleString('es-ES');
 	const arr_mods = recent_scores.mods;
-	const mods_used = arr_mods.length > 0 ? arr_mods.join("") : "NM";
 	const accuracy = (recent_scores.accuracy * 100).toFixed(2);
 	const user_max_combo = recent_scores.max_combo;
-	const user_pp = `\`${recent_scores.pp || "\`muerto\`"}\`` 
+	const user_pp = `${(recent_scores.pp).toFixed(2) || 0}` 
  	const difficulty = recent_scores.beatmap.difficulty_rating;
 
 	const roleColor = message.member.roles.highest.color || '#ffffff';
@@ -45,55 +45,30 @@ async function doOsuEmbed(message, recent_scores){
 	const count_100 = recent_scores.statistics.count_100;
 	const count_300 = recent_scores.statistics.count_300;
 
+	const emoji_mods = require("../../../src/emoji_mods.json");
+    const emoji_grades = require("../../../src/emoji_grades.json");
+
+	let grade_emoji = emoji_grades[recent_scores.rank];
+        grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+
+	let mods_used = recent_scores.mods.length > 0 ? 
+		recent_scores.mods.reduce((acc, mod) => `${acc}<:${mod}:${emoji_mods[mod]}>`, '')
+	:   `<:NM:${emoji_mods['NM']}>`;
+
 	// Construccion del embed
 	const embed = new EmbedBuilder()
 		.setAuthor({
-			name: `Puntuación Reciente de ${username}`,
+			name: `Puntuación Reciente de ${username} en ${beatmap_metadata.mode}!`,
 			url: user_url,
 			iconURL: `${avatar_url}`,
 		})
-		// .setTitle(`${song_title} por ${song_artist} / Dif. [${beatmap_difficulty}] por ${difficulty_mapper}`)
-		.setTitle(`${song_title} [${beatmap_difficulty}] +${mods_used} \n${song_artist}`)
+		.setTitle(`${song_title} [${beatmap_difficulty}] / ${song_artist} - ${difficulty + '★'} `)
 		.setURL(beatmap_url)
-		.addFields(
-		{
-			name: "Puntuación",
-			value: `\`${score}\``,
-			inline: true
-		},
-		{
-			name: "Mapper",
-			value: `\`${difficulty_mapper}\``,
-			inline: true
-		},
-		{
-			name: "Precisión",
-			value: `\`${accuracy}%\``,
-			inline: true
-		},
-		{
-			name: "Combo",
-			value: `\`${user_max_combo}\` / \`${beatmap_metadata.max_combo}\``,
-			inline: true
-		},
-		{
-			name: "PP",
-			value: user_pp,
-			inline: true
-		},
-		{
-			name: "Dificultad",
-			value: `\`${difficulty}\` ★`,
-			inline: true
-		},
-		{
-			name: "Estadísticas",
-			value: `\`\`\`ansi
-[1;2m[1;40m[1;37m[300/100/50/X][0m[1;40m[0m[0m <:>[2;37m [2;42m[2;45m[2;41m[2;40m[0m[2;37m[2;41m[0m[2;37m[2;45m[0m[2;37m[2;42m[0m[2;37m[0m[2;37m[2;40m[${count_300}/${count_100}/${count_50}/${count_x}][0m[2;37m[0m
-\`\`\``,
-			inline: false
-		},
-		)
+		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} **▸** ${mods_used}
+\`\`\`ansi
+${colorear(count_300, "azul")}/${colorear(count_100, "verde")}/${colorear(count_50, "amarillo")}/${colorear(count_x, "rojo")} ${colorear(user_pp + 'PP')} ${accuracy}% x${user_max_combo}/${colorear(beatmap_metadata.max_combo)}
+\`\`\`
+		`)
 		.setImage(beatmap_cover)
 		.setColor(embedColor)
 		.setFooter({
