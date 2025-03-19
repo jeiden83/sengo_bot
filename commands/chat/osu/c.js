@@ -1,37 +1,14 @@
 const { Client, Auth } = require('osu-web.js');
 const { EmbedBuilder } = require('discord.js');
 const { argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser } = require("../../utils/osu.js");
+
 const config = require("../../../config.json");
 const axios = require('axios');
 
 async function doEmbed(message, user_scores){
-    const emoji_mods = {
-        'TD': '1292664385348571187',
-        'SO': '1292664378017189949',
-        'SD': '1292664367841804380',
-        'PF': '1292664359633551391',
-        'NM': '1292664351953649696',
-        'NF': '1292664344517021788',
-        'NC': '1292664337533763634',
-        'HT': '1292664330554310749',
-        'HR': '1292664323470135457',
-        'HD': '1292664317061107732',
-        'FL': '1292664310199222282',
-        'EZ': '1292664304025468928',
-        'DT': '1292664294311198761'
-    }
-    const emoji_grades = {
-        'A': ['grade_a', '1292652764844789891'],
-        'B': ['grade_b','1292652775733465188'],
-        'C': ['grade_c','1292652783610363985'],
-        'D': ['grade_d','1292652789507428395'],
-        'S': ['grade_s','1292652798302748763'],
-        'X': ['grade_ss','1292652824127078611'],
-        'SH': ['grade_s_s','1292652815734538281'],
-        'XH': ['grade_ss_s','1292652831785877585']
-    }
+    const emoji_mods = require("../../../src/emoji_mods.json");
+    const emoji_grades = require("../../../src/emoji_grades.json");
     
-    // const beatmap_metadata = getBeatmap(recent_scores.beatmap.id); // beatmap_metadata.max_combo
     let embed_description = '';
 
     user_scores.scores.forEach(score => {
