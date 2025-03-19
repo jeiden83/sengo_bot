@@ -195,13 +195,12 @@ async function findBeatmapInChannel(message, isReply){
         ? embedMessage.embeds[0].url.match(/(?:b|beatmaps)\/(\d+)/)[1]
         : embedMessage.embeds[0].author.url.match(/(?:b|beatmaps)\/(\d+)/)[1];
         
+        return {'beatmap_url' : beatmap_url, 'bad_response' : `shh`};
     } catch(TypeError){
 
         console.log("<#> TypeError");
         return {'beatmap_url' : null, 'bad_response' : `No se encontro un mapa al cual hacerle >c`};
     }
-    
-    return {'beatmap_url' : beatmap_url, 'bad_response' : `shh`};
 }
 
 async function parsingCommandFunction(parsed_args, command_parameters){
