@@ -73,7 +73,8 @@ function saveUserscore(recent_scores, pre_calculated) {
         "total_score": recent_scores.total_score,
         "username": recent_scores.user.username,
         "map_completion": pre_calculated.map_completion,
-        "beatmap_max_combo": pre_calculated.beatmap_max_combo
+        "beatmap_max_combo": pre_calculated.beatmap_max_combo,
+        "beatmap_status": recent_scores.beatmap.status,
     };
 
     if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
