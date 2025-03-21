@@ -59,47 +59,75 @@ async function NewloadToken(){
 function saveUserscore(recent_scores, pre_calculated) {
     const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
-    if (unranked_statuses.has(recent_scores.beatmap.status)) // Si no está rankeado 
-    {
-        // Crear la carpeta con la estructura adecuada
+    const score = {
+        "accuracy": recent_scores.accuracy,
+        "ended_at": recent_scores.ended_at,
+        "legacy_total_score": recent_scores.legacy_total_score,
+        "max_combo": recent_scores.max_combo,
+        "statistics": recent_scores.statistics,
+        "mods": recent_scores.mods,
+        "passed": recent_scores.passed,
+        "pp": pre_calculated.pp,
+        "rank": recent_scores.rank,
+        "started_at": recent_scores.started_at,
+        "total_score": recent_scores.total_score,
+        "username": recent_scores.user.username,
+        "map_completion": pre_calculated.map_completion,
+        "beatmap_max_combo": pre_calculated.beatmap_max_combo
+    };
+
+    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
         const scoresPath = path.join(__dirname, '../../db/local/scores');
         const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
-        const filePath = path.join(folderPath, `${recent_scores.ended_at.replace(/:/g, '_')}.json`);
 
         // Crear las carpetas necesarias si no existen
         fs.mkdirSync(folderPath, { recursive: true });
 
-        // Verificar si el archivo ya existe
-        if (fs.existsSync(filePath)) {
-            
-            // existe el mismo, entonces para que guardarlo de nuevo
-        } else {
+        const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json'));
 
-            // A guardar en el archivo de score
-            const score = {
-                "accuracy": recent_scores.accuracy,
-                "ended_at": recent_scores.ended_at,
-                "legacy_total_score": recent_scores.legacy_total_score,
-                "max_combo": recent_scores.max_combo,
-                "statistics" : recent_scores.statistics,
-                "mods" : recent_scores.mods,
-                "passed": recent_scores.passed,
-                "pp": pre_calculated.pp,
-                "rank": recent_scores.rank,
-                "started_at": recent_scores.started_at,
-                "total_score": recent_scores.total_score,
-                "username" : recent_scores.user.username,
-                "map_completion" : pre_calculated.map_completion,
-                "beatmap_max_combo": pre_calculated.beatmap_max_combo
+        if (!score.passed) {
+            const filePath = path.join(folderPath, '0.json');
+            if (fs.existsSync(filePath)) {
+                const existingScore = JSON.parse(fs.readFileSync(filePath));
+                if (pre_calculated.map_completion > existingScore.map_completion) {
+                    fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+                }
+            } else {
+                fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+            }
+        } else {
+            // Ordenar archivos por PP de forma descendente
+            const scores = files.map(file => {
+                const data = JSON.parse(fs.readFileSync(path.join(folderPath, file)));
+                return { file, pp: data.pp };
+            }).filter(s => s.pp !== undefined && s.pp > 0);
+
+            scores.sort((a, b) => b.pp - a.pp);
+
+            // Verificar si ya existe una puntuación con el mismo PP (duplicado)
+            if (scores.some(s => s.pp == pre_calculated.pp)) return;
+
+            // Calcular el índice adecuado para la nueva puntuación
+            let index = 1;
+            for (let i = 0; i < scores.length; i++) {
+                if (pre_calculated.pp > scores[i].pp) break;
+                index++;
             }
 
+            // Mover archivos para mantener el orden de PP
+            for (let i = scores.length; i >= index; i--) {
+                const oldPath = path.join(folderPath, `${i}.json`);
+                const newPath = path.join(folderPath, `${i + 1}.json`);
+                fs.renameSync(oldPath, newPath);
+            }
+
+            // Guardar la nueva puntuación en la posición correspondiente
+            const filePath = path.join(folderPath, `${index}.json`);
             fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
         }
-    } else {
-        
-        // no hace falta guardar la score si es un mapa rankeado
     }
 }
+
 
 async function getUserRecentScores(parsed_args){
     await NewloadToken();
