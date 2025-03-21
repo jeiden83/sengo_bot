@@ -106,10 +106,13 @@ function saveUserscore(recent_scores, pre_calculated) {
             }
         } else {
             // Ordenar archivos por PP de forma descendente
-            const scores = files.map(file => {
-                const data = JSON.parse(fs.readFileSync(path.join(folderPath, file)));
-                return { file, pp: data.pp };
-            }).filter(s => s.pp !== undefined && s.pp > 0);
+            const scores = files
+                .filter(file => /^[1-9]\d*\.json$/.test(file))
+                .map(file => {
+                    const data = JSON.parse(fs.readFileSync(path.join(folderPath, file)));
+                    return { file, pp: data.pp };
+                })
+                .filter(s => s.pp !== undefined && s.pp > 0);
 
             scores.sort((a, b) => b.pp - a.pp);
 
