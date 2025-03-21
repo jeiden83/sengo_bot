@@ -1,10 +1,17 @@
-const { Client, Auth } = require('osu-web.js');
+const { Client, Auth } = require('osu-web.js'); // A remplazar por el nuevo 'osu-api-extended'
+const { auth, v2 } = require('osu-api-extended');
+
+const CONFIG = require("../../config.json");
+
 const config = require("../../config.json");
-const fs = require('fs/promises');
-const path = require('path');     
+
+const fs = require('fs');
+const path = require('path');
+
 const axios = require('axios');
 
 async function loadToken(){
+    const fs = require('fs/promises');
     const tokenFilePath = path.resolve('osu_token.json');
 
     try{
@@ -38,6 +45,76 @@ async function loadToken(){
     }
 }
 
+async function NewloadToken(){
+    await auth.login({
+        type: 'v2',
+        client_id: CONFIG.OSU_CLIENT_ID,
+        client_secret: CONFIG.OSU_CLIENT_SECRET,
+        cachedTokenPath: './osu_token.json' 
+      });
+}
+
+// Usado para guardar la score del usuario de forma local
+// Clave para tener una db propia de scores de usuarios
+function saveUserscore(recent_scores, pre_calculated) {
+    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
+
+    if (unranked_statuses.has(recent_scores.beatmap.status)) // Si no está rankeado 
+    {
+        // Crear la carpeta con la estructura adecuada
+        const scoresPath = path.join(__dirname, '../../db/local/scores');
+        const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
+        const filePath = path.join(folderPath, `${recent_scores.ended_at.replace(/:/g, '_')}.json`);
+
+        // Crear las carpetas necesarias si no existen
+        fs.mkdirSync(folderPath, { recursive: true });
+
+        // Verificar si el archivo ya existe
+        if (fs.existsSync(filePath)) {
+            
+            // existe el mismo, entonces para que guardarlo de nuevo
+        } else {
+
+            // A guardar en el archivo de score
+            const score = {
+                "accuracy": recent_scores.accuracy,
+                "ended_at": recent_scores.ended_at,
+                "legacy_total_score": recent_scores.legacy_total_score,
+                "max_combo": recent_scores.max_combo,
+                "statistics" : recent_scores.statistics,
+                "mods" : recent_scores.mods,
+                "passed": recent_scores.passed,
+                "pp": pre_calculated.pp,
+                "rank": recent_scores.rank,
+                "started_at": recent_scores.started_at,
+                "total_score": recent_scores.total_score,
+                "username" : recent_scores.user.username,
+                "map_completion" : pre_calculated.map_completion,
+                "beatmap_max_combo": pre_calculated.beatmap_max_combo
+            }
+
+            fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+        }
+    } else {
+        
+        // no hace falta guardar la score si es un mapa rankeado
+    }
+}
+
+async function getUserRecentScores(parsed_args){
+    await NewloadToken();
+
+    const result = await v2.scores.list({
+        type: 'user_recent',
+        user_id: parsed_args.username[0],
+        mode: parsed_args.gamemode || 'osu',
+        include_fails: true,
+      });
+
+
+    return result;
+}
+
 async function getOsuUser(parsed_args){
     const osu_token = await loadToken();
     const look_gamemode = parsed_args.gamemode || 'osu';
@@ -56,25 +133,55 @@ async function getOsuUser(parsed_args){
     return res;
 }
 
-async function getBeatmap(beatmap_id){
-    const osu_token = await loadToken();
+// Obtener y descargar el beatmap.osu dado el id del set y del .osu
+// Usado principalmente para el calculo de pp
+async function getBeatmap_osu(beatmapset_id, beatmap_osu_id) {
 
-    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_id}`;
+    // Ruta del archivo con la estructura correcta
+    const beatmapsetPath = path.join(__dirname, '../../db/local/beatmap.osu');
+    const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
+    const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
+
+    // Verificar si el archivo ya existe en la carpeta /osu/
+    if (fs.existsSync(filePath)) {
+		
+        // console.log(`Archivo encontrado en caché: ${filePath}`);
+        return filePath;
+    }
+
+    // Realizar la solicitud HTTP si el archivo no está en caché
+    const options = {
+        method: 'GET',
+        url: `https://catboy.best/osu/${beatmap_osu_id}`
+    };
 
     try {
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${osu_token.access_token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            }
-        });
+        const { data } = await axios.request(options);
 
-        return response.data;
+        // Crear la carpeta /osu/ con la estructura correcta si no existe
+        fs.mkdirSync(folderPath, { recursive: true });
+
+        // Guardar el archivo en la carpeta /osu/
+        fs.writeFileSync(filePath, data);
+        // console.log(`Archivo descargado y guardado en: ${filePath}`);
+        return filePath;
     } catch (error) {
 
-        return 'Error obteniendo los datos del beatmap';
+        console.error('Error al descargar el beatmap:', error.message);
+        throw error;
     }
+}
+
+// Obtener los detalles de una dificultad de un beatmap dado
+async function getBeatmap(beatmap_id){
+    await NewloadToken();
+
+    const result = await v2.beatmaps.details({
+        type: 'difficulty',
+        id: beatmap_id
+      });
+
+    return result;
 }
 
 async function getBeatmapUserScore(parsed_args) {
@@ -158,13 +265,6 @@ async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails =
             include_fails : include_fails
         }})
 
-    // const fs = require('fs'); 
-        
-    // // Guardar los datos en un archivo JSON
-    //     const filePath = `./scores_${parsed_args.username[0]}.json`;
-    //     fs.writeFileSync(filePath, JSON.stringify(res, null, 2), 'utf-8');
-    //     console.log(`Datos guardados en: ${filePath}`);
-    
     return res[0];
 }
 
@@ -349,6 +449,9 @@ async function argsParser(args, command_parameters){
 }
 
 module.exports = { 
+    getBeatmap_osu,
+    saveUserscore,
+    getUserRecentScores,
     getBeatmap,
     findBeatmapInChannel,
     parsingCommandFunction,
