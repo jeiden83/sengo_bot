@@ -77,6 +77,9 @@ function saveUserscore(recent_scores, pre_calculated) {
         "beatmap_status": recent_scores.beatmap.status,
     };
 
+    // Play fallida en multi
+    if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
+
     if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
         const scoresPath = path.join(__dirname, '../../db/local/scores');
         const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
@@ -87,7 +90,9 @@ function saveUserscore(recent_scores, pre_calculated) {
         const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json'));
 
         if (!score.passed) {
-            const filePath = path.join(folderPath, '0.json');
+
+            const filePath = path.join(folderPath, `${score.multi_failed ? '0_5' : '0'}.json`); // 0_5 para las fallidas en multi y 0 en solo
+            
             if (fs.existsSync(filePath)) {
                 const existingScore = JSON.parse(fs.readFileSync(filePath));
                 if (pre_calculated.map_completion > existingScore.map_completion) {
