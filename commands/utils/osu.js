@@ -1,13 +1,13 @@
 const { Client, Auth } = require('osu-web.js'); // A remplazar por el nuevo 'osu-api-extended'
 const { auth, v2 } = require('osu-api-extended');
 
-const CONFIG = require("../../config.json");
+const { localBeatmapStatus } = require("./admin.js");
 
+const CONFIG = require("../../config.json");
 const config = require("../../config.json");
 
 const fs = require('fs');
 const path = require('path');
-
 const axios = require('axios');
 
 async function loadToken(){
@@ -80,7 +80,8 @@ function saveUserscore(recent_scores, pre_calculated) {
     // Play fallida en multi
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
 
-    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
+    // Si es una play en un mapa unranked o es una play fallida
+    if (unranked_statuses.  has(recent_scores.beatmap.status) || !score.passed) {
         const scoresPath = path.join(__dirname, '../../db/local/scores');
         const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
 
@@ -89,6 +90,7 @@ function saveUserscore(recent_scores, pre_calculated) {
 
         const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json'));
 
+        // Si es una play fallida
         if (!score.passed) {
 
             const filePath = path.join(folderPath, `${score.multi_failed ? '0_5' : '0'}.json`); // 0_5 para las fallidas en multi y 0 en solo
@@ -96,6 +98,7 @@ function saveUserscore(recent_scores, pre_calculated) {
             if (fs.existsSync(filePath)) {
                 const existingScore = JSON.parse(fs.readFileSync(filePath));
                 if (pre_calculated.map_completion > existingScore.map_completion) {
+
                     fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
                 }
             } else {
@@ -134,7 +137,6 @@ function saveUserscore(recent_scores, pre_calculated) {
     }
 }
 
-
 async function getUserRecentScores(parsed_args){
     await NewloadToken();
 
@@ -169,7 +171,8 @@ async function getOsuUser(parsed_args){
 
 // Obtener y descargar el beatmap.osu dado el id del set y del .osu
 // Usado principalmente para el calculo de pp
-async function getBeatmap_osu(beatmapset_id, beatmap_osu_id) {
+async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
+    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
     // Ruta del archivo con la estructura correcta
     const beatmapsetPath = path.join(__dirname, '../../db/local/beatmap.osu');
@@ -179,8 +182,25 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id) {
     // Verificar si el archivo ya existe en la carpeta /osu/
     if (fs.existsSync(filePath)) {
 		
-        // console.log(`Archivo encontrado en caché: ${filePath}`);
-        return filePath;
+        const beatmap_index = localBeatmapStatus(beatmap_osu_id);
+
+        // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
+        if(unranked_statuses.has(beatmap_metadata.status)){
+
+            // Si no se encuentra en el index, pues que lo actualice
+            if(!beatmap_index) localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+            return filePath;
+        }
+
+        // Si en el index local el beatmap.osu tiene el mismo tiempo de modificacion que el que unranked que se obtuvo
+        
+        if(beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated){
+
+            return filePath;
+        }
+
+        // Si bien existe, es unranked y cambio su tiempo de modificacion, por lo cual hay que cambiar el actual tanto guardado
+        // Como en el index
     }
 
     // Realizar la solicitud HTTP si el archivo no está en caché
@@ -197,7 +217,10 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id) {
 
         // Guardar el archivo en la carpeta /osu/
         fs.writeFileSync(filePath, data);
-        // console.log(`Archivo descargado y guardado en: ${filePath}`);
+
+        // Se actualiza el index de los beatmaps
+        localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+
         return filePath;
     } catch (error) {
 
@@ -274,14 +297,9 @@ async function getBeatmapUserAllScores(parsed_args) {
 
         const data = response.data;
 
-        // to dump data for debuggin
-        // const fs = require('fs');
-        // const filePath = `./scores_${userId}_${beatmapId}.json`;
-        // fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8');
-        // console.log(`Datos guardados en: ${filePath}`);
-
         return data;
     } catch (error) {
+        
         console.error('Error obteniendo las puntuaciones:', error);
         return 'Error obteniendo las puntuaciones';
     }

@@ -70,6 +70,10 @@ async function run(messages, args){
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
 
+    // Para revisar si es graveyard o no
+    const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
+    if(beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") return `El mapa no esta rankeado, por lo tanto no puede guardar scores... Por ahora.`;
+
     const { fn_response, parsed_args, user_found } = await argsParser(args,
 		{"message" : message, "res" : res, "beatmap_url" : beatmap_url, "command_function" : getBeatmapUserAllScores});
 
