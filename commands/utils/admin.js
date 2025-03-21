@@ -32,7 +32,8 @@ function localBeatmapStatus(beatmap_osu_id, beatmap_metadata){
 		// La ultima modificacion para el momento de revisar si el mapa cambio
 		beatmap_index[beatmap_osu_id] = {
 			"status" : beatmap_metadata.status,
-			"last_updated" : beatmap_metadata.last_updated
+			"last_updated" : beatmap_metadata.last_updated,
+			"name" : `${beatmap_metadata.beatmapset.artist} - ${beatmap_metadata.beatmapset.title} [${beatmap_metadata.version}]`
 		}
 
 		// Se guarda el id y sus datos
