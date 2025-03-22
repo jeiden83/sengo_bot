@@ -14,7 +14,7 @@ git clone https://github.com/jeiden83/sengo_bot
 ``` 
 - Instala las dependencias:
 ```bash
-npm install discord.js mongodb
+npm install discord.js mongodb osu-api-extended rosu-pp-js
 ```
 
 - Renombra el **config.json** ~~.dummy~~, y sigue los pasos para rellenar el archivo de configuraciones:
