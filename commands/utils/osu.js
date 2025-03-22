@@ -4,11 +4,11 @@ const { auth, v2 } = require('osu-api-extended');
 const { localBeatmapStatus } = require("./admin.js");
 
 const CONFIG = require("../../config.json");
-const config = require("../../config.json");
 
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const rosu = require("rosu-pp-js");
 
 async function loadToken(){
     const fs = require('fs/promises');
@@ -27,7 +27,7 @@ async function loadToken(){
     }
     
     async function createToken() {
-        const auth = new Auth(config.OSU_CLIENT_ID, config.OSU_CLIENT_SECRET, "");
+        const auth = new Auth(CONFIG.OSU_CLIENT_ID, CONFIG.OSU_CLIENT_SECRET, "");
         const osu_token = await auth.clientCredentialsGrant();
 
         const accessTokenData = {
@@ -175,60 +175,65 @@ async function getOsuUser(parsed_args){
 // Obtener y descargar el beatmap.osu dado el id del set y del .osu
 // Usado principalmente para el calculo de pp
 async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
-    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
-
-    // Ruta del archivo con la estructura correcta
-    const beatmapsetPath = path.join(__dirname, '../../db/local/beatmap.osu');
-    const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
-    const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
-
-    // Verificar si el archivo ya existe en la carpeta /osu/
-    if (fs.existsSync(filePath)) {
-		
-        const beatmap_index = localBeatmapStatus(beatmap_osu_id);
-
-        // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
-        if(unranked_statuses.has(beatmap_metadata.status)){
-
-            // Si no se encuentra en el index, pues que lo actualice
-            if(!beatmap_index) localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
-            return filePath;
+    
+    return new rosu.Beatmap(fs.readFileSync(await run()));
+    
+    async function run() {
+        const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
+    
+        // Ruta del archivo con la estructura correcta
+        const beatmapsetPath = path.join(__dirname, '../../db/local/beatmap.osu');
+        const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
+        const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
+    
+        // Verificar si el archivo ya existe en la carpeta /osu/
+        if (fs.existsSync(filePath)) {
+    		
+            const beatmap_index = localBeatmapStatus(beatmap_osu_id);
+    
+            // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
+            if(unranked_statuses.has(beatmap_metadata.status)){
+    
+                // Si no se encuentra en el index, pues que lo actualice
+                if(!beatmap_index) localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+                return filePath;
+            }
+    
+            // Si en el index local el beatmap.osu tiene el mismo tiempo de modificacion que el que unranked que se obtuvo
+            
+            if(beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated){
+    
+                return filePath;
+            }
+    
+            // Si bien existe, es unranked y cambio su tiempo de modificacion, por lo cual hay que cambiar el actual tanto guardado
+            // Como en el index
         }
-
-        // Si en el index local el beatmap.osu tiene el mismo tiempo de modificacion que el que unranked que se obtuvo
-        
-        if(beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated){
-
+    
+        // Realizar la solicitud HTTP si el archivo no está en caché
+        const options = {
+            method: 'GET',
+            url: `https://catboy.best/osu/${beatmap_osu_id}`
+        };
+    
+        try {
+            const { data } = await axios.request(options);
+    
+            // Crear la carpeta /osu/ con la estructura correcta si no existe
+            fs.mkdirSync(folderPath, { recursive: true });
+    
+            // Guardar el archivo en la carpeta /osu/
+            fs.writeFileSync(filePath, data);
+    
+            // Se actualiza el index de los beatmaps
+            localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+    
             return filePath;
+        } catch (error) {
+    
+            console.error('Error al descargar el beatmap:', error.message);
+            throw error;
         }
-
-        // Si bien existe, es unranked y cambio su tiempo de modificacion, por lo cual hay que cambiar el actual tanto guardado
-        // Como en el index
-    }
-
-    // Realizar la solicitud HTTP si el archivo no está en caché
-    const options = {
-        method: 'GET',
-        url: `https://catboy.best/osu/${beatmap_osu_id}`
-    };
-
-    try {
-        const { data } = await axios.request(options);
-
-        // Crear la carpeta /osu/ con la estructura correcta si no existe
-        fs.mkdirSync(folderPath, { recursive: true });
-
-        // Guardar el archivo en la carpeta /osu/
-        fs.writeFileSync(filePath, data);
-
-        // Se actualiza el index de los beatmaps
-        localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
-
-        return filePath;
-    } catch (error) {
-
-        console.error('Error al descargar el beatmap:', error.message);
-        throw error;
     }
 }
 

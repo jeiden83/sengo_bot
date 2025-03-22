@@ -160,7 +160,7 @@ async function run(messages, args) {
 	const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
 	const total_hits = great + ok + meh + miss;
 	const beatmap = await getBeatmap(recent_scores.beatmap.id);
-	const map = new rosu.Beatmap(fs.readFileSync(await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap))); // obtenemos el beatmap.osu y luego pasamos la direccion para un nuevo mapa parseado para el calculo de pp
+	const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap); // obtenemos el beatmap.osu y luego pasamos la direccion para un nuevo mapa parseado para el calculo de pp
 	const maxAttrs = calculatePP(recent_scores, map, "maximo_pp"); // calculamos el pp para un ss
 
 	const pre_calculated = {
