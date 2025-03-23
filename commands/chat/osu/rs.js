@@ -184,7 +184,7 @@ async function run(messages, args) {
 run.description = 
 {
     'header' : 'Obten la play reciente',
-    'body' : undefined,
+    'body' : `Al hacer .rs en un mapa fallido o unranked, accedes a que se guarde en una db local para que luego se pueda usar con el .c y el .gap`,
     'usage' : `s.rs : Obten la play reciente del usuario linkeado al bot.\ns.rs 'usuario' : Obtiene del usuario en el argumento\ns.rs 'usuario' 'modo': Obtiene del usuario en el argumento con respecto al modo de juego.`
 }
 
