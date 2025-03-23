@@ -93,7 +93,6 @@ async function doContent(beatmap_metadata, user_scores, sorted_user_scores){
     const { difficulty_rating, version, url} = beatmap_metadata;
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-
     let content = `**De \`${user_scores.length}\` usuarios, \`${sorted_user_scores.size}\` tienen una score en: \n${mapa}**`;
 
     if(sorted_user_scores.size > 5) content = content.concat(`\n**Mostrando los primeros \`5\`**`);

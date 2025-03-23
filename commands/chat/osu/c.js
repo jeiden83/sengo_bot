@@ -54,12 +54,15 @@ async function doEmbed(message, user_scores){
     return embed;
 }
 
-async function doContent(parsed_args, user_found){
+async function doContent(parsed_args, user_found, beatmap_metadata){
+    const { title } = beatmap_metadata.beatmapset;
+    const { difficulty_rating, version, url} = beatmap_metadata;
 
     if(parsed_args.username[0] == '') parsed_args.username[0] = user_found.osu_id;
     const username = (await getOsuUser(parsed_args)).username;
 
-    const content = `> **Puntuaciones** de \`${username}\` en \`osu!${parsed_args.gamemode}\`:`;
+    let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
+    const content = `**Puntuaciones de \`${username}\` en \`osu!${parsed_args.gamemode}\`: \n${mapa}**`;
     
     return content;
 }
@@ -81,7 +84,7 @@ async function run(messages, args){
     if(fn_response.scores.length == 0) return `El usuario no tiene scores en el mapa.`;
 
     const embed = await doEmbed(message, fn_response);
-    const content = await doContent(parsed_args, user_found);
+    const content = await doContent(parsed_args, user_found, beatmap_metadata);
 
     if(reply){
         reply.reply({content: content, embeds: [embed]});
