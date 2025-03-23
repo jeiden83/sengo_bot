@@ -81,7 +81,7 @@ function saveUserscore(recent_scores, pre_calculated) {
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
 
     // Si es una play en un mapa unranked o es una play fallida
-    if (unranked_statuses.  has(recent_scores.beatmap.status) || !score.passed) {
+    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
         const scoresPath = path.join(__dirname, '../../db/local/scores');
         const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
 
@@ -97,7 +97,7 @@ function saveUserscore(recent_scores, pre_calculated) {
             
             if (fs.existsSync(filePath)) {
                 const existingScore = JSON.parse(fs.readFileSync(filePath));
-                if (pre_calculated.map_completion > existingScore.map_completion) {
+                if (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion)) {
 
                     fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
                 }
