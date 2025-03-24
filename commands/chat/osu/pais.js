@@ -1,6 +1,5 @@
-const { getOsuUser, argsParser, getRecentScores, getBeatmap } = require("../../utils/osu.js");
+const { getOsuUser } = require("../../utils/osu.js");
 const country_codes = require("../../../src/country_codes.json");
-const { EmbedBuilder } = require("discord.js");
 
 async function run(messages, args) {
     const { message, res } = messages;

@@ -1,9 +1,5 @@
-const { Client, Auth } = require('osu-web.js');
 const { EmbedBuilder } = require('discord.js');
-const { argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser } = require("../../utils/osu.js");
-
-const config = require("../../../config.json");
-const axios = require('axios');
+const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser } = require("../../utils/osu.js");
 
 async function doEmbed(message, user_scores){
     const emoji_mods = require("../../../src/emoji_mods.json");
@@ -11,32 +7,30 @@ async function doEmbed(message, user_scores){
     
     let embed_description = '';
 
-    user_scores.scores.forEach(score => {
+    user_scores.forEach(score => {
 
-        let rank_pos = `#${user_scores.scores.indexOf(score)}`;
+        let rank_pos = `#${user_scores.indexOf(score)}`;
 
-        let grade_emoji = emoji_grades[score.rank];
-            grade_emoji = `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
+    	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
-        let legacy_score = score.score.toLocaleString('es-ES');
+        let legacy_score = score.legacy_total_score.toLocaleString('es-ES');
         
         let accuracy = (score.accuracy * 100).toFixed(2);
         
         let max_combo = score.max_combo;
 
         let statistics = score.statistics;
-            statistics = `\`${statistics.count_300}/${statistics.count_100}/${statistics.count_50}/${statistics.count_miss}\``
+            statistics = `\`${statistics.great || 0}/${statistics.ok || 0}/${statistics.meh || 0}/${statistics.miss || 0}\``
 
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
 
-        let time_set = `<t:${Math.floor((new Date(score.created_at)).getTime() / 1000)}:R>`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
 
-        let mods_used = score.mods.length > 0 ? 
-            score.mods.reduce((acc, mod) => `${acc}<:${mod}:${emoji_mods[mod]}>`, '')
-        :   `<:NM:${emoji_mods['NM']}>`;
+        const mods_used = score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '');
 
         
-        embed_description = embed_description.concat(user_scores.scores.indexOf(score) != 0 ?
+        embed_description = embed_description.concat(user_scores.indexOf(score) != 0 ?
 `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - ${max_combo} - ${statistics} - ${pp} - ${time_set} - ${mods_used}\n` : 
 `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used}\n`
         )
@@ -74,14 +68,14 @@ async function run(messages, args){
     if(!beatmap_url) return bad_response;
 
     // Para revisar si es graveyard o no
-    const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
-    if(beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") return `El mapa no esta rankeado, por lo tanto no puede guardar scores... Por ahora.`;
+    const beatmap_metadata = await getBeatmap(beatmap_url);
+    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
-    const { fn_response, parsed_args, user_found } = await argsParser(args,
-		{"message" : message, "res" : res, "beatmap_url" : beatmap_url, "command_function" : getBeatmapUserAllScores});
+    const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
+		{"message" : message, "res" : res, "beatmap_url" : beatmap_url, "command_function" : unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores});
 
-    if(typeof fn_response === 'string') return `Error consiguiendo las puntuaciones para ese mapa.`;   
-    if(fn_response.scores.length == 0) return `El usuario no tiene scores en el mapa.`;
+    if(typeof fn_response=== 'string') return `Error consiguiendo las puntuaciones para ese mapa.`;   
+    if(fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
 
     const embed = await doEmbed(message, fn_response);
     const content = await doContent(parsed_args, user_found, beatmap_metadata);

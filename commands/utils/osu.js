@@ -10,6 +10,52 @@ const path = require('path');
 const axios = require('axios');
 const rosu = require("rosu-pp-js");
 
+// Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario
+function getUnrankedBeatmapUserAllScores(parsed_args) {
+    const beatmapId = parsed_args.beatmap_url;
+    const userId = parsed_args.username[0];
+
+    try {
+        // Ruta base de las puntuaciones locales
+        const baseScoresPath = path.join(__dirname, '../../db/local/scores');
+
+        // Ruta de la carpeta del beatmap
+        const beatmapFolder = path.join(baseScoresPath, beatmapId);
+
+        // Verificar si existe la carpeta del beatmap
+        if (!fs.existsSync(beatmapFolder)) {
+            return [];
+        }
+
+        // Ruta de la carpeta del usuario dentro del beatmap
+        const userScoresFolder = path.join(beatmapFolder, userId);
+
+        // Verificar si existe la carpeta del usuario
+        if (!fs.existsSync(userScoresFolder)) {
+            return `El usuario con ID ${userId} no tiene puntuaciones para este beatmap`;
+        }
+
+        // Crear un array para almacenar las puntuaciones
+        const scores = [];
+
+        // Leer todos los archivos .json dentro de la carpeta del usuario
+        const files = fs.readdirSync(userScoresFolder).filter(file => file.endsWith('.json'));
+
+        // Cargar el contenido de cada archivo y almacenarlo en el array
+        for (const file of files) {
+            const filePath = path.join(userScoresFolder, file);
+            const fileData = fs.readFileSync(filePath, 'utf8');
+            scores.push(JSON.parse(fileData));
+        }
+
+        return scores;
+
+    } catch (error) {
+        console.error('Error obteniendo las puntuaciones:', error);
+        return 'Error obteniendo las puntuaciones';
+    }
+}
+
 async function loadToken(){
     const fs = require('fs/promises');
     const tokenFilePath = path.resolve('osu_token.json');
@@ -140,6 +186,7 @@ function saveUserscore(recent_scores, pre_calculated) {
     }
 }
 
+// Para obtener las puntuaciones recientes de un usuario en un mapa
 async function getUserRecentScores(parsed_args){
     await NewloadToken();
 
@@ -149,7 +196,6 @@ async function getUserRecentScores(parsed_args){
         mode: parsed_args.gamemode || 'osu',
         include_fails: true,
       });
-
 
     return result;
 }
@@ -249,6 +295,7 @@ async function getBeatmap(beatmap_id){
     return result;
 }
 
+// 
 async function getBeatmapUserScore(parsed_args) {
     const osu_token = await loadToken();
     
@@ -280,37 +327,23 @@ async function getBeatmapUserScore(parsed_args) {
     }
 }
 
-async function getBeatmapUserAllScores(parsed_args) {
-    
-    const osu_token = await loadToken();
-    const gamemode = parsed_args.gamemode || 'osu';
-    
-    const beatmapId = parsed_args.beatmap_url;
-    const userId = parsed_args.username[0];
+// Para obtener todas las puntuaciones de un usuario en un mapa dado
+async function getBeatmapUserAllScores(parsed_args){
+    await NewloadToken();
 
-    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${userId}/all`;
-    
-    try {
-        const response = await axios.get(url, {
-            headers: {
-                'Authorization': `Bearer ${osu_token.access_token}`,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            params: {
-                legacy_only: 0, 
-                ruleset: gamemode
-            }
-        });
+    const result = await v2.scores.list({
+        type: 'user_beatmap_all',
 
-        const data = response.data;
+        user_id: parsed_args.username[0],
+        beatmap_id: parsed_args.beatmap_url,
+        mode: parsed_args.gamemode || 'osu',
+      });
 
-        return data;
-    } catch (error) {
-        
-        console.error('Error obteniendo las puntuaciones:', error);
-        return 'Error obteniendo las puntuaciones';
-    }
+
+    // buscamos tambien las locales, por si hay fallidas
+    const local_scores = getUnrankedBeatmapUserAllScores(parsed_args);  
+
+    return result.concat(local_scores);
 }
 
 async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails = true){
@@ -509,6 +542,7 @@ async function argsParser(args, command_parameters){
 }
 
 module.exports = { 
+    getUnrankedBeatmapUserAllScores,
     getBeatmap_osu,
     saveUserscore,
     getUserRecentScores,
