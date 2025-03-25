@@ -32,7 +32,7 @@ function getUnrankedBeatmapUserAllScores(parsed_args) {
 
         // Verificar si existe la carpeta del usuario
         if (!fs.existsSync(userScoresFolder)) {
-            return `El usuario con ID ${userId} no tiene puntuaciones para este beatmap`;
+            return [];
         }
 
         // Crear un array para almacenar las puntuaciones
