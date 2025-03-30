@@ -155,8 +155,6 @@ async function run(messages, args) {
     // Se contruye el embed y se envia
     const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
 
-	console.log(recent_scores.started_at ? "Es lazer" : "No es lazer");
-
 	map.free(); // si
     return { content: '', embeds: [embed] };
 }
