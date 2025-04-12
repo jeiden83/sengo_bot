@@ -238,7 +238,7 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
             const beatmap_index = localBeatmapStatus(beatmap_osu_id);
     
             // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
-            if(unranked_statuses.has(beatmap_metadata.status)){
+            if(!unranked_statuses.has(beatmap_metadata.status)){
     
                 // Si no se encuentra en el index, pues que lo actualice
                 if(!beatmap_index) localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
@@ -412,7 +412,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         if(!user_found) return {'fn_response': `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`, 'user_found': user_found, 'reparsed_args': parsed_args};
 
         // Aplicamos el comando con el linkeado al bot
-        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : parsed_args.gamemode});
+        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : user_found.main_gamemode});
         return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
     // Si hay args
     } else {
