@@ -6,7 +6,7 @@ async function connectDB(config) {
     const userSchema = new mongoose.Schema({
         discord_id: { type: String, required: true, unique: true },
         osu_id: { type: String },
-        main_gamemode: { type: String, default: "std" },
+        main_gamemode: { type: String, default: "osu" },
         osu_server: { type: String, default: "bancho" }
     });
     const User = mongoose.model('User', userSchema);
@@ -27,7 +27,7 @@ async function connectDB(config) {
     }
 }
 async function addUser(User, discord_id, osu_id, main_gamemode) {
-    const gamemode = main_gamemode == "" ? 'std' : main_gamemode;
+    const gamemode = main_gamemode == "" ? 'osu' : main_gamemode;
     
     try {
         
