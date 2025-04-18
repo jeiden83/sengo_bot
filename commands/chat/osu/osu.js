@@ -84,12 +84,22 @@ async function run(messages, args){
 
 	if(!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') return osu_userdata.fn_response;
 
-    // dump last user get
-    // const osuUserPath = path.resolve('last_user_get.json');
-    // await fs.promises.writeFile(osuUserPath, JSON.stringify(osu_userdata, null, 2));
-    // console.log(`# Dumped user '${osu_userdata.fn_response.username}'`)
-
     return doOsuEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode));
+}
+
+run.alias = {
+    "mania" : {
+        "args" : "-mania"
+    },
+    "ctb" : {
+        "args" : "-ctb"
+    },
+    "taiko" : {
+        "args" : "-taiko"
+    },
+    "std" : {
+        "args" : "-osu"
+    },
 }
 
 run.description = 
