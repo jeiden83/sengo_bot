@@ -87,6 +87,25 @@ async function run(messages, args){
 
     return {content: content, embeds: [embed]};
 }
+
+run.alias = {
+    "comparar" : {
+        "args" : ""
+    },
+    "compara" : {
+        "args" : ""
+    },
+    "cm" : {
+        "args" : "-mania"
+    },
+    "cc" : {
+        "args" : "-ctb"
+    },
+    "ct" : {
+        "args" : "-taiko"
+    }
+}
+
 run.description = 
 {
     'header' : "El >c de toda la vida",
