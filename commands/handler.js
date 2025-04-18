@@ -9,16 +9,18 @@ async function chatCommand(intialized_data, command_data) {
     const chat_commands_set = intialized_data.get('chat_commands_set');
     const chat_commands_map = intialized_data.get('chat_commands_map');
 
-
-	if (chat_commands_set.has(command)){
-
+	if (chat_commands_set.has(command)) {
 		const found_command = chat_commands_map.get(command);
-
+	
+		// Revisamos si hay un alias en el comando y si el comando ejecutado es un alias de ese comando
+		const alias_args =
+			found_command.run.alias && found_command.run.alias[command]
+				? found_command.run.alias[command].args
+				: [];
+	
 		return await found_command.run(
 			{ message, res, reply },
-
-			[...args, found_command.run.alias ? found_command.run.alias[command] ? found_command.run.alias[command].args : "" : ""],
-			
+			[...args, ...alias_args],
 			intialized_data
 		);
 	}
