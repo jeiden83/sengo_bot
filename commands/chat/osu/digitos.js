@@ -20,7 +20,7 @@ async function run(messages, args) {
     if (!user_found) return `Para usar el comando primero tiene que linkearse al bot.`;
 
     // Obtener el usuario de osu
-    const osu_user = await getOsuUser({ "username": [user_found.osu_id], "gamemode": user_found.main_gamemode == "std" ? "osu" : user_found.main_gamemode });
+    const osu_user = await getOsuUser({ "username": [user_found.osu_id], "gamemode": user_found.main_gamemode });
 
     // String a comparar de los digitos
     const rankDigits = String(osu_user.statistics.global_rank).length;

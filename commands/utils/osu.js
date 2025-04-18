@@ -193,7 +193,7 @@ async function getUserRecentScores(parsed_args){
     const result = await v2.scores.list({
         type: 'user_recent',
         user_id: parsed_args.username[0],
-        mode: parsed_args.gamemode || 'osu',
+        mode: parsed_args.gamemode,
         include_fails: true,
       });
 
@@ -524,7 +524,7 @@ function argsParserNoCommand(args) {
 
 
     let parsed_args = {
-        'username': [username.map(x => x.replace(`"`, "")).join(" ").trim()],
+        'username': [username.map(x => x.replace(/"/g, "")).join(" ").trim()],
         'gamemode': gamemode
     };
     return parsed_args;
