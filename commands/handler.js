@@ -9,13 +9,20 @@ async function chatCommand(intialized_data, command_data) {
     const chat_commands_set = intialized_data.get('chat_commands_set');
     const chat_commands_map = intialized_data.get('chat_commands_map');
 
-	if (chat_commands_set.has(command))
-		return await chat_commands_map.get(command).run(
+
+	if (chat_commands_set.has(command)){
+
+		const found_command = chat_commands_map.get(command);
+
+		return await found_command.run(
 			{ message, res, reply },
-			args,
+
+			[...args, found_command.run.alias ? found_command.run.alias[command] ? found_command.run.alias[command].args : "" : ""],
+			
 			intialized_data
 		);
-	
+	}
+		
 	const not_found_responses = [
 		"Comando invalido", 
 		"No se ha encontrado el comando", 
@@ -118,18 +125,28 @@ async function loadCommands() {
             const stat = fs.statSync(filePath);
 
             if (stat.isDirectory()) {
-                loadFromDirectory(filePath, path.basename(filePath)); // Llamada recursiva con el nombre de la carpeta
-            } else if (file.endsWith('.js')) {
-                const commandName = path.basename(file, '.js');
-                chat_commands_set.add(commandName);
 
+                loadFromDirectory(filePath, path.basename(filePath)); // Llamada recursiva con el nombre de la carpeta
+            
+			} else if (file.endsWith('.js')) {
+                const commandName = path.basename(file, '.js');
                 delete require.cache[require.resolve(filePath)];
                 const commandModule = require(filePath);
 
-                try {
-                    // Agregar el atributo "type" con el nombre de la carpeta
+				try {
                     commandModule.type = parentFolder || "default";
+
+                    // Agregar el comando principal
+                    chat_commands_set.add(commandName);
                     chat_commands_map.set(commandName, commandModule);
+
+                    // Si el módulo tiene alias
+                    if (commandModule.run?.alias) {
+                        for (const alias in commandModule.run.alias) {
+                            chat_commands_set.add(alias);
+                            chat_commands_map.set(alias, commandModule);
+                        }
+                    }
                 } catch (error) {
                     console.error(`El comando ${commandName} no tiene una función 'run'.`);
                 }

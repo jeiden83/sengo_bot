@@ -456,7 +456,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
 function argsParserNoCommand(args) {
     let username = [];
-    let gamemode = '';
+    let gamemode = args.gamemode || "";
     let args_aux = new String(args);
 
     const gamemode_set = {
