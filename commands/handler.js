@@ -20,7 +20,7 @@ async function chatCommand(intialized_data, command_data) {
 	
 		return await found_command.run(
 			{ message, res, reply },
-			[...args, ...alias_args],
+			[...args, alias_args],
 			intialized_data
 		);
 	}
