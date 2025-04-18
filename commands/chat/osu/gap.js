@@ -201,6 +201,12 @@ async function run(messages, args){
     return {content: content, embeds: [embed]};
 }
 
+run.alias = {
+    "g" : {
+        "args" : ""
+    }
+}
+
 run.description = 
 {
     'header' : '>c Global entre el server',

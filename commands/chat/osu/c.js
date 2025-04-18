@@ -95,6 +95,9 @@ run.alias = {
     "compara" : {
         "args" : ""
     },
+    "compare" : {
+        "args" : ""
+    },
     "cm" : {
         "args" : "-mania"
     },

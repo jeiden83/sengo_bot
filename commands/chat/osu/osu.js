@@ -91,6 +91,9 @@ run.alias = {
     "mania" : {
         "args" : "-mania"
     },
+    "minijuego" : {
+        "args" : "-mania"
+    },
     "ctb" : {
         "args" : "-ctb"
     },
@@ -98,7 +101,7 @@ run.alias = {
         "args" : "-taiko"
     },
     "std" : {
-        "args" : "-osu"
+        "args" : ""
     },
 }
 

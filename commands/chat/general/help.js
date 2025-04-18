@@ -74,6 +74,13 @@ async function run(messages, args, intialized_data) {
 
     return await doEmbed(message, "help > Error", `El comando \`${commandName}\` no existe.`);
 }
+
+run.alias = {
+    "ayuda": {
+        "args" : ""
+    }
+}
+
 run.description = 
 {
     'header' : 'Los comandos del Sengo. O al menos la mayoria :shh:',

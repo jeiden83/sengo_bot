@@ -18,6 +18,15 @@ async function run(messages, args) {
     return say_as_bot;
 }
 
+run.alias = {
+    "decir" : {
+        "args" : ""
+    },
+    "impersonar" : {
+        "args" : ""
+    } 
+}
+
 run.description = 
 {
     'header' : "Di algo como si fuera el Sengo",

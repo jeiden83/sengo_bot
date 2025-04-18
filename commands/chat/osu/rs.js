@@ -159,6 +159,24 @@ async function run(messages, args) {
     return { content: '', embeds: [embed] };
 }
 
+run.alias = {
+	"rm": {
+		"args" : "-mania"
+	},
+	"rc": {
+		"args" : "-ctb"
+	}, 
+	"rt": {
+		"args" : "-taiko"
+	}, 
+	"recent": {
+		"args" : ""
+	},
+	"reciente": {
+		"args" : ""
+	}
+}
+
 run.description = 
 {
     'header' : 'Obten la play reciente',
