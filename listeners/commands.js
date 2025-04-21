@@ -5,7 +5,7 @@ const { PermissionsBitField } = require('discord.js');
 async function chat_command_listener(chat_commands, client, config, res) {
     
     const chatMessageListener = async (message) => {
-        if (!message.content.startsWith(config.BOT_PREFIX)) {
+        if (!message.content.toLowerCase().startsWith(config.BOT_PREFIX)) {
             return;
         }    
 
