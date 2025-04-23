@@ -69,7 +69,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 	const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
 	const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
 
-	const score = recent_scores.legacy_total_score.toLocaleString('es-ES');
+	const score = (recent_scores.started_at ? recent_scores.total_score : recent_scores.legacy_total_score).toLocaleString('es-ES');
 	
 	const accuracy = (recent_scores.accuracy * 100).toFixed(2);
 	const user_max_combo = recent_scores.max_combo;
