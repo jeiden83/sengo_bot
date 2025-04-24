@@ -16,11 +16,11 @@ async function chatCommand(intialized_data, command_data) {
 		const alias_args =
 			found_command.run.alias && found_command.run.alias[command]
 				? found_command.run.alias[command].args
-				: [];
+				: null;
 	
 		return await found_command.run(
 			{ message, res, reply },
-			[...args, ...alias_args],
+			[...args, alias_args],
 			intialized_data
 		);
 	}

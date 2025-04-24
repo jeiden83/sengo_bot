@@ -192,7 +192,7 @@ async function getUserRecentScores(parsed_args){
 
     const result = await v2.scores.list({
         type: 'user_recent',
-        user_id: parsed_args.username[0].toString(),
+        user_id: parsed_args.username[0],
         mode: parsed_args.gamemode || "osu",
         include_fails: true,
       });
