@@ -2,6 +2,8 @@ const fs = require("fs");
 const path = require("path");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
 
+let list_order = [];
+
 async function run(message, args) {
     const folderPath = path.join(__dirname, "../../../src/yuri");
     const files = fs.readdirSync(folderPath).filter(file => file.endsWith(".jpg"));
@@ -10,25 +12,34 @@ async function run(message, args) {
         return message.reply("No hay imágenes disponibles.");
     }
 
-    // Elige un archivo aleatorio
-    const randomFile = files[Math.floor(Math.random() * files.length)];
-    const filePath = path.join(folderPath, randomFile);
+    // Si no hay orden actual o se terminó, se genera uno nuevo
+    if (list_order.length === 0) {
+        list_order = shuffleArray([...files]);
+    }
 
-    // Normaliza el nombre del attachment (reemplaza espacios por guiones bajos, por ejemplo)
-    const cleanFileName = path.parse(randomFile).name.replace(/[^a-z0-9]/gi, '_') + ".jpg";
-
-    // Crea el attachment con nombre limpio
+    const currentFile = list_order.shift(); // Tomamos el primero de la lista
+    const filePath = path.join(folderPath, currentFile);
+    const cleanFileName = path.parse(currentFile).name.replace(/[^a-z0-9]/gi, '_') + ".jpg";
     const attachment = new AttachmentBuilder(filePath).setName(cleanFileName);
 
     const embed = new EmbedBuilder()
         .setImage(`attachment://${cleanFileName}`)
         .setColor("#378a91")
-        .setFooter({ text: path.parse(randomFile).name });
+        .setFooter({ text: path.parse(currentFile).name });
 
     return {
         embeds: [embed],
         files: [attachment]
     };
+}
+
+// Función para mezclar un array (Fisher–Yates shuffle)
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
 }
 
 run.description = {
