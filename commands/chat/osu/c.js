@@ -74,7 +74,7 @@ async function run(messages, args){
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
 		{"message" : message, "res" : res, "beatmap_url" : beatmap_url, "command_function" : unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores});
 
-    if(typeof fn_response=== 'string') return `Error consiguiendo las puntuaciones para ese mapa.`;   
+    if(typeof fn_response === 'string') return `Error consiguiendo las puntuaciones para ese mapa.`;   
     if(fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
 
     const embed = await doEmbed(message, fn_response);

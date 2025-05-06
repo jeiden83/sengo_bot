@@ -541,7 +541,37 @@ async function argsParser(args, command_parameters){
     }
 }
 
+async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') {
+    await NewloadToken();
+    const scores = new Collection();
+
+    const promises = usersArray.map(async (user) => {
+        try {
+
+            const result = await v2.scores.list({
+                type: 'user_beatmap_best',
+                beatmap_id: beatmapId,
+                user_id: user.osu_id
+              });
+
+            if (result) {
+                scores.set(user.osu_id, result);
+            }
+        } catch (error) {
+            console.log(`No result for: ${user.osu_id}`)
+        }
+    });
+
+    const chunkSize = 10;
+    for (let i = 0; i < promises.length; i += chunkSize) {
+        await Promise.all(promises.slice(i, i + chunkSize));
+    }
+
+    return scores;
+}
+
 module.exports = { 
+    getNewBeatmapUserScores,
     getUnrankedBeatmapUserAllScores,
     getBeatmap_osu,
     saveUserscore,

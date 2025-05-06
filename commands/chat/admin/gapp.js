@@ -131,40 +131,6 @@ async function getLinkedMembers(message, res) {
     }
 }
 
-async function getBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') {
-    const osu_token = await loadToken();
-
-    const scores = new Collection();
-
-    const promises = usersArray.map(async (user) => {
-        const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}`;
-
-        try {
-            const response = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${osu_token.access_token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.data) {
-                scores.set(user.osu_id, response.data);
-            }
-        } catch (error) {
-            //console.log(`# El usuario de id ${user.osu_id} no tiene una score en el mapa de id ${beatmapId}`);
-        }
-    });
-
-    // Usa Promise.all con grupos de promesas para manejar al menos 10 hilos
-    const chunkSize = 10;
-    for (let i = 0; i < promises.length; i += chunkSize) {
-        await Promise.all(promises.slice(i, i + chunkSize));
-    }
-
-    return scores;
-}
-
 async function run(messages, args){
     const { message, res, reply } = messages;
 
@@ -177,7 +143,7 @@ async function run(messages, args){
     const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
     if(beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") return `El mapa no esta rankeado, por lo tanto no puede guardar scores... Por ahora.`;
 
-    const user_scores = await getBeatmapUserScores(beatmap_url, usersArray);
+    const user_scores = await getNewBeatmapUserScores(beatmap_url, usersArray);
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
 
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
