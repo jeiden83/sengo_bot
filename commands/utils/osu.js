@@ -378,21 +378,43 @@ async function findBeatmapInChannel(message, isReply){
     // Si no se encuentra un mensaje
     if(!embedMessage){
 
+
         return {'beatmap_url' : null, 'bad_response' : `No se encontro un mapa al cual hacerle >c`};
     }
 
     // Guardamos la url del mapa encontrado
-    try{
-
-        const beatmap_url = embedMessage.embeds[0].url
-        ? embedMessage.embeds[0].url.match(/(?:b|beatmaps)\/(\d+)/)[1]
-        : embedMessage.embeds[0].author.url.match(/(?:b|beatmaps)\/(\d+)/)[1];
-        
-        return {'beatmap_url' : beatmap_url, 'bad_response' : `shh`};
-    } catch(TypeError){
-
+    try {
+        let beatmap_url = null;
+    
+        // Primero buscamos en el content
+        if (embedMessage.content !== '') {
+            const match = embedMessage.content.match(/#osu\/(\d+)/);
+            if (match) {
+                beatmap_url = match[1];
+            }
+        }
+    
+        // Si no se encontró en content, buscamos en los embeds
+        if (!beatmap_url && embedMessage.embeds && embedMessage.embeds.length > 0) {
+            const embed = embedMessage.embeds[0];
+    
+            if (embed.url) {
+                const match = embed.url.match(/#osu\/(\d+)/);
+                if (match) beatmap_url = match[1];
+            }
+    
+            // No esta en el url entonces en el author.url
+            beatmap_url = embed.author.url.match(/#osu\/(\d+)/)[1];
+        }
+    
+        if (beatmap_url) {
+            return { 'beatmap_url': beatmap_url, 'bad_response': 'shh' };
+        } else {
+            throw new Error("No beatmap found");
+        }
+    } catch (Error) {
         console.log("<#> TypeError");
-        return {'beatmap_url' : null, 'bad_response' : `No se encontro un mapa al cual hacerle >c`};
+        return { 'beatmap_url': null, 'bad_response': 'No se encontro un mapa al cual hacerle >c' };
     }
 }
 
