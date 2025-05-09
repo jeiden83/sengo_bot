@@ -383,21 +383,26 @@ async function findBeatmapInChannel(message, isReply){
     }
 
     try {
-        const extractId = str => str?.match(/#osu\/(\d+)/)?.[1] || null;
+        const extractId = str =>
+            str?.match(/#osu\/(\d+)/)?.[1] ||
+            str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+            null;
+    
+        const e = embedMessage.embeds?.[0];
     
         const beatmap_url =
             extractId(embedMessage.content) ||
-            extractId(embedMessage.embeds?.[0]?.url) ||
-            extractId(embedMessage.embeds?.[0]?.author?.url);
+            extractId(e?.url) ||
+            extractId(e?.author?.url) ||
+            extractId(e?.description);
     
         return beatmap_url
             ? { beatmap_url, bad_response: 'shh' }
             : { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
-    
-    } catch (Error) {
+    } catch {
         console.log("<#> TypeError");
         return { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
-    }    
+    }
 }
 
 async function parsingCommandFunction(parsed_args, command_parameters){
