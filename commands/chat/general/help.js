@@ -29,7 +29,7 @@ async function run(messages, args, intialized_data) {
     const type_order = ["general", "osu", "utils", "meme", "about"];
 
     // Si no hay argumentos, listar comandos
-    if (args.length == 0 || args[0] == "") {
+    if (args[0] == null) {
         // Categorías a excluir
         const excludeTypes = new Set(['admin', 'meme']);
 
