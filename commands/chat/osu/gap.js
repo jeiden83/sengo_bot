@@ -1,40 +1,18 @@
-const { findBeatmapInChannel, loadToken, getBeatmap, getNewBeatmapUserScores } = require("../../utils/osu.js");
-const { Collection } = require('discord.js');
+const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores } = require("../../utils/osu.js");
 const { EmbedBuilder } = require('discord.js');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 async function doEmbed(message, user_scores){
-    const emoji_mods = {
-        'TD': '1292664385348571187',
-        'SO': '1292664378017189949',
-        'SD': '1292664367841804380',
-        'PF': '1292664359633551391',
-        'NM': '1292664351953649696',
-        'NF': '1292664344517021788',
-        'NC': '1292664337533763634',
-        'HT': '1292664330554310749',
-        'HR': '1292664323470135457',
-        'HD': '1292664317061107732',
-        'FL': '1292664310199222282',
-        'EZ': '1292664304025468928',
-        'DT': '1292664294311198761'
-    }
-    const emoji_grades = {
-        'A': ['grade_a', '1292652764844789891'],
-        'B': ['grade_b','1292652775733465188'],
-        'C': ['grade_c','1292652783610363985'],
-        'D': ['grade_d','1292652789507428395'],
-        'S': ['grade_s','1292652798302748763'],
-        'X': ['grade_ss','1292652824127078611'],
-        'SH': ['grade_s_s','1292652815734538281'],
-        'XH': ['grade_ss_s','1292652831785877585']
-    }
-    
     let embed_description = '';
 
-    user_scores.forEach(score => {
+    const emoji_mods = require("../../../src/emoji_mods.json");
+    const emoji_grades = require("../../../src/emoji_grades.json");
 
-        let rank_pos = `#${score.position}`;
+    let position = 1;
+
+    user_scores.forEach(score => {
     
         // Convierte el código de país a un emoji real usando Unicode.
         const getFlagEmoji = (countryCode) => {
@@ -42,41 +20,41 @@ async function doEmbed(message, user_scores){
                 .toUpperCase()
                 .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
         };
-        let flag = getFlagEmoji(score.score.user.country_code);
+        let flag = getFlagEmoji(score.user ? score.user.country_code : "XX");
     
-        let username = score.score.user.username;
-        let username_link = `[${username}](https://osu.ppy.sh/users/${score.score.user_id})`;
+        let username = score.user ? score.user.username : score.username;
+        let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;
+
+        let total_score = score.total_score.toLocaleString('es-ES');
+        let accuracy = (score.accuracy * 100).toFixed(2);
     
-        let grade_emoji = emoji_grades[score.score.rank];
-        grade_emoji = `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+        let max_combo = score.max_combo;
+        let beatmap_max_combo = score.beatmap_max_combo ?? 0;
+
+        let { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+            statistics = `\`${great}/${ok}/${meh}/${miss}\``;
     
-        let legacy_score = score.score.score.toLocaleString('es-ES');
+        let pp = `${score.pp.toFixed(2)}`;
     
-        let accuracy = (score.score.accuracy * 100).toFixed(2);
+        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
     
-        let max_combo = score.score.max_combo;
-    
-        let statistics = score.score.statistics;
-        statistics = `\`${statistics.count_300}/${statistics.count_100}/${statistics.count_50}/${statistics.count_miss}\``;
-    
-        let pp = `${score.score.pp ? score.score.pp.toFixed(2) : 0}`;
-    
-        let time_set = `<t:${Math.floor((new Date(score.score.created_at)).getTime() / 1000)}:R>`;
-    
-        let mods_used = score.score.mods.length > 0 ? 
-            score.score.mods.reduce((acc, mod) => `${acc}<:${mod}:${emoji_mods[mod]}>`, '') 
-            : `<:NM:${emoji_mods['NM']}>`;
-    
+        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
+    	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}: (${(score.map_completion*100).toFixed(2)}%)` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+
+        let mods_used = score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '');
+
         embed_description = embed_description.concat(embed_description !== '' ?
-            `${rank_pos} - ${flag} ${username_link} - ${time_set}
-    ${grade_emoji} - ${legacy_score} - ${accuracy}% - x${max_combo} - [${statistics}] - ${pp}PP - ${mods_used}\n\n` :
-            `**${rank_pos}** - ${flag} **${username_link}** - ${time_set}
-    ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **x${max_combo}** - [${statistics}] - **${pp}PP** - ${mods_used}\n\n`
+            `${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
+            ${total_score} - ${accuracy}% - x${max_combo}/${beatmap_max_combo} - [${statistics}] - ${pp}PP - ${mods_used}\n\n` 
+            
+            :
+            
+            `**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
+            **${total_score}** - **${accuracy}%** - **x${max_combo}/${beatmap_max_combo}** - [${statistics}] - **${pp}PP** - ${mods_used}\n\n`
         );
     
     });
     
-
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
         .setFooter({
@@ -131,40 +109,6 @@ async function getLinkedMembers(message, res) {
     }
 }
 
-async function getBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') {
-    const osu_token = await loadToken();
-
-    const scores = new Collection();
-
-    const promises = usersArray.map(async (user) => {
-        const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}`;
-
-        try {
-            const response = await axios.get(url, {
-                headers: {
-                    'Authorization': `Bearer ${osu_token.access_token}`,
-                    'Content-Type': 'application/json',
-                    'Accept': 'application/json',
-                },
-            });
-
-            if (response.data) {
-                scores.set(user.osu_id, response.data);
-            }
-        } catch (error) {
-            //console.log(`# El usuario de id ${user.osu_id} no tiene una score en el mapa de id ${beatmapId}`);
-        }
-    });
-
-    // Usa Promise.all con grupos de promesas para manejar al menos 10 hilos
-    const chunkSize = 10;
-    for (let i = 0; i < promises.length; i += chunkSize) {
-        await Promise.all(promises.slice(i, i + chunkSize));
-    }
-
-    return scores;
-}
-
 async function run(messages, args){
     const { message, res, reply } = messages;
 
@@ -175,16 +119,17 @@ async function run(messages, args){
 
     // Para revisar si es graveyard o no
     const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
-    if(beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") return `El mapa no esta rankeado, por lo tanto no puede guardar scores... Por ahora.`;
 
-    const user_scores = await getBeatmapUserScores(beatmap_url, usersArray);
+    const user_scores =  (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
+        await getUnrankedUserScores(beatmap_url) : 
+        await getNewBeatmapUserScores(beatmap_url, usersArray);
+
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
 
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
-    let sorted_user_scores = beatmap_metadata.status === "loved" ? 
-        user_scores.sort((a, b) => b.score.score - a.score.score) : 
-        user_scores.sort((a, b) => b.score.pp - a.score.pp);
-
+    let sorted_user_scores = beatmap_metadata.status === "loved"
+        ? user_scores.sort((a, b) => b.total_score - a.total_score)
+        : user_scores.sort((a, b) => (b.pp ?? 0) - (a.pp ?? 0));
 
     const content = await doContent(beatmap_metadata, usersArray, sorted_user_scores);
 
