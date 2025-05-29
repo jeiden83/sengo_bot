@@ -69,7 +69,7 @@ async function run(messages, args){
 
     // Para revisar si es graveyard o no
     const beatmap_metadata = await getBeatmap(beatmap_url);
-    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
+    const unranked_statuses = new Set(['pending', 'graveyard']);
 
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
 		{"message" : message, "res" : res, "beatmap_url" : beatmap_url, "command_function" : unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores});
