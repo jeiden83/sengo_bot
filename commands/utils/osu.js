@@ -1,5 +1,6 @@
 const { Client, Auth } = require('osu-web.js'); // A remplazar por el nuevo 'osu-api-extended'
 const { auth, v2 } = require('osu-api-extended');
+const { Collection } = require('discord.js');
 
 const { localBeatmapStatus } = require("./admin.js");
 
@@ -13,7 +14,7 @@ const rosu = require("rosu-pp-js");
 // Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario
 function getUnrankedBeatmapUserAllScores(parsed_args) {
     const beatmapId = parsed_args.beatmap_url;
-    const userId = parsed_args.username[0];
+    const userId = parsed_args.username[0].toString();
 
     try {
         // Ruta base de las puntuaciones locales
@@ -564,10 +565,10 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') 
               });
 
             if (result) {
-                scores.set(user.osu_id, result);
+                scores.set(result.position, result.score);
             }
         } catch (error) {
-            console.log(`No result for: ${user.osu_id}`)
+            // console.log(`No result for: ${user.osu_id}`)
         }
     });
 
@@ -579,7 +580,44 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') 
     return scores;
 }
 
+async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
+    const scoresPath = path.join(process.cwd(), 'db/local/scores', `${beatmapId}`);
+    const userScores = new Collection();
+
+    if (!fs.existsSync(scoresPath)) return userScores;
+
+    const userFolders = fs.readdirSync(scoresPath).filter(f => fs.statSync(path.join(scoresPath, f)).isDirectory());
+
+    for (const userId of userFolders) {
+        const folderPath = path.join(scoresPath, userId);
+        const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.json'));
+
+        for (const file of files) {
+            const filePath = path.join(folderPath, file);
+            try {
+                const data = JSON.parse(fs.readFileSync(filePath));
+                if (!userScores.has(userId)) userScores.set(userId, []);
+                userScores.get(userId).push(data);
+            } catch (e) {
+                console.error(`Error leyendo ${filePath}:`, e);
+            }
+        }
+    }
+
+    // Crear nuevo Collection con la mejor play de cada usuario (por total_score)
+    const bestPlays = new Collection();
+
+    for (const [userId, scores] of userScores.entries()) {
+        const best = scores.reduce((a, b) => (a.total_score > b.total_score ? a : b));
+        bestPlays.set(userId, best);
+    }
+
+    return bestPlays;
+}
+
 module.exports = { 
+    getUnrankedUserScores, 
+    NewloadToken, 
     getNewBeatmapUserScores,
     getUnrankedBeatmapUserAllScores,
     getBeatmap_osu,
