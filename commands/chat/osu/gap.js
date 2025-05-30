@@ -4,7 +4,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-async function doEmbed(message, user_scores){
+async function doEmbed(message, user_scores, beatmap_metadata){
     let embed_description = '';
 
     const emoji_mods = require("../../../src/emoji_mods.json");
@@ -25,16 +25,16 @@ async function doEmbed(message, user_scores){
         let username = score.user ? score.user.username : score.username;
         let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;
 
-        let total_score = score.total_score.toLocaleString('es-ES');
+        let total_score = score.legacy_total_score == 0 ? score.total_score.toLocaleString('es-ES') : score.legacy_total_score.toLocaleString('es-ES');
         let accuracy = (score.accuracy * 100).toFixed(2);
     
         let max_combo = score.max_combo;
-        let beatmap_max_combo = score.beatmap_max_combo ?? 0;
+        let beatmap_max_combo = beatmap_metadata.max_combo;
 
         let { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
             statistics = `\`${great}/${ok}/${meh}/${miss}\``;
     
-        let pp = `${score.pp.toFixed(2)}`;
+        let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
     
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
     
@@ -136,7 +136,7 @@ async function run(messages, args){
     // Si hay mas de 5 de usuarios con una score en el mapa
     if(sorted_user_scores.size > 5) sorted_user_scores = sorted_user_scores.first(5);
 
-    const embed = await doEmbed(message, sorted_user_scores);
+    const embed = await doEmbed(message, sorted_user_scores, beatmap_metadata);
 
     if(reply){
         reply.reply({content: content, embeds: [embed]});
