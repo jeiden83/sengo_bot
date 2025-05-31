@@ -557,15 +557,15 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') 
 
     const promises = usersArray.map(async (user) => {
         try {
-
             const result = await v2.scores.list({
                 type: 'user_beatmap_best',
                 beatmap_id: beatmapId,
                 user_id: user.osu_id
-              });
+            });
 
             if (result) {
-                scores.set(result.position, result.score);
+                // Usamos user_id como clave para detectar duplicados luego
+                scores.set(result.score.user_id.toString(), result.score);
             }
         } catch (error) {
             // console.log(`No result for: ${user.osu_id}`)
@@ -575,6 +575,14 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') 
     const chunkSize = 10;
     for (let i = 0; i < promises.length; i += chunkSize) {
         await Promise.all(promises.slice(i, i + chunkSize));
+    }
+
+    const unrankedScores = await getUnrankedUserScores(beatmapId, gamemode);
+
+    for (const [userId, score] of unrankedScores.entries()) {
+        if (!scores.has(userId)) {
+            scores.set(userId, score);
+        }
     }
 
     return scores;
