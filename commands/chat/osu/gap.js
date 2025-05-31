@@ -44,12 +44,12 @@ async function doEmbed(message, user_scores, beatmap_metadata){
         let mods_used = score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '');
 
         embed_description = embed_description.concat(embed_description !== '' ?
-            `${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
+            `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
             ${total_score} - ${accuracy}% - x${max_combo}/${beatmap_max_combo} - [${statistics}] - ${pp}PP - ${mods_used}\n\n` 
             
             :
             
-            `**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
+            `#**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
             **${total_score}** - **${accuracy}%** - **x${max_combo}/${beatmap_max_combo}** - [${statistics}] - **${pp}PP** - ${mods_used}\n\n`
         );
     
