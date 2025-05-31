@@ -9,7 +9,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "canvas": "^3.1.0",
     "discord.js": "^14.9.0",
-    "mongodb": "^6.9.0"
+    "gifencoder": "^2.0.1",
+    "mongodb": "^6.9.0",
+    "node-fetch": "^2.7.0"
   }
 }
