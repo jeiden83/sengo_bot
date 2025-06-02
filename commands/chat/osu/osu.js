@@ -32,7 +32,7 @@ async function doOsuEmbed(message, osu_userdata, osu_mode){
         url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
         iconURL: icon_url
     })
-    .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n**• Top ranking:** \`#${peak_ranking}\`  ${discord_last_peak}\n**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\`\n ${osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**`: ``} \n**• Fecha de inicio: **${join_date}`)
+    .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n**• Top ranking:** \`#${peak_ranking}\`  ${discord_last_peak}\n**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\`${osu_userdata.team ? `\n **• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**`: ``} \n**• Fecha de inicio: **${join_date}`)
     .addFields(
         {
             name: "Medallas",
