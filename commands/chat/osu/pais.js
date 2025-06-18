@@ -25,15 +25,18 @@ async function run(messages, args) {
     // Obtener los roles del servidor
     const role = message.guild.roles.cache.find(r => r.name.includes(`[ ${osu_user.country_code} ]`));
 
+	// Revisar si el usuario ya tiene un rol de país
+	const countryRoleNames = Object.keys(country_codes).map(code => `[ ${code} ] ${country_codes[code].country}`);
+	const userHasCountryRole = message.member.roles.cache.some(r => countryRoleNames.includes(r.name));
+
+	if (userHasCountryRole) {
+		return `Ya tienes un rol de país asignado.`;
+	}
+
     // Revisar si el rol de país ya está en el servidor
     if (role) {
 
-        // Obtener los nombres de los roles de país a partir de country_codes
-		const countryRoleNames = Object.keys(country_codes).map(code => `[ ${code} ] ${country_codes[code].country}`);
-
-		// Revisar si el usuario ya tiene un rol de país
-		const userHasCountryRole = message.member.roles.cache.some(r => countryRoleNames.includes(r.name));
-
+        
 		if (role) {
 			// Si el usuario ya tiene un rol de país, evitar asignar otro
 			if (userHasCountryRole) {
@@ -42,7 +45,6 @@ async function run(messages, args) {
 
 			// Si no tiene el rol, asignar el rol al usuario
 			try {
-				
 				await message.member.roles.add(role);
 				return `Rol de país asignado exitosamente.`;
 			} catch (error) {
