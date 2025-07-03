@@ -10,3 +10,4 @@ db/local/beatmap.osu/
 jsconfig.json
 src/yuri/
 db/local/starboard.json
+run.sh

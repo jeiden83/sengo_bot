@@ -10,3 +10,4 @@ fi
 # Iniciar el bot
 cd "C:\Users\Jeiden\Documents\Programacion\Javascript\proyectos\sengo_bot"
 node index.js
+
