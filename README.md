@@ -37,6 +37,10 @@ npm install discord.js mongodb osu-api-extended rosu-pp-js
     // Appname > Connect > Drivers > Conection string
     // uri de ejemplo, copiarla y dejarla en una sola linea
 	"DB_URI": `mongodb+srv://${db_user}:${db_password}@${db_url}.net/?retryWrites=true&w=majority&appName=${app_name}`
+
+    // Es para el comando 'starboard'
+    // Asegurarse que tiene todos los permisos para dar puntos y eso
+    "TATSU_API_KEY" : `KEY DE TATSUMAKI`
 }
 ```
 
