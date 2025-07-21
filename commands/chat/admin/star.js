@@ -222,7 +222,7 @@ async function run(messages, args) {
           today.setHours(0, 0, 0, 0);
     const messagesToday = await starChannel.messages.fetch({ limit: 2 });
     const alreadySent = messagesToday.some(m => m.createdAt >= today);
-    if (alreadySent){
+    if (alreadySent && starboard_configs[guildId].star_channel != starboard_configs[guildId].from_channel){
 
       const msj =` > En la guild '${message.guild.name} : ${message.guild.id}', ya fue mandado el msj 'starboard' en el canal: ${starboard_configs[guildId].star_channel}`;
       console.log(new Date().toLocaleString() + msj);
