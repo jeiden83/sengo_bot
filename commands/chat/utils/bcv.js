@@ -3,22 +3,33 @@ const axios = require('axios');
 async function run(messages, args) {
     const { message } = messages;
 
-    const esEuro = args[0] == "-euro" ? true : false;
+    const argumentosCurrency = {
+        "dolar" : "dollar",
+        "-dolar" : "dollar",
+        "euro" : "euro",
+        "-euro" : "euro",
+        "-bcv" : "dollar"
+    }
+
+    const argumentosTipocambio = {
+        "-binance" : "binance",
+        "binance" : "binance",
+        "-usdt" : "binance",
+        "usdt" : "binance"
+    }
+
+    const tipoCambio = argumentosTipocambio[args[0]] || "bcv";
+    const currency = argumentosCurrency[args[0]] || "dollar"
 
     try {
-        const response = await axios.get('https://pydolarve.org/api/v2/tipo-cambio');
 
-        const data = response.data;
-        const moneda = esEuro ? data.monitors.eur : data.monitors.usd;
-        const tasaActual = moneda.price; 
-        const tasaVieja = moneda.price_old;
-        const fecha = moneda.last_update;
-        const colorCambio = moneda.color == "green" ? `:green_square:` : `:red_square:`;
-        const razonCambio = moneda.change;
+        const apiReq = `https://pydolarve.org/api/v2/${currency == 'euro' ? 'tipo-cambio?currency=eur' : `dollar?page=${tipoCambio == "binance" ? 'binance&monitor=binance' : 'bcv&monitor=usd'}`}`;
+        const moneda = (await axios.get(apiReq)).data;
 
-        const respuesta = `**Tasa oficial del BCV: **\`Bs. ${tasaActual}\` por ${esEuro ? "EUR" : "USD"} \n- **Ultima fecha**: \`${fecha}\` \n- **Cambio** de \`${razonCambio}\` ${colorCambio} \`Bs. ${tasaVieja}\` por ${esEuro ? "EUR" : "USD"} `;
+        const respuesta = `**Tasa de ${tipoCambio.toUpperCase()}: **\`Bs. ${moneda.price}\` por *${moneda.title}* \n- **Ultima fecha**: \`${moneda.last_update}\` \n- **Cambio** de \`${moneda.change}\` :${moneda.color}_square: \`Bs. ${moneda.price_old}\` por *${moneda.title}*`;
 
         return respuesta;
+
     } catch (error) {
 
         console.error('Error al obtener la tasa de cambio:', error);
@@ -26,10 +37,25 @@ async function run(messages, args) {
     }
 }
 
+run.alias = {
+    "usdt" : {
+        "args" : "-binance"
+    },
+    "binance" : {
+        "args" : "-binance"
+    },
+    "euro" : {
+        "args" : "-euro"
+    },
+    "dolar" : {
+        "args" : ""
+    }
+}
+
 run.description = {
-    header: 'Consulta la tasa oficial del dólar según el BCV',
+    header: 'Consulta la tasa oficial del dólar según el mecanismo a usar',
     body: undefined,
-    usage: undefined
+    usage: `s.bcv || s.dolar: Muestra la tasa del USD BCV.\ns.usdt || s.binance: Muestra la tasa del BINANCE USDT.\ns.euro: Muestra la tasa del EUR BCV`
 };
 
 module.exports = { run };
