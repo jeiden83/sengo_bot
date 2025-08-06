@@ -9,6 +9,7 @@ const CONFIG = require("../../config.json");
 const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
+const https = require('https');
 const rosu = require("rosu-pp-js");
 
 // Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario
@@ -260,7 +261,10 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
         // Realizar la solicitud HTTP si el archivo no está en caché
         const options = {
             method: 'GET',
-            url: `https://catboy.best/osu/${beatmap_osu_id}`
+            url: `https://catboy.best/osu/${beatmap_osu_id}`,
+            httpsAgent: new https.Agent({
+                rejectUnauthorized: false, // Ignorar certificados expirados
+            }),
         };
     
         try {
