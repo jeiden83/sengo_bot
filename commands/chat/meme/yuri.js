@@ -6,7 +6,13 @@ let list_order = [];
 
 async function run(message, args) {
     const folderPath = path.join(__dirname, "../../../src/yuri");
-    const files = fs.readdirSync(folderPath).filter(file => /\.(jpg|png|gif)$/i.test(file));
+    const files = fs.readdirSync(folderPath)
+        .filter(file => /\.(jpg|png|gif)$/i.test(file))
+        .sort((a, b) => {
+            const numA = parseInt(a.match(/\d+/)?.[0]);
+            const numB = parseInt(b.match(/\d+/)?.[0]);
+            return numA - numB;
+        });
 
     if (files.length === 0) {
         return message.reply("No hay imágenes disponibles.");
@@ -17,7 +23,9 @@ async function run(message, args) {
         list_order = shuffleArray([...files]);
     }
 
-    const currentFile = list_order.shift(); // Tomamos el primero de la lista
+    // Y por que tan larga hijo
+    // Para elegir con respecto al args, sino uno aleatorio
+    const currentFile = args[0] ? files[(parseInt(args[0]) > files.length ? files.length : parseInt(args[0])) - 1] : list_order.shift(); 
     const filePath = path.join(folderPath, currentFile);
     const cleanFileName = path.parse(currentFile).name.replace(/[^a-z0-9]/gi, '_') + path.extname(currentFile).toLowerCase();
     const attachment = new AttachmentBuilder(filePath).setName(cleanFileName);
