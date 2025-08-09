@@ -26,7 +26,7 @@ async function run(messages, args) {
         const apiReq = `https://pydolarve.org/api/v2/${currency == 'euro' ? 'tipo-cambio?currency=eur' : `dollar?page=${tipoCambio == "binance" ? 'binance&monitor=binance' : 'bcv&monitor=usd'}`}`;
         const moneda = (await axios.get(apiReq)).data;
 
-        const respuesta = `**Tasa de ${tipoCambio.toUpperCase()}: **\`Bs. ${moneda.price}\` por *${moneda.title}* \n- **Ultima fecha**: \`${moneda.last_update}\` \n- **Cambio** de \`${moneda.change}\` :${moneda.color}_square: \`Bs. ${moneda.price_old}\` por *${moneda.title}*`;
+        const respuesta = `**Tasa de ${tipoCambio.toUpperCase()}: **\`Bs. ${moneda.price}\` por *${moneda.title}* \n- **Ultima fecha**: \`${moneda.last_update}\` \n- **Cambio** de \`${moneda.change}\` :${moneda.color == "neutral" ? "white_large" : moneda.color }_square: \`Bs. ${moneda.price_old}\` por *${moneda.title}*`;
 
         return respuesta;
 
