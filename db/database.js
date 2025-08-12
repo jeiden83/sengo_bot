@@ -6,7 +6,7 @@ async function connectDB(config) {
     const userSchema = new mongoose.Schema({
         discord_id: { type: String, required: true, unique: true },
         osu_id: { type: String },
-        main_gamemode: { type: String, default: "osu" },
+        main_gamemode: { type: String },
         osu_server: { type: String, default: "bancho" }
     });
     const User = mongoose.model('User', userSchema);
@@ -42,7 +42,7 @@ async function addUser(User, discord_id, osu_id, main_gamemode) {
             return { 'status': 1, 'response': `Usuario ${discord_id} actualizado`, 'callback': user };
         } else {
             
-            user = new User({ discord_id, osu_id, gamemode});
+            user = new User({ discord_id, osu_id, main_gamemode: gamemode});
             await user.save();
             return { 'status': 1, 'response': `Usuario ${discord_id} agregado`, 'callback': user };
         }
