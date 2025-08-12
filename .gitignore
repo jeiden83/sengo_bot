@@ -11,3 +11,4 @@ jsconfig.json
 src/yuri/
 db/local/starboard.json
 run.sh
+package-lock - copia.json
