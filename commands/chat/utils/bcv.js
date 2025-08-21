@@ -3,6 +3,8 @@ const axios = require('axios');
 async function run(messages, args) {
     const { message } = messages;
 
+    return 'Tumbaron la api que usaba.';
+
     const argumentosCurrency = {
         "dolar" : "dollar",
         "-dolar" : "dollar",

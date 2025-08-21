@@ -44,6 +44,12 @@ async function run(messages, args) {
 	}
 }
 
+run.alias = {
+    "digits" : {
+        "args" : ""
+    },
+}
+
 run.description = 
 {
     'header' : 'Autorol de digitos',
