@@ -3,6 +3,8 @@ const axios = require('axios');
 async function run(messages, args) {
     const { message } = messages;
 
+    return 'Tumbaron la api que usaba.';
+
     const dolarBCV = (await axios.get('https://pydolarve.org/api/v2/dollar?page=bcv&monitor=usd')).data;
     const dolarUSDT = (await axios.get('https://pydolarve.org/api/v2/dollar?page=binance&monitor=binance')).data;
 
