@@ -52,9 +52,21 @@ async function slash_command_listener(chat_commands, slash_commands, client) {
     client.on('interactionCreate', async (interaction) => {
         if (!interaction.isCommand()) return;
 
-        await interaction.reply(
-            await slashCommand(chat_commands, slash_commands, interaction)
-        );
+        try {
+            // Para avisar que se mandara un slash
+            await interaction.deferReply();
+
+            await interaction.editReply(
+                await slashCommand(chat_commands, slash_commands, interaction)
+            );
+
+        } catch (error) {
+            
+            console.error("Error ejecutando el comando:", error);
+            await interaction.editReply(
+                "Hubo un error al ejecutar el comando. Ahora <@395623267530047489> lo sabrá."
+            );
+        }
     });
 }
 

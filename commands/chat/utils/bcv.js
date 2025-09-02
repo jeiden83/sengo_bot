@@ -3,7 +3,7 @@ const axios = require('axios');
 async function run(messages, args) {
     const { message } = messages;
 
-    return 'Tumbaron la api que usaba.';
+    return 'Vas a tener que pagarme para usar este comando.';
 
     const argumentosCurrency = {
         "dolar" : "dollar",
