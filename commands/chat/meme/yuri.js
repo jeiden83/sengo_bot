@@ -1,6 +1,6 @@
 const fs = require("fs");
 const path = require("path");
-const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
+const { AttachmentBuilder, EmbedBuilder, CommandInteraction } = require("discord.js");
 
 let list_order = [];
 
@@ -23,9 +23,16 @@ async function run(message, args) {
         list_order = shuffleArray([...files]);
     }
 
-    // Y por que tan larga hijo
     // Para elegir con respecto al args, sino uno aleatorio
-    const currentFile = args[0] ? files[(parseInt(args[0]) > files.length ? files.length : parseInt(args[0])) - 1] : list_order.shift(); 
+    let currentFile = list_order.shift();
+
+    // Si es un comando de texto, se puede elegir por argumento
+    if (!message instanceof CommandInteraction) {
+        currentFile = args?.[0]
+        ? files[(parseInt(args[0]) > files.length ? files.length : parseInt(args[0])) - 1]
+        : list_order.shift(); // Selecciona uno al azar si no hay argumentos
+    }
+    
     const filePath = path.join(folderPath, currentFile);
     const cleanFileName = path.parse(currentFile).name.replace(/[^a-z0-9]/gi, '_') + path.extname(currentFile).toLowerCase();
     const attachment = new AttachmentBuilder(filePath).setName(cleanFileName);
@@ -35,10 +42,19 @@ async function run(message, args) {
         .setColor("#378a91")
         .setFooter({ text: path.parse(currentFile).name });
 
-    return {
-        embeds: [embed],
-        files: [attachment]
-    };
+    // if (message instanceof CommandInteraction) {
+
+    //     await message.editReply({
+    //         embeds: [embed],
+    //         files: [attachment]
+    //     });
+    // } else {
+
+        return {
+            embeds: [embed],
+            files: [attachment]
+        };
+    // }
 }
 
 // Función para mezclar un array (Fisher–Yates shuffle)
