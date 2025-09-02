@@ -31,6 +31,12 @@ async function run(messages, args) {
 		return `Ya tienes un rol de ${rankDigits} digitos asignado.`;
 	}
 
+    // Si el usuario es 7 digitos.
+    if (rankDigits === 7) {
+    
+        return `Bro. Sube un poco mas en el ranking y te asigno el rol de 6 digitos.`;
+    }
+
 	// Si no tiene el rol, asignar el rol al usuario
 	try {
 		
