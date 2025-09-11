@@ -14,7 +14,12 @@ async function connectDB(config) {
 
     try {
         console.log("# Conectando a MongoDB...");
-        await mongoose.connect(uri);
+        
+        await mongoose.connect(uri, {
+            useNewUrlParser: true,
+            useUnifiedTopology: true,
+            serverSelectionTimeoutMS: 10000
+          });
 
         const res = {'status' : 1, 'response' : "# MongoDB conectado", 'User': User};
         console.log(res.response);

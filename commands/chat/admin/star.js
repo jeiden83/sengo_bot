@@ -39,19 +39,19 @@ async function dailyTopFromChannel(message, channelId) {
   const channel = await message.client.channels.fetch(channelId);
   if (!channel?.isTextBased()) throw new Error('Canal inválido');
 
-  // Fecha de inicio del día anterior
   const since = new Date();
   since.setDate(since.getDate() - 1);
   since.setHours(0, 0, 0, 0);
 
-  // Fecha de inicio del día actual (límite superior)
   const until = new Date();
   until.setHours(0, 0, 0, 0);
 
   const msgs = await channel.messages.fetch({ limit: starboard_configs[message.guild.id].msj_limit });
 
-  const yesterdayMsgs = msgs.filter(m => m.createdAt >= since && m.createdAt < until);
-  // const yesterdayMsgs = msgs.filter(m => m.createdAt >= until);
+  // Filtrar mensajes del rango de ayer y que NO sean de bots
+  const yesterdayMsgs = msgs.filter(m => 
+    m.createdAt >= since && m.createdAt < until && !m.author.bot
+  );
 
   const mediaMsgs = yesterdayMsgs.filter(m => {
     const hasEmbed = m.embeds.some(e => e.image);
@@ -59,6 +59,10 @@ async function dailyTopFromChannel(message, channelId) {
     const hasLink = /\bhttps?:\/\//.test(m.content);
     return hasEmbed || hasAtt || hasLink;
   });
+
+  return mediaMsgs;
+}
+
 
   const scored = await Promise.all(mediaMsgs.map(async m => {
 
