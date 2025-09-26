@@ -33,14 +33,6 @@ function writeHistory(data) {
     }
 }
 
-/**
- * Guarda el log de una interacción en un archivo específico para cada usuario y servidor.
- * La estructura de directorios será: data/[nombre_servidor]/logs/[id_usuario].json
- * Para DMs, se usa la carpeta 'direct_messages'.
- * @param {object} logData - Los datos de la interacción a registrar.
- * @param {string} serverName - El nombre del servidor.
- * @param {string} userId - El ID de la persona.
- */
 function logInteraction(logData, serverName, userId) {
     const serverFolder = serverName ? serverName.replace(/[^a-zA-Z0-9_-]/g, '_') : 'direct_messages';
     const logsDir = path.join(__dirname, '..', '..', '..', 'data', 'logs', serverFolder);
@@ -170,7 +162,7 @@ async function run(messages, args) {
                     serverName: message.guild ? message.guild.name : 'DM',
                     prompt: prompt,
                     response: "Respuesta demasiado larga incluso después de resumir."
-                }, serverName, userId); // Pasar serverName y userId
+                }, serverName, userId);
                 return "La respuesta es demasiado larga y no se pudo resumir a un tamaño apropiado.";
             }
 
@@ -185,7 +177,7 @@ async function run(messages, args) {
             serverName: message.guild ? message.guild.name : 'DM',
             prompt: prompt,
             response: text
-        }, serverName, userId); // Pasar serverName y userId
+        }, serverName, userId);
 
         const newHistoryFromAPI = await chat.getHistory();
         histories[userId] = newHistoryFromAPI;
