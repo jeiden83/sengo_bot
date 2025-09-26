@@ -60,10 +60,6 @@ async function dailyTopFromChannel(message, channelId) {
     return hasEmbed || hasAtt || hasLink;
   });
 
-  return mediaMsgs;
-}
-
-
   const scored = await Promise.all(mediaMsgs.map(async m => {
 
     const fullMsg = await m.fetch();
