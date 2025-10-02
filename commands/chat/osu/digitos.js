@@ -6,7 +6,7 @@ async function run(messages, args) {
 
 	// selfexplainable
 	// todo later
-	if(message.guild.id !== "592451380942471178"){
+	if(message.guild.id !== "1422374224403890268"){
 		return `Esto no es Osu! latam. Preguntele a Jeiden primero.`
 	}
 

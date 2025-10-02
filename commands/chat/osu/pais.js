@@ -6,7 +6,7 @@ async function run(messages, args) {
 
 	// selfexplainable
 	// todo later
-	if(message.guild.id !== "592451380942471178"){
+	if(message.guild.id !== "1422374224403890268"){
 		return `Esto no es Osu! latam. Preguntele a Jeiden primero.`
 	}
 
@@ -64,13 +64,13 @@ async function run(messages, args) {
 			let role_position = 0; // Posición por defecto
 		
 			// Verificar si la guild es la deseada antes de buscar el rol de referencia
-			if (message.guild.id === "592451380942471178") { // OSULATAM
+			// if (message.guild.id === "1422374224403890268") { // OSULATAM
 				const reference_role = message.guild.roles.cache.find(r => r.name.includes("Modo de juego")); // ROL DE REFERENCIA
 		
 				if (reference_role) {
 					role_position = reference_role.position; // Poner el nuevo rol justo debajo
 				}
-			}
+			// }
 		
 			// Crear el rol con el color adecuado
 			const created_role = await message.guild.roles.create({
@@ -101,7 +101,7 @@ async function run(messages, args) {
 run.description = 
 {
     'header' : 'Autorol de pais',
-    'body' : 'Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/4GHYpRn).\n Otorga un rol del pais con respecto al usuario linkeado al bot.',
+    'body' : 'Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\n Otorga un rol del pais con respecto al usuario linkeado al bot.',
     'usage' : undefined
 }
 
