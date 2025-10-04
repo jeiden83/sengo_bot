@@ -1,18 +1,18 @@
 node_modules/
 .vscode/extensions.json
 .vscode/launch.json
+
 tests/
-config.json
-osu_token.json
-POR HACER.txt
-db/local/scores/
-db/local/beatmap.osu/
-jsconfig.json
-src/yuri/
-db/local/starboard.json
-run.sh
-package-lock - copia.json
-data/
-data/ask_command_log.json
-data/conversation_history.json
+
 commands/chat/admin/
+
+db/
+data/
+src/yuri/
+
+config.json
+jsconfig.json
+osu_token.json
+
+run.sh
+POR HACER.txt
