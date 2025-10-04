@@ -15,5 +15,4 @@ package-lock - copia.json
 data/
 data/ask_command_log.json
 data/conversation_history.json
-commands/chat/admin/listar.js
 commands/chat/admin/
