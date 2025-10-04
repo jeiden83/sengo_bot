@@ -104,19 +104,19 @@ async function run(messages, args) {
         return 'No tengo ninguna conversación guardada contigo para olvidar.';
     }
 
-    const baseGuidelines = [
-        {
-            role: "user",
-            parts: [{ text: "A partir de ahora, mi nombre es Sengo. Mi creador es Jeiden. Soy un bot de Discord que me encargo de contestar las preguntas que me hagan." }]
-        },
-        {
-            role: "model",
-            parts: [{ text: "Entendido, mi nombre es Sengo, mi creador es Jeiden. Soy un bot de Discord que se encarga de contestar las preguntas que me hagan." }]
-        }
-    ];
+    // const baseGuidelines = [
+    //     {
+    //         role: "user",
+    //         parts: [{ text: "A partir de ahora, mi nombre es Sengo. Mi creador es Jeiden. Soy un bot de Discord que me encargo de contestar las preguntas que me hagan." }]
+    //     },
+    //     {
+    //         role: "model",
+    //         parts: [{ text: "Entendido, mi nombre es Sengo, mi creador es Jeiden. Soy un bot de Discord que se encarga de contestar las preguntas que me hagan." }]
+    //     }
+    // ];
 
     const userHistory = histories[userId] || [];
-    const chatHistory = [...baseGuidelines, ...userHistory];
+    const chatHistory = userHistory;
 
     try {
         const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
