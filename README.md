@@ -22,22 +22,25 @@ npm install
 {
     // Se obtienen al crear una nueva OAuth Application
     // https://osu.ppy.sh/home/account/edit 
-    "OSU_CLIENT_SECRET" : "Key del cliente secreto",
-    "OSU_CLIENT_ID" : 0, // Id del cliente 
+	"OSU_CLIENT_SECRET" : "Key del cliente secreto",
+	"OSU_CLIENT_ID" : 0, // Id del cliente 
 
     // Aplicacion del lado de Discord
     // Se crea una nueva app de Discord y se rellena lo necesario
     // https://discord.com/developers/applications
-    "TOKEN" : "Key del apartado Bot", // Bot -> Token
-    "BOT_PREFIX" : "s.", // Prefijo del bot
-    "CLIENT_ID" : "Numeros", // OAuth -> Client information
+	"TOKEN" : "Key del apartado Bot", // Bot -> Token
+	"BOT_PREFIX" : "s.", // Prefijo del bot
+	"CLIENT_ID" : "Numeros", // OAuth -> Client information
     // Client secret no necesario por ahora
 
     // Se obtiene al crear una nueva DB en MongoDB
     // Appname > Connect > Drivers > Conection string
     // uri de ejemplo, copiarla y dejarla en una sola linea
-    "DB_URI": `mongodb+srv://${db_user}:${db_password}@${db_url}.net/?retryWrites=true&w=majority&appName=${app_name}`
+	"DB_URI": `mongodb+srv://${db_user}:${db_password}@${db_url}.net/?retryWrites=true&w=majority&appName=${app_name}`
 
+    // Es para el comando 'ask'
+    // Api del chatbot de Google
+    "GEMINI_API_KEY" : `KEY DE GEMINI`
     // Es para el comando 'starboard'
     // Asegurarse que tiene todos los permisos para dar puntos y eso
     "TATSU_API_KEY" : `KEY DE TATSUMAKI`

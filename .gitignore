@@ -1,18 +1,22 @@
+# Dependencias
 node_modules/
 .vscode/extensions.json
 .vscode/launch.json
-
 tests/
 
+# Carpeta privada
 commands/chat/admin/
 
+# Local
 db/
 data/
 src/yuri/
 
+# .env
 config.json
 jsconfig.json
 osu_token.json
 
+# readme.inutil
 run.sh
 POR HACER.txt
