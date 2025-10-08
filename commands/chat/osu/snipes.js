@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 const axios = require('axios');
 
 async function fetchSnipedPlayerData(country_code, user_id) {
-    const url = `https://api.huismetbenen.nl/player/${country_code}/${user_id}/`;
+    const url = `https://api.snipe.huismetbenen.nl/player/${country_code}/${user_id}/`;
     
     try {
         const response = await axios.get(url);
@@ -17,12 +17,18 @@ async function fetchSnipedPlayerData(country_code, user_id) {
 
 async function doOsuEmbed(message, sniped_userdata, osu_userdata){
 
+    if(osu_userdata.playmode != 'osu') return `> El servicio de snipes solo funciona para **osu!std**`;
+    if(!sniped_userdata) return `**El usuario \`${osu_userdata.username}\` **no tiene tops nacionales.**`;
+
     const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
     const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
 
-    const mod_mas_usado = Object.entries(sniped_userdata.mods_count).reduce((max, entry) => entry[1] > max[1] ? entry : max);
-    const mostSnipes_year = Object.entries(sniped_userdata.dates_set).reduce((max, entry) => entry[1] > max[1] ? entry : max);
+    const mod_mas_usado = Object.entries(sniped_userdata.mods_count ?? {})
+        .reduce((max, entry) => entry[1] > max[1] ? entry : max, ["'N/A', -1"]);
+
+    const mostSnipes_year = Object.entries(sniped_userdata.dates_set ?? {})
+        .reduce((max, entry) => entry[1] > max[1] ? entry : max, ['N/A', -1]);
 
     const embed = new EmbedBuilder()
     .setAuthor({
