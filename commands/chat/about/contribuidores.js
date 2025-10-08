@@ -13,8 +13,7 @@ async function run(message, args){
     return msj;
 }
 
-run.description = 
-{
+run.description = {
     'header' : 'Lista de contribuidores del bot',
     'body' : '**Ordenados** de mayor a menor contribucion. Si aportas algo aunque sea solo una opinion y es aceptada, pues tu nombre aparecerá aquí. Probablemente.',
     'usage' : undefined

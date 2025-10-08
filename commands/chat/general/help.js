@@ -26,7 +26,7 @@ async function run(messages, args, intialized_data) {
     const { message, res } = messages;
 
     // Orden de los tipos de comandos
-    const type_order = ["general", "osu", "utils", "meme", "about"];
+    const type_order = ["general", "osu", "utils", "meme", "about", "moderation"];
 
     // Si no hay argumentos, listar comandos
     if (args[0] == null) {
@@ -37,7 +37,7 @@ async function run(messages, args, intialized_data) {
         const groupedCommands = {};
         for (const [key, value] of intialized_data.get('chat_commands_map')) {
             const type = value.type;
-            if (excludeTypes.has(type)) continue; // Saltar los tipos no deseados
+            // if (excludeTypes.has(type)) continue; // Saltar los tipos no deseados
 
             if (!groupedCommands[type]) {
                 groupedCommands[type] = [];
