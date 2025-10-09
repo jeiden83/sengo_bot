@@ -12,6 +12,11 @@ async function chat_command_listener(chat_commands, client, config, res) {
             return;
         }    
 
+        if (message.author.bot) {
+            await message.channel.send("No me uses con un Bot. Te lo agradezco");
+            return;
+        } 
+
         const botMember = message.guild.members.cache.get(client.user.id);
         const botPermissions = message.channel.permissionsFor(botMember);
         if (!botPermissions || !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
