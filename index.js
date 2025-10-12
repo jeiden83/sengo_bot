@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
 const { load_listeners } = require("./listeners/commands.js");
 const { connectDB } = require("./db/database.js");
 const { login } = require("./listeners/login.js");
@@ -35,9 +35,9 @@ async function setupCommandLineInterface(res, client, config, reload) {
         } else if(input === "r"){
 
             console.log('# Recargando...');
-            client.user.setActivity(null);
-
             await load_listeners(res, client, config);
+
+            client.user.setActivity('Activo de nuevo', { type: ActivityType.Playing });
         } else {
             console.log(`Comando no reconocido: ${input}`);
         }
