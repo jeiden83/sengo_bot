@@ -14,8 +14,7 @@
     "discord.js": "^14.22.1",
     "es-set-tostringtag": "^2.1.0",
     "gifencoder": "^2.0.1",
-    "mongodb": "^6.9.0",
-    "mongodb-connection-string-url": "^3.0.2",
+    "mongoose": "^8.19.1",
     "node-fetch": "^2.7.0",
     "tatsu": "^1.2.0"
   }

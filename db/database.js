@@ -10,25 +10,20 @@ async function connectDB(config) {
         osu_server: { type: String, default: "bancho" }
     });
     const User = mongoose.model('User', userSchema);
-    const uri = CONFIG.DB_URI;
 
     try {
         console.log("# Conectando a MongoDB...");
         
-        await mongoose.connect(uri, {
-            useNewUrlParser: true,
-            useUnifiedTopology: true,
-            serverSelectionTimeoutMS: 10000
-          });
+        await mongoose.connect(CONFIG.DB_URI, {serverSelectionTimeoutMS: 10000});
 
         const res = {'status' : 1, 'response' : "# MongoDB conectado", 'User': User};
         console.log(res.response);
 
         return res;
     } catch (error) {
+
         console.error('Error al conectar a MongoDB', error);
         return { 'status': -1, 'response': "Error al conectar a MongoDB" };
-
     }
 }
 async function addUser(User, discord_id, osu_id, main_gamemode) {

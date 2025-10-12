@@ -8,7 +8,7 @@ tests/
 commands/chat/admin/
 
 # Local
-db/
+db/local/
 data/
 src/yuri/
 
