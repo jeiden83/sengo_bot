@@ -1,35 +1,16 @@
 const axios = require('axios');
+const { Currency } = require('tatsu');
 
 async function run(messages, args) {
     const { message } = messages;
 
-    return 'Vas a tener que pagarme para usar este comando.';
-
-    const argumentosCurrency = {
-        "dolar" : "dollar",
-        "-dolar" : "dollar",
-        "euro" : "euro",
-        "-euro" : "euro",
-        "-bcv" : "dollar"
-    }
-
-    const argumentosTipocambio = {
-        "-binance" : "binance",
-        "binance" : "binance",
-        "-usdt" : "binance",
-        "usdt" : "binance"
-    }
-
-    const tipoCambio = argumentosTipocambio[args[0]] || "bcv";
-    const currency = argumentosCurrency[args[0]] || "dollar"
-
     try {
 
-        const apiReq = `https://pydolarve.org/api/v2/${currency == 'euro' ? 'tipo-cambio?currency=eur' : `dollar?page=${tipoCambio == "binance" ? 'binance&monitor=binance' : 'bcv&monitor=usd'}`}`;
+        const apiReq = `https://bronya-ts.onrender.com/api/bcv`;
         const moneda = (await axios.get(apiReq)).data;
 
-        const respuesta = `**Tasa de ${tipoCambio.toUpperCase()}: **\`Bs. ${moneda.price}\` por *${moneda.title}* \n- **Ultima fecha**: \`${moneda.last_update}\` \n- **Cambio** de \`${moneda.change}\` :${moneda.color == "neutral" ? "white_large" : moneda.color }_square: \`Bs. ${moneda.price_old}\` por *${moneda.title}*`;
-
+        const respuesta = `**Tasa de ${moneda.origen.toUpperCase()}: **\`Bs. ${new Number(moneda.value.replace(',', '.')).toFixed(2)}\` por *${moneda.currency.toUpperCase()}* \n- **Fecha valor**: \`${new Date(moneda.date).toLocaleDateString()}\``
+        
         return respuesta;
 
     } catch (error) {
@@ -40,15 +21,6 @@ async function run(messages, args) {
 }
 
 run.alias = {
-    "usdt" : {
-        "args" : "-binance"
-    },
-    "binance" : {
-        "args" : "-binance"
-    },
-    "euro" : {
-        "args" : "-euro"
-    },
     "dolar" : {
         "args" : ""
     }
@@ -57,7 +29,7 @@ run.alias = {
 run.description = {
     header: 'Consulta la tasa oficial del dólar según el mecanismo a usar',
     body: undefined,
-    usage: `s.bcv || s.dolar: Muestra la tasa del USD BCV.\ns.usdt || s.binance: Muestra la tasa del BINANCE USDT.\ns.euro: Muestra la tasa del EUR BCV`
+    usage: `s.bcv || s.dolar: Muestra la tasa del USD BCV.`
 };
 
 module.exports = { run };
