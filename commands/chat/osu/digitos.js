@@ -36,6 +36,10 @@ async function run(messages, args) {
     
         return `Bro. Sube un poco mas en el ranking y te asigno el rol de 6 digitos.`;
     }
+    if (rankDigits === 1) {
+
+        return `Verdaderamente increible para ser Top global.`;
+    }
 
 	// Si no tiene el rol, asignar el rol al usuario
 	try {
