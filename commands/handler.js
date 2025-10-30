@@ -126,6 +126,11 @@ async function loadCommands() {
             const filePath = path.join(directory, file);
             const stat = fs.statSync(filePath);
 
+			// Omitir las carpetas con # adelante 
+            if (stat.isDirectory() && file.startsWith("#")) {
+                continue;
+            }
+
             if (stat.isDirectory()) {
 
                 loadFromDirectory(filePath, path.basename(filePath)); // Llamada recursiva con el nombre de la carpeta
