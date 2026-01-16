@@ -169,7 +169,7 @@ async function run(messages, args) {
 
 run.description = 
 {
-    'header' : 'Para ver las fechas de las versiones de Star Rail (SR)',
+    'header' : 'Para ver las fechas de las versiones Beta de Star Rail (SR)',
     'body' : 'Sin argumentos: Muestra la **siguiente versión** de SR y su fecha de inicio en formato de Discord (hora completa y tiempo relativo).\nArgumento `listar`: Muestra todas las versiones futuras listadas y sus fechas cortas.\nArgumento `[versión]`: Muestra la fecha de **inicio** de esa versión específica (ej. `3.8v1`) con el conteo regresivo de Discord.',
     'usage' : '`s.hsr`, `s.hsr listar`, `s.hsr 3.8v1`'
 }
