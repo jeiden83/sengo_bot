@@ -6,10 +6,10 @@ async function run(messages, args) {
 
     try {
 
-        const apiReq = `https://bronya-ts.onrender.com/api/bcv`;
+        const apiReq = `https://bronya-ts.onrender.com/api/bcv?tasa=${args[0] ?? 'dolar'}`;
         const moneda = (await axios.get(apiReq)).data;
 
-        const respuesta = `**Tasa de ${moneda.origen.toUpperCase()}: **\`Bs. ${new Number(moneda.value.replace(',', '.')).toFixed(2)}\` por *${moneda.currency.toUpperCase()}* \n- **Fecha valor**: \`${new Date(moneda.date).toLocaleDateString()}\``
+        const respuesta = `**Tasa de ${moneda.origen.toUpperCase()}: **\`Bs. ${new Number(moneda.value.replace(',', '.')).toFixed(2)}\` por *${moneda.moneda.toUpperCase()}* \n- **Fecha valor**: \`${new Date(moneda.date).toLocaleDateString()}\``
         
         return respuesta;
 
@@ -23,6 +23,9 @@ async function run(messages, args) {
 run.alias = {
     "dolar" : {
         "args" : ""
+    },
+    "euro" : {
+        "args" : "euro"
     }
 }
 
