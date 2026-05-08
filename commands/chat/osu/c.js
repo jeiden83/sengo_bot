@@ -14,6 +14,8 @@ async function doEmbed(message, user_scores){
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
     	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
+        let map_completion = !score.passed ? `*Map completion: \`${(score.map_completion * 100).toFixed(2)}\`%*\n` : "";
+
         let legacy_score = score.legacy_total_score.toLocaleString('es-ES');
         
         let accuracy = (score.accuracy * 100).toFixed(2);
@@ -31,8 +33,8 @@ async function doEmbed(message, user_scores){
 
         
         embed_description = embed_description.concat(user_scores.indexOf(score) != 0 ?
-`${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - ${max_combo} - ${statistics} - ${pp} - ${time_set} - ${mods_used}\n` : 
-`**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used}\n`
+`${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - ${max_combo} - ${statistics} - ${pp} - ${time_set} - ${mods_used}\n${map_completion}` : 
+`**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`
         )
 
     });
