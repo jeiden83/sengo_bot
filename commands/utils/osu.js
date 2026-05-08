@@ -261,7 +261,7 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
         // Realizar la solicitud HTTP si el archivo no está en caché
         const options = {
             method: 'GET',
-            url: `https://catboy.best/osu/${beatmap_osu_id}`,
+            url: `https://osu.direct/api/osu/${beatmap_osu_id}/raw`,
             httpsAgent: new https.Agent({
                 rejectUnauthorized: false, // Ignorar certificados expirados
             }),
