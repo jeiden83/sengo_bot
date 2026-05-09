@@ -64,21 +64,74 @@ async function processImage(url) {
     }
 }
 
-async function getBeatmapIdFromSearch(beatmap_name, diff_name) {
+function similarity(s1, s2) {
+    if (!s1 || !s2) return 0;
+    let longer = s1.toLowerCase();
+    let shorter = s2.toLowerCase();
+    if (longer.length < shorter.length) { [longer, shorter] = [shorter, longer]; }
+    let longerLength = longer.length;
+    if (longerLength === 0) return 1.0;
+    
+    let costs = new Array();
+    for (let i = 0; i <= longer.length; i++) {
+        let lastValue = i;
+        for (let j = 0; j <= shorter.length; j++) {
+            if (i === 0) costs[j] = j;
+            else {
+                if (j > 0) {
+                    let newValue = costs[j - 1];
+                    if (longer.charAt(i - 1) !== shorter.charAt(j - 1))
+                        newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                }
+            }
+        }
+        if (i > 0) costs[shorter.length] = lastValue;
+    }
+    return (longerLength - costs[shorter.length]) / parseFloat(longerLength);
+}
+
+async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
     try {
         const tokenData = require('../../../osu_token.json');
+        
+        // No añadimos el creador al query principal de osu! API porque un pequeño error del OCR
+        // en el nombre del creador arruinaría todos los resultados. Usamos solo el nombre del mapa.
         const res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
-            params: { q: beatmap_name },
+            params: { q: beatmap_name, s: 'any' },
             headers: { Authorization: 'Bearer ' + tokenData.access_token }
         });
         
         if (res.data.beatmapsets && res.data.beatmapsets.length > 0) {
-            const beatmapset = res.data.beatmapsets[0];
+            let beatmapset = res.data.beatmapsets[0];
+            
+            // Fuzzy match para el creador
+            if (creator) {
+                let bestScore = -1;
+                let bestSet = beatmapset;
+                for (const set of res.data.beatmapsets) {
+                    const score = similarity(set.creator, creator);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestSet = set;
+                    }
+                }
+                beatmapset = bestSet;
+            }
+
             let bestMatch = beatmapset.beatmaps[0];
+            
+            // Fuzzy match para la dificultad
             if (diff_name) {
-                const diffLower = diff_name.toLowerCase();
-                const matched = beatmapset.beatmaps.find(b => b.version.toLowerCase().includes(diffLower) || diffLower.includes(b.version.toLowerCase()));
-                if (matched) bestMatch = matched;
+                let bestScore = -1;
+                for (const b of beatmapset.beatmaps) {
+                    const score = similarity(b.version, diff_name);
+                    if (score > bestScore) {
+                        bestScore = score;
+                        bestMatch = b;
+                    }
+                }
             }
             return bestMatch.id;
         }
@@ -88,72 +141,247 @@ async function getBeatmapIdFromSearch(beatmap_name, diff_name) {
     return null;
 }
 
+function parseBotEmbed(reply) {
+    if (!reply.embeds || reply.embeds.length === 0) return null;
+    const embed = reply.embeds[0];
+    const content = reply.content || '';
+    const authorName = embed.author ? embed.author.name : '';
+    const title = embed.title || '';
+    const description = embed.description || '';
+    
+    let parsed = null;
+
+    try {
+        if (content.includes('Recent osu!')) {
+            const playerMatch = content.match(/Play for (.+?):/);
+            const mapMatch = authorName.match(/^(.+?)\s+\[(.+?)\]\s+\+(.+?)\s+\[/);
+            const accMatch = description.match(/▸\s+([\d\.]+)%/);
+            const scoreMatch = description.match(/▸\s+([0-9,]+)\s+▸\s+x([0-9]+)/);
+            const statsMatch = description.match(/\[(\d+)\/(\d+)\/(\d+)\/(\d+)\]/);
+            const rankMatch = description.match(/▸\s+([A-Z]+)\s+▸/);
+            
+            if (playerMatch && mapMatch && scoreMatch && statsMatch) {
+                parsed = {
+                    player_name: playerMatch[1].trim(),
+                    beatmap_name: mapMatch[1].trim(),
+                    difficulty_name: mapMatch[2].trim(),
+                    accuracy: accMatch ? parseFloat(accMatch[1]) / 100 : 0,
+                    score: parseInt(scoreMatch[1].replace(/,/g, '')),
+                    max_combo: parseInt(scoreMatch[2]),
+                    statistics: {
+                        great: parseInt(statsMatch[1]),
+                        ok: parseInt(statsMatch[2]),
+                        meh: parseInt(statsMatch[3]),
+                        miss: parseInt(statsMatch[4])
+                    },
+                    mods: mapMatch[3].trim() === 'No Mod' ? ['NM'] : mapMatch[3].trim().split(/(?=[A-Z]{2})/),
+                    rank: rankMatch ? rankMatch[1] : 'A'
+                };
+            }
+        }
+        
+        if (authorName.includes('Puntuación Reciente de') || authorName.includes('Puntuaciones de')) {
+            const playerMatch = authorName.match(/(?:Reciente de|Puntuaciones de) (.+?) en/);
+            const mapMatch = title.match(/^(.+?)\s+\[(.+?)\]/);
+            const scoreMatch = description.match(/Puntuación\*\*: \`([0-9\.]+)\`/);
+            const statsMatch = description.match(/(\d+)\/(\d+)\/(\d+)\/(\d+)[^]+?([\d\.]+)%\s+x(\d+)/);
+            
+            if (playerMatch && mapMatch && scoreMatch && statsMatch) {
+                parsed = {
+                    player_name: playerMatch[1].trim(),
+                    beatmap_name: mapMatch[1].trim(),
+                    difficulty_name: mapMatch[2].trim(),
+                    score: parseInt(scoreMatch[1].replace(/\./g, '')),
+                    statistics: {
+                        great: parseInt(statsMatch[1]),
+                        ok: parseInt(statsMatch[2]),
+                        meh: parseInt(statsMatch[3]),
+                        miss: parseInt(statsMatch[4])
+                    },
+                    accuracy: parseFloat(statsMatch[5]) / 100,
+                    max_combo: parseInt(statsMatch[6]),
+                    mods: ['NM'],
+                    rank: 'A' 
+                };
+            }
+        }
+    } catch(e) {}
+
+    return parsed;
+}
+
 async function run(messages, args, initialized_data) {
     const { message, res, reply } = messages;
 
+    console.log(`\n--- [S.SUBIR] Nueva solicitud de subida ---`);
+    console.log(`[S.SUBIR] Usuario solicitante: ${message.author.tag} (${message.author.id})`);
+
+    let overrideMods = null;
+    const modsIndex = args.findIndex(a => a && typeof a === 'string' && (a.toLowerCase() === '-mods' || a.toLowerCase() === '-m'));
+    if (modsIndex !== -1 && args.length > modsIndex + 1) {
+        let rawMods = args[modsIndex + 1].toUpperCase();
+        if (rawMods === 'NM' || rawMods === 'NOMOD') {
+            overrideMods = ['NM'];
+        } else {
+            overrideMods = rawMods.match(/.{1,2}/g) || ['NM'];
+        }
+        console.log(`[S.SUBIR] Parámetro de mods detectado. Sobrescribiendo mods con:`, overrideMods);
+    }
+
     if (!reply) {
+        console.log(`[S.SUBIR] Error: No se respondió a ningún mensaje.`);
         return "Debes responder (reply) a un mensaje que contenga un embed de una score o una foto de una play de osu!";
     }
 
-    let textPart = "";
-    let imagePart = null;
+    let parsedData = parseBotEmbed(reply);
 
-    if (reply.attachments.size > 0) {
-        const attachment = reply.attachments.first();
-        if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-            imagePart = await processImage(attachment.url);
+    // Si falló el regex o no era un embed conocido, procedemos con Gemini (OCR)
+    if (!parsedData) {
+        let textPart = "";
+        let imagePart = null;
+
+        if (reply.attachments.size > 0) {
+            const attachment = reply.attachments.first();
+            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
+                console.log(`[S.SUBIR] Tipo de input: IMAGEN (Detectada en adjunto)`);
+                imagePart = await processImage(attachment.url);
+            }
         }
-    }
 
-    if (reply.embeds.length > 0) {
-        const embed = reply.embeds[0];
-        textPart = `${embed.title || ''}\n${embed.description || ''}\n${embed.author ? embed.author.name : ''}`;
-    } else if (reply.content) {
-        textPart = reply.content;
-    }
+        if (reply.embeds.length > 0) {
+            const embed = reply.embeds[0];
+            textPart = `${reply.content || ''}\n${embed.title || ''}\n${embed.description || ''}\n${embed.author ? embed.author.name : ''}`;
+        } else if (reply.content) {
+            textPart = reply.content;
+        }
 
-    if (!imagePart && !textPart.trim()) {
-        return "No pude encontrar información de una score en ese mensaje.";
-    }
+        if (!imagePart && !textPart.trim()) {
+            console.log(`[S.SUBIR] Error: No se encontró imagen ni texto en el mensaje respondido.`);
+            return "No pude encontrar información de una score en ese mensaje.";
+        }
 
-    const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
-MUY IMPORTANTE: Extrae los datos reales que veas en la imagen o texto. NO devuelvas mis textos de ejemplo.
-Si no encuentras algún dato, asume un valor lógico (ej. 0 para misses si no hay, 'NM' para mods si no hay, accuracy en decimal ej. 95.71% -> 0.9571).
-Para el nombre del jugador (player_name), búscalo en frases como "Played by X" o "Recent osu! Standard Play for X:" o en el autor del embed.
+        if (imagePart) {
+            if (args.find(a => a && typeof a === 'string' && a.toLowerCase() === '-tesseract')) {
+                console.log(`[S.SUBIR] Procesando imagen con Tesseract OCR (Local)...`);
+                try {
+                    const Tesseract = require('tesseract.js');
+                    await message.channel.sendTyping();
+                    const { data: { text } } = await Tesseract.recognize(reply.attachments.first().url, 'eng');
+                    console.log(`[S.SUBIR] Tesseract extrajo el siguiente texto crudo:\n`, text);
+                    
+                    // Simple regex parsing over Tesseract output
+                    const titleMatch = text.match(/^(.*?)(?:\[|\])/m);
+                    const accuracyMatch = text.match(/(\d{1,3})[., ]?(\d{2})\s*%/);
+                    const comboMatch = text.match(/(\d+)\s*x/i);
+                    
+                    parsedData = {
+                        player_name: message.author.username, // Tesseract rarely gets the small text
+                        beatmap_name: titleMatch ? titleMatch[1].trim() : "Unknown Map",
+                        difficulty_name: "",
+                        creator: "",
+                        date: new Date().toISOString(),
+                        accuracy: accuracyMatch ? parseFloat(`${accuracyMatch[1]}.${accuracyMatch[2]}`) / 100 : 1.0,
+                        max_combo: comboMatch ? parseInt(comboMatch[1]) : 0,
+                        score: 0,
+                        statistics: { great: 0, ok: 0, meh: 0, miss: 0 },
+                        mods: ["NM"],
+                        rank: "A"
+                    };
+                    console.log(`[S.SUBIR] Datos estructurados desde Tesseract:`, parsedData);
+                } catch (e) {
+                    console.error("[S.SUBIR] Error con Tesseract:", e);
+                    return "Error al procesar con Tesseract OCR.";
+                }
+            } else {
+                console.log(`[S.SUBIR] Procesando imagen con Gemini OCR...`);
+                // LLAMADA A GEMINI
+                const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
+MUY IMPORTANTE: Extrae los datos reales que veas en la imagen o texto.
+- Título del mapa: Texto grande arriba (marcado en rojo en el ejemplo).
+- Dificultad: Entre corchetes después del título.
+- Creador: "Beatmap by X" (marcado en amarillo).
+- Jugador y Fecha: "Played by X on DD/MM/YYYY H:MM:SS" (marcado en verde y azul). Convierte la fecha a ISO 8601.
+- Puntuación (Score): Número grande (marcado en rosado).
+- 300s/100s/50s/Misses: Columnas debajo de la score (marcados en naranja, verde oscuro y rojo).
+- Max Combo: Número grande con una 'x' abajo a la izquierda (marcado en verde lima).
+- Accuracy: Porcentaje grande (conviértelo a decimal ej. 89.83% -> 0.8983).
+- Mods: Íconos pequeños pegados a la letra grande del Rank (ej. Score V2, NF). Si no hay, pon ["NM"].
 
-El JSON debe tener la siguiente estructura exacta:
+A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el JSON que espero que generes para ella:`;
+
+                const exampleData = require('./example_score.json');
+                const exampleImagePart = {
+                    inlineData: {
+                        data: exampleData.base64,
+                        mimeType: "image/png"
+                    }
+                };
+
+                const exampleOutput = `
 {
-  "player_name": "Nombre real extraído",
-  "beatmap_name": "Nombre del mapa (sin la dificultad, lo más limpio posible para buscarlo)",
-  "difficulty_name": "Nombre de la dificultad (entre corchetes en el título normalmente)",
-  "accuracy": 0.9571,
-  "max_combo": 631,
-  "score": 13358510,
-  "statistics": { "great": 1314, "ok": 83, "meh": 1, "miss": 4 },
-  "mods": ["NM"],
-  "rank": "A"
+  "player_name": "Jeiden",
+  "beatmap_name": "Luschka - Kami no Kotoba",
+  "difficulty_name": "The faint harmony that sprouted one pretty thing after another",
+  "creator": "Sakura Blossom",
+  "date": "2024-11-16T00:34:14.000Z",
+  "accuracy": 0.8983,
+  "max_combo": 354,
+  "score": 161637,
+  "statistics": { "great": 1085, "ok": 92, "meh": 16, "miss": 52 },
+  "mods": ["NF", "V2"],
+  "rank": "B"
 }
-Texto adicional del mensaje (si lo hay):
-${textPart}`;
+`;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-    const parts = [{ text: prompt }];
-    if (imagePart) parts.push(imagePart);
+                const finalInstruction = `\nAhora haz lo mismo con la siguiente imagen o texto:\nTexto adicional del mensaje (si lo hay):\n${textPart}`;
 
-    let parsedData;
-    try {
-        await message.channel.sendTyping(); // In case Gemini takes a while
-        const result = await model.generateContent(parts);
-        let responseText = result.response.text();
-        
-        responseText = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
-        parsedData = JSON.parse(responseText);
-    } catch (e) {
-        console.error("Error al procesar con Gemini:", e);
-        return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
+                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+                const parts = [
+                    { text: prompt }, 
+                    exampleImagePart, 
+                    { text: exampleOutput }, 
+                    { text: finalInstruction }
+                ];
+                
+                if (imagePart) parts.push(imagePart);
+
+                try {
+                    await message.channel.sendTyping();
+                    const result = await model.generateContent(parts);
+                    let responseText = result.response.text();
+                    
+                    responseText = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+                    parsedData = JSON.parse(responseText);
+                    console.log(`[S.SUBIR] OCR (Gemini) extrajo:`, JSON.stringify(parsedData, null, 2));
+                } catch (e) {
+                    console.error("[S.SUBIR] Error al procesar con Gemini:", e);
+                    return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
+                }
+            }
+        } else {
+            console.log(`[S.SUBIR] Tipo de input: TEXTO DESCONOCIDO. Procesando con Gemini...`);
+            // TEXT ONLY GEMINI FALLBACK
+            const prompt = `Extrae la siguiente información...`; // Simplificado para texto
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            try {
+                const result = await model.generateContent([{text: `Extrae JSON de esta score:\n${textPart}`}]);
+                let responseText = result.response.text().replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+                parsedData = JSON.parse(responseText);
+                console.log(`[S.SUBIR] Gemini texto extrajo:`, parsedData);
+            } catch(e) {}
+        }
+    } else {
+        console.log(`[S.SUBIR] Tipo de input: EMBED DE BOT CONOCIDO (Regex exitoso).`);
+        console.log(`[S.SUBIR] Regex extrajo:`, JSON.stringify(parsedData, null, 2));
+    }
+
+    if (overrideMods && parsedData) {
+        parsedData.mods = overrideMods;
+        console.log(`[S.SUBIR] Mods sobrescritos a:`, parsedData.mods);
     }
 
     // Buscar beatmap
+    console.log(`[S.SUBIR] Intentando resolver mapa... Nombre: "${parsedData.beatmap_name}", Diff: "${parsedData.difficulty_name}", Creador: "${parsedData.creator}"`);
     let beatmap_id = null;
     if (reply.embeds.length > 0) {
         const { beatmap_url } = await findBeatmapInChannel(reply, true);
@@ -161,13 +389,15 @@ ${textPart}`;
     }
 
     if (!beatmap_id) {
-        beatmap_id = await getBeatmapIdFromSearch(parsedData.beatmap_name, parsedData.difficulty_name);
+        beatmap_id = await getBeatmapIdFromSearch(parsedData.beatmap_name, parsedData.difficulty_name, parsedData.creator);
     }
 
     if (!beatmap_id) {
+        console.log(`[S.SUBIR] Error: No se pudo encontrar el mapa en la API de osu!`);
         return `No pude encontrar el mapa \`${parsedData.beatmap_name}\` en la base de datos de osu!.`;
     }
 
+    console.log(`[S.SUBIR] Mapa resuelto correctamente. Beatmap ID: ${beatmap_id}`);
     const beatmap_metadata = await getBeatmap(beatmap_id);
 
     // Get user id
@@ -186,7 +416,7 @@ ${textPart}`;
 
     const recent_scores = {
         accuracy: parsedData.accuracy,
-        ended_at: new Date().toISOString(),
+        ended_at: parsedData.date || new Date().toISOString(),
         legacy_total_score: parsedData.score,
         total_score: parsedData.score,
         max_combo: parsedData.max_combo,
@@ -214,7 +444,8 @@ ${textPart}`;
         "beatmap_max_combo": beatmap_metadata.max_combo,
     };
 
-    saveUserscore(recent_scores, pre_calculated);
+    saveUserscore(recent_scores, pre_calculated, true);
+    console.log(`[S.SUBIR] ¡Score guardada exitosamente para ${parsedData.player_name}!`);
 
     const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
@@ -244,20 +475,23 @@ ${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-        .setTimestamp();
+        .setTimestamp(new Date(recent_scores.ended_at));
 
     map.free();
     return { content: '', embeds: [embed] };
 }
 
 run.alias = {
-    "save": { "args": "" }
+    "save": { "args": "" },
+    "subirocr": { 
+        "args": "-tesseract" 
+    }
 }
 
 run.description = {
     'header': 'Sube una score a la base de datos de Sengo.',
-    'body': 'Haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.',
-    'usage': `s.subir (respondiendo a un mensaje)`
+    'body': 'Haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.\n`-tesseract`: Utiliza el motor de OCR local (Tesseract) en lugar de la IA para procesar la imagen.',
+    'usage': `s.subir (respondiendo a un mensaje) [-m MODS] [-tesseract]`
 }
 
 module.exports = { run, "description": run.description }

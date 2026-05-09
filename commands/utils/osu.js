@@ -104,7 +104,7 @@ async function NewloadToken(){
 
 // Usado para guardar la score del usuario de forma local
 // Clave para tener una db propia de scores de usuarios
-function saveUserscore(recent_scores, pre_calculated) {
+function saveUserscore(recent_scores, pre_calculated, force_save = false) {
     const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
     const score = {
@@ -128,8 +128,8 @@ function saveUserscore(recent_scores, pre_calculated) {
     // Play fallida en multi
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
 
-    // Si es una play en un mapa unranked o es una play fallida
-    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed) {
+    // Si es una play en un mapa unranked o es una play fallida, o si está forzado a guardar
+    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed || force_save) {
         const scoresPath = path.join(__dirname, '../../db/local/scores');
         const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
 
