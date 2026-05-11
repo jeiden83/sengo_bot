@@ -9,6 +9,45 @@ const fetch = require('node-fetch');
 
 const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
 
+/**
+ * Calcula el grade de osu!standard usando la fórmula oficial.
+ * Referencia: https://osu.ppy.sh/wiki/en/Gameplay/Grade
+ * @param {object} stats  - { great, ok, meh, miss }
+ * @param {number} accuracy - decimal (0 a 1)
+ * @param {string[]} mods  - array de acronyms (ej. ['HD', 'HR'])
+ * @param {boolean} passed - si la play fue completada
+ * @returns {string} - 'XH', 'X', 'SH', 'S', 'A', 'B', 'C', 'D', 'F'
+ */
+function calculateRank(stats, accuracy, mods, passed) {
+    if (!passed) return 'F';
+
+    const { great = 0, ok = 0, meh = 0, miss = 0 } = stats;
+    const total_hits = great + ok + meh + miss;
+
+    const ratio_300 = total_hits > 0 ? great / total_hits : 0;
+    const ratio_50  = total_hits > 0 ? meh  / total_hits : 0;
+
+    // Silver grades: Hidden, Flashlight o Fade In
+    const has_silver = mods && mods.some(m => m === 'HD' || m === 'FL' || m === 'FI');
+
+    // SS: 100% accuracy (todos 300s)
+    if (miss === 0 && meh === 0 && ok === 0) {
+        return has_silver ? 'XH' : 'X';
+    }
+    // S: >=90% acc, <=1% de 50s, 0 misses
+    if (accuracy >= 0.9 && ratio_50 <= 0.01 && miss === 0) {
+        return has_silver ? 'SH' : 'S';
+    }
+    // A: >80% de 300s y 0 misses  O  >90% de 300s
+    if ((ratio_300 > 0.8 && miss === 0) || ratio_300 > 0.9) return 'A';
+    // B: >70% de 300s y 0 misses  O  >80% de 300s
+    if ((ratio_300 > 0.7 && miss === 0) || ratio_300 > 0.8) return 'B';
+    // C: >60% de 300s y 0 misses  O  >70% de 300s
+    if (ratio_300 > 0.6) return 'C';
+    // D: el resto
+    return 'D';
+}
+
 function calculatePP(recent_scores, map, maximo_pp, Attrs){
 	// Se consiguen las estadisticas de la score
 	const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0} = recent_scores.statistics;
@@ -380,6 +419,25 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         console.log(`[S.SUBIR] Mods sobrescritos a:`, parsedData.mods);
     }
 
+    // --- Validación y recálculo del rank ---
+    const valid_ranks = new Set(['X', 'XH', 'S', 'SH', 'A', 'B', 'C', 'D', 'F']);
+    const ocr_rank = parsedData.rank ? String(parsedData.rank).toUpperCase() : null;
+    const calculated_rank = calculateRank(
+        parsedData.statistics,
+        parsedData.accuracy,
+        parsedData.mods,
+        parsedData.rank !== 'F' && parsedData.accuracy > 0
+    );
+
+    if (!ocr_rank || !valid_ranks.has(ocr_rank)) {
+        console.log(`[S.SUBIR] Rank OCR inválido ("${parsedData.rank}"). Usando rank calculado: ${calculated_rank}`);
+        parsedData.rank = calculated_rank;
+    } else {
+        console.log(`[S.SUBIR] Rank OCR: "${ocr_rank}". Rank calculado: "${calculated_rank}". Se usa el calculado para mayor fiabilidad.`);
+        parsedData.rank = calculated_rank; // siempre preferimos el calculado
+    }
+    // ----------------------------------------
+
     // Buscar beatmap
     console.log(`[S.SUBIR] Intentando resolver mapa... Nombre: "${parsedData.beatmap_name}", Diff: "${parsedData.difficulty_name}", Creador: "${parsedData.creator}"`);
     let beatmap_id = null;
@@ -451,7 +509,9 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
     
     const emoji_grades = require("../../../src/emoji_grades.json");
-    let grade_emoji = emoji_grades[!recent_scores.passed ? "F" : recent_scores.rank];
+    const rank_aliases_embed = { "SS": "X", "SSH": "XH" };
+    const rank_key_embed = !recent_scores.passed ? "F" : (rank_aliases_embed[recent_scores.rank] ?? recent_scores.rank);
+    let grade_emoji = emoji_grades[rank_key_embed] ?? emoji_grades["F"];
     grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
     
     const emoji_mods = require("../../../src/emoji_mods.json");

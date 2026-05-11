@@ -145,45 +145,45 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
             
             if (fs.existsSync(filePath)) {
                 const existingScore = JSON.parse(fs.readFileSync(filePath));
-                if (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion)) {
-
+                // Reemplazar si es la misma play (mismo timestamp) o si es mejor
+                if (existingScore.ended_at === score.ended_at || (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion))) {
                     fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
                 }
             } else {
                 fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
             }
         } else {
-            // Ordenar archivos por PP de forma descendente
-            const scores = files
+            // Obtener todas las puntuaciones existentes
+            const existingScores = files
                 .filter(file => /^[1-9]\d*\.json$/.test(file))
-                .map(file => {
-                    const data = JSON.parse(fs.readFileSync(path.join(folderPath, file)));
-                    return { file, pp: data.pp };
-                })
-                .filter(s => s.pp !== undefined && s.pp > 0);
+                .map(file => JSON.parse(fs.readFileSync(path.join(folderPath, file))));
 
-            scores.sort((a, b) => b.pp - a.pp);
+            // Buscar si ya existe la misma play (por fecha)
+            const samePlayIndex = existingScores.findIndex(s => s.ended_at === score.ended_at);
 
-            // Verificar si ya existe una puntuación con el mismo PP (duplicado)
-            if (scores.some(s => s.pp == pre_calculated.pp)) return;
-
-            // Calcular el índice adecuado para la nueva puntuación
-            let index = 1;
-            for (let i = 0; i < scores.length; i++) {
-                if (pre_calculated.pp > scores[i].pp) break;
-                index++;
+            if (samePlayIndex !== -1) {
+                // Reemplazar la existente
+                existingScores[samePlayIndex] = score;
+            } else {
+                // Si es una play nueva, verificar si el PP es identico a otra (evitar duplicados raros)
+                // Pero si es diferente play, la agregamos
+                if (existingScores.some(s => s.pp === score.pp)) return;
+                existingScores.push(score);
             }
 
-            // Mover archivos para mantener el orden de PP
-            for (let i = scores.length; i >= index; i--) {
-                const oldPath = path.join(folderPath, `${i}.json`);
-                const newPath = path.join(folderPath, `${i + 1}.json`);
-                fs.renameSync(oldPath, newPath);
-            }
+            // Ordenar por PP descendente
+            existingScores.sort((a, b) => b.pp - a.pp);
 
-            // Guardar la nueva puntuación en la posición correspondiente
-            const filePath = path.join(folderPath, `${index}.json`);
-            fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+            // Eliminar archivos numerados viejos para evitar desorden
+            files.filter(file => /^[1-9]\d*\.json$/.test(file)).forEach(file => {
+                fs.unlinkSync(path.join(folderPath, file));
+            });
+
+            // Guardar todas de nuevo con su nuevo indice
+            existingScores.forEach((s, i) => {
+                const filePath = path.join(folderPath, `${i + 1}.json`);
+                fs.writeFileSync(filePath, JSON.stringify(s, null, 2));
+            });
         }
     }
 }
