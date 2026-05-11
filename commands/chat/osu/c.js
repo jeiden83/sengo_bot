@@ -7,37 +7,39 @@ async function doEmbed(message, user_scores) {
 
     let embed_description = '';
 
-    user_scores.forEach(score => {
+    for (let i = 0; i < user_scores.length; i++) {
+        if (i >= 20) {
+            embed_description = embed_description.concat(`\n*...y ${user_scores.length - i} puntuaciones más*`);
+            break;
+        }
 
-        let rank_pos = `#${user_scores.indexOf(score)}`;
+        const score = user_scores[i];
+        let rank_pos = `#${i}`;
 
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
         grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
         let map_completion = !score.passed ? `*Map completion: \`${(score.map_completion * 100).toFixed(2)}\`%*\n` : "";
-
         let legacy_score = score.legacy_total_score.toLocaleString('es-ES');
-
         let accuracy = (score.accuracy * 100).toFixed(2);
-
         let max_combo = score.max_combo;
-
         let statistics = score.statistics;
-        statistics = `\`${statistics.great || 0}/${statistics.ok || 0}/${statistics.meh || 0}/${statistics.miss || 0}\``
-
+        statistics = `\`${statistics.great || 0}/${statistics.ok || 0}/${statistics.meh || 0}/${statistics.miss || 0}\``;
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
-
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
-
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
 
-
-        embed_description = embed_description.concat(user_scores.indexOf(score) != 0 ?
+        const score_line = i != 0 ?
             `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - ${max_combo} - ${statistics} - ${pp} - ${time_set} - ${mods_used}\n${map_completion}` :
-            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`
-        )
+            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`;
 
-    });
+        if ((embed_description + score_line).length > 3900) {
+            embed_description = embed_description.concat(`\n*...y ${user_scores.length - i} puntuaciones más*`);
+            break;
+        }
+
+        embed_description = embed_description.concat(score_line);
+    }
 
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
