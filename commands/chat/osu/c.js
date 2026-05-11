@@ -30,8 +30,8 @@ async function doEmbed(message, user_scores) {
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const score_line = i != 0 ?
-            `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - ${max_combo} - ${statistics} - ${pp} - ${time_set} - ${mods_used}\n${map_completion}` :
-            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **${max_combo}** - ${statistics} - **${pp}** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`;
+            `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - x${max_combo} - ${statistics} - ${pp}pp - ${time_set} - ${mods_used}\n${map_completion}` :
+            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **x${max_combo}** - ${statistics} - **${pp}pp** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`;
 
         if ((embed_description + score_line).length > 3900) {
             embed_description = embed_description.concat(`\n*...y ${user_scores.length - i} puntuaciones más*`);
