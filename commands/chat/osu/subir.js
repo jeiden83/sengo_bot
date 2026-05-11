@@ -378,7 +378,11 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         }
     } else {
         console.log(`[S.SUBIR] Tipo de input: EMBED DE BOT CONOCIDO (Regex exitoso).`);
-        console.log(`[S.SUBIR] Regex extrajo:`, JSON.stringify(parsedData, null, 2));
+    }
+
+    if (!parsedData) {
+        console.log(`[S.SUBIR] Error: No se pudo extraer información de la score.`);
+        return "No pude extraer la información de la score. Asegúrate de que el mensaje sea legible o contenga datos válidos.";
     }
 
     if (overrideMods && parsedData) {
