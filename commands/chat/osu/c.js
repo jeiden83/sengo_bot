@@ -29,7 +29,7 @@ async function doEmbed(message, user_scores) {
 
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
 
-        const mods_used = score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '');
+        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
 
 
         embed_description = embed_description.concat(user_scores.indexOf(score) != 0 ?

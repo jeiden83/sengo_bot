@@ -486,7 +486,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
     grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
     
     const emoji_mods = require("../../../src/emoji_mods.json");
-    const mods_used = recent_scores.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>`, '');
+    const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
 
     const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
 
