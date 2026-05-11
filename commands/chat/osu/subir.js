@@ -300,40 +300,8 @@ async function run(messages, args, initialized_data) {
         }
 
         if (imagePart) {
-            if (args.find(a => a && typeof a === 'string' && a.toLowerCase() === '-tesseract')) {
-                console.log(`[S.SUBIR] Procesando imagen con Tesseract OCR (Local)...`);
-                try {
-                    const Tesseract = require('tesseract.js');
-                    await message.channel.sendTyping();
-                    const { data: { text } } = await Tesseract.recognize(reply.attachments.first().url, 'eng');
-                    console.log(`[S.SUBIR] Tesseract extrajo el siguiente texto crudo:\n`, text);
-                    
-                    // Simple regex parsing over Tesseract output
-                    const titleMatch = text.match(/^(.*?)(?:\[|\])/m);
-                    const accuracyMatch = text.match(/(\d{1,3})[., ]?(\d{2})\s*%/);
-                    const comboMatch = text.match(/(\d+)\s*x/i);
-                    
-                    parsedData = {
-                        player_name: message.author.username, // Tesseract rarely gets the small text
-                        beatmap_name: titleMatch ? titleMatch[1].trim() : "Unknown Map",
-                        difficulty_name: "",
-                        creator: "",
-                        date: new Date().toISOString(),
-                        accuracy: accuracyMatch ? parseFloat(`${accuracyMatch[1]}.${accuracyMatch[2]}`) / 100 : 1.0,
-                        max_combo: comboMatch ? parseInt(comboMatch[1]) : 0,
-                        score: 0,
-                        statistics: { great: 0, ok: 0, meh: 0, miss: 0 },
-                        mods: ["NM"],
-                        rank: "A"
-                    };
-                    console.log(`[S.SUBIR] Datos estructurados desde Tesseract:`, parsedData);
-                } catch (e) {
-                    console.error("[S.SUBIR] Error con Tesseract:", e);
-                    return "Error al procesar con Tesseract OCR.";
-                }
-            } else {
-                console.log(`[S.SUBIR] Procesando imagen con Gemini OCR...`);
-                // LLAMADA A GEMINI
+            console.log(`[S.SUBIR] Procesando imagen con Gemini OCR...`);
+            // LLAMADA A GEMINI
                 const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
 MUY IMPORTANTE: Extrae los datos reales que veas en la imagen o texto.
 - Título del mapa: Texto grande arriba (marcado en rojo en el ejemplo).
@@ -396,7 +364,6 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
                     console.error("[S.SUBIR] Error al procesar con Gemini:", e);
                     return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
                 }
-            }
         } else {
             console.log(`[S.SUBIR] Tipo de input: TEXTO DESCONOCIDO. Procesando con Gemini...`);
             // TEXT ONLY GEMINI FALLBACK
@@ -542,16 +509,13 @@ ${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}
 }
 
 run.alias = {
-    "save": { "args": "" },
-    "subirocr": { 
-        "args": "-tesseract" 
-    }
+    "save": { "args": "" }
 }
 
 run.description = {
     'header': 'Sube una score a la base de datos de Sengo.',
-    'body': 'Haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.\n`-tesseract`: Utiliza el motor de OCR local (Tesseract) en lugar de la IA para procesar la imagen.',
-    'usage': `s.subir (respondiendo a un mensaje) [-m MODS] [-tesseract]`
+    'body': 'Haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
+    'usage': `s.subir (respondiendo a un mensaje) [-m MODS]`
 }
 
 module.exports = { run, "description": run.description }
