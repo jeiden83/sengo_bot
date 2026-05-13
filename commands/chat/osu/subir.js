@@ -267,31 +267,34 @@ async function run(messages, args, initialized_data) {
         console.log(`[S.SUBIR] Parámetro de mods detectado. Sobrescribiendo mods con:`, overrideMods);
     }
 
-    if (!reply) {
-        console.log(`[S.SUBIR] Error: No se respondió a ningún mensaje.`);
-        return "Debes responder (reply) a un mensaje que contenga un embed de una score o una foto de una play de osu!";
+    // Buscamos si hay un adjunto en el mensaje del comando o si es un reply
+    const sourceMessage = (message.attachments.size > 0) ? message : reply;
+
+    if (!sourceMessage) {
+        console.log(`[S.SUBIR] Error: No se encontró fuente (adjunto o reply).`);
+        return "Debes adjuntar una foto o responder (reply) a un mensaje que contenga un embed de una score o una foto de una play de osu!";
     }
 
-    let parsedData = parseBotEmbed(reply);
+    let parsedData = parseBotEmbed(sourceMessage);
 
     // Si falló el regex o no era un embed conocido, procedemos con Gemini (OCR)
     if (!parsedData) {
         let textPart = "";
         let imagePart = null;
 
-        if (reply.attachments.size > 0) {
-            const attachment = reply.attachments.first();
+        if (sourceMessage.attachments.size > 0) {
+            const attachment = sourceMessage.attachments.first();
             if (attachment.contentType && attachment.contentType.startsWith('image/')) {
                 console.log(`[S.SUBIR] Tipo de input: IMAGEN (Detectada en adjunto)`);
                 imagePart = await processImage(attachment.url);
             }
         }
 
-        if (reply.embeds.length > 0) {
-            const embed = reply.embeds[0];
-            textPart = `${reply.content || ''}\n${embed.title || ''}\n${embed.description || ''}\n${embed.author ? embed.author.name : ''}`;
-        } else if (reply.content) {
-            textPart = reply.content;
+        if (sourceMessage.embeds && sourceMessage.embeds.length > 0) {
+            const embed = sourceMessage.embeds[0];
+            textPart = `${sourceMessage.content || ''}\n${embed.title || ''}\n${embed.description || ''}\n${embed.author ? embed.author.name : ''}`;
+        } else if (sourceMessage.content) {
+            textPart = sourceMessage.content;
         }
 
         if (!imagePart && !textPart.trim()) {
@@ -412,7 +415,13 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
     // Buscar beatmap
     console.log(`[S.SUBIR] Intentando resolver mapa... Nombre: "${parsedData.beatmap_name}", Diff: "${parsedData.difficulty_name}", Creador: "${parsedData.creator}"`);
     let beatmap_id = null;
-    if (reply.embeds.length > 0) {
+    if (sourceMessage.embeds && sourceMessage.embeds.length > 0) {
+        const { beatmap_url } = await findBeatmapInChannel(sourceMessage, true);
+        if (beatmap_url) beatmap_id = beatmap_url;
+    }
+
+    // Si aún no hay ID y era un reply, intentamos buscar en el reply también (por si el sourceMessage era el comando con foto)
+    if (!beatmap_id && reply && reply.embeds && reply.embeds.length > 0) {
         const { beatmap_url } = await findBeatmapInChannel(reply, true);
         if (beatmap_url) beatmap_id = beatmap_url;
     }
@@ -441,6 +450,63 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
 
     if (!user_id) {
         return `No pude resolver la ID del usuario \`${parsedData.player_name}\` y no estás vinculado a un perfil.`;
+    }
+
+    // Ajuste de zona horaria según el país del jugador para corregir la hora del OCR
+    if (parsedData.date) {
+        let finalOsuUser = typeof osuUser !== 'string' ? osuUser : null;
+        if (!finalOsuUser && user_id) {
+            const fetched = await getOsuUser({ username: [String(user_id)], gamemode: 'osu' });
+            if (typeof fetched !== 'string') finalOsuUser = fetched;
+        }
+
+        if (finalOsuUser && finalOsuUser.country_code) {
+            const countryOffsets = {
+                "VE": -4, // Venezuela
+                "AR": -3, // Argentina
+                "CL": -4, // Chile
+                "CO": -5, // Colombia
+                "PE": -5, // Perú
+                "EC": -5, // Ecuador
+                "MX": -6, // México
+                "ES": 2,  // España
+                "UY": -3, // Uruguay
+                "PY": -4, // Paraguay
+                "BO": -4, // Bolivia
+                "DO": -4, // República Dominicana
+                "CR": -6, // Costa Rica
+                "SV": -6, // El Salvador
+                "GT": -6, // Guatemala
+                "HN": -6, // Honduras
+                "NI": -6, // Nicaragua
+                "PA": -5, // Panamá
+                "US": -5, // Estados Unidos
+                "BR": -3, // Brasil
+            };
+
+            const cc = finalOsuUser.country_code.toUpperCase();
+            if (cc in countryOffsets) {
+                const offset = countryOffsets[cc];
+                const dateObj = new Date(parsedData.date);
+                if (!isNaN(dateObj.getTime())) {
+                    // El OCR lee la hora local de la pantalla como si fuera UTC al añadir la 'Z'.
+                    // Para obtener el UTC real de la jugada, restamos el offset del país.
+                    let real_utc_ms = dateObj.getTime() - (offset * 3600 * 1000);
+                    
+                    // Si por discrepancias de horario de verano/invierno la fecha calculada supera la fecha actual,
+                    // la limitamos a la fecha actual para evitar que en Discord aparezca en el futuro.
+                    if (real_utc_ms > Date.now()) {
+                        console.log(`[S.SUBIR] La fecha ajustada supera la hora actual. Limitando a Date.now()`);
+                        real_utc_ms = Date.now();
+                    }
+
+                    parsedData.date = new Date(real_utc_ms).toISOString();
+                    console.log(`[S.SUBIR] Ajuste de zona horaria aplicado para país ${cc} (offset ${offset}h). Nueva fecha UTC: ${parsedData.date}`);
+                }
+            } else {
+                console.log(`[S.SUBIR] País ${cc} no mapeado en offsets. Se mantiene la fecha original del OCR.`);
+            }
+        }
     }
 
     const recent_scores = {
@@ -518,8 +584,8 @@ run.alias = {
 
 run.description = {
     'header': 'Sube una score a la base de datos de Sengo.',
-    'body': 'Haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
-    'usage': `s.subir (respondiendo a un mensaje) [-m MODS]`
+    'body': 'Adjunta una imagen o haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
+    'usage': `s.subir [adjuntando imagen o respondiendo a un mensaje] [-m MODS]`
 }
 
 module.exports = { run, "description": run.description }

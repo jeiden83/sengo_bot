@@ -145,8 +145,8 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
             
             if (fs.existsSync(filePath)) {
                 const existingScore = JSON.parse(fs.readFileSync(filePath));
-                // Reemplazar si es la misma play (mismo timestamp) o si es mejor
-                if (existingScore.ended_at === score.ended_at || (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion))) {
+                // Reemplazar si es la misma play (mismo timestamp o misma puntuación) o si es mejor
+                if (existingScore.ended_at === score.ended_at || existingScore.legacy_total_score === score.legacy_total_score || (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion))) {
                     fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
                 }
             } else {
@@ -158,16 +158,13 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
                 .filter(file => /^[1-9]\d*\.json$/.test(file))
                 .map(file => JSON.parse(fs.readFileSync(path.join(folderPath, file))));
 
-            // Buscar si ya existe la misma play (por fecha)
-            const samePlayIndex = existingScores.findIndex(s => s.ended_at === score.ended_at);
+            // Buscar si ya existe la misma play (por fecha o por PP idéntico)
+            const samePlayIndex = existingScores.findIndex(s => s.ended_at === score.ended_at || s.pp === score.pp);
 
             if (samePlayIndex !== -1) {
-                // Reemplazar la existente
+                // Reemplazar la existente para aplicar correcciones de mods o zona horaria
                 existingScores[samePlayIndex] = score;
             } else {
-                // Si es una play nueva, verificar si el PP es identico a otra (evitar duplicados raros)
-                // Pero si es diferente play, la agregamos
-                if (existingScores.some(s => s.pp === score.pp)) return;
                 existingScores.push(score);
             }
 
