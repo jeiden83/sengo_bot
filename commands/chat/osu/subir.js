@@ -135,39 +135,65 @@ async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
     try {
         const tokenData = require('../../../osu_token.json');
         
-        // No añadimos el creador al query principal de osu! API porque un pequeño error del OCR
-        // en el nombre del creador arruinaría todos los resultados. Usamos solo el nombre del mapa.
-        const res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
-            params: { q: beatmap_name, s: 'any' },
+        // Reemplazamos guiones por espacios para evitar que el motor de búsqueda de osu! 
+        // los interprete como operadores de exclusión (ej. "-Scramble-" -> excluir Scramble)
+        const clean_query = beatmap_name ? beatmap_name.replace(/-/g, ' ') : '';
+        
+        let res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
+            params: { q: clean_query, s: 'any' },
             headers: { Authorization: 'Bearer ' + tokenData.access_token }
         });
         
-        if (res.data.beatmapsets && res.data.beatmapsets.length > 0) {
-            let beatmapset = res.data.beatmapsets[0];
-            
-            // Fuzzy match para el creador
-            if (creator) {
-                let bestScore = -1;
-                let bestSet = beatmapset;
-                for (const set of res.data.beatmapsets) {
-                    const score = similarity(set.creator, creator);
-                    if (score > bestScore) {
-                        bestScore = score;
-                        bestSet = set;
+        let beatmapsets = res.data.beatmapsets || [];
+        let bestSetScore = -1;
+        let chosenSet = beatmapsets[0];
+
+        if (beatmapsets.length > 0 && creator) {
+            for (const set of beatmapsets) {
+                const score = similarity(set.creator, creator);
+                if (score > bestSetScore) {
+                    bestSetScore = score;
+                    chosenSet = set;
+                }
+            }
+        }
+
+        // Si se especificó un creador pero no se encontró un set con buena similitud (score < 0.6)
+        // o no hubo resultados, intentamos una búsqueda secundaria incluyendo al creador en el query
+        if (creator && (beatmapsets.length === 0 || bestSetScore < 0.6)) {
+            console.log(`[S.SUBIR] Similitud de creador baja o sin resultados. Intentando búsqueda con creador: "${clean_query} ${creator}"`);
+            try {
+                const fallbackRes = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
+                    params: { q: `${clean_query} ${creator}`, s: 'any' },
+                    headers: { Authorization: 'Bearer ' + tokenData.access_token }
+                });
+                if (fallbackRes.data.beatmapsets && fallbackRes.data.beatmapsets.length > 0) {
+                    beatmapsets = fallbackRes.data.beatmapsets;
+                    bestSetScore = -1;
+                    chosenSet = beatmapsets[0];
+                    for (const set of beatmapsets) {
+                        const score = similarity(set.creator, creator);
+                        if (score > bestSetScore) {
+                            bestSetScore = score;
+                            chosenSet = set;
+                        }
                     }
                 }
-                beatmapset = bestSet;
+            } catch (fallbackErr) {
+                console.error('Fallback search error:', fallbackErr.message);
             }
+        }
 
-            let bestMatch = beatmapset.beatmaps[0];
+        if (chosenSet && chosenSet.beatmaps && chosenSet.beatmaps.length > 0) {
+            let bestMatch = chosenSet.beatmaps[0];
             
             // Fuzzy match para la dificultad
             if (diff_name) {
-                let bestScore = -1;
-                for (const b of beatmapset.beatmaps) {
+                let bestDiffScore = -1;
+                for (const b of chosenSet.beatmaps) {
                     const score = similarity(b.version, diff_name);
-                    if (score > bestScore) {
-                        bestScore = score;
+                    if (score > bestDiffScore) {
+                        bestDiffScore = score;
                         bestMatch = b;
                     }
                 }
