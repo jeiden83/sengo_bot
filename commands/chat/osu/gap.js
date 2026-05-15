@@ -141,6 +141,18 @@ async function run(messages, args){
 
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
 
+    if (beatmap_metadata.status === 'loved') {
+        const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
+        for (let [userId, score] of user_scores) {
+            if (!score.pp) {
+                const ppResult = calculatePP(score, map);
+                score.pp = ppResult.pp;
+            }
+        }
+        map.free();
+    }
+
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
     let sorted_user_scores = beatmap_metadata.status === "loved"
         ? user_scores.sort((a, b) => b.total_score - a.total_score)

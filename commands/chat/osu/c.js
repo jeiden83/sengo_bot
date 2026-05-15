@@ -93,8 +93,21 @@ async function run(messages, args) {
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
         { "message": message, "res": res, "beatmap_url": beatmap_url, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
 
-    if (typeof fn_response === 'string') return `Error consiguiendo las puntuaciones para ese mapa.`;
+    if (typeof fn_response === 'string') return fn_response;
     if (fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
+
+    if (beatmap_metadata.status === 'loved') {
+        const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
+        
+        for (let score of fn_response) {
+            if (!score.pp) {
+                const ppResult = calculatePP(score, map);
+                score.pp = ppResult.pp;
+            }
+        }
+        map.free();
+    }
 
     const embed = await doEmbed(message, fn_response);
     const content = await doContent(parsed_args, user_found, beatmap_metadata);

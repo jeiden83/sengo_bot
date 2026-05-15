@@ -12,6 +12,56 @@ const axios = require('axios');
 const https = require('https');
 const rosu = require("rosu-pp-js");
 
+function calculatePP(recent_scores, map, maximo_pp, Attrs){
+	// Se consiguen las estadisticas de la score
+	const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0} = recent_scores.statistics;
+
+	// Para el SS
+	const max_perfomance_constructor = { 
+		mods: recent_scores.mods, 
+		lazer: recent_scores.started_at ? true : false,
+	};
+
+	const difficulty_constructor = {
+		...max_perfomance_constructor,
+		
+		maxCombo: recent_scores.max_combo,
+		misses: miss,
+		n300: great,
+		n100: ok,
+		n50: meh, 
+		
+		largeTickHits: large_tick_hit,
+		sliderEndHits: slider_tail_hit,
+		smallTickHits: ignore_hit,
+	}
+
+	// Por si se quiere calcular el maximo PP del mapa dado
+	if(maximo_pp){
+
+		const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map); // Por si no hay atributos se calcula con el mapa
+		return maxAttrs;
+	}
+
+	// Si el usuario no completo el mapa
+	if(!recent_scores.passed){
+
+		// Total de objetos hiteados
+		const total_hits = great + ok + meh + miss;
+
+		// Se construye la dificultad
+		const difficulty = new rosu.Difficulty(max_perfomance_constructor);
+
+		// Se construye para calcular el PP gradual
+		// La cual se pasa el estado actual de la play junto con el combo para calcular dicho pp hasta ese punto
+		return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
+	} 
+
+	// Se calcula el pp y atributos para el usuario que completo el mapa
+	const currAttrs = new rosu.Performance(difficulty_constructor).calculate(Attrs ? Attrs : map); // Por si no hay atributos se calcula con el mapa
+	return currAttrs;
+
+}
 // Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario
 function getUnrankedBeatmapUserAllScores(parsed_args) {
     const beatmapId = parsed_args.beatmap_url;
@@ -445,7 +495,11 @@ async function parsingCommandFunction(parsed_args, command_parameters){
             } else {
 
                 // Se actualiza para cambiarlo a la id
-                parsed_args.username[0] = (await getOsuUser(parsed_args)).id;
+                const osuUser = await getOsuUser(parsed_args);
+                if (typeof osuUser === 'string') {
+                    return {'fn_response': osuUser, 'user_found': user_found, 'reparsed_args': parsed_args};
+                }
+                parsed_args.username[0] = osuUser.id;
             }
 
         // Si no hubo un username entre los args
@@ -641,4 +695,6 @@ module.exports = {
     getRecentScores, 
     argsParser, 
     argsParserNoCommand, 
-    getBeatmapUserAllScores}
+    getBeatmapUserAllScores,
+    calculatePP
+}
