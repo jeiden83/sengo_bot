@@ -102,7 +102,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 				if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
 				if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
 				if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-				if (da_changes.length > 0) settings_str = `(${da_changes.join(',')})`;
+				if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
 			}
 		}
 		return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
