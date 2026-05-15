@@ -27,7 +27,10 @@ async function doEmbed(message, user_scores) {
         statistics = `\`${statistics.great || 0}/${statistics.ok || 0}/${statistics.meh || 0}/${statistics.miss || 0}\``;
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
-        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
+        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
+            const speed = mod.settings && mod.settings.speed_change ? `(${mod.settings.speed_change}x)` : '';
+            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>${speed}`;
+        }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const score_line = i != 0 ?
             `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - x${max_combo} - ${statistics} - ${pp}pp - ${time_set} - ${mods_used}\n${map_completion}` :

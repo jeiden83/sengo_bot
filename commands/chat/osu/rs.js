@@ -91,7 +91,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 	let grade_emoji = emoji_grades[!recent_scores.passed ? "F" : recent_scores.rank];
     	grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
-	const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '') : `<:NM:${emoji_mods["NM"]}>`;
+	const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => {
+		const speed = mod.settings && mod.settings.speed_change ? `(${mod.settings.speed_change}x)` : '';
+		return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>${speed}`;
+	}, '') : `<:NM:${emoji_mods["NM"]}>`;
 
 	const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
 

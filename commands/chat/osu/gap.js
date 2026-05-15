@@ -41,7 +41,10 @@ async function doEmbed(message, user_scores, beatmap_metadata){
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
     	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}: (${(score.map_completion*100).toFixed(2)}%)` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
-        let mods_used = score.mods.reduce((acc, mod) => `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>`, '');
+        let mods_used = score.mods.reduce((acc, mod) => {
+            const speed = mod.settings && mod.settings.speed_change ? `(${mod.settings.speed_change}x)` : '';
+            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>${speed}`;
+        }, '');
 
         embed_description = embed_description.concat(embed_description !== '' ?
             `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
