@@ -590,7 +590,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${recent_scores.beatmap.difficulty_rating + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
-        .setDescription(`**Puntuación**: \`${recent_scores.legacy_total_score.toLocaleString('es-ES')}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`**Puntuación**: \`${(recent_scores.legacy_total_score || recent_scores.total_score || 0).toLocaleString('es-ES')}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
 ${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP ${(recent_scores.accuracy * 100).toFixed(2)}% x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
 \`\`\`

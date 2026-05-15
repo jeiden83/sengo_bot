@@ -20,7 +20,7 @@ async function doEmbed(message, user_scores) {
         grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
         let map_completion = !score.passed ? `*Map completion: \`${(score.map_completion * 100).toFixed(2)}\`%*\n` : "";
-        let legacy_score = score.legacy_total_score.toLocaleString('es-ES');
+        let legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
         let accuracy = (score.accuracy * 100).toFixed(2);
         let max_combo = score.max_combo;
         let statistics = score.statistics;
