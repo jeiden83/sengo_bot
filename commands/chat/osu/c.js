@@ -28,8 +28,20 @@ async function doEmbed(message, user_scores) {
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-            const speed = mod.settings && mod.settings.speed_change ? `(${mod.settings.speed_change}x)` : '';
-            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym]}>${speed}`;
+            let settings_str = '';
+            if (mod.settings) {
+                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
+                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
+                } else if (mod.acronym === 'DA') {
+                    let da_changes = [];
+                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
+                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
+                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
+                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
+                    if (da_changes.length > 0) settings_str = `(${da_changes.join(',')})`;
+                }
+            }
+            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const score_line = i != 0 ?
