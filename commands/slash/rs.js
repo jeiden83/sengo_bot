@@ -43,7 +43,8 @@ async function run(interaction, res) {
         guild: interaction.guild
     };
 
-    return await rsChatCommand.run(messages, args);
+    await rsChatCommand.run(messages, args);
+    return true;
 }
 
 run.description = "Muestra la jugada reciente de un usuario";
