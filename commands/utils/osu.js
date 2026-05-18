@@ -795,6 +795,8 @@ function argsParserNoCommand(args) {
     let gamemode = args.gamemode || "";
     let server = args.server || "bancho";
     let index = 1;
+    let explicitIndex = false;
+    let page = 1;
     let listMode = false;
     let args_aux = new String(args);
 
@@ -877,6 +879,7 @@ function argsParserNoCommand(args) {
                 let num = parseInt(next_arg);
                 if (!isNaN(num)) {
                     index = num;
+                    explicitIndex = true;
                     skip_next = true;
                     continue;
                 }
@@ -887,6 +890,28 @@ function argsParserNoCommand(args) {
             let num = parseInt(arg.slice(2));
             if (!isNaN(num)) {
                 index = num;
+                explicitIndex = true;
+                continue;
+            }
+        }
+
+        // Si es exactamente "-p"
+        if (arg === "-p") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseInt(next_arg);
+                if (!isNaN(num)) {
+                    page = num;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        // Si empieza con "-p" seguido de un numero (ej: "-p2")
+        if (arg.startsWith("-p")) {
+            let num = parseInt(arg.slice(2));
+            if (!isNaN(num)) {
+                page = num;
                 continue;
             }
         }
@@ -910,6 +935,8 @@ function argsParserNoCommand(args) {
         'gamemode': gamemode,
         'server': server,
         'index': index,
+        'explicitIndex': explicitIndex,
+        'page': page,
         'listMode': listMode
     };
     return parsed_args;
