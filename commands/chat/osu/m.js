@@ -195,13 +195,21 @@ async function run(messages, args) {
                 .setStyle(ButtonStyle.Link)
                 .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
             new ButtonBuilder()
-                .setLabel('Con Video')
+                .setLabel('Nerinyan')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}/download`),
+                .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}`),
             new ButtonBuilder()
-                .setLabel('Sin Video')
+                .setLabel('Nerinyan (No Video)')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}/download?noVideo=1`)
+                .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}?novideo=1`),
+            new ButtonBuilder()
+                .setLabel('Sayobot')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://txy1.sayobot.cn/beatmaps/download/full/${beatmap.beatmapset_id}`),
+            new ButtonBuilder()
+                .setLabel('Sayobot (No Video)')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
         );
 
     if (reply) {
