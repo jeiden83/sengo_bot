@@ -798,6 +798,10 @@ function argsParserNoCommand(args) {
     let explicitIndex = false;
     let page = 1;
     let listMode = false;
+    let modFilter = null;
+    let modContainFilter = null;
+    let searchFilter = null;
+    let ppThreshold = null;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -916,6 +920,77 @@ function argsParserNoCommand(args) {
             }
         }
 
+        // Si es exactamente "-mx" (revisar antes de -m para evitar falsos positivos)
+        if (arg === "-mx") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                modContainFilter = next_arg.toUpperCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-mx")) {
+            let next = arg.slice(3).trim();
+            if (next.length > 0) {
+                modContainFilter = next.toUpperCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-m"
+        if (arg === "-m") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                modFilter = next_arg.toUpperCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-m")) {
+            let next = arg.slice(2).trim();
+            if (next.length > 0) {
+                modFilter = next.toUpperCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-?"
+        if (arg === "-?") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                searchFilter = next_arg.toLowerCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-?")) {
+            let next = arg.slice(2).trim();
+            if (next.length > 0) {
+                searchFilter = next.toLowerCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-g"
+        if (arg === "-g") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseFloat(next_arg);
+                if (!isNaN(num)) {
+                    ppThreshold = num;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        if (arg.startsWith("-g")) {
+            let num = parseFloat(arg.slice(2).trim());
+            if (!isNaN(num)) {
+                ppThreshold = num;
+                continue;
+            }
+        }
+
         let handled = false;
 
         args_commands.forEach(fn => {
@@ -937,7 +1012,11 @@ function argsParserNoCommand(args) {
         'index': index,
         'explicitIndex': explicitIndex,
         'page': page,
-        'listMode': listMode
+        'listMode': listMode,
+        'modFilter': modFilter,
+        'modContainFilter': modContainFilter,
+        'searchFilter': searchFilter,
+        'ppThreshold': ppThreshold
     };
     return parsed_args;
 }

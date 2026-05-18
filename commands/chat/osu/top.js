@@ -2,7 +2,7 @@ const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP } 
 const { colorear } = require("../../utils/admin.js");
 const { EmbedBuilder } = require("discord.js");
 
-async function doOsuSingleEmbed(message, score, pre_calculated, index, total_plays) {
+async function doOsuSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount) {
     const username = score.user.username;
     const user_url = score.user.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user.id}`;
     const avatar_url = score.user.avatar_url;
@@ -66,6 +66,20 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
         stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
 
+    let prefix_desc = '';
+    if (parsed_args.ppThreshold !== null) {
+        prefix_desc += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más en su top.\n\n`;
+    }
+
+    let active_filters = [];
+    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
+    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
+    if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
+
+    if (active_filters.length > 0) {
+        prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Puntuación #${index} en el Top de PP de ${username}`,
@@ -74,7 +88,7 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
 ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
 \`\`\`
@@ -90,11 +104,25 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
     return embed;
 }
 
-function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays) {
+function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays, ppThresholdCount) {
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
 
     let embed_description = '';
+    const username = top_scores_chunk[0].user.username;
+
+    if (parsed_args.ppThreshold !== null) {
+        embed_description += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más en su top.\n\n`;
+    }
+
+    let active_filters = [];
+    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
+    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
+    if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
+
+    if (active_filters.length > 0) {
+        embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+    }
 
     for (let i = 0; i < top_scores_chunk.length; i++) {
         const score = top_scores_chunk[i];
@@ -154,7 +182,6 @@ function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, tota
         embed_description = embed_description.concat(score_line);
     }
 
-    const username = top_scores_chunk[0].user.username;
     const user_url = top_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${top_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${top_scores_chunk[0].user.id}`;
     const avatar_url = top_scores_chunk[0].user.avatar_url;
 
@@ -194,7 +221,75 @@ async function run(messages, args) {
         return `Pero si no tienes puntuaciones registradas`;
     }
 
-    const total_plays = parser_res.fn_response.length;
+    // APLICAR FILTROS SOLICITADOS
+    let filtered_scores = parser_res.fn_response;
+
+    // 1. Filtrar por mods exactos (-m)
+    if (parser_res.parsed_args.modFilter !== null) {
+        const filterStr = parser_res.parsed_args.modFilter;
+        filtered_scores = filtered_scores.filter(score => {
+            if (filterStr === "NM" || filterStr === "NONE") {
+                return score.mods.length === 0;
+            }
+            const getModChunks = (str) => {
+                const chunks = [];
+                for (let j = 0; j < str.length; j += 2) {
+                    chunks.push(str.slice(j, j + 2));
+                }
+                return chunks.sort().join("").toUpperCase();
+            };
+            const filterNormalized = getModChunks(filterStr);
+            const scoreNormalized = score.mods.map(m => m.acronym).sort().join("").toUpperCase();
+            return scoreNormalized === filterNormalized;
+        });
+    }
+
+    // 2. Filtrar por mods contenidos (-mx)
+    if (parser_res.parsed_args.modContainFilter !== null) {
+        const filterStr = parser_res.parsed_args.modContainFilter;
+        const filterChunks = [];
+        for (let j = 0; j < filterStr.length; j += 2) {
+            filterChunks.push(filterStr.slice(j, j + 2));
+        }
+        filtered_scores = filtered_scores.filter(score => {
+            const scoreAcronyms = score.mods.map(m => m.acronym);
+            return filterChunks.every(mod => scoreAcronyms.includes(mod));
+        });
+    }
+
+    // 3. Filtrar por nombre de mapa, artista o dificultad (-?)
+    if (parser_res.parsed_args.searchFilter !== null) {
+        const query = parser_res.parsed_args.searchFilter;
+        filtered_scores = filtered_scores.filter(score => {
+            const title = (score.beatmapset.title || "").toLowerCase();
+            const artist = (score.beatmapset.artist || "").toLowerCase();
+            const version = (score.beatmap.version || "").toLowerCase();
+            return title.includes(query) || artist.includes(query) || version.includes(query);
+        });
+    }
+
+    // 4. Filtrar por PP y contar (-g)
+    let ppThresholdCount = 0;
+    if (parser_res.parsed_args.ppThreshold !== null) {
+        const threshold = parser_res.parsed_args.ppThreshold;
+        // Contamos sobre el top total de 200 jugadas
+        ppThresholdCount = parser_res.fn_response.filter(score => (score.pp || 0) >= threshold).length;
+        // Filtramos para mostrar solo esas jugadas
+        filtered_scores = filtered_scores.filter(score => (score.pp || 0) >= threshold);
+    }
+
+    // Si no quedan jugadas tras aplicar los filtros
+    if (filtered_scores.length === 0) {
+        const username = parser_res.fn_response[0].user.username;
+        let errorMsg = `No se encontraron jugadas en el top de **${username}** con los filtros aplicados:`;
+        if (parser_res.parsed_args.modFilter !== null) errorMsg += `\n ▸ Mods exactos: \`${parser_res.parsed_args.modFilter}\``;
+        if (parser_res.parsed_args.modContainFilter !== null) errorMsg += `\n ▸ Contiene mods: \`${parser_res.parsed_args.modContainFilter}\``;
+        if (parser_res.parsed_args.searchFilter !== null) errorMsg += `\n ▸ Búsqueda: \`${parser_res.parsed_args.searchFilter}\``;
+        if (parser_res.parsed_args.ppThreshold !== null) errorMsg += `\n ▸ PP >= \`${parser_res.parsed_args.ppThreshold}\``;
+        return errorMsg;
+    }
+
+    const total_plays = filtered_scores.length;
 
     // ----------------------------------------------------
     // Modo 1: Single Play Display (-i <index>)
@@ -204,7 +299,7 @@ async function run(messages, args) {
         let content_msg = '';
 
         if (index > total_plays) {
-            content_msg = `⚠️ Solo se encontraron **${total_plays}** mejores jugadas. Mostrando la última (#${total_plays}):`;
+            content_msg = `⚠️ Solo se encontraron **${total_plays}** mejores jugadas con los filtros activos. Mostrando la última (#${total_plays}):`;
             index = total_plays;
         } else if (index < 1) {
             content_msg = `⚠️ Índice inválido. Mostrando la mejor (#1):`;
@@ -215,7 +310,7 @@ async function run(messages, args) {
 
         // Función auxiliar para procesar y construir el embed de un score determinado
         async function processScore(scoreIndex) {
-            const score = parser_res.fn_response[scoreIndex - 1];
+            const score = filtered_scores[scoreIndex - 1];
             const { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
             const total_hits = great + ok + meh + miss;
             const beatmap = await getBeatmap(score.beatmap.id);
@@ -230,7 +325,7 @@ async function run(messages, args) {
                 "beatmap_max_combo": beatmap.max_combo,
             };
 
-            const embed = await doOsuSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays);
+            const embed = await doOsuSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount);
             map.free();
             return embed;
         }
@@ -322,7 +417,7 @@ async function run(messages, args) {
 
     let startIndex = (page - 1) * 5;
 
-    const initialListEmbed = doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays);
+    const initialListEmbed = doOsuListEmbed(message, parser_res.parsed_args, filtered_scores.slice(startIndex, startIndex + 5), startIndex, total_plays, ppThresholdCount);
 
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -376,8 +471,8 @@ async function run(messages, args) {
                 startIndex = Math.floor((total_plays - 1) / 5) * 5;
             }
 
-            const chunk = parser_res.fn_response.slice(startIndex, startIndex + 5);
-            const embed = doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays);
+            const chunk = filtered_scores.slice(startIndex, startIndex + 5);
+            const embed = doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, ppThresholdCount);
 
             await i.editReply({
                 embeds: [embed],
@@ -414,8 +509,8 @@ run.alias = {
 
 run.description = {
     'header' : 'Obtén el top 200 de jugadas de PP',
-    'body' : `Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu!`,
-    'usage' : `s.top : Muestra tus mejores jugadas.\ns.top 'usuario' : Muestra las mejores jugadas de ese usuario.\ns.top -i 100 : Muestra la jugada #100 del top en detalle.\ns.top -p 2 : Empieza mostrando desde la página 2 de la lista.`
+    'body' : `Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.`,
+    'usage' : `s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? "last goodbye" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.`
 }
 
 module.exports = { run, "description": run.description }
