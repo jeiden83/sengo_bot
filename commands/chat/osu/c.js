@@ -96,7 +96,8 @@ async function doContent(parsed_args, user_found, beatmap_metadata) {
     const username = (await getOsuUser(parsed_args)).username;
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    const content = `**Puntuaciones de \`${username}\` en \`osu!${parsed_args.gamemode}\`: \n${mapa}**`;
+    const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
+    const content = `**Puntuaciones de \`${username}\` en \`osu!${displayMode}\`: \n${mapa}**`;
 
     return content;
 }
