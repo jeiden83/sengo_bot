@@ -96,13 +96,41 @@ async function doOsuEmbed(message, osu_userdata, osu_mode, is_detailed = false){
         `${getGradeEmoji("S")} \`${(grades.s || 0).toLocaleString('es-ES')}\`   ` +
         `${getGradeEmoji("A")} \`${(grades.a || 0).toLocaleString('es-ES')}\``;
 
+    // --- CÁLCULOS PARA EL ANÁLISIS RÁPIDO ---
+    const total_grades = (grades.ssh || 0) + (grades.ss || 0) + (grades.sh || 0) + (grades.s || 0) + (grades.a || 0);
+    const ss_percent = total_grades > 0 ? (((grades.ssh || 0) + (grades.ss || 0)) / total_grades * 100).toFixed(1) : "0.0";
+    const s_percent = total_grades > 0 ? (((grades.sh || 0) + (grades.s || 0)) / total_grades * 100).toFixed(1) : "0.0";
+    const a_percent = total_grades > 0 ? ((grades.a || 0) / total_grades * 100).toFixed(1) : "0.0";
+
+    const joinDate = new Date(osu_userdata.join_date);
+    const diffDays = Math.max(1, Math.ceil(Math.abs(Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
+    const avg_playcount_day = (osu_userdata.statistics.play_count / diffDays).toFixed(1);
+    
+    const playcountVal = osu_userdata.statistics.play_count || 0;
+    const pp_per_1k = playcountVal > 0 ? (osu_userdata.statistics.pp / (playcountVal / 1000)).toFixed(1) : "0.0";
+    const hits_per_play = playcountVal > 0 ? (osu_userdata.statistics.total_hits / playcountVal).toFixed(1) : "0.0";
+    const hits_per_min = osu_userdata.statistics.play_time > 0 ? Math.round(osu_userdata.statistics.total_hits / (osu_userdata.statistics.play_time / 60)) : 0;
+
+    const analysis_desc = 
+        `**Grados Obtenidos:**\n${grades_str}\n\n` +
+        `📊 **Perfil de Precisión (Ratios):**\n` +
+        ` ▸ **SS Ranks (FC Perfecto):** \`${ss_percent}%\` del total\n` +
+        ` ▸ **S Ranks (FC/Buen Acc):** \`${s_percent}%\` del total\n` +
+        ` ▸ **A Ranks (Pass/Bajo Acc):** \`${a_percent}%\` del total\n\n` +
+        `⚡ **Análisis Rápido de Rendimiento:**\n` +
+        ` ▸ **Antigüedad de la cuenta:** \`${diffDays.toLocaleString('es-ES')}\` días\n` +
+        ` ▸ **Ritmo de Juego:** \`${avg_playcount_day}\` playcount/día\n` +
+        ` ▸ **Eficiencia de PP:** \`${pp_per_1k}\` PP por cada 1,000 plays\n` +
+        ` ▸ **Consistencia de Hits:** \`${hits_per_play}\` hits promedio por jugada\n\n` +
+        `**Estadísticas de Puntuación:**`;
+
     const embed2 = new EmbedBuilder()
     .setAuthor({
         name: `Rendimiento Detallado de ${osu_userdata.username}`,
         url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
         iconURL: icon_url
     })
-    .setDescription(`**Grados Obtenidos:**\n${grades_str}\n\n**Estadísticas de Puntuación:**`)
+    .setDescription(analysis_desc)
     .addFields(
         {
             name: "Puntuación Clasificada",
@@ -130,8 +158,8 @@ async function doOsuEmbed(message, osu_userdata, osu_mode, is_detailed = false){
             inline: true
         },
         {
-            name: "Clasificación por País",
-            value: `:flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\``,
+            name: "Hits por Minuto",
+            value: `\`${hits_per_min.toLocaleString('es-ES')}\``,
             inline: true
         }
     )
