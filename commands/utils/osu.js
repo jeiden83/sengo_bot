@@ -785,7 +785,15 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
         // Se hace la peticion con los args
         parsed_args['beatmap_url'] = beatmap_url;   // agregamos para el >c
-        if (!parsed_args.gamemode && gamemode) parsed_args.gamemode = gamemode;
+        if (!parsed_args.gamemode) {
+            if (user_found && user_found.main_gamemode) {
+                parsed_args.gamemode = user_found.main_gamemode;
+            } else if (gamemode) {
+                parsed_args.gamemode = gamemode;
+            }
+        } else if (!parsed_args.gamemode && gamemode) {
+            parsed_args.gamemode = gamemode;
+        }
 
         const fn_response = await command_function(parsed_args);
 
