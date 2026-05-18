@@ -8,7 +8,11 @@ async function run(messages, args) {
     console.log(`[${currentDate}] (${authorName}) : ${messageContent}`);
 
     const say_as_bot = `${args.join(' ')}`;
-    message.delete();
+    try {
+        await message.delete();
+    } catch (e) {
+        // Ignorar si faltan permisos
+    }
 
     if(reply){
         reply.reply(say_as_bot);
