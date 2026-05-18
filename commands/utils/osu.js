@@ -701,6 +701,7 @@ function argsParserNoCommand(args) {
     let gamemode = args.gamemode || "";
     let server = args.server || "bancho";
     let index = 1;
+    let listMode = false;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -769,6 +770,12 @@ function argsParserNoCommand(args) {
         let arg = args_list[i].trim();
         if (!arg) continue;
 
+        // Si es exactamente "-l"
+        if (arg === "-l") {
+            listMode = true;
+            continue;
+        }
+
         // Si es exactamente "-i"
         if (arg === "-i") {
             if (i + 1 < args_list.length) {
@@ -808,7 +815,8 @@ function argsParserNoCommand(args) {
         'username': [username.map(x => x.replace(/"/g, "")).join(" ").trim()],
         'gamemode': gamemode,
         'server': server,
-        'index': index
+        'index': index,
+        'listMode': listMode
     };
     return parsed_args;
 }

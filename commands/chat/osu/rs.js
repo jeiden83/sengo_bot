@@ -98,6 +98,108 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
 	return embed;
 }
 
+async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIndex, total_plays) {
+    const emoji_mods = require("../../../src/emoji_mods.json");
+    const emoji_grades = require("../../../src/emoji_grades.json");
+
+    let embed_description = '';
+
+    for (let i = 0; i < recent_scores_chunk.length; i++) {
+        const score = recent_scores_chunk[i];
+        const globalIndex = startIndex + i + 1; // 1-indexed for display
+
+        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
+        grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+
+        let map_completion = "";
+        if (!score.passed) {
+            const count_circles = score.beatmap.count_circles || 0;
+            const count_sliders = score.beatmap.count_sliders || 0;
+            const count_spinners = score.beatmap.count_spinners || 0;
+            const total_objects = count_circles + count_sliders + count_spinners;
+            if (total_objects > 0) {
+                map_completion = `*(${((score.statistics.great + score.statistics.ok + score.statistics.meh + score.statistics.miss) / total_objects * 100).toFixed(1)}% pass)*`;
+            }
+        }
+        
+        let legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
+        let accuracy = (score.accuracy * 100).toFixed(2);
+        let max_combo = score.max_combo;
+        let statistics = score.statistics;
+
+        const perfect = statistics.perfect || 0;
+        const great = statistics.great || 0;
+        const good = statistics.good || 0;
+        const ok = statistics.ok || 0;
+        const meh = statistics.meh || 0;
+        const miss = statistics.miss || 0;
+
+        let stats_str = "";
+        let ratio_str = "";
+        const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
+        if (gamemode === 'mania') {
+            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            ratio_str = ` ▸ **${ratio}:1**`;
+        } else if (gamemode === 'taiko') {
+            stats_str = `\`[${great}/${ok}/${miss}]\``;
+        } else {
+            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
+        }
+
+        let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+
+        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
+            let settings_str = '';
+            if (mod.settings) {
+                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
+                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
+                } else if (mod.acronym === 'DA') {
+                    let da_changes = [];
+                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
+                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
+                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
+                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
+                    if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
+                }
+            }
+            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
+        }, '') : `<:NM:${emoji_mods["NM"]}>`;
+
+        const stars = score.beatmap.difficulty_rating ? `${score.beatmap.difficulty_rating.toFixed(2)}★` : "";
+        const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
+
+        const score_line = `**#${globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
+            ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str} ▸ ${time_set} ${map_completion != "" ? `▸ ${map_completion}` : ""}\n\n`;
+
+        embed_description = embed_description.concat(score_line);
+    }
+
+    const username = recent_scores_chunk[0].user.username;
+    const user_url = recent_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${recent_scores_chunk[0].user.id}`;
+    const avatar_url = recent_scores_chunk[0].user.avatar_url;
+
+    const roleColor = message.member.roles.highest.color || '#ffffff';
+    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Puntuaciones recientes de ${username} en osu!${parsed_args.gamemode || 'std'}`,
+            url: user_url,
+            iconURL: avatar_url
+        })
+        .setDescription(embed_description)
+        .setColor(embedColor)
+        .setFooter({
+            text: `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
 async function run(messages, args) {
     const { message, res } = messages;
 
@@ -114,6 +216,84 @@ async function run(messages, args) {
     }
 
     const total_plays = parser_res.fn_response.length;
+
+    // Interceptamos si se activa el modo de lista (-l)
+    if (parser_res.parsed_args.listMode) {
+        let startIndex = 0;
+        const initialListEmbed = await doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays);
+
+        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+        const getListButtonsRow = (start, total) => {
+            return new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId('rsl_first')
+                    .setLabel('<<')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(start <= 0),
+                new ButtonBuilder()
+                    .setCustomId('rsl_prev')
+                    .setLabel('<')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(start <= 0),
+                new ButtonBuilder()
+                    .setCustomId('rsl_next')
+                    .setLabel('>')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(start + 5 >= total),
+                new ButtonBuilder()
+                    .setCustomId('rsl_last')
+                    .setLabel('>>')
+                    .setStyle(ButtonStyle.Secondary)
+                    .setDisabled(start + 5 >= total)
+            );
+        };
+
+        const sent_message = await message.channel.send({
+            embeds: [initialListEmbed],
+            components: [getListButtonsRow(startIndex, total_plays)]
+        });
+
+        const filter = btnInt => btnInt.user.id === message.author.id;
+        const collector = sent_message.createMessageComponentCollector({
+            filter,
+            idle: 30000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === 'rsl_first') {
+                    startIndex = 0;
+                } else if (i.customId === 'rsl_prev') {
+                    startIndex = Math.max(0, startIndex - 5);
+                } else if (i.customId === 'rsl_next') {
+                    startIndex = startIndex + 5;
+                } else if (i.customId === 'rsl_last') {
+                    startIndex = Math.floor((total_plays - 1) / 5) * 5;
+                }
+
+                const chunk = parser_res.fn_response.slice(startIndex, startIndex + 5);
+                const embed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays);
+
+                await i.editReply({
+                    embeds: [embed],
+                    components: [getListButtonsRow(startIndex, total_plays)]
+                });
+            } catch (err) {
+                console.error("Error al navegar la lista de scores recientes:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sent_message.edit({ components: [] });
+            } catch (e) {}
+        });
+
+        return;
+    }
     let index = parser_res.parsed_args.index || 1;
     let content_msg = '';
 
