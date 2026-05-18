@@ -5,6 +5,57 @@ const os = require('os');
 const { exec, spawn } = require('child_process');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder } = require('discord.js');
+const fetch = require('node-fetch');
+
+/**
+ * Intenta obtener estadísticas del push usando la API pública de GitHub.
+ */
+async function fetchGithubStats(repoName, before, after) {
+    if (!before || !after || before === '0000000000000000000000000000000000000000') {
+        // Si no hay commit anterior (nueva rama), podemos intentar traer las estadísticas del último commit
+        if (after && after !== '0000000000000000000000000000000000000000') {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${repoName}/commits/${after}`, {
+                    headers: { 'User-Agent': 'SengoBot-Discord-Webhook' }
+                });
+                if (res.ok) {
+                    const data = await res.json();
+                    return {
+                        additions: data.stats?.additions || 0,
+                        deletions: data.stats?.deletions || 0,
+                        filesChanged: data.files?.length || 0
+                    };
+                }
+            } catch (err) {
+                console.error("Error al obtener stats del commit único de GitHub:", err);
+            }
+        }
+        return null;
+    }
+
+    try {
+        const res = await fetch(`https://api.github.com/repos/${repoName}/compare/${before}...${after}`, {
+            headers: { 'User-Agent': 'SengoBot-Discord-Webhook' }
+        });
+        if (res.ok) {
+            const data = await res.json();
+            let additions = 0;
+            let deletions = 0;
+            let filesChanged = 0;
+            if (data.files && Array.isArray(data.files)) {
+                filesChanged = data.files.length;
+                data.files.forEach(f => {
+                    additions += f.additions || 0;
+                    deletions += f.deletions || 0;
+                });
+            }
+            return { additions, deletions, filesChanged };
+        }
+    } catch (err) {
+        console.error("Error al comparar commits en la API de GitHub:", err);
+    }
+    return null;
+}
 
 let serverInstance = null;
 let ngrokProcess = null;
@@ -177,6 +228,33 @@ async function handlePushEvent(client, dbRes, payload) {
 
     if (commits.length > maxCommitsToShow) {
         embedDescription += `\n*...y ${commits.length - maxCommitsToShow} commit(s) más.*`;
+    }
+
+    // Obtener estadísticas de líneas y archivos modificados
+    const before = payload.before;
+    const after = payload.after;
+    const stats = await fetchGithubStats(repoName, before, after);
+
+    let addedCount = 0;
+    let modifiedCount = 0;
+    let removedCount = 0;
+    if (!stats) {
+        commits.forEach(c => {
+            if (c.added && Array.isArray(c.added)) addedCount += c.added.length;
+            if (c.modified && Array.isArray(c.modified)) modifiedCount += c.modified.length;
+            if (c.removed && Array.isArray(c.removed)) removedCount += c.removed.length;
+        });
+    }
+
+    embedDescription += `\n─\n`;
+    if (stats) {
+        embedDescription += `🟢 \`+${stats.additions}\`   🔴 \`-${stats.deletions}\`   •   📁 \`${stats.filesChanged}\` archivo(s) modificado(s)`;
+    } else {
+        const parts = [];
+        if (modifiedCount > 0) parts.push(`📂 \`${modifiedCount}\` modif.`);
+        if (addedCount > 0) parts.push(`🆕 \`${addedCount}\` añad.`);
+        if (removedCount > 0) parts.push(`❌ \`${removedCount}\` elim.`);
+        embedDescription += parts.length > 0 ? parts.join('   •   ') : `📁 Sin cambios detectados`;
     }
 
     const embed = new EmbedBuilder()
