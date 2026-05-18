@@ -598,17 +598,30 @@ async function findBeatmapInChannel(message, isReply){
 
     try {
         const extractId = str =>
-            str?.match(/#osu\/(\d+)/)?.[1] ||
+            str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
             str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
             null;
     
         const e = embedMessage.embeds?.[0];
     
+        let fields_url = null;
+        if (e?.fields) {
+            for (const field of e.fields) {
+                const id = extractId(field.value) || extractId(field.name);
+                if (id) {
+                    fields_url = id;
+                    break;
+                }
+            }
+        }
+    
         const beatmap_url =
             extractId(embedMessage.content) ||
             extractId(e?.url) ||
             extractId(e?.author?.url) ||
-            extractId(e?.description);
+            extractId(e?.title) ||
+            extractId(e?.description) ||
+            fields_url;
     
         return beatmap_url
             ? { beatmap_url, bad_response: 'shh' }
