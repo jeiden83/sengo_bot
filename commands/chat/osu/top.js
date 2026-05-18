@@ -68,7 +68,11 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
 
     let prefix_desc = '';
     if (parsed_args.ppThreshold !== null) {
-        prefix_desc += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más en su top.\n\n`;
+        let filterText = '';
+        if (parsed_args.modFilter) filterText += ` con mods exactos ${parsed_args.modFilter}`;
+        if (parsed_args.modContainFilter) filterText += ` con ${parsed_args.modContainFilter}`;
+        if (parsed_args.searchFilter) filterText += ` que coinciden con "${parsed_args.searchFilter}"`;
+        prefix_desc += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más${filterText} en su top.\n\n`;
     }
 
     let active_filters = [];
@@ -112,7 +116,11 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
     const username = top_scores_chunk[0].user.username;
 
     if (parsed_args.ppThreshold !== null) {
-        embed_description += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más en su top.\n\n`;
+        let filterText = '';
+        if (parsed_args.modFilter) filterText += ` con mods exactos ${parsed_args.modFilter}`;
+        if (parsed_args.modContainFilter) filterText += ` con ${parsed_args.modContainFilter}`;
+        if (parsed_args.searchFilter) filterText += ` que coinciden con "${parsed_args.searchFilter}"`;
+        embed_description += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más${filterText} en su top.\n\n`;
     }
 
     let active_filters = [];
@@ -289,10 +297,9 @@ async function run(messages, args) {
     let ppThresholdCount = 0;
     if (parser_res.parsed_args.ppThreshold !== null) {
         const threshold = parser_res.parsed_args.ppThreshold;
-        // Contamos sobre el top total de 200 jugadas
-        ppThresholdCount = parser_res.fn_response.filter(score => (score.pp || 0) >= threshold).length;
         // Filtramos para mostrar solo esas jugadas
         filtered_scores = filtered_scores.filter(score => (score.pp || 0) >= threshold);
+        ppThresholdCount = filtered_scores.length;
     }
 
     // Si no quedan jugadas tras aplicar los filtros
