@@ -87,7 +87,7 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Puntuación #${index} en el Top de PP de ${username}`,
+            name: `Puntuación #${score.originalRank || index} en el Top de PP de ${username}`,
             url: user_url,
             iconURL: `${avatar_url}`,
         })
@@ -203,7 +203,7 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
 
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
-        const score_line = `**#${globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
+        const score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
             ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str} ▸ ${time_set}\n\n`;
 
         embed_description = embed_description.concat(score_line);
@@ -247,6 +247,10 @@ async function run(messages, args) {
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
         return `Pero si no tienes puntuaciones registradas`;
     }
+    // Asignar el top PP original a cada score (1-indexed)
+    parser_res.fn_response.forEach((score, idx) => {
+        score.originalRank = idx + 1;
+    });
 
     // APLICAR FILTROS SOLICITADOS
     let filtered_scores = parser_res.fn_response;
