@@ -323,6 +323,7 @@ async function getUserRecentScores(parsed_args){
         user_id: parsed_args.username[0],
         mode: parsed_args.gamemode || "osu",
         include_fails: true,
+        limit: 100,
       });
 
     return result;
