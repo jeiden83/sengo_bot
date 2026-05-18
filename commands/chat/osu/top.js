@@ -79,6 +79,7 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
     if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
     if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
     if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
+    if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
 
     if (active_filters.length > 0) {
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -127,6 +128,7 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
     if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
     if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
     if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
+    if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -315,6 +317,11 @@ async function run(messages, args) {
         // Filtramos para mostrar solo esas jugadas
         filtered_scores = filtered_scores.filter(score => (score.pp || 0) >= threshold);
         ppThresholdCount = filtered_scores.length;
+    }
+
+    // 5. Ordenar por fecha/reciente (-r) si se solicita
+    if (parser_res.parsed_args.recentSort) {
+        filtered_scores.sort((a, b) => new Date(b.ended_at) - new Date(a.ended_at));
     }
 
     // Si no quedan jugadas tras aplicar los filtros

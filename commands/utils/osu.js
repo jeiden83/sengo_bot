@@ -802,6 +802,7 @@ function argsParserNoCommand(args) {
     let modContainFilter = null;
     let searchFilter = null;
     let ppThreshold = null;
+    let recentSort = false;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -915,6 +916,12 @@ function argsParserNoCommand(args) {
         // Si es exactamente "-l"
         if (arg === "-l") {
             listMode = true;
+            continue;
+        }
+
+        // Si es exactamente "-r"
+        if (arg === "-r") {
+            recentSort = true;
             continue;
         }
 
@@ -1058,7 +1065,8 @@ function argsParserNoCommand(args) {
         'modFilter': modFilter,
         'modContainFilter': modContainFilter,
         'searchFilter': searchFilter,
-        'ppThreshold': ppThreshold
+        'ppThreshold': ppThreshold,
+        'recentSort': recentSort
     };
     return parsed_args;
 }
