@@ -15,7 +15,7 @@ function checkOsuData(osu_userdata){
     }
 }
 
-async function doOsuEmbed(message, osu_userdata, osu_mode){
+async function doOsuEmbed(message, osu_userdata, osu_mode, is_detailed = false){
     
     // Check por si no ha tocado el modo de juego
     const { global_ranking, discord_last_peak, peak_ranking, country_rank } = checkOsuData(osu_userdata);
@@ -76,7 +76,73 @@ async function doOsuEmbed(message, osu_userdata, osu_mode){
     })
     .setTimestamp();
 
-    return { embeds: [embed] };
+    if (!is_detailed) {
+        return { embeds: [embed] };
+    }
+
+    // Embed detallado (Doble página)
+    const emoji_grades = require("../../../src/emoji_grades.json");
+    const getGradeEmoji = (gradeKey) => {
+        const data = emoji_grades[gradeKey];
+        if (!data) return gradeKey;
+        return `<:${data[0]}:${data[1]}>`;
+    };
+
+    const grades = osu_userdata.statistics.grade_counts;
+    const grades_str = 
+        `${getGradeEmoji("XH")} \`${(grades.ssh || 0).toLocaleString('es-ES')}\`   ` +
+        `${getGradeEmoji("X")} \`${(grades.ss || 0).toLocaleString('es-ES')}\`   ` +
+        `${getGradeEmoji("SH")} \`${(grades.sh || 0).toLocaleString('es-ES')}\`   ` +
+        `${getGradeEmoji("S")} \`${(grades.s || 0).toLocaleString('es-ES')}\`   ` +
+        `${getGradeEmoji("A")} \`${(grades.a || 0).toLocaleString('es-ES')}\``;
+
+    const embed2 = new EmbedBuilder()
+    .setAuthor({
+        name: `Rendimiento Detallado de ${osu_userdata.username}`,
+        url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
+        iconURL: icon_url
+    })
+    .setDescription(`**Grados Obtenidos:**\n${grades_str}\n\n**Estadísticas de Puntuación:**`)
+    .addFields(
+        {
+            name: "Puntuación Clasificada",
+            value: `\`${(osu_userdata.statistics.ranked_score || 0).toLocaleString('es-ES')}\``,
+            inline: true
+        },
+        {
+            name: "Puntuación Total",
+            value: `\`${(osu_userdata.statistics.total_score || 0).toLocaleString('es-ES')}\``,
+            inline: true
+        },
+        {
+            name: "Combo Máximo",
+            value: `\`x${(osu_userdata.statistics.maximum_combo || 0).toLocaleString('es-ES')}\``,
+            inline: true
+        },
+        {
+            name: "Hits Totales",
+            value: `\`${(osu_userdata.statistics.total_hits || 0).toLocaleString('es-ES')}\``,
+            inline: true
+        },
+        {
+            name: "Replays Vistas por Otros",
+            value: `\`${(osu_userdata.statistics.replays_watched_by_others || 0).toLocaleString('es-ES')}\``,
+            inline: true
+        },
+        {
+            name: "Clasificación por País",
+            value: `:flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\``,
+            inline: true
+        }
+    )
+    .setColor(embedColor)
+    .setFooter({
+        text: "SengoBot • Página 2 de 2 • Estadísticas Detalladas",
+        iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+    })
+    .setTimestamp();
+
+    return { embeds: [embed, embed2] };
 }
 
 async function run(messages, args){
@@ -90,7 +156,8 @@ async function run(messages, args){
         return osu_userdata.fn_response;
     }
 
-    return doOsuEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode));
+    const is_detailed = osu_userdata.parsed_args.detailed || false;
+    return doOsuEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed);
 }
 
 run.alias = {
@@ -112,13 +179,16 @@ run.alias = {
     "o" : {
         "args" : ""
     },
+    "scores" : {
+        "args" : "-d"
+    },
 }
 
 run.description = 
 {
     'header' : 'Para obtener el perfil de osu!',
-    'body' : 'Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o segun el argumento, con su banner bien hermoso.',
-    'usage' : `s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' 'modo_juego' : Muestra con respecto al modo de juego dado.`
+    'body' : 'Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o segun el argumento, con su banner bien hermoso y opción de ver detalles adicionales.',
+    'usage' : `s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.scores : Muestra tus estadísticas y grados detallados directos.`
 }
 
 module.exports = { run }

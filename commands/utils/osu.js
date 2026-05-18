@@ -808,6 +808,7 @@ function argsParserNoCommand(args) {
     let recentSort = false;
     let comboSort = false;
     let accSort = false;
+    let detailed = false;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -955,6 +956,12 @@ function argsParserNoCommand(args) {
             continue;
         }
 
+        // Si es exactamente "-d"
+        if (arg === "-d") {
+            detailed = true;
+            continue;
+        }
+
         // Si es exactamente "-i"
         if (arg === "-i") {
             if (i + 1 < args_list.length) {
@@ -1098,7 +1105,8 @@ function argsParserNoCommand(args) {
         'ppThreshold': ppThreshold,
         'recentSort': recentSort,
         'comboSort': comboSort,
-        'accSort': accSort
+        'accSort': accSort,
+        'detailed': detailed
     };
     return parsed_args;
 }
