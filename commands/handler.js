@@ -36,8 +36,7 @@ async function chatCommand(intialized_data, command_data) {
 
 	return not_found_responses[Math.floor(Math.random() * not_found_responses.length)];
 }
-// Hacer comando slash
-async function slashCommand(chat_commands, slash_commands, interaction) {
+async function slashCommand(chat_commands, slash_commands, interaction, res) {
 	const slash_commands_set = slash_commands.get('slash_commands_set');
 	const slash_commands_map = slash_commands.get('slash_commands_map');
 	const chat_commands_map = chat_commands.get('chat_commands_map');
@@ -45,10 +44,20 @@ async function slashCommand(chat_commands, slash_commands, interaction) {
 	const { commandName } = interaction;
 
 	if (slash_commands_set.has(commandName))
-		return await slash_commands_map.get(commandName).run(interaction);
+		return await slash_commands_map.get(commandName).run(interaction, res);
 	
-	if (chat_commands_map.has(commandName))
-		return await chat_commands_map.get(commandName).run(interaction);
+	if (chat_commands_map.has(commandName)) {
+		const messages = {
+			message: {
+				author: interaction.user,
+				member: interaction.member,
+				guild: interaction.guild,
+			},
+			res: res,
+			reply: null
+		};
+		return await chat_commands_map.get(commandName).run(messages, [], chat_commands);
+	}
 }
 // Cargar slash commands
 async function loadSlashCommands(chat_commands, config) {
@@ -69,18 +78,23 @@ async function loadSlashCommands(chat_commands, config) {
 			const command_module = await require(`./slash/${file}`);
 
 			try {
-
-				slash_commands_map[commandName] = command_module;
+				slash_commands_map.set(commandName, command_module);
 			} catch (error) {
-
 				console.error(`El comando slash ${commandName} no tiene una función 'run'.`);
 			}
 		}
 	}
 
 	// Listar los slashs
-	const commands = Array.from(chat_commands_set).map(command_name => 
-		new SlashCommandBuilder()
+	const commands = Array.from(chat_commands_set).map(command_name => {
+		if (slash_commands_map.has(command_name)) {
+			const custom_command = slash_commands_map.get(command_name);
+			if (custom_command.data) {
+				return custom_command.data.setName(command_name).toJSON();
+			}
+		}
+
+		return new SlashCommandBuilder()
 			.setName(command_name)
 			.setDescription(
 				slash_commands_map.has(command_name) && typeof slash_commands_map.get(command_name).description === "string"
@@ -89,8 +103,8 @@ async function loadSlashCommands(chat_commands, config) {
 						? chat_commands_map.get(command_name).description
 						: "No description available"
 			)			
-			.toJSON()
-	);
+			.toJSON();
+	});
 
 	// Registrar los comandos con la API de Discord
 	const rest = new REST({ version: '10' }).setToken(config.TOKEN);

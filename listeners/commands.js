@@ -67,7 +67,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
 //---
 
-async function slash_command_listener(chat_commands, slash_commands, client) {
+async function slash_command_listener(chat_commands, slash_commands, client, res) {
     client.on('interactionCreate', async (interaction) => {
         if (!interaction.isCommand()) return;
 
@@ -75,15 +75,15 @@ async function slash_command_listener(chat_commands, slash_commands, client) {
             // Para avisar que se mandara un slash
             await interaction.deferReply();
 
-            const slash_result = await slashCommand(chat_commands, slash_commands, interaction);
+            const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
             if (!slash_result) {
                 await interaction.editReply("El comando no devolvió ningún resultado.");
                 return;
             }
 
-            // Comprobar la longitud del resultado del slash y enviar un error si es muy largo
-            if (slash_result.length > MAX_MESSAGE_LENGTH) {
+            // Comprobar la longitud del resultado del slash si es un string y enviar un error si es muy largo
+            if (typeof slash_result === 'string' && slash_result.length > MAX_MESSAGE_LENGTH) {
                 await interaction.editReply(`❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`);
                 return;
             }
@@ -108,7 +108,7 @@ async function load_listeners(res, client, config){
     const chat_commands = await loadCommands();
     const slash_commands = await loadSlashCommands(chat_commands, config);
 
-    slash_command_listener(chat_commands, slash_commands, client); 
+    slash_command_listener(chat_commands, slash_commands, client, res); 
     chat_command_listener(chat_commands, client, config, res);
 }
 
