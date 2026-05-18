@@ -1,5 +1,5 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../../utils/osu.js");
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const rosu = require("rosu-pp-js");
 
 function formatLength(seconds) {
@@ -187,12 +187,29 @@ async function run(messages, args) {
         })
         .setTimestamp();
 
+    // Construir la fila de botones de descarga
+    const row = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setLabel('osu!direct')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
+            new ButtonBuilder()
+                .setLabel('Con Video')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://api.nerinyan.me/d/${beatmap.beatmapset_id}`),
+            new ButtonBuilder()
+                .setLabel('Sin Video')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://api.nerinyan.me/d/${beatmap.beatmapset_id}?novideo=1`)
+        );
+
     if (reply) {
-        reply.reply({ embeds: [embed] });
+        reply.reply({ embeds: [embed], components: [row] });
         return;
     }
 
-    return { embeds: [embed] };
+    return { embeds: [embed], components: [row] };
 }
 
 run.alias = {
