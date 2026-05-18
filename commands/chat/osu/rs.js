@@ -102,15 +102,18 @@ async function run(messages, args) {
     const { message, res } = messages;
 
     // Parseamos args
-    const recent_scores = (await argsParser(args, {
+    const parser_res = await argsParser(args, {
         "message": message,
         "res": res,
         "command_function": getUserRecentScores
-    })).fn_response[0];
+    });
+
+    const index = parser_res.parsed_args.index || 1;
+    const recent_scores = Array.isArray(parser_res.fn_response) ? parser_res.fn_response[index - 1] : parser_res.fn_response;
 
     // Si no hay play reciente
-    if (typeof recent_scores === 'string') return recent_scores;
-    if (!recent_scores) return `Pero si no has jugado nada`;
+    if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
+    if (!recent_scores) return index === 1 ? `Pero si no has jugado nada` : `No se encontró la jugada reciente #${index}`;
 
 	// Precalculamos algunos parametros
 	const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;

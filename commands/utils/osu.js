@@ -261,7 +261,7 @@ async function getUserRecentScores(parsed_args){
             const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
             const m = modeMap[parsed_args.gamemode || 'osu'];
             
-            const reqUrl = `https://api.gatari.pw/user/scores/recent?id=${parsed_args.username[0]}&mode=${m}&l=1`;
+            const reqUrl = `https://api.gatari.pw/user/scores/recent?id=${parsed_args.username[0]}&mode=${m}&l=100`;
             const response = await fetch(reqUrl);
             const data = await response.json();
             
@@ -271,46 +271,46 @@ async function getUserRecentScores(parsed_args){
             const userData = await userResponse.json();
             const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
 
-            const s = data.scores[0];
-            const passed = s.ranking !== "F";
-            
-            return [{
-                accuracy: s.accuracy / 100,
-                passed: passed,
-                rank: s.ranking,
-                mods: convertGatariMods(s.mods),
-                max_combo: s.max_combo,
-                statistics: {
-                    perfect: s.count_gekis,
-                    great: s.count_300,
-                    good: s.count_katu,
-                    ok: s.count_100,
-                    meh: s.count_50,
-                    miss: s.count_miss
-                },
-                pp: s.pp,
-                total_score: s.score,
-                legacy_total_score: s.score,
-                ended_at: new Date(s.time * 1000).toISOString(),
-                beatmap: {
-                    id: s.beatmap.beatmap_id,
-                    version: s.beatmap.version,
-                    difficulty_rating: s.beatmap.difficulty,
-                    mode: parsed_args.gamemode || 'osu',
-                    beatmapset_id: s.beatmap.beatmapset_id
-                },
-                beatmapset: {
-                    title: s.beatmap.title,
-                    covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
-                },
-                user: {
-                    username: u.username,
-                    id: u.id,
-                    country_code: u.country,
-                    avatar_url: `https://a.gatari.pw/${u.id}`,
-                    server: 'gatari'
-                }
-            }];
+            return data.scores.map(s => {
+                const passed = s.ranking !== "F";
+                return {
+                    accuracy: s.accuracy / 100,
+                    passed: passed,
+                    rank: s.ranking,
+                    mods: convertGatariMods(s.mods),
+                    max_combo: s.max_combo,
+                    statistics: {
+                        perfect: s.count_gekis,
+                        great: s.count_300,
+                        good: s.count_katu,
+                        ok: s.count_100,
+                        meh: s.count_50,
+                        miss: s.count_miss
+                    },
+                    pp: s.pp,
+                    total_score: s.score,
+                    legacy_total_score: s.score,
+                    ended_at: new Date(s.time * 1000).toISOString(),
+                    beatmap: {
+                        id: s.beatmap.beatmap_id,
+                        version: s.beatmap.version,
+                        difficulty_rating: s.beatmap.difficulty,
+                        mode: parsed_args.gamemode || 'osu',
+                        beatmapset_id: s.beatmap.beatmapset_id
+                    },
+                    beatmapset: {
+                        title: s.beatmap.title,
+                        covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
+                    },
+                    user: {
+                        username: u.username,
+                        id: u.id,
+                        country_code: u.country,
+                        avatar_url: `https://a.gatari.pw/${u.id}`,
+                        server: 'gatari'
+                    }
+                };
+            });
         } catch (e) {
             return [];
         }
@@ -699,6 +699,7 @@ function argsParserNoCommand(args) {
     let username = [];
     let gamemode = args.gamemode || "";
     let server = args.server || "bancho";
+    let index = 1;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -756,11 +757,41 @@ function argsParserNoCommand(args) {
     ];
 
     // Separamos por las comas y revisamos cada args_commands por cada args del mensaje
-    args_aux.split(",").forEach(arg => {
+    let args_list = args_aux.split(",");
+    let skip_next = false;
+
+    for (let i = 0; i < args_list.length; i++) {
+        if (skip_next) {
+            skip_next = false;
+            continue;
+        }
+        let arg = args_list[i].trim();
+        if (!arg) continue;
+
+        // Si es exactamente "-i"
+        if (arg === "-i") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseInt(next_arg);
+                if (!isNaN(num)) {
+                    index = num;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        // Si empieza con "-i" seguido de un numero (ej: "-i2")
+        if (arg.startsWith("-i")) {
+            let num = parseInt(arg.slice(2));
+            if (!isNaN(num)) {
+                index = num;
+                continue;
+            }
+        }
+
         let handled = false;
 
         args_commands.forEach(fn => {
-
             if (fn(arg)) {
                 handled = true;
             }
@@ -769,13 +800,14 @@ function argsParserNoCommand(args) {
         if (!handled) {
             username.push(arg);
         }
-    });
+    }
 
 
     let parsed_args = {
         'username': [username.map(x => x.replace(/"/g, "")).join(" ").trim()],
         'gamemode': gamemode,
-        'server': server
+        'server': server,
+        'index': index
     };
     return parsed_args;
 }
