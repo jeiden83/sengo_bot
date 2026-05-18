@@ -28,7 +28,7 @@ async function run(interaction, res) {
     const lista = interaction.options.getBoolean("lista");
 
     if (index) {
-        args.push(index.toString());
+        args.push(`-i${index}`);
     }
     if (lista) {
         args.push("-l");
