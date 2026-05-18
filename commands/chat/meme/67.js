@@ -7,7 +7,7 @@ async function run(messages, args){
     return {
         embeds: [
             new EmbedBuilder()
-                .setImage("https://media.tenor.com/F4_c8m9L-pUAAAAC/67-angry-bird.gif")
+                .setImage("https://media1.tenor.com/m/U94DkrDstecAAAAC/67-angry-bird.gif")
                 .setColor("#FF0000")
         ]
     };
