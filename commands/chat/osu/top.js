@@ -167,6 +167,7 @@ function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, tota
             url: user_url,
             iconURL: avatar_url
         })
+        .setThumbnail(avatar_url)
         .setDescription(embed_description)
         .setColor(embedColor)
         .setFooter({
