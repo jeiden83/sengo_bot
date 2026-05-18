@@ -8,7 +8,11 @@ async function run(messages, args){
 
     const embed = new EmbedBuilder()
         .setImage("attachment://67.gif")
-        .setColor("#FF0000");
+        .setColor("#FF0000")
+        .setFooter({
+            text: "Muere blue",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
 
     return {
         embeds: [embed],

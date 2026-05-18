@@ -80,6 +80,8 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
     if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
     if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
     if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
+    if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
+    if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
 
     if (active_filters.length > 0) {
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -129,6 +131,8 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
     if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
     if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
     if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
+    if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
+    if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -326,6 +330,16 @@ async function run(messages, args) {
     // 5. Ordenar por fecha/reciente (-r) si se solicita
     if (parser_res.parsed_args.recentSort) {
         filtered_scores.sort((a, b) => new Date(b.ended_at) - new Date(a.ended_at));
+    }
+
+    // 6. Ordenar por combo (-c) si se solicita
+    if (parser_res.parsed_args.comboSort) {
+        filtered_scores.sort((a, b) => (b.max_combo || 0) - (a.max_combo || 0));
+    }
+
+    // 7. Ordenar por precisión (-acc) si se solicita
+    if (parser_res.parsed_args.accSort) {
+        filtered_scores.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
     }
 
     // Si no quedan jugadas tras aplicar los filtros
@@ -560,7 +574,7 @@ run.alias = {
 run.description = {
     'header' : 'Obtén el top 200 de jugadas de PP',
     'body' : `Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.`,
-    'usage' : `s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? "last goodbye" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.`
+    'usage' : `s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? "last goodbye" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta.`
 }
 
 module.exports = { run, "description": run.description }

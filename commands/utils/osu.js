@@ -806,6 +806,8 @@ function argsParserNoCommand(args) {
     let searchFilter = null;
     let ppThreshold = null;
     let recentSort = false;
+    let comboSort = false;
+    let accSort = false;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -938,6 +940,18 @@ function argsParserNoCommand(args) {
         // Si es exactamente "-r"
         if (arg === "-r") {
             recentSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-c"
+        if (arg === "-c") {
+            comboSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-acc"
+        if (arg === "-acc") {
+            accSort = true;
             continue;
         }
 
@@ -1082,7 +1096,9 @@ function argsParserNoCommand(args) {
         'modContainFilter': modContainFilter,
         'searchFilter': searchFilter,
         'ppThreshold': ppThreshold,
-        'recentSort': recentSort
+        'recentSort': recentSort,
+        'comboSort': comboSort,
+        'accSort': accSort
     };
     return parsed_args;
 }
