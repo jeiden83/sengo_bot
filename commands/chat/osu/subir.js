@@ -686,7 +686,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         "beatmap_max_combo": beatmap_metadata.max_combo,
     };
 
-    saveUserscore(recent_scores, pre_calculated, true);
+    await saveUserscore(recent_scores, pre_calculated, true);
     console.log(`[S.SUBIR] ¡Score guardada exitosamente para ${parsedData.player_name}!`);
 
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';

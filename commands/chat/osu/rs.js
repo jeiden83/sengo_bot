@@ -398,7 +398,7 @@ async function run(messages, args) {
             "beatmap_max_combo": beatmap.max_combo,
         };
 
-        saveUserscore(recent_scores, pre_calculated);
+        await saveUserscore(recent_scores, pre_calculated);
         const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
         map.free();
         return embed;

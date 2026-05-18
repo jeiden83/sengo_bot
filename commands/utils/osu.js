@@ -54,44 +54,32 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs){
 
 }
 // Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario
-function getUnrankedBeatmapUserAllScores(parsed_args) {
+async function getUnrankedBeatmapUserAllScores(parsed_args) {
     const beatmapId = parsed_args.beatmap_url;
     const userId = parsed_args.username[0].toString();
 
     try {
-        // Ruta base de las puntuaciones locales
-        const baseScoresPath = path.join(__dirname, '../../db/local/scores');
+        const { getSupabaseClient } = require("../../db/database.js");
+        const supabase = getSupabaseClient();
 
-        // Ruta de la carpeta del beatmap
-        const beatmapFolder = path.join(baseScoresPath, beatmapId);
-
-        // Verificar si existe la carpeta del beatmap
-        if (!fs.existsSync(beatmapFolder)) {
+        if (!supabase) {
+            console.warn("⚠️ Supabase no está conectado.");
             return [];
         }
 
-        // Ruta de la carpeta del usuario dentro del beatmap
-        const userScoresFolder = path.join(beatmapFolder, userId);
+        const { data, error } = await supabase
+            .from('local_scores')
+            .select('*')
+            .eq('beatmap_id', beatmapId.toString())
+            .eq('user_id', userId.toString())
+            .order('pp', { ascending: false });
 
-        // Verificar si existe la carpeta del usuario
-        if (!fs.existsSync(userScoresFolder)) {
-            return [];
+        if (error) {
+            console.error('❌ Error obteniendo las puntuaciones de Supabase:', error.message);
+            return 'Error obteniendo las puntuaciones';
         }
 
-        // Crear un array para almacenar las puntuaciones
-        const scores = [];
-
-        // Leer todos los archivos .json dentro de la carpeta del usuario
-        const files = fs.readdirSync(userScoresFolder).filter(file => file.endsWith('.json'));
-
-        // Cargar el contenido de cada archivo y almacenarlo en el array
-        for (const file of files) {
-            const filePath = path.join(userScoresFolder, file);
-            const fileData = fs.readFileSync(filePath, 'utf8');
-            scores.push(JSON.parse(fileData));
-        }
-
-        return scores;
+        return data || [];
 
     } catch (error) {
         console.error('Error obteniendo las puntuaciones:', error);
@@ -143,9 +131,9 @@ async function NewloadToken(){
       });
 }
 
-// Usado para guardar la score del usuario de forma local
+// Usado para guardar la score del usuario en Supabase
 // Clave para tener una db propia de scores de usuarios
-function saveUserscore(recent_scores, pre_calculated, force_save = false) {
+async function saveUserscore(recent_scores, pre_calculated, force_save = false) {
     const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
     const score = {
@@ -154,8 +142,8 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
         "legacy_total_score": recent_scores.legacy_total_score,
         "max_combo": recent_scores.max_combo,
         "statistics": recent_scores.statistics,
-        "mods": recent_scores.mods,
-        "passed": recent_scores.passed,
+        "mods": recent_scores.mods || [],
+        "passed": recent_scores.passed !== undefined ? recent_scores.passed : true,
         "pp": pre_calculated.pp,
         "rank": recent_scores.rank,
         "started_at": recent_scores.started_at,
@@ -164,6 +152,9 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
         "map_completion": pre_calculated.map_completion,
         "beatmap_max_combo": pre_calculated.beatmap_max_combo,
         "beatmap_status": recent_scores.beatmap.status,
+        "beatmap_id": recent_scores.beatmap.id.toString(),
+        "user_id": recent_scores.user_id.toString(),
+        "multi_failed": false
     };
 
     // Play fallida en multi
@@ -171,57 +162,86 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
 
     // Si es una play en un mapa unranked o es una play fallida, o si está forzado a guardar
     if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed || force_save) {
-        const scoresPath = path.join(__dirname, '../../db/local/scores');
-        const folderPath = path.join(scoresPath, `${recent_scores.beatmap.id}`, `${recent_scores.user_id}`);
+        const { getSupabaseClient } = require("../../db/database.js");
+        const supabase = getSupabaseClient();
 
-        // Crear las carpetas necesarias si no existen
-        fs.mkdirSync(folderPath, { recursive: true });
+        if (!supabase) {
+            console.warn("⚠️ Supabase no está conectado.");
+            return;
+        }
 
-        const files = fs.readdirSync(folderPath).filter(file => file.endsWith('.json'));
+        try {
+            // Si es una play fallida
+            if (!score.passed) {
+                // Buscar si ya existe una score fallida del mismo tipo (solo o multi)
+                const { data: existingFails, error: selectError } = await supabase
+                    .from('local_scores')
+                    .select('*')
+                    .eq('beatmap_id', score.beatmap_id)
+                    .eq('user_id', score.user_id)
+                    .eq('passed', false)
+                    .eq('multi_failed', score.multi_failed);
 
-        // Si es una play fallida
-        if (!score.passed) {
+                if (selectError) throw selectError;
 
-            const filePath = path.join(folderPath, `${score.multi_failed ? '0_5' : '0'}.json`); // 0_5 para las fallidas en multi y 0 en solo
-            
-            if (fs.existsSync(filePath)) {
-                const existingScore = JSON.parse(fs.readFileSync(filePath));
-                // Reemplazar si es la misma play (mismo timestamp o misma puntuación) o si es mejor
-                if (existingScore.ended_at === score.ended_at || existingScore.legacy_total_score === score.legacy_total_score || (score.multi_failed ? (score.pp > existingScore.pp) : (pre_calculated.map_completion > existingScore.map_completion))) {
-                    fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+                const existingScore = existingFails && existingFails[0];
+
+                if (existingScore) {
+                    // Reemplazar si es la misma play (mismo timestamp o misma puntuación) o si es mejor
+                    const samePlay = existingScore.ended_at === score.ended_at || 
+                                     Number(existingScore.legacy_total_score) === Number(score.legacy_total_score);
+                    
+                    const isBetter = score.multi_failed ? 
+                        (score.pp > existingScore.pp) : 
+                        (score.map_completion > existingScore.map_completion);
+
+                    if (samePlay || isBetter) {
+                        const { error: updateError } = await supabase
+                            .from('local_scores')
+                            .update(score)
+                            .eq('id', existingScore.id);
+                        
+                        if (updateError) throw updateError;
+                    }
+                } else {
+                    const { error: insertError } = await supabase
+                        .from('local_scores')
+                        .insert(score);
+                    
+                    if (insertError) throw insertError;
                 }
             } else {
-                fs.writeFileSync(filePath, JSON.stringify(score, null, 2));
+                // Obtener todas las puntuaciones pasadas existentes
+                const { data: existingPassed, error: selectError } = await supabase
+                    .from('local_scores')
+                    .select('*')
+                    .eq('beatmap_id', score.beatmap_id)
+                    .eq('user_id', score.user_id)
+                    .eq('passed', true);
+
+                if (selectError) throw selectError;
+
+                // Buscar si ya existe la misma play (por fecha o por PP idéntico)
+                const samePlay = existingPassed.find(s => s.ended_at === score.ended_at || s.pp === score.pp);
+
+                if (samePlay) {
+                    // Reemplazar la existente para aplicar correcciones de mods o zona horaria
+                    const { error: updateError } = await supabase
+                        .from('local_scores')
+                        .update(score)
+                        .eq('id', samePlay.id);
+                    
+                    if (updateError) throw updateError;
+                } else {
+                    const { error: insertError } = await supabase
+                        .from('local_scores')
+                        .insert(score);
+                    
+                    if (insertError) throw insertError;
+                }
             }
-        } else {
-            // Obtener todas las puntuaciones existentes
-            const existingScores = files
-                .filter(file => /^[1-9]\d*\.json$/.test(file))
-                .map(file => JSON.parse(fs.readFileSync(path.join(folderPath, file))));
-
-            // Buscar si ya existe la misma play (por fecha o por PP idéntico)
-            const samePlayIndex = existingScores.findIndex(s => s.ended_at === score.ended_at || s.pp === score.pp);
-
-            if (samePlayIndex !== -1) {
-                // Reemplazar la existente para aplicar correcciones de mods o zona horaria
-                existingScores[samePlayIndex] = score;
-            } else {
-                existingScores.push(score);
-            }
-
-            // Ordenar por PP descendente
-            existingScores.sort((a, b) => b.pp - a.pp);
-
-            // Eliminar archivos numerados viejos para evitar desorden
-            files.filter(file => /^[1-9]\d*\.json$/.test(file)).forEach(file => {
-                fs.unlinkSync(path.join(folderPath, file));
-            });
-
-            // Guardar todas de nuevo con su nuevo indice
-            existingScores.forEach((s, i) => {
-                const filePath = path.join(folderPath, `${i + 1}.json`);
-                fs.writeFileSync(filePath, JSON.stringify(s, null, 2));
-            });
+        } catch (err) {
+            console.error('❌ Error al guardar score en Supabase:', err.message);
         }
     }
 }
@@ -522,13 +542,13 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
         // Verificar si el archivo ya existe en la carpeta /osu/
         if (fs.existsSync(filePath)) {
     		
-            const beatmap_index = localBeatmapStatus(beatmap_osu_id);
+            const beatmap_index = await localBeatmapStatus(beatmap_osu_id);
     
             // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
             if(!unranked_statuses.has(beatmap_metadata.status)){
     
                 // Si no se encuentra en el index, pues que lo actualice
-                if(!beatmap_index) localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+                if(!beatmap_index) await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
                 return filePath;
             }
     
@@ -562,7 +582,7 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
             fs.writeFileSync(filePath, data);
     
             // Se actualiza el index de los beatmaps
-            localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+            await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
     
             return filePath;
         } catch (error) {

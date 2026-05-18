@@ -13,34 +13,55 @@ function colorear(texto, color = "blanco", negritas = 1){
 	return `\x1b[${negritas?negritas:0};${lista_colores[color]};49m` + texto + `\x1b[0m`;
 }
 
-// Para revisar el estatus del beatmap.osu en mi index localmente
+// Para revisar el estatus del beatmap.osu en Supabase
 // Principalmente para revisar si un unranked cambio de estatus, entonces para remplazar el .osu
-function localBeatmapStatus(beatmap_osu_id, beatmap_metadata){
-	const fs = require('fs');
-	const path = require('path');
+async function localBeatmapStatus(beatmap_osu_id, beatmap_metadata){
+	const { getSupabaseClient } = require("../../db/database.js");
+	const supabase = getSupabaseClient();
 
-	const index_relative_path = "../../db/local/beatmap.osu/index.json";
-
-	const beatmap_index = require(index_relative_path);
-
-	// Si le pasamos datos al beatmap_index
-	// Forma de remplazar los datos
-	if(beatmap_metadata){
-
-		// Solo se necesitan dos
-		// El estatus para tener un cacheo local del estatus del mapa
-		// La ultima modificacion para el momento de revisar si el mapa cambio
-		beatmap_index[beatmap_osu_id] = {
-			"status" : beatmap_metadata.status,
-			"last_updated" : beatmap_metadata.last_updated,
-			"name" : `${beatmap_metadata.beatmapset.artist} - ${beatmap_metadata.beatmapset.title} [${beatmap_metadata.version}]`
-		}
-
-		// Se guarda el id y sus datos
-		fs.writeFileSync(path.join(__dirname, index_relative_path), JSON.stringify(beatmap_index, null, 2));
+	if (!supabase) {
+		console.warn("⚠️ Supabase no está conectado.");
+		return null;
 	}
 
-	return beatmap_index[beatmap_osu_id];
+	// Si le pasamos datos al beatmap_metadata
+	// Forma de remplazar los datos en Supabase
+	if(beatmap_metadata){
+		const name = `${beatmap_metadata.beatmapset.artist} - ${beatmap_metadata.beatmapset.title} [${beatmap_metadata.version}]`;
+
+		const { error } = await supabase
+			.from('local_beatmaps')
+			.upsert({
+				beatmap_id: beatmap_osu_id.toString(),
+				status: beatmap_metadata.status,
+				last_updated: beatmap_metadata.last_updated,
+				name: name
+			}, { onConflict: 'beatmap_id' });
+
+		if (error) {
+			console.error(`❌ Error actualizando beatmap ${beatmap_osu_id} en Supabase:`, error.message);
+		}
+
+		return {
+			status: beatmap_metadata.status,
+			last_updated: beatmap_metadata.last_updated,
+			name: name
+		};
+	}
+
+	// Obtener los datos desde Supabase
+	const { data, error } = await supabase
+		.from('local_beatmaps')
+		.select('*')
+		.eq('beatmap_id', beatmap_osu_id.toString())
+		.maybeSingle();
+
+	if (error) {
+		console.error(`❌ Error obteniendo beatmap ${beatmap_osu_id} de Supabase:`, error.message);
+		return null;
+	}
+
+	return data;
 }
 
 

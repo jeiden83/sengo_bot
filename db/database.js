@@ -175,4 +175,8 @@ async function deleteWebhookChannel(Webhook, channel_id) {
     }
 }
 
-module.exports = { connectDB, addUser, deleteUser, addWebhookChannel, deleteWebhookChannel };
+function getSupabaseClient() {
+    return supabase;
+}
+
+module.exports = { connectDB, addUser, deleteUser, addWebhookChannel, deleteWebhookChannel, getSupabaseClient };
