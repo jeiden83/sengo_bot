@@ -113,9 +113,9 @@ async function run(messages, args) {
         return `Pero si no has jugado nada`;
     }
 
+    const total_plays = parser_res.fn_response.length;
     let index = parser_res.parsed_args.index || 1;
     let content_msg = '';
-    const total_plays = parser_res.fn_response.length;
 
     if (index > total_plays) {
         content_msg = `⚠️ Solo se encontraron **${total_plays}** jugadas recientes. Mostrando la última (#${total_plays}):`;
@@ -123,33 +123,111 @@ async function run(messages, args) {
     } else if (index < 1) {
         content_msg = `⚠️ Índice inválido. Mostrando la más reciente (#1):`;
         index = 1;
+    } else {
+        content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** recientes:`;
     }
 
-    const recent_scores = parser_res.fn_response[index - 1];
+    // Función auxiliar para procesar y construir el embed de un score determinado
+    async function processScore(scoreIndex) {
+        const recent_scores = parser_res.fn_response[scoreIndex - 1];
+        const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
+        const total_hits = great + ok + meh + miss;
+        const beatmap = await getBeatmap(recent_scores.beatmap.id);
+        const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
+        const maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
 
-	// Precalculamos algunos parametros
-	const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
-	const total_hits = great + ok + meh + miss;
-	const beatmap = await getBeatmap(recent_scores.beatmap.id);
-	const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap); // obtenemos el beatmap.osu y luego pasamos la direccion para un nuevo mapa parseado para el calculo de pp
-	const maxAttrs = calculatePP(recent_scores, map, "maximo_pp"); // calculamos el pp para un ss
+        const pre_calculated = {
+            "map": map,
+            "map_completion": recent_scores.passed ? 100 : total_hits / map.nObjects,
+            "maxAttrs": maxAttrs,
+            "pp": recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp,
+            "beatmap_max_combo": beatmap.max_combo,
+        };
 
-	const pre_calculated = {
-		"map" : map,
-		"map_completion" : recent_scores.passed ? 100 : total_hits/map.nObjects,
-		"maxAttrs" : maxAttrs,
-		"pp" : recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp,
-		"beatmap_max_combo": beatmap.max_combo,
-	}
+        saveUserscore(recent_scores, pre_calculated);
+        const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
+        map.free();
+        return embed;
+    }
 
-	// Guardamos la score
-	saveUserscore(recent_scores, pre_calculated);
+    // Procesamos la jugada inicial
+    const initialEmbed = await processScore(index);
 
-    // Se contruye el embed y se envia
-    const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
-	map.free(); // si
-    return { content: content_msg, embeds: [embed] };
+    const getButtonsRow = (curr, max) => {
+        return new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('rs_oldest')
+                .setLabel('<<')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr >= max),
+            new ButtonBuilder()
+                .setCustomId('rs_older')
+                .setLabel('<')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr >= max),
+            new ButtonBuilder()
+                .setCustomId('rs_newer')
+                .setLabel('>')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr <= 1),
+            new ButtonBuilder()
+                .setCustomId('rs_newest')
+                .setLabel('>>')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr <= 1)
+        );
+    };
+
+    const sent_message = await message.channel.send({
+        content: content_msg,
+        embeds: [initialEmbed],
+        components: [getButtonsRow(index, total_plays)]
+    });
+
+    const filter = btnInt => btnInt.user.id === message.author.id;
+    const collector = sent_message.createMessageComponentCollector({
+        filter,
+        idle: 30000 // Timeout de 30 segundos inactivo
+    });
+
+    collector.on('collect', async i => {
+        try {
+            await i.deferUpdate();
+
+            if (i.customId === 'rs_oldest') {
+                index = total_plays;
+            } else if (i.customId === 'rs_older') {
+                index = Math.min(total_plays, index + 1);
+            } else if (i.customId === 'rs_newer') {
+                index = Math.max(1, index - 1);
+            } else if (i.customId === 'rs_newest') {
+                index = 1;
+            }
+
+            const embed = await processScore(index);
+            const content = `Mostrando la jugada **#${index}** de **${total_plays}** recientes:`;
+
+            await i.editReply({
+                content: content,
+                embeds: [embed],
+                components: [getButtonsRow(index, total_plays)]
+            });
+        } catch (err) {
+            console.error("Error al navegar entre scores con botones:", err);
+        }
+    });
+
+    collector.on('end', async () => {
+        try {
+            await sent_message.edit({ components: [] });
+        } catch (e) {
+            // Ignorar si el mensaje original fue borrado
+        }
+    });
+
+    return;
 }
 
 run.alias = {
