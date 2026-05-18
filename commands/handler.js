@@ -44,7 +44,7 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 	const { commandName } = interaction;
 
 	if (slash_commands_set.has(commandName))
-		return await slash_commands_map.get(commandName).run(interaction, res);
+		return await slash_commands_map.get(commandName).run(interaction, res, chat_commands);
 	
 	if (chat_commands_map.has(commandName)) {
 		const messages = {
