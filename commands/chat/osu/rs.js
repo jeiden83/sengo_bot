@@ -98,7 +98,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
 	return embed;
 }
 
-async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIndex, total_plays) {
+async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIndex, total_plays, loadingIndex = null) {
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
 
@@ -115,29 +115,18 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const total_hits = great + ok + meh + miss;
 
         let map_completion = "";
-        let ppVal = score.pp;
-        let starsVal = score.beatmap.difficulty_rating;
-
-        try {
-            const beatmap = await getBeatmap(score.beatmap.id);
-            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
-            const maxAttrs = calculatePP(score, map, "maximo_pp");
-            
-            if (!ppVal) {
-                ppVal = calculatePP(score, map, null, maxAttrs).pp;
+        if (score.calculatedPassPercent !== undefined) {
+            if (!score.passed && score.calculatedPassPercent > 0) {
+                map_completion = `*(${score.calculatedPassPercent.toFixed(1)}% pass)*`;
             }
-
-            if (!score.passed && map.nObjects > 0) {
-                map_completion = `*(${(total_hits / map.nObjects * 100).toFixed(1)}% pass)*`;
+        } else if (!score.passed) {
+            const count_circles = score.beatmap.count_circles || 0;
+            const count_sliders = score.beatmap.count_sliders || 0;
+            const count_spinners = score.beatmap.count_spinners || 0;
+            const total_objects = count_circles + count_sliders + count_spinners;
+            if (total_objects > 0) {
+                map_completion = `*(${((score.statistics.great + score.statistics.ok + score.statistics.meh + score.statistics.miss) / total_objects * 100).toFixed(1)}% pass)*`;
             }
-
-            if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
-                starsVal = maxAttrs.difficulty.stars;
-            }
-            
-            map.free();
-        } catch (err) {
-            console.error(`Error al procesar PP/completado en lista de jugadas para #${globalIndex}:`, err);
         }
         
         let legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
@@ -157,7 +146,12 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }
 
-        let pp = `${ppVal ? ppVal.toFixed(2) + "pp" : "0.00pp"}`;
+        let ppVal = score.calculatedPP !== undefined ? score.calculatedPP : score.pp;
+        let pp = `${ppVal ? ppVal.toFixed(2) + "pp" : "⏳ pp"}`;
+        
+        let starsVal = score.calculatedStars !== undefined ? score.calculatedStars : score.beatmap.difficulty_rating;
+        const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
+        
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
 
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
@@ -177,7 +171,6 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
-        const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
         const score_line = `**#${globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
@@ -193,6 +186,11 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
     const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
 
+    let footerText = `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`;
+    if (loadingIndex !== null) {
+        footerText = `⏳ Calculando pp de la play #${loadingIndex} de ${total_plays}...`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Puntuaciones recientes de ${username} en osu!${parsed_args.gamemode || 'std'}`,
@@ -202,7 +200,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         .setDescription(embed_description)
         .setColor(embedColor)
         .setFooter({
-            text: `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`,
+            text: footerText,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -264,6 +262,69 @@ async function run(messages, args) {
             components: [getListButtonsRow(startIndex, total_plays)]
         });
 
+        // Función para procesar secuencialmente el chunk en segundo plano y actualizar UX
+        const processChunk = async (msg_obj, start) => {
+            const chunk = parser_res.fn_response.slice(start, start + 5);
+            
+            for (let i = 0; i < chunk.length; i++) {
+                const score = chunk[i];
+                const globalIndex = start + i + 1;
+
+                if (score.calculatedPP !== undefined) continue;
+
+                // Actualizar footer para la play actual si seguimos en la misma página
+                if (start === startIndex) {
+                    const tempEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, globalIndex);
+                    try {
+                        await msg_obj.edit({ embeds: [tempEmbed] });
+                    } catch (e) {}
+                }
+
+                const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+                const total_hits = great + ok + meh + miss;
+                let ppVal = score.pp;
+                let starsVal = score.beatmap.difficulty_rating;
+                let passPercent = 0;
+
+                try {
+                    const beatmap = await getBeatmap(score.beatmap.id);
+                    const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+                    const maxAttrs = calculatePP(score, map, "maximo_pp");
+                    
+                    if (!ppVal) {
+                        ppVal = calculatePP(score, map, null, maxAttrs).pp;
+                    }
+
+                    if (map.nObjects > 0) {
+                        passPercent = (total_hits / map.nObjects * 100);
+                    }
+
+                    if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
+                        starsVal = maxAttrs.difficulty.stars;
+                    }
+                    
+                    map.free();
+                } catch (err) {
+                    console.error(`Error al procesar PP de #${globalIndex}:`, err);
+                }
+
+                score.calculatedPP = ppVal || 0;
+                score.calculatedStars = starsVal;
+                score.calculatedPassPercent = passPercent;
+            }
+
+            // Renderizado final
+            if (start === startIndex) {
+                const finalEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, null);
+                try {
+                    await msg_obj.edit({ embeds: [finalEmbed] });
+                } catch (e) {}
+            }
+        };
+
+        // Iniciamos el cálculo en background para la primera página
+        processChunk(sent_message, startIndex);
+
         const filter = btnInt => btnInt.user.id === message.author.id;
         const collector = sent_message.createMessageComponentCollector({
             filter,
@@ -291,6 +352,9 @@ async function run(messages, args) {
                     embeds: [embed],
                     components: [getListButtonsRow(startIndex, total_plays)]
                 });
+
+                // Lanzar procesamiento en background para la nueva página seleccionada
+                processChunk(sent_message, startIndex);
             } catch (err) {
                 console.error("Error al navegar la lista de scores recientes:", err);
             }
