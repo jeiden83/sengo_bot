@@ -41,8 +41,8 @@ async function run(messages, args) {
     // La imagen en alta resolución del fondo completo del mapa
     const bg_url = `https://assets.ppy.sh/beatmaps/${beatmapset_id}/covers/fullsize.jpg`;
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
     // 4. Construir Embed
     const embed = new EmbedBuilder()
