@@ -1,8 +1,10 @@
 const http = require('http');
+const { exec, spawn } = require('child_process');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder } = require('discord.js');
 
 let serverInstance = null;
+let ngrokProcess = null;
 
 /**
  * Inicializa el servidor HTTP para escuchar webhooks de GitHub.
@@ -14,7 +16,9 @@ function initWebhookServer(client, dbRes, config) {
         return;
     }
 
-    const port = process.env.PORT || config.WEBHOOK_PORT || 3000;
+    const useSupabase = process.argv.includes('--supabase');
+    // Si es supabase, abrimos el puerto 80 por petición del usuario, de lo contrario usamos puerto 3000 o env
+    const port = useSupabase ? 80 : (process.env.PORT || config.WEBHOOK_PORT || 3000);
 
     // Si ya hay un servidor corriendo (por ejemplo, tras una recarga 'r'), lo cerramos limpiamente
     if (serverInstance) {
@@ -25,6 +29,38 @@ function initWebhookServer(client, dbRes, config) {
         });
     } else {
         startServer(client, dbRes, port);
+    }
+
+    // Iniciar túnel de ngrok automáticamente en modo Supabase si no está ya iniciado
+    if (useSupabase && !ngrokProcess) {
+        Logger.system("Detectado --supabase. Configurando e iniciando túnel ngrok en puerto 80...");
+        
+        exec('ngrok config add-authtoken 3DufeqkRJ6frEzAPvMrqpyvC6bL_AbtCvTxdocksrGoc48LJ', (err, stdout, stderr) => {
+            if (err) {
+                Logger.system(`Error configurando token de ngrok: ${err.message}`);
+                return;
+            }
+            Logger.system("Token de ngrok configurado exitosamente.");
+            
+            Logger.system("Ejecutando: ngrok http 80 --domain stoppable-passcode-riot.ngrok-free.dev");
+            ngrokProcess = spawn('ngrok', ['http', '80', '--domain', 'stoppable-passcode-riot.ngrok-free.dev'], {
+                shell: true
+            });
+
+            ngrokProcess.stderr.on('data', (data) => {
+                const text = data.toString().trim();
+                if (text && !text.includes('msg="join"')) {
+                    Logger.system(`[Ngrok Stderr]: ${text}`);
+                }
+            });
+
+            ngrokProcess.on('close', (code) => {
+                Logger.system(`Proceso de ngrok cerrado con código ${code}`);
+                ngrokProcess = null;
+            });
+
+            Logger.system("Túnel de ngrok iniciado en: https://stoppable-passcode-riot.ngrok-free.dev/");
+        });
     }
 }
 
@@ -60,7 +96,7 @@ function startServer(client, dbRes, port) {
     });
 
     server.on('error', (err) => {
-        Logger.system(`Error en el servidor de webhook de GitHub: ${err.message}`);
+        Logger.system(`Error en el servidor de webhook de GitHub en puerto ${port}: ${err.message}`);
     });
 
     server.listen(port, () => {
@@ -131,5 +167,13 @@ async function handlePushEvent(client, dbRes, payload) {
 
 module.exports = {
     initWebhookServer,
-    serverInstance
+    serverInstance,
+    getNgrokProcess: () => ngrokProcess,
+    killNgrok: () => {
+        if (ngrokProcess) {
+            ngrokProcess.kill();
+            ngrokProcess = null;
+            Logger.system("Proceso de ngrok finalizado.");
+        }
+    }
 };

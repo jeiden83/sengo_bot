@@ -79,11 +79,12 @@ async function shutdownGracefully() {
     }
 
     try {
-        const { serverInstance } = require("./commands/utils/webhook.js");
+        const { serverInstance, killNgrok } = require("./commands/utils/webhook.js");
         if (serverInstance) {
             serverInstance.close();
             Logger.system("Servidor de webhook de GitHub cerrado.");
         }
+        killNgrok();
     } catch (e) {
         // Ignorar errores al cerrar si no existiera
     }
