@@ -38,8 +38,8 @@ async function run(messages, args) {
     }
 
     const beatmapset_id = beatmap.beatmapset_id;
-    // La imagen en alta resolución de fondo del mapa
-    const bg_url = beatmap.beatmapset.covers["cover@2x"] || `https://assets.ppy.sh/beatmaps/${beatmapset_id}/covers/cover@2x.jpg`;
+    // La imagen en alta resolución del fondo completo del mapa
+    const bg_url = `https://assets.ppy.sh/beatmaps/${beatmapset_id}/covers/fullsize.jpg`;
 
     const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
