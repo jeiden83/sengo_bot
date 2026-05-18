@@ -108,12 +108,24 @@ async function run(messages, args) {
         "command_function": getUserRecentScores
     });
 
-    const index = parser_res.parsed_args.index || 1;
-    const recent_scores = Array.isArray(parser_res.fn_response) ? parser_res.fn_response[index - 1] : parser_res.fn_response;
-
-    // Si no hay play reciente
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
-    if (!recent_scores) return index === 1 ? `Pero si no has jugado nada` : `No se encontró la jugada reciente #${index}`;
+    if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
+        return `Pero si no has jugado nada`;
+    }
+
+    let index = parser_res.parsed_args.index || 1;
+    let content_msg = '';
+    const total_plays = parser_res.fn_response.length;
+
+    if (index > total_plays) {
+        content_msg = `⚠️ Solo se encontraron **${total_plays}** jugadas recientes. Mostrando la última (#${total_plays}):`;
+        index = total_plays;
+    } else if (index < 1) {
+        content_msg = `⚠️ Índice inválido. Mostrando la más reciente (#1):`;
+        index = 1;
+    }
+
+    const recent_scores = parser_res.fn_response[index - 1];
 
 	// Precalculamos algunos parametros
 	const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
@@ -137,7 +149,7 @@ async function run(messages, args) {
     const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
 
 	map.free(); // si
-    return { content: '', embeds: [embed] };
+    return { content: content_msg, embeds: [embed] };
 }
 
 run.alias = {
