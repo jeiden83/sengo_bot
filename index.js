@@ -4,7 +4,7 @@ const { connectDB } = require("./db/database.js");
 const { login } = require("./listeners/login.js");
 const config = require("./config.json");
 const readline = require('readline');
-const mongoose = require('mongoose');
+
 const Logger = require("./utils/logger.js");
 const { syncOlderLogs, analyzeTodayLogs } = require("./services/syncLogs.js");
 const fs = require('fs');
@@ -14,7 +14,7 @@ let res;
 let client;
 
 async function main(reload) {
-    const useSupabase = process.argv.includes('--supabase');
+
     
     // 1. Verificar si ya existe el log de hoy para extraer analíticas antes de registrar el nuevo inicio
     const todayStr = Logger.getLocalDateString();
@@ -30,7 +30,7 @@ async function main(reload) {
     }
 
     // 2. Registrar el inicio actual del bot en el log diario de hoy
-    Logger.system(`Iniciando SengoBot en modo ${useSupabase ? 'SUPABASE' : 'MONGODB'}...`);
+    Logger.system("Iniciando SengoBot en modo SUPABASE...");
 
     client = new Client({ 
         intents: [
@@ -47,7 +47,7 @@ async function main(reload) {
     res = await connectDB(config);
 
     // 3. Si es el primer encendido del día (no existía el archivo log de hoy) y está en Supabase, subir logs de días anteriores
-    if (!todayLogExists && useSupabase && res.status === 1) {
+    if (!todayLogExists && res.status === 1) {
         syncOlderLogs(res.supabaseClient).catch(err => {
             Logger.system(`Error en la tarea de sincronización de logs antiguos: ${err.message}`);
         });
@@ -67,10 +67,7 @@ main();
 async function shutdownGracefully() {
     Logger.system("Señal de apagado detectada. Cerrando recursos...");
     
-    if (mongoose.connection && mongoose.connection.readyState === 1) {
-        await mongoose.connection.close();
-        Logger.system("Conexión de MongoDB cerrada.");
-    }
+
     
     if (client && client.user) {
         client.user.setActivity(null);
@@ -115,8 +112,7 @@ async function setupCommandLineInterface(res, client, config, reload) {
             const { initWebhookServer } = require("./commands/utils/webhook.js");
             initWebhookServer(client, res, config);
 
-            const useSupabase = process.argv.includes('--supabase');
-            const activityText = useSupabase ? 'Activo con Supabase (recargado)' : 'Activo de nuevo';
+            const activityText = 'Activo con Supabase (recargado)';
             client.user.setActivity(activityText, { type: ActivityType.Playing });
         } else {
             console.log(`Comando no reconocido: ${input}`);
