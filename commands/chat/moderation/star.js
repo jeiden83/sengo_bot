@@ -192,6 +192,10 @@ function doStaboardMsjEmbed(message, result){
 async function run(messages, args) {
   const { message, res } = messages;
 
+  if (!message.guild) {
+    return "Este comando solo se puede usar en un servidor.";
+  }
+
   // Revisa si es admin O tiene el rol 'Sengo'
   const hasAdmin = message.member.permissions.has('Administrator');
   const hasSengoRole = message.member.roles.cache.some(role => role.name === 'Sengo');

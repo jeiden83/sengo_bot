@@ -689,8 +689,8 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
     saveUserscore(recent_scores, pre_calculated, true);
     console.log(`[S.SUBIR] ¡Score guardada exitosamente para ${parsedData.player_name}!`);
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
     const emoji_grades = require("../../../src/emoji_grades.json");
     const rank_aliases_embed = { "SS": "X", "SSH": "XH" };

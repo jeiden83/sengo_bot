@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits, ActivityType } = require("discord.js");
+const { Client, GatewayIntentBits, ActivityType, Partials } = require("discord.js");
 const { load_listeners } = require("./listeners/commands.js");
 const { connectDB } = require("./db/database.js");
 const { login } = require("./listeners/login.js");
@@ -9,7 +9,16 @@ let res;
 let client;
 
 async function main(reload) {
-    client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildMembers] });
+    client = new Client({ 
+        intents: [
+            GatewayIntentBits.Guilds, 
+            GatewayIntentBits.GuildMessages, 
+            GatewayIntentBits.MessageContent, 
+            GatewayIntentBits.GuildMembers,
+            GatewayIntentBits.DirectMessages
+        ],
+        partials: [Partials.Channel]
+    });
     res = await connectDB(config);
 
     await load_listeners(res, client, config);

@@ -6,6 +6,10 @@ async function run(messages, args) {
 
 	// selfexplainable
 	// todo later
+    if (!message.guild) {
+        return "Este comando solo se puede usar en un servidor.";
+    }
+
 	if(message.guild.id !== "1422374224403890268"){
 		return `Esto no es Osu! latam. Preguntele a Jeiden primero.`
 	}

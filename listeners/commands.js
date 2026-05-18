@@ -17,11 +17,13 @@ async function chat_command_listener(chat_commands, client, config, res) {
             return;
         } 
 
-        const botMember = message.guild.members.cache.get(client.user.id);
-        const botPermissions = message.channel.permissionsFor(botMember);
-        if (!botPermissions || !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
-            console.error("El bot no tiene permisos para enviar mensajes en este canal.");
-            return;
+        if (message.guild) {
+            const botMember = message.guild.members.cache.get(client.user.id);
+            const botPermissions = message.channel.permissionsFor(botMember);
+            if (!botPermissions || !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
+                console.error("El bot no tiene permisos para enviar mensajes en este canal.");
+                return;
+            }
         }
 
         await message.channel.sendTyping();

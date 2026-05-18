@@ -165,6 +165,10 @@ async function run(messages, args){
 
     const { message } = messages;
 
+    if (!message.guild) {
+        return "Este comando solo se puede usar en un servidor.";
+    }
+
     const modulos_rol = new Collection([
         ["color", cambiar_color],
         ["otorgar", otorgar],

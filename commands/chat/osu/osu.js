@@ -20,8 +20,8 @@ async function doOsuEmbed(message, osu_userdata, osu_mode){
     // Check por si no ha tocado el modo de juego
     const { global_ranking, discord_last_peak, peak_ranking, country_rank } = checkOsuData(osu_userdata);
     
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
     const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
 
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;

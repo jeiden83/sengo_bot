@@ -20,8 +20,8 @@ async function doOsuEmbed(message, sniped_userdata, osu_userdata){
     if(osu_userdata.playmode != 'osu') return `> El servicio de snipes solo funciona para **osu!std**`;
     if(!sniped_userdata) return `**El usuario \`${osu_userdata.username}\` **no tiene tops nacionales.**`;
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
     const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
 
     const mod_mas_usado = Object.entries(sniped_userdata.mods_count ?? {})

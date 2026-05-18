@@ -24,8 +24,8 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
 
     const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
     const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
 
@@ -212,8 +212,8 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
     const user_url = top_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${top_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${top_scores_chunk[0].user.id}`;
     const avatar_url = top_scores_chunk[0].user.avatar_url;
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
     const embed = new EmbedBuilder()
         .setAuthor({

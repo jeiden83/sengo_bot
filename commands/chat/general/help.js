@@ -3,7 +3,7 @@ const { EmbedBuilder } = require("discord.js");
 
 async function doEmbed(message, nombre_comando, descripcion){
     
-    const roleColor = message.member.roles.highest.color || '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const icon_url = message.author.displayAvatarURL({ dynamic: true, size: 512 });
 
     const embed = new EmbedBuilder()
