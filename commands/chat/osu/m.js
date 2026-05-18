@@ -197,11 +197,11 @@ async function run(messages, args) {
             new ButtonBuilder()
                 .setLabel('Con Video')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://api.nerinyan.me/d/${beatmap.beatmapset_id}`),
+                .setURL(`https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}/download`),
             new ButtonBuilder()
                 .setLabel('Sin Video')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://api.nerinyan.me/d/${beatmap.beatmapset_id}?novideo=1`)
+                .setURL(`https://osu.ppy.sh/beatmapsets/${beatmap.beatmapset_id}/download?noVideo=1`)
         );
 
     if (reply) {
