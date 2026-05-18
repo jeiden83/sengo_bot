@@ -1,6 +1,7 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const config = require("../../../config.json");
-const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails } = require("../../utils/osu.js");
+const { parseOSR } = require("../../utils/osr_parser.js");
 const { colorear } = require("../../utils/admin.js");
 const { EmbedBuilder } = require("discord.js");
 const axios = require('axios');
@@ -25,7 +26,7 @@ function calculateRank(stats, accuracy, mods, passed) {
     const total_hits = great + ok + meh + miss;
 
     const ratio_300 = total_hits > 0 ? great / total_hits : 0;
-    const ratio_50  = total_hits > 0 ? meh  / total_hits : 0;
+    const ratio_50 = total_hits > 0 ? meh / total_hits : 0;
 
     // Silver grades: Hidden, Flashlight o Fade In
     const has_silver = mods && mods.some(m => m === 'HD' || m === 'FL' || m === 'FI');
@@ -48,41 +49,41 @@ function calculateRank(stats, accuracy, mods, passed) {
     return 'D';
 }
 
-function calculatePP(recent_scores, map, maximo_pp, Attrs){
-	// Se consiguen las estadisticas de la score
-	const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0} = recent_scores.statistics;
+function calculatePP(recent_scores, map, maximo_pp, Attrs) {
+    // Se consiguen las estadisticas de la score
+    const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0 } = recent_scores.statistics;
 
-	// Para el SS
-	const max_perfomance_constructor = { 
-		mods: recent_scores.mods, 
-		lazer: recent_scores.started_at ? true : false,
-	};
+    // Para el SS
+    const max_perfomance_constructor = {
+        mods: recent_scores.mods,
+        lazer: recent_scores.started_at ? true : false,
+    };
 
-	const difficulty_constructor = {
-		...max_perfomance_constructor,
-		maxCombo: recent_scores.max_combo,
-		misses: miss,
-		n300: great,
-		n100: ok,
-		n50: meh, 
-		largeTickHits: large_tick_hit,
-		sliderEndHits: slider_tail_hit,
-		smallTickHits: ignore_hit,
-	}
+    const difficulty_constructor = {
+        ...max_perfomance_constructor,
+        maxCombo: recent_scores.max_combo,
+        misses: miss,
+        n300: great,
+        n100: ok,
+        n50: meh,
+        largeTickHits: large_tick_hit,
+        sliderEndHits: slider_tail_hit,
+        smallTickHits: ignore_hit,
+    }
 
-	if(maximo_pp){
-		const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
-		return maxAttrs;
-	}
+    if (maximo_pp) {
+        const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
+        return maxAttrs;
+    }
 
-	if(!recent_scores.passed){
-		const total_hits = great + ok + meh + miss;
-		const difficulty = new rosu.Difficulty(max_perfomance_constructor);
-		return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
-	} 
+    if (!recent_scores.passed) {
+        const total_hits = great + ok + meh + miss;
+        const difficulty = new rosu.Difficulty(max_perfomance_constructor);
+        return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
+    }
 
-	const currAttrs = new rosu.Performance(difficulty_constructor).calculate(Attrs ? Attrs : map);
-	return currAttrs;
+    const currAttrs = new rosu.Performance(difficulty_constructor).calculate(Attrs ? Attrs : map);
+    return currAttrs;
 }
 
 async function processImage(url) {
@@ -110,7 +111,7 @@ function similarity(s1, s2) {
     if (longer.length < shorter.length) { [longer, shorter] = [shorter, longer]; }
     let longerLength = longer.length;
     if (longerLength === 0) return 1.0;
-    
+
     let costs = new Array();
     for (let i = 0; i <= longer.length; i++) {
         let lastValue = i;
@@ -134,16 +135,16 @@ function similarity(s1, s2) {
 async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
     try {
         const tokenData = require('../../../osu_token.json');
-        
+
         // Reemplazamos guiones por espacios para evitar que el motor de búsqueda de osu! 
         // los interprete como operadores de exclusión (ej. "-Scramble-" -> excluir Scramble)
         const clean_query = beatmap_name ? beatmap_name.replace(/-/g, ' ') : '';
-        
+
         let res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
             params: { q: clean_query, s: 'any' },
             headers: { Authorization: 'Bearer ' + tokenData.access_token }
         });
-        
+
         let beatmapsets = res.data.beatmapsets || [];
         let bestSetScore = -1;
         let chosenSet = beatmapsets[0];
@@ -186,7 +187,7 @@ async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
 
         if (chosenSet && chosenSet.beatmaps && chosenSet.beatmaps.length > 0) {
             let bestMatch = chosenSet.beatmaps[0];
-            
+
             // Fuzzy match para la dificultad
             if (diff_name) {
                 let bestDiffScore = -1;
@@ -213,7 +214,7 @@ function parseBotEmbed(reply) {
     const authorName = embed.author ? embed.author.name : '';
     const title = embed.title || '';
     const description = embed.description || '';
-    
+
     let parsed = null;
 
     try {
@@ -224,7 +225,7 @@ function parseBotEmbed(reply) {
             const scoreMatch = description.match(/▸\s+([0-9,]+)\s+▸\s+x([0-9]+)/);
             const statsMatch = description.match(/\[(\d+)\/(\d+)\/(\d+)\/(\d+)\]/);
             const rankMatch = description.match(/▸\s+([A-Z]+)\s+▸/);
-            
+
             if (playerMatch && mapMatch && scoreMatch && statsMatch) {
                 parsed = {
                     player_name: playerMatch[1].trim(),
@@ -244,13 +245,13 @@ function parseBotEmbed(reply) {
                 };
             }
         }
-        
+
         if (authorName.includes('Puntuación Reciente de') || authorName.includes('Puntuaciones de')) {
             const playerMatch = authorName.match(/(?:Reciente de|Puntuaciones de) (.+?) en/);
             const mapMatch = title.match(/^(.+?)\s+\[(.+?)\]/);
             const scoreMatch = description.match(/Puntuación\*\*: \`([0-9\.]+)\`/);
             const statsMatch = description.match(/(\d+)\/(\d+)\/(\d+)\/(\d+)[^]+?([\d\.]+)%\s+x(\d+)/);
-            
+
             if (playerMatch && mapMatch && scoreMatch && statsMatch) {
                 parsed = {
                     player_name: playerMatch[1].trim(),
@@ -266,11 +267,11 @@ function parseBotEmbed(reply) {
                     accuracy: parseFloat(statsMatch[5]) / 100,
                     max_combo: parseInt(statsMatch[6]),
                     mods: ['NM'],
-                    rank: 'A' 
+                    rank: 'A'
                 };
             }
         }
-    } catch(e) {}
+    } catch (e) { }
 
     return parsed;
 }
@@ -301,7 +302,88 @@ async function run(messages, args, initialized_data) {
         return "Debes adjuntar una foto o responder (reply) a un mensaje que contenga un embed de una score o una foto de una play de osu!";
     }
 
-    let parsedData = parseBotEmbed(sourceMessage);
+    let parsedData = null;
+
+    // Verificar si es un archivo .osr
+    const osrAttachment = sourceMessage.attachments.find(a => a.name.endsWith('.osr'));
+    if (osrAttachment) {
+        console.log(`[S.SUBIR] Archivo .osr detectado. Procesando localmente...`);
+        try {
+            await message.channel.sendTyping();
+            const response = await fetch(osrAttachment.url);
+            const buffer = await response.buffer();
+            const replayData = parseOSR(buffer);
+            if (replayData) {
+                // Parsear mods
+                const modMap = [
+                    { bit: 1<<0, acronym: 'NF' }, { bit: 1<<1, acronym: 'EZ' },
+                    { bit: 1<<2, acronym: 'TD' }, { bit: 1<<3, acronym: 'HD' },
+                    { bit: 1<<4, acronym: 'HR' }, { bit: 1<<5, acronym: 'SD' },
+                    { bit: 1<<6, acronym: 'DT' }, { bit: 1<<7, acronym: 'RX' },
+                    { bit: 1<<8, acronym: 'HT' }, { bit: 1<<9, acronym: 'NC' },
+                    { bit: 1<<10, acronym: 'FL' }, { bit: 1<<12, acronym: 'SO' },
+                    { bit: 1<<13, acronym: 'AP' }, { bit: 1<<14, acronym: 'PF' },
+                    { bit: 1<<29, acronym: 'V2' }
+                ];
+                let parsedMods = [];
+                if (overrideMods) {
+                    parsedMods = overrideMods;
+                } else if (replayData.lazerScoreInfo && replayData.lazerScoreInfo.mods) {
+                    parsedMods = replayData.lazerScoreInfo.mods;
+                } else {
+                    for (const m of modMap) {
+                        if ((replayData.mods & m.bit) !== 0) parsedMods.push(m.acronym);
+                    }
+                    if (parsedMods.length === 0) parsedMods = ['NM'];
+                    if (parsedMods.includes('NC')) parsedMods = parsedMods.filter(m => m !== 'DT');
+                    if (parsedMods.includes('PF')) parsedMods = parsedMods.filter(m => m !== 'SD');
+                    
+                    const isStable = replayData.gameVersion < 30000000;
+                    if (isStable && !parsedMods.includes('CL')) {
+                        parsedMods.push('CL');
+                    }
+                }
+
+                // Calcular exactitud
+                const totalHits = replayData.count300 + replayData.count100 + replayData.count50 + replayData.countMiss;
+                const acc = totalHits > 0 ? ((replayData.count300 * 300) + (replayData.count100 * 100) + (replayData.count50 * 50)) / (totalHits * 300) : 0;
+
+                let dateObj = null;
+                try {
+                    const unixTime = Number((replayData.timestamp - 621355968000000000n) / 10000n);
+                    dateObj = new Date(unixTime);
+                } catch(e) {}
+
+                parsedData = {
+                    player_name: replayData.playerName,
+                    beatmap_name: "Replay Map",
+                    difficulty_name: "",
+                    creator: "",
+                    accuracy: acc,
+                    score: replayData.totalScore,
+                    max_combo: replayData.maxCombo,
+                    statistics: {
+                        great: replayData.count300,
+                        ok: replayData.count100,
+                        meh: replayData.count50,
+                        miss: replayData.countMiss
+                    },
+                    mods: parsedMods,
+                    rank: 'A',
+                    date: dateObj ? dateObj.toISOString() : new Date().toISOString(),
+                    beatmapMD5: replayData.beatmapMD5,
+                    is_osr: true,
+                    lazer_online_id: replayData.lazerScoreInfo ? replayData.lazerScoreInfo.online_id : null
+                };
+            }
+        } catch (e) {
+            console.error("[S.SUBIR] Error al parsear .osr:", e);
+        }
+    }
+
+    if (!parsedData) {
+        parsedData = parseBotEmbed(sourceMessage);
+    }
 
     // Si falló el regex o no era un embed conocido, procedemos con Gemini (OCR)
     if (!parsedData) {
@@ -328,32 +410,47 @@ async function run(messages, args, initialized_data) {
             return "No pude encontrar información de una score en ese mensaje.";
         }
 
+        let linkedUserHint = "";
+        try {
+            const linked = await res.User.findOne({ discord_id: message.author.id });
+            if (linked && linked.osu_id) {
+                const fetched = await getOsuUser({ username: [String(linked.osu_id)], gamemode: 'osu' });
+                if (typeof fetched !== 'string' && fetched.username) {
+                    linkedUserHint = `\nPISTA MUY IMPORTANTE: Es muy probable que el nombre del jugador sea "${fetched.username}". Si el nombre en la imagen se parece a esto (ej. si dudas entre Aquaro y Aquare), USA el nombre de la pista.`;
+                }
+            }
+        } catch(e) {}
+
         if (imagePart) {
             console.log(`[S.SUBIR] Procesando imagen con Gemini OCR...`);
             // LLAMADA A GEMINI
-                const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
+            const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
 MUY IMPORTANTE: Extrae los datos reales que veas en la imagen o texto.
 - Título del mapa: Texto grande arriba (marcado en rojo en el ejemplo).
 - Dificultad: Entre corchetes después del título.
 - Creador: "Beatmap by X" (marcado en amarillo).
-- Jugador y Fecha: "Played by X on DD/MM/YYYY H:MM:SS" (marcado en verde y azul). Convierte la fecha a ISO 8601.
+- Jugador y Fecha: "Played by X on DD/MM/YYYY H:MM:SS" (marcado en verde y azul). Convierte la fecha a ISO 8601. PRESTA MUCHA ATENCIÓN a las letras del nombre del jugador (no confundas 'e' con 'o', 'a' con 'o', etc).${linkedUserHint}
 - Puntuación (Score): Número grande (marcado en rosado).
-- 300s/100s/50s/Misses: Columnas debajo de la score (marcados en naranja, verde oscuro y rojo).
+- Estadísticas de aciertos (300s/100s/50s/Misses):
+  ¡ATENCIÓN! Fíjate bien en la disposición de los números en la captura:
+  * LADO IZQUIERDO: Arriba son los 300s (Great), en el medio los 100s (Ok) y abajo los 50s (Meh).
+  * LADO DERECHO: Arriba y en el medio son otros puntos de finalización de combo (IGNÓRALOS, no son "ok" ni "meh"). ABAJO a la derecha son los Misses.
+  Devuelve esto en un objeto "statistics" con las claves: "great" (300s), "ok" (100s), "meh" (50s) y "miss".
 - Max Combo: Número grande con una 'x' abajo a la izquierda (marcado en verde lima).
 - Accuracy: Porcentaje grande (conviértelo a decimal ej. 89.83% -> 0.8983).
 - Mods: Íconos pequeños pegados a la letra grande del Rank (ej. Score V2, NF). Si no hay, pon ["NM"].
 
 A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el JSON que espero que generes para ella:`;
 
-                const exampleData = require('./example_score.json');
-                const exampleImagePart = {
-                    inlineData: {
-                        data: exampleData.base64,
-                        mimeType: "image/png"
-                    }
-                };
+            const exampleData = require('./example_score.json');
+            const exampleImagePart = {
+                inlineData: {
+                    data: exampleData.base64,
+                    mimeType: "image/png"
+                }
+            };
 
-                const exampleOutput = `
+            const exampleOutput = `
 {
   "player_name": "Jeiden",
   "beatmap_name": "Luschka - Kami no Kotoba",
@@ -369,41 +466,41 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
 }
 `;
 
-                const finalInstruction = `\nAhora haz lo mismo con la siguiente imagen o texto:\nTexto adicional del mensaje (si lo hay):\n${textPart}`;
+            const finalInstruction = `\nAhora haz lo mismo con la siguiente imagen o texto:\nTexto adicional del mensaje (si lo hay):\n${textPart}`;
 
-                const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-                const parts = [
-                    { text: prompt }, 
-                    exampleImagePart, 
-                    { text: exampleOutput }, 
-                    { text: finalInstruction }
-                ];
-                
-                if (imagePart) parts.push(imagePart);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+            const parts = [
+                { text: prompt },
+                exampleImagePart,
+                { text: exampleOutput },
+                { text: finalInstruction }
+            ];
 
-                try {
-                    await message.channel.sendTyping();
-                    const result = await model.generateContent(parts);
-                    let responseText = result.response.text();
-                    
-                    responseText = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
-                    parsedData = JSON.parse(responseText);
-                    console.log(`[S.SUBIR] OCR (Gemini) extrajo:`, JSON.stringify(parsedData, null, 2));
-                } catch (e) {
-                    console.error("[S.SUBIR] Error al procesar con Gemini:", e);
-                    return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
-                }
+            if (imagePart) parts.push(imagePart);
+
+            try {
+                await message.channel.sendTyping();
+                const result = await model.generateContent(parts);
+                let responseText = result.response.text();
+
+                responseText = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
+                parsedData = JSON.parse(responseText);
+                console.log(`[S.SUBIR] OCR (Gemini) extrajo:`, JSON.stringify(parsedData, null, 2));
+            } catch (e) {
+                console.error("[S.SUBIR] Error al procesar con Gemini:", e);
+                return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
+            }
         } else {
             console.log(`[S.SUBIR] Tipo de input: TEXTO DESCONOCIDO. Procesando con Gemini...`);
             // TEXT ONLY GEMINI FALLBACK
             const prompt = `Extrae la siguiente información...`; // Simplificado para texto
             const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
             try {
-                const result = await model.generateContent([{text: `Extrae JSON de esta score:\n${textPart}`}]);
+                const result = await model.generateContent([{ text: `Extrae JSON de esta score:\n${textPart}` }]);
                 let responseText = result.response.text().replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
                 parsedData = JSON.parse(responseText);
                 console.log(`[S.SUBIR] Gemini texto extrajo:`, parsedData);
-            } catch(e) {}
+            } catch (e) { }
         }
     } else {
         console.log(`[S.SUBIR] Tipo de input: EMBED DE BOT CONOCIDO (Regex exitoso).`);
@@ -452,11 +549,34 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         if (beatmap_url) beatmap_id = beatmap_url;
     }
 
-    if (!beatmap_id) {
+    if (!beatmap_id && parsedData.lazer_online_id) {
+        const scoreDetails = await getScoreDetails(parsedData.lazer_online_id);
+        if (scoreDetails && scoreDetails.beatmap) {
+            beatmap_id = scoreDetails.beatmap.id;
+            parsedData.beatmap_name = scoreDetails.beatmapset.title;
+            parsedData.difficulty_name = scoreDetails.beatmap.version;
+            parsedData.creator = scoreDetails.beatmapset.creator;
+        }
+    }
+
+    if (!beatmap_id && parsedData.beatmapMD5) {
+        const bm = await lookupBeatmapByMD5(parsedData.beatmapMD5);
+        if (bm && bm.id) {
+            beatmap_id = bm.id;
+            parsedData.beatmap_name = bm.beatmapset.title;
+            parsedData.difficulty_name = bm.version;
+            parsedData.creator = bm.beatmapset.creator;
+        }
+    }
+
+    if (!beatmap_id && !parsedData.is_osr) {
         beatmap_id = await getBeatmapIdFromSearch(parsedData.beatmap_name, parsedData.difficulty_name, parsedData.creator);
     }
 
     if (!beatmap_id) {
+        if (parsedData.is_osr) {
+            return `No pude encontrar el mapa original usando el MD5 interno de la replay (\`${parsedData.beatmapMD5}\`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.`;
+        }
         console.log(`[S.SUBIR] Error: No se pudo encontrar el mapa en la API de osu!`);
         return `No pude encontrar el mapa \`${parsedData.beatmap_name}\` en la base de datos de osu!.`;
     }
@@ -478,14 +598,19 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         return `No pude resolver la ID del usuario \`${parsedData.player_name}\` y no estás vinculado a un perfil.`;
     }
 
+    // Obtener el perfil real del usuario para corregir posibles fallos del OCR en el nombre
+    let finalOsuUser = typeof osuUser !== 'string' ? osuUser : null;
+    if (!finalOsuUser && user_id) {
+        const fetched = await getOsuUser({ username: [String(user_id)], gamemode: 'osu' });
+        if (typeof fetched !== 'string') finalOsuUser = fetched;
+    }
+
+    if (finalOsuUser && finalOsuUser.username) {
+        parsedData.player_name = finalOsuUser.username; // Sobrescribe Aquaro por Aquare (oficial)
+    }
+
     // Ajuste de zona horaria según el país del jugador para corregir la hora del OCR
     if (parsedData.date) {
-        let finalOsuUser = typeof osuUser !== 'string' ? osuUser : null;
-        if (!finalOsuUser && user_id) {
-            const fetched = await getOsuUser({ username: [String(user_id)], gamemode: 'osu' });
-            if (typeof fetched !== 'string') finalOsuUser = fetched;
-        }
-
         if (finalOsuUser && finalOsuUser.country_code) {
             const countryOffsets = {
                 "VE": -4, // Venezuela
@@ -518,7 +643,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
                     // El OCR lee la hora local de la pantalla como si fuera UTC al añadir la 'Z'.
                     // Para obtener el UTC real de la jugada, restamos el offset del país.
                     let real_utc_ms = dateObj.getTime() - (offset * 3600 * 1000);
-                    
+
                     // Si por discrepancias de horario de verano/invierno la fecha calculada supera la fecha actual,
                     // la limitamos a la fecha actual para evitar que en Discord aparezca en el futuro.
                     if (real_utc_ms > Date.now()) {
@@ -542,7 +667,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         total_score: parsedData.score,
         max_combo: parsedData.max_combo,
         statistics: parsedData.statistics,
-        mods: parsedData.mods.map(acronym => ({ acronym })),
+        mods: parsedData.mods.map(mod => typeof mod === 'string' ? { acronym: mod } : mod),
         passed: parsedData.rank !== 'F',
         rank: parsedData.rank,
         user: { username: parsedData.player_name, id: user_id, avatar_url: `https://a.ppy.sh/${user_id}` },
@@ -570,13 +695,13 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
 
     const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
-    
+
     const emoji_grades = require("../../../src/emoji_grades.json");
     const rank_aliases_embed = { "SS": "X", "SSH": "XH" };
     const rank_key_embed = !recent_scores.passed ? "F" : (rank_aliases_embed[recent_scores.rank] ?? recent_scores.rank);
     let grade_emoji = emoji_grades[rank_key_embed] ?? emoji_grades["F"];
     grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-    
+
     const emoji_mods = require("../../../src/emoji_mods.json");
     const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => {
         let settings_str = '';
@@ -595,7 +720,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
     }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
-    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
+    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
 
     const embed = new EmbedBuilder()
         .setAuthor({

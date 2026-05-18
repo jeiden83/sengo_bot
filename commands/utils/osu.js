@@ -347,6 +347,28 @@ async function getBeatmap(beatmap_id){
     return result;
 }
 
+// Obtener los detalles de un beatmap dado su MD5 checksum
+async function lookupBeatmapByMD5(md5){
+    await NewloadToken();
+    try {
+        const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: md5 });
+        return result;
+    } catch(e) {
+        return null;
+    }
+}
+
+// Obtener los detalles de una score dada su ID online
+async function getScoreDetails(score_id){
+    await NewloadToken();
+    try {
+        const result = await v2.scores.details({ id: score_id });
+        return result;
+    } catch(e) {
+        return null;
+    }
+}
+
 // 
 async function getBeatmapUserScore(parsed_args) {
     const osu_token = await loadToken();
@@ -687,6 +709,8 @@ module.exports = {
     saveUserscore,
     getUserRecentScores,
     getBeatmap,
+    lookupBeatmapByMD5,
+    getScoreDetails,
     findBeatmapInChannel,
     parsingCommandFunction,
     getBeatmapUserScore,
