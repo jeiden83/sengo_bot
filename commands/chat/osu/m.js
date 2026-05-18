@@ -15,12 +15,14 @@ async function run(messages, args) {
     let beatmap_id = null;
     if (args && args.length > 0) {
         for (const arg of args) {
-            const match = arg.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                          arg.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                          arg.match(/^\d+$/);
-            if (match) {
-                beatmap_id = match[1] || match[0];
-                break;
+            if (arg && typeof arg === 'string') {
+                const match = arg.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                              arg.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+                              arg.match(/^\d+$/);
+                if (match) {
+                    beatmap_id = match[1] || match[0];
+                    break;
+                }
             }
         }
     }
@@ -54,7 +56,7 @@ async function run(messages, args) {
     let modsStr = parsed_args.modFilter || parsed_args.modContainFilter || "";
     if (!modsStr) {
         for (const arg of args) {
-            if (arg.startsWith("+")) {
+            if (arg && typeof arg === 'string' && arg.startsWith("+")) {
                 modsStr = arg.slice(1).toUpperCase();
                 break;
             }
