@@ -31,8 +31,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 
 	const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
 
-	const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+	const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
 	const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
 
@@ -183,8 +183,8 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
     const user_url = recent_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${recent_scores_chunk[0].user.id}`;
     const avatar_url = recent_scores_chunk[0].user.avatar_url;
 
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
     let footerText = `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`;
     if (loadingIndex !== null) {
