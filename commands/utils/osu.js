@@ -29,12 +29,12 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs){
 		misses: miss,
 		n300: great,
 		n100: ok,
-		n50: meh, 
-		
-		largeTickHits: large_tick_hit,
-		sliderEndHits: slider_tail_hit,
-		smallTickHits: ignore_hit,
+		n50: meh
 	}
+
+	if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+	if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
+	if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
 
 	// Por si se quiere calcular el maximo PP del mapa dado
 	if(maximo_pp){
@@ -43,23 +43,14 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs){
 		return maxAttrs;
 	}
 
-	// Si el usuario no completo el mapa
-	if(!recent_scores.passed){
+	// Total de objetos hiteados
+	const total_hits = great + ok + meh + miss;
 
-		// Total de objetos hiteados
-		const total_hits = great + ok + meh + miss;
+	// Se construye la dificultad
+	const difficulty = new rosu.Difficulty(max_perfomance_constructor);
 
-		// Se construye la dificultad
-		const difficulty = new rosu.Difficulty(max_perfomance_constructor);
-
-		// Se construye para calcular el PP gradual
-		// La cual se pasa el estado actual de la play junto con el combo para calcular dicho pp hasta ese punto
-		return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
-	} 
-
-	// Se calcula el pp y atributos para el usuario que completo el mapa
-	const currAttrs = new rosu.Performance(difficulty_constructor).calculate(Attrs ? Attrs : map); // Por si no hay atributos se calcula con el mapa
-	return currAttrs;
+	// Se calcula el PP gradual usando el total de hits exacto (para coincidir perfectamente con calculadoras precisas como bathbot)
+	return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits); // Por si no hay atributos se calcula con el mapa
 
 }
 // Para obtener las puntuaciones locales en un mapa dado su id y el id del usuario

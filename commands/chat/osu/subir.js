@@ -65,25 +65,21 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         misses: miss,
         n300: great,
         n100: ok,
-        n50: meh,
-        largeTickHits: large_tick_hit,
-        sliderEndHits: slider_tail_hit,
-        smallTickHits: ignore_hit,
+        n50: meh
     }
+
+    if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+    if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
+    if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
 
     if (maximo_pp) {
         const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
         return maxAttrs;
     }
 
-    if (!recent_scores.passed) {
-        const total_hits = great + ok + meh + miss;
-        const difficulty = new rosu.Difficulty(max_perfomance_constructor);
-        return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
-    }
-
-    const currAttrs = new rosu.Performance(difficulty_constructor).calculate(Attrs ? Attrs : map);
-    return currAttrs;
+    const total_hits = great + ok + meh + miss;
+    const difficulty = new rosu.Difficulty(max_perfomance_constructor);
+    return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
 
 async function processImage(url) {
@@ -728,7 +724,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
             url: `https://osu.ppy.sh/users/${user_id}`,
             iconURL: recent_scores.user.avatar_url
         })
-        .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${recent_scores.beatmap.difficulty_rating + '★'} `)
+        .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
         .setDescription(`**Puntuación**: \`${(recent_scores.legacy_total_score || recent_scores.total_score || 0).toLocaleString('es-ES')}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
