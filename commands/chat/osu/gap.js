@@ -38,6 +38,8 @@ async function doEmbed(message, user_scores, beatmap_metadata){
             statistics = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` - ${ratio}:1`;
+        } else if (beatmap_metadata.mode === 'taiko') {
+            statistics = `\`[${great}/${ok}/${miss}]\``;
         } else {
             statistics = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }

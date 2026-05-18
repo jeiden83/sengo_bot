@@ -38,6 +38,8 @@ async function doEmbed(message, user_scores, gamemode) {
             stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` - ${ratio}:1`;
+        } else if (gamemode === 'taiko') {
+            stats_str = `\`[${great}/${ok}/${miss}]\``;
         } else {
             stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }

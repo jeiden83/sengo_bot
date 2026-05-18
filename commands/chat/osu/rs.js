@@ -67,6 +67,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
 		const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
 		ratio_str = ` ▸ ${ratio}:1`;
+	} else if (recent_scores.beatmap.mode === 'taiko') {
+		stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
 	} else {
 		stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
 	}
