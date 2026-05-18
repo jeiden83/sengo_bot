@@ -104,7 +104,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
     return embed;
 }
 
-function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays, ppThresholdCount) {
+async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays, ppThresholdCount) {
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
 
@@ -123,6 +123,23 @@ function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, tota
     if (active_filters.length > 0) {
         embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
     }
+
+    // Calcular en paralelo las estrellas reales de los 5 scores de la página
+    const calculated_stars = await Promise.all(top_scores_chunk.map(async (score) => {
+        if (score.mods.length === 0) {
+            return score.beatmap.difficulty_rating;
+        }
+        try {
+            const beatmap = await getBeatmap(score.beatmap.id);
+            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+            const maxAttrs = calculatePP(score, map, "maximo_pp");
+            const stars = maxAttrs.difficulty.stars;
+            map.free();
+            return stars;
+        } catch (e) {
+            return score.beatmap.difficulty_rating;
+        }
+    }));
 
     for (let i = 0; i < top_scores_chunk.length; i++) {
         const score = top_scores_chunk[i];
@@ -152,7 +169,7 @@ function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex, tota
 
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         
-        let starsVal = score.beatmap.difficulty_rating;
+        let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
@@ -417,7 +434,7 @@ async function run(messages, args) {
 
     let startIndex = (page - 1) * 5;
 
-    const initialListEmbed = doOsuListEmbed(message, parser_res.parsed_args, filtered_scores.slice(startIndex, startIndex + 5), startIndex, total_plays, ppThresholdCount);
+    const initialListEmbed = await doOsuListEmbed(message, parser_res.parsed_args, filtered_scores.slice(startIndex, startIndex + 5), startIndex, total_plays, ppThresholdCount);
 
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -472,7 +489,7 @@ async function run(messages, args) {
             }
 
             const chunk = filtered_scores.slice(startIndex, startIndex + 5);
-            const embed = doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, ppThresholdCount);
+            const embed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, ppThresholdCount);
 
             await i.editReply({
                 embeds: [embed],
