@@ -42,6 +42,51 @@ async function trackUserGuild(userId, guildId, res) {
     }
 }
 
+function injectLatencyToEmbeds(options, startTime) {
+    if (!options || typeof options !== 'object') return options;
+
+    const duration = Date.now() - startTime;
+    const latencyText = `Latencia: ${duration}ms`;
+
+    // Si es un EmbedBuilder
+    if (options.setFooter && typeof options.setFooter === 'function') {
+        const footerText = options.data?.footer?.text ? `${options.data.footer.text} • ${latencyText}` : latencyText;
+        options.setFooter({ text: footerText, iconURL: options.data?.footer?.icon_url });
+        return options;
+    }
+
+    // Si es un array de embeds o similar
+    if (Array.isArray(options)) {
+        return options.map(item => {
+            if (!item) return item;
+            if (typeof item.setFooter === 'function') {
+                const footerText = item.data?.footer?.text ? `${item.data.footer.text} • ${latencyText}` : latencyText;
+                item.setFooter({ text: footerText, iconURL: item.data?.footer?.icon_url });
+            } else if (typeof item === 'object') {
+                const footerText = item.footer?.text ? `${item.footer.text} • ${latencyText}` : latencyText;
+                item.footer = { text: footerText, icon_url: item.footer?.icon_url };
+            }
+            return item;
+        });
+    }
+
+    // Si tiene la propiedad embeds
+    if (options.embeds && Array.isArray(options.embeds)) {
+        options.embeds = options.embeds.map(embed => {
+            if (!embed) return embed;
+            if (typeof embed.setFooter === 'function') {
+                const footerText = embed.data?.footer?.text ? `${embed.data.footer.text} • ${latencyText}` : latencyText;
+                embed.setFooter({ text: footerText, iconURL: embed.data?.footer?.icon_url });
+            } else if (typeof embed === 'object') {
+                const footerText = embed.footer?.text ? `${embed.footer.text} • ${latencyText}` : latencyText;
+                embed.footer = { text: footerText, icon_url: embed.footer?.icon_url };
+            }
+            return embed;
+        });
+    }
+    return options;
+}
+
 //---
 
 async function chat_command_listener(chat_commands, client, config, res) {
@@ -72,11 +117,30 @@ async function chat_command_listener(chat_commands, client, config, res) {
         const message_command = message_args.shift().toLowerCase();
         
         const logger = new Logger(message, message_command, message_args);
+        const startTime = logger.startTime;
+
+        // Wrap message.channel.send
+        const originalSend = message.channel.send.bind(message.channel);
+        message.channel.send = (options) => {
+            return originalSend(injectLatencyToEmbeds(options, startTime));
+        };
+
+        // Wrap message.reply
+        const originalReply = message.reply.bind(message);
+        message.reply = (options) => {
+            return originalReply(injectLatencyToEmbeds(options, startTime));
+        };
 
         let message_reply = null;
         if (message.reference) {
             try {
                 message_reply = await message.channel.messages.fetch(message.reference.messageId);
+                if (message_reply) {
+                    const originalReplyReply = message_reply.reply.bind(message_reply);
+                    message_reply.reply = (options) => {
+                        return originalReplyReply(injectLatencyToEmbeds(options, startTime));
+                    };
+                }
             } catch (err) {
                 console.warn("[LISTENER] No se pudo obtener el mensaje referenciado:", err.message);
             }
@@ -144,6 +208,26 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
 
         const logger = new Logger(simulatedMessage, message_command, args);
         interaction.logger = logger;
+
+        const startTime = logger.startTime;
+
+        // Wrap interaction.reply
+        const originalIReply = interaction.reply.bind(interaction);
+        interaction.reply = (options) => {
+            return originalIReply(injectLatencyToEmbeds(options, startTime));
+        };
+
+        // Wrap interaction.editReply
+        const originalIEditReply = interaction.editReply.bind(interaction);
+        interaction.editReply = (options) => {
+            return originalIEditReply(injectLatencyToEmbeds(options, startTime));
+        };
+
+        // Wrap interaction.followUp
+        const originalIFollowUp = interaction.followUp.bind(interaction);
+        interaction.followUp = (options) => {
+            return originalIFollowUp(injectLatencyToEmbeds(options, startTime));
+        };
 
         try {
             logger.trigger(`Ejecutando /${message_command}`);
