@@ -105,8 +105,36 @@ async function doContent(parsed_args, user_found, beatmap_metadata) {
 async function run(messages, args) {
     const { message, res, reply } = messages;
 
-    const { beatmap_url, bad_response } = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
-    if (!beatmap_url) return bad_response;
+    let beatmap_url = null;
+    let found_index = -1;
+
+    const extractId = str =>
+        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+        null;
+
+    if (args && Array.isArray(args)) {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (typeof arg === 'string') {
+                const id = extractId(arg);
+                if (id) {
+                    beatmap_url = id;
+                    found_index = i;
+                    break;
+                }
+            }
+        }
+        if (found_index !== -1) {
+            args.splice(found_index, 1);
+        }
+    }
+
+    if (!beatmap_url) {
+        const result = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
+        beatmap_url = result.beatmap_url;
+        if (!beatmap_url) return result.bad_response;
+    }
 
     // Para revisar si es graveyard o no
     const beatmap_metadata = await getBeatmap(beatmap_url);
