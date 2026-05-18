@@ -6,13 +6,30 @@ const config = require("./config.json");
 const readline = require('readline');
 const mongoose = require('mongoose');
 const Logger = require("./utils/logger.js");
-const { syncYesterdayLogs } = require("./services/syncLogs.js");
+const { syncOlderLogs, analyzeTodayLogs } = require("./services/syncLogs.js");
+const fs = require('fs');
+const path = require('path');
 
 let res;
 let client;
 
 async function main(reload) {
     const useSupabase = process.argv.includes('--supabase');
+    
+    // 1. Verificar si ya existe el log de hoy para extraer analíticas antes de registrar el nuevo inicio
+    const todayStr = Logger.getLocalDateString();
+    const logPath = path.join(process.cwd(), 'db/local/logs', `${todayStr}.log`);
+    const todayLogExists = fs.existsSync(logPath);
+
+    if (todayLogExists) {
+        const stats = analyzeTodayLogs();
+        if (stats) {
+            Logger.system(`Reinicio detectado hoy. Este bot ha iniciado ${stats.startsCount} veces hoy.`);
+            Logger.system(`Resumen acumulado del día: ${stats.commandsCount} comandos ejecutados a lo largo de ${stats.serversCount} servidor(es).`);
+        }
+    }
+
+    // 2. Registrar el inicio actual del bot en el log diario de hoy
     Logger.system(`Iniciando SengoBot en modo ${useSupabase ? 'SUPABASE' : 'MONGODB'}...`);
 
     client = new Client({ 
@@ -29,9 +46,10 @@ async function main(reload) {
     
     res = await connectDB(config);
 
-    if (useSupabase && res.status === 1) {
-        syncYesterdayLogs(res.supabaseClient).catch(err => {
-            Logger.system(`Error en la tarea de sincronización de logs: ${err.message}`);
+    // 3. Si es el primer encendido del día (no existía el archivo log de hoy) y está en Supabase, subir logs de días anteriores
+    if (!todayLogExists && useSupabase && res.status === 1) {
+        syncOlderLogs(res.supabaseClient).catch(err => {
+            Logger.system(`Error en la tarea de sincronización de logs antiguos: ${err.message}`);
         });
     }
 
