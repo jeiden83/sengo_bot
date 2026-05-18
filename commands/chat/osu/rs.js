@@ -116,6 +116,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 
         let map_completion = "";
         let ppVal = score.pp;
+        let starsVal = score.beatmap.difficulty_rating;
 
         try {
             const beatmap = await getBeatmap(score.beatmap.id);
@@ -128,6 +129,10 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 
             if (!score.passed && map.nObjects > 0) {
                 map_completion = `*(${(total_hits / map.nObjects * 100).toFixed(1)}% pass)*`;
+            }
+
+            if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
+                starsVal = maxAttrs.difficulty.stars;
             }
             
             map.free();
@@ -172,7 +177,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
-        const stars = score.beatmap.difficulty_rating ? `${score.beatmap.difficulty_rating.toFixed(2)}★` : "";
+        const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
         const score_line = `**#${globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
