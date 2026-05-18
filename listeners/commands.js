@@ -1,6 +1,8 @@
 const { chatCommand, slashCommand, loadCommands, loadSlashCommands } = require("../commands/handler.js");
 const { PermissionsBitField } = require('discord.js');
 
+const Logger = require("../utils/logger.js");
+
 const MAX_MESSAGE_LENGTH = 2000;
 
 //---
@@ -30,6 +32,9 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
         const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
         const message_command = message_args.shift().toLowerCase();
+        
+        const logger = new Logger(message, message_command, message_args);
+
         let message_reply = null;
         if (message.reference) {
             try {
@@ -47,7 +52,8 @@ async function chat_command_listener(chat_commands, client, config, res) {
                     'args' : message_args,
                     'message' : message, 
                     'res': res,
-                    'reply' : message_reply
+                    'reply' : message_reply,
+                    'logger': logger
                 }
             );
 
@@ -56,6 +62,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
             // Comprobar la longitud del mensaje y enviar un error si es muy largo
             if (command_result.length > MAX_MESSAGE_LENGTH) {
                 await message.channel.send(`❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`);
+                logger.failed("El resultado superó los 2000 caracteres.");
                 return;
             }
 
@@ -63,7 +70,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
             await message.channel.send(command_result);
 
         } catch (error) {
-            
+            logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
             await message.channel.send("Hubo un error al ejecutar el comando. Ahora <@395623267530047489> lo sabrá.");
         }

@@ -779,7 +779,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         } else {
 
             // Se usa el linkeado al bot
-            if(!user_found) return `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`;
+            if(!user_found) return { 'fn_response': `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`, 'user_found': user_found, 'reparsed_args': parsed_args };
             parsed_args.username[0] = user_found.osu_id;
         }
 

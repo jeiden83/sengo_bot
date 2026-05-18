@@ -1,9 +1,12 @@
 const { ActivityType, Events } = require('discord.js');
+const Logger = require("../utils/logger.js");
 
 async function login(client, config) {
     client.once(Events.ClientReady, (c) => {
-        c.user.setActivity('Activo', { type: ActivityType.Playing });
-        console.log(`> Bot iniciado como ${c.user.tag}`);
+        const useSupabase = process.argv.includes('--supabase');
+        const activityText = useSupabase ? 'Activo con Supabase' : 'Activo';
+        c.user.setActivity(activityText, { type: ActivityType.Playing });
+        Logger.system(`Bot iniciado y listo en Discord como ${c.user.tag}`);
     });
 
     await client.login(config.TOKEN);
