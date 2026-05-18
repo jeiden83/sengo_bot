@@ -4,7 +4,7 @@ const path = require('path');
 
 // Hacer comando de chat
 async function chatCommand(intialized_data, command_data) {
-	const {args, command, message, res, reply} = command_data;
+	const {args, command, message, res, reply, logger} = command_data;
 
     const chat_commands_set = intialized_data.get('chat_commands_set');
     const chat_commands_map = intialized_data.get('chat_commands_map');
@@ -19,7 +19,7 @@ async function chatCommand(intialized_data, command_data) {
 				: null;
 	
 		return await found_command.run(
-			{ message, res, reply },
+			{ message, res, reply, logger },
 			[...args, alias_args],
 			intialized_data
 		);
