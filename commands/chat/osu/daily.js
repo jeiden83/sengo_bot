@@ -20,7 +20,7 @@ async function run(messages, args) {
             },
             params: {
                 mode: 'all',
-                limit: 50
+                limit: 250
             }
         });
 
