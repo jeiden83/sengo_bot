@@ -17,34 +17,24 @@ git clone https://github.com/jeiden83/sengo_bot
 npm install
 ```
 
-- Renombra el **config.json** ~~.dummy~~, y sigue los pasos para rellenar el archivo de configuraciones:
-```js
-{
-    // Se obtienen al crear una nueva OAuth Application
-    // https://osu.ppy.sh/home/account/edit 
-	"OSU_CLIENT_SECRET" : "Key del cliente secreto",
-	"OSU_CLIENT_ID" : 0, // Id del cliente 
+- Copia y renombra el archivo `.env.example` a `.env` en la raíz del proyecto, y rellena las variables de entorno necesarias:
 
-    // Aplicacion del lado de Discord
-    // Se crea una nueva app de Discord y se rellena lo necesario
-    // https://discord.com/developers/applications
-	"TOKEN" : "Key del apartado Bot", // Bot -> Token
-	"BOT_PREFIX" : "s.", // Prefijo del bot
-	"CLIENT_ID" : "Numeros", // OAuth -> Client information
-    // Client secret no necesario por ahora
+```env
+# Configuración de Discord
+DISCORD_TOKEN=tu_token_de_discord_aqui
+CLIENT_ID=id_de_tu_cliente_aqui
+BOT_PREFIX=s.
 
-    // Se obtiene al crear una nueva DB en MongoDB
-    // Appname > Connect > Drivers > Conection string
-    // uri de ejemplo, copiarla y dejarla en una sola linea
-	"DB_URI": `mongodb+srv://${db_user}:${db_password}@${db_url}.net/?retryWrites=true&w=majority&appName=${app_name}`
+# Configuración de osu! API
+OSU_CLIENT_ID=tu_id_de_cliente_osu_aqui
+OSU_CLIENT_SECRET=tu_secreto_de_cliente_osu_aqui
 
-    // Es para el comando 'ask'
-    // Api del chatbot de Google
-    "GEMINI_API_KEY" : `KEY DE GEMINI`
-    // Es para el comando 'starboard'
-    // Asegurarse que tiene todos los permisos para dar puntos y eso
-    "TATSU_API_KEY" : `KEY DE TATSUMAKI`
-}
+# Configuración de Supabase
+SUPABASE_URL=tu_url_de_supabase_aqui
+SUPABASE_KEY=tu_anon_key_de_supabase_aqui
+
+# Configuración de Tatsu (Opcional - para ganar score de Tatsu)
+TATSU_API_KEY=tu_tatsu_key_aqui
 ```
 
 - Correr el bot con el `run.sh` (recomendado), o bien con:

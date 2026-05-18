@@ -11,8 +11,8 @@ commands/chat/admin/
 db/local/
 data/
 src/yuri/
-
 # .env
+.env
 config.json
 jsconfig.json
 osu_token.json

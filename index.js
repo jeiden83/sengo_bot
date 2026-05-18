@@ -2,7 +2,7 @@ const { Client, GatewayIntentBits, ActivityType, Partials } = require("discord.j
 const { load_listeners } = require("./listeners/commands.js");
 const { connectDB } = require("./db/database.js");
 const { login } = require("./listeners/login.js");
-const config = require("./config.json");
+const config = require("./config.js");
 const readline = require('readline');
 
 const Logger = require("./utils/logger.js");

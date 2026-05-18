@@ -1,4 +1,4 @@
-const config = require("../../../config.json");
+const config = require("../../../config.js");
 const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
 const { colorear } = require("../../utils/admin.js");

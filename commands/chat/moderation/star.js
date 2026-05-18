@@ -1,4 +1,4 @@
-const CONFIG = require("../../../config.json");
+const CONFIG = require("../../../config.js");
 const { Tatsu } = require('tatsu');
 const { EmbedBuilder } = require("discord.js");
 
