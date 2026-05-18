@@ -252,10 +252,16 @@ async function run(messages, args) {
     // 1. Filtrar por mods exactos (-m)
     if (parser_res.parsed_args.modFilter !== null) {
         const filterStr = parser_res.parsed_args.modFilter;
+        const hasExplicitCL = filterStr.includes("CL");
+
         filtered_scores = filtered_scores.filter(score => {
+            const scoreAcronyms = score.mods.map(m => m.acronym);
+            const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+
             if (filterStr === "NM" || filterStr === "NONE") {
-                return score.mods.length === 0;
+                return filteredScoreAcronyms.length === 0;
             }
+
             const getModChunks = (str) => {
                 const chunks = [];
                 for (let j = 0; j < str.length; j += 2) {
@@ -264,7 +270,7 @@ async function run(messages, args) {
                 return chunks.sort().join("").toUpperCase();
             };
             const filterNormalized = getModChunks(filterStr);
-            const scoreNormalized = score.mods.map(m => m.acronym).sort().join("").toUpperCase();
+            const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
             return scoreNormalized === filterNormalized;
         });
     }
@@ -272,13 +278,22 @@ async function run(messages, args) {
     // 2. Filtrar por mods contenidos (-mx)
     if (parser_res.parsed_args.modContainFilter !== null) {
         const filterStr = parser_res.parsed_args.modContainFilter;
+        const hasExplicitCL = filterStr.includes("CL");
+
         const filterChunks = [];
         for (let j = 0; j < filterStr.length; j += 2) {
             filterChunks.push(filterStr.slice(j, j + 2));
         }
+
         filtered_scores = filtered_scores.filter(score => {
             const scoreAcronyms = score.mods.map(m => m.acronym);
-            return filterChunks.every(mod => scoreAcronyms.includes(mod));
+            const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+
+            if (filterStr === "NM" || filterStr === "NONE") {
+                return filteredScoreAcronyms.length === 0;
+            }
+
+            return filterChunks.every(mod => filteredScoreAcronyms.includes(mod));
         });
     }
 
