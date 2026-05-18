@@ -78,7 +78,8 @@ async function run(interaction, res) {
             }
         },
         res: res,
-        reply: replyMessage
+        reply: replyMessage,
+        logger: interaction.logger
     };
 
     // Llamamos al comando de chat original

@@ -87,31 +87,52 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
     client.on('interactionCreate', async (interaction) => {
         if (!interaction.isCommand()) return;
 
+        const message_command = interaction.commandName;
+        const args = [];
+        interaction.options.data.forEach(opt => {
+            if (opt.value !== undefined) {
+                args.push(`${opt.name}:${opt.value}`);
+            }
+        });
+
+        const simulatedMessage = {
+            author: interaction.user,
+            guild: interaction.guild
+        };
+
+        const logger = new Logger(simulatedMessage, message_command, args);
+        interaction.logger = logger;
+
         try {
+            logger.trigger(`Ejecutando /${message_command}`);
             // Para avisar que se mandara un slash
             await interaction.deferReply();
 
             const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
             if (slash_result === true) {
+                logger.success(`/${message_command} completado con éxito.`);
                 return;
             }
 
             if (!slash_result) {
                 await interaction.editReply("El comando no devolvió ningún resultado.");
+                logger.failed("El comando no devolvió ningún resultado.");
                 return;
             }
 
             // Comprobar la longitud del resultado del slash si es un string y enviar un error si es muy largo
             if (typeof slash_result === 'string' && slash_result.length > MAX_MESSAGE_LENGTH) {
                 await interaction.editReply(`❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`);
+                logger.failed("El resultado superó los 2000 caracteres.");
                 return;
             }
 
             await interaction.editReply(slash_result);
+            logger.success(`/${message_command} completado con éxito.`);
 
         } catch (error) {
-            
+            logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
             await interaction.editReply(
                 "Hubo un error al ejecutar el comando. Ahora <@395623267530047489> lo sabrá."

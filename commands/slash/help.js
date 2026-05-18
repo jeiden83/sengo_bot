@@ -33,7 +33,8 @@ async function run(interaction, res, chat_commands) {
             guild: interaction.guild
         },
         res: res,
-        reply: null
+        reply: null,
+        logger: interaction.logger
     };
 
     // Ejecutar el comando help de chat pasándole la colección chat_commands

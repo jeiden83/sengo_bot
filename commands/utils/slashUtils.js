@@ -66,7 +66,8 @@ function parseOsuSlashArgs(interaction, res) {
             guild: interaction.guild,
         },
         res: res,
-        reply: null
+        reply: null,
+        logger: interaction.logger
     };
 
     return { args, messages };

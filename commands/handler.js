@@ -71,7 +71,8 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 				guild: interaction.guild,
 			},
 			res: res,
-			reply: null
+			reply: null,
+			logger: interaction.logger
 		};
 		return await chat_commands_map.get(commandName).run(messages, [], chat_commands);
 	}

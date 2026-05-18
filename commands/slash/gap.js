@@ -14,7 +14,8 @@ async function run(interaction, res) {
             channel: interaction.channel,
         },
         res: res,
-        reply: null
+        reply: null,
+        logger: interaction.logger
     };
 
     return await gapChatCommand.run(messages, []);
