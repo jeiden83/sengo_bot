@@ -77,6 +77,10 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
 
             const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
+            if (slash_result === true) {
+                return;
+            }
+
             if (!slash_result) {
                 await interaction.editReply("El comando no devolvió ningún resultado.");
                 return;
