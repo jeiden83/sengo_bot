@@ -694,34 +694,15 @@ async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails =
 }
 
 async function findBeatmapInChannel(message, isReply){
-    let embedMessage = message;
+    const extractId = str =>
+        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+        null;
 
-    if(!isReply){
-        const fetch_messages = await message.channel.messages.fetch({ limit: 30 });  // limite de 30 msj a revisar  
-
-        embedMessage = await fetch_messages.find(
-            m => m.embeds.length > 0 && (
-                (m.embeds[0].url && typeof m.embeds[0].url === 'string') || 
-                (m.embeds[0].author && m.embeds[0].author.url && typeof m.embeds[0].author.url === 'string')
-            )
-        );
-    }
-
-    // Si no se encuentra un mensaje
-    if(!embedMessage){
-
-
-        return {'beatmap_url' : null, 'bad_response' : `No se encontro un mapa al cual hacerle >c`};
-    }
-
-    try {
-        const extractId = str =>
-            str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-            str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-            null;
-    
-        const e = embedMessage.embeds?.[0];
-    
+    const getBeatmapIdFromMessage = (msg) => {
+        if (!msg) return null;
+        const e = msg.embeds?.[0];
+        
         let fields_url = null;
         if (e?.fields) {
             for (const field of e.fields) {
@@ -732,20 +713,36 @@ async function findBeatmapInChannel(message, isReply){
                 }
             }
         }
-    
-        const beatmap_url =
-            extractId(embedMessage.content) ||
+
+        return (
+            extractId(msg.content) ||
             extractId(e?.url) ||
             extractId(e?.author?.url) ||
             extractId(e?.title) ||
             extractId(e?.description) ||
-            fields_url;
-    
-        return beatmap_url
-            ? { beatmap_url, bad_response: 'shh' }
-            : { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
-    } catch {
-        console.log("<#> TypeError");
+            fields_url
+        );
+    };
+
+    try {
+        if (isReply) {
+            const beatmap_url = getBeatmapIdFromMessage(message);
+            return beatmap_url
+                ? { beatmap_url, bad_response: 'shh' }
+                : { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        }
+
+        const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
+        for (const msg of fetch_messages.values()) {
+            const beatmap_url = getBeatmapIdFromMessage(msg);
+            if (beatmap_url) {
+                return { beatmap_url, bad_response: 'shh' };
+            }
+        }
+
+        return { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+    } catch (error) {
+        console.error("<#> findBeatmapInChannel error:", error);
         return { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
     }
 }
