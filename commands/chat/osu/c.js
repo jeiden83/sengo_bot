@@ -1,7 +1,7 @@
 const { EmbedBuilder } = require('discord.js');
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser } = require("../../utils/osu.js");
 
-async function doEmbed(message, user_scores) {
+async function doEmbed(message, user_scores, gamemode) {
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
 
@@ -24,7 +24,26 @@ async function doEmbed(message, user_scores) {
         let accuracy = (score.accuracy * 100).toFixed(2);
         let max_combo = score.max_combo;
         let statistics = score.statistics;
-        statistics = `\`${statistics.great || 0}/${statistics.ok || 0}/${statistics.meh || 0}/${statistics.miss || 0}\``;
+
+        const perfect = statistics.perfect || 0;
+        const great = statistics.great || 0;
+        const good = statistics.good || 0;
+        const ok = statistics.ok || 0;
+        const meh = statistics.meh || 0;
+        const miss = statistics.miss || 0;
+
+        let stats_str = "";
+        let ratio_str = "";
+        if (gamemode === 'mania') {
+            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            ratio_str = ` - ${ratio}:1`;
+        } else {
+            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
+        }
+        statistics = stats_str;
+        accuracy = `${accuracy}%${ratio_str}`;
+
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
@@ -45,8 +64,8 @@ async function doEmbed(message, user_scores) {
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const score_line = i != 0 ?
-            `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy}% - x${max_combo} - ${statistics} - ${pp}pp - ${time_set} - ${mods_used}\n${map_completion}` :
-            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}%** - **x${max_combo}** - ${statistics} - **${pp}pp** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`;
+            `${rank_pos} - ${grade_emoji} - ${legacy_score} - ${accuracy} - x${max_combo} - ${statistics} - ${pp}pp - ${time_set} - ${mods_used}\n${map_completion}` :
+            `**${rank_pos}** - ${grade_emoji} - **${legacy_score}** - **${accuracy}** - **x${max_combo}** - ${statistics} - **${pp}pp** - ${time_set} - ${mods_used} - ${map_completion != "" ? `**${map_completion}**` : ""}\n`;
 
         if ((embed_description + score_line).length > 3900) {
             embed_description = embed_description.concat(`\n*...y ${user_scores.length - i} puntuaciones más*`);
@@ -91,7 +110,7 @@ async function run(messages, args) {
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
 
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
-        { "message": message, "res": res, "beatmap_url": beatmap_url, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
+        { "message": message, "res": res, "beatmap_url": beatmap_url, "gamemode": beatmap_metadata.mode, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
 
     if (typeof fn_response === 'string') return fn_response;
     if (fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
@@ -109,7 +128,8 @@ async function run(messages, args) {
         map.free();
     }
 
-    const embed = await doEmbed(message, fn_response);
+    const gamemode = beatmap_metadata.mode || parsed_args.gamemode || 'osu';
+    const embed = await doEmbed(message, fn_response, gamemode);
     const content = await doContent(parsed_args, user_found, beatmap_metadata);
 
     if (reply) {

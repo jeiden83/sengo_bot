@@ -281,7 +281,9 @@ async function getUserRecentScores(parsed_args){
                 mods: convertGatariMods(s.mods),
                 max_combo: s.max_combo,
                 statistics: {
+                    perfect: s.count_gekis,
                     great: s.count_300,
+                    good: s.count_katu,
                     ok: s.count_100,
                     meh: s.count_50,
                     miss: s.count_miss
@@ -618,7 +620,7 @@ async function findBeatmapInChannel(message, isReply){
 }
 
 async function parsingCommandFunction(parsed_args, command_parameters){
-    const {message, res, command_function, beatmap_url} = command_parameters;
+    const {message, res, command_function, beatmap_url, gamemode} = command_parameters;
     const discord_id = message.author.id;
     let user_found;
     
@@ -672,6 +674,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
         // Se hace la peticion con los args
         parsed_args['beatmap_url'] = beatmap_url;   // agregamos para el >c
+        if (!parsed_args.gamemode && gamemode) parsed_args.gamemode = gamemode;
 
         const fn_response = await command_function(parsed_args);
 

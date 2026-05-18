@@ -672,8 +672,8 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         beatmapset: { title: beatmap_metadata.beatmapset.title, covers: beatmap_metadata.beatmapset.covers }
     };
 
-    const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
-    const total_hits = great + ok + meh + miss;
+    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
+    const total_hits = perfect + great + good + ok + meh + miss;
 
     const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_id, beatmap_metadata);
     const maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
@@ -718,6 +718,16 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
 
     const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
 
+    let stats_str = "";
+    let ratio_str = "";
+    if (recent_scores.beatmap.mode === 'mania') {
+        stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+        const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+        ratio_str = ` ▸ ${ratio}:1`;
+    } else {
+        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Score manual guardada para ${parsedData.player_name}`,
@@ -728,7 +738,7 @@ A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
         .setDescription(`**Puntuación**: \`${(recent_scores.legacy_total_score || recent_scores.total_score || 0).toLocaleString('es-ES')}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
-${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP ${(recent_scores.accuracy * 100).toFixed(2)}% x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
+${stats_str} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP ${(recent_scores.accuracy * 100).toFixed(2)}%${ratio_str} x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
 \`\`\`
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])

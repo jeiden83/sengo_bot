@@ -31,8 +31,17 @@ async function doEmbed(message, user_scores, beatmap_metadata){
         let max_combo = score.max_combo;
         let beatmap_max_combo = beatmap_metadata.max_combo;
 
-        let { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
-            statistics = `\`${great}/${ok}/${meh}/${miss}\``;
+        let { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+        let statistics = "";
+        let ratio_str = "";
+        if (beatmap_metadata.mode === 'mania') {
+            statistics = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            ratio_str = ` - ${ratio}:1`;
+        } else {
+            statistics = `\`[${great}/${ok}/${meh}/${miss}]\``;
+        }
+        accuracy = `${accuracy}%${ratio_str}`;
     
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
     
@@ -60,12 +69,12 @@ async function doEmbed(message, user_scores, beatmap_metadata){
 
         embed_description = embed_description.concat(embed_description !== '' ?
             `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
-            ${total_score} - ${accuracy}% - x${max_combo}/${beatmap_max_combo} - [${statistics}] - ${pp}PP - ${mods_used}\n\n` 
+            ${total_score} - ${accuracy} - x${max_combo}/${beatmap_max_combo} - ${statistics} - ${pp}PP - ${mods_used}\n\n` 
             
             :
             
             `#**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
-            **${total_score}** - **${accuracy}%** - **x${max_combo}/${beatmap_max_combo}** - [${statistics}] - **${pp}PP** - ${mods_used}\n\n`
+            **${total_score}** - **${accuracy}** - **x${max_combo}/${beatmap_max_combo}** - ${statistics} - **${pp}PP** - ${mods_used}\n\n`
         );
     
     });

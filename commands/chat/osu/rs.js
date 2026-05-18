@@ -34,7 +34,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 	const roleColor = message.member.roles.highest.color || '#ffffff';
     const embedColor = roleColor !== 0 ? roleColor : '#ffffff';
 
-	const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
+	const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
 
 	const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
@@ -61,6 +61,16 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 
 	const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
 
+	let stats_str = "";
+	let ratio_str = "";
+	if (recent_scores.beatmap.mode === 'mania') {
+		stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+		const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+		ratio_str = ` ▸ ${ratio}:1`;
+	} else {
+		stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
+	}
+
 	// Construccion del embed
 	const embed = new EmbedBuilder()
 		.setAuthor({
@@ -72,7 +82,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		.setURL(beatmap_url)
 		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
-${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}% x${user_max_combo}/${colorear(beatmap_max_combo)}
+${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
 \`\`\`
 		`)
 		.setImage(beatmap_cover)
