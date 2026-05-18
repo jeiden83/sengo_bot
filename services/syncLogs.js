@@ -26,9 +26,9 @@ function analyzeTodayLogs() {
             if (line.includes('[PASO 1/3: INICIO]')) {
                 commandsCount++;
                 
-                // Parseamos el nombre del servidor entre el segundo y tercer corchete
-                // Formato: [TRIGGER] [Hora] [usuario] [servidor] [comando] ...
-                const matches = line.match(/\[TRIGGER\]\s+\[.*?\]\s+\[.*?\]\s+\[(.*?)\]/);
+                // Parseamos el nombre del servidor entre el primer y segundo corchete después de [TRIGGER]
+                // Formato de línea en archivo: [Hora] [TRIGGER] [usuario] [servidor] [comando] ...
+                const matches = line.match(/\[TRIGGER\]\s+\[.*?\]\s+\[(.*?)\]/);
                 if (matches && matches[1]) {
                     uniqueServers.add(matches[1]);
                 }
