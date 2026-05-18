@@ -860,6 +860,48 @@ function argsParserNoCommand(args) {
 
     // Separamos por las comas y revisamos cada args_commands por cada args del mensaje
     let args_list = args_aux.split(",");
+    
+    let grouped_args = [];
+    let inside_quotes = false;
+    let quote_char = "";
+    let temp_quote_arg = "";
+
+    for (let j = 0; j < args_list.length; j++) {
+        let current = args_list[j];
+        
+        // Si empieza y termina con la misma comilla (ya sea " o ')
+        if ((current.startsWith('"') && current.endsWith('"') && current.length > 1) ||
+            (current.startsWith("'") && current.endsWith("'") && current.length > 1)) {
+            grouped_args.push(current.slice(1, -1));
+            continue;
+        }
+
+        if (!inside_quotes && (current.startsWith('"') || current.startsWith("'"))) {
+            inside_quotes = true;
+            quote_char = current[0];
+            temp_quote_arg = current.slice(1);
+            continue;
+        }
+
+        if (inside_quotes && current.endsWith(quote_char)) {
+            inside_quotes = false;
+            temp_quote_arg += " " + current.slice(0, -1);
+            grouped_args.push(temp_quote_arg);
+            temp_quote_arg = "";
+            continue;
+        }
+
+        if (inside_quotes) {
+            temp_quote_arg += " " + current;
+        } else {
+            grouped_args.push(current);
+        }
+    }
+    if (inside_quotes && temp_quote_arg) {
+        grouped_args.push(temp_quote_arg);
+    }
+    args_list = grouped_args;
+
     let skip_next = false;
 
     for (let i = 0; i < args_list.length; i++) {
