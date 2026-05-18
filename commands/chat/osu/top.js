@@ -106,11 +106,12 @@ async function run(messages, args) {
 
     const total_plays = parser_res.fn_response.length;
 
-    let index = parser_res.parsed_args.index || 1;
-    if (index > total_plays) index = total_plays;
-    if (index < 1) index = 1;
+    let page = parser_res.parsed_args.index || 1;
+    const max_pages = Math.ceil(total_plays / 5);
+    if (page > max_pages) page = max_pages;
+    if (page < 1) page = 1;
 
-    let startIndex = Math.floor((index - 1) / 5) * 5;
+    let startIndex = (page - 1) * 5;
 
     const initialListEmbed = doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays);
 

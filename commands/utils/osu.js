@@ -338,7 +338,7 @@ async function getUserTopScores(parsed_args){
             const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
             const m = modeMap[parsed_args.gamemode || 'osu'];
             
-            const reqUrl = `https://api.gatari.pw/user/scores/best?id=${parsed_args.username[0]}&mode=${m}&l=100`;
+            const reqUrl = `https://api.gatari.pw/user/scores/best?id=${parsed_args.username[0]}&mode=${m}&l=200`;
             const response = await fetch(reqUrl);
             const data = await response.json();
             
@@ -395,14 +395,32 @@ async function getUserTopScores(parsed_args){
 
     await NewloadToken();
 
-    const result = await v2.scores.list({
-        type: 'user_best',
-        user_id: parsed_args.username[0],
-        mode: parsed_args.gamemode || "osu",
-        limit: 100,
-      });
+    try {
+        const result1 = await v2.scores.list({
+            type: 'user_best',
+            user_id: parsed_args.username[0],
+            mode: parsed_args.gamemode || "osu",
+            limit: 100,
+            offset: 0
+        });
 
-    return result;
+        if (!result1 || result1.length < 100) {
+            return result1 || [];
+        }
+
+        const result2 = await v2.scores.list({
+            type: 'user_best',
+            user_id: parsed_args.username[0],
+            mode: parsed_args.gamemode || "osu",
+            limit: 100,
+            offset: 100
+        });
+
+        return result1.concat(result2 || []);
+    } catch (e) {
+        console.error("Error al obtener mejores jugadas de Bancho:", e);
+        return [];
+    }
 }
 
 async function getOsuUser(parsed_args){
