@@ -30,7 +30,14 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
         const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
         const message_command = message_args.shift().toLowerCase();
-        const message_reply = message.reference ? await message.channel.messages.fetch(message.reference.messageId) : null;
+        let message_reply = null;
+        if (message.reference) {
+            try {
+                message_reply = await message.channel.messages.fetch(message.reference.messageId);
+            } catch (err) {
+                console.warn("[LISTENER] No se pudo obtener el mensaje referenciado:", err.message);
+            }
+        }
 
         try {
             const command_result = await chatCommand(

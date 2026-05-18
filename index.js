@@ -15,9 +15,10 @@ async function main(reload) {
             GatewayIntentBits.GuildMessages, 
             GatewayIntentBits.MessageContent, 
             GatewayIntentBits.GuildMembers,
-            GatewayIntentBits.DirectMessages
+            GatewayIntentBits.DirectMessages,
+            GatewayIntentBits.DirectMessageReactions
         ],
-        partials: [Partials.Channel]
+        partials: [Partials.Channel, Partials.Message, Partials.Reaction]
     });
     res = await connectDB(config);
 
