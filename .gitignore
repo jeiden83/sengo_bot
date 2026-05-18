@@ -22,3 +22,6 @@ POR HACER.txt
 
 # CodeGraph
 .codegraph/
+
+# Antigravity Rules
+.antigravity-rules.md
