@@ -26,13 +26,15 @@ async function doOsuEmbed(message, osu_userdata, osu_mode){
 
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;
 
+    let top_ranking_str = osu_userdata.server === 'gatari' ? "" : `**• Top ranking:** \`#${peak_ranking}\`  ${discord_last_peak}\n`;
+
     const embed = new EmbedBuilder()
     .setAuthor({
         name: `Perfil osu!${osu_mode} de ${osu_userdata.team ? `[${osu_userdata.team.short_name}]`: ""} ${osu_userdata.username}`,
-        url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
+        url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
         iconURL: icon_url
     })
-    .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n**• Top ranking:** \`#${peak_ranking}\`  ${discord_last_peak}\n**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\`${osu_userdata.team ? `\n **• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**`: ``} \n**• Fecha de inicio: **${join_date}`)
+    .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n${top_ranking_str}**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: \`#${country_rank}\`${osu_userdata.team ? `\n **• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**`: ``} \n**• Fecha de inicio: **${join_date}`)
     .addFields(
         {
             name: "Medallas",

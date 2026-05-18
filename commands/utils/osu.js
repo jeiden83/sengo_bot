@@ -226,8 +226,94 @@ function saveUserscore(recent_scores, pre_calculated, force_save = false) {
     }
 }
 
+function convertGatariMods(modsBitmask) {
+    const ModList = [
+        { bit: 1, acronym: 'NF' },
+        { bit: 2, acronym: 'EZ' },
+        { bit: 8, acronym: 'HD' },
+        { bit: 16, acronym: 'HR' },
+        { bit: 32, acronym: 'SD' },
+        { bit: 64, acronym: 'DT' },
+        { bit: 128, acronym: 'RX' },
+        { bit: 256, acronym: 'HT' },
+        { bit: 512, acronym: 'NC' },
+        { bit: 1024, acronym: 'FL' },
+        { bit: 4096, acronym: 'SO' },
+        { bit: 16384, acronym: 'PF' }
+    ];
+    let mods = [];
+    for (let mod of ModList) {
+        if ((modsBitmask & mod.bit) === mod.bit) {
+            if (mod.acronym === 'NC') mods = mods.filter(m => m.acronym !== 'DT');
+            if (mod.acronym === 'PF') mods = mods.filter(m => m.acronym !== 'SD');
+            mods.push({ acronym: mod.acronym });
+        }
+    }
+    return mods;
+}
+
 // Para obtener las puntuaciones recientes de un usuario en un mapa
 async function getUserRecentScores(parsed_args){
+    const server = parsed_args.server || 'bancho';
+
+    if (server === 'gatari') {
+        try {
+            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+            const m = modeMap[parsed_args.gamemode || 'osu'];
+            
+            const reqUrl = `https://api.gatari.pw/user/scores/recent?id=${parsed_args.username[0]}&mode=${m}&l=1`;
+            const response = await fetch(reqUrl);
+            const data = await response.json();
+            
+            if (!data.scores || data.scores.length === 0) return [];
+            
+            const userResponse = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
+            const userData = await userResponse.json();
+            const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
+
+            const s = data.scores[0];
+            const passed = s.ranking !== "F";
+            
+            return [{
+                accuracy: s.accuracy / 100,
+                passed: passed,
+                rank: s.ranking,
+                mods: convertGatariMods(s.mods),
+                max_combo: s.max_combo,
+                statistics: {
+                    great: s.count_300,
+                    ok: s.count_100,
+                    meh: s.count_50,
+                    miss: s.count_miss
+                },
+                pp: s.pp,
+                total_score: s.score,
+                legacy_total_score: s.score,
+                ended_at: new Date(s.time * 1000).toISOString(),
+                beatmap: {
+                    id: s.beatmap.beatmap_id,
+                    version: s.beatmap.version,
+                    difficulty_rating: s.beatmap.difficulty,
+                    mode: parsed_args.gamemode || 'osu',
+                    beatmapset_id: s.beatmap.beatmapset_id
+                },
+                beatmapset: {
+                    title: s.beatmap.title,
+                    covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
+                },
+                user: {
+                    username: u.username,
+                    id: u.id,
+                    country_code: u.country,
+                    avatar_url: `https://a.gatari.pw/${u.id}`,
+                    server: 'gatari'
+                }
+            }];
+        } catch (e) {
+            return [];
+        }
+    }
+
     await NewloadToken();
 
     const result = await v2.scores.list({
@@ -241,8 +327,69 @@ async function getUserRecentScores(parsed_args){
 }
 
 async function getOsuUser(parsed_args){
-    const osu_token = await loadToken();
+    const server = parsed_args.server || 'bancho';
     const look_gamemode = parsed_args.gamemode || 'osu';
+
+    if (server === 'gatari') {
+        try {
+            const response = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
+            const data = await response.json();
+            
+            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+            const m = modeMap[look_gamemode];
+            const statsRes = await fetch(`https://api.gatari.pw/user/stats?u=${parsed_args.username[0]}&mode=${m}`);
+            const statsData = await statsRes.json();
+
+            let achCount = [];
+            if (data.users && data.users.length > 0) {
+                const u = data.users[0];
+                const achRes = await fetch(`https://api.gatari.pw/user/achievements?u=${u.id}`);
+                const achText = await achRes.text();
+                if (achText) {
+                    try {
+                        const achData = JSON.parse(achText);
+                        if (achData.data) {
+                            Object.values(achData.data).forEach(cat => {
+                                if (cat.achievements) {
+                                    achCount.push(...cat.achievements.filter(a => a !== null));
+                                }
+                            });
+                        }
+                    } catch (e) {}
+                }
+            }
+
+            if (data.users && data.users.length > 0 && statsData.stats) {
+                const u = data.users[0];
+                const s = statsData.stats;
+                return {
+                    id: u.id,
+                    username: u.username,
+                    country_code: u.country,
+                    avatar_url: `https://a.gatari.pw/${u.id}`,
+                    cover_url: `https://a.gatari.pw/${u.id}`,
+                    join_date: new Date(u.registered_on * 1000).toISOString(),
+                    rank_highest: null,
+                    user_achievements: achCount,
+                    statistics: {
+                        global_rank: s.rank,
+                        pp: s.pp,
+                        hit_accuracy: s.avg_accuracy,
+                        play_count: s.playcount,
+                        play_time: s.playtime,
+                        level: { current: s.level, progress: s.level_progress },
+                        rank: { country: s.country_rank }
+                    },
+                    server: 'gatari'
+                };
+            }
+            throw new Error("User not found in Gatari");
+        } catch (e) {
+            return `El usuario no se encuentra en Gatari!`;
+        }
+    }
+
+    const osu_token = await loadToken();
     let res;
 
     try {
@@ -535,10 +682,14 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 function argsParserNoCommand(args) {
     let username = [];
     let gamemode = args.gamemode || "";
+    let server = args.server || "bancho";
     let args_aux = new String(args);
 
     const gamemode_set = {
         'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits'
+    };
+    const server_set = {
+        'gatari': 'gatari', 'bancho': 'bancho'
     };
 
     const args_commands = [
@@ -547,6 +698,10 @@ function argsParserNoCommand(args) {
         function (args) {
             if (gamemode_set[args.slice(1)]) {
                 gamemode = gamemode_set[args.slice(1)];
+                return true;
+            }
+            if (server_set[args.slice(1)]) {
+                server = server_set[args.slice(1)];
                 return true;
             }
             return false;
@@ -603,7 +758,8 @@ function argsParserNoCommand(args) {
 
     let parsed_args = {
         'username': [username.map(x => x.replace(/"/g, "")).join(" ").trim()],
-        'gamemode': gamemode
+        'gamemode': gamemode,
+        'server': server
     };
     return parsed_args;
 }

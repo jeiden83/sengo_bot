@@ -11,7 +11,7 @@ const rosu = require("rosu-pp-js");
 
 async function doOsuEmbed(message, recent_scores, pre_calculated){
 	const username = recent_scores.user.username;
-	const user_url = `https://osu.ppy.sh/users/${recent_scores.user.id}`;
+	const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
 	const avatar_url = recent_scores.user.avatar_url;
 
 	const song_title = recent_scores.beatmapset.title;
