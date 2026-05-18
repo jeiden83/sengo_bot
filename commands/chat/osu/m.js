@@ -197,17 +197,9 @@ async function run(messages, args) {
             new ButtonBuilder()
                 .setLabel('Nerinyan')
                 .setStyle(ButtonStyle.Link)
-                .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}`),
-            new ButtonBuilder()
-                .setLabel('Nerinyan (No Video)')
-                .setStyle(ButtonStyle.Link)
                 .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}?novideo=1`),
             new ButtonBuilder()
                 .setLabel('Sayobot')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://txy1.sayobot.cn/beatmaps/download/full/${beatmap.beatmapset_id}`),
-            new ButtonBuilder()
-                .setLabel('Sayobot (No Video)')
                 .setStyle(ButtonStyle.Link)
                 .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
         );
