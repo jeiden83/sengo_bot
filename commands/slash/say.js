@@ -17,14 +17,25 @@ async function run(interaction) {
     const currentDate = new Date().toISOString();
     console.log(`[${currentDate}] (${authorName}) (Slash) : /say texto: ${texto}`);
 
-    // Enviar el mensaje del bot directamente en el canal de texto
-    await interaction.channel.send(texto);
-
-    // Eliminar el mensaje diferido de "Sengo está pensando..." para emular s.say perfectamente
+    // Lógica robusta de envío
     try {
-        await interaction.deleteReply();
-    } catch (e) {
-        // Ignorar errores al borrar
+        // 1. Intentar enviar directamente en el canal
+        await interaction.channel.send(texto);
+
+        // 2. Si tiene éxito, eliminamos el mensaje diferido para emular s.say perfectamente
+        try {
+            await interaction.deleteReply();
+        } catch (e) {
+            // Ignorar errores al borrar
+        }
+    } catch (err) {
+        // 3. Si falla por falta de permisos (Missing Access / Missing Permissions),
+        // caemos en el respaldo de editar la respuesta diferida (que siempre tiene acceso)
+        try {
+            await interaction.editReply(texto);
+        } catch (editError) {
+            console.error("Error crítico de fallback en /say:", editError);
+        }
     }
 
     return true; // Auto-gestionado
