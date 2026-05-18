@@ -62,7 +62,34 @@ async function connectDB(config) {
                 }
             };
 
-            const res = { 'status': 1, 'response': "# Supabase conectado", 'User': User, 'supabaseClient': supabase };
+            const Webhook = {
+                async findOne({ channel_id }) {
+                    const { data, error } = await supabase
+                        .from('webhook_channels')
+                        .select('*')
+                        .eq('channel_id', channel_id)
+                        .maybeSingle();
+
+                    if (error) {
+                        console.error('Error en Webhook.findOne de Supabase:', error);
+                        throw new Error(`Database error: ${error.message}`);
+                    }
+                    return data;
+                },
+                async find() {
+                    const { data, error } = await supabase
+                        .from('webhook_channels')
+                        .select('*');
+
+                    if (error) {
+                        console.error('Error en Webhook.find de Supabase:', error);
+                        throw new Error(`Database error: ${error.message}`);
+                    }
+                    return data || [];
+                }
+            };
+
+            const res = { 'status': 1, 'response': "# Supabase conectado", 'User': User, 'Webhook': Webhook, 'supabaseClient': supabase };
             console.log(res.response);
             return res;
         } catch (error) {
@@ -78,12 +105,21 @@ async function connectDB(config) {
         });
         const User = mongoose.model('User', userSchema);
 
+        const webhookSchema = new mongoose.Schema({
+            channel_id: { type: String, required: true, unique: true },
+            guild_id: { type: String, required: true },
+            guild_name: { type: String },
+            channel_name: { type: String },
+            created_at: { type: Date, default: Date.now }
+        });
+        const Webhook = mongoose.model('WebhookChannel', webhookSchema);
+
         try {
             console.log("# Conectando a MongoDB...");
 
             await mongoose.connect(CONFIG.DB_URI, { serverSelectionTimeoutMS: 10000 });
 
-            const res = { 'status': 1, 'response': "# MongoDB conectado", 'User': User };
+            const res = { 'status': 1, 'response': "# MongoDB conectado", 'User': User, 'Webhook': Webhook };
             console.log(res.response);
 
             return res;
@@ -175,4 +211,85 @@ async function deleteUser(User, discord_id) {
     }
 }
 
-module.exports = { connectDB, addUser, deleteUser };
+async function addWebhookChannel(Webhook, channel_id, guild_id, guild_name, channel_name) {
+    if (useSupabase) {
+        try {
+            const { data, error } = await supabase
+                .from('webhook_channels')
+                .upsert({
+                    channel_id,
+                    guild_id,
+                    guild_name,
+                    channel_name
+                }, { onConflict: 'channel_id' })
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            return { 'status': 1, 'response': `Webhook para canal ${channel_id} agregado/actualizado en Supabase`, 'callback': data };
+        } catch (error) {
+            console.error('Error al agregar/actualizar webhook en Supabase:', error);
+            return { 'status': -1, 'response': 'Error al agregar/actualizar webhook en Supabase', 'callback': channel_id };
+        }
+    } else {
+        try {
+            let webhook = await Webhook.findOne({ channel_id });
+
+            if (webhook) {
+                webhook.guild_id = guild_id;
+                webhook.guild_name = guild_name;
+                webhook.channel_name = channel_name;
+
+                await webhook.save();
+                return { 'status': 1, 'response': `Webhook para canal ${channel_id} actualizado`, 'callback': webhook };
+            } else {
+                webhook = new Webhook({ channel_id, guild_id, guild_name, channel_name });
+                await webhook.save();
+                return { 'status': 1, 'response': `Webhook para canal ${channel_id} agregado`, 'callback': webhook };
+            }
+        } catch (error) {
+            console.error('Error al agregar/actualizar webhook en MongoDB:', error);
+            return { 'status': -1, 'response': 'Error al agregar/actualizar webhook en MongoDB', 'callback': channel_id };
+        }
+    }
+}
+
+async function deleteWebhookChannel(Webhook, channel_id) {
+    if (useSupabase) {
+        try {
+            const { data, error } = await supabase
+                .from('webhook_channels')
+                .delete()
+                .eq('channel_id', channel_id)
+                .select()
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (data) {
+                return { 'status': 1, 'response': `Webhook para canal ${channel_id} eliminado en Supabase`, 'callback': data };
+            } else {
+                return { 'status': 0, 'response': `Webhook para canal ${channel_id} no encontrado en Supabase`, 'callback': null };
+            }
+        } catch (error) {
+            console.error('Error al eliminar webhook en Supabase:', error);
+            return { 'status': -1, 'response': 'Error al eliminar webhook en Supabase', 'callback': channel_id };
+        }
+    } else {
+        try {
+            const webhook = await Webhook.findOneAndDelete({ channel_id });
+
+            if (webhook) {
+                return { 'status': 1, 'response': `Webhook para canal ${channel_id} eliminado`, 'callback': webhook };
+            } else {
+                return { 'status': 0, 'response': `Webhook para canal ${channel_id} no encontrado`, 'callback': null };
+            }
+        } catch (error) {
+            console.error('Error al eliminar webhook en MongoDB:', error);
+            return { 'status': -1, 'response': 'Error al eliminar webhook en MongoDB', 'callback': channel_id };
+        }
+    }
+}
+
+module.exports = { connectDB, addUser, deleteUser, addWebhookChannel, deleteWebhookChannel };

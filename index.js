@@ -56,6 +56,10 @@ async function main(reload) {
     await load_listeners(res, client, config);
     await login(client, config);  
 
+    // Inicializar el servidor HTTP de webhook de GitHub
+    const { initWebhookServer } = require("./commands/utils/webhook.js");
+    initWebhookServer(client, res, config);
+
     setupCommandLineInterface(res, client, config, reload); 
 }
 main();
@@ -72,6 +76,16 @@ async function shutdownGracefully() {
         client.user.setActivity(null);
         client.destroy();
         Logger.system("Cliente Discord desconectado.");
+    }
+
+    try {
+        const { serverInstance } = require("./commands/utils/webhook.js");
+        if (serverInstance) {
+            serverInstance.close();
+            Logger.system("Servidor de webhook de GitHub cerrado.");
+        }
+    } catch (e) {
+        // Ignorar errores al cerrar si no existiera
     }
     
     Logger.system("Apagado seguro completado. ¡Hasta luego!");
@@ -95,6 +109,10 @@ async function setupCommandLineInterface(res, client, config, reload) {
 
             Logger.system("Recargando comandos y listeners...");
             await load_listeners(res, client, config);
+
+            // Reinicializar el servidor HTTP de webhook de GitHub en la recarga
+            const { initWebhookServer } = require("./commands/utils/webhook.js");
+            initWebhookServer(client, res, config);
 
             const useSupabase = process.argv.includes('--supabase');
             const activityText = useSupabase ? 'Activo con Supabase (recargado)' : 'Activo de nuevo';
