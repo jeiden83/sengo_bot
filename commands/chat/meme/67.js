@@ -1,15 +1,18 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
 
 async function run(messages, args){
     const { logger } = messages;
-    if (logger) logger.process("Generando embed del meme 67");
+    if (logger) logger.process("Generando attachment y embed del meme 67");
+
+    const attachment = new AttachmentBuilder("https://media1.tenor.com/m/U94DkrDstecAAAAC/67-angry-bird.gif", { name: "67.gif" });
+
+    const embed = new EmbedBuilder()
+        .setImage("attachment://67.gif")
+        .setColor("#FF0000");
 
     return {
-        embeds: [
-            new EmbedBuilder()
-                .setImage("https://media1.tenor.com/m/U94DkrDstecAAAAC/67-angry-bird.gif")
-                .setColor("#FF0000")
-        ]
+        embeds: [embed],
+        files: [attachment]
     };
 }
 
