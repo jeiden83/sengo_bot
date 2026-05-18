@@ -79,24 +79,6 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
 
-async function processImage(url) {
-    try {
-        const response = await fetch(url);
-        const buffer = await response.buffer();
-        const base64Data = buffer.toString('base64');
-        const mimeType = response.headers.get('content-type');
-        return {
-            inlineData: {
-                data: base64Data,
-                mimeType: mimeType
-            }
-        };
-    } catch (error) {
-        console.error("Error al procesar la imagen:", error);
-        return null;
-    }
-}
-
 function similarity(s1, s2) {
     if (!s1 || !s2) return 0;
     let longer = s1.toLowerCase();
@@ -378,130 +360,9 @@ async function run(messages, args, initialized_data) {
         parsedData = parseBotEmbed(sourceMessage);
     }
 
-    // Si falló el regex o no era un embed conocido, procedemos con Gemini (OCR)
     if (!parsedData) {
-        let textPart = "";
-        let imagePart = null;
-
-        if (sourceMessage.attachments.size > 0) {
-            const attachment = sourceMessage.attachments.first();
-            if (attachment.contentType && attachment.contentType.startsWith('image/')) {
-                console.log(`[S.SUBIR] Tipo de input: IMAGEN (Detectada en adjunto)`);
-                imagePart = await processImage(attachment.url);
-            }
-        }
-
-        if (sourceMessage.embeds && sourceMessage.embeds.length > 0) {
-            const embed = sourceMessage.embeds[0];
-            textPart = `${sourceMessage.content || ''}\n${embed.title || ''}\n${embed.description || ''}\n${embed.author ? embed.author.name : ''}`;
-        } else if (sourceMessage.content) {
-            textPart = sourceMessage.content;
-        }
-
-        if (!imagePart && !textPart.trim()) {
-            console.log(`[S.SUBIR] Error: No se encontró imagen ni texto en el mensaje respondido.`);
-            return "No pude encontrar información de una score en ese mensaje.";
-        }
-
-        let linkedUserHint = "";
-        try {
-            const linked = await res.User.findOne({ discord_id: message.author.id });
-            if (linked && linked.osu_id) {
-                const fetched = await getOsuUser({ username: [String(linked.osu_id)], gamemode: 'osu' });
-                if (typeof fetched !== 'string' && fetched.username) {
-                    linkedUserHint = `\nPISTA MUY IMPORTANTE: Es muy probable que el nombre del jugador sea "${fetched.username}". Si el nombre en la imagen se parece a esto (ej. si dudas entre Aquaro y Aquare), USA el nombre de la pista.`;
-                }
-            }
-        } catch(e) {}
-
-        if (imagePart) {
-            console.log(`[S.SUBIR] Procesando imagen con Gemini OCR...`);
-            // LLAMADA A GEMINI
-            const prompt = `Extrae la siguiente información de la score de osu! (de la imagen o del texto proporcionado) y devuélvelo ESTRICTAMENTE como un JSON crudo (sin formato markdown ni bloques de código, SOLO el objeto JSON).
-MUY IMPORTANTE: Extrae los datos reales que veas en la imagen o texto.
-- Título del mapa: Texto grande arriba (marcado en rojo en el ejemplo).
-- Dificultad: Entre corchetes después del título.
-- Creador: "Beatmap by X" (marcado en amarillo).
-- Jugador y Fecha: "Played by X on DD/MM/YYYY H:MM:SS" (marcado en verde y azul). Convierte la fecha a ISO 8601. PRESTA MUCHA ATENCIÓN a las letras del nombre del jugador (no confundas 'e' con 'o', 'a' con 'o', etc).${linkedUserHint}
-- Puntuación (Score): Número grande (marcado en rosado).
-- Estadísticas de aciertos (300s/100s/50s/Misses):
-  ¡ATENCIÓN! Fíjate bien en la disposición de los números en la captura:
-  * LADO IZQUIERDO: Arriba son los 300s (Great), en el medio los 100s (Ok) y abajo los 50s (Meh).
-  * LADO DERECHO: Arriba y en el medio son otros puntos de finalización de combo (IGNÓRALOS, no son "ok" ni "meh"). ABAJO a la derecha son los Misses.
-  Devuelve esto en un objeto "statistics" con las claves: "great" (300s), "ok" (100s), "meh" (50s) y "miss".
-- Max Combo: Número grande con una 'x' abajo a la izquierda (marcado en verde lima).
-- Accuracy: Porcentaje grande (conviértelo a decimal ej. 89.83% -> 0.8983).
-- Mods: Íconos pequeños pegados a la letra grande del Rank (ej. Score V2, NF). Si no hay, pon ["NM"].
-
-A continuación te muestro un EJEMPLO de una imagen con los datos marcados, y el JSON que espero que generes para ella:`;
-
-            const exampleData = require('./example_score.json');
-            const exampleImagePart = {
-                inlineData: {
-                    data: exampleData.base64,
-                    mimeType: "image/png"
-                }
-            };
-
-            const exampleOutput = `
-{
-  "player_name": "Jeiden",
-  "beatmap_name": "Luschka - Kami no Kotoba",
-  "difficulty_name": "The faint harmony that sprouted one pretty thing after another",
-  "creator": "Sakura Blossom",
-  "date": "2024-11-16T00:34:14.000Z",
-  "accuracy": 0.8983,
-  "max_combo": 354,
-  "score": 161637,
-  "statistics": { "great": 1085, "ok": 92, "meh": 16, "miss": 52 },
-  "mods": ["NF", "V2"],
-  "rank": "B"
-}
-`;
-
-            const finalInstruction = `\nAhora haz lo mismo con la siguiente imagen o texto:\nTexto adicional del mensaje (si lo hay):\n${textPart}`;
-
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            const parts = [
-                { text: prompt },
-                exampleImagePart,
-                { text: exampleOutput },
-                { text: finalInstruction }
-            ];
-
-            if (imagePart) parts.push(imagePart);
-
-            try {
-                await message.channel.sendTyping();
-                const result = await model.generateContent(parts);
-                let responseText = result.response.text();
-
-                responseText = responseText.replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
-                parsedData = JSON.parse(responseText);
-                console.log(`[S.SUBIR] OCR (Gemini) extrajo:`, JSON.stringify(parsedData, null, 2));
-            } catch (e) {
-                console.error("[S.SUBIR] Error al procesar con Gemini:", e);
-                return "Hubo un error al extraer los datos de la imagen o texto usando IA.";
-            }
-        } else {
-            console.log(`[S.SUBIR] Tipo de input: TEXTO DESCONOCIDO. Procesando con Gemini...`);
-            // TEXT ONLY GEMINI FALLBACK
-            const prompt = `Extrae la siguiente información...`; // Simplificado para texto
-            const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-            try {
-                const result = await model.generateContent([{ text: `Extrae JSON de esta score:\n${textPart}` }]);
-                let responseText = result.response.text().replace(/\`\`\`json/g, '').replace(/\`\`\`/g, '').trim();
-                parsedData = JSON.parse(responseText);
-                console.log(`[S.SUBIR] Gemini texto extrajo:`, parsedData);
-            } catch (e) { }
-        }
-    } else {
-        console.log(`[S.SUBIR] Tipo de input: EMBED DE BOT CONOCIDO (Regex exitoso).`);
-    }
-
-    if (!parsedData) {
-        console.log(`[S.SUBIR] Error: No se pudo extraer información de la score.`);
-        return "No pude extraer la información de la score. Asegúrate de que el mensaje sea legible o contenga datos válidos.";
+        console.log(`[S.SUBIR] Error: No se pudo extraer información de la score (no se detectó archivo .osr ni un embed de bot soportado).`);
+        return "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.";
     }
 
     if (overrideMods && parsedData) {
