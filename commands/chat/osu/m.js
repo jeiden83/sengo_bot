@@ -124,8 +124,8 @@ async function run(messages, args) {
     };
 
     const statusName = status_names[beatmap.status] || beatmap.status.toUpperCase();
-    const roleColor = message.member.roles.highest.color || '#ffffff';
-    const embedColor = roleColor !== 0 ? roleColor : (status_colors[beatmap.status] || '#ffffff');
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
 
     // Liberar memoria del mapa
     map.free();
