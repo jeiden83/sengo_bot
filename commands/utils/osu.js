@@ -913,6 +913,19 @@ function argsParserNoCommand(args) {
         let arg = args_list[i].trim();
         if (!arg) continue;
 
+        // Si es un modo de juego o servidor, los capturamos antes de cualquier otra regla (como -m)
+        if (arg.startsWith("-")) {
+            const possible_val = arg.slice(1).toLowerCase();
+            if (gamemode_set[possible_val]) {
+                gamemode = gamemode_set[possible_val];
+                continue;
+            }
+            if (server_set[possible_val]) {
+                server = server_set[possible_val];
+                continue;
+            }
+        }
+
         // Si es exactamente "-l"
         if (arg === "-l") {
             listMode = true;
