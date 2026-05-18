@@ -82,18 +82,14 @@ async function doOsuEmbed(message, osu_userdata, osu_mode){
 async function run(messages, args){
     const { message, res, logger } = messages;
 
-    if (logger) logger.trigger("Buscando perfil de osu!");
-
     if (logger) logger.process("Consultando base de datos y API de osu!");
 	const osu_userdata = await argsParser(args,
 		{"message" : message, "res" : res, "command_function" : getOsuUser});  
 
 	if(!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
-        if (logger) logger.failed(osu_userdata.fn_response || "Respuesta vacía o error");
         return osu_userdata.fn_response;
     }
 
-    if (logger) logger.success(`Perfil de osu! de ${osu_userdata.fn_response.username} obtenido.`);
     return doOsuEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode));
 }
 

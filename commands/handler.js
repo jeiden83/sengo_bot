@@ -18,11 +18,28 @@ async function chatCommand(intialized_data, command_data) {
 				? found_command.run.alias[command].args
 				: null;
 	
-		return await found_command.run(
-			{ message, res, reply, logger },
-			[...args, alias_args],
-			intialized_data
-		);
+        if (logger) logger.trigger(`Ejecutando s.${command}`);
+
+        try {
+            const result = await found_command.run(
+                { message, res, reply, logger },
+                [...args, alias_args],
+                intialized_data
+            );
+
+            if (logger) {
+                // Si el comando devuelve un string con advertencia/error (ej. no vinculado) lo registramos como fallo controlado
+                if (typeof result === 'string' && (result.includes('❌') || result.toLowerCase().includes('error') || result.toLowerCase().includes('no vinculo') || result.toLowerCase().includes('no se encontró') || result.toLowerCase().includes('invalido'))) {
+                    logger.failed(result.replace(/❌\s*/g, '').slice(0, 100));
+                } else {
+                    logger.success(`s.${command} completado con éxito.`);
+                }
+            }
+            return result;
+        } catch (error) {
+            if (logger) logger.failed(error.message);
+            throw error; // Re-lanzar para el try/catch del despachador
+        }
 	}
 		
 	const not_found_responses = [

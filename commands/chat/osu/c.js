@@ -103,7 +103,7 @@ async function doContent(parsed_args, user_found, beatmap_metadata) {
 }
 
 async function run(messages, args) {
-    const { message, res, reply } = messages;
+    const { message, res, reply, logger } = messages;
 
     let beatmap_url = null;
     let found_index = -1;
@@ -131,15 +131,18 @@ async function run(messages, args) {
     }
 
     if (!beatmap_url) {
+        if (logger) logger.process("Buscando beatmap reciente en el canal");
         const result = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
         beatmap_url = result.beatmap_url;
         if (!beatmap_url) return result.bad_response;
     }
 
     // Para revisar si es graveyard o no
+    if (logger) logger.process("Obteniendo metadatos del beatmap");
     const beatmap_metadata = await getBeatmap(beatmap_url);
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
 
+    if (logger) logger.process("Consultando puntuaciones en el beatmap");
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
         { "message": message, "res": res, "beatmap_url": beatmap_url, "gamemode": beatmap_metadata.mode, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
 
@@ -147,6 +150,7 @@ async function run(messages, args) {
     if (fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
 
     if (beatmap_metadata.status === 'loved') {
+        if (logger) logger.process("Simulando PP en mapa Loved");
         const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
         const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
         
