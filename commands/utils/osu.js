@@ -673,7 +673,7 @@ async function getBeatmapUserAllScores(parsed_args){
 
 
     // buscamos tambien las locales, por si hay fallidas
-    const local_scores = getUnrankedBeatmapUserAllScores(parsed_args);  
+    const local_scores = await getUnrankedBeatmapUserAllScores(parsed_args);  
 
     return result.concat(typeof local_scores === "string" ? [] : local_scores);
 }
