@@ -329,6 +329,82 @@ async function getUserRecentScores(parsed_args){
     return result;
 }
 
+// Para obtener las mejores puntuaciones (top) de un usuario
+async function getUserTopScores(parsed_args){
+    const server = parsed_args.server || 'bancho';
+
+    if (server === 'gatari') {
+        try {
+            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+            const m = modeMap[parsed_args.gamemode || 'osu'];
+            
+            const reqUrl = `https://api.gatari.pw/user/scores/best?id=${parsed_args.username[0]}&mode=${m}&l=100`;
+            const response = await fetch(reqUrl);
+            const data = await response.json();
+            
+            if (!data.scores || data.scores.length === 0) return [];
+            
+            const userResponse = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
+            const userData = await userResponse.json();
+            const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
+
+            return data.scores.map(s => {
+                const passed = s.ranking !== "F";
+                return {
+                    accuracy: s.accuracy / 100,
+                    passed: passed,
+                    rank: s.ranking,
+                    mods: convertGatariMods(s.mods),
+                    max_combo: s.max_combo,
+                    statistics: {
+                        perfect: s.count_gekis,
+                        great: s.count_300,
+                        good: s.count_katu,
+                        ok: s.count_100,
+                        meh: s.count_50,
+                        miss: s.count_miss
+                    },
+                    pp: s.pp,
+                    total_score: s.score,
+                    legacy_total_score: s.score,
+                    ended_at: new Date(s.time * 1000).toISOString(),
+                    beatmap: {
+                        id: s.beatmap.beatmap_id,
+                        version: s.beatmap.version,
+                        difficulty_rating: s.beatmap.difficulty,
+                        mode: parsed_args.gamemode || 'osu',
+                        beatmapset_id: s.beatmap.beatmapset_id
+                    },
+                    beatmapset: {
+                        title: s.beatmap.title,
+                        covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
+                    },
+                    user: {
+                        username: u.username,
+                        id: u.id,
+                        country_code: u.country,
+                        avatar_url: `https://a.gatari.pw/${u.id}`,
+                        server: 'gatari'
+                    }
+                };
+            });
+        } catch (e) {
+            return [];
+        }
+    }
+
+    await NewloadToken();
+
+    const result = await v2.scores.list({
+        type: 'user_best',
+        user_id: parsed_args.username[0],
+        mode: parsed_args.gamemode || "osu",
+        limit: 100,
+      });
+
+    return result;
+}
+
 async function getOsuUser(parsed_args){
     const server = parsed_args.server || 'bancho';
     const look_gamemode = parsed_args.gamemode || 'osu';
@@ -912,6 +988,7 @@ module.exports = {
     getBeatmap_osu,
     saveUserscore,
     getUserRecentScores,
+    getUserTopScores,
     getBeatmap,
     lookupBeatmapByMD5,
     getScoreDetails,
