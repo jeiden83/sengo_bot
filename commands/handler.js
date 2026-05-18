@@ -61,7 +61,7 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 }
 // Cargar slash commands
 async function loadSlashCommands(chat_commands, config) {
-    const chat_commands_set = chat_commands.get('chat_commands_set');
+    const chat_main_commands_set = chat_commands.get('chat_main_commands_set') || chat_commands.get('chat_commands_set');
     const chat_commands_map = chat_commands.get('chat_commands_map');
 
 	const slash_commands_set = new Set();
@@ -86,7 +86,7 @@ async function loadSlashCommands(chat_commands, config) {
 	}
 
 	// Listar los slashs
-	const commands = Array.from(chat_commands_set).map(command_name => {
+	const commands = Array.from(chat_main_commands_set).map(command_name => {
 		if (slash_commands_map.has(command_name)) {
 			const custom_command = slash_commands_map.get(command_name);
 			if (custom_command.data) {
@@ -146,6 +146,7 @@ async function loadSlashCommands(chat_commands, config) {
 async function loadCommands() {
     const chat_commands_dir = path.join(process.cwd(), './commands/chat');
     const chat_commands_set = new Set();
+    const chat_main_commands_set = new Set();
     const chat_commands_map = new Collection();
 
     function loadFromDirectory(directory, parentFolder = "") {
@@ -174,6 +175,7 @@ async function loadCommands() {
 
                     // Agregar el comando principal
                     chat_commands_set.add(commandName);
+                    chat_main_commands_set.add(commandName);
                     chat_commands_map.set(commandName, commandModule);
 
                     // Si el módulo tiene alias
@@ -195,6 +197,7 @@ async function loadCommands() {
     console.log(`# Cargados ${chat_commands_set.size} comandos de chat`);
     return new Collection()
         .set('chat_commands_set', chat_commands_set)
+        .set('chat_main_commands_set', chat_main_commands_set)
         .set('chat_commands_map', chat_commands_map);
 }
 
