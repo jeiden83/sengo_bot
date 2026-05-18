@@ -482,6 +482,9 @@ async function getOsuUser(parsed_args){
             }
             throw new Error("User not found in Gatari");
         } catch (e) {
+            if (/^\d+$/.test(parsed_args.username[0])) {
+                return `El usuario no se encuentra en Gatari!\n💡 **Consejo:** Si estás usando tu cuenta enlazada, recuerda que las IDs de Bancho y Gatari son diferentes. Prueba buscando con tu nombre de usuario: \`/osu usuario:TuNombre servidor:Gatari\``;
+            }
             return `El usuario no se encuentra en Gatari!`;
         }
     }
