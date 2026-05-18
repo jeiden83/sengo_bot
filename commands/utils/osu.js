@@ -1151,26 +1151,30 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu') 
     await NewloadToken();
     const scores = new Collection();
 
-    const promises = usersArray.map(async (user) => {
-        try {
-            const result = await v2.scores.list({
-                type: 'user_beatmap_best',
-                beatmap_id: beatmapId,
-                user_id: user.osu_id
-            });
+    const chunkSize = 12;
+    for (let i = 0; i < usersArray.length; i += chunkSize) {
+        const chunk = usersArray.slice(i, i + chunkSize);
+        
+        await Promise.all(chunk.map(async (user) => {
+            try {
+                const result = await v2.scores.list({
+                    type: 'user_beatmap_best',
+                    beatmap_id: beatmapId,
+                    user_id: user.osu_id,
+                    mode: gamemode
+                });
 
-            if (result) {
-                // Usamos user_id como clave para detectar duplicados luego
-                scores.set(result.score.user_id.toString(), result.score);
+                if (result) {
+                    scores.set(result.score.user_id.toString(), result.score);
+                }
+            } catch (error) {
+                // Silencioso, pero se puede loguear en consola si es necesario
             }
-        } catch (error) {
-            // console.log(`No result for: ${user.osu_id}`)
-        }
-    });
+        }));
 
-    const chunkSize = 10;
-    for (let i = 0; i < promises.length; i += chunkSize) {
-        await Promise.all(promises.slice(i, i + chunkSize));
+        if (i + chunkSize < usersArray.length) {
+            await new Promise(resolve => setTimeout(resolve, 150));
+        }
     }
 
     const unrankedScores = await getUnrankedUserScores(beatmapId, gamemode);

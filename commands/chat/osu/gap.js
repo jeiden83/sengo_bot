@@ -104,31 +104,41 @@ async function doContent(beatmap_metadata, user_scores, sorted_user_scores){
     return content;
 }
 
-async function getLinkedMembers(message, res) {
+async function getLinkedMembers(message, res, beatmapMode = 'osu') {
     try {
-        // Paso 1: Obtener el guildId directamente del mensaje
-        const guild = message.guild;
-        const members = await guild.members.fetch();
+        const guildId = message.guild.id;
 
-        // Paso 2: Obtener usuarios linkeados de la base de datos
-        const linkedUsers = await res.User.find({ osu_id: { $ne: null } });
-        const linkedDiscordIds = linkedUsers.map(user => user.discord_id);
+        // Paso 1: Consultar Supabase buscando usuarios vinculados que pertenezcan a este servidor
+        const { data: linkedUsers, error } = await res.supabaseClient
+            .from('users')
+            .select('discord_id, osu_id, main_gamemode')
+            .not('osu_id', 'is', null)
+            .contains('guilds', [guildId]);
 
-        // Paso 3: Filtrar los miembros que están en la base de datos
-        const linkedMembers = members.filter(member => linkedDiscordIds.includes(member.user.id));
+        if (error) {
+            console.error('Error al consultar usuarios vinculados en Supabase:', error);
+            return [];
+        }
 
-        // Crear un array para almacenar los nombres, IDs y osu_id
-        const userArray = linkedMembers.map(member => {
-            // Obtener el usuario linkeado correspondiente
-            const linkedUser = linkedUsers.find(user => user.discord_id === member.user.id);
-            return {
-                id: member.user.id,
-                username: member.user.username,
-                osu_id: linkedUser.osu_id
-            };
+        if (!linkedUsers || linkedUsers.length === 0) {
+            return [];
+        }
+
+        // Paso 2: Filtrar los usuarios que coincidan con el gamemode del mapa (estándar por defecto)
+        const targetMode = beatmapMode || 'osu';
+        const filteredUsers = linkedUsers.filter(user => {
+            const userMode = user.main_gamemode || 'osu';
+            return userMode === targetMode;
         });
 
-        return userArray;
+        // Crear un array para almacenar las IDs y osu_id correspondientes
+        return filteredUsers.map(user => {
+            return {
+                id: user.discord_id,
+                osu_id: user.osu_id,
+                main_gamemode: user.main_gamemode
+            };
+        });
     } catch (error) {
         console.error('Error obteniendo usuarios linkeados:', error);
         return [];
@@ -138,19 +148,24 @@ async function getLinkedMembers(message, res) {
 async function run(messages, args){
     const { message, res, reply } = messages;
 
-    const usersArray = await getLinkedMembers(message, res);
-
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
 
-    // Para revisar si es graveyard o no
-    const beatmap_metadata = await getBeatmap(beatmap_url); // beatmap_metadata.max_combo
+    // Para revisar el modo de juego y estado del beatmap
+    const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    const user_scores =  (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
+    const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode);
+
+    if (usersArray.length === 0) {
+        const modeName = beatmap_metadata.mode === 'osu' ? 'standard' : beatmap_metadata.mode;
+        return { content: `**No hay usuarios vinculados** en este servidor que jueguen principalmente el modo \`${modeName}\`.` };
+    }
+
+    const user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
         await getUnrankedUserScores(beatmap_url) : 
-        await getNewBeatmapUserScores(beatmap_url, usersArray);
+        await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode);
 
-    if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor** pues ninguno tiene una score en el mapa.`};
+    if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa.`};
 
     if (beatmap_metadata.status === 'loved') {
         const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");

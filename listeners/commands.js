@@ -5,6 +5,43 @@ const Logger = require("../utils/logger.js");
 
 const MAX_MESSAGE_LENGTH = 2000;
 
+const userGuildCache = new Set(); // Guarda "userId:guildId"
+
+async function trackUserGuild(userId, guildId, res) {
+    if (!userId || !guildId || !res?.supabaseClient) return;
+
+    const cacheKey = `${userId}:${guildId}`;
+    if (userGuildCache.has(cacheKey)) return;
+
+    userGuildCache.add(cacheKey);
+
+    try {
+        const supabase = res.supabaseClient;
+
+        // 1. Obtener registro del usuario para ver si está vinculado
+        const { data: user, error: fetchError } = await supabase
+            .from('users')
+            .select('guilds')
+            .eq('discord_id', userId)
+            .maybeSingle();
+
+        if (fetchError || !user) {
+            return;
+        }
+
+        let guilds = user.guilds || [];
+        if (!guilds.includes(guildId)) {
+            guilds.push(guildId);
+            await supabase
+                .from('users')
+                .update({ guilds })
+                .eq('discord_id', userId);
+        }
+    } catch (err) {
+        console.error('[TRACKER] Error al registrar guild de usuario:', err);
+    }
+}
+
 //---
 
 async function chat_command_listener(chat_commands, client, config, res) {
@@ -20,6 +57,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
         } 
 
         if (message.guild) {
+            trackUserGuild(message.author.id, message.guild.id, res);
             const botMember = message.guild.members.cache.get(client.user.id);
             const botPermissions = message.channel.permissionsFor(botMember);
             if (!botPermissions || !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
@@ -99,6 +137,10 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             author: interaction.user,
             guild: interaction.guild
         };
+
+        if (interaction.guild) {
+            trackUserGuild(interaction.user.id, interaction.guild.id, res);
+        }
 
         const logger = new Logger(simulatedMessage, message_command, args);
         interaction.logger = logger;
