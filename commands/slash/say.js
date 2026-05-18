@@ -17,11 +17,15 @@ async function run(interaction) {
     const currentDate = new Date().toISOString();
     console.log(`[${currentDate}] (${authorName}) (Slash) : /say texto: ${texto}`);
 
-    // Responder de forma efímera para ocultar la burbuja del comando de barra diagonal
-    await interaction.reply({ content: "¡Mensaje enviado con éxito!", ephemeral: true });
-
-    // Enviar el mensaje del bot directamente en el canal
+    // Enviar el mensaje del bot directamente en el canal de texto
     await interaction.channel.send(texto);
+
+    // Eliminar el mensaje diferido de "Sengo está pensando..." para emular s.say perfectamente
+    try {
+        await interaction.deleteReply();
+    } catch (e) {
+        // Ignorar errores al borrar
+    }
 
     return true; // Auto-gestionado
 }
