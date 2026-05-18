@@ -49,7 +49,7 @@ function analyzeTodayLogs() {
 // Sincroniza y sube todos los archivos de logs de días anteriores a Supabase, eliminándolos luego localmente
 async function syncOlderLogs(supabaseClient) {
     if (!supabaseClient) {
-        Logger.system("Sincronización con Supabase omitida (Modo MongoDB activo o cliente no disponible).");
+        Logger.system("Sincronización con Supabase omitida (Cliente no disponible).");
         return;
     }
 

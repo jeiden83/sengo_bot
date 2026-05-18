@@ -1,4 +1,3 @@
-const { GoogleGenerativeAI } = require("@google/generative-ai");
 const config = require("../../../config.json");
 const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
@@ -7,8 +6,6 @@ const { EmbedBuilder } = require("discord.js");
 const axios = require('axios');
 const rosu = require("rosu-pp-js");
 const fetch = require('node-fetch');
-
-const genAI = new GoogleGenerativeAI(config.GEMINI_API_KEY);
 
 /**
  * Calcula el grade de osu!standard usando la fórmula oficial.
