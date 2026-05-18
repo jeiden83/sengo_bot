@@ -111,28 +111,33 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
         grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
+        const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+        const total_hits = great + ok + meh + miss;
+
         let map_completion = "";
-        if (!score.passed) {
-            const count_circles = score.beatmap.count_circles || 0;
-            const count_sliders = score.beatmap.count_sliders || 0;
-            const count_spinners = score.beatmap.count_spinners || 0;
-            const total_objects = count_circles + count_sliders + count_spinners;
-            if (total_objects > 0) {
-                map_completion = `*(${((score.statistics.great + score.statistics.ok + score.statistics.meh + score.statistics.miss) / total_objects * 100).toFixed(1)}% pass)*`;
+        let ppVal = score.pp;
+
+        try {
+            const beatmap = await getBeatmap(score.beatmap.id);
+            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+            const maxAttrs = calculatePP(score, map, "maximo_pp");
+            
+            if (!ppVal) {
+                ppVal = calculatePP(score, map, null, maxAttrs).pp;
             }
+
+            if (!score.passed && map.nObjects > 0) {
+                map_completion = `*(${(total_hits / map.nObjects * 100).toFixed(1)}% pass)*`;
+            }
+            
+            map.free();
+        } catch (err) {
+            console.error(`Error al procesar PP/completado en lista de jugadas para #${globalIndex}:`, err);
         }
         
         let legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
         let accuracy = (score.accuracy * 100).toFixed(2);
         let max_combo = score.max_combo;
-        let statistics = score.statistics;
-
-        const perfect = statistics.perfect || 0;
-        const great = statistics.great || 0;
-        const good = statistics.good || 0;
-        const ok = statistics.ok || 0;
-        const meh = statistics.meh || 0;
-        const miss = statistics.miss || 0;
 
         let stats_str = "";
         let ratio_str = "";
@@ -147,7 +152,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }
 
-        let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        let pp = `${ppVal ? ppVal.toFixed(2) + "pp" : "0.00pp"}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
 
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
