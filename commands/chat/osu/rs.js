@@ -158,25 +158,25 @@ async function run(messages, args) {
     const getButtonsRow = (curr, max) => {
         return new ActionRowBuilder().addComponents(
             new ButtonBuilder()
-                .setCustomId('rs_oldest')
+                .setCustomId('rs_newest')
                 .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr >= max),
-            new ButtonBuilder()
-                .setCustomId('rs_older')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr >= max),
-            new ButtonBuilder()
-                .setCustomId('rs_newer')
-                .setLabel('>')
                 .setStyle(ButtonStyle.Secondary)
                 .setDisabled(curr <= 1),
             new ButtonBuilder()
-                .setCustomId('rs_newest')
+                .setCustomId('rs_newer')
+                .setLabel('<')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr <= 1),
+            new ButtonBuilder()
+                .setCustomId('rs_older')
+                .setLabel('>')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(curr >= max),
+            new ButtonBuilder()
+                .setCustomId('rs_oldest')
                 .setLabel('>>')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr <= 1)
+                .setDisabled(curr >= max)
         );
     };
 
