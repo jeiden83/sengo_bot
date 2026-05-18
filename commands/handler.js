@@ -90,11 +90,18 @@ async function loadSlashCommands(chat_commands, config) {
 		if (slash_commands_map.has(command_name)) {
 			const custom_command = slash_commands_map.get(command_name);
 			if (custom_command.data) {
-				return custom_command.data.setName(command_name).toJSON();
+				const data = custom_command.data.setName(command_name);
+				if (typeof data.setIntegrationTypes === 'function') {
+					data.setIntegrationTypes([0, 1]);
+				}
+				if (typeof data.setContexts === 'function') {
+					data.setContexts([0, 1, 2]);
+				}
+				return data.toJSON();
 			}
 		}
 
-		return new SlashCommandBuilder()
+		const default_command = new SlashCommandBuilder()
 			.setName(command_name)
 			.setDescription(
 				slash_commands_map.has(command_name) && typeof slash_commands_map.get(command_name).description === "string"
@@ -102,8 +109,16 @@ async function loadSlashCommands(chat_commands, config) {
 					: chat_commands_map.has(command_name) && typeof chat_commands_map.get(command_name).description === "string"
 						? chat_commands_map.get(command_name).description
 						: "No description available"
-			)			
-			.toJSON();
+			);
+
+		if (typeof default_command.setIntegrationTypes === 'function') {
+			default_command.setIntegrationTypes([0, 1]);
+		}
+		if (typeof default_command.setContexts === 'function') {
+			default_command.setContexts([0, 1, 2]);
+		}
+
+		return default_command.toJSON();
 	});
 
 	// Registrar los comandos con la API de Discord
