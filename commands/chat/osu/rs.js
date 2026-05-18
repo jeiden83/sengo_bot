@@ -72,6 +72,29 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 	} else {
 		stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
 	}
+	let leaderboard_pos = null;
+	if (recent_scores.user.server !== 'gatari' && recent_scores.passed) {
+		try {
+			const { v2 } = require('osu-api-extended');
+			const best = await v2.scores.list({
+				type: 'user_beatmap_best',
+				beatmap_id: recent_scores.beatmap.id,
+				user_id: recent_scores.user.id,
+				mode: recent_scores.beatmap.mode
+			});
+			const isRecentPlayBest = best && best.score && (
+				new Date(best.score.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() ||
+				best.score.total_score === recent_scores.total_score ||
+				best.score.legacy_total_score === recent_scores.legacy_total_score ||
+				(recent_scores.id && best.score.id === recent_scores.id)
+			);
+			if (isRecentPlayBest) {
+				leaderboard_pos = best.position;
+			}
+		} catch (e) {
+			console.error("Error fetching beatmap best score position:", e);
+		}
+	}
 
 	// Construccion del embed
 	const embed = new EmbedBuilder()
@@ -82,7 +105,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		})
 		.setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
 		.setURL(beatmap_url)
-		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}
 \`\`\`ansi
 ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
 \`\`\`
