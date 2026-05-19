@@ -103,18 +103,21 @@ async function doContent(beatmap_metadata, user_scores, sorted_user_scores, page
     return content;
 }
 
-async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false) {
+async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null) {
     try {
-        const guildId = message.guild ? message.guild.id : null;
-
         // Paso 1: Consultar Supabase buscando usuarios vinculados
         let query = res.supabaseClient
             .from('users')
             .select('discord_id, osu_id, main_gamemode')
             .not('osu_id', 'is', null);
 
-        if (!bypass && guildId) {
-            query = query.contains('guilds', [guildId]);
+        if (targetGuildId) {
+            query = query.contains('guilds', [targetGuildId]);
+        } else if (!bypass) {
+            const guildId = message.guild ? message.guild.id : null;
+            if (guildId) {
+                query = query.contains('guilds', [guildId]);
+            }
         }
 
         const { data: linkedUsers, error } = await query;
@@ -152,20 +155,41 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
 async function run(messages, args){
     const { message, res, reply, logger } = messages;
 
+    // Detectar y parsear -server <guild_id>
+    let targetGuildId = null;
+    let cleanArgs = args ? [...args] : [];
+    
+    if (args) {
+        const serverIdx = cleanArgs.findIndex(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-server');
+        if (serverIdx !== -1) {
+            const ownerId = process.env.OWNER_ID;
+            if (message.author.id !== ownerId) {
+                return "❌ Solo el creador del bot puede usar el flag `-server`.";
+            }
+            if (serverIdx + 1 < cleanArgs.length) {
+                targetGuildId = cleanArgs[serverIdx + 1].trim();
+                // Eliminar el flag -server y el ID de los argumentos
+                cleanArgs.splice(serverIdx, 2);
+            } else {
+                return "❌ Debes proporcionar un ID de servidor válido después de `-server`.";
+            }
+        }
+    }
+
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
 
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    const parsed_args = argsParserNoCommand(args);
+    const parsed_args = argsParserNoCommand(cleanArgs);
     const forcedMode = parsed_args.gamemode || null;
 
     if (forcedMode && beatmap_metadata.mode === 'osu') {
         beatmap_metadata.mode = forcedMode;
     }
 
-    const hasBypassFlag = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-bypass');
+    const hasBypassFlag = cleanArgs && cleanArgs.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-bypass');
     if (hasBypassFlag) {
         const ownerId = process.env.OWNER_ID;
         if (message.author.id !== ownerId) {
@@ -176,19 +200,19 @@ async function run(messages, args){
     const isSengoGuild = message.guild && message.guild.id === process.env.SENGOBOT_GUILD_ID;
     const bypass = hasBypassFlag || isSengoGuild;
 
-    if (!message.guild && !bypass) {
-        return { content: "❌ Este comando solo se puede usar dentro de un servidor o usando el flag `-bypass`." };
+    if (!message.guild && !bypass && !targetGuildId) {
+        return { content: "❌ Este comando solo se puede usar dentro de un servidor o usando los flags `-bypass` o `-server`." };
     }
 
-    const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode, bypass);
+    const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode, bypass, targetGuildId);
 
     if (usersArray.length === 0) {
         const modeName = beatmap_metadata.mode === 'osu' ? 'standard' : beatmap_metadata.mode;
-        const contextStr = bypass ? 'vinculados globalmente' : 'en este servidor';
+        const contextStr = targetGuildId ? `en el servidor con ID \`${targetGuildId}\`` : (bypass ? 'vinculados globalmente' : 'en este servidor');
         return { content: `**No hay usuarios ${contextStr}** que jueguen principalmente el modo \`${modeName}\`.` };
     }
 
-    const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
+    const forceUpdate = cleanArgs && cleanArgs.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
     const filterPass = parsed_args.filterPass;
 
     let user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
@@ -200,7 +224,7 @@ async function run(messages, args){
     }
 
     if(user_scores.size === 0) {
-        const contextStr = bypass ? 'vinculados globalmente' : 'en el servidor';
+        const contextStr = targetGuildId ? `en el servidor con ID \`${targetGuildId}\`` : (bypass ? 'vinculados globalmente' : 'en el servidor');
         return {content: `**De los \`${usersArray.length}\` usuarios ${contextStr} (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa${filterPass ? ' (que no sea fallida)' : ''}.`};
     }
 
@@ -338,7 +362,7 @@ run.description =
 {
     'header' : '>c Global entre el server',
     'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, mostrando la lista paginada y ordenada por score o pp.',
-    'usage' : `s.gap : Muestra la lista de scores del server en el último mapa.\ns.gap -p 2 : Muestra la página 2 de la lista de scores.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap -bypass : Bypassea la restricción del servidor y muestra las puntuaciones de todos los usuarios vinculados al bot (solo OWNER).\ns.gap $reply : Hace el s.gap del mapa al que se le hace el reply.`
+    'usage' : `s.gap : Muestra la lista de scores del server en el último mapa.\ns.gap -p 2 : Muestra la página 2 de la lista de scores.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap -bypass : Bypassea la restricción del servidor y muestra las puntuaciones de todos los usuarios vinculados al bot (solo OWNER).\ns.gap -server <guild_id> : Muestra las puntuaciones de los usuarios del servidor especificado (solo OWNER).\ns.gap $reply : Hace el s.gap del mapa al que se le hace el reply.`
 }
 
 module.exports = { run, "description": run.description}
