@@ -1,4 +1,4 @@
-const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores } = require("../../utils/osu.js");
+const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
 const { EmbedBuilder } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
@@ -154,28 +154,10 @@ async function run(messages, args){
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    // Detectar si se forzó algún modo de juego en los argumentos (-osu, -mania, -taiko, -fruits, etc.)
-    const modeAliasMap = {
-        'osu': 'osu', 'std': 'osu', 'standard': 'osu',
-        'mania': 'mania', 'mna': 'mania',
-        'taiko': 'taiko', 'tko': 'taiko',
-        'fruits': 'fruits', 'ctb': 'fruits', 'catch': 'fruits'
-    };
+    const parsed_args = argsParserNoCommand(args);
+    const forcedMode = parsed_args.gamemode || null;
 
-    let forcedMode = null;
-    if (args && Array.isArray(args)) {
-        for (const arg of args) {
-            if (typeof arg === 'string' && arg.startsWith('-')) {
-                const modeCandidate = arg.slice(1).toLowerCase().trim();
-                if (modeAliasMap[modeCandidate]) {
-                    forcedMode = modeAliasMap[modeCandidate];
-                    break;
-                }
-            }
-        }
-    }
-
-    if (forcedMode) {
+    if (forcedMode && beatmap_metadata.mode === 'osu') {
         beatmap_metadata.mode = forcedMode;
     }
 
