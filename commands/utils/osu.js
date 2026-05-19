@@ -1170,8 +1170,11 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
     // Poblamos con los scores cacheados válidos
     for (const user of usersArray) {
         const cachedScore = cachedData.scores[user.osu_id];
-        if (cachedScore && (now - cachedData.updated_at < CACHE_TTL) && !forceUpdate) {
-            scores.set(user.osu_id.toString(), cachedScore);
+        const isFresh = (now - (cachedData.updated_at || 0) < CACHE_TTL) && !forceUpdate;
+        if (cachedScore && isFresh) {
+            if (cachedScore.noScore !== true) {
+                scores.set(user.osu_id.toString(), cachedScore);
+            }
         } else {
             usersToFetch.push(user);
         }
@@ -1209,6 +1212,8 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                     if (result && result.score) {
                         scores.set(user.osu_id.toString(), result.score);
                         cachedData.scores[user.osu_id] = result.score;
+                    } else {
+                        cachedData.scores[user.osu_id] = { noScore: true };
                     }
                 } catch (error) {
                     processedCount++;
@@ -1216,8 +1221,15 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                     const status = error.status || error.response?.status;
                     if (status === 429) {
                         rateLimitCount++;
+                    } else {
+                        cachedData.scores[user.osu_id] = { noScore: true };
                     }
-                    console.error(`[GAP] Error obteniendo score de osu_id ${user.osu_id}:`, error.message || error);
+
+                    const errorMsg = error.message || error;
+                    const isNoScoreError = typeof errorMsg === 'string' && errorMsg.includes('empty error');
+                    if (!isNoScoreError && status !== 429) {
+                        console.error(`[GAP] Error obteniendo score de osu_id ${user.osu_id}:`, errorMsg);
+                    }
                 }
             }));
 
@@ -1232,6 +1244,12 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             if (i + chunkSize < usersToFetch.length) {
                 await new Promise(resolve => setTimeout(resolve, 150));
             }
+        }
+
+        if (errorCount > 0) {
+            const noScoreCount = errorCount - rateLimitCount;
+            const limitStr = rateLimitCount > 0 ? `, ${rateLimitCount} rate limit (429)` : "";
+            console.log(`[GAP] Sincronización finalizada: ${usersToFetch.length} consultados. ${noScoreCount} no tienen score registrada${limitStr}.`);
         }
 
         // Guardar la caché actualizada
