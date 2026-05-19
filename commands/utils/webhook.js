@@ -112,8 +112,11 @@ function initWebhookServer(client, dbRes, config) {
         startServer(client, dbRes, port);
     }
 
-    // Iniciar túnel de ngrok automáticamente en modo Supabase si no está ya iniciado
-    if (useSupabase && !ngrokProcess) {
+    // Iniciar túnel de ngrok automáticamente si no está ya iniciado y se solicita explícitamente (solo en desarrollo local)
+    const isRender = process.env.RENDER === 'true';
+    const startNgrok = process.env.START_NGROK === 'true';
+
+    if (useSupabase && !ngrokProcess && !isRender && startNgrok) {
         const ngrokCmd = getNgrokCommand();
 
         // Encapsulamos la ruta entre comillas dobles si contiene espacios o caracteres especiales en Windows
