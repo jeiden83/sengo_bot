@@ -48,10 +48,15 @@ function injectLatencyToEmbeds(options, startTime) {
     const duration = Date.now() - startTime;
     const latencyText = `Latencia: ${duration}ms`;
 
+    const getCleanFooterText = (originalText) => {
+        if (!originalText) return latencyText;
+        const cleanText = originalText.replace(/\s*•?\s*Latencia:\s*\d+ms/gi, '').trim();
+        return cleanText ? `${cleanText} • ${latencyText}` : latencyText;
+    };
+
     // Si es un EmbedBuilder
     if (options.setFooter && typeof options.setFooter === 'function') {
-        const footerText = options.data?.footer?.text ? `${options.data.footer.text} • ${latencyText}` : latencyText;
-        options.setFooter({ text: footerText, iconURL: options.data?.footer?.icon_url });
+        options.setFooter({ text: getCleanFooterText(options.data?.footer?.text), iconURL: options.data?.footer?.icon_url });
         return options;
     }
 
@@ -60,11 +65,9 @@ function injectLatencyToEmbeds(options, startTime) {
         return options.map(item => {
             if (!item) return item;
             if (typeof item.setFooter === 'function') {
-                const footerText = item.data?.footer?.text ? `${item.data.footer.text} • ${latencyText}` : latencyText;
-                item.setFooter({ text: footerText, iconURL: item.data?.footer?.icon_url });
+                item.setFooter({ text: getCleanFooterText(item.data?.footer?.text), iconURL: item.data?.footer?.icon_url });
             } else if (typeof item === 'object') {
-                const footerText = item.footer?.text ? `${item.footer.text} • ${latencyText}` : latencyText;
-                item.footer = { text: footerText, icon_url: item.footer?.icon_url };
+                item.footer = { text: getCleanFooterText(item.footer?.text), icon_url: item.footer?.icon_url };
             }
             return item;
         });
@@ -75,11 +78,9 @@ function injectLatencyToEmbeds(options, startTime) {
         options.embeds = options.embeds.map(embed => {
             if (!embed) return embed;
             if (typeof embed.setFooter === 'function') {
-                const footerText = embed.data?.footer?.text ? `${embed.data.footer.text} • ${latencyText}` : latencyText;
-                embed.setFooter({ text: footerText, iconURL: embed.data?.footer?.icon_url });
+                embed.setFooter({ text: getCleanFooterText(embed.data?.footer?.text), iconURL: embed.data?.footer?.icon_url });
             } else if (typeof embed === 'object') {
-                const footerText = embed.footer?.text ? `${embed.footer.text} • ${latencyText}` : latencyText;
-                embed.footer = { text: footerText, icon_url: embed.footer?.icon_url };
+                embed.footer = { text: getCleanFooterText(embed.footer?.text), icon_url: embed.footer?.icon_url };
             }
             return embed;
         });
