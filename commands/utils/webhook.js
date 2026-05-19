@@ -153,6 +153,13 @@ function initWebhookServer(client, dbRes, config) {
 
 function startServer(client, dbRes, port) {
     const server = http.createServer((req, res) => {
+        // Soporte para GET /health o GET / (health check para Render u otros pingers)
+        if (req.method === 'GET' && (req.url === '/health' || req.url === '/')) {
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ status: 'UP', message: 'SengoBot is running smoothly' }));
+            return;
+        }
+
         // Solo aceptamos POST a /github o /webhook
         if (req.method === 'POST' && (req.url === '/github' || req.url === '/webhook' || req.url === '/')) {
             let body = '';
