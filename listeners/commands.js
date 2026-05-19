@@ -42,11 +42,27 @@ async function trackUserGuild(userId, guildId, res) {
     }
 }
 
-function injectLatencyToEmbeds(options, startTime) {
+const latencyCache = new Map();
+
+function setLatencyCache(messageId, latencyText) {
+    if (!messageId) return;
+    if (latencyCache.size > 1000) {
+        const firstKey = latencyCache.keys().next().value;
+        latencyCache.delete(firstKey);
+    }
+    latencyCache.set(messageId, latencyText);
+}
+
+function injectLatencyToEmbeds(options, timeOrText, isDirectText = false) {
     if (!options || typeof options !== 'object') return options;
 
-    const duration = Date.now() - startTime;
-    const latencyText = `Latencia: ${duration}ms`;
+    let latencyText;
+    if (isDirectText) {
+        latencyText = timeOrText;
+    } else {
+        const duration = Date.now() - timeOrText;
+        latencyText = `Latencia: ${duration}ms`;
+    }
 
     const getCleanFooterText = (originalText) => {
         if (!originalText) return latencyText;
@@ -119,17 +135,34 @@ async function chat_command_listener(chat_commands, client, config, res) {
         
         const logger = new Logger(message, message_command, message_args);
         const startTime = logger.startTime;
+        let cachedLatencyText = null;
 
         // Wrap message.channel.send
         const originalSend = message.channel.send.bind(message.channel);
-        message.channel.send = (options) => {
-            return originalSend(injectLatencyToEmbeds(options, startTime));
+        message.channel.send = async (options) => {
+            if (!cachedLatencyText) {
+                const duration = Date.now() - startTime;
+                cachedLatencyText = `Latencia: ${duration}ms`;
+            }
+            const result = await originalSend(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            if (result && result.id) {
+                setLatencyCache(result.id, cachedLatencyText);
+            }
+            return result;
         };
 
         // Wrap message.reply
         const originalReply = message.reply.bind(message);
-        message.reply = (options) => {
-            return originalReply(injectLatencyToEmbeds(options, startTime));
+        message.reply = async (options) => {
+            if (!cachedLatencyText) {
+                const duration = Date.now() - startTime;
+                cachedLatencyText = `Latencia: ${duration}ms`;
+            }
+            const result = await originalReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            if (result && result.id) {
+                setLatencyCache(result.id, cachedLatencyText);
+            }
+            return result;
         };
 
         let message_reply = null;
@@ -138,8 +171,16 @@ async function chat_command_listener(chat_commands, client, config, res) {
                 message_reply = await message.channel.messages.fetch(message.reference.messageId);
                 if (message_reply) {
                     const originalReplyReply = message_reply.reply.bind(message_reply);
-                    message_reply.reply = (options) => {
-                        return originalReplyReply(injectLatencyToEmbeds(options, startTime));
+                    message_reply.reply = async (options) => {
+                        if (!cachedLatencyText) {
+                            const duration = Date.now() - startTime;
+                            cachedLatencyText = `Latencia: ${duration}ms`;
+                        }
+                        const result = await originalReplyReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+                        if (result && result.id) {
+                            setLatencyCache(result.id, cachedLatencyText);
+                        }
+                        return result;
                     };
                 }
             } catch (err) {
@@ -211,23 +252,51 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         interaction.logger = logger;
 
         const startTime = logger.startTime;
+        let cachedLatencyText = null;
 
         // Wrap interaction.reply
         const originalIReply = interaction.reply.bind(interaction);
-        interaction.reply = (options) => {
-            return originalIReply(injectLatencyToEmbeds(options, startTime));
+        interaction.reply = async (options) => {
+            if (!cachedLatencyText) {
+                const duration = Date.now() - startTime;
+                cachedLatencyText = `Latencia: ${duration}ms`;
+            }
+            const result = await originalIReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            try {
+                const msg = await interaction.fetchReply();
+                if (msg && msg.id) {
+                    setLatencyCache(msg.id, cachedLatencyText);
+                }
+            } catch (e) {}
+            return result;
         };
 
         // Wrap interaction.editReply
         const originalIEditReply = interaction.editReply.bind(interaction);
-        interaction.editReply = (options) => {
-            return originalIEditReply(injectLatencyToEmbeds(options, startTime));
+        interaction.editReply = async (options) => {
+            if (!cachedLatencyText) {
+                const duration = Date.now() - startTime;
+                cachedLatencyText = `Latencia: ${duration}ms`;
+            }
+            const result = await originalIEditReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            if (result && result.id) {
+                setLatencyCache(result.id, cachedLatencyText);
+            }
+            return result;
         };
 
         // Wrap interaction.followUp
         const originalIFollowUp = interaction.followUp.bind(interaction);
-        interaction.followUp = (options) => {
-            return originalIFollowUp(injectLatencyToEmbeds(options, startTime));
+        interaction.followUp = async (options) => {
+            if (!cachedLatencyText) {
+                const duration = Date.now() - startTime;
+                cachedLatencyText = `Latencia: ${duration}ms`;
+            }
+            const result = await originalIFollowUp(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            if (result && result.id) {
+                setLatencyCache(result.id, cachedLatencyText);
+            }
+            return result;
         };
 
         try {
@@ -278,6 +347,27 @@ async function load_listeners(res, client, config){
 
     slash_command_listener(chat_commands, slash_commands, client, res); 
     chat_command_listener(chat_commands, client, config, res);
+
+    // Intercept component interactions (buttons, select menus) to inject the cached latency
+    client.on('interactionCreate', async (interaction) => {
+        if (!interaction.isMessageComponent()) return;
+
+        const messageId = interaction.message.id;
+        const cachedLatency = latencyCache.get(messageId);
+        if (cachedLatency) {
+            // Wrap interaction.update
+            const originalUpdate = interaction.update.bind(interaction);
+            interaction.update = (options) => {
+                return originalUpdate(injectLatencyToEmbeds(options, cachedLatency, true));
+            };
+
+            // Wrap interaction.editReply
+            const originalEditReply = interaction.editReply.bind(interaction);
+            interaction.editReply = (options) => {
+                return originalEditReply(injectLatencyToEmbeds(options, cachedLatency, true));
+            };
+        }
+    });
 }
 
 module.exports = { load_listeners };
