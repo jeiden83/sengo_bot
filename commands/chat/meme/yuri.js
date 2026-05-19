@@ -44,8 +44,8 @@ async function run(messages, args) {
                 // Si es un comando de texto y se especifica un número por argumento
                 if (args?.[0]) {
                     const requestedIndex = parseInt(args[0]);
-                    if (!isNaN(requestedIndex) && requestedIndex > 0) {
-                        const idx = Math.min(requestedIndex, imageFiles.length) - 1;
+                    if (!isNaN(requestedIndex) && requestedIndex >= 0) {
+                        const idx = Math.min(requestedIndex, imageFiles.length - 1);
                         currentFile = imageFiles[idx];
                     }
                 }
@@ -118,8 +118,8 @@ async function run(messages, args) {
 
     if (args?.[0]) {
         const requestedIndex = parseInt(args[0]);
-        if (!isNaN(requestedIndex) && requestedIndex > 0) {
-            const idx = Math.min(requestedIndex, files.length) - 1;
+        if (!isNaN(requestedIndex) && requestedIndex >= 0) {
+            const idx = Math.min(requestedIndex, files.length - 1);
             currentFile = files[idx];
         }
     }
