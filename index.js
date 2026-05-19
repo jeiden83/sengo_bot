@@ -46,6 +46,13 @@ async function main(reload) {
     
     res = await connectDB(config);
 
+    if (res.status === 1) {
+        const { syncYuriImages } = require("./commands/utils/yuriSync.js");
+        syncYuriImages(res.supabaseClient).catch(err => {
+            Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
+        });
+    }
+
     // 3. Si es el primer encendido del día (no existía el archivo log de hoy) y está en Supabase, subir logs de días anteriores
     if (!todayLogExists && res.status === 1) {
         syncOlderLogs(res.supabaseClient).catch(err => {
