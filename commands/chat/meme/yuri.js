@@ -5,7 +5,7 @@ const { AttachmentBuilder, EmbedBuilder, ChatInputCommandInteraction } = require
 let list_order = [];
 
 async function run(message, args) {
-    const { getSupabaseClient } = require("../../db/database.js");
+    const { getSupabaseClient } = require("../../../db/database.js");
     const supabase = getSupabaseClient();
 
     if (supabase) {
