@@ -147,14 +147,22 @@ async function run(messages, args) {
         { "message": message, "res": res, "beatmap_url": beatmap_url, "gamemode": beatmap_metadata.mode, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
 
     if (typeof fn_response === 'string') return fn_response;
-    if (fn_response.length == 0) return `El usuario no tiene scores en el mapa.`;
+    
+    let scores = fn_response;
+    const filterPass = parsed_args.filterPass;
+    if (filterPass) {
+        scores = scores.filter(score => score.passed);
+        if (scores.length == 0) return `El usuario no tiene scores que no sean fallidas en el mapa.`;
+    } else if (scores.length == 0) {
+        return `El usuario no tiene scores en el mapa.`;
+    }
 
     if (beatmap_metadata.status === 'loved') {
         if (logger) logger.process("Simulando PP en mapa Loved");
         const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
         const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
         
-        for (let score of fn_response) {
+        for (let score of scores) {
             if (!score.pp) {
                 const ppResult = calculatePP(score, map);
                 score.pp = ppResult.pp;
@@ -164,7 +172,7 @@ async function run(messages, args) {
     }
 
     const gamemode = beatmap_metadata.mode || parsed_args.gamemode || 'osu';
-    const embed = await doEmbed(message, fn_response, gamemode);
+    const embed = await doEmbed(message, scores, gamemode);
     const content = await doContent(parsed_args, user_found, beatmap_metadata);
 
     if (reply) {

@@ -835,6 +835,7 @@ function argsParserNoCommand(args) {
     let comboSort = false;
     let accSort = false;
     let detailed = false;
+    let filterPass = false;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -988,6 +989,12 @@ function argsParserNoCommand(args) {
             continue;
         }
 
+        // Si es exactamente "-ps"
+        if (arg === "-ps") {
+            filterPass = true;
+            continue;
+        }
+
         // Si es exactamente "-i"
         if (arg === "-i") {
             if (i + 1 < args_list.length) {
@@ -1132,7 +1139,8 @@ function argsParserNoCommand(args) {
         'recentSort': recentSort,
         'comboSort': comboSort,
         'accSort': accSort,
-        'detailed': detailed
+        'detailed': detailed,
+        'filterPass': filterPass
     };
     return parsed_args;
 }

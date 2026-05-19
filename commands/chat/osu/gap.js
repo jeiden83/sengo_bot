@@ -168,12 +168,17 @@ async function run(messages, args){
     }
 
     const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
+    const filterPass = parsed_args.filterPass;
 
-    const user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
+    let user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
         await getUnrankedUserScores(beatmap_url, beatmap_metadata.mode) : 
         await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger);
 
-    if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa.`};
+    if (filterPass) {
+        user_scores = user_scores.filter(score => score.passed);
+    }
+
+    if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa${filterPass ? ' (que no sea fallida)' : ''}.`};
 
     if (beatmap_metadata.status === 'loved') {
         const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");

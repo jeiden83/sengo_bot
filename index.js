@@ -147,7 +147,8 @@ async function setupCommandLineInterface(res, client, config, reload) {
             const { initWebhookServer } = require("./commands/utils/webhook.js");
             initWebhookServer(client, res, config);
 
-            const activityText = 'Activo con Supabase (recargado)';
+            const { version } = require('./package.json');
+            const activityText = `v${version} - Activo (recargado)`;
             client.user.setActivity(activityText, { type: ActivityType.Playing });
         } else {
             console.log(`Comando no reconocido: ${input}`);

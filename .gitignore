@@ -2,7 +2,6 @@
 node_modules/
 .vscode/extensions.json
 .vscode/launch.json
-tests/
 
 # Carpeta privada
 commands/chat/admin/
@@ -11,6 +10,7 @@ commands/chat/admin/
 db/local/
 data/
 src/yuri/
+
 # .env
 .env
 config.json
@@ -27,5 +27,7 @@ POR HACER.txt
 .antigravity-rules.md
 
 # Scratch files
+deprecated_commands/
+tests/
 scratch/
 osu_token.json.bak

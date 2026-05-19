@@ -242,8 +242,14 @@ async function run(messages, args) {
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
+    
+    const filterPass = parser_res.parsed_args.filterPass;
+    if (filterPass && Array.isArray(parser_res.fn_response)) {
+        parser_res.fn_response = parser_res.fn_response.filter(score => score.passed);
+    }
+    
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
-        return `Pero si no has jugado nada`;
+        return filterPass ? `No tienes scores recientes que no sean fallidas.` : `Pero si no has jugado nada`;
     }
 
     const total_plays = parser_res.fn_response.length;
