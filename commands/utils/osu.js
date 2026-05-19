@@ -1284,38 +1284,83 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
 }
 
 async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
-    const scoresPath = path.join(process.cwd(), 'db/local/scores', `${beatmapId}`);
     const userScores = new Collection();
 
-    if (!fs.existsSync(scoresPath)) return userScores;
+    // 1. Intentar consultar Supabase si está disponible
+    try {
+        const { getSupabaseClient } = require("../../db/database.js");
+        const supabase = getSupabaseClient();
 
-    const userFolders = fs.readdirSync(scoresPath).filter(f => fs.statSync(path.join(scoresPath, f)).isDirectory());
+        if (supabase) {
+            const { data, error } = await supabase
+                .from('local_scores')
+                .select('*')
+                .eq('beatmap_id', beatmapId.toString());
 
-    for (const userId of userFolders) {
-        const folderPath = path.join(scoresPath, userId);
-        const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.json'));
+            if (error) {
+                console.error('❌ Error obteniendo scores locales de Supabase:', error.message);
+            } else if (data && data.length > 0) {
+                // Agrupar todas las jugadas por user_id
+                const tempUserScores = {};
+                for (const row of data) {
+                    const uId = row.user_id.toString();
+                    if (!tempUserScores[uId]) tempUserScores[uId] = [];
+                    tempUserScores[uId].push(row);
+                }
 
-        for (const file of files) {
-            const filePath = path.join(folderPath, file);
-            try {
-                const data = JSON.parse(fs.readFileSync(filePath));
-                if (!userScores.has(userId)) userScores.set(userId, []);
-                userScores.get(userId).push(data);
-            } catch (e) {
-                console.error(`Error leyendo ${filePath}:`, e);
+                // Elegir la mejor play de cada usuario
+                for (const uId in tempUserScores) {
+                    const scoresList = tempUserScores[uId];
+                    const best = scoresList.reduce((a, b) => (Number(a.total_score) > Number(b.total_score) ? a : b));
+                    userScores.set(uId, best);
+                }
             }
+        }
+    } catch (error) {
+        console.error('Error obteniendo scores locales de Supabase en getUnrankedUserScores:', error);
+    }
+
+    // 2. Mezclar/complementar con las scores locales físicas si existen
+    const scoresPath = path.join(process.cwd(), 'db/local/scores', `${beatmapId}`);
+    if (fs.existsSync(scoresPath)) {
+        try {
+            const userFolders = fs.readdirSync(scoresPath).filter(f => fs.statSync(path.join(scoresPath, f)).isDirectory());
+
+            for (const userId of userFolders) {
+                const folderPath = path.join(scoresPath, userId);
+                const files = fs.readdirSync(folderPath).filter(f => f.endsWith('.json'));
+                const localList = [];
+
+                for (const file of files) {
+                    const filePath = path.join(folderPath, file);
+                    try {
+                        const data = JSON.parse(fs.readFileSync(filePath));
+                        localList.push(data);
+                    } catch (e) {
+                        console.error(`Error leyendo ${filePath}:`, e);
+                    }
+                }
+
+                if (localList.length > 0) {
+                    const bestLocal = localList.reduce((a, b) => (Number(a.total_score) > Number(b.total_score) ? a : b));
+                    const uId = userId.toString();
+                    // Si ya existe de Supabase, quedarnos con la de mayor total_score
+                    if (userScores.has(uId)) {
+                        const existing = userScores.get(uId);
+                        if (Number(bestLocal.total_score) > Number(existing.total_score)) {
+                            userScores.set(uId, bestLocal);
+                        }
+                    } else {
+                        userScores.set(uId, bestLocal);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error al leer scores locales físicas:", e);
         }
     }
 
-    // Crear nuevo Collection con la mejor play de cada usuario (por total_score)
-    const bestPlays = new Collection();
-
-    for (const [userId, scores] of userScores.entries()) {
-        const best = scores.reduce((a, b) => (a.total_score > b.total_score ? a : b));
-        bestPlays.set(userId, best);
-    }
-
-    return bestPlays;
+    return userScores;
 }
 
 module.exports = { 
