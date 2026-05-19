@@ -155,41 +155,28 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
 async function run(messages, args){
     const { message, res, reply, logger } = messages;
 
-    // Detectar y parsear -server <guild_id>
-    let targetGuildId = null;
-    let cleanArgs = args ? [...args] : [];
-    
-    if (args) {
-        const serverIdx = cleanArgs.findIndex(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-server');
-        if (serverIdx !== -1) {
-            const ownerId = process.env.OWNER_ID;
-            if (message.author.id !== ownerId) {
-                return "❌ Solo el creador del bot puede usar el flag `-server`.";
-            }
-            if (serverIdx + 1 < cleanArgs.length) {
-                targetGuildId = cleanArgs[serverIdx + 1].trim();
-                // Eliminar el flag -server y el ID de los argumentos
-                cleanArgs.splice(serverIdx, 2);
-            } else {
-                return "❌ Debes proporcionar un ID de servidor válido después de `-server`.";
-            }
-        }
-    }
-
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
 
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    const parsed_args = argsParserNoCommand(cleanArgs);
+    const parsed_args = argsParserNoCommand(args);
     const forcedMode = parsed_args.gamemode || null;
 
     if (forcedMode && beatmap_metadata.mode === 'osu') {
         beatmap_metadata.mode = forcedMode;
     }
 
-    const hasBypassFlag = cleanArgs && cleanArgs.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-bypass');
+    const targetGuildId = parsed_args.targetGuildId;
+    if (targetGuildId) {
+        const ownerId = process.env.OWNER_ID;
+        if (message.author.id !== ownerId) {
+            return "❌ Solo el creador del bot puede usar el flag `-server`.";
+        }
+    }
+
+    const hasBypassFlag = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-bypass');
     if (hasBypassFlag) {
         const ownerId = process.env.OWNER_ID;
         if (message.author.id !== ownerId) {
@@ -212,7 +199,7 @@ async function run(messages, args){
         return { content: `**No hay usuarios ${contextStr}** que jueguen principalmente el modo \`${modeName}\`.` };
     }
 
-    const forceUpdate = cleanArgs && cleanArgs.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
+    const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
     const filterPass = parsed_args.filterPass;
 
     let user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 

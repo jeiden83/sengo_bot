@@ -836,6 +836,7 @@ function argsParserNoCommand(args) {
     let accSort = false;
     let detailed = false;
     let filterPass = false;
+    let targetGuildId = null;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -995,6 +996,23 @@ function argsParserNoCommand(args) {
             continue;
         }
 
+        // Si es exactamente "-server"
+        if (arg === "-server") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                targetGuildId = next_arg;
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-server")) {
+            let next = arg.slice(7).trim();
+            if (next.length > 0) {
+                targetGuildId = next;
+                continue;
+            }
+        }
+
         // Si es exactamente "-i"
         if (arg === "-i") {
             if (i + 1 < args_list.length) {
@@ -1140,7 +1158,8 @@ function argsParserNoCommand(args) {
         'comboSort': comboSort,
         'accSort': accSort,
         'detailed': detailed,
-        'filterPass': filterPass
+        'filterPass': filterPass,
+        'targetGuildId': targetGuildId
     };
     return parsed_args;
 }
