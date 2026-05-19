@@ -78,32 +78,36 @@ async function main() {
         console.log("Detalles completos del Deploy:");
         console.log(JSON.stringify(deployDetailRes.data, null, 2));
 
-        console.log(`\n[+] Consultando logs de ejecución del servicio...`);
-        try {
-            // Probamos consultar los logs del servicio (pueden ser de tipo 'app' o general)
-            const logsRes = await client.get(`/services/${serviceId}/logs?limit=50`);
-            console.log("\n--- LOGS DE RENDER ---");
-            if (Array.isArray(logsRes.data)) {
-                logsRes.data.forEach(log => {
-                    console.log(`[${log.timestamp}] [${log.type}] ${log.message}`);
-                });
-            } else {
-                console.log(JSON.stringify(logsRes.data, null, 2));
-            }
-            console.log("----------------------");
-        } catch (logErr) {
-            console.log("No se pudo obtener logs a través del endpoint de logs directos de servicios:", logErr.message);
-            // Intentar con el endpoint general de logs si es necesario
-            try {
-                const generalLogsRes = await client.get(`/logs?resourceId=${serviceId}&limit=50`);
-                console.log("\n--- LOGS DE RENDER (GENERAL) ---");
-                console.log(JSON.stringify(generalLogsRes.data, null, 2));
-                console.log("--------------------------------");
-            } catch (genErr) {
-                console.log("No se pudo obtener logs a través del endpoint /logs:", genErr.message);
+        // Disparar un nuevo deploy
+        console.log(`\n[+] Iniciando nuevo despliegue en Render para aplicar los cambios...`);
+        const deployPostRes = await client.post(`/services/${serviceId}/deploys`, {
+            clearCache: 'do_not_clear'
+        });
+        const newDeployId = deployPostRes.data.id;
+        console.log(`🚀 Despliegue creado con ID: ${newDeployId}`);
+
+        console.log(`\n[+] Iniciando monitoreo en tiempo real del despliegue: ${newDeployId}...`);
+        
+        let attempts = 0;
+        const maxAttempts = 35; // Monitorear por un máximo de 6 minutos (10s por intento)
+        
+        while (attempts < maxAttempts) {
+            attempts++;
+            await new Promise(resolve => setTimeout(resolve, 10000)); // Esperar 10 segundos
+            
+            const checkRes = await client.get(`/services/${serviceId}/deploys/${newDeployId}`);
+            const status = checkRes.data.status;
+            
+            console.log(`[${new Date().toLocaleTimeString()}] Intento ${attempts}: Estado = ${status.toUpperCase()}`);
+            
+            if (status === 'live' || status === 'ready') {
+                console.log("\n🎉 ¡EL DESPLIEGUE SE COMPLETÓ CON ÉXITO! ¡SengoBot está online en Render! 🎉");
+                break;
+            } else if (status === 'build_failed' || status === 'update_failed' || status === 'canceled') {
+                console.log(`\n❌ El despliegue falló con estado: ${status.toUpperCase()}`);
+                break;
             }
         }
-
     } catch (error) {
         console.error("Error al consultar la API de Render:");
         if (error.response) {
