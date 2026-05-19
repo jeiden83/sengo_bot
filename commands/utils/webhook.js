@@ -162,6 +162,25 @@ function startServer(client, dbRes, port) {
             return;
         }
 
+        // Soporte para POST /shutdown (apaga la instancia vieja de forma segura antes de que la nueva inicie sesión)
+        if (req.method === 'POST' && req.url === '/shutdown') {
+            const token = req.headers['authorization'];
+            const expectedToken = process.env.SHUTDOWN_TOKEN || config.OSU_CLIENT_SECRET;
+            if (token === expectedToken) {
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true, message: 'Graceful shutdown initiated' }));
+                Logger.system("Petición remota de apagado validada. Iniciando apagado seguro...");
+                setTimeout(() => {
+                    process.kill(process.pid, 'SIGTERM');
+                }, 1000);
+                return;
+            } else {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+        }
+
         // Solo aceptamos POST a /github o /webhook
         if (req.method === 'POST' && (req.url === '/github' || req.url === '/webhook' || req.url === '/')) {
             let body = '';
