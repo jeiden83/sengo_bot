@@ -137,14 +137,18 @@ async function chat_command_listener(chat_commands, client, config, res) {
         const startTime = logger.startTime;
         let cachedLatencyText = null;
 
+        const originalSend = message.channel.send;
+        const originalReply = message.reply;
+        let originalReplyReply = null;
+        let referencedMessage = null;
+
         // Wrap message.channel.send
-        const originalSend = message.channel.send.bind(message.channel);
         message.channel.send = async (options) => {
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
             }
-            const result = await originalSend(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            const result = await originalSend.call(message.channel, injectLatencyToEmbeds(options, cachedLatencyText, true));
             if (result && result.id) {
                 setLatencyCache(result.id, cachedLatencyText);
             }
@@ -152,13 +156,12 @@ async function chat_command_listener(chat_commands, client, config, res) {
         };
 
         // Wrap message.reply
-        const originalReply = message.reply.bind(message);
         message.reply = async (options) => {
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
             }
-            const result = await originalReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+            const result = await originalReply.call(message, injectLatencyToEmbeds(options, cachedLatencyText, true));
             if (result && result.id) {
                 setLatencyCache(result.id, cachedLatencyText);
             }
@@ -170,13 +173,14 @@ async function chat_command_listener(chat_commands, client, config, res) {
             try {
                 message_reply = await message.channel.messages.fetch(message.reference.messageId);
                 if (message_reply) {
-                    const originalReplyReply = message_reply.reply.bind(message_reply);
+                    referencedMessage = message_reply;
+                    originalReplyReply = message_reply.reply;
                     message_reply.reply = async (options) => {
                         if (!cachedLatencyText) {
                             const duration = Date.now() - startTime;
                             cachedLatencyText = `Latencia: ${duration}ms`;
                         }
-                        const result = await originalReplyReply(injectLatencyToEmbeds(options, cachedLatencyText, true));
+                        const result = await originalReplyReply.call(message_reply, injectLatencyToEmbeds(options, cachedLatencyText, true));
                         if (result && result.id) {
                             setLatencyCache(result.id, cachedLatencyText);
                         }
@@ -217,6 +221,12 @@ async function chat_command_listener(chat_commands, client, config, res) {
             logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
             await message.channel.send("Hubo un error al ejecutar el comando. Ahora <@395623267530047489> lo sabrá.");
+        } finally {
+            message.channel.send = originalSend;
+            message.reply = originalReply;
+            if (referencedMessage && originalReplyReply) {
+                referencedMessage.reply = originalReplyReply;
+            }
         }
     };
 
