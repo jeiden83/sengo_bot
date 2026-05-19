@@ -196,11 +196,18 @@ async function run(messages, args){
     const total_plays = scoresArray.length;
 
     // Obtener la página desde los argumentos del comando
-    let page = parsed_args.page || 1;
     const max_pages = Math.ceil(total_plays / 5);
-    if (page > max_pages) page = max_pages;
-    if (page < 1) page = 1;
+    const requestedPage = parsed_args.page || 1;
+    if (parsed_args.page && (requestedPage > max_pages || requestedPage < 1)) {
+        const warningMsg = `⚠️ La página **${requestedPage}** no existe. Este mapa solo tiene **${max_pages}** ${max_pages === 1 ? 'página' : 'páginas'} de puntuaciones.`;
+        if (reply) {
+            reply.reply({ content: warningMsg });
+            return;
+        }
+        return { content: warningMsg };
+    }
 
+    let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
     const content = await doContent(beatmap_metadata, usersArray, scoresArray, page, max_pages);
