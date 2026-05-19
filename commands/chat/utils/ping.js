@@ -1,4 +1,3 @@
-const ping = require('ping');
 
 async function run(message, args) {
     const startTime = Date.now();
