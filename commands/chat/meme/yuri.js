@@ -56,7 +56,7 @@ async function run(messages, args) {
 
                 // Paso 2/3: Loggear progreso
                 const totalImages = imageFiles.length;
-                const currentIndex = imageFiles.indexOf(currentFile) + 1;
+                const currentIndex = imageFiles.findIndex(f => f.name === currentFile.name) + 1;
                 if (logger) {
                     logger.process(`Mostrando imagen ${currentIndex} de ${totalImages} en total`);
                 }
