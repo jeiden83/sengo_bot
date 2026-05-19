@@ -1,16 +1,16 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 
-async function doEmbed(message, user_scores, beatmap_metadata){
+async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0){
     let embed_description = '';
 
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
 
-    let position = 1;
+    let position = startIndex + 1;
 
     user_scores.forEach(score => {
     
@@ -69,14 +69,13 @@ async function doEmbed(message, user_scores, beatmap_metadata){
             return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
         }, '');
 
-        embed_description = embed_description.concat(embed_description !== '' ?
-            `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
-            ${total_score} - ${accuracy} - x${max_combo}/${beatmap_max_combo} - ${statistics} - ${pp}PP - ${mods_used}\n\n` 
-            
-            :
-            
+        const isFirstGlobal = position === 1;
+        embed_description = embed_description.concat(isFirstGlobal ?
             `#**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
             **${total_score}** - **${accuracy}** - **x${max_combo}/${beatmap_max_combo}** - ${statistics} - **${pp}PP** - ${mods_used}\n\n`
+            :
+            `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
+            ${total_score} - ${accuracy} - x${max_combo}/${beatmap_max_combo} - ${statistics} - ${pp}PP - ${mods_used}\n\n`
         );
     
     });
@@ -84,7 +83,7 @@ async function doEmbed(message, user_scores, beatmap_metadata){
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
         .setFooter({
-            text: "SengoBot",
+            text: `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + user_scores.length} de ${total_plays}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -92,14 +91,14 @@ async function doEmbed(message, user_scores, beatmap_metadata){
     return embed;
 }
 
-async function doContent(beatmap_metadata, user_scores, sorted_user_scores){
+async function doContent(beatmap_metadata, user_scores, sorted_user_scores, page = 1, max_pages = 1){
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url} = beatmap_metadata;
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    let content = `**De \`${user_scores.length}\` usuarios, \`${sorted_user_scores.size}\` tienen una score en: \n${mapa}**`;
+    let content = `**De \`${user_scores.length}\` usuarios, \`${sorted_user_scores.length}\` tienen una score en: \n${mapa}**`;
 
-    if(sorted_user_scores.size > 5) content = content.concat(`\n**Mostrando los primeros \`5\`**`);
+    if(sorted_user_scores.length > 5) content = content.concat(`\n**Página \`${page}/${max_pages}\`**`);
 
     return content;
 }
@@ -189,23 +188,108 @@ async function run(messages, args){
     }
 
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
-    let sorted_user_scores = beatmap_metadata.status === "loved"
+    const sorted_user_scores = beatmap_metadata.status === "loved"
         ? user_scores.sort((a, b) => b.total_score - a.total_score)
         : user_scores.sort((a, b) => (b.pp ?? 0) - (a.pp ?? 0));
 
-    const content = await doContent(beatmap_metadata, usersArray, sorted_user_scores);
+    const scoresArray = Array.from(sorted_user_scores.values());
+    const total_plays = scoresArray.length;
 
-    // Si hay mas de 5 de usuarios con una score en el mapa
-    if(sorted_user_scores.size > 5) sorted_user_scores = sorted_user_scores.first(5);
+    // Obtener la página desde los argumentos del comando
+    let page = parsed_args.page || 1;
+    const max_pages = Math.ceil(total_plays / 5);
+    if (page > max_pages) page = max_pages;
+    if (page < 1) page = 1;
 
-    const embed = await doEmbed(message, sorted_user_scores, beatmap_metadata);
+    let startIndex = (page - 1) * 5;
 
-    if(reply){
-        reply.reply({content: content, embeds: [embed]});
-        return;
+    const content = await doContent(beatmap_metadata, usersArray, scoresArray, page, max_pages);
+    const initialEmbed = await doEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays);
+
+    const getGapButtonsRow = (start, total) => {
+        return new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('gap_first')
+                .setLabel('<<')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(start <= 0),
+            new ButtonBuilder()
+                .setCustomId('gap_prev')
+                .setLabel('<')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(start <= 0),
+            new ButtonBuilder()
+                .setCustomId('gap_next')
+                .setLabel('>')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(start + 5 >= total),
+            new ButtonBuilder()
+                .setCustomId('gap_last')
+                .setLabel('>>')
+                .setStyle(ButtonStyle.Secondary)
+                .setDisabled(start + 5 >= total)
+        );
+    };
+
+    let sent_message;
+    if (reply) {
+        sent_message = await reply.reply({
+            content: content,
+            embeds: [initialEmbed],
+            components: total_plays > 5 ? [getGapButtonsRow(startIndex, total_plays)] : []
+        });
+    } else {
+        sent_message = await message.channel.send({
+            content: content,
+            embeds: [initialEmbed],
+            components: total_plays > 5 ? [getGapButtonsRow(startIndex, total_plays)] : []
+        });
     }
 
-    return {content: content, embeds: [embed]};
+    if (total_plays <= 5) return;
+
+    const filter = btnInt => btnInt.user.id === message.author.id;
+    const collector = sent_message.createMessageComponentCollector({
+        filter,
+        idle: 30000
+    });
+
+    collector.on('collect', async i => {
+        try {
+            await i.deferUpdate();
+
+            if (i.customId === 'gap_first') {
+                startIndex = 0;
+            } else if (i.customId === 'gap_prev') {
+                startIndex = Math.max(0, startIndex - 5);
+            } else if (i.customId === 'gap_next') {
+                startIndex = startIndex + 5;
+            } else if (i.customId === 'gap_last') {
+                startIndex = Math.floor((total_plays - 1) / 5) * 5;
+            }
+
+            const currentPage = Math.floor(startIndex / 5) + 1;
+            const updatedContent = await doContent(beatmap_metadata, usersArray, scoresArray, currentPage, max_pages);
+            const chunk = scoresArray.slice(startIndex, startIndex + 5);
+            const embed = await doEmbed(message, chunk, beatmap_metadata, startIndex, total_plays);
+
+            await i.editReply({
+                content: updatedContent,
+                embeds: [embed],
+                components: [getGapButtonsRow(startIndex, total_plays)]
+            });
+        } catch (err) {
+            console.error("Error al navegar la lista de gap:", err);
+        }
+    });
+
+    collector.on('end', async () => {
+        try {
+            await sent_message.edit({ components: [] });
+        } catch (e) {}
+    });
+
+    return;
 }
 
 run.alias = {
@@ -217,8 +301,8 @@ run.alias = {
 run.description = 
 {
     'header' : '>c Global entre el server',
-    'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, y mostrando el top 5 entre mayor score y pp.',
-    'usage' : `s.gap : Muestra el top 5 del server en el ultimo mapa dado.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap $reply : Hace el s.gap del mapa al que se le hizo el reply.`
+    'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, mostrando la lista paginada y ordenada por score o pp.',
+    'usage' : `s.gap : Muestra la lista de scores del server en el último mapa.\ns.gap -p 2 : Muestra la página 2 de la lista de scores.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap $reply : Hace el s.gap del mapa al que se le hace el reply.`
 }
 
 module.exports = { run, "description": run.description}
