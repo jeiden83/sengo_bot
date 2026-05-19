@@ -8,6 +8,31 @@ const mimeTypes = {
     '.gif': 'image/gif'
 };
 
+/**
+ * Sanitiza el nombre del archivo para que sea un Key válido en Supabase Storage
+ * pero manteniendo el formato original (letras, números, espacios estándar y guiones).
+ */
+function sanitizeStorageKey(fileName) {
+    if (!fileName) return '';
+    
+    // Separar nombre y extensión
+    const ext = path.extname(fileName).toLowerCase();
+    const nameWithoutExt = path.basename(fileName, ext);
+
+    const sanitizedName = nameWithoutExt
+        // 1. Normalizar caracteres unicode con acentos (ej. Pág -> Pag)
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        // 2. Reemplazar cualquier espacio no estándar (como \u00a0 / &nbsp;) por un espacio estándar
+        .replace(/[\s\u00a0]+/g, ' ')
+        // 3. Eliminar caracteres completamente inválidos en keys de S3/Supabase (solo permitimos letras, números, puntos, guiones, guiones bajos y espacios estándar)
+        .replace(/[^a-zA-Z0-9.\-\s_]/g, '')
+        // 4. Quitar espacios dobles o bordes
+        .trim();
+
+    return sanitizedName + ext;
+}
+
 async function syncYuriImages(supabase) {
     const folderPath = path.join(process.cwd(), "src/yuri");
 
@@ -63,8 +88,16 @@ async function syncYuriImages(supabase) {
 
         const remoteNames = new Set((remoteFiles || []).map(f => f.name));
 
+        // Mapear archivos locales a sus nombres originales y sanitizados
+        const localFilesMapped = localFiles.map(f => {
+            return {
+                original: f,
+                sanitized: sanitizeStorageKey(f)
+            };
+        });
+
         // 3. Filtrar cuáles imágenes locales faltan por subir
-        const filesToUpload = localFiles.filter(f => !remoteNames.has(f));
+        const filesToUpload = localFilesMapped.filter(f => !remoteNames.has(f.sanitized));
         if (filesToUpload.length === 0) {
             console.log("[YURI SYNC] El bucket yuri ya está sincronizado. 0 imágenes nuevas por subir.");
             return;
@@ -76,29 +109,29 @@ async function syncYuriImages(supabase) {
         let failCount = 0;
 
         for (const file of filesToUpload) {
-            const filePath = path.join(folderPath, file);
+            const filePath = path.join(folderPath, file.original);
             try {
                 const fileBuffer = fs.readFileSync(filePath);
-                const ext = path.extname(file).toLowerCase();
+                const ext = path.extname(file.original).toLowerCase();
                 const contentType = mimeTypes[ext] || 'application/octet-stream';
 
-                const { error: uploadError } = await supabase.storage.from('yuri').upload(file, fileBuffer, {
+                const { error: uploadError } = await supabase.storage.from('yuri').upload(file.sanitized, fileBuffer, {
                     contentType,
                     upsert: true
                 });
 
                 if (uploadError) {
                     if (uploadError.message.includes('row-level security policy') || uploadError.message.includes('violates row-level security')) {
-                        console.error(`[YURI SYNC] ⚠️ Error RLS al subir ${file}: Asegúrate de crear una política RLS en Supabase que permita insertar/subir archivos en el bucket 'yuri'.`);
+                        console.error(`[YURI SYNC] ⚠️ Error RLS al subir ${file.original}: Asegúrate de crear una política RLS en Supabase que permita insertar/subir archivos en el bucket 'yuri'.`);
                     } else {
-                        console.error(`[YURI SYNC] Error al subir ${file}:`, uploadError.message);
+                        console.error(`[YURI SYNC] Error al subir ${file.original}:`, uploadError.message);
                     }
                     failCount++;
                 } else {
                     successCount++;
                 }
             } catch (err) {
-                console.error(`[YURI SYNC] Excepción al procesar ${file}:`, err);
+                console.error(`[YURI SYNC] Excepción al procesar ${file.original}:`, err);
                 failCount++;
             }
         }
