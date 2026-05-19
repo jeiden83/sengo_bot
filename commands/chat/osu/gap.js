@@ -167,7 +167,7 @@ async function run(messages, args){
 
     const hasBypassFlag = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-bypass');
     if (hasBypassFlag) {
-        const ownerId = process.env.OWNER_ID || '395623267530047489';
+        const ownerId = process.env.OWNER_ID;
         if (message.author.id !== ownerId) {
             return "❌ Solo el creador del bot puede usar el flag `-bypass`.";
         }

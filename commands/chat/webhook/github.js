@@ -7,7 +7,7 @@ async function run(messages, args) {
 
     // 1. Caso especial: Flag secreto -l para el Owner
     if (args.includes('-l')) {
-        if (message.author.id !== (process.env.OWNER_ID || '395623267530047489')) {
+        if (message.author.id !== process.env.OWNER_ID) {
             return "❌ No tienes permisos para usar este flag secreto.";
         }
 

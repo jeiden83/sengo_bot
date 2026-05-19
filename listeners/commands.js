@@ -220,7 +220,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
         } catch (error) {
             logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
-            const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "<@395623267530047489>";
+            const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
             await message.channel.send(`Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`);
         } finally {
             message.channel.send = originalSend;
@@ -341,7 +341,7 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         } catch (error) {
             logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
-            const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "<@395623267530047489>";
+            const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
             await interaction.editReply(
                 `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`
             );

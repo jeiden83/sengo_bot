@@ -3,7 +3,7 @@ async function run(messages, args){
 
     // Revisamos si no es el Owner quien ejecuta el comando
     // abuse filter
-    if(message.author.id != (process.env.OWNER_ID || '395623267530047489')) return `No puedes hacer esto, solo el creador del bot puede.`;
+    if(message.author.id != process.env.OWNER_ID) return `No puedes hacer esto, solo el creador del bot puede.`;
 
     const to_tag = args[0];                     // Usuario a etiquetar
     const times = parseInt(args[1], 10);        // Veces a repetir
