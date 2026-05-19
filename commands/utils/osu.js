@@ -127,6 +127,7 @@ async function NewloadToken(){
         type: 'v2',
         client_id: CONFIG.OSU_CLIENT_ID,
         client_secret: CONFIG.OSU_CLIENT_SECRET,
+        scopes: ['public'],
         cachedTokenPath: './osu_token.json' 
       });
 }
