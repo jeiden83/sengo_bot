@@ -11,13 +11,16 @@ const fetch = require('node-fetch');
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
  */
 async function fetchGithubStats(repoName, before, after) {
+    const headers = { 'User-Agent': 'SengoBot-Discord-Webhook' };
+    if (process.env.GITHUB_TOKEN) {
+        headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
+    }
+
     if (!before || !after || before === '0000000000000000000000000000000000000000') {
         // Si no hay commit anterior (nueva rama), podemos intentar traer las estadísticas del último commit
         if (after && after !== '0000000000000000000000000000000000000000') {
             try {
-                const res = await fetch(`https://api.github.com/repos/${repoName}/commits/${after}`, {
-                    headers: { 'User-Agent': 'SengoBot-Discord-Webhook' }
-                });
+                const res = await fetch(`https://api.github.com/repos/${repoName}/commits/${after}`, { headers });
                 if (res.ok) {
                     const data = await res.json();
                     return {
@@ -34,9 +37,7 @@ async function fetchGithubStats(repoName, before, after) {
     }
 
     try {
-        const res = await fetch(`https://api.github.com/repos/${repoName}/compare/${before}...${after}`, {
-            headers: { 'User-Agent': 'SengoBot-Discord-Webhook' }
-        });
+        const res = await fetch(`https://api.github.com/repos/${repoName}/compare/${before}...${after}`, { headers });
         if (res.ok) {
             const data = await res.json();
             let additions = 0;
