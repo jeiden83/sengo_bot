@@ -154,6 +154,31 @@ async function run(messages, args){
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
+    // Detectar si se forzó algún modo de juego en los argumentos (-osu, -mania, -taiko, -fruits, etc.)
+    const modeAliasMap = {
+        'osu': 'osu', 'std': 'osu', 'standard': 'osu',
+        'mania': 'mania', 'mna': 'mania',
+        'taiko': 'taiko', 'tko': 'taiko',
+        'fruits': 'fruits', 'ctb': 'fruits', 'catch': 'fruits'
+    };
+
+    let forcedMode = null;
+    if (args && Array.isArray(args)) {
+        for (const arg of args) {
+            if (typeof arg === 'string' && arg.startsWith('-')) {
+                const modeCandidate = arg.slice(1).toLowerCase().trim();
+                if (modeAliasMap[modeCandidate]) {
+                    forcedMode = modeAliasMap[modeCandidate];
+                    break;
+                }
+            }
+        }
+    }
+
+    if (forcedMode) {
+        beatmap_metadata.mode = forcedMode;
+    }
+
     const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode);
 
     if (usersArray.length === 0) {
@@ -164,7 +189,7 @@ async function run(messages, args){
     const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
 
     const user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
-        await getUnrankedUserScores(beatmap_url) : 
+        await getUnrankedUserScores(beatmap_url, beatmap_metadata.mode) : 
         await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger);
 
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa.`};
