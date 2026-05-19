@@ -1219,6 +1219,8 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
 
                     processedCount++;
                     if (result && result.score) {
+                        delete result.score.beatmap;
+                        delete result.score.beatmapset;
                         scores.set(user.osu_id.toString(), result.score);
                         cachedData.scores[user.osu_id] = result.score;
                     } else {
