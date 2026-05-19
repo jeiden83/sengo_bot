@@ -68,7 +68,11 @@ async function main(reload) {
 
     await login(client, config);  
 
-    setupCommandLineInterface(res, client, config, reload); 
+    if (process.stdin.isTTY) {
+        setupCommandLineInterface(res, client, config, reload); 
+    } else {
+        Logger.system("Entorno no interactivo detectado. Consola interactiva desactivada.");
+    }
 }
 main();
 
