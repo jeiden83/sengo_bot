@@ -98,8 +98,8 @@ function initWebhookServer(client, dbRes, config) {
     }
 
     const useSupabase = true; // SengoBot ahora siempre está en modo Supabase
-    // Si es supabase, abrimos el puerto 80 por petición del usuario, de lo contrario usamos puerto 3000 o env
-    const port = useSupabase ? 80 : (process.env.PORT || config.WEBHOOK_PORT || 3000);
+    // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
+    const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
 
     // Si ya hay un servidor corriendo (por ejemplo, tras una recarga 'r'), lo cerramos limpiamente
     if (serverInstance) {
