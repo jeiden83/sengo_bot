@@ -36,14 +36,19 @@ async function syncYuriImages(supabase) {
 
         const yuriBucket = buckets.find(b => b.name === 'yuri');
         if (!yuriBucket) {
-            console.log("[YURI SYNC] El bucket 'yuri' no existe en Supabase Storage. Creándolo...");
+            console.log("[YURI SYNC] El bucket 'yuri' no existe en Supabase Storage. Intentando crearlo...");
             const { error: createError } = await supabase.storage.createBucket('yuri', {
                 public: true,
                 fileSizeLimit: 10485760 // 10MB
             });
 
             if (createError) {
-                console.error("[YURI SYNC] Error al crear bucket 'yuri':", createError.message);
+                if (createError.message.includes('row-level security policy') || createError.message.includes('violates row-level security')) {
+                    console.warn("[YURI SYNC] ⚠️ No tienes permisos de políticas (RLS) para crear buckets automáticamente en Supabase.");
+                    console.warn("[YURI SYNC] 👉 Por favor, crea el bucket manualmente desde tu Dashboard de Supabase con el nombre: 'yuri' (y configúralo como Public).");
+                } else {
+                    console.error("[YURI SYNC] Error al crear bucket 'yuri':", createError.message);
+                }
                 return;
             }
             console.log("[YURI SYNC] Bucket 'yuri' creado con éxito.");
@@ -83,7 +88,11 @@ async function syncYuriImages(supabase) {
                 });
 
                 if (uploadError) {
-                    console.error(`[YURI SYNC] Error al subir ${file}:`, uploadError.message);
+                    if (uploadError.message.includes('row-level security policy') || uploadError.message.includes('violates row-level security')) {
+                        console.error(`[YURI SYNC] ⚠️ Error RLS al subir ${file}: Asegúrate de crear una política RLS en Supabase que permita insertar/subir archivos en el bucket 'yuri'.`);
+                    } else {
+                        console.error(`[YURI SYNC] Error al subir ${file}:`, uploadError.message);
+                    }
                     failCount++;
                 } else {
                     successCount++;

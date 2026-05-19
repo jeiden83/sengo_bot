@@ -135,8 +135,12 @@ function initWebhookServer(client, dbRes, config) {
 
             ngrokProcess.stderr.on('data', (data) => {
                 const text = data.toString().trim();
-                if (text && !text.includes('msg="join"')) {
-                    Logger.system(`[Ngrok Stderr]: ${text}`);
+                if (text) {
+                    const lowerText = text.toLowerCase();
+                    // Solo alertar si es un error real, fallo o advertencia crítica
+                    if (lowerText.includes('error') || lowerText.includes('failed') || lowerText.includes('authentication') || lowerText.includes('err=')) {
+                        Logger.system(`[Ngrok Stderr]: ${text}`);
+                    }
                 }
             });
 
