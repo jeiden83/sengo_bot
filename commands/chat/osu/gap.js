@@ -146,7 +146,7 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu') {
 }
 
 async function run(messages, args){
-    const { message, res, reply } = messages;
+    const { message, res, reply, logger } = messages;
 
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
     if(!beatmap_url) return bad_response;
@@ -161,9 +161,11 @@ async function run(messages, args){
         return { content: `**No hay usuarios vinculados** en este servidor que jueguen principalmente el modo \`${modeName}\`.` };
     }
 
+    const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
+
     const user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
         await getUnrankedUserScores(beatmap_url) : 
-        await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode);
+        await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger);
 
     if(user_scores.size === 0) return {content: `**De los \`${usersArray.length}\` usuarios en el servidor (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa.`};
 
@@ -209,7 +211,7 @@ run.description =
 {
     'header' : '>c Global entre el server',
     'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, y mostrando el top 5 entre mayor score y pp.',
-    'usage' : `s.gap : Muestra el top 5 del server en el ultimo mapa dado.\ns.gap $reply : Hace el s.gap del mapa al que se le hizo el reply.`
+    'usage' : `s.gap : Muestra el top 5 del server en el ultimo mapa dado.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap $reply : Hace el s.gap del mapa al que se le hizo el reply.`
 }
 
 module.exports = { run, "description": run.description}
