@@ -115,7 +115,6 @@ function initWebhookServer(client, dbRes, config) {
     // Iniciar túnel de ngrok automáticamente en modo Supabase si no está ya iniciado
     if (useSupabase && !ngrokProcess) {
         const ngrokCmd = getNgrokCommand();
-        Logger.system("Detectado --supabase. Configurando e iniciando túnel ngrok en puerto 80...");
 
         // Encapsulamos la ruta entre comillas dobles si contiene espacios o caracteres especiales en Windows
         const configCmd = `"${ngrokCmd}" config add-authtoken 3DufeqkRJ6frEzAPvMrqpyvC6bL_AbtCvTxdocksrGoc48LJ`;
@@ -126,9 +125,7 @@ function initWebhookServer(client, dbRes, config) {
                 Logger.system("⚠️ SengoBot no pudo ejecutar ngrok. Asegúrate de copiar 'ngrok.exe' directamente a la carpeta raíz del bot o añadirlo a las variables de entorno (PATH) de tu sistema.");
                 return;
             }
-            Logger.system("Token de ngrok configurado exitosamente.");
             
-            Logger.system(`Ejecutando: ngrok http 80 --domain stoppable-passcode-riot.ngrok-free.dev`);
             ngrokProcess = spawn(ngrokCmd, ['http', '80', '--domain', 'stoppable-passcode-riot.ngrok-free.dev'], {
                 shell: true
             });
@@ -190,7 +187,7 @@ function startServer(client, dbRes, port) {
     });
 
     server.listen(port, () => {
-        Logger.system(`Servidor de webhook de GitHub escuchando en el puerto ${port}`);
+        // Silencioso por petición de limpieza de logs
     });
 
     serverInstance = server;
