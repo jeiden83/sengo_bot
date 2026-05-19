@@ -61,11 +61,12 @@ async function main(reload) {
     }
 
     await load_listeners(res, client, config);
-    await login(client, config);  
 
-    // Inicializar el servidor HTTP de webhook de GitHub
+    // Inicializar el servidor HTTP de webhook de GitHub (para asegurar el puerto de Render)
     const { initWebhookServer } = require("./commands/utils/webhook.js");
     initWebhookServer(client, res, config);
+
+    await login(client, config);  
 
     setupCommandLineInterface(res, client, config, reload); 
 }

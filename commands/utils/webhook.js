@@ -92,11 +92,6 @@ function getNgrokCommand() {
  * Si ya existe una instancia activa, se cierra antes para evitar conflictos de puerto.
  */
 function initWebhookServer(client, dbRes, config) {
-    if (!dbRes || !dbRes.Webhook) {
-        Logger.system("No se puede inicializar el webhook de GitHub: Conexión de base de datos no disponible.");
-        return;
-    }
-
     const useSupabase = true; // SengoBot ahora siempre está en modo Supabase
     // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
     const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
@@ -110,6 +105,10 @@ function initWebhookServer(client, dbRes, config) {
         });
     } else {
         startServer(client, dbRes, port);
+    }
+
+    if (!dbRes || !dbRes.Webhook) {
+        Logger.system("⚠️ Advertencia: Conexión de base de datos no disponible. El servidor de webhook responderá a health checks pero no procesará notificaciones de push.");
     }
 
     // Iniciar túnel de ngrok automáticamente si no está ya iniciado y se solicita explícitamente (solo en desarrollo local)
@@ -196,7 +195,8 @@ function startServer(client, dbRes, port) {
         Logger.system(`Error en el servidor de webhook de GitHub en puerto ${port}: ${err.message}`);
     });
 
-    server.listen(port, () => {
+    // Enlazar explícitamente a 0.0.0.0 para alcance global y soporte de Docker/Render
+    server.listen(port, '0.0.0.0', () => {
         // Silencioso por petición de limpieza de logs
     });
 
