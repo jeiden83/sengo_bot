@@ -4,7 +4,8 @@ const { AttachmentBuilder, EmbedBuilder, ChatInputCommandInteraction } = require
 
 let list_order = [];
 
-async function run(message, args) {
+async function run(messages, args) {
+    const { message, reply, res, logger } = messages;
     const { getSupabaseClient } = require("../../../db/database.js");
     const supabase = getSupabaseClient();
 
@@ -41,7 +42,7 @@ async function run(message, args) {
                 let currentFile = list_order.shift();
 
                 // Si es un comando de texto y se especifica un número por argumento
-                if (!(message instanceof ChatInputCommandInteraction) && args?.[0]) {
+                if (args?.[0]) {
                     const requestedIndex = parseInt(args[0]);
                     if (!isNaN(requestedIndex) && requestedIndex > 0) {
                         const idx = Math.min(requestedIndex, imageFiles.length) - 1;
@@ -51,6 +52,13 @@ async function run(message, args) {
 
                 if (!currentFile) {
                     currentFile = imageFiles[Math.floor(Math.random() * imageFiles.length)];
+                }
+
+                // Paso 2/3: Loggear progreso
+                const totalImages = imageFiles.length;
+                const currentIndex = imageFiles.indexOf(currentFile) + 1;
+                if (logger) {
+                    logger.process(`Mostrando imagen ${currentIndex} de ${totalImages} en total`);
                 }
 
                 // Obtener la URL pública de la imagen
@@ -79,7 +87,11 @@ async function run(message, args) {
     // --- MODO LOCAL ---
     const folderPath = path.join(__dirname, "../../../src/yuri");
     if (!fs.existsSync(folderPath)) {
-        return message.reply("No hay imágenes disponibles (directorio local no encontrado).");
+        const errorMsg = "No hay imágenes disponibles (directorio local no encontrado).";
+        if (message && typeof message.reply === 'function') {
+            return message.reply(errorMsg);
+        }
+        return errorMsg;
     }
 
     const files = fs.readdirSync(folderPath)
@@ -91,7 +103,11 @@ async function run(message, args) {
         });
 
     if (files.length === 0) {
-        return message.reply("No hay imágenes disponibles.");
+        const errorMsg = "No hay imágenes disponibles.";
+        if (message && typeof message.reply === 'function') {
+            return message.reply(errorMsg);
+        }
+        return errorMsg;
     }
 
     if (list_order.length === 0) {
@@ -100,7 +116,7 @@ async function run(message, args) {
 
     let currentFile = list_order.shift();
 
-    if (!(message instanceof ChatInputCommandInteraction) && args?.[0]) {
+    if (args?.[0]) {
         const requestedIndex = parseInt(args[0]);
         if (!isNaN(requestedIndex) && requestedIndex > 0) {
             const idx = Math.min(requestedIndex, files.length) - 1;
@@ -110,6 +126,13 @@ async function run(message, args) {
 
     if (!currentFile) {
         currentFile = files[Math.floor(Math.random() * files.length)];
+    }
+
+    // Paso 2/3: Loggear progreso
+    const totalImages = files.length;
+    const currentIndex = files.indexOf(currentFile) + 1;
+    if (logger) {
+        logger.process(`Mostrando imagen ${currentIndex} de ${totalImages} en total`);
     }
     
     const filePath = path.join(folderPath, currentFile);
