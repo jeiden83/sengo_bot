@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionsBitField } = require("discord.js");
+const { EmbedBuilder, PermissionsBitField, AttachmentBuilder } = require("discord.js");
 const axios = require("axios");
 const path = require("path");
 
@@ -153,9 +153,22 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
         .setTimestamp();
 
     if (successes.length > 0) {
-        const successList = successes.map(s => `• **ID ${s.id}**: [Ver Foto](${s.url})`).join('\n');
+        const successList = successes.map(s => `• **ID ${s.id}**`).join('\n');
         embed.addFields({ name: "✅ Fotos Subidas Correctamente", value: successList });
-        embed.setImage(successes[0].url);
+        
+        const firstSuccess = successes[0];
+        try {
+            const response = await axios.get(firstSuccess.url, { responseType: 'arraybuffer' });
+            const fileBuffer = Buffer.from(response.data);
+            const ext = path.extname(firstSuccess.filename) || '.png';
+            const cleanFileName = `uploaded_${firstSuccess.id}${ext}`;
+            const attachment = new AttachmentBuilder(fileBuffer, { name: cleanFileName });
+            
+            embed.setImage(`attachment://${cleanFileName}`);
+            return { embeds: [embed], files: [attachment] };
+        } catch (err) {
+            console.error("[FUMO] Error downloading uploaded image for Discord attachment proxy:", err);
+        }
     }
 
     if (failures.length > 0) {
@@ -205,10 +218,8 @@ async function handleList(supabase, author, member, pageArg) {
 
     const fields = [];
     for (const item of pageFumos) {
-        const { data } = supabase.storage.from('fumo').getPublicUrl(item.name);
-        const url = data.publicUrl;
         const { id, username, userId, guildId } = item.parsed;
-        fields.push(`**ID ${id}**: [Ver Foto](${url})\n👤 **Subido por:** ${username} (\`${userId}\`)\n🏰 **Servidor:** ${guildId === 'DM' ? 'Mensaje Privado' : `\`${guildId}\``}`);
+        fields.push(`**ID ${id}**\n👤 **Subido por:** ${username} (\`${userId}\`)\n🏰 **Servidor:** ${guildId === 'DM' ? 'Mensaje Privado' : `\`${guildId}\``}`);
     }
 
     embed.addFields({ name: "Resultados", value: fields.join('\n\n') });
@@ -301,10 +312,21 @@ async function handleEdit(supabase, author, member, targetId, attachments) {
             .setTitle(`✅ Fumo #${id} Reemplazado`)
             .setColor("#00ff88")
             .setDescription(`Se ha reemplazado la imagen del fumo ID **${id}** con éxito.`)
-            .setImage(data.publicUrl)
             .setTimestamp();
 
-        return { embeds: [embed] };
+        try {
+            const imageRes = await axios.get(data.publicUrl, { responseType: 'arraybuffer' });
+            const fileBuffer = Buffer.from(imageRes.data);
+            const ext = path.extname(target.name) || '.png';
+            const cleanFileName = `replaced_${id}${ext}`;
+            const attachment = new AttachmentBuilder(fileBuffer, { name: cleanFileName });
+            
+            embed.setImage(`attachment://${cleanFileName}`);
+            return { embeds: [embed], files: [attachment] };
+        } catch (err) {
+            console.error("[FUMO] Error downloading replaced image for Discord proxy:", err);
+            return { embeds: [embed] };
+        }
     } catch (err) {
         return `❌ Error al descargar/subir: ${err.message}`;
     }
@@ -416,13 +438,24 @@ async function handleShow(supabase, author, targetId) {
     const { data } = supabase.storage.from('fumo').getPublicUrl(current.name);
     const publicUrl = data.publicUrl;
 
-    const embed = new EmbedBuilder()
-        .setTitle(`🧸 Fumo #${current.parsed.id}`)
-        .setColor("#bf4080")
-        .setImage(publicUrl)
-        .setFooter({ text: `Subido por: ${current.parsed.username} | Total Fumos: ${fumos.length}` });
+    try {
+        const imageRes = await axios.get(publicUrl, { responseType: 'arraybuffer' });
+        const fileBuffer = Buffer.from(imageRes.data);
+        const ext = path.extname(current.name) || '.png';
+        const cleanFileName = `fumo_${current.parsed.id}${ext}`;
+        const attachment = new AttachmentBuilder(fileBuffer, { name: cleanFileName });
 
-    return { embeds: [embed] };
+        const embed = new EmbedBuilder()
+            .setTitle(`🧸 Fumo #${current.parsed.id}`)
+            .setColor("#bf4080")
+            .setImage(`attachment://${cleanFileName}`)
+            .setFooter({ text: `Subido por: ${current.parsed.username} | Total Fumos: ${fumos.length}` });
+
+        return { embeds: [embed], files: [attachment] };
+    } catch (err) {
+        console.error("[FUMO] Error downloading fumo for Discord proxy:", err);
+        return "❌ Error al cargar la imagen de fumo.";
+    }
 }
 
 function shuffleArray(array) {
