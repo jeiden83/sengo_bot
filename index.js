@@ -41,7 +41,8 @@ async function main(reload) {
                 method: 'POST',
                 headers: {
                     'Authorization': process.env.SHUTDOWN_TOKEN || config.OSU_CLIENT_SECRET,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'SengoBot-Deploy-Agent'
                 }
             });
             if (response.ok) {
