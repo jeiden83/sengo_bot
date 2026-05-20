@@ -44,7 +44,7 @@ async function compressImage(fileBuffer, ext) {
 }
 
 function parseFumoFilename(filename) {
-    // Formato: ID - fumo - username - userId - guildId.ext
+    // Formato: ID - fumo - username - userId - guildId - hash.ext
     const ext = path.extname(filename).toLowerCase();
     const nameWithoutExt = path.basename(filename, ext).trim();
     const parts = nameWithoutExt.split(' - ');
@@ -54,6 +54,7 @@ function parseFumoFilename(filename) {
             username: parts[2],
             userId: parts[3],
             guildId: parts[4],
+            hash: parts[5] || null,
             ext: ext
         };
     }
@@ -64,6 +65,7 @@ function parseFumoFilename(filename) {
         username: 'Desconocido',
         userId: 'Desconocido',
         guildId: 'Desconocido',
+        hash: null,
         ext: ext
     };
 }
@@ -167,9 +169,23 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
             await updateStatus(`⚡ Comprimiendo imagen **${index + 1}/${attachments.length}**...`);
             const compressedResult = await compressImage(fileBuffer, val.ext);
 
+            const crypto = require("crypto");
+            const hash = crypto.createHash("md5").update(compressedResult.buffer).digest("hex");
+
+            const existingDuplicate = files?.find(f => {
+                const parsed = parseFumoFilename(f.name);
+                return parsed.hash === hash;
+            });
+
+            if (existingDuplicate) {
+                const parsed = parseFumoFilename(existingDuplicate.name);
+                failures.push({ name: attachment.name, reason: `Esta imagen ya existe con el ID **${parsed.id}**` });
+                continue;
+            }
+
             await updateStatus(`📤 Subiendo imagen **${index + 1}/${attachments.length}** a la base de datos...`);
             maxId++;
-            const newFilename = `${maxId} - fumo - ${cleanUsername} - ${author.id} - ${guildId}${compressedResult.ext}`;
+            const newFilename = `${maxId} - fumo - ${cleanUsername} - ${author.id} - ${guildId} - ${hash}${compressedResult.ext}`;
 
             const { error: uploadError } = await supabase.storage.from('fumo').upload(newFilename, compressedResult.buffer, {
                 contentType: compressedResult.mime,
@@ -352,10 +368,22 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
         await updateStatus("⚡ Comprimiendo la nueva imagen...");
         const compressedResult = await compressImage(fileBuffer, val.ext);
 
+        const crypto = require("crypto");
+        const hash = crypto.createHash("md5").update(compressedResult.buffer).digest("hex");
+
+        const existingDuplicate = files?.find(f => {
+            const parsed = parseFumoFilename(f.name);
+            return parsed.hash === hash && parsed.id !== id;
+        });
+
+        if (existingDuplicate) {
+            const parsed = parseFumoFilename(existingDuplicate.name);
+            return `❌ Esta imagen ya existe registrada con el ID **${parsed.id}**.`;
+        }
+
         await updateStatus("📤 Subiendo y reemplazando la imagen...");
-        const ext = path.extname(target.name);
-        const nameWithoutExt = target.name.slice(0, -ext.length);
-        const newTargetName = `${nameWithoutExt}${compressedResult.ext}`;
+        const parsedOld = parseFumoFilename(target.name);
+        const newTargetName = `${parsedOld.id} - fumo - ${parsedOld.username} - ${parsedOld.userId} - ${parsedOld.guildId} - ${hash}${compressedResult.ext}`;
 
         if (target.name !== newTargetName) {
             await supabase.storage.from('fumo').remove([target.name]);
