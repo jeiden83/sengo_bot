@@ -46,7 +46,7 @@ function parseFumoFilename(filename) {
 }
 
 function isAdmin(author, member) {
-    if (author.id === '395623267530047489') return true; // Jeiden
+    if (process.env.OWNER_ID && author.id === process.env.OWNER_ID) return true;
     if (member && member.permissions && member.permissions.has(PermissionsBitField.Flags.Administrator)) return true;
     return false;
 }
