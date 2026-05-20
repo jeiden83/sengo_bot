@@ -142,6 +142,14 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		}
 	}
 
+	let footerText = "SengoBot";
+	if (recent_scores.beatmap.mode === 'mania') {
+		const ratioVal = great > 0 ? (perfect / great) : null;
+		if (ratioVal !== null && ratioVal < 10) {
+			footerText = "ratio de virgo";
+		}
+	}
+
 	// Construccion del embed
 	const embed = new EmbedBuilder()
 		.setAuthor({
@@ -159,7 +167,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
 		.setImage(beatmap_cover)
 		.setColor(embedColor)
 		.setFooter({
-			text: "SengoBot",
+			text: footerText,
 			iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
 		})
 		.setTimestamp(new Date(recent_scores.ended_at));
