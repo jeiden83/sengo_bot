@@ -69,9 +69,9 @@ run.alias = {
 }
 
 run.description = {
-    header: 'Consulta la tasa oficial del dólar según el Banco Central de Venezuela (BCV)',
-    body: undefined,
-    usage: `s.bcv || s.dolar: Muestra la tasa del USD BCV.`
+    header: 'Consulta la tasa oficial de cambio según el Banco Central de Venezuela (BCV)',
+    body: 'Permite consultar el valor del Dólar y otras divisas extranjeras directamente desde el portal oficial del BCV.\n\n**Monedas soportadas:**\n- `dolar` / `usd` (Dólar estadounidense 🇺🇸)\n- `euro` / `eur` (Euro 🇪🇺)\n- `yuan` / `cny` (Yuan chino 🇨🇳)\n- `lira` / `try` (Lira turca 🇹🇷)\n- `rublo` / `rub` (Rublo ruso 🇷🇺)',
+    usage: 's.bcv [moneda]  (Ej: s.bcv cny)\ns.dolar\ns.euro'
 };
 
 module.exports = { run };
