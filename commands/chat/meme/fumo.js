@@ -104,6 +104,9 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
                 console.error("[FUMO] Error actualizando estado en slash command:", e);
             }
         }
+        if (messageOrInteraction && messageOrInteraction.logger) {
+            messageOrInteraction.logger.process(text);
+        }
     };
 
     // Verificar blacklist
@@ -316,6 +319,9 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
                 console.error("[FUMO] Error actualizando estado en edit:", e);
             }
         }
+        if (messageOrInteraction && messageOrInteraction.logger) {
+            messageOrInteraction.logger.process(text);
+        }
     };
 
     await updateStatus("🔍 Buscando fumo en la base de datos...");
@@ -508,6 +514,10 @@ function shuffleArray(array) {
 
 async function run(messages, args) {
     const { message } = messages;
+    const logger = messages.logger;
+    if (logger) {
+        message.logger = logger;
+    }
     const { getSupabaseClient } = require("../../../db/database.js");
     const supabase = getSupabaseClient();
 
