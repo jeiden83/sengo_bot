@@ -22,7 +22,7 @@ function getRedirectUri(req) {
  */
 function getAuthUrl(discordId, redirectUri) {
     const clientId = CONFIG.OSU_CLIENT_ID;
-    return `https://osu.ppy.sh/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify&state=${discordId}`;
+    return `https://osu.ppy.sh/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify+public&state=${discordId}`;
 }
 
 /**
