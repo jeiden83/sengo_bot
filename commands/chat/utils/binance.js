@@ -25,6 +25,7 @@ async function run(messages, args) {
     let amount = '500000';
     let methodsRaw = null;
     let verifiedOnly = false;
+    let sendEmbed = false;
 
     // Parsear flags y argumentos
     for (let i = 0; i < args.length; i++) {
@@ -62,6 +63,8 @@ async function run(messages, args) {
             }
         } else if (arg === '-verified') {
             verifiedOnly = true;
+        } else if (arg === '-d') {
+            sendEmbed = true;
         }
     }
 
@@ -183,7 +186,11 @@ async function run(messages, args) {
             iconURL: message.author.displayAvatarURL({ dynamic: true, size: 512 })
         }).setTimestamp();
 
-        return { embeds: [embed] };
+        if (sendEmbed) {
+            return { embeds: [embed] };
+        } else {
+            return `**Tasa Binance P2P (Promedio):** \`${formatCurrency(average, fiat)}\` por *${crypto}* (${tradeType === 'BUY' ? 'Compra 🟢' : 'Venta 🔴'})\n- **Filtros**: Monto: \`${formatCurrency(amount, fiat)}\` | Pago: \`${matchedNames.length > 0 ? matchedNames.join(', ') : 'Todos'}\` | \`${verifiedOnly ? 'Solo Verificados' : 'Solo No Verificados'}\`${usedFallback ? ' *(Fallback a todos los anuncios)*' : ''}`;
+        }
 
     } catch (error) {
         console.error('❌ Error Binance P2P:', error.message);
@@ -202,7 +209,7 @@ run.alias = {
 
 run.description = {
     header: 'Consulta el promedio de la tasa P2P en Binance con filtros personalizados',
-    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios orgánicos más competitivos (no verificados por defecto para evitar tarifas infladas).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Venta).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Usar anunciantes verificados.',
+    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios orgánicos más competitivos (no verificados por defecto para evitar tarifas infladas).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Venta).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Usar anunciantes verificados.\n- `-d` : Mostrar la información detallada en un Discord Embed en lugar de texto plano.',
     usage: 's.binance\ns.binance -sell -amount 250000\ns.binance -cripto BTC -methods banesco, pago movil\ns.binance -fiat COP -amount 100000'
 };
 
