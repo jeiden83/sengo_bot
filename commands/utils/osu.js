@@ -1146,8 +1146,8 @@ function argsParserNoCommand(args) {
             }
         }
 
-        // Si es exactamente "-g"
-        if (arg === "-g") {
+        // Si es exactamente "-g" o "-pp"
+        if (arg === "-g" || arg === "-pp") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 let num = parseFloat(next_arg);
@@ -1160,6 +1160,13 @@ function argsParserNoCommand(args) {
         }
         if (arg.startsWith("-g")) {
             let num = parseFloat(arg.slice(2).trim());
+            if (!isNaN(num)) {
+                ppThreshold = num;
+                continue;
+            }
+        }
+        if (arg.startsWith("-pp")) {
+            let num = parseFloat(arg.slice(3).trim());
             if (!isNaN(num)) {
                 ppThreshold = num;
                 continue;
