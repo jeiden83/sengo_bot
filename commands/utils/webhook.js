@@ -6,6 +6,8 @@ const { exec, spawn } = require('child_process');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder, ActivityType } = require('discord.js');
 const fetch = require('node-fetch');
+const url = require('url');
+const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe, saveOAuthToken } = require('../../utils/osuAuth.js');
 
 /**
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
@@ -156,6 +158,276 @@ function initWebhookServer(client, dbRes, config) {
 
 function startServer(client, dbRes, port, config) {
     const server = http.createServer((req, res) => {
+        const parsedUrl = url.parse(req.url, true);
+        const pathname = parsedUrl.pathname;
+
+        // Ruta GET /oauth o /link
+        if (req.method === 'GET' && (pathname === '/oauth' || pathname === '/link')) {
+            const discordId = parsedUrl.query.state || parsedUrl.query.discord_id;
+            if (!discordId) {
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<h1>Error 400: Discord ID faltante</h1><p>Por favor inicia el proceso desde Discord usando s.link</p>');
+                return;
+            }
+            const redirectUri = getRedirectUri(req);
+            const authUrl = getAuthUrl(discordId, redirectUri);
+            
+            res.writeHead(302, { 'Location': authUrl });
+            res.end();
+            return;
+        }
+
+        // Ruta GET /oauth/callback
+        if (req.method === 'GET' && pathname === '/oauth/callback') {
+            const code = parsedUrl.query.code;
+            const discordId = parsedUrl.query.state;
+
+            if (!code || !discordId) {
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<h1>Error 400: Parámetros inválidos de OAuth</h1>');
+                return;
+            }
+
+            const redirectUri = getRedirectUri(req);
+
+            exchangeCode(code, redirectUri)
+                .then(async (tokenData) => {
+                    const osuUser = await fetchOsuMe(tokenData.access_token);
+                    const dbResult = await saveOAuthToken(discordId, osuUser, tokenData);
+
+                    // Renderizar página web premium
+                    res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(`
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cuenta Vinculada - SengoBot</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #0b0c10;
+            --card-bg: rgba(26, 27, 38, 0.7);
+            --primary: #ff66aa;
+            --primary-glow: rgba(255, 102, 170, 0.4);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --success: #10b981;
+            --success-glow: rgba(16, 185, 129, 0.3);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg-color);
+            background-image: 
+                radial-gradient(at 10% 20%, rgba(255, 102, 170, 0.1) 0px, transparent 50%),
+                radial-gradient(at 90% 80%, rgba(107, 70, 193, 0.15) 0px, transparent 50%);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 480px;
+            padding: 20px;
+            z-index: 10;
+        }
+
+        .card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 40px 30px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            transform: scale(0.9);
+            animation: scaleIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+        }
+
+        .avatar-container {
+            position: relative;
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 24px;
+        }
+
+        .avatar {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid var(--primary);
+            box-shadow: 0 0 20px var(--primary-glow);
+            animation: float 3s ease-in-out infinite;
+        }
+
+        .badge-supporter {
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            background: #ff66aa;
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            border: 2px solid #1a1b26;
+            box-shadow: 0 0 10px rgba(255, 102, 170, 0.8);
+            animation: pulse 1.5s infinite;
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 800;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #fff 30%, #ff66aa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .username {
+            font-size: 20px;
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 24px;
+            letter-spacing: 0.5px;
+        }
+
+        .status-box {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 30px;
+            text-align: left;
+        }
+
+        .status-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .status-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .status-value {
+            font-size: 15px;
+            font-weight: 600;
+        }
+
+        .status-value.success {
+            color: var(--success);
+            text-shadow: 0 0 10px var(--success-glow);
+        }
+
+        .status-value.primary {
+            color: var(--primary);
+            text-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .footer-text {
+            font-size: 14px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+
+        .accent-heart {
+            color: #ff66aa;
+            display: inline-block;
+            animation: beat 1.2s infinite;
+        }
+
+        @keyframes scaleIn {
+            to { transform: scale(1); }
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-8px); }
+        }
+
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+        }
+
+        @keyframes beat {
+            0%, 40%, 100% { transform: scale(1); }
+            20%, 60% { transform: scale(1.25); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="card">
+            <div class="avatar-container">
+                <img class="avatar" src="${osuUser.avatar_url}" alt="${osuUser.username}">
+                ${osuUser.is_supporter ? '<div class="badge-supporter">💖</div>' : ''}
+            </div>
+            <h1>¡Vinculación Exitosa!</h1>
+            <div class="username">${osuUser.username}</div>
+            
+            <div class="status-box">
+                <div class="status-row">
+                    <span class="status-label">Servidor</span>
+                    <span class="status-value">osu! Bancho</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">País</span>
+                    <span class="status-value">:flag_${osuUser.country_code.toLowerCase()}: ${osuUser.country_code}</span>
+                </div>
+                <div class="status-row">
+                    <span class="status-label">osu! Supporter</span>
+                    <span class="status-value ${osuUser.is_supporter ? 'success' : 'primary'}">
+                        ${osuUser.is_supporter ? 'Activo 💖' : 'Inactivo'}
+                    </span>
+                </div>
+                ${osuUser.is_supporter ? `
+                <div class="status-row">
+                    <span class="status-label">Nota de Supporter</span>
+                    <span class="status-value success">Verificado por OAuth</span>
+                </div>` : ''}
+            </div>
+
+            <p class="footer-text">Ya puedes cerrar esta ventana y regresar a Discord. ¡Gracias por usar SengoBot! <span class="accent-heart">❤</span></p>
+        </div>
+    </div>
+</body>
+</html>
+                    `);
+                })
+                .catch((err) => {
+                    console.error("Error en OAuth callback:", err);
+                    res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
+                    res.end(`<h1>Error 500: Fallo en la vinculación</h1><p>${err.message}</p>`);
+                });
+            return;
+        }
+
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
         if ((req.method === 'GET' || req.method === 'HEAD') && (req.url === '/' || req.url === '/health' || req.url === '/webhook' || req.url === '/github')) {
             res.writeHead(200, { 'Content-Type': 'application/json' });

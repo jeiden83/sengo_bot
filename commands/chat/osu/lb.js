@@ -1,8 +1,10 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { v2 } = require('osu-api-extended');
+const fetch = require('node-fetch');
+const { getSupporterTokenForCountry } = require("../../../utils/osuAuth.js");
 
-async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, total_plays = 0, page = 1, max_pages = 1, parsed_args = {}) {
+async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, total_plays = 0, page = 1, max_pages = 1, parsed_args = {}, usedSupporter = null) {
     let embed_description = '';
 
     const emoji_mods = require("../../../src/emoji_mods.json");
@@ -63,7 +65,8 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
                     if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
                 }
             }
-            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
+            const modAcronym = mod.acronym || mod;
+            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const isFirst = globalIndex === 1;
@@ -85,12 +88,17 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
 
     const beatmap_cover = beatmap_metadata.beatmapset.covers["list@2x"] || beatmap_metadata.beatmapset.covers.cover;
 
+    let footerText = `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + scores_chunk.length} de ${total_plays} (Página ${page}/${max_pages})`;
+    if (usedSupporter) {
+        footerText += ` • Pool: ${usedSupporter.username}${usedSupporter.fallback ? ' (global)' : ''}`;
+    }
+
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
         .setColor(embedColor)
         .setThumbnail(beatmap_cover)
         .setFooter({
-            text: `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + scores_chunk.length} de ${total_plays} filtradas (Página ${page}/${max_pages})`,
+            text: footerText,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -98,13 +106,16 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
     return embed;
 }
 
-async function doContent(beatmap_metadata, targetGamemode) {
+async function doContent(beatmap_metadata, targetGamemode, countryCode = null) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
     const displayMode = targetGamemode === 'osu' ? 'std' : (targetGamemode === 'fruits' ? 'ctb' : targetGamemode);
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    return `**Tabla de clasificación (leaderboard) en osu!${displayMode} para:**\n${mapa}`;
+    const titleText = countryCode 
+        ? `**Tabla de clasificación nacional (${countryCode.toUpperCase()}) en osu!${displayMode} para:**`
+        : `**Tabla de clasificación (leaderboard) en osu!${displayMode} para:**`;
+    return `${titleText}\n${mapa}`;
 }
 
 async function run(messages, args) {
@@ -119,6 +130,7 @@ async function run(messages, args) {
         str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
         null;
 
+    // Buscar y extraer el id del mapa de los argumentos
     if (args && Array.isArray(args)) {
         for (let i = 0; i < args.length; i++) {
             const arg = args[i];
@@ -133,6 +145,32 @@ async function run(messages, args) {
         }
         if (found_index !== -1) {
             args.splice(found_index, 1);
+        }
+    }
+
+    // Buscar y extraer el flag de -pais
+    let countryFilter = null;
+    if (args && Array.isArray(args)) {
+        for (let i = 0; i < args.length; i++) {
+            const arg = args[i];
+            if (typeof arg === 'string') {
+                if (arg.toLowerCase() === '-pais' || arg.toLowerCase() === '-country') {
+                    if (i + 1 < args.length && !args[i+1].startsWith('-') && !args[i+1].startsWith('+')) {
+                        countryFilter = args[i+1].toUpperCase();
+                        args.splice(i, 2);
+                        i--;
+                    } else {
+                        countryFilter = "SELF";
+                        args.splice(i, 1);
+                        i--;
+                    }
+                } else if (arg.toLowerCase().startsWith('-pais')) {
+                    countryFilter = arg.slice(5).toUpperCase().trim();
+                    if (!countryFilter) countryFilter = "SELF";
+                    args.splice(i, 1);
+                    i--;
+                }
+            }
         }
     }
 
@@ -152,36 +190,29 @@ async function run(messages, args) {
         return `❌ Este mapa no tiene tabla de clasificación (leaderboard) online porque está en estado **${beatmap_metadata.status}**.`;
     }
 
+    // Resolver país si es "SELF"
+    if (countryFilter === "SELF") {
+        const supabase = res.supabaseClient;
+        if (supabase) {
+            const { data: userToken } = await supabase
+                .from('oauth_tokens')
+                .select('country_code')
+                .eq('discord_id', message.author.id)
+                .maybeSingle();
+            if (userToken && userToken.country_code) {
+                countryFilter = userToken.country_code.toUpperCase();
+            } else {
+                return `❌ No especificaste un país (ej: \`-pais VE\`) y no tienes una cuenta de osu! vinculada por oAuth para autodetectar tu país.`;
+            }
+        } else {
+            return `❌ El servicio de base de datos no está disponible para autodetectar tu país.`;
+        }
+    }
+
     const parsed_args = argsParserNoCommand(args);
     const targetGamemode = parsed_args.gamemode || detected_gamemode || beatmap_metadata.mode;
 
-    await NewloadToken();
-    if (logger) logger.process("Obteniendo leaderboard de la API de osu!");
-    let scores;
-    try {
-        scores = await v2.scores.list({
-            type: 'leaderboard',
-            beatmap_id: beatmap_metadata.id,
-            mode: targetGamemode
-        });
-    } catch (e) {
-        console.error("Error al obtener leaderboard:", e);
-        return `❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.`;
-    }
-
-    if (!scores || !Array.isArray(scores) || scores.length === 0) {
-        return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
-    }
-
-    // Asignamos el índice original antes de cualquier filtro
-    scores.forEach((score, idx) => {
-        score.leaderboardRank = idx + 1;
-    });
-
     // APLICAR FILTROS DE MODS
-    let filtered_scores = scores;
-
-    // 1. Filtrar por mods exactos (-m o +mods)
     let modsStr = parsed_args.modFilter || "";
     if (!modsStr && args && Array.isArray(args)) {
         for (const arg of args) {
@@ -193,32 +224,139 @@ async function run(messages, args) {
         }
     }
 
-    if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) {
-        const filterStr = parsed_args.modFilter;
-        const hasExplicitCL = filterStr.includes("CL");
-
-        filtered_scores = filtered_scores.filter(score => {
-            const scoreAcronyms = score.mods.map(m => m.acronym || m);
-            const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
-
-            if (filterStr === "NM" || filterStr === "NONE") {
-                return filteredScoreAcronyms.length === 0;
-            }
-
-            const getModChunks = (str) => {
-                const chunks = [];
-                for (let j = 0; j < str.length; j += 2) {
-                    chunks.push(str.slice(j, j + 2));
-                }
-                return chunks.sort().join("").toUpperCase();
-            };
-            const filterNormalized = getModChunks(filterStr);
-            const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
-            return scoreNormalized === filterNormalized;
-        });
+    const modsArray = [];
+    if (modsStr && modsStr !== "NM" && modsStr !== "NONE") {
+        for (let j = 0; j < modsStr.length; j += 2) {
+            modsArray.push(modsStr.slice(j, j + 2).toUpperCase());
+        }
     }
 
-    // 2. Filtrar por mods contenidos (-mx)
+    let scores = null;
+    let usedSupporter = null;
+
+    // 1. Caso leaderboard nacional
+    if (countryFilter) {
+        if (logger) logger.process(`Buscando supporter de ${countryFilter} en la pool`);
+        const supporterRes = await getSupporterTokenForCountry(countryFilter);
+        if (!supporterRes) {
+            return `❌ No hay ningún usuario de **${countryFilter}** con osu! supporter vinculado al bot en la base de datos por oAuth para poder realizar esta consulta.`;
+        }
+        usedSupporter = supporterRes;
+        
+        if (logger) logger.process(`Obteniendo ranking nacional de ${countryFilter} con el token de ${supporterRes.username}`);
+        
+        try {
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
+            urlObj.searchParams.append('mode', targetGamemode);
+            urlObj.searchParams.append('type', 'country');
+            if (modsArray.length > 0) {
+                modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
+            }
+
+            const apiRes = await fetch(urlObj.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${supporterRes.token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!apiRes.ok) {
+                throw new Error(`Status ${apiRes.status}`);
+            }
+
+            const resJson = await apiRes.json();
+            scores = resJson.scores || resJson;
+        } catch (e) {
+            console.error("Error al obtener country ranking:", e);
+            return `❌ Error al consultar la API de osu! usando las credenciales del supporter de la pool.`;
+        }
+    }
+    // 2. Caso leaderboard con mods exactos (Dedicated mods)
+    else if (modsArray.length > 0) {
+        if (logger) logger.process(`Buscando algún supporter en la pool para filtrar mods`);
+        const supporterRes = await getSupporterTokenForCountry("ANY");
+        if (supporterRes) {
+            usedSupporter = supporterRes;
+            if (logger) logger.process(`Obteniendo leaderboard con mods exactos usando el token de ${supporterRes.username}`);
+            try {
+                const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
+                urlObj.searchParams.append('mode', targetGamemode);
+                modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
+
+                const apiRes = await fetch(urlObj.toString(), {
+                    headers: {
+                        'Authorization': `Bearer ${supporterRes.token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                if (apiRes.ok) {
+                    const resJson = await apiRes.json();
+                    scores = resJson.scores || resJson;
+                }
+            } catch (e) {
+                console.error("Error al obtener mod leaderboard con supporter:", e);
+            }
+        }
+    }
+
+    // 3. Fallback a consulta estándar global
+    if (!scores) {
+        await NewloadToken();
+        if (logger) logger.process("Obteniendo leaderboard global estándar");
+        try {
+            scores = await v2.scores.list({
+                type: 'leaderboard',
+                beatmap_id: beatmap_metadata.id,
+                mode: targetGamemode
+            });
+        } catch (e) {
+            console.error("Error al obtener leaderboard:", e);
+            return `❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.`;
+        }
+    }
+
+    if (!scores || !Array.isArray(scores) || scores.length === 0) {
+        return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
+    }
+
+    // Asignamos el índice original antes de cualquier filtro local
+    scores.forEach((score, idx) => {
+        score.leaderboardRank = idx + 1;
+    });
+
+    // APLICAR FILTROS DE MODS (Si no se hicieron a nivel de API o para el filtrado -mx de contención)
+    let filtered_scores = scores;
+
+    // Si se usó una respuesta global normal, aplicar filtros en memoria
+    if (!usedSupporter) {
+        if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) {
+            const filterStr = parsed_args.modFilter;
+            const hasExplicitCL = filterStr.includes("CL");
+
+            filtered_scores = filtered_scores.filter(score => {
+                const scoreAcronyms = score.mods.map(m => m.acronym || m);
+                const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+
+                if (filterStr === "NM" || filterStr === "NONE") {
+                    return filteredScoreAcronyms.length === 0;
+                }
+
+                const getModChunks = (str) => {
+                    const chunks = [];
+                    for (let j = 0; j < str.length; j += 2) {
+                        chunks.push(str.slice(j, j + 2));
+                    }
+                    return chunks.sort().join("").toUpperCase();
+                };
+                const filterNormalized = getModChunks(filterStr);
+                const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
+                return scoreNormalized === filterNormalized;
+            });
+        }
+    }
+
+    // 2. Filtrar por mods contenidos (-mx) - Siempre en memoria
     if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) {
         const filterStr = parsed_args.modContainFilter;
         const hasExplicitCL = filterStr.includes("CL");
@@ -288,8 +426,8 @@ async function run(messages, args) {
     let page = requestedPage;
     let startIndex = (page - 1) * 10;
 
-    const content = await doContent(beatmap_metadata, targetGamemode);
-    const initialEmbed = await doEmbed(message, filtered_scores.slice(startIndex, startIndex + 10), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args);
+    const content = await doContent(beatmap_metadata, targetGamemode, countryFilter);
+    const initialEmbed = await doEmbed(message, filtered_scores.slice(startIndex, startIndex + 10), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
 
     const getLbButtonsRow = (start, total) => {
         return new ActionRowBuilder().addComponents(
@@ -355,7 +493,7 @@ async function run(messages, args) {
 
             const currentPage = Math.floor(startIndex / 10) + 1;
             const chunk = filtered_scores.slice(startIndex, startIndex + 10);
-            const embed = await doEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, currentPage, max_pages, parsed_args);
+            const embed = await doEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, currentPage, max_pages, parsed_args, usedSupporter);
 
             await i.editReply({
                 embeds: [embed],
@@ -391,9 +529,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Tabla de clasificación global',
-    'body': 'Muestra las mejores puntuaciones globales del último mapa en el canal en la tabla de clasificación de osu! (Bancho). Permite filtrar por mods.',
-    'usage': `s.lb : Muestra el leaderboard global en el último mapa.\ns.lb -m HDHR : Filtra scores con mods exactos (HDHR).\ns.lb -mx HD : Filtra scores que contengan el mod HD.\ns.lb -p 2 : Muestra la página 2.\ns.lb +HDHR : Sintaxis rápida para filtrar por mods.`
+    'header': 'Tabla de clasificación global y nacional',
+    'body': 'Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales y filtro de mods dedicados a través de la pool de supporter.',
+    'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.`
 }
 
 module.exports = { run, "description": run.description }
