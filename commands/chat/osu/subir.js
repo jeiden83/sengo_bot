@@ -47,10 +47,10 @@ function calculateRank(stats, accuracy, mods, passed) {
 }
 
 function calculatePP(recent_scores, map, maximo_pp, Attrs) {
-    // Se consiguen las estadisticas de la score
-    const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0 } = recent_scores.statistics;
+    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0, small_tick_miss = 0 } = recent_scores.statistics;
+    const mode = recent_scores.beatmap.mode || 'osu';
 
-    // Para el SS
+    // Se construye el performance constructor
     const max_perfomance_constructor = {
         mods: recent_scores.mods,
         lazer: recent_scores.started_at ? true : false,
@@ -59,22 +59,56 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     const difficulty_constructor = {
         ...max_perfomance_constructor,
         maxCombo: recent_scores.max_combo,
-        misses: miss,
-        n300: great,
-        n100: ok,
-        n50: meh
+        misses: miss
+    };
+
+    let total_hits = 0;
+
+    if (mode === 'mania') {
+        difficulty_constructor.n320 = perfect;
+        difficulty_constructor.n300 = great;
+        difficulty_constructor.n200 = good;
+        difficulty_constructor.n100 = ok;
+        difficulty_constructor.n50 = meh;
+        total_hits = perfect + great + good + ok + meh + miss;
+    } else if (mode === 'taiko') {
+        difficulty_constructor.n300 = great;
+        difficulty_constructor.n100 = ok;
+        total_hits = great + ok + miss;
+    } else if (mode === 'fruits') {
+        difficulty_constructor.n300 = great;
+        difficulty_constructor.n100 = ok;
+        difficulty_constructor.n50 = meh;
+        difficulty_constructor.nKatu = small_tick_miss;
+        total_hits = great + ok + meh + miss + small_tick_miss;
+    } else { // 'osu'
+        difficulty_constructor.n300 = great;
+        difficulty_constructor.n100 = ok;
+        difficulty_constructor.n50 = meh;
+        total_hits = great + ok + meh + miss;
+
+        if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+        if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
+        if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
     }
 
-    if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
-    if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
-    if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
+    const rosuModeMap = {
+        'osu': rosu.GameMode.Osu,
+        'taiko': rosu.GameMode.Taiko,
+        'fruits': rosu.GameMode.Catch,
+        'mania': rosu.GameMode.Mania
+    };
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+
+    if (map.mode !== activeMode) {
+        map.convert(activeMode);
+    }
 
     if (maximo_pp) {
         const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
         return maxAttrs;
     }
 
-    const total_hits = great + ok + meh + miss;
     const difficulty = new rosu.Difficulty(max_perfomance_constructor);
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
@@ -198,10 +232,36 @@ function parseBotEmbed(reply) {
             const mapMatch = authorName.match(/^(.+?)\s+\[(.+?)\]\s+\+(.+?)\s+\[/);
             const accMatch = description.match(/▸\s+([\d\.]+)%/);
             const scoreMatch = description.match(/▸\s+([0-9,]+)\s+▸\s+x([0-9]+)/);
-            const statsMatch = description.match(/\[(\d+)\/(\d+)\/(\d+)\/(\d+)\]/);
+            const statsMatch = description.match(/\[([\d\/]+)\]/);
             const rankMatch = description.match(/▸\s+([A-Z]+)\s+▸/);
 
             if (playerMatch && mapMatch && scoreMatch && statsMatch) {
+                const parts = statsMatch[1].split('/').map(Number);
+                let statistics = {};
+                if (parts.length === 6) {
+                    statistics = {
+                        perfect: parts[0],
+                        great: parts[1],
+                        good: parts[2],
+                        ok: parts[3],
+                        meh: parts[4],
+                        miss: parts[5]
+                    };
+                } else if (parts.length === 4) {
+                    statistics = {
+                        great: parts[0],
+                        ok: parts[1],
+                        meh: parts[2],
+                        miss: parts[3]
+                    };
+                } else if (parts.length === 3) {
+                    statistics = {
+                        great: parts[0],
+                        ok: parts[1],
+                        miss: parts[2]
+                    };
+                }
+
                 parsed = {
                     player_name: playerMatch[1].trim(),
                     beatmap_name: mapMatch[1].trim(),
@@ -209,12 +269,7 @@ function parseBotEmbed(reply) {
                     accuracy: accMatch ? parseFloat(accMatch[1]) / 100 : 0,
                     score: parseInt(scoreMatch[1].replace(/,/g, '')),
                     max_combo: parseInt(scoreMatch[2]),
-                    statistics: {
-                        great: parseInt(statsMatch[1]),
-                        ok: parseInt(statsMatch[2]),
-                        meh: parseInt(statsMatch[3]),
-                        miss: parseInt(statsMatch[4])
-                    },
+                    statistics: statistics,
                     mods: mapMatch[3].trim() === 'No Mod' ? ['NM'] : mapMatch[3].trim().split(/(?=[A-Z]{2})/),
                     rank: rankMatch ? rankMatch[1] : 'A'
                 };
@@ -225,22 +280,43 @@ function parseBotEmbed(reply) {
             const playerMatch = authorName.match(/(?:Reciente de|Puntuaciones de) (.+?) en/);
             const mapMatch = title.match(/^(.+?)\s+\[(.+?)\]/);
             const scoreMatch = description.match(/Puntuación\*\*: \`([0-9\.]+)\`/);
-            const statsMatch = description.match(/(\d+)\/(\d+)\/(\d+)\/(\d+)[^]+?([\d\.]+)%\s+x(\d+)/);
+            const statsMatch = description.match(/([\d]+(?:\/\d+)+)[^]+?([\d\.]+)%\s+x(\d+)/);
 
             if (playerMatch && mapMatch && scoreMatch && statsMatch) {
+                const parts = statsMatch[1].split('/').map(Number);
+                let statistics = {};
+                if (parts.length === 6) {
+                    statistics = {
+                        perfect: parts[0],
+                        great: parts[1],
+                        good: parts[2],
+                        ok: parts[3],
+                        meh: parts[4],
+                        miss: parts[5]
+                    };
+                } else if (parts.length === 4) {
+                    statistics = {
+                        great: parts[0],
+                        ok: parts[1],
+                        meh: parts[2],
+                        miss: parts[3]
+                    };
+                } else if (parts.length === 3) {
+                    statistics = {
+                        great: parts[0],
+                        ok: parts[1],
+                        miss: parts[2]
+                    };
+                }
+
                 parsed = {
                     player_name: playerMatch[1].trim(),
                     beatmap_name: mapMatch[1].trim(),
                     difficulty_name: mapMatch[2].trim(),
                     score: parseInt(scoreMatch[1].replace(/\./g, '')),
-                    statistics: {
-                        great: parseInt(statsMatch[1]),
-                        ok: parseInt(statsMatch[2]),
-                        meh: parseInt(statsMatch[3]),
-                        miss: parseInt(statsMatch[4])
-                    },
-                    accuracy: parseFloat(statsMatch[5]) / 100,
-                    max_combo: parseInt(statsMatch[6]),
+                    statistics: statistics,
+                    accuracy: parseFloat(statsMatch[2]) / 100,
+                    max_combo: parseInt(statsMatch[3]),
                     mods: ['NM'],
                     rank: 'A'
                 };
@@ -319,9 +395,49 @@ async function run(messages, args, initialized_data) {
                     }
                 }
 
-                // Calcular exactitud
-                const totalHits = replayData.count300 + replayData.count100 + replayData.count50 + replayData.countMiss;
-                const acc = totalHits > 0 ? ((replayData.count300 * 300) + (replayData.count100 * 100) + (replayData.count50 * 50)) / (totalHits * 300) : 0;
+                // Determinar modo de juego, exactitud y estadísticas de la replay
+                let acc = 0;
+                let stats = {};
+
+                if (replayData.gameMode === 3) { // Mania
+                    const totalHits = replayData.countGeki + replayData.count300 + replayData.countKatu + replayData.count100 + replayData.count50 + replayData.countMiss;
+                    acc = totalHits > 0 ? ((replayData.countGeki * 300) + (replayData.count300 * 300) + (replayData.countKatu * 200) + (replayData.count100 * 100) + (replayData.count50 * 50)) / (totalHits * 300) : 0;
+                    stats = {
+                        perfect: replayData.countGeki,
+                        great: replayData.count300,
+                        good: replayData.countKatu,
+                        ok: replayData.count100,
+                        meh: replayData.count50,
+                        miss: replayData.countMiss
+                    };
+                } else if (replayData.gameMode === 1) { // Taiko
+                    const totalHits = replayData.count300 + replayData.count100 + replayData.countMiss;
+                    acc = totalHits > 0 ? ((replayData.count300 * 300) + (replayData.count100 * 150)) / (totalHits * 300) : 0;
+                    stats = {
+                        great: replayData.count300,
+                        ok: replayData.count100,
+                        miss: replayData.countMiss
+                    };
+                } else if (replayData.gameMode === 2) { // Catch
+                    const totalHits = replayData.count300 + replayData.count100 + replayData.count50 + replayData.countMiss + replayData.countKatu;
+                    acc = totalHits > 0 ? (replayData.count300 + replayData.count100 + replayData.count50) / totalHits : 0;
+                    stats = {
+                        great: replayData.count300,
+                        ok: replayData.count100,
+                        meh: replayData.count50,
+                        miss: replayData.countMiss,
+                        small_tick_miss: replayData.countKatu
+                    };
+                } else { // Standard
+                    const totalHits = replayData.count300 + replayData.count100 + replayData.count50 + replayData.countMiss;
+                    acc = totalHits > 0 ? ((replayData.count300 * 300) + (replayData.count100 * 100) + (replayData.count50 * 50)) / (totalHits * 300) : 0;
+                    stats = {
+                        great: replayData.count300,
+                        ok: replayData.count100,
+                        meh: replayData.count50,
+                        miss: replayData.countMiss
+                    };
+                }
 
                 let dateObj = null;
                 try {
@@ -337,12 +453,7 @@ async function run(messages, args, initialized_data) {
                     accuracy: acc,
                     score: replayData.totalScore,
                     max_combo: replayData.maxCombo,
-                    statistics: {
-                        great: replayData.count300,
-                        ok: replayData.count100,
-                        meh: replayData.count50,
-                        miss: replayData.countMiss
-                    },
+                    statistics: stats,
                     mods: parsedMods,
                     rank: 'A',
                     date: dateObj ? dateObj.toISOString() : new Date().toISOString(),
@@ -509,7 +620,7 @@ async function run(messages, args, initialized_data) {
                     console.log(`[S.SUBIR] Ajuste de zona horaria aplicado para país ${cc} (offset ${offset}h). Nueva fecha UTC: ${parsedData.date}`);
                 }
             } else {
-                console.log(`[S.SUBIR] País ${cc} no mapeado en offsets. Se mantiene la fecha original del OCR.`);
+                console.log(`[S.SUBIR] País ${cc} no mapeado en offsets. Se mantiene la fecha original.`);
             }
         }
     }
@@ -526,7 +637,7 @@ async function run(messages, args, initialized_data) {
         rank: parsedData.rank,
         user: { username: parsedData.player_name, id: user_id, avatar_url: `https://a.ppy.sh/${user_id}` },
         user_id: user_id,
-        beatmap: { id: beatmap_id, status: beatmap_metadata.status, version: beatmap_metadata.version, difficulty_rating: beatmap_metadata.difficulty_rating, mode: 'osu' },
+        beatmap: { id: beatmap_id, status: beatmap_metadata.status, version: beatmap_metadata.version, difficulty_rating: beatmap_metadata.difficulty_rating, mode: beatmap_metadata.mode || 'osu' },
         beatmapset: { title: beatmap_metadata.beatmapset.title, covers: beatmap_metadata.beatmapset.covers }
     };
 
@@ -584,6 +695,9 @@ async function run(messages, args, initialized_data) {
         ratio_str = ` ▸ ${ratio}:1`;
     } else if (recent_scores.beatmap.mode === 'taiko') {
         stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
+    } else if (recent_scores.beatmap.mode === 'fruits') {
+        const { small_tick_miss = 0 } = recent_scores.statistics;
+        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}/${colorear(small_tick_miss, "magenta")}]`;
     } else {
         stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
