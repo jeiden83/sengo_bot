@@ -420,7 +420,7 @@ async function run(messages, args) {
 
     // Paginación
     const total_plays = filtered_scores.length;
-    const max_pages = Math.ceil(total_plays / 10);
+    const max_pages = Math.ceil(total_plays / 5);
     const requestedPage = parsed_args.page || 1;
 
     if (parsed_args.page && (requestedPage > max_pages || requestedPage < 1)) {
@@ -433,10 +433,10 @@ async function run(messages, args) {
     }
 
     let page = requestedPage;
-    let startIndex = (page - 1) * 10;
+    let startIndex = (page - 1) * 5;
 
     const content = await doContent(beatmap_metadata, targetGamemode, countryFilter);
-    const initialEmbed = await doEmbed(message, filtered_scores.slice(startIndex, startIndex + 10), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
+    const initialEmbed = await doEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
 
     const getLbButtonsRow = (start, total) => {
         return new ActionRowBuilder().addComponents(
@@ -454,12 +454,12 @@ async function run(messages, args) {
                 .setCustomId('lb_next')
                 .setLabel('>')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total),
+                .setDisabled(start + 5 >= total),
             new ButtonBuilder()
                 .setCustomId('lb_last')
                 .setLabel('>>')
                 .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total)
+                .setDisabled(start + 5 >= total)
         );
     };
 
@@ -468,17 +468,17 @@ async function run(messages, args) {
         sent_message = await reply.reply({
             content: content,
             embeds: [initialEmbed],
-            components: total_plays > 10 ? [getLbButtonsRow(startIndex, total_plays)] : []
+            components: total_plays > 5 ? [getLbButtonsRow(startIndex, total_plays)] : []
         });
     } else {
         sent_message = await message.channel.send({
             content: content,
             embeds: [initialEmbed],
-            components: total_plays > 10 ? [getLbButtonsRow(startIndex, total_plays)] : []
+            components: total_plays > 5 ? [getLbButtonsRow(startIndex, total_plays)] : []
         });
     }
 
-    if (total_plays <= 10) return;
+    if (total_plays <= 5) return;
 
     const btnFilter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({
@@ -493,15 +493,15 @@ async function run(messages, args) {
             if (i.customId === 'lb_first') {
                 startIndex = 0;
             } else if (i.customId === 'lb_prev') {
-                startIndex = Math.max(0, startIndex - 10);
+                startIndex = Math.max(0, startIndex - 5);
             } else if (i.customId === 'lb_next') {
-                startIndex = startIndex + 10;
+                startIndex = startIndex + 5;
             } else if (i.customId === 'lb_last') {
-                startIndex = Math.floor((total_plays - 1) / 10) * 10;
+                startIndex = Math.floor((total_plays - 1) / 5) * 5;
             }
 
-            const currentPage = Math.floor(startIndex / 10) + 1;
-            const chunk = filtered_scores.slice(startIndex, startIndex + 10);
+            const currentPage = Math.floor(startIndex / 5) + 1;
+            const chunk = filtered_scores.slice(startIndex, startIndex + 5);
             const embed = await doEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, currentPage, max_pages, parsed_args, usedSupporter);
 
             await i.editReply({

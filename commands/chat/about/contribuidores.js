@@ -1,18 +1,22 @@
+const { EmbedBuilder } = require('discord.js');
+
 async function run(messages, args) {
-    const { res } = messages;
+    const { message, res } = messages;
     const supabase = res?.supabaseClient;
 
-    let msj = `🛡️ **Lista de Contribuidores y Creadores** 🛡️\n` +
-              `- **Jeiden**: Creador del bot; obviamente en el top\n` +
-              `- **Zebbyx**: La idea de crear el bot para el s.bg y quien me dio las ganas\n` +
-              `- **Airflux**: GFX de unos embeds; el aires\n` +
-              `- **Phingus**: el comando s.gap\n` +
-              `- **Osulatam**: Por debugear y darme mas trabajo\n` +
-              `- **Los de mania osulatam**: Por hacerme tener mas trabajo con el minijuego\n` +
-              `- **Tsuhikari, Lin, Diego, Luchito, Blast, Mochilo y el resto**: Por debugear y usar el bot\n\n`;
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#378a91';
+
+    const embed = new EmbedBuilder()
+        .setTitle('🌐 Usuarios Vinculados por oAuth')
+        .setColor(embedColor)
+        .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
+        .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
 
     if (!supabase) {
-        return msj + `*No se pudieron cargar los contribuyentes de la base de datos.*`;
+        embed.setDescription(`*No se pudieron cargar los usuarios de la base de datos (Supabase no disponible).*`);
+        return { embeds: [embed] };
     }
 
     try {
@@ -22,12 +26,13 @@ async function run(messages, args) {
             .order('username', { ascending: true });
 
         if (error) {
-            console.error("Error al obtener contribuyentes de Supabase:", error);
-            return msj + `*Error al cargar los contribuyentes desde Supabase.*`;
+            console.error("Error al obtener usuarios de Supabase:", error);
+            embed.setDescription(`*Error al cargar los usuarios desde la base de datos.*`);
+            return { embeds: [embed] };
         }
 
         if (data && data.length > 0) {
-            msj += `🌐 **Usuarios Vinculados por oAuth** 🌐\n`;
+            let description = '';
             
             // Agrupar por nacionalidad
             const groups = {};
@@ -41,26 +46,28 @@ async function run(messages, args) {
             const countries = Object.keys(groups).sort();
             for (const country of countries) {
                 const flagEmoji = country !== 'UN' ? `:flag_${country.toLowerCase()}:` : '🏳️';
-                msj += `\n${flagEmoji} **${country}**\n`;
+                description += `\n${flagEmoji} **${country}**\n`;
                 
                 groups[country].forEach(user => {
                     const suppIcon = user.is_supporter ? ' 💖' : '';
-                    msj += `  • **${user.username}** (<@${user.discord_id}>)${suppIcon}\n`;
+                    description += `  • **${user.username}**${suppIcon}\n`;
                 });
             }
+            embed.setDescription(description);
         } else {
-            msj += `*Aún no hay usuarios vinculados a través del sistema seguro de oAuth.*`;
+            embed.setDescription(`*Aún no hay usuarios vinculados a través del sistema seguro de oAuth.*`);
         }
     } catch (err) {
         console.error("Error inesperado en contribuidores:", err);
+        embed.setDescription(`*Ocurrió un error inesperado al procesar el comando.*`);
     }
 
-    return msj;
+    return { embeds: [embed] };
 }
 
 run.description = {
-    'header' : 'Lista de contribuidores del bot',
-    'body' : '**Ordenados** de mayor a menor contribucion. Además de los creadores fijos, muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
+    'header' : 'Lista de usuarios vinculados',
+    'body' : 'Muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
     'usage' : undefined
 }
 
