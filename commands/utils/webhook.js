@@ -102,10 +102,10 @@ function initWebhookServer(client, dbRes, config) {
         Logger.system("Cerrando servidor de webhook de GitHub existente...");
         serverInstance.close(() => {
             Logger.system("Servidor de webhook de GitHub anterior cerrado.");
-            startServer(client, dbRes, port);
+            startServer(client, dbRes, port, config);
         });
     } else {
-        startServer(client, dbRes, port);
+        startServer(client, dbRes, port, config);
     }
 
     if (!dbRes || !dbRes.Webhook) {
@@ -154,7 +154,7 @@ function initWebhookServer(client, dbRes, config) {
     }
 }
 
-function startServer(client, dbRes, port) {
+function startServer(client, dbRes, port, config) {
     const server = http.createServer((req, res) => {
         // Soporte para GET /health o GET / (health check para Render u otros pingers)
         if (req.method === 'GET' && (req.url === '/health' || req.url === '/')) {
@@ -166,7 +166,7 @@ function startServer(client, dbRes, port) {
         // Soporte para POST /shutdown (apaga la instancia vieja de forma segura antes de que la nueva inicie sesión)
         if (req.method === 'POST' && req.url === '/shutdown') {
             const token = req.headers['authorization'];
-            const expectedToken = process.env.SHUTDOWN_TOKEN || config.OSU_CLIENT_SECRET;
+            const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
             if (token === expectedToken) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, message: 'Graceful shutdown initiated' }));
