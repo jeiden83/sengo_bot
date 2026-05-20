@@ -19,7 +19,7 @@ function formatCurrency(val, fiat) {
 async function run(messages, args) {
     const { message } = messages;
 
-    let tradeType = 'BUY';
+    let tradeType = 'SELL';
     let crypto = 'USDT';
     let fiat = 'VES';
     let amount = '500000';
@@ -95,31 +95,25 @@ async function run(messages, args) {
     }
 
     try {
-        const ads = [];
-        // Hacemos peticiones para las primeras 2 páginas para obtener suficiente rango de anuncios
-        for (let page = 1; page <= 2; page++) {
-            const resSearch = await axios.post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
-                asset: crypto,
-                fiat: fiat,
-                tradeType: tradeType,
-                page: page,
-                rows: 20,
-                payTypes: payTypes,
-                transAmount: amount,
-                publisherType: null,
-                merchantCheck: false
-            }, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-                },
-                timeout: 8000
-            });
+        const resSearch = await axios.post('https://p2p.binance.com/bapi/c2c/v2/friendly/c2c/adv/search', {
+            asset: crypto,
+            fiat: fiat,
+            tradeType: tradeType,
+            page: 1,
+            rows: 20,
+            payTypes: payTypes,
+            transAmount: amount,
+            publisherType: null,
+            merchantCheck: false
+        }, {
+            headers: {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            },
+            timeout: 8000
+        });
 
-            if (resSearch.data && resSearch.data.data) {
-                ads.push(...resSearch.data.data);
-            }
-        }
+        const ads = (resSearch.data && resSearch.data.data) || [];
 
         if (ads.length === 0) {
             return `❌ No se encontraron anuncios en Binance P2P que coincidan con la búsqueda para \`${crypto}/${fiat}\`.`;
@@ -229,7 +223,7 @@ run.alias = {
 
 run.description = {
     header: 'Consulta el promedio de la tasa P2P en Binance con filtros personalizados',
-    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios orgánicos más competitivos (no verificados por defecto para evitar tarifas infladas).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Compra).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Usar anunciantes verificados.',
+    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios orgánicos más competitivos (no verificados por defecto para evitar tarifas infladas).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Venta).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Usar anunciantes verificados.',
     usage: 's.binance\ns.binance -sell -amount 250000\ns.binance -cripto BTC -methods banesco, pago movil\ns.binance -fiat COP -amount 100000'
 };
 
