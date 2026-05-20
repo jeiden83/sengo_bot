@@ -247,18 +247,41 @@ async function handlePushEvent(client, dbRes, payload) {
 
     if (registeredChannels.length === 0) return;
 
-    // Crear el embed de Discord con un estilo premium
-    let embedDescription = '';
-    const maxCommitsToShow = 5;
+    // Obtener versión de SengoBot
+    const pkgPath = path.join(__dirname, '../../package.json');
+    let version = '2.0.0';
+    try {
+        if (fs.existsSync(pkgPath)) {
+            const pkg = JSON.parse(fs.readFileSync(pkgPath, 'utf8'));
+            version = pkg.version;
+        }
+    } catch (e) {
+        console.error("Error reading version in handlePushEvent:", e);
+    }
 
-    commits.slice(0, maxCommitsToShow).forEach(commit => {
-        const shortHash = commit.id.substring(0, 7);
-        const message = commit.message.split('\n')[0];
-        embedDescription += `[\`${shortHash}\`](${commit.url}) ${message} - *${commit.author.name}*\n`;
+    // Crear el resumen de cambios y uso de comandos
+    let changesSummary = '';
+    let commandUsage = '';
+
+    commits.forEach(commit => {
+        const messageLines = commit.message.split('\n').map(l => l.trim()).filter(Boolean);
+        if (messageLines.length > 0) {
+            const title = messageLines[0];
+            const shortHash = commit.id.substring(0, 7);
+            changesSummary += `• [\`${shortHash}\`](${commit.url}) ${title} - *${commit.author.name}*\n`;
+
+            if (messageLines.length > 1) {
+                const bodyLines = messageLines.slice(1);
+                const bodyText = bodyLines.join('\n');
+                if (/uso|comando|flag|s\.|ejemplo|alias|run/i.test(bodyText)) {
+                    commandUsage += ` ▸ *Commit \`${shortHash}\`:*\n${bodyLines.map(l => `   ${l}`).join('\n')}\n`;
+                }
+            }
+        }
     });
 
-    if (commits.length > maxCommitsToShow) {
-        embedDescription += `\n*...y ${commits.length - maxCommitsToShow} commit(s) más.*`;
+    if (commandUsage) {
+        commandUsage = `📖 **Uso de Comandos / Nuevas Funciones:**\n${commandUsage}\n`;
     }
 
     // Obtener estadísticas de líneas y archivos modificados
@@ -277,19 +300,32 @@ async function handlePushEvent(client, dbRes, payload) {
         });
     }
 
-    embedDescription += `\n─\n`;
+    let statsLine = "";
     if (stats) {
-        embedDescription += `🟢 \`+${stats.additions}\`   🔴 \`-${stats.deletions}\`   •   📁 \`${stats.filesChanged}\` archivo(s) modificado(s)`;
+        statsLine = `🟢 \`+${stats.additions}\` additions   🔴 \`-${stats.deletions}\` deletions   •   📁 \`${stats.filesChanged}\` archivo(s) modificado(s)`;
     } else {
         const parts = [];
         if (modifiedCount > 0) parts.push(`📂 \`${modifiedCount}\` modif.`);
         if (addedCount > 0) parts.push(`🆕 \`${addedCount}\` añad.`);
         if (removedCount > 0) parts.push(`❌ \`${removedCount}\` elim.`);
-        embedDescription += parts.length > 0 ? parts.join('   •   ') : `📁 Sin cambios detectados`;
+        statsLine = parts.length > 0 ? parts.join('   •   ') : `📁 Sin cambios detectados`;
     }
 
+    const lastCommit = commits[commits.length - 1];
+    const lastCommitHash = lastCommit.id.substring(0, 7);
+    const lastCommitMessage = lastCommit.message.split('\n')[0];
+    const lastCommitUrl = lastCommit.url;
+
+    let embedDescription = 
+        `**Cambios en este push:**\n${changesSummary}\n` +
+        commandUsage +
+        `**Detalles de la actualización:**\n` +
+        `• **Último commit:** [\`${lastCommitHash}\`](${lastCommitUrl}) ${lastCommitMessage}\n` +
+        `• **Commits totales:** \`${commits.length}\` commit(s)\n` +
+        `• **Estadísticas:** ${statsLine}`;
+
     const embed = new EmbedBuilder()
-        .setTitle(`[${repoName}:${branchName}] ${commits.length} nuevo(s) commit(s)`)
+        .setTitle(`🚀 VERSION DEL SENGO v${version}`)
         .setURL(repoUrl)
         .setDescription(embedDescription)
         .setColor('#24292e') // Color gris oscuro de GitHub
