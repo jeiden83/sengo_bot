@@ -4,7 +4,7 @@ const path = require('path');
 const os = require('os');
 const { exec, spawn } = require('child_process');
 const Logger = require('../../utils/logger.js');
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActivityType } = require('discord.js');
 const fetch = require('node-fetch');
 
 /**
@@ -265,6 +265,22 @@ async function handlePushEvent(client, dbRes, payload) {
         }
     } catch (e) {
         console.error("Error reading version in handlePushEvent:", e);
+    }
+
+    // Cambiar estatus del bot para indicar el reinicio por deploy en Discord
+    if (client && client.user) {
+        try {
+            client.user.setPresence({
+                status: 'dnd',
+                activities: [{
+                    name: `Reiniciando por deploy... (v${version})`,
+                    type: ActivityType.Watching
+                }]
+            });
+            Logger.system(`[Webhook] Cambiado presencia de bot a 'Reiniciando por deploy... (v${version})'`);
+        } catch (e) {
+            console.error("Error al actualizar presencia en el webhook:", e);
+        }
     }
 
     // Crear el resumen de cambios y uso de comandos
