@@ -65,29 +65,61 @@ async function run(messages, args) {
     // Si tiene "CL", lo removemos para el cálculo de dificultad
     const activeModsStr = modsStr.replace(/CL/g, "");
 
-    // 5. Calcular estadísticas ajustadas por mods
+    // 5. Determinar modo de juego y realizar conversión si es necesario
+    let requestedMode = parsed_args.gamemode; // 'osu', 'taiko', 'fruits', 'mania' o ''
+    let activeMode = beatmap.mode; // 'osu', 'taiko', 'fruits', 'mania'
+    let isConverted = false;
+
+    // Si el base es 'osu' (std) y el usuario especificó otro modo de juego, lo convertimos
+    if (activeMode === 'osu' && requestedMode && requestedMode !== 'osu') {
+        const modeMap = {
+            'osu': rosu.GameMode.Osu,
+            'taiko': rosu.GameMode.Taiko,
+            'fruits': rosu.GameMode.Catch,
+            'mania': rosu.GameMode.Mania
+        };
+        if (modeMap[requestedMode] !== undefined) {
+            map.convert(modeMap[requestedMode]);
+            activeMode = requestedMode;
+            isConverted = true;
+        }
+    }
+
+    // Calcular estrellas base (con o sin conversión, pero sin mods)
+    const baseStarsPerf = new rosu.Performance({ mods: [] });
+    const baseStarsAttrs = baseStarsPerf.calculate(map);
+    const baseStars = baseStarsAttrs.difficulty.stars;
+
+    // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
+    const baseBuilder = new rosu.BeatmapAttributesBuilder({ map: map });
+    const baseMapAttrs = baseBuilder.build();
+    const baseCs = baseMapAttrs.cs;
+    const baseAr = baseMapAttrs.ar;
+    const baseOd = baseMapAttrs.od;
+    const baseHp = baseMapAttrs.hp;
+    const baseBpm = Math.round(map.bpm);
+
+    // Calcular estadísticas y atributos ajustados por mods
+    const builder = new rosu.BeatmapAttributesBuilder({
+        map: map,
+        mods: activeModsStr
+    });
+    const mapAttrs = builder.build();
+
     const perf = new rosu.Performance({ mods: activeModsStr });
     const attrs = perf.calculate(map);
     const difficulty = attrs.difficulty;
 
     const stars = difficulty.stars;
     const maxCombo = difficulty.maxCombo || beatmap.max_combo || 0;
-    
-    // rosu-pp-js expone cs, ar, od, hp en su difficulty object
-    const cs = difficulty.cs !== undefined ? difficulty.cs : beatmap.cs;
-    const ar = difficulty.ar !== undefined ? difficulty.ar : beatmap.ar;
-    const od = difficulty.od !== undefined ? difficulty.od : beatmap.accuracy;
-    const hp = difficulty.hp !== undefined ? difficulty.hp : beatmap.drain;
 
-    // Calcular velocidad ajustada por DT/HT
-    let speedMultiplier = 1.0;
-    if (activeModsStr.includes("DT") || activeModsStr.includes("NC")) {
-        speedMultiplier = 1.5;
-    } else if (activeModsStr.includes("HT")) {
-        speedMultiplier = 0.75;
-    }
+    const cs = mapAttrs.cs;
+    const ar = mapAttrs.ar;
+    const od = mapAttrs.od;
+    const hp = mapAttrs.hp;
+    const speedMultiplier = mapAttrs.clockRate;
 
-    const bpm = (beatmap.beatmapset.bpm * speedMultiplier).toFixed(0);
+    const bpm = (map.bpm * speedMultiplier).toFixed(0);
     const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
     const hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
 
@@ -127,6 +159,44 @@ async function run(messages, args) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
 
+    const mode_names = {
+        'osu': 'osu!',
+        'taiko': 'osu!taiko',
+        'fruits': 'osu!catch',
+        'mania': 'osu!mania'
+    };
+
+    const csLabel = activeMode === 'mania' ? 'Keys' : 'CS';
+
+    let objectsValue = '';
+    if (activeMode === 'osu') {
+        objectsValue = `
+▸ **Círculos:** \`${map.nCircles}\`
+▸ **Sliders:** \`${map.nSliders}\`
+▸ **Spinners:** \`${map.nSpinners}\`
+        `;
+    } else if (activeMode === 'taiko') {
+        objectsValue = `
+▸ **Notas:** \`${map.nCircles}\`
+▸ **Drumrolls:** \`${map.nSliders}\`
+▸ **Dendens:** \`${map.nSpinners}\`
+        `;
+    } else if (activeMode === 'fruits') {
+        const nFruits = difficulty.nFruits !== undefined ? difficulty.nFruits : map.nCircles;
+        const nDroplets = difficulty.nDroplets !== undefined ? difficulty.nDroplets : map.nSliders;
+        const nTinyDroplets = difficulty.nTinyDroplets !== undefined ? difficulty.nTinyDroplets : 0;
+        objectsValue = `
+▸ **Frutas:** \`${nFruits}\`
+▸ **Droplets:** \`${nDroplets}\`
+▸ **Tiny Droplets:** \`${nTinyDroplets}\`
+        `;
+    } else if (activeMode === 'mania') {
+        objectsValue = `
+▸ **Notas:** \`${map.nCircles}\`
+▸ **Hold Notes:** \`${map.nHolds}\`
+        `;
+    }
+
     // Liberar memoria del mapa
     map.free();
 
@@ -140,7 +210,8 @@ async function run(messages, args) {
         .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
         .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
         .setDescription(`
-**Dificultad:** \`${stars.toFixed(2)}★\` ${stars !== beatmap.difficulty_rating ? `*(Base: ${beatmap.difficulty_rating.toFixed(2)}★)*` : ''}
+**Modo:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? ' *(Convertido)*' : ''}
+**Dificultad:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? `*(Base: ${baseStars.toFixed(2)}★)*` : ''}
 **Estado:** \`${statusName}\`
 
 **Valores de PP recomendados (Perfect Combo):**
@@ -153,7 +224,7 @@ async function run(messages, args) {
             {
                 name: '📊 Atributos de Mapa',
                 value: `
-▸ **BPM:** \`${bpm}\` ${speedMultiplier !== 1.0 ? `*(Base: ${beatmap.beatmapset.bpm})*` : ''}
+▸ **BPM:** \`${bpm}\` ${speedMultiplier !== 1.0 ? `*(Base: ${baseBpm})*` : ''}
 ▸ **Duración:** \`${formatLength(totalLength)}\` *(Drain: ${formatLength(hitLength)})*
 ▸ **Combo Máximo:** \`x${maxCombo}\`
                 `,
@@ -162,20 +233,16 @@ async function run(messages, args) {
             {
                 name: '⚙️ Dificultad Física',
                 value: `
-▸ **CS:** \`${cs.toFixed(1)}\` ${cs !== beatmap.cs ? `*(Base: ${beatmap.cs})*` : ''}
-▸ **AR:** \`${ar.toFixed(1)}\` ${ar !== beatmap.ar ? `*(Base: ${beatmap.ar})*` : ''}
-▸ **OD:** \`${od.toFixed(1)}\` ${od !== beatmap.accuracy ? `*(Base: ${beatmap.accuracy})*` : ''}
-▸ **HP:** \`${hp.toFixed(1)}\` ${hp !== beatmap.drain ? `*(Base: ${beatmap.drain})*` : ''}
+▸ **${csLabel}:** \`${activeMode === 'mania' ? cs.toFixed(0) : cs.toFixed(1)}\` ${Math.abs(cs - baseCs) > 0.01 ? `*(Base: ${activeMode === 'mania' ? baseCs.toFixed(0) : baseCs.toFixed(1)})*` : ''}
+▸ **AR:** \`${ar.toFixed(1)}\` ${Math.abs(ar - baseAr) > 0.01 ? `*(Base: ${baseAr.toFixed(1)})*` : ''}
+▸ **OD:** \`${od.toFixed(1)}\` ${Math.abs(od - baseOd) > 0.01 ? `*(Base: ${baseOd.toFixed(1)})*` : ''}
+▸ **HP:** \`${hp.toFixed(1)}\` ${Math.abs(hp - baseHp) > 0.01 ? `*(Base: ${baseHp.toFixed(1)})*` : ''}
                 `,
                 inline: true
             },
             {
                 name: '🎯 Conteo de Objetos',
-                value: `
-▸ **Círculos:** \`${beatmap.count_circles}\`
-▸ **Sliders:** \`${beatmap.count_sliders}\`
-▸ **Spinners:** \`${beatmap.count_spinners}\`
-                `,
+                value: objectsValue,
                 inline: true
             }
         )
