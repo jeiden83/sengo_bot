@@ -27,7 +27,24 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
         const userUrl = `https://osu.ppy.sh/users/${userId}`;
         const userLink = `[${username}](${userUrl})`;
 
-        const legacy_score = (score.legacy_total_score || score.total_score || score.score || 0).toLocaleString('es-ES');
+        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        if (!isLazer) {
+            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
+            if (!hasCL) {
+                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
+                if (isObjectMod) {
+                    score.mods.push({ acronym: 'CL' });
+                } else {
+                    score.mods.push('CL');
+                }
+            }
+        }
+
+        const raw_legacy_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
+                                 (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
+                                 score.total_score || score.score || 0;
+        const legacy_score = raw_legacy_score.toLocaleString('es-ES');
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
@@ -265,7 +282,8 @@ async function run(messages, args) {
             const apiRes = await fetch(urlObj.toString(), {
                 headers: {
                     'Authorization': `Bearer ${supporterRes.token}`,
-                    'Content-Type': 'application/json'
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
                 }
             });
 
@@ -295,7 +313,8 @@ async function run(messages, args) {
                 const apiRes = await fetch(urlObj.toString(), {
                     headers: {
                         'Authorization': `Bearer ${supporterRes.token}`,
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'x-api-version': '20240728'
                     }
                 });
 
@@ -314,11 +333,36 @@ async function run(messages, args) {
         await NewloadToken();
         if (logger) logger.process("Obteniendo leaderboard global estándar");
         try {
-            scores = await v2.scores.list({
-                type: 'leaderboard',
-                beatmap_id: beatmap_metadata.id,
-                mode: targetGamemode
+            const fs = require('fs');
+            let globalToken = null;
+            try {
+                const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+                globalToken = tokenData.access_token;
+            } catch (err) {
+                console.error("Error al leer osu_token.json:", err);
+            }
+
+            if (!globalToken) {
+                throw new Error("No global token available");
+            }
+
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
+            urlObj.searchParams.append('mode', targetGamemode);
+
+            const apiRes = await fetch(urlObj.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${globalToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }
             });
+
+            if (apiRes.ok) {
+                const resJson = await apiRes.json();
+                scores = resJson.scores || resJson;
+            } else {
+                throw new Error(`Status ${apiRes.status}`);
+            }
         } catch (e) {
             console.error("Error al obtener leaderboard:", e);
             return `❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.`;

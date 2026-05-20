@@ -20,7 +20,24 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 	const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
 	const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
 
-	const score = (recent_scores.legacy_total_score || recent_scores.total_score || 0).toLocaleString('es-ES');
+	// Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
+	const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+	if (!isLazer && recent_scores.mods) {
+		const hasCL = recent_scores.mods.some(m => (m.acronym || m) === 'CL');
+		if (!hasCL) {
+			const isObjectMod = recent_scores.mods.length > 0 && typeof recent_scores.mods[0] === 'object';
+			if (isObjectMod) {
+				recent_scores.mods.push({ acronym: 'CL' });
+			} else {
+				recent_scores.mods.push('CL');
+			}
+		}
+	}
+
+	const raw_score = (recent_scores.legacy_total_score && recent_scores.legacy_total_score > 0) ? recent_scores.legacy_total_score :
+	                  (recent_scores.classic_total_score && recent_scores.classic_total_score > 0) ? recent_scores.classic_total_score :
+	                  recent_scores.total_score || recent_scores.score || 0;
+	const score = raw_score.toLocaleString('es-ES');
 	
 	const accuracy = (recent_scores.accuracy * 100).toFixed(2);
 	const user_max_combo = recent_scores.max_combo;
@@ -56,7 +73,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 				if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
 			}
 		}
-		return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
+		const modAcronym = mod.acronym || mod;
+		return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
 	}, '') : `<:NM:${emoji_mods["NM"]}>`;
 
 	const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
@@ -209,7 +227,24 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             }
         }
         
-        let legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
+        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        if (!isLazer && score.mods) {
+            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
+            if (!hasCL) {
+                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
+                if (isObjectMod) {
+                    score.mods.push({ acronym: 'CL' });
+                } else {
+                    score.mods.push('CL');
+                }
+            }
+        }
+
+        let raw_legacy_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
+                               (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
+                               score.total_score || score.score || 0;
+        let legacy_score = raw_legacy_score.toLocaleString('es-ES');
         let accuracy = (score.accuracy * 100).toFixed(2);
         let max_combo = score.max_combo;
 
@@ -248,7 +283,8 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
                     if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
                 }
             }
-            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
+            const modAcronym = mod.acronym || mod;
+            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;

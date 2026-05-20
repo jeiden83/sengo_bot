@@ -617,7 +617,8 @@ async function run(messages, args, initialized_data) {
                 if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
             }
         }
-        return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
+        const modAcronym = mod.acronym || mod;
+        return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
     }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
     const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
@@ -637,6 +638,11 @@ async function run(messages, args, initialized_data) {
         stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
 
+    const raw_score_val = (recent_scores.legacy_total_score && recent_scores.legacy_total_score > 0) ? recent_scores.legacy_total_score :
+                          (recent_scores.classic_total_score && recent_scores.classic_total_score > 0) ? recent_scores.classic_total_score :
+                          recent_scores.total_score || recent_scores.score || 0;
+    const formatted_score_val = raw_score_val.toLocaleString('es-ES');
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Score manual guardada para ${parsedData.player_name}`,
@@ -645,7 +651,7 @@ async function run(messages, args, initialized_data) {
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
-        .setDescription(`**Puntuación**: \`${(recent_scores.legacy_total_score || recent_scores.total_score || 0).toLocaleString('es-ES')}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`**Puntuación**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
 ${stats_str} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP ${(recent_scores.accuracy * 100).toFixed(2)}%${ratio_str} x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
 \`\`\`

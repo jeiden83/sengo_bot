@@ -23,14 +23,29 @@ async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
         let flag = getFlagEmoji(score.user ? score.user.country_code : "XX");
     
         let username = score.user ? score.user.username : score.username;
-        let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;
+        let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        if (!isLazer && score.mods) {
+            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
+            if (!hasCL) {
+                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
+                if (isObjectMod) {
+                    score.mods.push({ acronym: 'CL' });
+                } else {
+                    score.mods.push('CL');
+                }
+            }
+        }
 
-        let total_score = score.legacy_total_score == 0 ? score.total_score.toLocaleString('es-ES') : score.legacy_total_score.toLocaleString('es-ES');
+        let raw_total_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
+                              (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
+                              score.total_score || score.score || 0;
+        let total_score = raw_total_score.toLocaleString('es-ES');
         let accuracy = (score.accuracy * 100).toFixed(2);
     
         let max_combo = score.max_combo;
         let beatmap_max_combo = beatmap_metadata.max_combo;
-
+ 
         let { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
         let statistics = "";
         let ratio_str = "";
@@ -51,8 +66,8 @@ async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
     
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
     	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}: (${(score.map_completion*100).toFixed(2)}%)` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-        let mods_used = score.mods.reduce((acc, mod) => {
+ 
+        let mods_used = score.mods ? score.mods.reduce((acc, mod) => {
             let settings_str = '';
             if (mod.settings) {
                 if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
@@ -66,8 +81,9 @@ async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
                     if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
                 }
             }
-            return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
-        }, '');
+            const modAcronym = mod.acronym || mod;
+            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
+        }, '') : '';
 
         const isFirstGlobal = position === 1;
         embed_description = embed_description.concat(isFirstGlobal ?

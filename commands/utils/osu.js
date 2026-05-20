@@ -354,15 +354,48 @@ async function getUserRecentScores(parsed_args){
 
     await NewloadToken();
 
-    const result = await v2.scores.list({
-        type: 'user_recent',
-        user_id: parsed_args.username[0],
-        mode: parsed_args.gamemode || "osu",
-        include_fails: true,
-        limit: 100,
-      });
+    try {
+        let globalToken = null;
+        try {
+            const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+            globalToken = tokenData.access_token;
+        } catch (err) {
+            console.error("Error al leer osu_token.json:", err);
+        }
 
-    return result;
+        if (!globalToken) {
+            throw new Error("No global token available");
+        }
+
+        const urlObj = new URL(`https://osu.ppy.sh/api/v2/users/${parsed_args.username[0]}/scores/recent`);
+        urlObj.searchParams.append('mode', parsed_args.gamemode || "osu");
+        urlObj.searchParams.append('include_fails', '1');
+        urlObj.searchParams.append('limit', '100');
+
+        const apiRes = await fetch(urlObj.toString(), {
+            headers: {
+                'Authorization': `Bearer ${globalToken}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }
+        });
+
+        if (apiRes.ok) {
+            const resJson = await apiRes.json();
+            return resJson;
+        } else {
+            throw new Error(`Status ${apiRes.status}`);
+        }
+    } catch (e) {
+        console.error("Error fetching recent scores via fetch:", e);
+        return await v2.scores.list({
+            type: 'user_recent',
+            user_id: parsed_args.username[0],
+            mode: parsed_args.gamemode || "osu",
+            include_fails: true,
+            limit: 100,
+        });
+    }
 }
 
 // Para obtener las mejores puntuaciones (top) de un usuario
@@ -432,30 +465,74 @@ async function getUserTopScores(parsed_args){
     await NewloadToken();
 
     try {
-        const result1 = await v2.scores.list({
-            type: 'user_best',
-            user_id: parsed_args.username[0],
-            mode: parsed_args.gamemode || "osu",
-            limit: 100,
-            offset: 0
-        });
+        let globalToken = null;
+        try {
+            const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+            globalToken = tokenData.access_token;
+        } catch (err) {
+            console.error("Error al leer osu_token.json:", err);
+        }
 
+        if (!globalToken) {
+            throw new Error("No global token available");
+        }
+
+        const fetchBest = async (offset) => {
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/users/${parsed_args.username[0]}/scores/best`);
+            urlObj.searchParams.append('mode', parsed_args.gamemode || "osu");
+            urlObj.searchParams.append('limit', '100');
+            urlObj.searchParams.append('offset', offset.toString());
+
+            const apiRes = await fetch(urlObj.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${globalToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }
+            });
+
+            if (apiRes.ok) {
+                return await apiRes.json();
+            } else {
+                throw new Error(`Status ${apiRes.status}`);
+            }
+        };
+
+        const result1 = await fetchBest(0);
         if (!result1 || result1.length < 100) {
             return result1 || [];
         }
 
-        const result2 = await v2.scores.list({
-            type: 'user_best',
-            user_id: parsed_args.username[0],
-            mode: parsed_args.gamemode || "osu",
-            limit: 100,
-            offset: 100
-        });
-
+        const result2 = await fetchBest(100);
         return result1.concat(result2 || []);
     } catch (e) {
-        console.error("Error al obtener mejores jugadas de Bancho:", e);
-        return [];
+        console.error("Error fetching top scores via fetch:", e);
+        try {
+            const result1 = await v2.scores.list({
+                type: 'user_best',
+                user_id: parsed_args.username[0],
+                mode: parsed_args.gamemode || "osu",
+                limit: 100,
+                offset: 0
+            });
+
+            if (!result1 || result1.length < 100) {
+                return result1 || [];
+            }
+
+            const result2 = await v2.scores.list({
+                type: 'user_best',
+                user_id: parsed_args.username[0],
+                mode: parsed_args.gamemode || "osu",
+                limit: 100,
+                offset: 100
+            });
+
+            return result1.concat(result2 || []);
+        } catch (err) {
+            console.error("Error al obtener mejores jugadas de Bancho en fallback:", err);
+            return [];
+        }
     }
 }
 
