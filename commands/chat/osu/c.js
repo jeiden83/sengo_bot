@@ -174,8 +174,15 @@ async function doOsuListEmbed(message, parsed_args, user_scores_chunk, startInde
             return `${acc}<:${mod.acronym}:${emoji_mods[mod.acronym] || '123'}>${settings_str}`;
         }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
-        const rank_pos = globalIndex === 1 ? `**#${score.originalRank || globalIndex}**` : `#${score.originalRank || globalIndex}`;
-        const score_line = `${rank_pos} ▸ ${grade_emoji} ▸ **${legacy_score}** ▸ **${accuracy}%**${ratio_str} ▸ **${pp}** ▸ x${max_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
+        const isFirst = globalIndex === 1;
+        const rank_pos = isFirst ? `**#${score.originalRank || globalIndex}**` : `#${score.originalRank || globalIndex}`;
+        
+        const formatted_score = isFirst ? `**${legacy_score}**` : `${legacy_score}`;
+        const formatted_accuracy = isFirst ? `**${accuracy}%**` : `${accuracy}%`;
+        const formatted_pp = isFirst ? `__**${pp}**__` : `__${pp}__`;
+        const formatted_combo = isFirst ? `**x${max_combo}**` : `x${max_combo}`;
+
+        const score_line = `${rank_pos} ▸ ${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
 
         embed_description = embed_description.concat(score_line);
     }
