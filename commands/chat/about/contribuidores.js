@@ -65,6 +65,12 @@ async function run(messages, args) {
     return { embeds: [embed] };
 }
 
+run.alias = {
+    "con": {
+        "args": null
+    }
+}
+
 run.description = {
     'header' : 'Lista de usuarios vinculados',
     'body' : 'Muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
