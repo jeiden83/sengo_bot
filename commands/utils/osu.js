@@ -513,7 +513,8 @@ async function getOsuUser(parsed_args){
                         level: { current: s.level, progress: s.level_progress },
                         rank: { country: s.country_rank }
                     },
-                    server: 'gatari'
+                    server: 'gatari',
+                    is_supporter: u.donor === 1 || u.donor === true || false
                 };
             }
             throw new Error("User not found in Gatari");
