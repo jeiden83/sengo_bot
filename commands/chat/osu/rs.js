@@ -78,13 +78,16 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		if (recent_scores.user.server !== 'gatari') {
 			try {
 				const { v2 } = require('osu-api-extended');
+				const unrankedWithoutLeaderboard = new Set(['pending', 'wip', 'graveyard']);
+				const hasLeaderboard = recent_scores.beatmap.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
+
 				const [best, topScores] = await Promise.all([
-					v2.scores.list({
+					hasLeaderboard ? v2.scores.list({
 						type: 'user_beatmap_best',
 						beatmap_id: recent_scores.beatmap.id,
 						user_id: recent_scores.user.id,
 						mode: recent_scores.beatmap.mode
-					}).catch(() => null),
+					}).catch(() => null) : null,
 					v2.scores.list({
 						type: 'user_best',
 						user_id: recent_scores.user.id,
