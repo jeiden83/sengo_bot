@@ -176,28 +176,7 @@ async function run(messages, args) {
                 }
             );
 
-        // Añadir los anuncios individuales
-        topAds.forEach((item, index) => {
-            const nick = item.advertiser.nickName;
-            const price = formatCurrency(item.adv.price, fiat);
-            const minLim = formatCurrency(item.adv.minSingleTransAmount, fiat);
-            const maxLim = formatCurrency(item.adv.maxSingleTransAmount, fiat);
-            const methods = item.adv.tradeMethods.map(m => m.tradeMethodName).join(', ');
-            const orders = item.advertiser.monthOrderCount || 0;
-            const rate = ((item.advertiser.monthFinishRate || 0) * 100).toFixed(1);
-            const typeEmoji = item.advertiser.userType === 'merchant' ? '⭐' : '👤';
 
-            embed.addFields({
-                name: `Anuncio #${index + 1} — ${typeEmoji} ${nick}`,
-                value: [
-                    `• **Precio:** \`${price}\``,
-                    `• **Límites:** \`${minLim} - ${maxLim}\``,
-                    `• **Órdenes:** \`${orders}\` (${rate}% completado)`,
-                    `• **Pagos:** \`${methods}\``
-                ].join('\n'),
-                inline: false
-            });
-        });
 
         embed.setFooter({
             text: `SengoBot • Solicitado por ${message.author.username}`,
