@@ -10,11 +10,6 @@ const data = new SlashCommandBuilder()
             .setRequired(false)
     )
     .addStringOption(option =>
-        option.setName("mods")
-            .setDescription("Sobrescribir los mods (ej: HDDT). NM para sin mods.")
-            .setRequired(false)
-    )
-    .addStringOption(option =>
         option.setName("mensaje")
             .setDescription("ID o enlace de un mensaje en este canal para extraer la score")
             .setRequired(false)
@@ -22,7 +17,6 @@ const data = new SlashCommandBuilder()
 
 async function run(interaction, res) {
     const archivo = interaction.options.getAttachment("archivo");
-    const mods = interaction.options.getString("mods");
     const mensaje = interaction.options.getString("mensaje");
 
     let replyMessage = null;
@@ -47,9 +41,6 @@ async function run(interaction, res) {
     }
 
     const args = [];
-    if (mods) {
-        args.push("-m", mods);
-    }
 
     const messages = {
         message: {

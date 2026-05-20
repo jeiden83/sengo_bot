@@ -271,7 +271,8 @@ function parseBotEmbed(reply) {
                     max_combo: parseInt(scoreMatch[2]),
                     statistics: statistics,
                     mods: mapMatch[3].trim() === 'No Mod' ? ['NM'] : mapMatch[3].trim().split(/(?=[A-Z]{2})/),
-                    rank: rankMatch ? rankMatch[1] : 'A'
+                    rank: rankMatch ? rankMatch[1] : 'A',
+                    date: embed.timestamp ? new Date(embed.timestamp).toISOString() : null
                 };
             }
         }
@@ -318,7 +319,8 @@ function parseBotEmbed(reply) {
                     accuracy: parseFloat(statsMatch[2]) / 100,
                     max_combo: parseInt(statsMatch[3]),
                     mods: ['NM'],
-                    rank: 'A'
+                    rank: 'A',
+                    date: embed.timestamp ? new Date(embed.timestamp).toISOString() : null
                 };
             }
         }
@@ -332,18 +334,6 @@ async function run(messages, args, initialized_data) {
 
     console.log(`\n--- [S.SUBIR] Nueva solicitud de subida ---`);
     console.log(`[S.SUBIR] Usuario solicitante: ${message.author.tag} (${message.author.id})`);
-
-    let overrideMods = null;
-    const modsIndex = args.findIndex(a => a && typeof a === 'string' && (a.toLowerCase() === '-mods' || a.toLowerCase() === '-m'));
-    if (modsIndex !== -1 && args.length > modsIndex + 1) {
-        let rawMods = args[modsIndex + 1].toUpperCase();
-        if (rawMods === 'NM' || rawMods === 'NOMOD') {
-            overrideMods = ['NM'];
-        } else {
-            overrideMods = rawMods.match(/.{1,2}/g) || ['NM'];
-        }
-        console.log(`[S.SUBIR] Parámetro de mods detectado. Sobrescribiendo mods con:`, overrideMods);
-    }
 
     // Buscamos si hay un adjunto en el mensaje del comando o si es un reply
     const sourceMessage = (message.attachments.size > 0) ? message : reply;
@@ -377,9 +367,7 @@ async function run(messages, args, initialized_data) {
                     { bit: 1<<29, acronym: 'V2' }
                 ];
                 let parsedMods = [];
-                if (overrideMods) {
-                    parsedMods = overrideMods;
-                } else if (replayData.lazerScoreInfo && replayData.lazerScoreInfo.mods) {
+                if (replayData.lazerScoreInfo && replayData.lazerScoreInfo.mods) {
                     parsedMods = replayData.lazerScoreInfo.mods;
                 } else {
                     for (const m of modMap) {
@@ -476,11 +464,6 @@ async function run(messages, args, initialized_data) {
         return "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.";
     }
 
-    if (overrideMods && parsedData) {
-        parsedData.mods = overrideMods;
-        console.log(`[S.SUBIR] Mods sobrescritos a:`, parsedData.mods);
-    }
-
     // --- Validación y recálculo del rango (rank) ---
     const valid_ranks = new Set(['X', 'XH', 'S', 'SH', 'A', 'B', 'C', 'D', 'F']);
     const original_rank = parsedData.rank ? String(parsedData.rank).toUpperCase() : null;
@@ -574,56 +557,8 @@ async function run(messages, args, initialized_data) {
         parsedData.player_name = finalOsuUser.username; // Sobrescribe Aquaro por Aquare (oficial)
     }
 
-    // Ajuste de zona horaria según el país del jugador para corregir la hora del OCR
-    if (parsedData.date) {
-        if (finalOsuUser && finalOsuUser.country_code) {
-            const countryOffsets = {
-                "VE": -4, // Venezuela
-                "AR": -3, // Argentina
-                "CL": -4, // Chile
-                "CO": -5, // Colombia
-                "PE": -5, // Perú
-                "EC": -5, // Ecuador
-                "MX": -6, // México
-                "ES": 2,  // España
-                "UY": -3, // Uruguay
-                "PY": -4, // Paraguay
-                "BO": -4, // Bolivia
-                "DO": -4, // República Dominicana
-                "CR": -6, // Costa Rica
-                "SV": -6, // El Salvador
-                "GT": -6, // Guatemala
-                "HN": -6, // Honduras
-                "NI": -6, // Nicaragua
-                "PA": -5, // Panamá
-                "US": -5, // Estados Unidos
-                "BR": -3, // Brasil
-            };
-
-            const cc = finalOsuUser.country_code.toUpperCase();
-            if (cc in countryOffsets) {
-                const offset = countryOffsets[cc];
-                const dateObj = new Date(parsedData.date);
-                if (!isNaN(dateObj.getTime())) {
-                    // El OCR lee la hora local de la pantalla como si fuera UTC al añadir la 'Z'.
-                    // Para obtener el UTC real de la jugada, restamos el offset del país.
-                    let real_utc_ms = dateObj.getTime() - (offset * 3600 * 1000);
-
-                    // Si por discrepancias de horario de verano/invierno la fecha calculada supera la fecha actual,
-                    // la limitamos a la fecha actual para evitar que en Discord aparezca en el futuro.
-                    if (real_utc_ms > Date.now()) {
-                        console.log(`[S.SUBIR] La fecha ajustada supera la hora actual. Limitando a Date.now()`);
-                        real_utc_ms = Date.now();
-                    }
-
-                    parsedData.date = new Date(real_utc_ms).toISOString();
-                    console.log(`[S.SUBIR] Ajuste de zona horaria aplicado para país ${cc} (offset ${offset}h). Nueva fecha UTC: ${parsedData.date}`);
-                }
-            } else {
-                console.log(`[S.SUBIR] País ${cc} no mapeado en offsets. Se mantiene la fecha original.`);
-            }
-        }
-    }
+    // Nota: El ajuste de zona horaria del OCR ha sido removido porque las replays (.osr) y embeds de bots
+    // ya contienen la hora real UTC correcta.
 
     const recent_scores = {
         accuracy: parsedData.accuracy,
