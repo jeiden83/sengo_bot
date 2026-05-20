@@ -36,6 +36,9 @@ async function main(reload) {
     const externalUrl = process.env.RENDER_EXTERNAL_URL;
     if (externalUrl) {
         Logger.system(`Entorno de Render detectado. Notificando apagado a la instancia anterior en: ${externalUrl}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 4000); // 4 segundos de límite
+
         try {
             const response = await fetch(`${externalUrl}/shutdown`, {
                 method: 'POST',
@@ -43,8 +46,11 @@ async function main(reload) {
                     'Authorization': process.env.SHUTDOWN_TOKEN || config.OSU_CLIENT_SECRET,
                     'Content-Type': 'application/json',
                     'User-Agent': 'SengoBot-Deploy-Agent'
-                }
+                },
+                signal: controller.signal
             });
+            clearTimeout(timeoutId);
+
             if (response.ok) {
                 Logger.system("Instancia anterior notificada exitosamente. Esperando liberación de recursos (4s)...");
                 await new Promise(resolve => setTimeout(resolve, 4000));
@@ -52,7 +58,8 @@ async function main(reload) {
                 Logger.system(`Intento de apagado de la instancia anterior respondió con estado: ${response.status}`);
             }
         } catch (err) {
-            Logger.system(`No se pudo notificar a la instancia anterior (es posible que no esté activa): ${err.message}`);
+            clearTimeout(timeoutId);
+            Logger.system(`No se pudo notificar a la instancia anterior (es posible que no esté activa o haya tardado en responder): ${err.message}`);
         }
     }
 
