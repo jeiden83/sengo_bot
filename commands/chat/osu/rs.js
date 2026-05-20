@@ -73,26 +73,72 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
 	}
 	let leaderboard_pos = null;
-	if (recent_scores.user.server !== 'gatari' && recent_scores.passed) {
-		try {
-			const { v2 } = require('osu-api-extended');
-			const best = await v2.scores.list({
-				type: 'user_beatmap_best',
-				beatmap_id: recent_scores.beatmap.id,
-				user_id: recent_scores.user.id,
-				mode: recent_scores.beatmap.mode
-			});
-			const isRecentPlayBest = best && best.score && (
-				new Date(best.score.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() ||
-				best.score.total_score === recent_scores.total_score ||
-				best.score.legacy_total_score === recent_scores.legacy_total_score ||
-				(recent_scores.id && best.score.id === recent_scores.id)
-			);
-			if (isRecentPlayBest) {
-				leaderboard_pos = best.position;
+	let user_top_pos = null;
+	if (recent_scores.passed) {
+		if (recent_scores.user.server !== 'gatari') {
+			try {
+				const { v2 } = require('osu-api-extended');
+				const [best, topScores] = await Promise.all([
+					v2.scores.list({
+						type: 'user_beatmap_best',
+						beatmap_id: recent_scores.beatmap.id,
+						user_id: recent_scores.user.id,
+						mode: recent_scores.beatmap.mode
+					}).catch(() => null),
+					v2.scores.list({
+						type: 'user_best',
+						user_id: recent_scores.user.id,
+						mode: recent_scores.beatmap.mode,
+						limit: 100
+					}).catch(() => null)
+				]);
+
+				if (best && best.score) {
+					const isRecentPlayBest = (
+						new Date(best.score.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() ||
+						best.score.total_score === recent_scores.total_score ||
+						best.score.legacy_total_score === recent_scores.legacy_total_score ||
+						(recent_scores.id && best.score.id === recent_scores.id)
+					);
+					if (isRecentPlayBest) {
+						leaderboard_pos = best.position;
+					}
+				}
+
+				if (topScores && Array.isArray(topScores)) {
+					const topIndex = topScores.findIndex(s => {
+						return (recent_scores.id && s.id === recent_scores.id) ||
+							(new Date(s.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() &&
+							(s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
+					});
+					if (topIndex !== -1) {
+						user_top_pos = topIndex + 1;
+					}
+				}
+			} catch (e) {
+				console.error("Error fetching beatmap best score position / top scores:", e);
 			}
-		} catch (e) {
-			console.error("Error fetching beatmap best score position:", e);
+		} else {
+			try {
+				const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+				const m = modeMap[recent_scores.beatmap.mode || 'osu'];
+				const response = await fetch(`https://api.gatari.pw/user/scores/best?id=${recent_scores.user.id}&mode=${m}&l=100`);
+				const data = await response.json();
+				if (data && Array.isArray(data.scores)) {
+					const topIndex = data.scores.findIndex(s => {
+						const recentTime = Math.floor(new Date(recent_scores.ended_at).getTime() / 1000);
+						const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
+						return s.beatmap.beatmap_id === recent_scores.beatmap.id &&
+							Math.abs(s.score - scoreVal) < 100 &&
+							Math.abs(s.time - recentTime) < 5;
+					});
+					if (topIndex !== -1) {
+						user_top_pos = topIndex + 1;
+					}
+				}
+			} catch (e) {
+				console.error("Error fetching gatari best scores:", e);
+			}
 		}
 	}
 
@@ -105,7 +151,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 		})
 		.setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
 		.setURL(beatmap_url)
-		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}
+		.setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}
 \`\`\`ansi
 ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
 \`\`\`
