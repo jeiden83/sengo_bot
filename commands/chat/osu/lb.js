@@ -162,7 +162,7 @@ async function run(messages, args) {
             const arg = args[i];
             if (typeof arg === 'string') {
                 if (arg.toLowerCase() === '-pais' || arg.toLowerCase() === '-country') {
-                    if (i + 1 < args.length && !args[i+1].startsWith('-') && !args[i+1].startsWith('+')) {
+                    if (i + 1 < args.length && typeof args[i+1] === 'string' && !args[i+1].startsWith('-') && !args[i+1].startsWith('+')) {
                         countryFilter = args[i+1].toUpperCase();
                         args.splice(i, 2);
                         i--;
