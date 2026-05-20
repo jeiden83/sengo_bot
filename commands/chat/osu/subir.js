@@ -274,7 +274,7 @@ async function run(messages, args, initialized_data) {
 
     if (!sourceMessage) {
         console.log(`[S.SUBIR] Error: No se encontró fuente (adjunto o reply).`);
-        return "Debes adjuntar una foto o responder (reply) a un mensaje que contenga un embed de una score o una foto de una play de osu!";
+        return "Debes adjuntar un archivo de repetición `.osr` o responder (reply) a un mensaje que contenga una replay `.osr` o un embed de score compatible.";
     }
 
     let parsedData = null;
@@ -370,9 +370,9 @@ async function run(messages, args, initialized_data) {
         console.log(`[S.SUBIR] Mods sobrescritos a:`, parsedData.mods);
     }
 
-    // --- Validación y recálculo del rank ---
+    // --- Validación y recálculo del rango (rank) ---
     const valid_ranks = new Set(['X', 'XH', 'S', 'SH', 'A', 'B', 'C', 'D', 'F']);
-    const ocr_rank = parsedData.rank ? String(parsedData.rank).toUpperCase() : null;
+    const original_rank = parsedData.rank ? String(parsedData.rank).toUpperCase() : null;
     const calculated_rank = calculateRank(
         parsedData.statistics,
         parsedData.accuracy,
@@ -380,11 +380,11 @@ async function run(messages, args, initialized_data) {
         parsedData.rank !== 'F' && parsedData.accuracy > 0
     );
 
-    if (!ocr_rank || !valid_ranks.has(ocr_rank)) {
-        console.log(`[S.SUBIR] Rank OCR inválido ("${parsedData.rank}"). Usando rank calculado: ${calculated_rank}`);
+    if (!original_rank || !valid_ranks.has(original_rank)) {
+        console.log(`[S.SUBIR] Rango original inválido ("${parsedData.rank}"). Usando rango calculado: ${calculated_rank}`);
         parsedData.rank = calculated_rank;
     } else {
-        console.log(`[S.SUBIR] Rank OCR: "${ocr_rank}". Rank calculado: "${calculated_rank}". Se usa el calculado para mayor fiabilidad.`);
+        console.log(`[S.SUBIR] Rango original: "${original_rank}". Rango calculado: "${calculated_rank}". Se usa el calculado para mayor fiabilidad.`);
         parsedData.rank = calculated_rank; // siempre preferimos el calculado
     }
     // ----------------------------------------
@@ -616,8 +616,8 @@ run.alias = {
 
 run.description = {
     'header': 'Sube una score a la base de datos de Sengo.',
-    'body': 'Adjunta una imagen o haz reply a una imagen o a un embed (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
-    'usage': `s.subir [adjuntando imagen o respondiendo a un mensaje] [-m MODS]`
+    'body': 'Adjunta un archivo `.osr` o haz reply a una replay `.osr` o a un embed de score compatible (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
+    'usage': `s.subir [adjuntando archivo .osr o respondiendo a un mensaje] [-m MODS]`
 }
 
 module.exports = { run, "description": run.description }

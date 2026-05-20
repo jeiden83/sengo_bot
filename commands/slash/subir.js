@@ -3,12 +3,7 @@ const subirChatCommand = require("../chat/osu/subir.js");
 
 const data = new SlashCommandBuilder()
     .setName("subir")
-    .setDescription("Sube una score a la base de datos de Sengo")
-    .addAttachmentOption(option =>
-        option.setName("foto")
-            .setDescription("Imagen con el embed de la score o captura de pantalla de la play")
-            .setRequired(false)
-    )
+    .setDescription("Sube una score (.osr o embed de bot) a la base de datos de Sengo")
     .addAttachmentOption(option =>
         option.setName("archivo")
             .setDescription("Archivo de repetición de osu! (.osr)")
@@ -26,7 +21,6 @@ const data = new SlashCommandBuilder()
     );
 
 async function run(interaction, res) {
-    const foto = interaction.options.getAttachment("foto");
     const archivo = interaction.options.getAttachment("archivo");
     const mods = interaction.options.getString("mods");
     const mensaje = interaction.options.getString("mensaje");
@@ -48,9 +42,6 @@ async function run(interaction, res) {
     }
 
     const attachments = new Collection();
-    if (foto) {
-        attachments.set(foto.id, foto);
-    }
     if (archivo) {
         attachments.set(archivo.id, archivo);
     }
