@@ -1,4 +1,4 @@
-const { EmbedBuilder, PermissionsBitField, AttachmentBuilder } = require("discord.js");
+const { EmbedBuilder, PermissionsBitField, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const axios = require("axios");
 const path = require("path");
 const sharp = require("sharp");
@@ -483,7 +483,36 @@ async function handleBlacklist(supabase, author, member, action, targetUser) {
     return "❌ Acción inválida. Usa: `add`, `remove` o `list`";
 }
 
-async function handleShow(supabase, author, targetId) {
+function getFumoButtonsRow(currentIndex, totalFumos) {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('fumo_first')
+            .setEmoji('⏮️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentIndex <= 0),
+        new ButtonBuilder()
+            .setCustomId('fumo_prev')
+            .setEmoji('◀️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentIndex <= 0),
+        new ButtonBuilder()
+            .setCustomId('fumo_random')
+            .setEmoji('🎲')
+            .setStyle(ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId('fumo_next')
+            .setEmoji('▶️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentIndex >= totalFumos - 1),
+        new ButtonBuilder()
+            .setCustomId('fumo_last')
+            .setEmoji('⏭️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentIndex >= totalFumos - 1)
+    );
+}
+
+async function handleShow(supabase, author, targetId, messageOrInteraction) {
     const { data: files, error } = await supabase.storage.from('fumo').list('', {
         limit: 10000,
         sortBy: { column: 'name', order: 'asc' }
@@ -502,34 +531,94 @@ async function handleShow(supabase, author, targetId) {
         return "🧸 No hay fotos de fumo registradas. ¡Adjunta una imagen para subir la primera!";
     }
 
-    let current = null;
+    let currentIndex = -1;
 
     if (targetId) {
         const id = parseInt(targetId);
-        current = fumos.find(f => f.parsed.id === id);
-        if (!current) {
+        currentIndex = fumos.findIndex(f => f.parsed.id === id);
+        if (currentIndex === -1) {
             return `❌ No se encontró ningún fumo con el ID **${id}**.`;
         }
     } else {
         if (list_order.length === 0) {
             list_order = shuffleArray([...fumos]);
         }
-        current = list_order.shift();
-        if (!current) {
-            current = fumos[Math.floor(Math.random() * fumos.length)];
+        const current = list_order.shift();
+        if (current) {
+            currentIndex = fumos.findIndex(f => f.parsed.id === current.parsed.id);
+        }
+        if (currentIndex === -1) {
+            currentIndex = Math.floor(Math.random() * fumos.length);
         }
     }
 
-    const { data } = supabase.storage.from('fumo').getPublicUrl(current.name);
-    const publicUrl = data.publicUrl;
+    const getEmbed = (idx) => {
+        const currentFumo = fumos[idx];
+        const { data } = supabase.storage.from('fumo').getPublicUrl(currentFumo.name);
+        return new EmbedBuilder()
+            .setTitle(`🧸 Fumo #${currentFumo.parsed.id}`)
+            .setColor("#bf4080")
+            .setImage(data.publicUrl)
+            .setFooter({ text: `Subido por: ${currentFumo.parsed.username} | Total Fumos: ${fumos.length}` });
+    };
 
-    const embed = new EmbedBuilder()
-        .setTitle(`🧸 Fumo #${current.parsed.id}`)
-        .setColor("#bf4080")
-        .setImage(publicUrl)
-        .setFooter({ text: `Subido por: ${current.parsed.username} | Total Fumos: ${fumos.length}` });
+    const isInteraction = !!(messageOrInteraction && messageOrInteraction.editReply);
+    const row = getFumoButtonsRow(currentIndex, fumos.length);
 
-    return { embeds: [embed] };
+    let sentMessage;
+    if (isInteraction) {
+        sentMessage = await messageOrInteraction.editReply({
+            embeds: [getEmbed(currentIndex)],
+            components: [row]
+        });
+    } else if (messageOrInteraction) {
+        sentMessage = await messageOrInteraction.channel.send({
+            embeds: [getEmbed(currentIndex)],
+            components: [row]
+        });
+    } else {
+        return { embeds: [getEmbed(currentIndex)], components: [row] };
+    }
+
+    const filter = btnInt => btnInt.user.id === author.id;
+    const collector = sentMessage.createMessageComponentCollector({
+        filter,
+        idle: 120000 // 2 minutos (120,000 ms)
+    });
+
+    collector.on('collect', async i => {
+        try {
+            await i.deferUpdate();
+
+            if (i.customId === 'fumo_first') {
+                currentIndex = 0;
+            } else if (i.customId === 'fumo_prev') {
+                currentIndex = Math.max(0, currentIndex - 1);
+            } else if (i.customId === 'fumo_random') {
+                currentIndex = Math.floor(Math.random() * fumos.length);
+            } else if (i.customId === 'fumo_next') {
+                currentIndex = Math.min(fumos.length - 1, currentIndex + 1);
+            } else if (i.customId === 'fumo_last') {
+                currentIndex = fumos.length - 1;
+            }
+
+            const newEmbed = getEmbed(currentIndex);
+            const newRow = getFumoButtonsRow(currentIndex, fumos.length);
+
+            await i.editReply({
+                embeds: [newEmbed],
+                components: [newRow]
+            });
+        } catch (err) {
+            console.error("Error al navegar fumos:", err);
+        }
+    });
+
+    collector.on('end', async () => {
+        try {
+            await sentMessage.edit({ components: [] });
+        } catch (e) {}
+    });
 }
 
 function shuffleArray(array) {
@@ -593,10 +682,10 @@ async function run(messages, args) {
 
     // Mostrar fumo específico o aleatorio
     if (args[0] && !isNaN(parseInt(args[0]))) {
-        return await handleShow(supabase, author, args[0]);
+        return await handleShow(supabase, author, args[0], message);
     }
 
-    return await handleShow(supabase, author, null);
+    return await handleShow(supabase, author, null, message);
 }
 
 run.description = {

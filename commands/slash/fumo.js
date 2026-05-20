@@ -96,7 +96,11 @@ async function run(interaction, res, chat_commands) {
 
     if (sub === "ver") {
         const id = interaction.options.getInteger("id");
-        return await fumoChatCommand.handleShow(supabase, interaction.user, id);
+        const result = await fumoChatCommand.handleShow(supabase, interaction.user, id, interaction);
+        if (typeof result === 'string') {
+            await interaction.editReply(result);
+        }
+        return true;
     }
 
     if (sub === "subir") {
