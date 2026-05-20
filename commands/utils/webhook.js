@@ -208,6 +208,8 @@ function startServer(client, dbRes, port, config) {
                     const osuUser = await fetchOsuMe(tokenData.access_token);
                     const dbResult = await saveOAuthToken(discordId, osuUser, tokenData);
 
+                    Logger.system(`[OAuth] Vinculación exitosa por OAuth para Discord ID: ${discordId} -> osu!: ${osuUser.username} (${osuUser.id})`);
+
                     // Renderizar página web premium
                     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
                     res.end(`
@@ -435,6 +437,7 @@ function startServer(client, dbRes, port, config) {
                 })
                 .catch((err) => {
                     console.error("Error en OAuth callback:", err);
+                    Logger.system(`[OAuth] Fallo en la vinculación para Discord ID: ${discordId} -> Error: ${err.message}`);
                     res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
                     res.end(`<h1>Error 500: Fallo en la vinculación</h1><p>${err.message}</p>`);
                 });

@@ -4,7 +4,7 @@ const { getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
 const { EmbedBuilder } = require("discord.js");
 
 async function run(messages, args) {
-    const { message, res } = messages;
+    const { message, res, logger } = messages;
 
     try {
         const discord_id = message.author.id;
@@ -13,6 +13,7 @@ async function run(messages, args) {
         const isOAuth = args && args.some(arg => typeof arg === 'string' && (arg.toLowerCase() === '-oauth' || arg.toLowerCase() === 'oauth'));
 
         if (isOAuth) {
+            if (logger) logger.process("Generando URL de autorización OAuth...");
             // Flujo OAuth
             // Obtener URLs para OAuth
             const redirectUri = getRedirectUri();
@@ -33,6 +34,7 @@ async function run(messages, args) {
                 .setFooter({ text: "SengoBot OAuth System v2" })
                 .setTimestamp();
 
+            if (logger) logger.process("Enviando mensaje privado con instrucciones...");
             // Enviar por DM para máxima privacidad
             try {
                 await message.author.send({ embeds: [embed] });
@@ -51,6 +53,7 @@ async function run(messages, args) {
         // Si se provee la palabra "unlink" o "desvincular"
         const isUnlink = args && args.some(arg => typeof arg === 'string' && (arg.toLowerCase() === 'unlink' || arg.toLowerCase() === 'desvincular'));
         if (isUnlink) {
+            if (logger) logger.process("Eliminando vinculación de la base de datos...");
             await deleteUser(res.User, discord_id);
             // También remover de oauth_tokens si existe
             const supabase = res.supabaseClient;
@@ -65,8 +68,9 @@ async function run(messages, args) {
 
         // Si no hay un nombre
         if (parsed_args.username[0].length == 0) {
+            if (logger) logger.process("Eliminando vinculación de la base de datos (sin argumentos)...");
             await deleteUser(res.User, discord_id);
-            // También remover de oauth_tokens por si acaso
+            // Also remove from oauth_tokens just in case
             const supabase = res.supabaseClient;
             if (supabase) {
                 await supabase.from('oauth_tokens').delete().eq('discord_id', discord_id);
@@ -75,10 +79,12 @@ async function run(messages, args) {
         }
 
         // Hay un nombre en el argumento
+        if (logger) logger.process(`Buscando usuario '${parsed_args.username[0]}' en la API de osu!...`);
         const osu_user = await getOsuUser(parsed_args);
 
         if (typeof osu_user === "string") return `El usuario de osu! ${parsed_args.username[0]} no existe.`;
         
+        if (logger) logger.process(`Guardando vinculación para '${osu_user.username}' en la base de datos...`);
         return addUser(res.User, discord_id, osu_user.id, parsed_args.gamemode)
             .then(res => (res.status === 1)?
                 `Se ha **vinculado** al usuario de osu! \`${osu_user.username}\` correctamente.` : `Error al vincular el usuario.`
