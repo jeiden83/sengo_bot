@@ -1249,16 +1249,19 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                     processedCount++;
                     errorCount++;
                     const status = error.status || error.response?.status;
+                    const errorMsg = error.message || error;
+                    const isNoScoreError = (typeof errorMsg === 'string' && errorMsg.includes('empty error')) || status === 404;
+
                     if (status === 429) {
                         rateLimitCount++;
-                    } else {
+                    } else if (isNoScoreError) {
                         cachedData.scores[user.osu_id] = { noScore: true };
-                    }
-
-                    const errorMsg = error.message || error;
-                    const isNoScoreError = typeof errorMsg === 'string' && errorMsg.includes('empty error');
-                    if (!isNoScoreError && status !== 429) {
-                        console.error(`[GAP] Error obteniendo score de osu_id ${user.osu_id}:`, errorMsg);
+                    } else {
+                        // En caso de fallos de red temporales, timeouts o errores de servidor (5xx)
+                        // NO guardamos noScore para poder reintentar en futuras consultas
+                        if (status !== 429) {
+                            console.error(`[GAP] Error de conexión/servidor al obtener score de osu_id ${user.osu_id}:`, errorMsg);
+                        }
                     }
                 }
             }));

@@ -325,7 +325,7 @@ async function handlePushEvent(client, dbRes, payload) {
         `• **Estadísticas:** ${statsLine}`;
 
     const embed = new EmbedBuilder()
-        .setTitle(`🚀 VERSION DEL SENGO v${version}`)
+        .setTitle(`🚀 Sengo v${version}`)
         .setURL(repoUrl)
         .setDescription(embedDescription)
         .setColor('#24292e') // Color gris oscuro de GitHub
