@@ -24,7 +24,7 @@ async function run(messages, args) {
     let fiat = 'VES';
     let amount = '500000';
     let methodsRaw = null;
-    let verifiedOnly = false;
+    let verifiedFilter = 'all'; // 'all', 'verified', 'unverified'
     let sendEmbed = false;
 
     // Parsear flags y argumentos
@@ -62,7 +62,9 @@ async function run(messages, args) {
                 i = j - 1;
             }
         } else if (arg === '-verified') {
-            verifiedOnly = true;
+            verifiedFilter = 'verified';
+        } else if (arg === '-unverified' || arg === '-nonverified') {
+            verifiedFilter = 'unverified';
         } else if (arg === '-d') {
             sendEmbed = true;
         }
@@ -125,14 +127,20 @@ async function run(messages, args) {
         // Filtrar anuncios según verificación
         let filtered = ads.filter(item => {
             const isVerified = item.advertiser.userType === 'merchant' || item.advertiser.userType === 'pro_merchant';
-            const verificationMatch = verifiedOnly ? isVerified : !isVerified;
             const isTradable = item.adv.isTradable !== false;
-            return verificationMatch && isTradable;
+            if (!isTradable) return false;
+
+            if (verifiedFilter === 'verified') {
+                return isVerified;
+            } else if (verifiedFilter === 'unverified') {
+                return !isVerified;
+            }
+            return true; // 'all'
         });
 
         let usedFallback = false;
         if (filtered.length === 0) {
-            // Fallback a los verificados / todos los disponibles si no hay no-verificados
+            // Fallback a los verificados / todos los disponibles si no hay coincidencias
             filtered = ads.filter(item => item.adv.isTradable !== false);
             usedFallback = true;
         }
@@ -173,7 +181,7 @@ async function run(messages, args) {
                         `• **Par:** \`${crypto}/${fiat}\``,
                         `• **Monto de Referencia:** \`${formatCurrency(amount, fiat)}\``,
                         `• **Métodos de pago:** \`${matchedNames.length > 0 ? matchedNames.join(', ') : 'Todos'}\``,
-                        `• **Filtrado:** \`${verifiedOnly ? 'Solo Verificados' : 'Solo No Verificados (Default)'}\`${usedFallback ? ' *(Fallback a todos los anuncios debido a pocos resultados)*' : ''}`
+                        `• **Filtrado:** \`${verifiedFilter === 'verified' ? 'Solo Verificados' : (verifiedFilter === 'unverified' ? 'Solo No Verificados' : 'Todos (Verificados y No Verificados)')}\`${usedFallback ? ' *(Fallback a todos los anuncios debido a pocos resultados)*' : ''}`
                     ].join('\n'),
                     inline: false
                 }
@@ -189,7 +197,7 @@ async function run(messages, args) {
         if (sendEmbed) {
             return { embeds: [embed] };
         } else {
-            return `**Tasa Binance P2P (Promedio):** \`${formatCurrency(average, fiat)}\` por *${crypto}* (${tradeType === 'BUY' ? 'Compra 🟢' : 'Venta 🔴'})\n- **Filtros**: Monto: \`${formatCurrency(amount, fiat)}\` | Pago: \`${matchedNames.length > 0 ? matchedNames.join(', ') : 'Todos'}\` | \`${verifiedOnly ? 'Solo Verificados' : 'Solo No Verificados'}\`${usedFallback ? ' *(Fallback a todos los anuncios)*' : ''}`;
+            return `**Tasa Binance P2P (Promedio):** \`${formatCurrency(average, fiat)}\` por *${crypto}* (${tradeType === 'BUY' ? 'Compra 🟢' : 'Venta 🔴'})\n- **Filtros**: Monto: \`${formatCurrency(amount, fiat)}\` | Pago: \`${matchedNames.length > 0 ? matchedNames.join(', ') : 'Todos'}\` | \`${verifiedFilter === 'verified' ? 'Solo Verificados' : (verifiedFilter === 'unverified' ? 'Solo No Verificados' : 'Verificados y No Verificados')}\`${usedFallback ? ' *(Fallback a todos los anuncios)*' : ''}`;
         }
 
     } catch (error) {
@@ -209,7 +217,7 @@ run.alias = {
 
 run.description = {
     header: 'Consulta el promedio de la tasa P2P en Binance con filtros personalizados',
-    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios orgánicos más competitivos (no verificados por defecto para evitar tarifas infladas).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Venta).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Usar anunciantes verificados.\n- `-d` : Mostrar la información detallada en un Discord Embed en lugar de texto plano.',
+    body: 'Muestra el precio promedio del mercado P2P calculado en base a los 3 anuncios más competitivos (incluyendo verificados y no verificados por defecto).\n\n**Opciones / Flags:**\n- `-buy` / `-sell` : Especifica compra o venta (Default: Venta).\n- `-cripto [siglas]` : Criptomoneda a consultar (Ej: USDT, BTC, ETH). Default: USDT.\n- `-fiat [siglas]` : Moneda local a consultar (Ej: VES, COP, USD). Default: VES.\n- `-amount [monto]` : Filtrar anuncios por límites del monto (Default: 500000).\n- `-methods [bancos]` : Filtrar por métodos de pago separados por comas (Ej: pago movil, banesco).\n- `-verified` : Filtrar solo anunciantes verificados.\n- `-unverified` : Filtrar solo anunciantes no verificados.\n- `-d` : Mostrar la información detallada en un Discord Embed en lugar de texto plano.',
     usage: 's.binance\ns.binance -sell -amount 250000\ns.binance -cripto BTC -methods banesco, pago movil\ns.binance -fiat COP -amount 100000'
 };
 
