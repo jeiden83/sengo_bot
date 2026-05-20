@@ -1335,7 +1335,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                     errorCount++;
                     const status = error.status || error.response?.status;
                     const errorMsg = error.message || error;
-                    const isNoScoreError = (typeof errorMsg === 'string' && errorMsg.includes('empty error')) || status === 404;
+                    const isNoScoreError = (typeof errorMsg === 'string' && (errorMsg.includes('empty error') || errorMsg.includes('404') || errorMsg.toLowerCase().includes('not found'))) || status === 404;
 
                     if (status === 429) {
                         rateLimitCount++;

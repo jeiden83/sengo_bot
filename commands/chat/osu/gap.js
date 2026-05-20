@@ -103,7 +103,7 @@ async function doContent(beatmap_metadata, user_scores, sorted_user_scores, page
     return content;
 }
 
-async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null) {
+async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
         // Paso 1: Consultar Supabase buscando usuarios vinculados
         let query = res.supabaseClient
@@ -133,7 +133,22 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
 
         // Paso 2: Filtrar los usuarios que coincidan con el gamemode del mapa (estándar por defecto)
         const targetMode = beatmapMode || 'osu';
+        const specialDiscordIds = new Set(extraDiscordIds);
+        const specialOsuIds = new Set(extraOsuIds);
+
         const filteredUsers = linkedUsers.filter(user => {
+            // Si es un modo alternativo (taiko, fruits, mania) y el servidor tiene pocos usuarios vinculados (<= 30),
+            // consultamos a todos los vinculados para ver si tienen alguna play allí, dando soporte a multimodos.
+            if (targetMode !== 'osu' && linkedUsers.length <= 30) {
+                return true;
+            }
+
+            // Si es el autor del comando o del mensaje al que se responde (o el jugador del embed de reply),
+            // lo incluimos siempre para garantizar que pueda ver su score sin importar su main_gamemode.
+            if (specialDiscordIds.has(user.discord_id) || specialOsuIds.has(String(user.osu_id))) {
+                return true;
+            }
+
             const userMode = user.main_gamemode || 'osu';
             return userMode === targetMode;
         });
@@ -191,7 +206,25 @@ async function run(messages, args){
         return { content: "❌ Este comando solo se puede usar dentro de un servidor o usando los flags `-bypass` o `-server`." };
     }
 
-    const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode, bypass, targetGuildId);
+    const extraDiscordIds = [];
+    const extraOsuIds = [];
+
+    if (message.author?.id) {
+        extraDiscordIds.push(message.author.id);
+    }
+    if (reply) {
+        if (reply.author?.id) {
+            extraDiscordIds.push(reply.author.id);
+        }
+        // Intentar extraer osu_id de los embeds de reply (si es un embed de puntuación de Sengo o de otro bot con avatar)
+        const iconUrl = reply.embeds?.[0]?.author?.iconURL || reply.embeds?.[0]?.author?.icon_url;
+        const osuIdMatch = iconUrl?.match(/a\.ppy\.sh\/(\d+)/);
+        if (osuIdMatch && osuIdMatch[1]) {
+            extraOsuIds.push(osuIdMatch[1]);
+        }
+    }
+
+    const usersArray = await getLinkedMembers(message, res, beatmap_metadata.mode, bypass, targetGuildId, extraDiscordIds, extraOsuIds);
 
     if (usersArray.length === 0) {
         const modeName = beatmap_metadata.mode === 'osu' ? 'standard' : beatmap_metadata.mode;
