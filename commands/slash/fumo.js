@@ -32,6 +32,29 @@ const data = new SlashCommandBuilder()
             )
     )
     .addSubcommand(subcommand =>
+        subcommand.setName("borrar")
+            .setDescription("Borra una foto de fumo por su ID (Admins)")
+            .addIntegerOption(option =>
+                option.setName("id")
+                    .setDescription("ID del fumo a borrar")
+                    .setRequired(true)
+            )
+    )
+    .addSubcommand(subcommand =>
+        subcommand.setName("editar")
+            .setDescription("Reemplaza la imagen de un fumo existente (Admins)")
+            .addIntegerOption(option =>
+                option.setName("id")
+                    .setDescription("ID del fumo a editar")
+                    .setRequired(true)
+            )
+            .addAttachmentOption(option =>
+                option.setName("nueva_imagen")
+                    .setDescription("La nueva imagen del fumo")
+                    .setRequired(true)
+            )
+    )
+    .addSubcommand(subcommand =>
         subcommand.setName("blacklist")
             .setDescription("Gestiona la lista negra de usuarios que no pueden subir fumos (Admins)")
             .addStringOption(option =>
@@ -88,6 +111,17 @@ async function run(interaction, res, chat_commands) {
     if (sub === "listar") {
         const page = interaction.options.getInteger("pagina");
         return await fumoChatCommand.handleList(supabase, interaction.user, interaction.member, page);
+    }
+
+    if (sub === "borrar") {
+        const id = interaction.options.getInteger("id");
+        return await fumoChatCommand.handleDelete(supabase, interaction.user, interaction.member, id);
+    }
+
+    if (sub === "editar") {
+        const id = interaction.options.getInteger("id");
+        const attachment = interaction.options.getAttachment("nueva_imagen");
+        return await fumoChatCommand.handleEdit(supabase, interaction.user, interaction.member, id, [attachment], interaction);
     }
 
     if (sub === "blacklist") {
