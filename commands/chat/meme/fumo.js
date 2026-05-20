@@ -1,6 +1,7 @@
 const { EmbedBuilder, PermissionsBitField, AttachmentBuilder } = require("discord.js");
 const axios = require("axios");
 const path = require("path");
+const sharp = require("sharp");
 
 let list_order = [];
 
@@ -18,6 +19,28 @@ async function ensureBucketExists(supabase) {
     } catch (err) {
         console.error("[FUMO] Error al verificar/crear bucket:", err);
     }
+}
+
+async function compressImage(fileBuffer, ext) {
+    if (ext === '.gif') {
+        const compressed = await sharp(fileBuffer, { animated: true })
+            .gif({ colours: 192 })
+            .toBuffer();
+        return {
+            buffer: compressed,
+            ext: '.gif',
+            mime: 'image/gif'
+        };
+    }
+    
+    const compressed = await sharp(fileBuffer)
+        .webp({ quality: 80 })
+        .toBuffer();
+    return {
+        buffer: compressed,
+        ext: '.webp',
+        mime: 'image/webp'
+    };
 }
 
 function parseFumoFilename(filename) {
@@ -72,6 +95,17 @@ function validateAttachment(attachment) {
 }
 
 async function handleUpload(supabase, author, guild, attachments, messageOrInteraction) {
+    const isInteraction = messageOrInteraction && typeof messageOrInteraction.editReply === 'function';
+    const updateStatus = async (text) => {
+        if (isInteraction) {
+            try {
+                await messageOrInteraction.editReply({ content: text });
+            } catch (e) {
+                console.error("[FUMO] Error actualizando estado en slash command:", e);
+            }
+        }
+    };
+
     // Verificar blacklist
     const { data: blacklistRecord } = await supabase
         .from('fumo_blacklist')
@@ -83,12 +117,14 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
         const errEmbed = new EmbedBuilder()
             .setColor("#ff3333")
             .setDescription("❌ No tienes permitido subir imágenes de fumo porque estás en la blacklist.");
-        return { embeds: [errEmbed] };
+        return { content: "", embeds: [errEmbed] };
     }
 
     if (!attachments || attachments.length === 0) {
         return "❌ Debes adjuntar al menos una imagen.";
     }
+
+    await updateStatus(`⏳ Iniciando procesamiento de **${attachments.length}** imágenes...`);
 
     const successes = [];
     const failures = [];
@@ -112,7 +148,8 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
     const cleanUsername = author.username.replace(/[^a-zA-Z0-9_]/g, '_');
     const guildId = guild ? guild.id : 'DM';
 
-    for (const attachment of attachments) {
+    for (let index = 0; index < attachments.length; index++) {
+        const attachment = attachments[index];
         const val = validateAttachment(attachment);
         if (!val.valid) {
             failures.push({ name: attachment.name, reason: val.reason });
@@ -120,14 +157,19 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
         }
 
         try {
+            await updateStatus(`📥 Descargando imagen **${index + 1}/${attachments.length}**...`);
             const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
             const fileBuffer = Buffer.from(response.data);
 
-            maxId++;
-            const newFilename = `${maxId} - fumo - ${cleanUsername} - ${author.id} - ${guildId}${val.ext}`;
+            await updateStatus(`⚡ Comprimiendo imagen **${index + 1}/${attachments.length}**...`);
+            const compressedResult = await compressImage(fileBuffer, val.ext);
 
-            const { error: uploadError } = await supabase.storage.from('fumo').upload(newFilename, fileBuffer, {
-                contentType: attachment.contentType || `image/${val.ext.replace('.', '')}`,
+            await updateStatus(`📤 Subiendo imagen **${index + 1}/${attachments.length}** a la base de datos...`);
+            maxId++;
+            const newFilename = `${maxId} - fumo - ${cleanUsername} - ${author.id} - ${guildId}${compressedResult.ext}`;
+
+            const { error: uploadError } = await supabase.storage.from('fumo').upload(newFilename, compressedResult.buffer, {
+                contentType: compressedResult.mime,
                 upsert: true
             });
 
@@ -139,7 +181,7 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
                 successes.push({ id: maxId, url: data.publicUrl, filename: newFilename });
             }
         } catch (err) {
-            failures.push({ name: attachment.name, reason: `Error en descarga/red: ${err.message}` });
+            failures.push({ name: attachment.name, reason: `Error en descarga/compresión: ${err.message}` });
             maxId--;
         }
     }
@@ -163,7 +205,11 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
         embed.addFields({ name: "❌ Errores de Subida", value: failureList });
     }
 
-    return { embeds: [embed] };
+    if (isInteraction) {
+        await messageOrInteraction.editReply({ content: "", embeds: [embed] });
+    }
+
+    return { content: "", embeds: [embed] };
 }
 
 async function handleList(supabase, author, member, pageArg) {
@@ -246,7 +292,7 @@ async function handleDelete(supabase, author, member, targetId) {
     return `✅ El fumo con ID **${id}** ha sido eliminado correctamente del storage.`;
 }
 
-async function handleEdit(supabase, author, member, targetId, attachments) {
+async function handleEdit(supabase, author, member, targetId, attachments, messageOrInteraction) {
     if (!isAdmin(author, member)) {
         return "❌ Este comando está reservado para los administradores.";
     }
@@ -260,6 +306,19 @@ async function handleEdit(supabase, author, member, targetId, attachments) {
     }
 
     const id = parseInt(targetId);
+
+    const isInteraction = messageOrInteraction && typeof messageOrInteraction.editReply === 'function';
+    const updateStatus = async (text) => {
+        if (isInteraction) {
+            try {
+                await messageOrInteraction.editReply({ content: text });
+            } catch (e) {
+                console.error("[FUMO] Error actualizando estado en edit:", e);
+            }
+        }
+    };
+
+    await updateStatus("🔍 Buscando fumo en la base de datos...");
 
     const { data: files, error } = await supabase.storage.from('fumo').list('', { limit: 10000 });
     if (error) return `❌ Error al listar archivos: ${error.message}`;
@@ -280,12 +339,24 @@ async function handleEdit(supabase, author, member, targetId, attachments) {
     }
 
     try {
+        await updateStatus("📥 Descargando la nueva imagen...");
         const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
         const fileBuffer = Buffer.from(response.data);
 
-        // Se reemplaza usando la misma clave de archivo del target
-        const { error: uploadError } = await supabase.storage.from('fumo').upload(target.name, fileBuffer, {
-            contentType: attachment.contentType || `image/${val.ext.replace('.', '')}`,
+        await updateStatus("⚡ Comprimiendo la nueva imagen...");
+        const compressedResult = await compressImage(fileBuffer, val.ext);
+
+        await updateStatus("📤 Subiendo y reemplazando la imagen...");
+        const ext = path.extname(target.name);
+        const nameWithoutExt = target.name.slice(0, -ext.length);
+        const newTargetName = `${nameWithoutExt}${compressedResult.ext}`;
+
+        if (target.name !== newTargetName) {
+            await supabase.storage.from('fumo').remove([target.name]);
+        }
+
+        const { error: uploadError } = await supabase.storage.from('fumo').upload(newTargetName, compressedResult.buffer, {
+            contentType: compressedResult.mime,
             upsert: true
         });
 
@@ -293,7 +364,7 @@ async function handleEdit(supabase, author, member, targetId, attachments) {
             return `❌ Error al subir la nueva imagen: ${uploadError.message}`;
         }
 
-        const { data } = supabase.storage.from('fumo').getPublicUrl(target.name);
+        const { data } = supabase.storage.from('fumo').getPublicUrl(newTargetName);
 
         const embed = new EmbedBuilder()
             .setTitle(`✅ Fumo #${id} Reemplazado`)
@@ -302,7 +373,11 @@ async function handleEdit(supabase, author, member, targetId, attachments) {
             .setImage(data.publicUrl)
             .setTimestamp();
 
-        return { embeds: [embed] };
+        if (isInteraction) {
+            await messageOrInteraction.editReply({ content: "", embeds: [embed] });
+        }
+
+        return { content: "", embeds: [embed] };
     } catch (err) {
         return `❌ Error al descargar/subir: ${err.message}`;
     }
@@ -469,7 +544,7 @@ async function run(messages, args) {
 
     if (sub === 'edit' || sub === 'editar') {
         const attachments = Array.from(message.attachments.values());
-        return await handleEdit(supabase, author, member, args[1], attachments);
+        return await handleEdit(supabase, author, member, args[1], attachments, message);
     }
 
     if (sub === 'blacklist') {
