@@ -36,7 +36,12 @@ async function run(messages, args) {
             // Enviar por DM para máxima privacidad
             try {
                 await message.author.send({ embeds: [embed] });
-                return `¡Te he enviado un enlace de vinculación seguro por mensaje privado! 🔒 (Revisa tus DMs)`;
+                const replyText = `Revisa tu dm, que te mandé la verificación por ahí. 🔒`;
+                if (typeof message.reply === 'function') {
+                    await message.reply(replyText);
+                    return null;
+                }
+                return replyText;
             } catch (dmError) {
                 console.error(`Error al enviar DM de vinculación a ${message.author.username}:`, dmError);
                 return `⚠️ **Error:** No pude enviarte un mensaje privado. Por favor, asegúrate de tener activada la opción de recibir mensajes directos de miembros del servidor y vuelve a intentarlo.`;

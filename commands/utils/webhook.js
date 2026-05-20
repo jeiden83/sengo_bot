@@ -9,6 +9,19 @@ const fetch = require('node-fetch');
 const url = require('url');
 const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe, saveOAuthToken } = require('../../utils/osuAuth.js');
 
+function getFlagEmoji(countryCode) {
+    if (!countryCode || countryCode.length !== 2) return '';
+    const codePoints = countryCode
+        .toUpperCase()
+        .split('')
+        .map(char => 127397 + char.charCodeAt(0));
+    try {
+        return String.fromCodePoint(...codePoints);
+    } catch (e) {
+        return '';
+    }
+}
+
 /**
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
  */
@@ -398,7 +411,7 @@ function startServer(client, dbRes, port, config) {
                 </div>
                 <div class="status-row">
                     <span class="status-label">País</span>
-                    <span class="status-value">:flag_${osuUser.country_code.toLowerCase()}: ${osuUser.country_code}</span>
+                    <span class="status-value">${getFlagEmoji(osuUser.country_code)} ${osuUser.country_code}</span>
                 </div>
                 <div class="status-row">
                     <span class="status-label">osu! Supporter</span>
