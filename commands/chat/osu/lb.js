@@ -27,26 +27,33 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
         const userUrl = `https://osu.ppy.sh/users/${userId}`;
         const userLink = `[${username}](${userUrl})`;
 
-        const legacy_score = (score.legacy_total_score || score.total_score || 0).toLocaleString('es-ES');
+        const legacy_score = (score.legacy_total_score || score.total_score || score.score || 0).toLocaleString('es-ES');
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
 
-        const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+        const stats = score.statistics || {};
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+
         let stats_str = "";
         let ratio_str = "";
         if (beatmap_metadata.mode === 'mania') {
-            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            stats_str = `[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]`;
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
         } else if (beatmap_metadata.mode === 'taiko') {
-            stats_str = `\`[${great}/${ok}/${miss}]\``;
+            stats_str = `[${great}/${ok}/${miss}]`;
         } else {
-            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
+            stats_str = `[${great}/${ok}/${meh}/${miss}]`;
         }
 
         const pp = score.pp ? score.pp.toFixed(2) : "0.00";
-        const time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+        const time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
         grade_emoji = grade_emoji ? (grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`) : '❓';
@@ -193,20 +200,22 @@ async function run(messages, args) {
     // Resolver país si es "SELF"
     if (countryFilter === "SELF") {
         const supabase = res.supabaseClient;
+        let dbCountry = null;
         if (supabase) {
-            const { data: userToken } = await supabase
-                .from('oauth_tokens')
-                .select('country_code')
-                .eq('discord_id', message.author.id)
-                .maybeSingle();
-            if (userToken && userToken.country_code) {
-                countryFilter = userToken.country_code.toUpperCase();
-            } else {
-                return `❌ No especificaste un país (ej: \`-pais VE\`) y no tienes una cuenta de osu! vinculada por oAuth para autodetectar tu país.`;
+            try {
+                const { data: userToken } = await supabase
+                    .from('oauth_tokens')
+                    .select('country_code')
+                    .eq('discord_id', message.author.id)
+                    .maybeSingle();
+                if (userToken && userToken.country_code) {
+                    dbCountry = userToken.country_code.toUpperCase();
+                }
+            } catch (err) {
+                console.error("Error al buscar país del usuario:", err);
             }
-        } else {
-            return `❌ El servicio de base de datos no está disponible para autodetectar tu país.`;
         }
+        countryFilter = dbCountry || "VE";
     }
 
     const parsed_args = argsParserNoCommand(args);

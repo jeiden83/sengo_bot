@@ -191,7 +191,9 @@ async function getSupporterTokenForCountry(countryCode) {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
-    if (countryCode && countryCode.toUpperCase() !== 'ANY') {
+    const isAny = !countryCode || countryCode.toUpperCase() === 'ANY';
+
+    if (!isAny) {
         // Buscar usuarios con supporter para el país indicado
         const { data: countryUsers, error: err1 } = await supabase
             .from('oauth_tokens')
@@ -212,9 +214,11 @@ async function getSupporterTokenForCountry(countryCode) {
                 if (token) return { token, username: tokenData.username, country: countryCode.toUpperCase() };
             }
         }
+        // No hacemos fallback si pidieron un país específico, ya que la API de osu! devolvería resultados del país del token de fallback
+        return null;
     }
 
-    // Fallback: Buscar cualquier usuario con supporter en toda la pool
+    // Fallback/ANY: Buscar cualquier usuario con supporter en toda la pool
     const { data: allSupporters, error: err2 } = await supabase
         .from('oauth_tokens')
         .select('*')
