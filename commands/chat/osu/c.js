@@ -107,6 +107,7 @@ async function run(messages, args) {
 
     let beatmap_url = null;
     let found_index = -1;
+    let detected_gamemode = null;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -134,6 +135,7 @@ async function run(messages, args) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
         const result = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
         beatmap_url = result.beatmap_url;
+        detected_gamemode = result.gamemode;
         if (!beatmap_url) return result.bad_response;
     }
 
@@ -142,9 +144,19 @@ async function run(messages, args) {
     const beatmap_metadata = await getBeatmap(beatmap_url);
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
 
+    // Si detectamos el modo de juego de la última play mostrada en el canal, lo priorizamos frente al nativo del beatmap
+    const targetGamemode = detected_gamemode || beatmap_metadata.mode;
+
     if (logger) logger.process("Consultando puntuaciones en el beatmap");
     const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
-        { "message": message, "res": res, "beatmap_url": beatmap_url, "gamemode": beatmap_metadata.mode, "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores });
+        { 
+            "message": message, 
+            "res": res, 
+            "beatmap_url": beatmap_url, 
+            "gamemode": targetGamemode, 
+            "ignore_main_gamemode": true,
+            "command_function": unranked_statuses.has(beatmap_metadata.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores 
+        });
 
     if (typeof fn_response === 'string') return fn_response;
     

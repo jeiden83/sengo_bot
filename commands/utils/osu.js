@@ -694,6 +694,38 @@ async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails =
     return res[0];
 }
 
+const getGamemodeFromMessage = (msg) => {
+    if (!msg) return null;
+    
+    // 1. Buscar en embeds
+    const e = msg.embeds?.[0];
+    if (e) {
+        const authorText = (e.author?.name || '').toLowerCase();
+        const titleText = (e.title || '').toLowerCase();
+        const descText = (e.description || '').toLowerCase();
+        const footerText = (e.footer?.text || '').toLowerCase();
+        const combined = `${authorText} | ${titleText} | ${descText} | ${footerText}`;
+
+        if (combined.includes('mania')) return 'mania';
+        if (combined.includes('taiko')) return 'taiko';
+        if (combined.includes('fruits') || combined.includes('ctb') || combined.includes('catch')) return 'fruits';
+        if (combined.includes('std') || combined.includes('standard') || combined.includes('osu!')) {
+            if (!combined.includes('mania') && !combined.includes('taiko') && !combined.includes('fruits')) {
+                return 'osu';
+            }
+        }
+    }
+
+    // 2. Buscar en contenido de texto
+    const content = (msg.content || '').toLowerCase();
+    if (content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
+    if (content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
+    if (content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits') || content.includes('catch')) return 'fruits';
+    if (content.includes('osu!std') || content.includes(' en standard') || content.includes(' en osu')) return 'osu';
+
+    return null;
+};
+
 async function findBeatmapInChannel(message, isReply){
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -728,23 +760,25 @@ async function findBeatmapInChannel(message, isReply){
     try {
         if (isReply) {
             const beatmap_url = getBeatmapIdFromMessage(message);
+            const gamemode = getGamemodeFromMessage(message);
             return beatmap_url
-                ? { beatmap_url, bad_response: 'shh' }
-                : { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+                ? { beatmap_url, gamemode, bad_response: 'shh' }
+                : { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
         }
 
         const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
         for (const msg of fetch_messages.values()) {
             const beatmap_url = getBeatmapIdFromMessage(msg);
             if (beatmap_url) {
-                return { beatmap_url, bad_response: 'shh' };
+                const gamemode = getGamemodeFromMessage(msg);
+                return { beatmap_url, gamemode, bad_response: 'shh' };
             }
         }
 
-        return { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
     } catch (error) {
         console.error("<#> findBeatmapInChannel error:", error);
-        return { beatmap_url: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
     }
 }
 
@@ -764,7 +798,8 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         if(!user_found) return {'fn_response': `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`, 'user_found': user_found, 'reparsed_args': parsed_args};
 
         // Aplicamos el comando con el linkeado al bot
-        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : user_found.main_gamemode});
+        const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
+        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : defaultMode});
         return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
     // Si hay args
     } else {
@@ -804,7 +839,9 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         // Se hace la peticion con los args
         parsed_args['beatmap_url'] = beatmap_url;   // agregamos para el >c
         if (!parsed_args.gamemode) {
-            if (user_found && user_found.main_gamemode) {
+            if (command_parameters.ignore_main_gamemode && gamemode) {
+                parsed_args.gamemode = gamemode;
+            } else if (user_found && user_found.main_gamemode) {
                 parsed_args.gamemode = user_found.main_gamemode;
             } else if (gamemode) {
                 parsed_args.gamemode = gamemode;
