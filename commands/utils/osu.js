@@ -799,6 +799,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
         // Aplicamos el comando con el linkeado al bot
         const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
+        parsed_args.gamemode = defaultMode;
         const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : defaultMode});
         return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
     // Si hay args
