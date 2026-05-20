@@ -12,6 +12,18 @@ const axios = require('axios');
 const https = require('https');
 const rosu = require("rosu-pp-js");
 
+const beatmapCache = new Map();
+const userScoresCache = new Map();
+
+function clearUserScoresCache(userId) {
+    if (!userId) return;
+    for (const key of userScoresCache.keys()) {
+        if (key.startsWith(`${userId}:`)) {
+            userScoresCache.delete(key);
+        }
+    }
+}
+
 function calculatePP(recent_scores, map, maximo_pp, Attrs){
 	// Se consiguen las estadisticas de la score
 	const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0} = recent_scores.statistics;
@@ -275,6 +287,9 @@ function convertGatariMods(modsBitmask) {
 
 // Para obtener las puntuaciones recientes de un usuario en un mapa
 async function getUserRecentScores(parsed_args){
+    if (parsed_args && parsed_args.username && parsed_args.username[0]) {
+        clearUserScoresCache(parsed_args.username[0]);
+    }
     const server = parsed_args.server || 'bancho';
 
     if (server === 'gatari') {
@@ -542,6 +557,10 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
     
         // Verificar si el archivo ya existe en la carpeta /osu/
         if (fs.existsSync(filePath)) {
+            // Si es un mapa rankeado, lo devolvemos de inmediato sin consultar la base de datos
+            if (!unranked_statuses.has(beatmap_metadata.status)) {
+                return filePath;
+            }
     		
             const beatmap_index = await localBeatmapStatus(beatmap_osu_id);
     
@@ -596,6 +615,12 @@ async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
 
 // Obtener los detalles de una dificultad de un beatmap dado
 async function getBeatmap(beatmap_id){
+    const cached = beatmapCache.get(beatmap_id);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < 3600000) { // 1 hora de caché para metadatos del mapa
+        return cached.data;
+    }
+
     await NewloadToken();
 
     const result = await v2.beatmaps.details({
@@ -603,6 +628,7 @@ async function getBeatmap(beatmap_id){
         id: beatmap_id
       });
 
+    beatmapCache.set(beatmap_id, { data: result, timestamp: now });
     return result;
 }
 
@@ -662,21 +688,35 @@ async function getBeatmapUserScore(parsed_args) {
 
 // Para obtener todas las puntuaciones de un usuario en un mapa dado
 async function getBeatmapUserAllScores(parsed_args){
+    const userId = parsed_args.username[0];
+    const beatmapId = parsed_args.beatmap_url;
+    const mode = parsed_args.gamemode || 'osu';
+    const cacheKey = `${userId}:${beatmapId}:${mode}`;
+
+    const cached = userScoresCache.get(cacheKey);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < 30000) { // 30 segundos de caché
+        return cached.scores;
+    }
+
     await NewloadToken();
 
     const result = await v2.scores.list({
         type: 'user_beatmap_all',
 
-        user_id: parsed_args.username[0],
-        beatmap_id: parsed_args.beatmap_url,
-        mode: parsed_args.gamemode || 'osu',
+        user_id: userId,
+        beatmap_id: beatmapId,
+        mode: mode,
       });
 
 
     // buscamos tambien las locales, por si hay fallidas
     const local_scores = await getUnrankedBeatmapUserAllScores(parsed_args);  
 
-    return result.concat(typeof local_scores === "string" ? [] : local_scores);
+    const allScores = result.concat(typeof local_scores === "string" ? [] : local_scores);
+    userScoresCache.set(cacheKey, { scores: allScores, timestamp: now });
+
+    return allScores;
 }
 
 async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails = true){
