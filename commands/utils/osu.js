@@ -1536,12 +1536,16 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
         }
 
         if (usersToFetch.length > 0) {
-            const chunkSize = 10;
-            for (let i = 0; i < usersToFetch.length; i += chunkSize) {
-                const chunk = usersToFetch.slice(i, i + chunkSize);
-                const chunkTokensUsed = [];
-                
-                await Promise.all(chunk.map(async (user) => {
+            const concurrencyLimit = Math.max(25, tokenPool.length);
+            const chunkTokensUsed = [];
+            let nextIndex = 0;
+            let lastLogTime = 0;
+
+            const executeWorker = async () => {
+                while (nextIndex < usersToFetch.length) {
+                    const user = usersToFetch[nextIndex++];
+                    if (!user) break;
+
                     try {
                         let result = null;
                         let success = false;
@@ -1636,28 +1640,33 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                             }
                         }
                     }
-                }));
 
-                if (logger) {
-                    let errorDetails = errorCount > 0 ? ` | Errores: ${errorCount}` : "";
-                    if (rateLimitCount > 0) {
-                        errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
+                    const now = Date.now();
+                    if (logger && (processedCount % 10 === 0 || processedCount === usersToFetch.length || now - lastLogTime > 1500)) {
+                        lastLogTime = now;
+                        let errorDetails = errorCount > 0 ? ` | Errores: ${errorCount}` : "";
+                        if (rateLimitCount > 0) {
+                            errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
+                        }
+                        const uniqueTokensUsed = [...new Set(chunkTokensUsed)];
+                        const tokensStr = uniqueTokensUsed.length > 0 ? ` | Usando tokens de: ${uniqueTokensUsed.join(', ')}` : "";
+                        logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${tokensStr}${errorDetails}`);
                     }
-                    const uniqueTokensUsed = [...new Set(chunkTokensUsed)];
-                    const tokensStr = uniqueTokensUsed.length > 0 ? ` | Usando tokens de: ${uniqueTokensUsed.join(', ')}` : "";
-                    logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${tokensStr}${errorDetails}`);
                 }
+            };
 
-                if (i + chunkSize < usersToFetch.length) {
-                    await new Promise(resolve => setTimeout(resolve, 150));
-                }
+            const workers = [];
+            const activeWorkers = Math.min(concurrencyLimit, usersToFetch.length);
+            for (let w = 0; w < activeWorkers; w++) {
+                workers.push(executeWorker());
             }
+            await Promise.all(workers);
+        }
 
-            if (errorCount > 0) {
-                const noScoreCount = errorCount - rateLimitCount;
-                const limitStr = rateLimitCount > 0 ? `, ${rateLimitCount} rate limit (429)` : "";
-                console.log(`[GAP] Sincronización finalizada: ${usersToFetch.length} consultados. ${noScoreCount} no tienen score registrada${limitStr}.`);
-            }
+        if (errorCount > 0) {
+            const noScoreCount = errorCount - rateLimitCount;
+            const limitStr = rateLimitCount > 0 ? `, ${rateLimitCount} rate limit (429)` : "";
+            console.log(`[GAP] Sincronización finalizada: ${usersToFetch.length} consultados. ${noScoreCount} no tienen score registrada${limitStr}.`);
         }
 
         // Guardar la caché actualizada si hubo cambios
