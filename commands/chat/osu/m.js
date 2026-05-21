@@ -11,18 +11,15 @@ function formatLength(seconds) {
 async function run(messages, args) {
     const { message, res, reply } = messages;
 
+    const parsed_args = argsParserNoCommand(args);
+
     // 1. Extraer ID de beatmap o link explícito si existe
-    let beatmap_id = null;
-    if (args && args.length > 0) {
+    let beatmap_id = parsed_args.beatmap_url;
+    if (!beatmap_id && args && args.length > 0) {
         for (const arg of args) {
-            if (arg && typeof arg === 'string') {
-                const match = arg.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                              arg.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                              arg.match(/^\d+$/);
-                if (match) {
-                    beatmap_id = match[1] || match[0];
-                    break;
-                }
+            if (arg && typeof arg === 'string' && /^\d+$/.test(arg)) {
+                beatmap_id = arg;
+                break;
             }
         }
     }
@@ -52,16 +49,7 @@ async function run(messages, args) {
     }
 
     // 4. Parsear los mods del mensaje
-    const parsed_args = argsParserNoCommand(args);
     let modsStr = parsed_args.modFilter || parsed_args.modContainFilter || "";
-    if (!modsStr) {
-        for (const arg of args) {
-            if (arg && typeof arg === 'string' && arg.startsWith("+")) {
-                modsStr = arg.slice(1).toUpperCase();
-                break;
-            }
-        }
-    }
     // Si tiene "CL", lo removemos para el cálculo de dificultad
     const activeModsStr = modsStr.replace(/CL/g, "");
 

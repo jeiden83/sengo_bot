@@ -145,58 +145,10 @@ async function doContent(beatmap_metadata, targetGamemode, countryCode = null) {
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
 
-    let beatmap_url = null;
-    let found_index = -1;
+    const parsed_args = argsParserNoCommand(args);
+    let beatmap_url = parsed_args.beatmap_url;
+    let countryFilter = parsed_args.country;
     let detected_gamemode = null;
-
-    const extractId = str =>
-        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-        null;
-
-    // Buscar y extraer el id del mapa de los argumentos
-    if (args && Array.isArray(args)) {
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (typeof arg === 'string') {
-                const id = extractId(arg);
-                if (id) {
-                    beatmap_url = id;
-                    found_index = i;
-                    break;
-                }
-            }
-        }
-        if (found_index !== -1) {
-            args.splice(found_index, 1);
-        }
-    }
-
-    // Buscar y extraer el flag de -pais
-    let countryFilter = null;
-    if (args && Array.isArray(args)) {
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (typeof arg === 'string') {
-                if (arg.toLowerCase() === '-pais' || arg.toLowerCase() === '-country') {
-                    if (i + 1 < args.length && typeof args[i+1] === 'string' && !args[i+1].startsWith('-') && !args[i+1].startsWith('+')) {
-                        countryFilter = args[i+1].toUpperCase();
-                        args.splice(i, 2);
-                        i--;
-                    } else {
-                        countryFilter = "SELF";
-                        args.splice(i, 1);
-                        i--;
-                    }
-                } else if (arg.toLowerCase().startsWith('-pais')) {
-                    countryFilter = arg.slice(5).toUpperCase().trim();
-                    if (!countryFilter) countryFilter = "SELF";
-                    args.splice(i, 1);
-                    i--;
-                }
-            }
-        }
-    }
 
     if (!beatmap_url) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
@@ -235,25 +187,18 @@ async function run(messages, args) {
         countryFilter = dbCountry || "VE";
     }
 
-    const parsed_args = argsParserNoCommand(args);
     const targetGamemode = parsed_args.gamemode || detected_gamemode || beatmap_metadata.mode;
 
     // APLICAR FILTROS DE MODS
-    let modsStr = parsed_args.modFilter || "";
-    if (!modsStr && args && Array.isArray(args)) {
-        for (const arg of args) {
-            if (arg && typeof arg === 'string' && arg.startsWith("+")) {
-                modsStr = arg.slice(1).toUpperCase();
-                parsed_args.modFilter = modsStr;
-                break;
-            }
-        }
-    }
-
+    const modsStr = parsed_args.modFilter || "";
     const modsArray = [];
-    if (modsStr && modsStr !== "NM" && modsStr !== "NONE") {
-        for (let j = 0; j < modsStr.length; j += 2) {
-            modsArray.push(modsStr.slice(j, j + 2).toUpperCase());
+    if (modsStr) {
+        if (modsStr === "NM" || modsStr === "NONE") {
+            modsArray.push("NM");
+        } else {
+            for (let j = 0; j < modsStr.length; j += 2) {
+                modsArray.push(modsStr.slice(j, j + 2).toUpperCase());
+            }
         }
     }
 
@@ -348,6 +293,9 @@ async function run(messages, args) {
 
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
+            if (modsArray.length > 0) {
+                modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
+            }
 
             const apiRes = await fetch(urlObj.toString(), {
                 headers: {
@@ -381,32 +329,29 @@ async function run(messages, args) {
     // APLICAR FILTROS DE MODS (Si no se hicieron a nivel de API o para el filtrado -mx de contención)
     let filtered_scores = scores;
 
-    // Si se usó una respuesta global normal, aplicar filtros en memoria
-    if (!usedSupporter) {
-        if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) {
-            const filterStr = parsed_args.modFilter;
-            const hasExplicitCL = filterStr.includes("CL");
+    if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) {
+        const filterStr = parsed_args.modFilter;
+        const hasExplicitCL = filterStr.includes("CL");
 
-            filtered_scores = filtered_scores.filter(score => {
-                const scoreAcronyms = score.mods.map(m => m.acronym || m);
-                const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+        filtered_scores = filtered_scores.filter(score => {
+            const scoreAcronyms = score.mods.map(m => m.acronym || m);
+            const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
 
-                if (filterStr === "NM" || filterStr === "NONE") {
-                    return filteredScoreAcronyms.length === 0;
+            if (filterStr === "NM" || filterStr === "NONE") {
+                return filteredScoreAcronyms.length === 0;
+            }
+
+            const getModChunks = (str) => {
+                const chunks = [];
+                for (let j = 0; j < str.length; j += 2) {
+                    chunks.push(str.slice(j, j + 2));
                 }
-
-                const getModChunks = (str) => {
-                    const chunks = [];
-                    for (let j = 0; j < str.length; j += 2) {
-                        chunks.push(str.slice(j, j + 2));
-                    }
-                    return chunks.sort().join("").toUpperCase();
-                };
-                const filterNormalized = getModChunks(filterStr);
-                const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
-                return scoreNormalized === filterNormalized;
-            });
-        }
+                return chunks.sort().join("").toUpperCase();
+            };
+            const filterNormalized = getModChunks(filterStr);
+            const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
+            return scoreNormalized === filterNormalized;
+        });
     }
 
     // 2. Filtrar por mods contenidos (-mx) - Siempre en memoria

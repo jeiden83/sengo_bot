@@ -4,8 +4,13 @@ const { addModoOption, parseOsuSlashArgs } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("lb")
-    .setDescription("Muestra la tabla de clasificación (leaderboard) global de osu! en el último mapa enviado")
+    .setDescription("Muestra la tabla de clasificación (leaderboard) de osu! en el último mapa enviado")
     .addStringOption(addModoOption)
+    .addStringOption(option =>
+        option.setName("pais")
+            .setDescription("Filtrar por código de país (ej: CL, VE). Escribe SELF para autodetectar tu país.")
+            .setRequired(false)
+    )
     .addIntegerOption(option =>
         option.setName("pagina")
             .setDescription("Página de la lista de puntuaciones a mostrar")
@@ -26,10 +31,14 @@ const data = new SlashCommandBuilder()
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
 
+    const pais = interaction.options.getString("pais");
     const pagina = interaction.options.getInteger("pagina");
     const modsExactos = interaction.options.getString("mods_exactos");
     const modsContiene = interaction.options.getString("mods_contiene");
 
+    if (pais !== null && pais !== undefined) {
+        args.push("-pais", pais);
+    }
     if (pagina) {
         args.push(`-p${pagina}`);
     }
@@ -59,6 +68,6 @@ async function run(interaction, res) {
     return true; // Auto-gestionado
 }
 
-run.description = "Muestra la tabla de clasificación (leaderboard) global de osu! en el último mapa enviado";
+run.description = "Muestra la tabla de clasificación (leaderboard) de osu! en el último mapa enviado";
 
 module.exports = { data, run, description: run.description };

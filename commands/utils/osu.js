@@ -993,6 +993,8 @@ function argsParserNoCommand(args) {
     let detailed = false;
     let filterPass = false;
     let targetGuildId = null;
+    let country = null;
+    let beatmap_url = null;
     let args_aux = new String(args);
 
     const gamemode_set = {
@@ -1102,6 +1104,52 @@ function argsParserNoCommand(args) {
         }
         let arg = args_list[i].trim();
         if (!arg) continue;
+
+        // Si empieza con '+' (para mods exactos, ej: +HDHR)
+        if (arg.startsWith("+")) {
+            const possible_mods = arg.slice(1).toUpperCase().trim();
+            if (possible_mods.length > 0) {
+                modFilter = possible_mods;
+                continue;
+            }
+        }
+
+        // Si es el flag de -pais o -country
+        if (arg === "-pais" || arg === "-country") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    country = next_arg.toUpperCase();
+                    skip_next = true;
+                    continue;
+                }
+            }
+            country = "SELF";
+            continue;
+        }
+        if (arg.startsWith("-pais")) {
+            let next = arg.slice(5).trim();
+            country = next ? next.toUpperCase() : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-country")) {
+            let next = arg.slice(8).trim();
+            country = next ? next.toUpperCase() : "SELF";
+            continue;
+        }
+
+        // Si es una URL o ID de beatmap (evitando IDs de discord que son >= 17 digitos)
+        const extractId = str =>
+            str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+            str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+            str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+            null;
+
+        const possible_id = extractId(arg);
+        if (possible_id) {
+            beatmap_url = possible_id;
+            continue;
+        }
 
         // Si es un modo de juego o servidor, los capturamos antes de cualquier otra regla (como -m)
         if (arg.startsWith("-")) {
@@ -1322,7 +1370,9 @@ function argsParserNoCommand(args) {
         'accSort': accSort,
         'detailed': detailed,
         'filterPass': filterPass,
-        'targetGuildId': targetGuildId
+        'targetGuildId': targetGuildId,
+        'country': country,
+        'beatmap_url': beatmap_url
     };
     return parsed_args;
 }

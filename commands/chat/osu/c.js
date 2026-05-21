@@ -263,31 +263,9 @@ async function doContent(parsed_args, user_found, beatmap_metadata, scores) {
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
 
-    let beatmap_url = null;
-    let found_index = -1;
+    const initial_parsed = argsParserNoCommand(args);
+    let beatmap_url = initial_parsed.beatmap_url;
     let detected_gamemode = null;
-
-    const extractId = str =>
-        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-        null;
-
-    if (args && Array.isArray(args)) {
-        for (let i = 0; i < args.length; i++) {
-            const arg = args[i];
-            if (typeof arg === 'string') {
-                const id = extractId(arg);
-                if (id) {
-                    beatmap_url = id;
-                    found_index = i;
-                    break;
-                }
-            }
-        }
-        if (found_index !== -1) {
-            args.splice(found_index, 1);
-        }
-    }
 
     if (!beatmap_url) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
@@ -337,15 +315,6 @@ async function run(messages, args) {
 
     // 1. Filtrar por mods exactos (-m) o (+mods en args)
     let modsStr = parsed_args.modFilter || parsed_args.modContainFilter || "";
-    if (!modsStr && args && Array.isArray(args)) {
-        for (const arg of args) {
-            if (arg && typeof arg === 'string' && arg.startsWith("+")) {
-                modsStr = arg.slice(1).toUpperCase();
-                parsed_args.modFilter = modsStr;
-                break;
-            }
-        }
-    }
 
     if (parsed_args.modFilter !== null) {
         const filterStr = parsed_args.modFilter;
