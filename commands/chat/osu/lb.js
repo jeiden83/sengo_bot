@@ -152,7 +152,7 @@ async function run(messages, args) {
 
     if (!beatmap_url) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
-        const result = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
+        const result = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         beatmap_url = result.beatmap_url;
         detected_gamemode = result.gamemode;
         if (!beatmap_url) return result.bad_response;

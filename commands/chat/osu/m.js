@@ -26,7 +26,7 @@ async function run(messages, args) {
 
     // 2. Si no hay ID explícito, buscar en el historial del canal
     if (!beatmap_id) {
-        const { beatmap_url, bad_response } = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
+        const { beatmap_url, bad_response } = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         if (!beatmap_url) {
             return `❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.`;
         }

@@ -186,13 +186,13 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
 async function run(messages, args){
     const { message, res, reply, logger } = messages;
 
-    const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true) : await findBeatmapInChannel(message, false);
+    const parsed_args = argsParserNoCommand(args);
+    const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
     if(!beatmap_url) return bad_response;
 
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    const parsed_args = argsParserNoCommand(args);
     const forcedMode = parsed_args.gamemode || null;
 
     if (forcedMode && beatmap_metadata.mode === 'osu') {

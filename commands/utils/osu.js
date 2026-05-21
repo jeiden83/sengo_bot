@@ -844,40 +844,69 @@ const getGamemodeFromMessage = (msg) => {
     return null;
 };
 
-async function findBeatmapInChannel(message, isReply){
-    const extractId = str =>
-        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-        null;
+async function findBeatmapInChannel(message, isReply, targetIndex = 1){
+    const extractAllIds = str => {
+        if (!str) return [];
+        const ids = [];
+        const regex = /#(?:osu|taiko|fruits|mania)\/(\d+)|osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/g;
+        let match;
+        while ((match = regex.exec(str)) !== null) {
+            const id = match[1] || match[2];
+            if (id) ids.push(id);
+        }
+        return ids;
+    };
 
-    const getBeatmapIdFromMessage = (msg) => {
+    const getBeatmapIdFromMessage = (msg, index = 1) => {
         if (!msg) return null;
         const e = msg.embeds?.[0];
-        
-        let fields_url = null;
-        if (e?.fields) {
-            for (const field of e.fields) {
-                const id = extractId(field.value) || extractId(field.name);
-                if (id) {
-                    fields_url = id;
-                    break;
-                }
+
+        // 1. Check description
+        if (e?.description) {
+            const ids = extractAllIds(e.description);
+            if (ids.length > 0) {
+                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
+                return ids[idx];
             }
         }
 
-        return (
-            extractId(msg.content) ||
-            extractId(e?.url) ||
-            extractId(e?.author?.url) ||
-            extractId(e?.title) ||
-            extractId(e?.description) ||
-            fields_url
-        );
+        // 2. Check fields
+        if (e?.fields) {
+            let ids = [];
+            for (const field of e.fields) {
+                ids.push(...extractAllIds(field.value));
+                ids.push(...extractAllIds(field.name));
+            }
+            if (ids.length > 0) {
+                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
+                return ids[idx];
+            }
+        }
+
+        // 3. Check other elements
+        let otherIds = [];
+        if (msg.content) otherIds.push(...extractAllIds(msg.content));
+        if (e?.url) otherIds.push(...extractAllIds(e.url));
+        if (e?.author?.url) otherIds.push(...extractAllIds(e.author.url));
+        if (e?.title) otherIds.push(...extractAllIds(e.title));
+
+        if (otherIds.length > 0) {
+            const uniqueOther = [];
+            for (const id of otherIds) {
+                if (!uniqueOther.includes(id)) {
+                    uniqueOther.push(id);
+                }
+            }
+            const idx = (index >= 1 && index <= uniqueOther.length) ? index - 1 : 0;
+            return uniqueOther[idx];
+        }
+
+        return null;
     };
 
     try {
         if (isReply) {
-            const beatmap_url = getBeatmapIdFromMessage(message);
+            const beatmap_url = getBeatmapIdFromMessage(message, targetIndex);
             const gamemode = getGamemodeFromMessage(message);
             return beatmap_url
                 ? { beatmap_url, gamemode, bad_response: 'shh' }
@@ -886,7 +915,7 @@ async function findBeatmapInChannel(message, isReply){
 
         const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
         for (const msg of fetch_messages.values()) {
-            const beatmap_url = getBeatmapIdFromMessage(msg);
+            const beatmap_url = getBeatmapIdFromMessage(msg, targetIndex);
             if (beatmap_url) {
                 const gamemode = getGamemodeFromMessage(msg);
                 return { beatmap_url, gamemode, bad_response: 'shh' };

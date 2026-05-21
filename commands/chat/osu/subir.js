@@ -1,5 +1,5 @@
 const config = require("../../../config.js");
-const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
 const { colorear } = require("../../utils/admin.js");
 const { EmbedBuilder } = require("discord.js");
@@ -331,6 +331,7 @@ function parseBotEmbed(reply) {
 
 async function run(messages, args, initialized_data) {
     const { message, res, reply } = messages;
+    const parsed_args = argsParserNoCommand(args);
 
     console.log(`\n--- [S.SUBIR] Nueva solicitud de subida ---`);
     console.log(`[S.SUBIR] Usuario solicitante: ${message.author.tag} (${message.author.id})`);
@@ -487,13 +488,13 @@ async function run(messages, args, initialized_data) {
     console.log(`[S.SUBIR] Intentando resolver mapa... Nombre: "${parsedData.beatmap_name}", Diff: "${parsedData.difficulty_name}", Creador: "${parsedData.creator}"`);
     let beatmap_id = null;
     if (sourceMessage.embeds && sourceMessage.embeds.length > 0) {
-        const { beatmap_url } = await findBeatmapInChannel(sourceMessage, true);
+        const { beatmap_url } = await findBeatmapInChannel(sourceMessage, true, parsed_args.index);
         if (beatmap_url) beatmap_id = beatmap_url;
     }
 
     // Si aún no hay ID y era un reply, intentamos buscar en el reply también (por si el sourceMessage era el comando con foto)
     if (!beatmap_id && reply && reply.embeds && reply.embeds.length > 0) {
-        const { beatmap_url } = await findBeatmapInChannel(reply, true);
+        const { beatmap_url } = await findBeatmapInChannel(reply, true, parsed_args.index);
         if (beatmap_url) beatmap_id = beatmap_url;
     }
 
