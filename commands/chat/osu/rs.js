@@ -1,5 +1,5 @@
 const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundGapCache } = require("../../utils/osu.js");
-const colorear = require("../../utils/admin.js");
+const { colorear } = require("../../utils/admin.js");
 
 const { EmbedBuilder } = require("discord.js");
 const axios = require('axios').default;
