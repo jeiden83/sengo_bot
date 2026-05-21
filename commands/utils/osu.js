@@ -858,7 +858,7 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
     };
 
     const getBeatmapIdFromMessage = (msg, index = 1) => {
-        if (!msg) return null;
+        if (!msg) return { beatmap_url: null, fromList: false };
         const e = msg.embeds?.[0];
 
         // 1. Check description
@@ -866,7 +866,7 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
             const ids = extractAllIds(e.description);
             if (ids.length > 0) {
                 const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
-                return ids[idx];
+                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
             }
         }
 
@@ -879,7 +879,7 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
             }
             if (ids.length > 0) {
                 const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
-                return ids[idx];
+                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
             }
         }
 
@@ -898,34 +898,34 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 }
             }
             const idx = (index >= 1 && index <= uniqueOther.length) ? index - 1 : 0;
-            return uniqueOther[idx];
+            return { beatmap_url: uniqueOther[idx], fromList: uniqueOther.length > 1 };
         }
 
-        return null;
+        return { beatmap_url: null, fromList: false };
     };
 
     try {
         if (isReply) {
-            const beatmap_url = getBeatmapIdFromMessage(message, targetIndex);
+            const { beatmap_url, fromList } = getBeatmapIdFromMessage(message, targetIndex);
             const gamemode = getGamemodeFromMessage(message);
             return beatmap_url
-                ? { beatmap_url, gamemode, bad_response: 'shh' }
-                : { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+                ? { beatmap_url, gamemode, fromList, bad_response: 'shh' }
+                : { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
         }
 
         const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
         for (const msg of fetch_messages.values()) {
-            const beatmap_url = getBeatmapIdFromMessage(msg, targetIndex);
+            const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
             if (beatmap_url) {
                 const gamemode = getGamemodeFromMessage(msg);
-                return { beatmap_url, gamemode, bad_response: 'shh' };
+                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
             }
         }
 
-        return { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
     } catch (error) {
         console.error("<#> findBeatmapInChannel error:", error);
-        return { beatmap_url: null, gamemode: null, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
     }
 }
 

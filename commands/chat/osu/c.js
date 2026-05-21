@@ -267,12 +267,13 @@ async function run(messages, args) {
     let beatmap_url = initial_parsed.beatmap_url;
     let detected_gamemode = null;
 
+    let channel_result = null;
     if (!beatmap_url) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
-        const result = reply ? await findBeatmapInChannel(reply, true, initial_parsed.index) : await findBeatmapInChannel(message, false, initial_parsed.index);
-        beatmap_url = result.beatmap_url;
-        detected_gamemode = result.gamemode;
-        if (!beatmap_url) return result.bad_response;
+        channel_result = reply ? await findBeatmapInChannel(reply, true, initial_parsed.index) : await findBeatmapInChannel(message, false, initial_parsed.index);
+        beatmap_url = channel_result.beatmap_url;
+        detected_gamemode = channel_result.gamemode;
+        if (!beatmap_url) return channel_result.bad_response;
     }
 
     // Para revisar si es graveyard o no
@@ -295,6 +296,10 @@ async function run(messages, args) {
         });
 
     if (typeof fn_response === 'string') return fn_response;
+
+    if (channel_result && channel_result.fromList) {
+        parsed_args.index = 1;
+    }
     
     let scores = fn_response;
     const filterPass = parsed_args.filterPass;
