@@ -1455,7 +1455,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             try {
                 mapInstance = await getBeatmap_osu(metadata.beatmapset_id, metadata.id, metadata);
             } catch (e) {
-                console.error("[GAP] Error loading beatmap for PP calculation:", e);
+                console.error("[GAP] Error al cargar el beatmap para el cálculo de PP:", e);
             }
         }
 
@@ -1477,7 +1477,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                             cachedData.scores[user.osu_id] = cachedScore;
                             cacheModified = true;
                         } catch (err) {
-                            console.error(`[GAP] Error calculating PP for cached user ${user.osu_id}:`, err);
+                            console.error(`[GAP] Error al calcular el PP para el usuario en caché ${user.osu_id}:`, err);
                         }
                     }
                     scores.set(user.osu_id.toString(), cachedScore);
@@ -1522,7 +1522,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                     const ppResult = calculatePP(result.score, mapInstance);
                                     result.score.pp = ppResult.pp;
                                 } catch (err) {
-                                    console.error(`[GAP] Error calculating PP for user ${user.osu_id}:`, err);
+                                    console.error(`[GAP] Error al calcular el PP para el usuario ${user.osu_id}:`, err);
                                 }
                             }
 

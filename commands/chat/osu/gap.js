@@ -276,13 +276,13 @@ async function run(messages, args){
                             const ppResult = calculatePP(score, map);
                             score.pp = ppResult.pp;
                         } catch (err) {
-                            console.error(`[GAP] Error calculating fallback PP for user ${userId}:`, err);
+                            console.error(`[GAP] Error al calcular el PP de respaldo para el usuario ${userId}:`, err);
                         }
                     }
                 }
                 map.free();
             } catch (err) {
-                console.error("[GAP] Error loading fallback beatmap for PP calculation:", err);
+                console.error("[GAP] Error al cargar el beatmap de respaldo para el cálculo de PP:", err);
             }
         }
     }
