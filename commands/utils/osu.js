@@ -990,6 +990,7 @@ function argsParserNoCommand(args) {
     let recentSort = false;
     let comboSort = false;
     let accSort = false;
+    let bestSort = false;
     let detailed = false;
     let filterPass = false;
     let targetGuildId = null;
@@ -1188,6 +1189,12 @@ function argsParserNoCommand(args) {
             continue;
         }
 
+        // Si es exactamente "-b"
+        if (arg === "-b") {
+            bestSort = true;
+            continue;
+        }
+
         // Si es exactamente "-d"
         if (arg === "-d") {
             detailed = true;
@@ -1368,6 +1375,7 @@ function argsParserNoCommand(args) {
         'recentSort': recentSort,
         'comboSort': comboSort,
         'accSort': accSort,
+        'bestSort': bestSort,
         'detailed': detailed,
         'filterPass': filterPass,
         'targetGuildId': targetGuildId,

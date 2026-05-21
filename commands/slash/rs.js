@@ -19,6 +19,11 @@ const data = new SlashCommandBuilder()
         option.setName("lista")
             .setDescription("¿Mostrar una lista paginada de las jugadas más recientes?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("mejor")
+            .setDescription("¿Ordenar las jugadas recientes por PP y mostrar la mejor?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -26,12 +31,16 @@ async function run(interaction, res) {
 
     const index = interaction.options.getInteger("index");
     const lista = interaction.options.getBoolean("lista");
+    const mejor = interaction.options.getBoolean("mejor");
 
     if (index) {
         args.push(`-i${index}`);
     }
     if (lista) {
         args.push("-l");
+    }
+    if (mejor) {
+        args.push("-b");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

@@ -350,6 +350,50 @@ async function run(messages, args) {
         return filterPass ? `No tienes scores recientes que no sean fallidas.` : `Pero si no has jugado nada`;
     }
 
+    if (parser_res.parsed_args.bestSort && Array.isArray(parser_res.fn_response) && parser_res.fn_response.length > 0) {
+        let loading_msg;
+        try {
+            loading_msg = await message.channel.send("⏳ Obteniendo mapas y calculando PP de las jugadas recientes para ordenar...");
+        } catch (e) {
+            console.error("Error al enviar mensaje temporal en rs -b:", e);
+        }
+
+        for (let i = 0; i < parser_res.fn_response.length; i++) {
+            const score = parser_res.fn_response[i];
+            if (score.pp !== null && score.pp !== undefined) {
+                score.calculatedPP = score.pp;
+                continue;
+            }
+            try {
+                const beatmap = await getBeatmap(score.beatmap.id);
+                const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+                const maxAttrs = calculatePP(score, map, "maximo_pp");
+                const user_pp = calculatePP(score, map, null, maxAttrs).pp;
+                score.calculatedPP = user_pp || 0;
+                map.free();
+            } catch (err) {
+                console.error(`Error calculando PP para score en map ${score.beatmap.id}:`, err);
+                score.calculatedPP = 0;
+            }
+        }
+
+        // Ordenar por PP de mayor a menor
+        parser_res.fn_response.sort((a, b) => {
+            const ppA = a.calculatedPP !== undefined ? a.calculatedPP : (a.pp || 0);
+            const ppB = b.calculatedPP !== undefined ? b.calculatedPP : (b.pp || 0);
+            return ppB - ppA;
+        });
+
+        if (loading_msg && typeof loading_msg.delete === 'function') {
+            const isMocked = message.channel.send.toString().includes("editReply");
+            if (!isMocked) {
+                try {
+                    await loading_msg.delete();
+                } catch (e) {}
+            }
+        }
+    }
+
     const total_plays = parser_res.fn_response.length;
 
     // Interceptamos si se activa el modo de lista (-l)
@@ -657,7 +701,7 @@ run.description =
 {
     'header' : 'Obten la play reciente',
     'body' : `Al hacer .rs en un mapa fallido o unranked, accedes a que se guarde en una db local para que luego se pueda usar con el .c y el .gap`,
-    'usage' : `s.rs : Obten la play reciente del usuario linkeado al bot.\ns.rs 'usuario' : Obtiene del usuario en el argumento\ns.rs 'usuario' 'modo': Obtiene del usuario en el argumento con respecto al modo de juego.`
+    'usage' : `s.rs : Obten la play reciente del usuario linkeado al bot.\ns.rs -b : Ordena los recientes por PP y muestra la mejor play.\ns.rs 'usuario' : Obtiene del usuario en el argumento\ns.rs 'usuario' 'modo': Obtiene del usuario en el argumento con respecto al modo de juego.`
 }
 
 module.exports = { run, "description": run.description}
