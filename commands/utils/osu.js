@@ -1119,7 +1119,7 @@ function argsParserNoCommand(args) {
         if (arg === "-pais" || arg === "-country") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
                     country = next_arg.toUpperCase();
                     skip_next = true;
                     continue;
