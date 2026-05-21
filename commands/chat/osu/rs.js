@@ -483,7 +483,7 @@ async function run(messages, args) {
                             "pp": ppVal,
                             "beatmap_max_combo": beatmap_max_combo
                         };
-                        await saveUserscore(score, pre_calculated, true);
+                        saveUserscore(score, pre_calculated, true).catch(err => console.error("❌ [List-Save] Error al guardar score en segundo plano:", err));
                     }
                     
                     map.free();
@@ -615,7 +615,7 @@ async function run(messages, args) {
             "pp_fc": pp_fc
         };
 
-        await saveUserscore(recent_scores, pre_calculated, true);
+        saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
         const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
         map.free();
         return embed;
