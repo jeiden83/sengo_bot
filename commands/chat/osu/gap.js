@@ -16,11 +16,12 @@ async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
     
         // Convierte el código de país a un emoji real usando Unicode.
         const getFlagEmoji = (countryCode) => {
+            if (!countryCode || typeof countryCode !== 'string') return "🏴";
             return countryCode
                 .toUpperCase()
                 .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
         };
-        let flag = getFlagEmoji(score.user ? score.user.country_code : "XX");
+        let flag = getFlagEmoji((score.user && score.user.country_code) ? score.user.country_code : "XX");
     
         let username = score.user ? score.user.username : score.username;
         let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
