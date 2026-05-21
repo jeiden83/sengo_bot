@@ -1173,7 +1173,7 @@ function argsParserNoCommand(args) {
             str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
             str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
             str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-            null;
+            (str?.match(/^\d{5,10}$/) ? str : null);
 
         const possible_id = extractId(arg);
         if (possible_id) {

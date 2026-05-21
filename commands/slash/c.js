@@ -4,8 +4,13 @@ const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs } 
 
 const data = new SlashCommandBuilder()
     .setName("c")
-    .setDescription("Compara tus scores (o las de otro usuario) en el último mapa enviado en el canal")
+    .setDescription("Compara tus scores (o las de otro usuario) en el último mapa enviado en el canal o en uno específico")
     .addStringOption(addUsuarioOption)
+    .addStringOption(option =>
+        option.setName("mapa")
+            .setDescription("ID o URL del beatmap de osu!")
+            .setRequired(false)
+    )
     .addStringOption(addModoOption)
     .addStringOption(addServidorOption)
     .addIntegerOption(option =>
@@ -40,12 +45,16 @@ const data = new SlashCommandBuilder()
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
 
+    const mapa = interaction.options.getString("mapa");
     const index = interaction.options.getInteger("index");
     const pagina = interaction.options.getInteger("pagina");
     const modsExactos = interaction.options.getString("mods_exactos");
     const modsContiene = interaction.options.getString("mods_contiene");
     const umbralPp = interaction.options.getInteger("umbral_pp");
 
+    if (mapa) {
+        args.push(mapa);
+    }
     if (index) {
         args.push(`-i${index}`);
     }
