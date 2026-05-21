@@ -1541,7 +1541,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             let nextIndex = 0;
             let lastLogTime = 0;
             let lastRequestTime = 0;
-            const delayBetweenRequests = 120; // Espaciado mínimo de 120ms entre inicios de peticiones para evitar 429 por IP (burst limit)
+            const delayBetweenRequests = 90; // Espaciado mínimo de 90ms entre inicios de peticiones para evitar 429 por IP (burst limit)
 
             const executeWorker = async () => {
                 while (nextIndex < usersToFetch.length) {
