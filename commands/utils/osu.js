@@ -1541,7 +1541,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             let nextIndex = 0;
             let lastLogTime = 0;
             let lastRequestTime = 0;
-            const delayBetweenRequests = 85; // Espaciado mínimo de 85ms entre inicios de peticiones para evitar 429 por IP (burst limit)
+            const delayBetweenRequests = 120; // Espaciado mínimo de 120ms entre inicios de peticiones para evitar 429 por IP (burst limit)
 
             const executeWorker = async () => {
                 while (nextIndex < usersToFetch.length) {
@@ -1569,41 +1569,64 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                             tokenName = tokenObj.username;
                             chunkTokensUsed.push(tokenName);
 
-                            try {
-                                const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
-                                const response = await axios.get(url, {
-                                    headers: {
-                                        'Authorization': `Bearer ${token}`,
-                                        'Content-Type': 'application/json',
-                                        'Accept': 'application/json'
-                                    }
-                                });
-                                result = response.data;
-                                success = true;
-                            } catch (error) {
-                                const status = error.response?.status;
-                                if (status === 404) {
-                                    // No tiene score, es un resultado válido
-                                    result = null;
+                            let poolAttempts = 0;
+                            while (poolAttempts < 2 && !success) {
+                                try {
+                                    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
+                                    const response = await axios.get(url, {
+                                        headers: {
+                                            'Authorization': `Bearer ${token}`,
+                                            'Content-Type': 'application/json',
+                                            'Accept': 'application/json'
+                                        }
+                                    });
+                                    result = response.data;
                                     success = true;
-                                } else {
-                                    // Otro error, hacemos fallback al token de bot
-                                    console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status}). Reintentando con token del bot...`);
-                                    useBotToken = true;
+                                } catch (error) {
+                                    const status = error.response?.status;
+                                    if (status === 404) {
+                                        // No tiene score, es un resultado válido
+                                        result = null;
+                                        success = true;
+                                    } else if (status === 429 && poolAttempts === 0) {
+                                        poolAttempts++;
+                                        console.warn(`[GAP] Recibido 429 para user_id ${user.osu_id} con token de la pool (${tokenName}). Reintentando tras 1.5s...`);
+                                        await new Promise(resolve => setTimeout(resolve, 1500));
+                                    } else {
+                                        // Otro error o segundo 429, hacemos fallback al token de bot
+                                        console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status}). Reintentando con token del bot...`);
+                                        useBotToken = true;
+                                        break;
+                                    }
                                 }
                             }
                         } else {
                             useBotToken = true;
                         }
 
-                        if (useBotToken) {
-                            result = await v2.scores.list({
-                                type: 'user_beatmap_best',
-                                beatmap_id: beatmapId,
-                                user_id: user.osu_id,
-                                mode: gamemode
-                            });
-                            success = true;
+                        if (useBotToken && !success) {
+                            let botAttempts = 0;
+                            while (botAttempts < 2) {
+                                try {
+                                    result = await v2.scores.list({
+                                        type: 'user_beatmap_best',
+                                        beatmap_id: beatmapId,
+                                        user_id: user.osu_id,
+                                        mode: gamemode
+                                    });
+                                    success = true;
+                                    break;
+                                } catch (error) {
+                                    const status = error.status || error.response?.status;
+                                    if (status === 429 && botAttempts === 0) {
+                                        botAttempts++;
+                                        console.warn(`[GAP] Recibido 429 para user_id ${user.osu_id} con token del bot. Reintentando tras 1.5s...`);
+                                        await new Promise(resolve => setTimeout(resolve, 1500));
+                                    } else {
+                                        throw error;
+                                    }
+                                }
+                            }
                         }
 
                         if (success) {
