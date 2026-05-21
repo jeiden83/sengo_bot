@@ -93,6 +93,11 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
     }
 
+    let pp_fc_str = "";
+    if (pre_calculated.pp_fc) {
+        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Comparación de score #${score.originalRank || index} para ${username}`,
@@ -103,7 +108,7 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
         .setURL(beatmap_url)
         .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
-${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
+${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
 \`\`\`
         `)
         .setImage(beatmap_cover)
@@ -453,12 +458,36 @@ async function run(messages, args) {
             let map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
             const maxAttrs = calculatePP(score, map, "maximo_pp");
 
+            const user_pp = score.pp ? score.pp : calculatePP(score, map, null, maxAttrs).pp;
+            const beatmap_max_combo = beatmap_metadata.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+
+            let pp_fc = null;
+            const isFC = score.perfect || (miss === 0 && score.max_combo >= beatmap_max_combo - 2);
+            if (!isFC) {
+                try {
+                    const fc_statistics = {
+                        ...score.statistics,
+                        great: (score.statistics.great || 0) + miss,
+                        miss: 0
+                    };
+                    const fc_score = {
+                        ...score,
+                        max_combo: beatmap_max_combo,
+                        statistics: fc_statistics
+                    };
+                    pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
+                } catch (err) {
+                    console.error("Error calculating pp_fc:", err);
+                }
+            }
+
             const pre_calculated = {
                 "map": map,
                 "map_completion": score.passed ? 1.0 : (map.nObjects > 0 ? total_hits / map.nObjects : score.map_completion || 0),
                 "maxAttrs": maxAttrs,
-                "pp": score.pp ? score.pp : calculatePP(score, map, null, maxAttrs).pp,
-                "beatmap_max_combo": beatmap_metadata.max_combo,
+                "pp": user_pp,
+                "beatmap_max_combo": beatmap_max_combo,
+                "pp_fc": pp_fc
             };
 
             const embed = await doOsuSingleEmbed(message, score, pre_calculated, scoreIndex, filtered_scores.length, parsed_args, beatmap_metadata);

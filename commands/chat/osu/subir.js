@@ -582,12 +582,36 @@ async function run(messages, args, initialized_data) {
     const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_id, beatmap_metadata);
     const maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
 
+    const user_pp = calculatePP(recent_scores, map, null, maxAttrs).pp;
+    const beatmap_max_combo = beatmap_metadata.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+
+    let pp_fc = null;
+    const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
+    if (!isFC) {
+        try {
+            const fc_statistics = {
+                ...recent_scores.statistics,
+                great: (recent_scores.statistics.great || 0) + miss,
+                miss: 0
+            };
+            const fc_score = {
+                ...recent_scores,
+                max_combo: beatmap_max_combo,
+                statistics: fc_statistics
+            };
+            pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
+        } catch (err) {
+            console.error("Error calculating pp_fc:", err);
+        }
+    }
+
     const pre_calculated = {
         "map": map,
         "map_completion": recent_scores.passed ? 100 : total_hits / map.nObjects,
         "maxAttrs": maxAttrs,
-        "pp": calculatePP(recent_scores, map, null, maxAttrs).pp,
-        "beatmap_max_combo": beatmap_metadata.max_combo,
+        "pp": user_pp,
+        "beatmap_max_combo": beatmap_max_combo,
+        "pp_fc": pp_fc
     };
 
     await saveUserscore(recent_scores, pre_calculated, true);
@@ -643,6 +667,11 @@ async function run(messages, args, initialized_data) {
                           recent_scores.total_score || recent_scores.score || 0;
     const formatted_score_val = raw_score_val.toLocaleString('es-ES');
 
+    let pp_fc_str = "";
+    if (pre_calculated.pp_fc) {
+        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Score manual guardada para ${parsedData.player_name}`,
@@ -653,7 +682,7 @@ async function run(messages, args, initialized_data) {
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
         .setDescription(`**Puntuación**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 \`\`\`ansi
-${stats_str} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP ${(recent_scores.accuracy * 100).toFixed(2)}%${ratio_str} x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
+${stats_str} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${(recent_scores.accuracy * 100).toFixed(2)}%${ratio_str} x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
 \`\`\`
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
