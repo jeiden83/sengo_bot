@@ -1444,6 +1444,39 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
     const metadata = beatmapMetadata || await getBeatmap(beatmapId);
     const needsPP = metadata && (metadata.status === 'loved' || metadata.status === 'qualified');
 
+    const { getSupabaseClient } = require("../../db/database.js");
+    const supabase = getSupabaseClient();
+    let tokenPool = [];
+    let tokenIndex = 0;
+
+    if (supabase) {
+        try {
+            const { data: dbTokens, error: dbError } = await supabase
+                .from('oauth_tokens')
+                .select('discord_id, access_token, refresh_token, expires_at');
+            
+            if (!dbError && dbTokens) {
+                const { getValidTokenForUser } = require("../../utils/osuAuth.js");
+                for (const row of dbTokens) {
+                    try {
+                        const token = await getValidTokenForUser(row.discord_id);
+                        if (token) {
+                            tokenPool.push(token);
+                        }
+                    } catch (err) {
+                        console.error(`[GAP] Error al refrescar token para el usuario ${row.discord_id} en la pool:`, err);
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("[GAP] Error al cargar la pool de tokens OAuth:", e);
+        }
+    }
+
+    if (tokenPool.length > 0) {
+        console.log(`[GAP] Pool de tokens OAuth cargada con ${tokenPool.length} tokens activos.`);
+    }
+
     let mapInstance = null;
     let cacheModified = false;
     let processedCount = 0;
@@ -1498,40 +1531,79 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
         }
 
         if (usersToFetch.length > 0) {
-            const chunkSize = 12;
+            const chunkSize = 10;
             for (let i = 0; i < usersToFetch.length; i += chunkSize) {
                 const chunk = usersToFetch.slice(i, i + chunkSize);
                 
                 await Promise.all(chunk.map(async (user) => {
                     try {
-                        const result = await v2.scores.list({
-                            type: 'user_beatmap_best',
-                            beatmap_id: beatmapId,
-                            user_id: user.osu_id,
-                            mode: gamemode
-                        });
+                        let result = null;
+                        let success = false;
+                        let useBotToken = false;
 
-                        processedCount++;
-                        if (result && result.score) {
-                            delete result.score.beatmap;
-                            delete result.score.beatmapset;
-
-                            // Calcular PP si hace falta
-                            if (mapInstance && (result.score.pp === undefined || result.score.pp === null || result.score.pp === 0)) {
-                                try {
-                                    const ppResult = calculatePP(result.score, mapInstance);
-                                    result.score.pp = ppResult.pp;
-                                } catch (err) {
-                                    console.error(`[GAP] Error al calcular el PP para el usuario ${user.osu_id}:`, err);
+                        if (tokenPool.length > 0) {
+                            const token = tokenPool[tokenIndex % tokenPool.length];
+                            tokenIndex++;
+                            try {
+                                const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
+                                const response = await axios.get(url, {
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json'
+                                    }
+                                });
+                                result = response.data;
+                                success = true;
+                            } catch (error) {
+                                const status = error.response?.status;
+                                if (status === 404) {
+                                    // No tiene score, es un resultado válido
+                                    result = null;
+                                    success = true;
+                                } else {
+                                    // Otro error, hacemos fallback al token de bot
+                                    console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (estado ${status}). Reintentando con token del bot...`);
+                                    useBotToken = true;
                                 }
                             }
-
-                            scores.set(user.osu_id.toString(), result.score);
-                            cachedData.scores[user.osu_id] = result.score;
-                            cacheModified = true;
                         } else {
-                            cachedData.scores[user.osu_id] = { noScore: true };
-                            cacheModified = true;
+                            useBotToken = true;
+                        }
+
+                        if (useBotToken) {
+                            result = await v2.scores.list({
+                                type: 'user_beatmap_best',
+                                beatmap_id: beatmapId,
+                                user_id: user.osu_id,
+                                mode: gamemode
+                            });
+                            success = true;
+                        }
+
+                        if (success) {
+                            processedCount++;
+                            if (result && result.score) {
+                                delete result.score.beatmap;
+                                delete result.score.beatmapset;
+
+                                // Calcular PP si hace falta
+                                if (mapInstance && (result.score.pp === undefined || result.score.pp === null || result.score.pp === 0)) {
+                                    try {
+                                        const ppResult = calculatePP(result.score, mapInstance);
+                                        result.score.pp = ppResult.pp;
+                                    } catch (err) {
+                                        console.error(`[GAP] Error al calcular el PP para el usuario ${user.osu_id}:`, err);
+                                    }
+                                }
+
+                                scores.set(user.osu_id.toString(), result.score);
+                                cachedData.scores[user.osu_id] = result.score;
+                                cacheModified = true;
+                            } else {
+                                cachedData.scores[user.osu_id] = { noScore: true };
+                                cacheModified = true;
+                            }
                         }
                     } catch (error) {
                         processedCount++;
