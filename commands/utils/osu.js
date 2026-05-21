@@ -1540,11 +1540,21 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             const chunkTokensUsed = [];
             let nextIndex = 0;
             let lastLogTime = 0;
+            let lastRequestTime = 0;
+            const delayBetweenRequests = 85; // Espaciado mínimo de 85ms entre inicios de peticiones para evitar 429 por IP (burst limit)
 
             const executeWorker = async () => {
                 while (nextIndex < usersToFetch.length) {
                     const user = usersToFetch[nextIndex++];
                     if (!user) break;
+
+                    // Espaciar el inicio de las peticiones para evitar activar el limitador por IP de Cloudflare/osu!
+                    const nowLaunch = Date.now();
+                    const timeToWait = Math.max(0, lastRequestTime + delayBetweenRequests - nowLaunch);
+                    lastRequestTime = nowLaunch + timeToWait;
+                    if (timeToWait > 0) {
+                        await new Promise(resolve => setTimeout(resolve, timeToWait));
+                    }
 
                     try {
                         let result = null;
