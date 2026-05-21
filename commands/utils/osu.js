@@ -1453,20 +1453,25 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
         try {
             const { data: dbTokens, error: dbError } = await supabase
                 .from('oauth_tokens')
-                .select('discord_id, access_token, refresh_token, expires_at');
+                .select('discord_id, username, access_token, refresh_token, expires_at');
             
             if (!dbError && dbTokens) {
                 const { getValidTokenForUser } = require("../../utils/osuAuth.js");
-                for (const row of dbTokens) {
+                const refreshed = await Promise.all(dbTokens.map(async (row) => {
                     try {
                         const token = await getValidTokenForUser(row.discord_id);
                         if (token) {
-                            tokenPool.push(token);
+                            return {
+                                token,
+                                username: row.username || row.discord_id
+                            };
                         }
                     } catch (err) {
                         console.error(`[GAP] Error al refrescar token para el usuario ${row.discord_id} en la pool:`, err);
                     }
-                }
+                    return null;
+                }));
+                tokenPool = refreshed.filter(t => t !== null);
             }
         } catch (e) {
             console.error("[GAP] Error al cargar la pool de tokens OAuth:", e);
@@ -1534,16 +1539,22 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             const chunkSize = 10;
             for (let i = 0; i < usersToFetch.length; i += chunkSize) {
                 const chunk = usersToFetch.slice(i, i + chunkSize);
+                const chunkTokensUsed = [];
                 
                 await Promise.all(chunk.map(async (user) => {
                     try {
                         let result = null;
                         let success = false;
                         let useBotToken = false;
+                        let tokenName = 'Bot';
 
                         if (tokenPool.length > 0) {
-                            const token = tokenPool[tokenIndex % tokenPool.length];
+                            const tokenObj = tokenPool[tokenIndex % tokenPool.length];
                             tokenIndex++;
+                            const token = tokenObj.token;
+                            tokenName = tokenObj.username;
+                            chunkTokensUsed.push(tokenName);
+
                             try {
                                 const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
                                 const response = await axios.get(url, {
@@ -1563,7 +1574,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                     success = true;
                                 } else {
                                     // Otro error, hacemos fallback al token de bot
-                                    console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (estado ${status}). Reintentando con token del bot...`);
+                                    console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status}). Reintentando con token del bot...`);
                                     useBotToken = true;
                                 }
                             }
@@ -1632,7 +1643,9 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                     if (rateLimitCount > 0) {
                         errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
                     }
-                    logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${errorDetails}`);
+                    const uniqueTokensUsed = [...new Set(chunkTokensUsed)];
+                    const tokensStr = uniqueTokensUsed.length > 0 ? ` | Usando tokens de: ${uniqueTokensUsed.join(', ')}` : "";
+                    logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${tokensStr}${errorDetails}`);
                 }
 
                 if (i + chunkSize < usersToFetch.length) {
