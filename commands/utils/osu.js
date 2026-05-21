@@ -161,12 +161,12 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
         "rank": recent_scores.rank,
         "started_at": recent_scores.started_at,
         "total_score": recent_scores.total_score,
-        "username": recent_scores.user.username,
+        "username": recent_scores.user?.username || `User ${recent_scores.user_id}`,
         "map_completion": pre_calculated.map_completion,
         "beatmap_max_combo": pre_calculated.beatmap_max_combo,
         "beatmap_status": recent_scores.beatmap.status,
         "beatmap_id": recent_scores.beatmap.id.toString(),
-        "user_id": recent_scores.user_id.toString(),
+        "user_id": (recent_scores.user_id || recent_scores.user?.id || '').toString(),
         "multi_failed": false
     };
 
@@ -234,17 +234,35 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
 
                 if (selectError) throw selectError;
 
-                // Buscar si ya existe la misma play (por fecha o por PP idéntico)
-                const samePlay = existingPassed.find(s => s.ended_at === score.ended_at || s.pp === score.pp);
+                if (existingPassed && existingPassed.length > 0) {
+                    // Encontrar la mejor de las existentes
+                    const existingScore = existingPassed.reduce((a, b) => 
+                        (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b)
+                    );
 
-                if (samePlay) {
-                    // Reemplazar la existente para aplicar correcciones de mods o zona horaria
-                    const { error: updateError } = await supabase
-                        .from('local_scores')
-                        .update(score)
-                        .eq('id', samePlay.id);
-                    
-                    if (updateError) throw updateError;
+                    const samePlay = existingScore.ended_at === score.ended_at || 
+                                     Number(existingScore.legacy_total_score) === Number(score.legacy_total_score) ||
+                                     existingScore.pp === score.pp;
+
+                    const isBetter = Number(score.total_score || score.legacy_total_score || 0) >= Number(existingScore.total_score || existingScore.legacy_total_score || 0);
+
+                    if (samePlay || isBetter) {
+                        const { error: updateError } = await supabase
+                            .from('local_scores')
+                            .update(score)
+                            .eq('id', existingScore.id);
+                        
+                        if (updateError) throw updateError;
+                    }
+
+                    // Limpiar duplicados si hubiera más de un registro en la base de datos
+                    const idsToDelete = existingPassed.filter(s => s.id !== existingScore.id).map(s => s.id);
+                    if (idsToDelete.length > 0) {
+                        await supabase
+                            .from('local_scores')
+                            .delete()
+                            .in('id', idsToDelete);
+                    }
                 } else {
                     const { error: insertError } = await supabase
                         .from('local_scores')
@@ -1446,6 +1464,55 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
 
     const { getSupabaseClient } = require("../../db/database.js");
     const supabase = getSupabaseClient();
+
+    // Mezclar con los scores de Supabase
+    if (supabase && !forceUpdate) {
+        try {
+            const { data: dbScores, error: dbError } = await supabase
+                .from('local_scores')
+                .select('*')
+                .eq('beatmap_id', beatmapId.toString());
+            
+            if (!dbError && dbScores) {
+                for (const row of dbScores) {
+                    const uId = row.user_id.toString();
+                    const rowEndedAtTime = new Date(row.ended_at).getTime();
+                    const cachedEndedAtTime = cachedData.scores[uId] ? new Date(cachedData.scores[uId].ended_at || 0).getTime() : 0;
+                    
+                    if (!cachedData.scores[uId] || rowEndedAtTime > cachedEndedAtTime) {
+                        const mappedScore = {
+                            id: Number(row.id),
+                            accuracy: row.accuracy,
+                            ended_at: row.ended_at,
+                            started_at: row.started_at,
+                            legacy_total_score: Number(row.legacy_total_score),
+                            total_score: Number(row.total_score),
+                            max_combo: row.max_combo,
+                            statistics: row.statistics || {},
+                            mods: row.mods || [],
+                            passed: row.passed,
+                            pp: row.pp,
+                            rank: row.rank,
+                            beatmap: {
+                                id: Number(row.beatmap_id),
+                                status: row.beatmap_status
+                            },
+                            user: {
+                                id: Number(row.user_id),
+                                username: row.username
+                            },
+                            user_id: Number(row.user_id),
+                            fetched_at: new Date(row.created_at).getTime()
+                        };
+                        cachedData.scores[uId] = mappedScore;
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("[GAP] Error al mezclar cache de Supabase en getNewBeatmapUserScores:", err);
+        }
+    }
+
     let tokenPool = [];
     let tokenIndex = 0;
 
@@ -1499,12 +1566,16 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
 
         const usersToFetch = [];
         const now = Date.now();
-        const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+        const CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
 
         // Poblamos con los scores cacheados válidos
         for (const user of usersArray) {
             const cachedScore = cachedData.scores[user.osu_id];
-            const isFresh = (now - (cachedData.updated_at || 0) < CACHE_TTL) && !forceUpdate;
+            let isFresh = false;
+            if (cachedScore) {
+                const fetchedAt = cachedScore.fetched_at || cachedData.updated_at || 0;
+                isFresh = (now - fetchedAt < CACHE_TTL) && !forceUpdate;
+            }
             if (cachedScore && isFresh) {
                 if (cachedScore.noScore !== true) {
                     // Si necesita PP y no lo tiene, lo calculamos
@@ -1645,11 +1716,41 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                     }
                                 }
 
+                                result.score.fetched_at = Date.now();
                                 scores.set(user.osu_id.toString(), result.score);
                                 cachedData.scores[user.osu_id] = result.score;
                                 cacheModified = true;
+
+                                // Guardamos asíncronamente en Supabase
+                                const scoreObj = result.score;
+                                const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
+                                const { great = 0, ok = 0, meh = 0, miss = 0 } = scoreObj.statistics || {};
+                                const total_hits = great + ok + meh + miss;
+                                const map_completion = scoreObj.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
+
+                                const pre_calculated = {
+                                    pp: scoreObj.pp,
+                                    beatmap_max_combo: beatmap_max_combo,
+                                    map_completion: map_completion
+                                };
+
+                                const scoreToSave = {
+                                    ...scoreObj,
+                                    beatmap: {
+                                        id: beatmapId,
+                                        status: metadata?.status || 'ranked'
+                                    },
+                                    user: {
+                                        username: scoreObj.user?.username || user.username || `User ${user.osu_id}`
+                                    },
+                                    user_id: user.osu_id
+                                };
+
+                                saveUserscore(scoreToSave, pre_calculated, true).catch(err => {
+                                    console.error(`[GAP] Error al guardar score de user ${user.osu_id} en Supabase:`, err);
+                                });
                             } else {
-                                cachedData.scores[user.osu_id] = { noScore: true };
+                                cachedData.scores[user.osu_id] = { noScore: true, fetched_at: Date.now() };
                                 cacheModified = true;
                             }
                         }
@@ -1663,7 +1764,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                         if (status === 429) {
                             rateLimitCount++;
                         } else if (isNoScoreError) {
-                            cachedData.scores[user.osu_id] = { noScore: true };
+                            cachedData.scores[user.osu_id] = { noScore: true, fetched_at: Date.now() };
                             cacheModified = true;
                         } else {
                             // En caso de fallos de red temporales, timeouts o errores de servidor (5xx)
@@ -1824,6 +1925,70 @@ async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
     return userScores;
 }
 
+async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
+    try {
+        const { getSupabaseClient } = require("../../db/database.js");
+        const supabase = getSupabaseClient();
+        if (!supabase) return;
+
+        const guildId = message.guild ? message.guild.id : null;
+        if (!guildId) {
+            console.log(`[BG-GAP] No se inicia el cache en segundo plano: El mensaje no pertenece a un servidor.`);
+            return;
+        }
+
+        console.log(`[BG-GAP] Iniciando cache de gap en segundo plano para el mapa ${beatmapId} en el servidor ${guildId}...`);
+
+        let { data: linkedUsers, error } = await supabase
+            .from('users')
+            .select('discord_id, osu_id, main_gamemode')
+            .not('osu_id', 'is', null)
+            .contains('guilds', [guildId]);
+
+        if (error) {
+            console.error(`[BG-GAP] Error al consultar usuarios vinculados:`, error);
+            return;
+        }
+
+        if (!linkedUsers || linkedUsers.length === 0) {
+            console.log(`[BG-GAP] No hay usuarios vinculados en este servidor.`);
+            return;
+        }
+
+        const targetMode = gamemode || 'osu';
+        const filteredUsers = linkedUsers.filter(user => {
+            if (targetMode !== 'osu' && linkedUsers.length <= 30) {
+                return true;
+            }
+            const userMode = user.main_gamemode || 'osu';
+            return userMode === targetMode;
+        });
+
+        const usersArray = filteredUsers.map(user => ({
+            id: user.discord_id,
+            osu_id: user.osu_id,
+            main_gamemode: user.main_gamemode
+        }));
+
+        console.log(`[BG-GAP] ${usersArray.length} usuarios a procesar para el cache de gap.`);
+
+        const bgLogger = {
+            process: (msg) => console.log(`[BG-GAP] [${new Date().toLocaleTimeString()}] ${msg}`)
+        };
+
+        getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, bgLogger)
+            .then(() => {
+                console.log(`[BG-GAP] Cache de gap completado con éxito para el mapa ${beatmapId}.`);
+            })
+            .catch(err => {
+                console.error(`[BG-GAP] Error en la ejecución de cache de gap:`, err);
+            });
+
+    } catch (err) {
+        console.error(`[BG-GAP] Error al inicializar el proceso en segundo plano:`, err);
+    }
+}
+
 module.exports = { 
     getUnrankedUserScores, 
     NewloadToken, 
@@ -1845,5 +2010,6 @@ module.exports = {
     argsParser, 
     argsParserNoCommand, 
     getBeatmapUserAllScores,
-    calculatePP
+    calculatePP,
+    triggerBackgroundGapCache
 }

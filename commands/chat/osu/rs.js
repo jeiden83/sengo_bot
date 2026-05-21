@@ -1,5 +1,5 @@
-const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP } = require("../../utils/osu.js");
-const { colorear } = require("../../utils/admin.js");
+const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundGapCache } = require("../../utils/osu.js");
+const colorear = require("../../utils/admin.js");
 
 const { EmbedBuilder } = require("discord.js");
 const axios = require('axios').default;
@@ -483,7 +483,7 @@ async function run(messages, args) {
                             "pp": ppVal,
                             "beatmap_max_combo": beatmap_max_combo
                         };
-                        await saveUserscore(score, pre_calculated);
+                        await saveUserscore(score, pre_calculated, true);
                     }
                     
                     map.free();
@@ -549,6 +549,16 @@ async function run(messages, args) {
             } catch (e) {}
         });
 
+        // Iniciar cache del gap en segundo plano para el mapa más reciente de la lista
+        try {
+            const targetScore = parser_res.fn_response[0];
+            if (targetScore && targetScore.beatmap) {
+                triggerBackgroundGapCache(message, targetScore.beatmap.id, targetScore.beatmap.mode || 'osu');
+            }
+        } catch (err) {
+            console.error("[BG-GAP] Error al disparar el cache de gap en segundo plano (lista):", err);
+        }
+
         return;
     }
     let index = parser_res.parsed_args.index || 1;
@@ -605,7 +615,7 @@ async function run(messages, args) {
             "pp_fc": pp_fc
         };
 
-        await saveUserscore(recent_scores, pre_calculated);
+        await saveUserscore(recent_scores, pre_calculated, true);
         const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
         map.free();
         return embed;
@@ -687,6 +697,16 @@ async function run(messages, args) {
             // Ignorar si el mensaje original fue borrado
         }
     });
+
+    // Iniciar cache del gap en segundo plano para el mapa mostrado
+    try {
+        const targetScore = parser_res.fn_response[index - 1] || parser_res.fn_response[0];
+        if (targetScore && targetScore.beatmap) {
+            triggerBackgroundGapCache(message, targetScore.beatmap.id, targetScore.beatmap.mode || 'osu');
+        }
+    } catch (err) {
+        console.error("[BG-GAP] Error al disparar el cache de gap en segundo plano:", err);
+    }
 
     return;
 }
