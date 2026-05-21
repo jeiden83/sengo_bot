@@ -474,6 +474,18 @@ async function run(messages, args) {
                         starsVal = maxAttrs.difficulty.stars;
                     }
                     
+                    if (globalIndex === 1) {
+                        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+                        const pre_calculated = {
+                            "map": map,
+                            "map_completion": score.passed ? 100 : total_hits / map.nObjects,
+                            "maxAttrs": maxAttrs,
+                            "pp": ppVal,
+                            "beatmap_max_combo": beatmap_max_combo
+                        };
+                        await saveUserscore(score, pre_calculated);
+                    }
+                    
                     map.free();
                 } catch (err) {
                     console.error(`Error al procesar PP de #${globalIndex}:`, err);
