@@ -1425,7 +1425,7 @@ async function argsParser(args, command_parameters){
     }
 }
 
-async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null) {
+async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null) {
     await NewloadToken();
     const scores = new Collection();
 
@@ -1441,109 +1441,160 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
         }
     }
 
-    const usersToFetch = [];
-    const now = Date.now();
-    const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
+    const metadata = beatmapMetadata || await getBeatmap(beatmapId);
+    const needsPP = metadata && (metadata.status === 'loved' || metadata.status === 'qualified');
 
-    // Poblamos con los scores cacheados válidos
-    for (const user of usersArray) {
-        const cachedScore = cachedData.scores[user.osu_id];
-        const isFresh = (now - (cachedData.updated_at || 0) < CACHE_TTL) && !forceUpdate;
-        if (cachedScore && isFresh) {
-            if (cachedScore.noScore !== true) {
-                scores.set(user.osu_id.toString(), cachedScore);
-            }
-        } else {
-            usersToFetch.push(user);
-        }
-    }
-
-    if (logger) {
-        const cachedCount = usersArray.length - usersToFetch.length;
-        if (cachedCount > 0) {
-            logger.process(`Caché: Usando puntuaciones de ${cachedCount} usuarios (recientes)`);
-        }
-        if (usersToFetch.length > 0) {
-            logger.process(`Consultando osu! API para ${usersToFetch.length} usuarios (faltantes o expirados)`);
-        }
-    }
-
+    let mapInstance = null;
+    let cacheModified = false;
     let processedCount = 0;
     let errorCount = 0;
     let rateLimitCount = 0;
 
-    if (usersToFetch.length > 0) {
-        const chunkSize = 12;
-        for (let i = 0; i < usersToFetch.length; i += chunkSize) {
-            const chunk = usersToFetch.slice(i, i + chunkSize);
-            
-            await Promise.all(chunk.map(async (user) => {
-                try {
-                    const result = await v2.scores.list({
-                        type: 'user_beatmap_best',
-                        beatmap_id: beatmapId,
-                        user_id: user.osu_id,
-                        mode: gamemode
-                    });
+    try {
+        if (needsPP) {
+            try {
+                mapInstance = await getBeatmap_osu(metadata.beatmapset_id, metadata.id, metadata);
+            } catch (e) {
+                console.error("[GAP] Error loading beatmap for PP calculation:", e);
+            }
+        }
 
-                    processedCount++;
-                    if (result && result.score) {
-                        delete result.score.beatmap;
-                        delete result.score.beatmapset;
-                        scores.set(user.osu_id.toString(), result.score);
-                        cachedData.scores[user.osu_id] = result.score;
-                    } else {
-                        cachedData.scores[user.osu_id] = { noScore: true };
-                    }
-                } catch (error) {
-                    processedCount++;
-                    errorCount++;
-                    const status = error.status || error.response?.status;
-                    const errorMsg = error.message || error;
-                    const isNoScoreError = (typeof errorMsg === 'string' && (errorMsg.includes('empty error') || errorMsg.includes('404') || errorMsg.toLowerCase().includes('not found'))) || status === 404;
+        const usersToFetch = [];
+        const now = Date.now();
+        const CACHE_TTL = 30 * 60 * 1000; // 30 minutos
 
-                    if (status === 429) {
-                        rateLimitCount++;
-                    } else if (isNoScoreError) {
-                        cachedData.scores[user.osu_id] = { noScore: true };
-                    } else {
-                        // En caso de fallos de red temporales, timeouts o errores de servidor (5xx)
-                        // NO guardamos noScore para poder reintentar en futuras consultas
-                        if (status !== 429) {
-                            console.error(`[GAP] Error de conexión/servidor al obtener score de osu_id ${user.osu_id}:`, errorMsg);
+        // Poblamos con los scores cacheados válidos
+        for (const user of usersArray) {
+            const cachedScore = cachedData.scores[user.osu_id];
+            const isFresh = (now - (cachedData.updated_at || 0) < CACHE_TTL) && !forceUpdate;
+            if (cachedScore && isFresh) {
+                if (cachedScore.noScore !== true) {
+                    // Si necesita PP y no lo tiene, lo calculamos
+                    if (mapInstance && (cachedScore.pp === undefined || cachedScore.pp === null || cachedScore.pp === 0)) {
+                        try {
+                            const ppResult = calculatePP(cachedScore, mapInstance);
+                            cachedScore.pp = ppResult.pp;
+                            cachedData.scores[user.osu_id] = cachedScore;
+                            cacheModified = true;
+                        } catch (err) {
+                            console.error(`[GAP] Error calculating PP for cached user ${user.osu_id}:`, err);
                         }
                     }
+                    scores.set(user.osu_id.toString(), cachedScore);
                 }
-            }));
-
-            if (logger) {
-                let errorDetails = errorCount > 0 ? ` | Errores: ${errorCount}` : "";
-                if (rateLimitCount > 0) {
-                    errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
-                }
-                logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${errorDetails}`);
-            }
-
-            if (i + chunkSize < usersToFetch.length) {
-                await new Promise(resolve => setTimeout(resolve, 150));
+            } else {
+                usersToFetch.push(user);
             }
         }
 
-        if (errorCount > 0) {
-            const noScoreCount = errorCount - rateLimitCount;
-            const limitStr = rateLimitCount > 0 ? `, ${rateLimitCount} rate limit (429)` : "";
-            console.log(`[GAP] Sincronización finalizada: ${usersToFetch.length} consultados. ${noScoreCount} no tienen score registrada${limitStr}.`);
+        if (logger) {
+            const cachedCount = usersArray.length - usersToFetch.length;
+            if (cachedCount > 0) {
+                logger.process(`Caché: Usando puntuaciones de ${cachedCount} usuarios (recientes)`);
+            }
+            if (usersToFetch.length > 0) {
+                logger.process(`Consultando osu! API para ${usersToFetch.length} usuarios (faltantes o expirados)`);
+            }
         }
 
-        // Guardar la caché actualizada
-        try {
-            if (!fs.existsSync(cacheDir)) {
-                fs.mkdirSync(cacheDir, { recursive: true });
+        if (usersToFetch.length > 0) {
+            const chunkSize = 12;
+            for (let i = 0; i < usersToFetch.length; i += chunkSize) {
+                const chunk = usersToFetch.slice(i, i + chunkSize);
+                
+                await Promise.all(chunk.map(async (user) => {
+                    try {
+                        const result = await v2.scores.list({
+                            type: 'user_beatmap_best',
+                            beatmap_id: beatmapId,
+                            user_id: user.osu_id,
+                            mode: gamemode
+                        });
+
+                        processedCount++;
+                        if (result && result.score) {
+                            delete result.score.beatmap;
+                            delete result.score.beatmapset;
+
+                            // Calcular PP si hace falta
+                            if (mapInstance && (result.score.pp === undefined || result.score.pp === null || result.score.pp === 0)) {
+                                try {
+                                    const ppResult = calculatePP(result.score, mapInstance);
+                                    result.score.pp = ppResult.pp;
+                                } catch (err) {
+                                    console.error(`[GAP] Error calculating PP for user ${user.osu_id}:`, err);
+                                }
+                            }
+
+                            scores.set(user.osu_id.toString(), result.score);
+                            cachedData.scores[user.osu_id] = result.score;
+                            cacheModified = true;
+                        } else {
+                            cachedData.scores[user.osu_id] = { noScore: true };
+                            cacheModified = true;
+                        }
+                    } catch (error) {
+                        processedCount++;
+                        errorCount++;
+                        const status = error.status || error.response?.status;
+                        const errorMsg = error.message || error;
+                        const isNoScoreError = (typeof errorMsg === 'string' && (errorMsg.includes('empty error') || errorMsg.includes('404') || errorMsg.toLowerCase().includes('not found'))) || status === 404;
+
+                        if (status === 429) {
+                            rateLimitCount++;
+                        } else if (isNoScoreError) {
+                            cachedData.scores[user.osu_id] = { noScore: true };
+                            cacheModified = true;
+                        } else {
+                            // En caso de fallos de red temporales, timeouts o errores de servidor (5xx)
+                            // NO guardamos noScore para poder reintentar en futuras consultas
+                            if (status !== 429) {
+                                console.error(`[GAP] Error de conexión/servidor al obtener score de osu_id ${user.osu_id}:`, errorMsg);
+                            }
+                        }
+                    }
+                }));
+
+                if (logger) {
+                    let errorDetails = errorCount > 0 ? ` | Errores: ${errorCount}` : "";
+                    if (rateLimitCount > 0) {
+                        errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
+                    }
+                    logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${errorDetails}`);
+                }
+
+                if (i + chunkSize < usersToFetch.length) {
+                    await new Promise(resolve => setTimeout(resolve, 150));
+                }
             }
-            cachedData.updated_at = Date.now();
-            fs.writeFileSync(cacheFile, JSON.stringify(cachedData, null, 2), 'utf8');
-        } catch (e) {
-            console.error("Error al guardar cache de gap:", e);
+
+            if (errorCount > 0) {
+                const noScoreCount = errorCount - rateLimitCount;
+                const limitStr = rateLimitCount > 0 ? `, ${rateLimitCount} rate limit (429)` : "";
+                console.log(`[GAP] Sincronización finalizada: ${usersToFetch.length} consultados. ${noScoreCount} no tienen score registrada${limitStr}.`);
+            }
+        }
+
+        // Guardar la caché actualizada si hubo cambios
+        if (cacheModified) {
+            try {
+                if (!fs.existsSync(cacheDir)) {
+                    fs.mkdirSync(cacheDir, { recursive: true });
+                }
+                cachedData.updated_at = Date.now();
+                fs.writeFileSync(cacheFile, JSON.stringify(cachedData, null, 2), 'utf8');
+            } catch (e) {
+                console.error("Error al guardar cache de gap:", e);
+            }
+        }
+
+    } finally {
+        if (mapInstance) {
+            try {
+                mapInstance.free();
+            } catch (e) {
+                console.error("[GAP] Error freeing mapInstance:", e);
+            }
         }
     }
 

@@ -253,7 +253,7 @@ async function run(messages, args){
 
     let user_scores = (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") ? 
         await getUnrankedUserScores(beatmap_url, beatmap_metadata.mode) : 
-        await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger);
+        await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger, beatmap_metadata);
 
     if (filterPass) {
         user_scores = user_scores.filter(score => score.passed);
@@ -264,16 +264,27 @@ async function run(messages, args){
         return {content: `**De los \`${usersArray.length}\` usuarios ${contextStr} (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa${filterPass ? ' (que no sea fallida)' : ''}.`};
     }
 
-    if (beatmap_metadata.status === 'loved') {
-        const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
-        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
-        for (let [userId, score] of user_scores) {
-            if (!score.pp) {
-                const ppResult = calculatePP(score, map);
-                score.pp = ppResult.pp;
+    if (beatmap_metadata.status === 'loved' || beatmap_metadata.status === 'qualified') {
+        const hasMissingPP = Array.from(user_scores.values()).some(score => !score.pp);
+        if (hasMissingPP) {
+            const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+            try {
+                const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
+                for (let [userId, score] of user_scores) {
+                    if (!score.pp) {
+                        try {
+                            const ppResult = calculatePP(score, map);
+                            score.pp = ppResult.pp;
+                        } catch (err) {
+                            console.error(`[GAP] Error calculating fallback PP for user ${userId}:`, err);
+                        }
+                    }
+                }
+                map.free();
+            } catch (err) {
+                console.error("[GAP] Error loading fallback beatmap for PP calculation:", err);
             }
         }
-        map.free();
     }
 
     // Si el mapa es loved, sera por puntuacion, sino por pp de manera descendente
