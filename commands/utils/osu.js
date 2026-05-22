@@ -1952,7 +1952,8 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                                         await new Promise(resolve => setTimeout(resolve, 1500));
                                     } else {
                                         // Otro error o segundo 429, hacemos fallback al token de bot
-                                        console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status}). Reintentando con token del bot...`);
+                                        const errorMsg = error.response?.data ? ` | Detalles: ${JSON.stringify(error.response.data)}` : '';
+                                        console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status})${errorMsg}. Reintentando con token del bot...`);
                                         useBotToken = true;
                                         break;
                                     }
