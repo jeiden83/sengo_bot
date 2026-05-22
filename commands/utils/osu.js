@@ -12,7 +12,8 @@ const {
     getScoreDetails,
     getBeatmapUserScore,
     getBeatmapUserAllScores,
-    getRecentScores
+    getRecentScores,
+    saveUserscore
 } = require("../../models/OsuScoreModel.js");
 const { Collection } = require('discord.js');
 
@@ -111,147 +112,7 @@ const osuApiQueue = new OsuApiQueue();
 
 // Lógica de tokens delegada a OsuUserModel
 
-// Usado para guardar la score del usuario en Supabase
-// Clave para tener una db propia de scores de usuarios
-async function saveUserscore(recent_scores, pre_calculated, force_save = false) {
-    normalizeScore(recent_scores);
-    const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
-
-    const score = {
-        "accuracy": recent_scores.accuracy,
-        "ended_at": recent_scores.ended_at,
-        "legacy_total_score": recent_scores.legacy_total_score,
-        "max_combo": recent_scores.max_combo,
-        "statistics": recent_scores.statistics,
-        "mods": recent_scores.mods || [],
-        "passed": recent_scores.passed !== undefined ? recent_scores.passed : true,
-        "pp": pre_calculated.pp,
-        "rank": recent_scores.rank,
-        "started_at": recent_scores.started_at,
-        "total_score": recent_scores.total_score,
-        "username": recent_scores.user?.username || `User ${recent_scores.user_id}`,
-        "map_completion": pre_calculated.map_completion,
-        "beatmap_max_combo": pre_calculated.beatmap_max_combo,
-        "beatmap_status": recent_scores.beatmap.status,
-        "beatmap_id": recent_scores.beatmap.id.toString(),
-        "user_id": (recent_scores.user_id || recent_scores.user?.id || '').toString(),
-        "country_code": recent_scores.user?.country_code || null,
-        "multi_failed": false,
-        // Incluir classic_total_score temporalmente para que normalizeScore resuelva legacy_total_score correctamente en jugadores Lazer
-        "classic_total_score": recent_scores.classic_total_score || null
-    };
-
-    normalizeScore(score);
-    // Eliminar campos que no existen en la tabla de Supabase
-    delete score.classic_total_score;
-    delete score.score;
-
-    // Play fallida en multi
-    if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
-
-    // Si es una play en un mapa unranked o es una play fallida, o si está forzado a guardar
-    if (unranked_statuses.has(recent_scores.beatmap.status) || !score.passed || force_save) {
-        const { getSupabaseClient } = require("../../db/database.js");
-        const supabase = getSupabaseClient();
-
-        if (!supabase) {
-            console.warn("⚠️ Supabase no está conectado.");
-            return;
-        }
-
-        try {
-            // Si es una play fallida
-            if (!score.passed) {
-                // Buscar si ya existe una score fallida del mismo tipo (solo o multi)
-                const { data: existingFails, error: selectError } = await supabase
-                    .from('local_scores')
-                    .select('*')
-                    .eq('beatmap_id', score.beatmap_id)
-                    .eq('user_id', score.user_id)
-                    .eq('passed', false)
-                    .eq('multi_failed', score.multi_failed);
-
-                if (selectError) throw selectError;
-
-                const existingScore = existingFails && existingFails[0];
-
-                if (existingScore) {
-                    // Reemplazar si es la misma play (mismo timestamp o misma puntuación) o si es mejor
-                    const samePlay = existingScore.ended_at === score.ended_at || 
-                                     Number(existingScore.legacy_total_score) === Number(score.legacy_total_score);
-                    
-                    const isBetter = score.multi_failed ? 
-                        (score.pp > existingScore.pp) : 
-                        (score.map_completion > existingScore.map_completion);
-
-                    if (samePlay || isBetter) {
-                        const { error: updateError } = await supabase
-                            .from('local_scores')
-                            .update(score)
-                            .eq('id', existingScore.id);
-                        
-                        if (updateError) throw updateError;
-                    }
-                } else {
-                    const { error: insertError } = await supabase
-                        .from('local_scores')
-                        .insert(score);
-                    
-                    if (insertError) throw insertError;
-                }
-            } else {
-                // Obtener todas las puntuaciones pasadas existentes
-                const { data: existingPassed, error: selectError } = await supabase
-                    .from('local_scores')
-                    .select('*')
-                    .eq('beatmap_id', score.beatmap_id)
-                    .eq('user_id', score.user_id)
-                    .eq('passed', true);
-
-                if (selectError) throw selectError;
-
-                if (existingPassed && existingPassed.length > 0) {
-                    // Encontrar la mejor de las existentes
-                    const existingScore = existingPassed.reduce((a, b) => 
-                        (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b)
-                    );
-
-                    const samePlay = existingScore.ended_at === score.ended_at || 
-                                     Number(existingScore.legacy_total_score) === Number(score.legacy_total_score) ||
-                                     existingScore.pp === score.pp;
-
-                    const isBetter = Number(score.total_score || score.legacy_total_score || 0) >= Number(existingScore.total_score || existingScore.legacy_total_score || 0);
-
-                    if (samePlay || isBetter) {
-                        const { error: updateError } = await supabase
-                            .from('local_scores')
-                            .update(score)
-                            .eq('id', existingScore.id);
-                        
-                        if (updateError) throw updateError;
-                    }
-
-                    // Limpiar duplicados si hubiera más de un registro en la base de datos
-                    const idsToDelete = existingPassed.filter(s => s.id !== existingScore.id).map(s => s.id);
-                    if (idsToDelete.length > 0) {
-                        await supabase
-                            .from('local_scores')
-                            .delete()
-                            .in('id', idsToDelete);
-                    }
-                } else {
-                    const { error: insertError } = await supabase
-                        .from('local_scores')
-                        .insert(score);
-                    
-                    if (insertError) throw insertError;
-                }
-            }
-        } catch (err) {
-            console.error('❌ Error al guardar score en Supabase:', err.message);
-        }
-    }
-}
+// Lógica de saveUserscore delegada a OsuScoreModel
 
 // convertGatariMods delegada a OsuScoreModel
 
