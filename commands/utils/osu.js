@@ -151,10 +151,10 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
 
     const score = {
         "accuracy": recent_scores.accuracy,
-        "ended_at": recent_scores.ended_at,
+        "ended_at": recent_scores.ended_at || recent_scores.created_at || new Date().toISOString(),
         "legacy_total_score": recent_scores.legacy_total_score,
         "max_combo": recent_scores.max_combo,
-        "statistics": recent_scores.statistics,
+        "statistics": recent_scores.statistics || {},
         "mods": recent_scores.mods || [],
         "passed": recent_scores.passed !== undefined ? recent_scores.passed : true,
         "pp": pre_calculated.pp,
