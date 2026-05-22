@@ -4,7 +4,7 @@ const axios = require('axios');
 const https = require('https');
 const rosu = require("rosu-pp-js");
 const { v2 } = require('osu-api-extended');
-const { NewloadToken } = require('./OsuUserModel.js');
+const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
 
 const beatmapCache = new Map();
@@ -93,7 +93,7 @@ async function getBeatmap(beatmap_id) {
         return cached.data;
     }
 
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
 
     const result = await v2.beatmaps.details({
         type: 'difficulty',
@@ -108,7 +108,7 @@ async function getBeatmap(beatmap_id) {
  * Busca los detalles de dificultad de un beatmap dado su hash MD5.
  */
 async function lookupBeatmapByMD5(md5) {
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
     try {
         const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: md5 });
         return result;
@@ -117,9 +117,11 @@ async function lookupBeatmapByMD5(md5) {
     }
 }
 
-module.exports = {
+const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
     lookupBeatmapByMD5
 };
+
+module.exports = BeatmapModel;

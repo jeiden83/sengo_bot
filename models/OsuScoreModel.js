@@ -4,8 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const rosu = require("rosu-pp-js");
 const { getSupabaseClient } = require("../db/database.js");
-const { loadToken, NewloadToken, getOsuUser } = require('./OsuUserModel.js');
-const { getBeatmap_osu, getBeatmap } = require('./BeatmapModel.js');
+const OsuUserModel = require('./OsuUserModel.js');
+const BeatmapModel = require('./BeatmapModel.js');
 const { Collection } = require('discord.js');
 const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 
@@ -263,7 +263,7 @@ async function getUserRecentScores(parsed_args) {
             console.error("Error fetching gatari recent scores:", e);
         }
     } else {
-        await NewloadToken();
+        await OsuUserModel.NewloadToken();
         try {
             let globalToken = null;
             try {
@@ -427,7 +427,7 @@ async function _getUserTopScores(parsed_args) {
         }
     }
 
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
 
     try {
         let globalToken = null;
@@ -515,7 +515,7 @@ async function _getUserTopScores(parsed_args) {
  * Obtiene los detalles de una score dada su ID online.
  */
 async function getScoreDetails(score_id) {
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
     try {
         const result = await v2.scores.details({ id: score_id });
         if (result) normalizeScore(result);
@@ -529,7 +529,7 @@ async function getScoreDetails(score_id) {
  * Obtiene la score de un usuario específico en un beatmap específico.
  */
 async function getBeatmapUserScore(parsed_args) {
-    const osu_token = await loadToken();
+    const osu_token = await OsuUserModel.loadToken();
     const gamemode = parsed_args.gamemode || 'osu';
     const mods = parsed_args.mods || '';
     const beatmapId = parsed_args.beatmap_url;
@@ -574,7 +574,7 @@ async function getBeatmapUserAllScores(parsed_args) {
         return cached.scores;
     }
 
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
 
     let result = [];
     try {
@@ -604,7 +604,7 @@ async function getBeatmapUserAllScores(parsed_args) {
  * Obtiene las jugadas recientes usando osu-web.js (usado en comandos antiguos).
  */
 async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails = true) {
-    const osu_token = await loadToken();
+    const osu_token = await OsuUserModel.loadToken();
     const gamemode = parsed_args.gamemode || 'osu';
     const { Client } = require('osu-web.js');
 
@@ -804,7 +804,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
 }
 
 async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null) {
-    await NewloadToken();
+    await OsuUserModel.NewloadToken();
     const scores = new Collection();
 
     const cacheDir = path.join(process.cwd(), 'db/local/gap_cache');
@@ -826,7 +826,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
         }
     }
 
-    const metadata = beatmapMetadata || await getBeatmap(beatmapId);
+    const metadata = beatmapMetadata || await BeatmapModel.getBeatmap(beatmapId);
     const needsPP = metadata && (metadata.status === 'loved' || metadata.status === 'qualified');
 
     const supabase = getSupabaseClient();
@@ -952,7 +952,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
     try {
         if (needsPP) {
             try {
-                mapInstance = await getBeatmap_osu(metadata.beatmapset_id, metadata.id, metadata);
+                mapInstance = await BeatmapModel.getBeatmap_osu(metadata.beatmapset_id, metadata.id, metadata);
             } catch (e) {
                 console.error("[GAP] Error al cargar el beatmap para el cálculo de PP:", e);
             }
@@ -1402,9 +1402,9 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
             // 1. Precarga del Beatmap y del archivo .osu
             if (beatmapId) {
                 try {
-                    const mapMeta = await getBeatmap(beatmapId);
+                    const mapMeta = await BeatmapModel.getBeatmap(beatmapId);
                     if (mapMeta && mapMeta.beatmapset_id) {
-                        await getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
+                        await BeatmapModel.getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
                         console.log(`[BG-PRELOAD] Mapa precargado: ${beatmapId}`);
 
                         // Si hay un mensaje provisto y pertenece a una guild, gatillar precarga del gap y compare
@@ -1442,7 +1442,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                             };
 
                             await Promise.all([
-                                getOsuUser(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar perfil de ${osuUsername}:`, e)),
+                                OsuUserModel.getOsuUser(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar perfil de ${osuUsername}:`, e)),
                                 getUserTopScores(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar top scores de ${osuUsername}:`, e))
                             ]);
                             console.log(`[BG-PRELOAD] Perfil/top precargado: ${osuUsername}`);
@@ -1458,7 +1458,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
     }
 }
 
-module.exports = {
+const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
     calculatePP,
@@ -1476,3 +1476,5 @@ module.exports = {
     handlePredictivePreload,
     triggerBackgroundOsuPreload
 };
+
+module.exports = OsuScoreModel;

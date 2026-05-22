@@ -1,12 +1,12 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
-const { getLinkedUsers } = require("../../../models/OsuUserModel.js");
+const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
         const guildId = targetGuildId || (!bypass && message.guild ? message.guild.id : null);
-        const linkedUsers = await getLinkedUsers({ guildId, bypass });
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, bypass });
 
         if (!linkedUsers || linkedUsers.length === 0) {
             return [];

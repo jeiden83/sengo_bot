@@ -1,23 +1,6 @@
-const { getOsuUser, loadToken, NewloadToken, getLinkedUser } = require("../../models/OsuUserModel.js");
-const { getBeatmap_osu, getBeatmap, lookupBeatmapByMD5 } = require("../../models/BeatmapModel.js");
-const { 
-    normalizeScore,
-    normalizeStatistics,
-    calculatePP,
-    getUnrankedBeatmapUserAllScores,
-    getUserRecentScores,
-    getUserTopScores,
-    getScoreDetails,
-    getBeatmapUserScore,
-    getBeatmapUserAllScores,
-    getRecentScores,
-    saveUserscore,
-    getNewBeatmapUserScores,
-    getUnrankedUserScores,
-    triggerBackgroundGapCache,
-    handlePredictivePreload,
-    triggerBackgroundOsuPreload
-} = require("../../models/OsuScoreModel.js");
+const OsuUserModel = require("../../models/OsuUserModel.js");
+const BeatmapModel = require("../../models/BeatmapModel.js");
+const OsuScoreModel = require("../../models/OsuScoreModel.js");
 
 
 const getGamemodeFromMessage = (msg) => {
@@ -143,7 +126,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     let user_found;
     
     // Buscamos el user linkeado con el bot 
-    user_found = await getLinkedUser(res.User, discord_id);
+    user_found = await OsuUserModel.getLinkedUser(res.User, discord_id);
 
     // Si no hay args
     const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
@@ -168,7 +151,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
             // Si es una id de discord, buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
             if(arg_user.length >= 17) {
-                user_found = await getLinkedUser(res.User, arg_user);
+                user_found = await OsuUserModel.getLinkedUser(res.User, arg_user);
 
                 if(!user_found) return {'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args};
                 parsed_args.username[0] = user_found.osu_id;
@@ -177,7 +160,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
             } else {
 
                 // Se actualiza para cambiarlo a la id
-                const osuUser = await getOsuUser(parsed_args);
+                const osuUser = await OsuUserModel.getOsuUser(parsed_args);
                 if (typeof osuUser === 'string') {
                     return {'fn_response': osuUser, 'user_found': user_found, 'reparsed_args': parsed_args};
                 }
@@ -667,30 +650,30 @@ async function argsParser(args, command_parameters){
 // Funciones de gap y preload movidas a OsuScoreModel.js
 
 module.exports = { 
-    handlePredictivePreload,
-    triggerBackgroundOsuPreload, 
-    getUnrankedUserScores, 
-    NewloadToken, 
-    getNewBeatmapUserScores,
-    getUnrankedBeatmapUserAllScores,
-    getBeatmap_osu,
-    saveUserscore,
-    getUserRecentScores,
-    getUserTopScores,
-    getBeatmap,
-    lookupBeatmapByMD5,
-    getScoreDetails,
+    handlePredictivePreload: OsuScoreModel.handlePredictivePreload,
+    triggerBackgroundOsuPreload: OsuScoreModel.triggerBackgroundOsuPreload, 
+    getUnrankedUserScores: OsuScoreModel.getUnrankedUserScores, 
+    NewloadToken: OsuUserModel.NewloadToken, 
+    getNewBeatmapUserScores: OsuScoreModel.getNewBeatmapUserScores,
+    getUnrankedBeatmapUserAllScores: OsuScoreModel.getUnrankedBeatmapUserAllScores,
+    getBeatmap_osu: BeatmapModel.getBeatmap_osu,
+    saveUserscore: OsuScoreModel.saveUserscore,
+    getUserRecentScores: OsuScoreModel.getUserRecentScores,
+    getUserTopScores: OsuScoreModel.getUserTopScores,
+    getBeatmap: BeatmapModel.getBeatmap,
+    lookupBeatmapByMD5: BeatmapModel.lookupBeatmapByMD5,
+    getScoreDetails: OsuScoreModel.getScoreDetails,
     findBeatmapInChannel,
     parsingCommandFunction,
-    getBeatmapUserScore,
-    loadToken, 
-    getOsuUser, 
-    getRecentScores, 
+    getBeatmapUserScore: OsuScoreModel.getBeatmapUserScore,
+    loadToken: OsuUserModel.loadToken, 
+    getOsuUser: OsuUserModel.getOsuUser, 
+    getRecentScores: OsuScoreModel.getRecentScores, 
     argsParser, 
     argsParserNoCommand, 
-    getBeatmapUserAllScores,
-    calculatePP,
-    triggerBackgroundGapCache,
-    normalizeScore,
-    normalizeStatistics
+    getBeatmapUserAllScores: OsuScoreModel.getBeatmapUserAllScores,
+    calculatePP: OsuScoreModel.calculatePP,
+    triggerBackgroundGapCache: OsuScoreModel.triggerBackgroundGapCache,
+    normalizeScore: OsuScoreModel.normalizeScore,
+    normalizeStatistics: OsuScoreModel.normalizeStatistics
 }

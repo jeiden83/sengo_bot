@@ -1,6 +1,6 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
 const fetch = require('node-fetch');
-const { getSupporterTokenForCountry, getOAuthTokenRecord, getOAuthTokenRecordByUsernameOrId } = require("../../../models/OsuUserModel.js");
+const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 const leaderboardCache = new Map();
@@ -62,7 +62,7 @@ async function run(messages, args) {
     if (countryFilter === "SELF") {
         let dbCountry = null;
         try {
-            const userToken = await getOAuthTokenRecord(message.author.id);
+            const userToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
             if (userToken && userToken.country_code) {
                 dbCountry = userToken.country_code.toUpperCase();
             }
@@ -125,7 +125,7 @@ async function run(messages, args) {
     // 0. Caso leaderboard de amigos
     if (friendsFilter) {
         const searchFilter = friendsFilter === "SELF" ? message.author.id : friendsFilter;
-        const userToken = await getOAuthTokenRecordByUsernameOrId(searchFilter);
+        const userToken = await OsuUserModel.getOAuthTokenRecordByUsernameOrId(searchFilter);
         if (!userToken) {
             return `❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **${friendsFilter === "SELF" ? message.author.username : friendsFilter}** en la base de datos.`;
         }
@@ -162,7 +162,7 @@ async function run(messages, args) {
     // 1. Caso leaderboard nacional
     else if (countryFilter) {
         if (logger) logger.process(`Buscando supporter de ${countryFilter} en la pool`);
-        const supporterRes = await getSupporterTokenForCountry(countryFilter);
+        const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
         if (!supporterRes) {
             return `❌ No hay ningún usuario de **${countryFilter}** con osu! supporter vinculado al bot en la base de datos por oAuth para poder realizar esta consulta.`;
         }
@@ -191,7 +191,7 @@ async function run(messages, args) {
     // 2. Caso leaderboard con mods exactos (Dedicated mods)
     else if (modsArray.length > 0) {
         if (logger) logger.process(`Buscando algún supporter en la pool para filtrar mods`);
-        const supporterRes = await getSupporterTokenForCountry("ANY");
+        const supporterRes = await OsuUserModel.getSupporterTokenForCountry("ANY");
         if (supporterRes) {
             usedSupporter = supporterRes;
             if (logger) logger.process(`Obteniendo leaderboard con mods exactos usando el token de ${supporterRes.username}`);

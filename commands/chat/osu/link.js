@@ -1,4 +1,4 @@
-const { linkUser, unlinkUser, getOsuUser } = require("../../../models/OsuUserModel.js");
+const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { argsParserNoCommand } = require("../../utils/osu.js"); 
 const { getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
 const { doOsuOAuthEmbed } = require("../../../views/osuUserViews.js");
@@ -42,7 +42,7 @@ async function run(messages, args) {
         const isUnlink = args && args.some(arg => typeof arg === 'string' && (arg.toLowerCase() === 'unlink' || arg.toLowerCase() === 'desvincular'));
         if (isUnlink) {
             if (logger) logger.process("Eliminando vinculación de la base de datos...");
-            await unlinkUser(res.User, discord_id);
+            await OsuUserModel.unlinkUser(res.User, discord_id);
             return `Se ha **desvinculado** tu cuenta de osu! correctamente del bot.`;
         }
 
@@ -52,18 +52,18 @@ async function run(messages, args) {
         // Si no hay un nombre
         if (parsed_args.username[0].length == 0) {
             if (logger) logger.process("Eliminando vinculación de la base de datos (sin argumentos)...");
-            await unlinkUser(res.User, discord_id);
+            await OsuUserModel.unlinkUser(res.User, discord_id);
             return `Se ha **desvinculado** el usuario \`${message.author.username}\` del **bot** correctamente.`;
         }
 
         // Hay un nombre en el argumento
         if (logger) logger.process(`Buscando usuario '${parsed_args.username[0]}' en la API de osu!...`);
-        const osu_user = await getOsuUser(parsed_args);
+        const osu_user = await OsuUserModel.getOsuUser(parsed_args);
 
         if (typeof osu_user === "string") return `El usuario de osu! ${parsed_args.username[0]} no existe.`;
         
         if (logger) logger.process(`Guardando vinculación para '${osu_user.username}' en la base de datos...`);
-        return linkUser(res.User, discord_id, osu_user.id, parsed_args.gamemode)
+        return OsuUserModel.linkUser(res.User, discord_id, osu_user.id, parsed_args.gamemode)
             .then(res => (res.status === 1)?
                 `Se ha **vinculado** al usuario de osu! \`${osu_user.username}\` correctamente.` : `Error al vincular el usuario.`
         );

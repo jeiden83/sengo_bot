@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { getAllOAuthUsers } = require('../../../models/OsuUserModel.js');
+const OsuUserModel = require('../../../models/OsuUserModel.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
 
 async function run(messages, args) {
@@ -9,7 +9,7 @@ async function run(messages, args) {
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#378a91';
 
     try {
-        const data = await getAllOAuthUsers();
+        const data = await OsuUserModel.getAllOAuthUsers();
 
         if (data && data.length > 0) {
             // Ordenar alfabéticamente por país y luego por username

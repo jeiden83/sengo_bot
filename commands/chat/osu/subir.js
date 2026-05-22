@@ -1,7 +1,7 @@
 const config = require("../../../config.js");
 const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
-const { getLinkedUser } = require("../../../models/OsuUserModel.js");
+const OsuUserModel = require("../../../models/OsuUserModel.js");
 
 const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
 const axios = require('axios');
@@ -547,7 +547,7 @@ async function run(messages, args, initialized_data) {
     if (typeof osuUser !== 'string') {
         user_id = osuUser.id;
     } else {
-        const linked = await getLinkedUser(res.User, message.author.id);
+        const linked = await OsuUserModel.getLinkedUser(res.User, message.author.id);
         if (linked) user_id = linked.osu_id;
     }
 
