@@ -1,0 +1,652 @@
+const OsuUserModel = require("../../models/OsuUserModel.js");
+
+const getGamemodeFromMessage = (msg) => {
+    if (!msg) return null;
+    
+    // 1. Buscar en embeds
+    const e = msg.embeds?.[0];
+    if (e) {
+        const authorText = (e.author?.name || '').toLowerCase();
+        const titleText = (e.title || '').toLowerCase();
+        const descText = (e.description || '').toLowerCase();
+        const footerText = (e.footer?.text || '').toLowerCase();
+        const combined = `${authorText} | ${titleText} | ${descText} | ${footerText}`;
+
+        if (combined.includes('mania')) return 'mania';
+        if (combined.includes('taiko')) return 'taiko';
+        if (combined.includes('fruits') || combined.includes('ctb') || combined.includes('catch')) return 'fruits';
+        if (combined.includes('std') || combined.includes('standard') || combined.includes('osu!')) {
+            if (!combined.includes('mania') && !combined.includes('taiko') && !combined.includes('fruits')) {
+                return 'osu';
+            }
+        }
+    }
+
+    // 2. Buscar en contenido de texto
+    const content = (msg.content || '').toLowerCase();
+    if (content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
+    if (content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
+    if (content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits') || content.includes('catch')) return 'fruits';
+    if (content.includes('osu!std') || content.includes(' en standard') || content.includes(' en osu')) return 'osu';
+
+    return null;
+};
+
+async function findBeatmapInChannel(message, isReply, targetIndex = 1){
+    const extractAllIds = str => {
+        if (!str) return [];
+        const ids = [];
+        const regex = /#(?:osu|taiko|fruits|mania)\/(\d+)|osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/g;
+        let match;
+        while ((match = regex.exec(str)) !== null) {
+            const id = match[1] || match[2];
+            if (id) ids.push(id);
+        }
+        return ids;
+    };
+
+    const getBeatmapIdFromMessage = (msg, index = 1) => {
+        if (!msg) return { beatmap_url: null, fromList: false };
+        const e = msg.embeds?.[0];
+
+        // 1. Check description
+        if (e?.description) {
+            const ids = extractAllIds(e.description);
+            if (ids.length > 0) {
+                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
+                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
+            }
+        }
+
+        // 2. Check fields
+        if (e?.fields) {
+            let ids = [];
+            for (const field of e.fields) {
+                ids.push(...extractAllIds(field.value));
+                ids.push(...extractAllIds(field.name));
+            }
+            if (ids.length > 0) {
+                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
+                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
+            }
+        }
+
+        // 3. Check other elements
+        let otherIds = [];
+        if (msg.content) otherIds.push(...extractAllIds(msg.content));
+        if (e?.url) otherIds.push(...extractAllIds(e.url));
+        if (e?.author?.url) otherIds.push(...extractAllIds(e.author.url));
+        if (e?.title) otherIds.push(...extractAllIds(e.title));
+
+        if (otherIds.length > 0) {
+            const uniqueOther = [];
+            for (const id of otherIds) {
+                if (!uniqueOther.includes(id)) {
+                    uniqueOther.push(id);
+                }
+            }
+            const idx = (index >= 1 && index <= uniqueOther.length) ? index - 1 : 0;
+            return { beatmap_url: uniqueOther[idx], fromList: uniqueOther.length > 1 };
+        }
+
+        return { beatmap_url: null, fromList: false };
+    };
+
+    try {
+        if (isReply) {
+            const { beatmap_url, fromList } = getBeatmapIdFromMessage(message, targetIndex);
+            const gamemode = getGamemodeFromMessage(message);
+            return beatmap_url
+                ? { beatmap_url, gamemode, fromList, bad_response: 'shh' }
+                : { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        }
+
+        const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
+        for (const msg of fetch_messages.values()) {
+            const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
+            if (beatmap_url) {
+                const gamemode = getGamemodeFromMessage(msg);
+                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
+            }
+        }
+
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+    } catch (error) {
+        console.error("<#> findBeatmapInChannel error:", error);
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+    }
+}
+
+async function parsingCommandFunction(parsed_args, command_parameters){
+    const {message, res, command_function, beatmap_url, gamemode} = command_parameters;
+    const discord_id = message.author.id;
+    let user_found;
+    
+    // Buscamos el user linkeado con el bot 
+    user_found = await OsuUserModel.getLinkedUser(res.User, discord_id);
+
+    // Si no hay args
+    const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
+    if(no_args || parsed_args.override === 'rm' && parsed_args.username[0] == ''){
+
+        // si no hay uno linkeado al bot
+        if(!user_found) return {'fn_response': `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+
+        // Aplicamos el comando con el linkeado al bot
+        const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
+        parsed_args.gamemode = defaultMode;
+        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : defaultMode});
+        return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
+    // Si hay args
+    } else {
+
+        // Si entre los args hubo uno de username
+        if(parsed_args.username.length != 0 && parsed_args.username[0] != "") {
+            
+            // Para manejar mejor el username
+            let arg_user = parsed_args.username[0].split(" ")[0];
+
+            // Si es una id de discord, buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
+            if(arg_user.length >= 17) {
+                user_found = await OsuUserModel.getLinkedUser(res.User, arg_user);
+
+                if(!user_found) return {'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+                parsed_args.username[0] = user_found.osu_id;
+
+            // Se busca el nombre de osu 
+            } else {
+
+                // Se actualiza para cambiarlo a la id
+                const osuUser = await OsuUserModel.getOsuUser(parsed_args);
+                if (typeof osuUser === 'string') {
+                    return {'fn_response': osuUser, 'user_found': user_found, 'reparsed_args': parsed_args};
+                }
+                parsed_args.username[0] = osuUser.id;
+            }
+
+        // Si no hubo un username entre los args
+        } else {
+
+            // Se usa el linkeado al bot
+            if(!user_found) return { 'fn_response': `No se encontro un usuario en \`osu\` linkeado al usuario \`${message.author.username}\` de discord.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+            parsed_args.username[0] = user_found.osu_id;
+        }
+
+        // Se hace la peticion con los args
+        parsed_args['beatmap_url'] = beatmap_url;   // agregamos para el >c
+        if (!parsed_args.gamemode) {
+            if (command_parameters.ignore_main_gamemode && gamemode) {
+                parsed_args.gamemode = gamemode;
+            } else if (user_found && user_found.main_gamemode) {
+                parsed_args.gamemode = user_found.main_gamemode;
+            } else if (gamemode) {
+                parsed_args.gamemode = gamemode;
+            }
+        } else if (!parsed_args.gamemode && gamemode) {
+            parsed_args.gamemode = gamemode;
+        }
+
+        const fn_response = await command_function(parsed_args);
+
+        return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
+    }
+}
+
+function argsParserNoCommand(args) {
+    let username = [];
+    let gamemode = args.gamemode || "";
+    let server = args.server || "bancho";
+    let index = 1;
+    let explicitIndex = false;
+    let page = 1;
+    let listMode = false;
+    let modFilter = null;
+    let modContainFilter = null;
+    let searchFilter = null;
+    let ppThreshold = null;
+    let recentSort = false;
+    let comboSort = false;
+    let accSort = false;
+    let bestSort = false;
+    let detailed = false;
+    let filterPass = false;
+    let targetGuildId = null;
+    let country = null;
+    let friendsFilter = null;
+    let beatmap_url = null;
+    let args_aux = new String(args);
+
+    const gamemode_set = {
+        'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits'
+    };
+    const server_set = {
+        'gatari': 'gatari', 'bancho': 'bancho'
+    };
+
+    const args_commands = [
+
+        // Si empieza con un guion
+        function (args) {
+            if (gamemode_set[args.slice(1)]) {
+                gamemode = gamemode_set[args.slice(1)];
+                return true;
+            }
+            if (server_set[args.slice(1)]) {
+                server = server_set[args.slice(1)];
+                return true;
+            }
+            return false;
+        },
+
+        // Si empieza con el selector de modo
+        function (args) {
+            if (args.startsWith("m=")) {
+                gamemode = gamemode_set[args.split("=")[1]];
+                return true;
+            }
+            if (args.startsWith("mode") || args.startsWith("modo")) {
+                gamemode = gamemode_set[args.split("=")[1]];
+                return true;
+            }
+            return false;
+        },
+
+        // Si empieza con <@ y termina con > (discord_tag)
+        function (args) {
+            if (args.startsWith("<@") && args.endsWith(">")) {
+                username.push(args.match(/\d+/)[0]);
+                return true;
+            }
+            return false;
+        },
+
+        // Si el argumento es un numero de tamaño 18 (discord_id)
+        function (args) {
+            if (args.length >= 17) {
+                username.push(args);
+                return true;
+            }
+            return false;
+        }
+    ];
+
+    // Separamos por las comas y revisamos cada args_commands por cada args del mensaje
+    let args_list = args_aux.split(",");
+    
+    let grouped_args = [];
+    let inside_quotes = false;
+    let quote_char = "";
+    let temp_quote_arg = "";
+
+    for (let j = 0; j < args_list.length; j++) {
+        let current = args_list[j];
+        
+        // Si empieza y termina con la misma comilla (ya sea " o ')
+        if ((current.startsWith('"') && current.endsWith('"') && current.length > 1) ||
+            (current.startsWith("'") && current.endsWith("'") && current.length > 1)) {
+            grouped_args.push(current.slice(1, -1));
+            continue;
+        }
+
+        if (!inside_quotes && (current.startsWith('"') || current.startsWith("'"))) {
+            inside_quotes = true;
+            quote_char = current[0];
+            temp_quote_arg = current.slice(1);
+            continue;
+        }
+
+        if (inside_quotes && current.endsWith(quote_char)) {
+            inside_quotes = false;
+            temp_quote_arg += " " + current.slice(0, -1);
+            grouped_args.push(temp_quote_arg);
+            temp_quote_arg = "";
+            continue;
+        }
+
+        if (inside_quotes) {
+            temp_quote_arg += " " + current;
+        } else {
+            grouped_args.push(current);
+        }
+    }
+    if (inside_quotes && temp_quote_arg) {
+        grouped_args.push(temp_quote_arg);
+    }
+    args_list = grouped_args;
+
+    let skip_next = false;
+
+    for (let i = 0; i < args_list.length; i++) {
+        if (skip_next) {
+            skip_next = false;
+            continue;
+        }
+        let arg = args_list[i].trim();
+        if (!arg) continue;
+
+        // Si empieza con '+' (para mods exactos, ej: +HDHR)
+        if (arg.startsWith("+")) {
+            const possible_mods = arg.slice(1).toUpperCase().trim();
+            if (possible_mods.length > 0) {
+                modFilter = possible_mods;
+                continue;
+            }
+        }
+
+        // Si es el flag de -pais o -country
+        if (arg === "-pais" || arg === "-country") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    country = next_arg.toUpperCase();
+                    skip_next = true;
+                    continue;
+                }
+            }
+            country = "SELF";
+            continue;
+        }
+        if (arg.startsWith("-pais")) {
+            let next = arg.slice(5).trim();
+            country = next ? next.toUpperCase() : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-country")) {
+            let next = arg.slice(8).trim();
+            country = next ? next.toUpperCase() : "SELF";
+            continue;
+        }
+
+        // Si es el flag de -friends o -amigo o -amigos
+        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    friendsFilter = next_arg;
+                    skip_next = true;
+                    continue;
+                }
+            }
+            friendsFilter = "SELF";
+            continue;
+        }
+        if (arg.startsWith("-friends")) {
+            let next = arg.slice(8).trim();
+            friendsFilter = next ? next : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-amigos")) {
+            let next = arg.slice(7).trim();
+            friendsFilter = next ? next : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-amigo")) {
+            let next = arg.slice(6).trim();
+            friendsFilter = next ? next : "SELF";
+            continue;
+        }
+
+        // Si es una URL o ID de beatmap (evitando IDs de discord que son >= 17 digitos)
+        const extractId = str =>
+            str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+            str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+            str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+            (str?.match(/^\d{5,10}$/) ? str : null);
+
+        const possible_id = extractId(arg);
+        if (possible_id) {
+            beatmap_url = possible_id;
+            continue;
+        }
+
+        // Si es un modo de juego o servidor, los capturamos antes de cualquier otra regla (como -m)
+        if (arg.startsWith("-")) {
+            const possible_val = arg.slice(1).toLowerCase();
+            if (gamemode_set[possible_val]) {
+                gamemode = gamemode_set[possible_val];
+                continue;
+            }
+            if (server_set[possible_val]) {
+                server = server_set[possible_val];
+                continue;
+            }
+        }
+
+        // Si es exactamente "-l"
+        if (arg === "-l") {
+            listMode = true;
+            continue;
+        }
+
+        // Si es exactamente "-r"
+        if (arg === "-r") {
+            recentSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-c"
+        if (arg === "-c") {
+            comboSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-acc"
+        if (arg === "-acc") {
+            accSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-b"
+        if (arg === "-b") {
+            bestSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-d"
+        if (arg === "-d") {
+            detailed = true;
+            continue;
+        }
+
+        // Si es exactamente "-ps"
+        if (arg === "-ps") {
+            filterPass = true;
+            continue;
+        }
+
+        // Si es exactamente "-server"
+        if (arg === "-server") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                targetGuildId = next_arg;
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-server")) {
+            let next = arg.slice(7).trim();
+            if (next.length > 0) {
+                targetGuildId = next;
+                continue;
+            }
+        }
+
+        // Si es exactamente "-i"
+        if (arg === "-i") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseInt(next_arg);
+                if (!isNaN(num)) {
+                    index = num;
+                    explicitIndex = true;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        // Si empieza con "-i" seguido de un numero (ej: "-i2")
+        if (arg.startsWith("-i")) {
+            let num = parseInt(arg.slice(2));
+            if (!isNaN(num)) {
+                index = num;
+                explicitIndex = true;
+                continue;
+            }
+        }
+
+        // Si es exactamente "-p"
+        if (arg === "-p") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseInt(next_arg);
+                if (!isNaN(num)) {
+                    page = num;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        // Si empieza con "-p" seguido de un numero (ej: "-p2")
+        if (arg.startsWith("-p")) {
+            let num = parseInt(arg.slice(2));
+            if (!isNaN(num)) {
+                page = num;
+                continue;
+            }
+        }
+
+        // Si es exactamente "-mx" (revisar antes de -m para evitar falsos positivos)
+        if (arg === "-mx") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                modContainFilter = next_arg.toUpperCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-mx")) {
+            let next = arg.slice(3).trim();
+            if (next.length > 0) {
+                modContainFilter = next.toUpperCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-m"
+        if (arg === "-m") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                modFilter = next_arg.toUpperCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-m")) {
+            let next = arg.slice(2).trim();
+            if (next.length > 0) {
+                modFilter = next.toUpperCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-?"
+        if (arg === "-?") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                searchFilter = next_arg.toLowerCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-?")) {
+            let next = arg.slice(2).trim();
+            if (next.length > 0) {
+                searchFilter = next.toLowerCase();
+                continue;
+            }
+        }
+
+        // Si es exactamente "-g" o "-pp"
+        if (arg === "-g" || arg === "-pp") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                let num = parseFloat(next_arg);
+                if (!isNaN(num)) {
+                    ppThreshold = num;
+                    skip_next = true;
+                    continue;
+                }
+            }
+        }
+        if (arg.startsWith("-g")) {
+            let num = parseFloat(arg.slice(2).trim());
+            if (!isNaN(num)) {
+                ppThreshold = num;
+                continue;
+            }
+        }
+        if (arg.startsWith("-pp")) {
+            let num = parseFloat(arg.slice(3).trim());
+            if (!isNaN(num)) {
+                ppThreshold = num;
+                continue;
+            }
+        }
+
+        let handled = false;
+
+        args_commands.forEach(fn => {
+            if (fn(arg)) {
+                handled = true;
+            }
+        });
+
+        if (!handled) {
+            username.push(arg);
+        }
+    }
+
+
+    let parsed_args = {
+        'username': [username.map(x => x.replace(/"/g, "")).join(" ").trim()],
+        'gamemode': gamemode,
+        'server': server,
+        'index': index,
+        'explicitIndex': explicitIndex,
+        'page': page,
+        'listMode': listMode,
+        'modFilter': modFilter,
+        'modContainFilter': modContainFilter,
+        'searchFilter': searchFilter,
+        'ppThreshold': ppThreshold,
+        'recentSort': recentSort,
+        'comboSort': comboSort,
+        'accSort': accSort,
+        'bestSort': bestSort,
+        'detailed': detailed,
+        'filterPass': filterPass,
+        'targetGuildId': targetGuildId,
+        'country': country,
+        'friendsFilter': friendsFilter,
+        'beatmap_url': beatmap_url
+    };
+    return parsed_args;
+}
+
+async function argsParser(args, command_parameters){
+    const parsed_args = argsParserNoCommand(args);
+    const { fn_response, user_found, reparsed_args} = await parsingCommandFunction(parsed_args, command_parameters);
+
+    return {
+        'fn_response': fn_response,
+        'parsed_args': reparsed_args,
+        'user_found': user_found        
+    };
+}
+
+module.exports = {
+    argsParser,
+    argsParserNoCommand,
+    findBeatmapInChannel,
+    parsingCommandFunction
+};
