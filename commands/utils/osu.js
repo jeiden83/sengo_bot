@@ -1,4 +1,4 @@
-const { getOsuUser, loadToken, NewloadToken } = require("../../models/OsuUserModel.js");
+const { getOsuUser, loadToken, NewloadToken, getLinkedUser } = require("../../models/OsuUserModel.js");
 const { getBeatmap_osu, getBeatmap, lookupBeatmapByMD5 } = require("../../models/BeatmapModel.js");
 const { 
     normalizeScore,
@@ -143,7 +143,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     let user_found;
     
     // Buscamos el user linkeado con el bot 
-    user_found = await res.User.findOne({ discord_id });
+    user_found = await getLinkedUser(res.User, discord_id);
 
     // Si no hay args
     const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
@@ -168,7 +168,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
             // Si es una id de discord, buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
             if(arg_user.length >= 17) {
-                user_found = await res.User.findOne({ discord_id : arg_user });
+                user_found = await getLinkedUser(res.User, arg_user);
 
                 if(!user_found) return {'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args};
                 parsed_args.username[0] = user_found.osu_id;

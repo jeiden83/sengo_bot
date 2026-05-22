@@ -1,4 +1,5 @@
 const { getOsuUser } = require("../../utils/osu.js");
+const { getLinkedUser } = require("../../../models/OsuUserModel.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
@@ -17,7 +18,7 @@ async function run(messages, args) {
     const discord_id = message.author.id;
 
     // Buscar el usuario linkeado con el bot 
-    const user_found = await res.User.findOne({ discord_id });
+    const user_found = await getLinkedUser(res.User, discord_id);
 
     // Si no está linkeado al bot
     if (!user_found) return `Para usar el comando primero tiene que linkearse al bot.`;

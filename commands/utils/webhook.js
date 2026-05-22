@@ -8,6 +8,7 @@ const { EmbedBuilder, ActivityType } = require('discord.js');
 const fetch = require('node-fetch');
 const url = require('url');
 const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe, saveOAuthToken } = require('../../utils/osuAuth.js');
+const { getWebhookChannels } = require('../../db/database.js');
 
 function getFlagEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '';
@@ -535,7 +536,7 @@ async function handlePushEvent(client, dbRes, payload) {
     // Obtener canales registrados
     let registeredChannels = [];
     try {
-        registeredChannels = await dbRes.Webhook.find();
+        registeredChannels = await getWebhookChannels(dbRes.Webhook);
     } catch (err) {
         console.error("Error obteniendo canales de webhook desde la BD:", err);
         return;

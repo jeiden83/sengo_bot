@@ -1,5 +1,5 @@
 const { PermissionsBitField, EmbedBuilder } = require('discord.js');
-const { addWebhookChannel, deleteWebhookChannel } = require('../../../db/database.js');
+const { addWebhookChannel, deleteWebhookChannel, getWebhookChannels } = require('../../../db/database.js');
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
@@ -13,7 +13,7 @@ async function run(messages, args) {
 
         try {
             if (logger) logger.process("Listando canales de webhook registrados en la BD");
-            const channels = await Webhook.find();
+            const channels = await getWebhookChannels(Webhook);
 
             if (channels.length === 0) {
                 return "ℹ️ SengoBot no está escuchando webhooks en ningún canal actualmente.";

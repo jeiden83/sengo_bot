@@ -200,9 +200,18 @@ async function _getOsuUser(parsed_args) {
 }
 
 /**
- * Consulta un usuario vinculado de la base de datos 'users'.
+ * Consulta un usuario vinculado de la base de datos.
  */
-async function getLinkedUser(discordId) {
+async function getLinkedUser(User, discordId) {
+    if (User && typeof User.findOne === 'function') {
+        try {
+            return await User.findOne({ discord_id: discordId });
+        } catch (err) {
+            console.error(`Error al buscar vinculación para ${discordId} usando User.findOne:`, err);
+            return null;
+        }
+    }
+
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 

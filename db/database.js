@@ -175,8 +175,17 @@ async function deleteWebhookChannel(Webhook, channel_id) {
     }
 }
 
+async function getWebhookChannels(Webhook) {
+    try {
+        return await Webhook.find();
+    } catch (error) {
+        console.error('Error al obtener canales de webhook:', error);
+        throw error;
+    }
+}
+
 function getSupabaseClient() {
     return supabase;
 }
 
-module.exports = { connectDB, addUser, deleteUser, addWebhookChannel, deleteWebhookChannel, getSupabaseClient };
+module.exports = { connectDB, addUser, deleteUser, addWebhookChannel, deleteWebhookChannel, getWebhookChannels, getSupabaseClient };
