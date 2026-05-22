@@ -1881,9 +1881,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                         if (rateLimitCount > 0) {
                             errorDetails += ` (429 RateLimit: ${rateLimitCount})`;
                         }
-                        const uniqueTokensUsed = [...new Set(chunkTokensUsed)];
-                        const tokensStr = uniqueTokensUsed.length > 0 ? ` | Usando tokens de: ${uniqueTokensUsed.join(', ')}` : "";
-                        logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${tokensStr}${errorDetails}`);
+                        logger.process(`Progreso API: ${processedCount}/${usersToFetch.length} procesados${errorDetails}`);
                     }
                 }
             };
