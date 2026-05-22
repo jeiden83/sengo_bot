@@ -24,7 +24,69 @@ function clearUserScoresCache(userId) {
     }
 }
 
+function isValidDate(dateStr) {
+    if (!dateStr || dateStr === "null" || dateStr === "undefined" || dateStr === "NaN") return false;
+    const d = new Date(dateStr);
+    return !isNaN(d.getTime());
+}
+
+function normalizeStatistics(stats) {
+    stats = stats || {};
+    return {
+        great: stats.great !== undefined ? stats.great : (stats.count_300 !== undefined ? stats.count_300 : 0),
+        ok: stats.ok !== undefined ? stats.ok : (stats.count_100 !== undefined ? stats.count_100 : 0),
+        meh: stats.meh !== undefined ? stats.meh : (stats.count_50 !== undefined ? stats.count_50 : 0),
+        miss: stats.miss !== undefined ? stats.miss : (stats.count_miss !== undefined ? stats.count_miss : 0),
+        perfect: stats.perfect !== undefined ? stats.perfect : (stats.count_geki !== undefined ? stats.count_geki : 0),
+        good: stats.good !== undefined ? stats.good : (stats.count_katu !== undefined ? stats.count_katu : 0),
+        large_tick_hit: stats.large_tick_hit !== undefined ? stats.large_tick_hit : 0,
+        slider_tail_hit: stats.slider_tail_hit !== undefined ? stats.slider_tail_hit : 0,
+        ignore_hit: stats.ignore_hit !== undefined ? stats.ignore_hit : 0,
+        small_tick_miss: stats.small_tick_miss !== undefined ? stats.small_tick_miss : 0
+    };
+}
+
+function normalizeScore(score) {
+    if (!score) return null;
+    
+    score.statistics = normalizeStatistics(score.statistics);
+    
+    let resolvedEndedAt = null;
+    if (isValidDate(score.ended_at)) {
+        resolvedEndedAt = new Date(score.ended_at).toISOString();
+    } else if (isValidDate(score.created_at)) {
+        resolvedEndedAt = new Date(score.created_at).toISOString();
+    } else {
+        resolvedEndedAt = new Date().toISOString();
+    }
+    score.ended_at = resolvedEndedAt;
+
+    if (score.started_at && isValidDate(score.started_at)) {
+        score.started_at = new Date(score.started_at).toISOString();
+    } else {
+        score.started_at = null;
+    }
+    
+    const rawLegacy = score.legacy_total_score !== undefined && score.legacy_total_score !== null ? Number(score.legacy_total_score) : null;
+    const rawClassic = score.classic_total_score !== undefined && score.classic_total_score !== null ? Number(score.classic_total_score) : null;
+    const rawTotal = score.total_score !== undefined && score.total_score !== null ? Number(score.total_score) : null;
+    const rawScore = score.score !== undefined && score.score !== null ? Number(score.score) : null;
+
+    const resolvedLegacy = rawLegacy !== null ? rawLegacy : (rawClassic !== null ? rawClassic : (rawScore !== null ? rawScore : 0));
+    const resolvedTotal = rawTotal !== null ? rawTotal : (rawScore !== null ? rawScore : 0);
+    const resolvedClassic = rawClassic !== null ? rawClassic : (rawLegacy !== null ? rawLegacy : (rawScore !== null ? rawScore : 0));
+    const resolvedScore = rawScore !== null ? rawScore : (rawTotal !== null ? rawTotal : (rawLegacy !== null ? rawLegacy : 0));
+
+    score.legacy_total_score = resolvedLegacy;
+    score.total_score = resolvedTotal;
+    score.classic_total_score = resolvedClassic;
+    score.score = resolvedScore;
+
+    return score;
+}
+
 function calculatePP(recent_scores, map, maximo_pp, Attrs){
+	normalizeScore(recent_scores);
 	// Se consiguen las estadisticas de la score
 	const { great = 0, ok = 0, meh = 0, miss = 0, large_tick_hit = 0, slider_tail_hit = 0, ignore_hit = 0} = recent_scores.statistics;
 
@@ -147,14 +209,15 @@ async function NewloadToken(){
 // Usado para guardar la score del usuario en Supabase
 // Clave para tener una db propia de scores de usuarios
 async function saveUserscore(recent_scores, pre_calculated, force_save = false) {
+    normalizeScore(recent_scores);
     const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
 
     const score = {
         "accuracy": recent_scores.accuracy,
-        "ended_at": recent_scores.ended_at || recent_scores.created_at || new Date().toISOString(),
+        "ended_at": recent_scores.ended_at,
         "legacy_total_score": recent_scores.legacy_total_score,
         "max_combo": recent_scores.max_combo,
-        "statistics": recent_scores.statistics || {},
+        "statistics": recent_scores.statistics,
         "mods": recent_scores.mods || [],
         "passed": recent_scores.passed !== undefined ? recent_scores.passed : true,
         "pp": pre_calculated.pp,
@@ -170,6 +233,8 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
         "country_code": recent_scores.user?.country_code || null,
         "multi_failed": false
     };
+
+    normalizeScore(score);
 
     // Play fallida en multi
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
@@ -310,6 +375,7 @@ async function getUserRecentScores(parsed_args){
         clearUserScoresCache(parsed_args.username[0]);
     }
     const server = parsed_args.server || 'bancho';
+    let result = [];
 
     if (server === 'gatari') {
         try {
@@ -320,101 +386,108 @@ async function getUserRecentScores(parsed_args){
             const response = await fetch(reqUrl);
             const data = await response.json();
             
-            if (!data.scores || data.scores.length === 0) return [];
-            
-            const userResponse = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
-            const userData = await userResponse.json();
-            const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
+            if (data.scores && data.scores.length > 0) {
+                const userResponse = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
+                const userData = await userResponse.json();
+                const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
 
-            return data.scores.map(s => {
-                const passed = s.ranking !== "F";
-                return {
-                    accuracy: s.accuracy / 100,
-                    passed: passed,
-                    rank: s.ranking,
-                    mods: convertGatariMods(s.mods),
-                    max_combo: s.max_combo,
-                    statistics: {
-                        perfect: s.count_gekis,
-                        great: s.count_300,
-                        good: s.count_katu,
-                        ok: s.count_100,
-                        meh: s.count_50,
-                        miss: s.count_miss
-                    },
-                    pp: s.pp,
-                    total_score: s.score,
-                    legacy_total_score: s.score,
-                    ended_at: new Date(s.time * 1000).toISOString(),
-                    beatmap: {
-                        id: s.beatmap.beatmap_id,
-                        version: s.beatmap.version,
-                        difficulty_rating: s.beatmap.difficulty,
-                        mode: parsed_args.gamemode || 'osu',
-                        beatmapset_id: s.beatmap.beatmapset_id
-                    },
-                    beatmapset: {
-                        title: s.beatmap.title,
-                        covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
-                    },
-                    user: {
-                        username: u.username,
-                        id: u.id,
-                        country_code: u.country,
-                        avatar_url: `https://a.gatari.pw/${u.id}`,
-                        server: 'gatari'
-                    }
-                };
-            });
-        } catch (e) {
-            return [];
-        }
-    }
-
-    await NewloadToken();
-
-    try {
-        let globalToken = null;
-        try {
-            const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
-            globalToken = tokenData.access_token;
-        } catch (err) {
-            console.error("Error al leer osu_token.json:", err);
-        }
-
-        if (!globalToken) {
-            throw new Error("No global token available");
-        }
-
-        const urlObj = new URL(`https://osu.ppy.sh/api/v2/users/${parsed_args.username[0]}/scores/recent`);
-        urlObj.searchParams.append('mode', parsed_args.gamemode || "osu");
-        urlObj.searchParams.append('include_fails', '1');
-        urlObj.searchParams.append('limit', '100');
-
-        const apiRes = await fetch(urlObj.toString(), {
-            headers: {
-                'Authorization': `Bearer ${globalToken}`,
-                'Content-Type': 'application/json',
-                'x-api-version': '20240728'
+                result = data.scores.map(s => {
+                    const passed = s.ranking !== "F";
+                    return {
+                        accuracy: s.accuracy / 100,
+                        passed: passed,
+                        rank: s.ranking,
+                        mods: convertGatariMods(s.mods),
+                        max_combo: s.max_combo,
+                        statistics: {
+                            perfect: s.count_gekis,
+                            great: s.count_300,
+                            good: s.count_katu,
+                            ok: s.count_100,
+                            meh: s.count_50,
+                            miss: s.count_miss
+                        },
+                        pp: s.pp,
+                        total_score: s.score,
+                        legacy_total_score: s.score,
+                        ended_at: new Date(s.time * 1000).toISOString(),
+                        beatmap: {
+                            id: s.beatmap.beatmap_id,
+                            version: s.beatmap.version,
+                            difficulty_rating: s.beatmap.difficulty,
+                            mode: parsed_args.gamemode || 'osu',
+                            beatmapset_id: s.beatmap.beatmapset_id
+                        },
+                        beatmapset: {
+                            title: s.beatmap.title,
+                            covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.beatmapset_id}/covers/cover@2x.jpg` }
+                        },
+                        user: {
+                            username: u.username,
+                            id: u.id,
+                            country_code: u.country,
+                            avatar_url: `https://a.gatari.pw/${u.id}`,
+                            server: 'gatari'
+                        }
+                    };
+                });
             }
-        });
-
-        if (apiRes.ok) {
-            const resJson = await apiRes.json();
-            return resJson;
-        } else {
-            throw new Error(`Status ${apiRes.status}`);
+        } catch (e) {
+            console.error("Error fetching gatari recent scores:", e);
         }
-    } catch (e) {
-        console.error("Error fetching recent scores via fetch:", e);
-        return await v2.scores.list({
-            type: 'user_recent',
-            user_id: parsed_args.username[0],
-            mode: parsed_args.gamemode || "osu",
-            include_fails: true,
-            limit: 100,
-        });
+    } else {
+        await NewloadToken();
+        try {
+            let globalToken = null;
+            try {
+                const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+                globalToken = tokenData.access_token;
+            } catch (err) {
+                console.error("Error al leer osu_token.json:", err);
+            }
+
+            if (!globalToken) {
+                throw new Error("No global token available");
+            }
+
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/users/${parsed_args.username[0]}/scores/recent`);
+            urlObj.searchParams.append('mode', parsed_args.gamemode || "osu");
+            urlObj.searchParams.append('include_fails', '1');
+            urlObj.searchParams.append('limit', '100');
+
+            const apiRes = await fetch(urlObj.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${globalToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }
+            });
+
+            if (apiRes.ok) {
+                result = await apiRes.json();
+            } else {
+                throw new Error(`Status ${apiRes.status}`);
+            }
+        } catch (e) {
+            console.error("Error fetching recent scores via fetch:", e);
+            try {
+                result = await v2.scores.list({
+                    type: 'user_recent',
+                    user_id: parsed_args.username[0],
+                    mode: parsed_args.gamemode || "osu",
+                    include_fails: true,
+                    limit: 100,
+                });
+            } catch (err) {
+                console.error("Error in v2.scores.list user_recent fallback:", err);
+            }
+        }
     }
+
+    if (Array.isArray(result)) {
+        result.forEach(normalizeScore);
+    }
+    return result;
 }
 
 // Para obtener las mejores puntuaciones (top) de un usuario
@@ -517,13 +590,19 @@ async function getUserTopScores(parsed_args){
             }
         };
 
+        let result = [];
         const result1 = await fetchBest(0);
         if (!result1 || result1.length < 100) {
-            return result1 || [];
+            result = result1 || [];
+        } else {
+            const result2 = await fetchBest(100);
+            result = result1.concat(result2 || []);
         }
 
-        const result2 = await fetchBest(100);
-        return result1.concat(result2 || []);
+        if (Array.isArray(result)) {
+            result.forEach(normalizeScore);
+        }
+        return result;
     } catch (e) {
         console.error("Error fetching top scores via fetch:", e);
         try {
@@ -536,7 +615,9 @@ async function getUserTopScores(parsed_args){
             });
 
             if (!result1 || result1.length < 100) {
-                return result1 || [];
+                const res = result1 || [];
+                if (Array.isArray(res)) res.forEach(normalizeScore);
+                return res;
             }
 
             const result2 = await v2.scores.list({
@@ -547,7 +628,9 @@ async function getUserTopScores(parsed_args){
                 offset: 100
             });
 
-            return result1.concat(result2 || []);
+            const res = result1.concat(result2 || []);
+            if (Array.isArray(res)) res.forEach(normalizeScore);
+            return res;
         } catch (err) {
             console.error("Error al obtener mejores jugadas de Bancho en fallback:", err);
             return [];
@@ -745,6 +828,7 @@ async function getScoreDetails(score_id){
     await NewloadToken();
     try {
         const result = await v2.scores.details({ id: score_id });
+        if (result) normalizeScore(result);
         return result;
     } catch(e) {
         return null;
@@ -777,6 +861,7 @@ async function getBeatmapUserScore(parsed_args) {
             }
         });
 
+        if (response.data) normalizeScore(response.data);
         return response.data;
     } catch (error) {
         return 'Error obteniendo las puntuaciones'
@@ -811,6 +896,9 @@ async function getBeatmapUserAllScores(parsed_args){
     const local_scores = await getUnrankedBeatmapUserAllScores(parsed_args);  
 
     const allScores = result.concat(typeof local_scores === "string" ? [] : local_scores);
+    if (Array.isArray(allScores)) {
+        allScores.forEach(normalizeScore);
+    }
     userScoresCache.set(cacheKey, { scores: allScores, timestamp: now });
 
     return allScores;
@@ -828,7 +916,15 @@ async function getRecentScores(parsed_args, limit = 5, page = 0, include_fails =
             include_fails : include_fails
         }})
 
-    return res[0];
+    const scoreObj = res[0];
+    if (scoreObj) {
+        if (Array.isArray(scoreObj)) {
+            scoreObj.forEach(normalizeScore);
+        } else {
+            normalizeScore(scoreObj);
+        }
+    }
+    return scoreObj;
 }
 
 const getGamemodeFromMessage = (msg) => {
@@ -1870,13 +1966,13 @@ async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
                 for (const row of data) {
                     const uId = row.user_id.toString();
                     if (!tempUserScores[uId]) tempUserScores[uId] = [];
-                    tempUserScores[uId].push(row);
+                    tempUserScores[uId].push(normalizeScore(row));
                 }
 
                 // Elegir la mejor play de cada usuario
                 for (const uId in tempUserScores) {
                     const scoresList = tempUserScores[uId];
-                    const best = scoresList.reduce((a, b) => (Number(a.total_score) > Number(b.total_score) ? a : b));
+                    const best = scoresList.reduce((a, b) => (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b));
                     userScores.set(uId, best);
                 }
             }
@@ -1907,16 +2003,18 @@ async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
                 }
 
                 if (localList.length > 0) {
-                    const bestLocal = localList.reduce((a, b) => (Number(a.total_score) > Number(b.total_score) ? a : b));
+                    const bestLocal = localList.reduce((a, b) => (Number(a.total_score || a.legacy_total_score || a.score || 0) > Number(b.total_score || b.legacy_total_score || b.score || 0) ? a : b));
                     const uId = userId.toString();
+                    const normalizedLocal = normalizeScore(bestLocal);
+                    
                     // Si ya existe de Supabase, quedarnos con la de mayor total_score
                     if (userScores.has(uId)) {
                         const existing = userScores.get(uId);
-                        if (Number(bestLocal.total_score) > Number(existing.total_score)) {
-                            userScores.set(uId, bestLocal);
+                        if (Number(normalizedLocal.total_score) > Number(existing.total_score)) {
+                            userScores.set(uId, normalizedLocal);
                         }
                     } else {
-                        userScores.set(uId, bestLocal);
+                        userScores.set(uId, normalizedLocal);
                     }
                 }
             }
@@ -2014,5 +2112,7 @@ module.exports = {
     argsParserNoCommand, 
     getBeatmapUserAllScores,
     calculatePP,
-    triggerBackgroundGapCache
+    triggerBackgroundGapCache,
+    normalizeScore,
+    normalizeStatistics
 }
