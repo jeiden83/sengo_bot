@@ -94,24 +94,55 @@ async function run(messages, args) {
             return `❌ La base de datos no está disponible en este momento.`;
         }
 
-        const { data: dbTokens, error } = await supabase
+        const { data: dbUsers, error: dbUsersError } = await supabase
+            .from('users')
+            .select('discord_id, osu_id')
+            .not('osu_id', 'is', null);
+
+        if (dbUsersError) {
+            console.error("Error al obtener users de la BD:", dbUsersError);
+            return `❌ Error al consultar la base de datos de Sengo.`;
+        }
+
+        const { data: dbTokens } = await supabase
             .from('oauth_tokens')
             .select('discord_id, osu_id, username');
 
-        if (error) {
-            console.error("Error al obtener oauth_tokens de la BD:", error);
-            return `❌ Error al consultar la base de datos de Sengo.`;
+        const oauthUsernames = new Map();
+        if (dbTokens) {
+            dbTokens.forEach(token => {
+                oauthUsernames.set(token.osu_id.toString(), token.username);
+            });
         }
 
         // Crear set de IDs de amigos del owner
         const ownerFriendIds = new Set(friendsList.map(f => f.id.toString()));
 
         // Filtrar cuáles usuarios del Sengo NO están en sus amigos
-        const missingFriends = dbTokens.filter(user => {
+        const missingFriends = dbUsers.filter(user => {
             // No incluirse a sí mismo
             if (user.discord_id === ownerId) return false;
-            return !ownerFriendIds.has(user.osu_id);
+            return !ownerFriendIds.has(user.osu_id.toString());
         });
+
+        // Para los que falten, resolvemos su username (de la caché o de la API si no los conocemos por OAuth)
+        const { getOsuUser } = require("../../utils/osu.js");
+
+        await Promise.all(
+            missingFriends.map(async (user) => {
+                const osuIdStr = user.osu_id.toString();
+                if (oauthUsernames.has(osuIdStr)) {
+                    user.username = oauthUsernames.get(osuIdStr);
+                } else {
+                    try {
+                        const osuUser = await getOsuUser({ username: [osuIdStr], gamemode: 'osu' });
+                        user.username = osuUser?.username || `User ${osuIdStr}`;
+                    } catch (e) {
+                        user.username = `User ${osuIdStr}`;
+                    }
+                }
+            })
+        );
 
         const missingEmbed = new EmbedBuilder()
             .setTitle("🕵️ Usuarios Vinculados al Sengo Faltantes")
@@ -179,17 +210,31 @@ async function run(messages, args) {
     let linkedMap = new Map();
     if (supabase) {
         try {
+            const { data: dbUsers } = await supabase
+                .from('users')
+                .select('discord_id, osu_id')
+                .not('osu_id', 'is', null);
+
             const { data: dbTokens } = await supabase
                 .from('oauth_tokens')
                 .select('discord_id, osu_id, username');
             
             if (dbTokens) {
                 dbTokens.forEach(t => {
-                    linkedMap.set(t.osu_id, { discord_id: t.discord_id, username: t.username });
+                    linkedMap.set(t.osu_id.toString(), { discord_id: t.discord_id, username: t.username });
+                });
+            }
+
+            if (dbUsers) {
+                dbUsers.forEach(u => {
+                    const osuIdStr = u.osu_id.toString();
+                    if (!linkedMap.has(osuIdStr)) {
+                        linkedMap.set(osuIdStr, { discord_id: u.discord_id, username: null });
+                    }
                 });
             }
         } catch (err) {
-            console.error("Error al consultar oauth_tokens:", err);
+            console.error("Error al consultar vinculados:", err);
         }
     }
 
