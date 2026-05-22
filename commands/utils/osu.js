@@ -235,6 +235,8 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
     };
 
     normalizeScore(score);
+    delete score.classic_total_score;
+    delete score.score;
 
     // Play fallida en multi
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
