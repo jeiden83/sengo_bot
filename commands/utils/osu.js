@@ -1631,7 +1631,8 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                 country_code: row.country_code
                             },
                             user_id: Number(row.user_id),
-                            fetched_at: new Date(row.created_at).getTime()
+                            // Si le falta country_code, marcar como expirado para que la API lo refresque
+                            fetched_at: row.country_code ? new Date(row.created_at).getTime() : 0
                         };
                         normalizeScore(mappedScore);
                         cachedData.scores[uId] = mappedScore;
