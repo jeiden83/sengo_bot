@@ -167,6 +167,7 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
         "beatmap_status": recent_scores.beatmap.status,
         "beatmap_id": recent_scores.beatmap.id.toString(),
         "user_id": (recent_scores.user_id || recent_scores.user?.id || '').toString(),
+        "country_code": recent_scores.user?.country_code || null,
         "multi_failed": false
     };
 
@@ -1493,13 +1494,15 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                             passed: row.passed,
                             pp: row.pp,
                             rank: row.rank,
+                            map_completion: row.map_completion,
                             beatmap: {
                                 id: Number(row.beatmap_id),
                                 status: row.beatmap_status
                             },
                             user: {
                                 id: Number(row.user_id),
-                                username: row.username
+                                username: row.username,
+                                country_code: row.country_code
                             },
                             user_id: Number(row.user_id),
                             fetched_at: new Date(row.created_at).getTime()
