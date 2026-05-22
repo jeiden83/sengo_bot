@@ -1,5 +1,4 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../../utils/osu.js");
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const rosu = require("rosu-pp-js");
 
 function formatLength(seconds) {

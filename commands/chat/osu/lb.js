@@ -1,5 +1,4 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
-const { EmbedBuilder } = require('discord.js');
 const { v2 } = require('osu-api-extended');
 const fetch = require('node-fetch');
 const { getSupporterTokenForCountry, getOAuthTokenRecord, getOAuthTokenRecordByUsernameOrId } = require("../../../models/OsuUserModel.js");

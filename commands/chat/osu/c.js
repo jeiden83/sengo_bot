@@ -1,4 +1,3 @@
-const { EmbedBuilder } = require('discord.js');
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
 const { colorear } = require("../../utils/admin.js");

@@ -1,4 +1,3 @@
-const { EmbedBuilder } = require('discord.js');
 const { 
     getOsuUser, 
     getFriendsList, 
@@ -9,14 +8,6 @@ const {
 } = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
-
-// Bandera emoji helper
-const getFlagEmoji = (countryCode) => {
-    if (!countryCode) return "🏳️";
-    return countryCode
-        .toUpperCase()
-        .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
-};
 
 // Función para comprobar mutualidad de los amigos vinculados en la página actual
 async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
