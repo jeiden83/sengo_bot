@@ -4,6 +4,33 @@ const { v2 } = require('osu-api-extended');
 const fetch = require('node-fetch');
 const { getSupporterTokenForCountry } = require("../../../utils/osuAuth.js");
 
+const leaderboardCache = new Map();
+const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
+
+async function fetchLeaderboardCached(url, headers, logger = null) {
+    const now = Date.now();
+    const isFriendQuery = url.includes('type=friend');
+    const authHeader = isFriendQuery && headers && headers['Authorization'] ? headers['Authorization'] : '';
+    const cacheKey = isFriendQuery ? `${url}|${authHeader}` : url;
+    const cached = leaderboardCache.get(cacheKey);
+
+    if (cached && (now - cached.timestamp) < CACHE_TTL) {
+        if (logger) logger.process(`Caché: Usando leaderboard desde la caché para ${url.substring(url.indexOf('/beatmaps/'))}`);
+        return cached.data;
+    }
+
+    const apiRes = await fetch(url, { headers });
+    if (!apiRes.ok) {
+        throw new Error(`Status ${apiRes.status}`);
+    }
+
+    const resJson = await apiRes.json();
+    const scores = resJson.scores || resJson || [];
+
+    leaderboardCache.set(cacheKey, { data: scores, timestamp: now });
+    return scores;
+}
+
 async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, total_plays = 0, page = 1, max_pages = 1, parsed_args = {}, usedSupporter = null) {
     let embed_description = '';
 
@@ -234,17 +261,11 @@ async function run(messages, args) {
                 if (!globalToken) return [];
 
                 const globalUrl = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores?mode=${targetGamemode}`;
-                const apiRes = await fetch(globalUrl, {
-                    headers: {
-                        'Authorization': `Bearer ${globalToken}`,
-                        'Content-Type': 'application/json',
-                        'x-api-version': '20240728'
-                    }
-                });
-                if (apiRes.ok) {
-                    const resJson = await apiRes.json();
-                    return resJson.scores || resJson || [];
-                }
+                return await fetchLeaderboardCached(globalUrl, {
+                    'Authorization': `Bearer ${globalToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }, logger);
             } catch (err) {
                 console.error("Error al obtener global scores en paralelo:", err);
             }
@@ -295,20 +316,11 @@ async function run(messages, args) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
 
-            const apiRes = await fetch(urlObj.toString(), {
-                headers: {
-                    'Authorization': `Bearer ${userToken.access_token}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }
-            });
-
-            if (!apiRes.ok) {
-                throw new Error(`Status ${apiRes.status}`);
-            }
-
-            const resJson = await apiRes.json();
-            scores = resJson.scores || resJson;
+            scores = await fetchLeaderboardCached(urlObj.toString(), {
+                'Authorization': `Bearer ${userToken.access_token}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }, logger);
         } catch (e) {
             console.error("Error al obtener friends ranking:", e);
             return `❌ Error al consultar la API de osu! usando el token de amigos de **${friendsUsername}**.`;
@@ -333,20 +345,11 @@ async function run(messages, args) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
 
-            const apiRes = await fetch(urlObj.toString(), {
-                headers: {
-                    'Authorization': `Bearer ${supporterRes.token}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }
-            });
-
-            if (!apiRes.ok) {
-                throw new Error(`Status ${apiRes.status}`);
-            }
-
-            const resJson = await apiRes.json();
-            scores = resJson.scores || resJson;
+            scores = await fetchLeaderboardCached(urlObj.toString(), {
+                'Authorization': `Bearer ${supporterRes.token}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }, logger);
         } catch (e) {
             console.error("Error al obtener country ranking:", e);
             return `❌ Error al consultar la API de osu! usando las credenciales del supporter de la pool.`;
@@ -364,18 +367,11 @@ async function run(messages, args) {
                 urlObj.searchParams.append('mode', targetGamemode);
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
 
-                const apiRes = await fetch(urlObj.toString(), {
-                    headers: {
-                        'Authorization': `Bearer ${supporterRes.token}`,
-                        'Content-Type': 'application/json',
-                        'x-api-version': '20240728'
-                    }
-                });
-
-                if (apiRes.ok) {
-                    const resJson = await apiRes.json();
-                    scores = resJson.scores || resJson;
-                }
+                scores = await fetchLeaderboardCached(urlObj.toString(), {
+                    'Authorization': `Bearer ${supporterRes.token}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }, logger);
             } catch (e) {
                 console.error("Error al obtener mod leaderboard con supporter:", e);
             }
@@ -406,20 +402,11 @@ async function run(messages, args) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
 
-            const apiRes = await fetch(urlObj.toString(), {
-                headers: {
-                    'Authorization': `Bearer ${globalToken}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }
-            });
-
-            if (apiRes.ok) {
-                const resJson = await apiRes.json();
-                scores = resJson.scores || resJson;
-            } else {
-                throw new Error(`Status ${apiRes.status}`);
-            }
+            scores = await fetchLeaderboardCached(urlObj.toString(), {
+                'Authorization': `Bearer ${globalToken}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }, logger);
         } catch (e) {
             console.error("Error al obtener leaderboard:", e);
             return `❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.`;
