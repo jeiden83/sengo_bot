@@ -1,4 +1,4 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { 
     getOsuUser, 
     getFriendsList, 
@@ -8,6 +8,7 @@ const {
     fetchMeDetails 
 } = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
+const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
 
 // Bandera emoji helper
 const getFlagEmoji = (countryCode) => {
@@ -147,28 +148,7 @@ async function run(messages, args) {
     };
 
     const getButtonsRow = (start, total) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('amigos_first')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('amigos_prev')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('amigos_next')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total),
-            new ButtonBuilder()
-                .setCustomId('amigos_last')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total)
-        );
+        return buildPaginationRow({ prefix: 'amigos', current: start, total, pageSize: 10 });
     };
 
     // Procesar la página inicial

@@ -10,6 +10,7 @@ const rosu = require("rosu-pp-js");
 
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
@@ -83,31 +84,8 @@ async function run(messages, args) {
         let startIndex = 0;
         const initialListEmbed = await doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays);
 
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
         const getListButtonsRow = (start, total) => {
-            return new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('rsl_first')
-                    .setLabel('<<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(start <= 0),
-                new ButtonBuilder()
-                    .setCustomId('rsl_prev')
-                    .setLabel('<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(start <= 0),
-                new ButtonBuilder()
-                    .setCustomId('rsl_next')
-                    .setLabel('>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(start + 5 >= total),
-                new ButtonBuilder()
-                    .setCustomId('rsl_last')
-                    .setLabel('>>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(start + 5 >= total)
-            );
+            return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
         };
 
         const sent_message = await message.channel.send({
@@ -316,31 +294,8 @@ async function run(messages, args) {
     // Procesamos la jugada inicial
     const initialEmbed = await processScore(index);
 
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
     const getButtonsRow = (curr, max) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('rs_newest')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr <= 1),
-            new ButtonBuilder()
-                .setCustomId('rs_newer')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr <= 1),
-            new ButtonBuilder()
-                .setCustomId('rs_older')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr >= max),
-            new ButtonBuilder()
-                .setCustomId('rs_oldest')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(curr >= max)
-        );
+        return buildPaginationRow({ prefix: 'rs', current: curr, total: max, oneIndexed: true });
     };
 
     const sent_message = await message.channel.send({

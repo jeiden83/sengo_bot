@@ -1,3 +1,4 @@
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const emoji_mods = require("../src/emoji_mods.json");
 const emoji_grades = require("../src/emoji_grades.json");
 const { colorear } = require("../commands/utils/admin.js");
@@ -104,6 +105,57 @@ const getFlagEmoji = (countryCode) => {
         .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
 };
 
+/**
+ * Genera una fila de botones de paginación estándar (<<, <, >, >>).
+ * @param {Object} params - Parámetros de configuración.
+ * @param {string} params.prefix - Prefijo para los customIds (ej: 'amigos', 'rsl', 'con').
+ * @param {number} params.current - El valor actual (puede ser 0-indexed start o 1-indexed index).
+ * @param {number} params.total - El total de elementos o páginas.
+ * @param {number} [params.pageSize=10] - El tamaño del paso (solo usado para 0-indexed).
+ * @param {boolean} [params.oneIndexed=false] - Indica si el valor 'current' y los límites están basados en 1 (como rs_newest o top_first).
+ * @param {Object} [params.customSuffixes] - Sufijos personalizados opcionales para los customIds.
+ * @returns {ActionRowBuilder} Fila de acción con los botones configurados.
+ */
+function buildPaginationRow({ prefix, current, total, pageSize = 10, oneIndexed = false, customSuffixes = null }) {
+    const suffixes = customSuffixes || (oneIndexed 
+        ? { first: 'newest', prev: 'newer', next: 'older', last: 'oldest' }
+        : { first: 'first', prev: 'prev', next: 'next', last: 'last' });
+
+    let disablePrev = false;
+    let disableNext = false;
+
+    if (oneIndexed) {
+        disablePrev = current <= 1;
+        disableNext = current >= total;
+    } else {
+        disablePrev = current <= 0;
+        disableNext = current + pageSize >= total;
+    }
+
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId(`${prefix}_${suffixes.first}`)
+            .setLabel('<<')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disablePrev),
+        new ButtonBuilder()
+            .setCustomId(`${prefix}_${suffixes.prev}`)
+            .setLabel('<')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disablePrev),
+        new ButtonBuilder()
+            .setCustomId(`${prefix}_${suffixes.next}`)
+            .setLabel('>')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disableNext),
+        new ButtonBuilder()
+            .setCustomId(`${prefix}_${suffixes.last}`)
+            .setLabel('>>')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disableNext)
+    );
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -112,5 +164,6 @@ module.exports = {
     getStatsString,
     getPlainStatsString,
     buildAnsiBlock,
-    getFlagEmoji
+    getFlagEmoji,
+    buildPaginationRow
 };

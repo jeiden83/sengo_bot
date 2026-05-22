@@ -1,4 +1,5 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
 const { colorear } = require("../../utils/admin.js");
 
@@ -216,28 +217,13 @@ async function run(messages, args) {
         const initialEmbed = await processScore(index);
 
         const getSingleButtonsRow = (curr, max) => {
-            return new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('c_single_first')
-                    .setLabel('<<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr <= 1),
-                new ButtonBuilder()
-                    .setCustomId('c_single_prev')
-                    .setLabel('<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr <= 1),
-                new ButtonBuilder()
-                    .setCustomId('c_single_next')
-                    .setLabel('>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr >= max),
-                new ButtonBuilder()
-                    .setCustomId('c_single_last')
-                    .setLabel('>>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr >= max)
-            );
+            return buildPaginationRow({
+                prefix: 'c_single',
+                current: curr,
+                total: max,
+                oneIndexed: true,
+                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+            });
         };
 
         const sent_message = await message.channel.send({
@@ -303,28 +289,7 @@ async function run(messages, args) {
     const content = getOsuCompareContent(parsed_args, username, beatmap_metadata);
 
     const getListButtonsRow = (start, total) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('c_first')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('c_prev')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('c_next')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total),
-            new ButtonBuilder()
-                .setCustomId('c_last')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 10 >= total)
-        );
+        return buildPaginationRow({ prefix: 'c', current: start, total, pageSize: 10 });
     };
 
     const sent_message = await message.channel.send({

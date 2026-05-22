@@ -1,5 +1,6 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { getAllOAuthUsers } = require('../../../models/OsuUserModel.js');
+const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
 
 async function run(messages, args) {
     const { message, res, reply } = messages;
@@ -67,28 +68,7 @@ async function run(messages, args) {
             };
 
             const getButtonsRow = (start, total) => {
-                return new ActionRowBuilder().addComponents(
-                    new ButtonBuilder()
-                        .setCustomId('con_first')
-                        .setLabel('<<')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(start <= 0),
-                    new ButtonBuilder()
-                        .setCustomId('con_prev')
-                        .setLabel('<')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(start <= 0),
-                    new ButtonBuilder()
-                        .setCustomId('con_next')
-                        .setLabel('>')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(start + 10 >= total),
-                    new ButtonBuilder()
-                        .setCustomId('con_last')
-                        .setLabel('>>')
-                        .setStyle(ButtonStyle.Secondary)
-                        .setDisabled(start + 10 >= total)
-                );
+                return buildPaginationRow({ prefix: 'con', current: start, total, pageSize: 10 });
             };
 
             const initialEmbed = generateEmbed(startIndex, pageNum, maxPages);

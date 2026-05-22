@@ -2,6 +2,7 @@ const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP } 
 const { colorear } = require("../../utils/admin.js");
 const { EmbedBuilder } = require("discord.js");
 const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEmbeds.js");
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
@@ -190,31 +191,14 @@ async function run(messages, args) {
 
         const initialEmbed = await processScore(index);
 
-        const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
         const getSingleButtonsRow = (curr, max) => {
-            return new ActionRowBuilder().addComponents(
-                new ButtonBuilder()
-                    .setCustomId('top_first')
-                    .setLabel('<<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr <= 1),
-                new ButtonBuilder()
-                    .setCustomId('top_prev')
-                    .setLabel('<')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr <= 1),
-                new ButtonBuilder()
-                    .setCustomId('top_next')
-                    .setLabel('>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr >= max),
-                new ButtonBuilder()
-                    .setCustomId('top_last')
-                    .setLabel('>>')
-                    .setStyle(ButtonStyle.Secondary)
-                    .setDisabled(curr >= max)
-            );
+            return buildPaginationRow({
+                prefix: 'top',
+                current: curr,
+                total: max,
+                oneIndexed: true,
+                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+            });
         };
 
         const sent_message = await message.channel.send({
@@ -297,31 +281,8 @@ async function run(messages, args) {
     const initialStars = await getListStars(initialChunk);
     const initialListEmbed = await doOsuTopListEmbed(message, parser_res.parsed_args, initialChunk, startIndex, total_plays, ppThresholdCount, initialStars);
 
-    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
     const getListButtonsRow = (start, total) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('rsl_first')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('rsl_prev')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('rsl_next')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total),
-            new ButtonBuilder()
-                .setCustomId('rsl_last')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total)
-        );
+        return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
     };
 
     const sent_message = await message.channel.send({

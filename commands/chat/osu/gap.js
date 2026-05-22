@@ -1,7 +1,7 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
 const { getLinkedUsers } = require("../../../models/OsuUserModel.js");
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
@@ -179,28 +179,7 @@ async function run(messages, args){
     const initialEmbed = await doOsuGapEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays);
 
     const getGapButtonsRow = (start, total) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('gap_first')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('gap_prev')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('gap_next')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total),
-            new ButtonBuilder()
-                .setCustomId('gap_last')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total)
-        );
+        return buildPaginationRow({ prefix: 'gap', current: start, total, pageSize: 5 });
     };
 
     let sent_message;

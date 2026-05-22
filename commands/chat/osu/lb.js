@@ -1,8 +1,9 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { v2 } = require('osu-api-extended');
 const fetch = require('node-fetch');
 const { getSupporterTokenForCountry, getOAuthTokenRecord, getOAuthTokenRecordByUsernameOrId } = require("../../../models/OsuUserModel.js");
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 const leaderboardCache = new Map();
 const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
@@ -374,28 +375,7 @@ async function run(messages, args) {
     const initialEmbed = await doOsuLbEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
 
     const getLbButtonsRow = (start, total) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('lb_first')
-                .setLabel('<<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('lb_prev')
-                .setLabel('<')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start <= 0),
-            new ButtonBuilder()
-                .setCustomId('lb_next')
-                .setLabel('>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total),
-            new ButtonBuilder()
-                .setCustomId('lb_last')
-                .setLabel('>>')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(start + 5 >= total)
-        );
+        return buildPaginationRow({ prefix: 'lb', current: start, total, pageSize: 5 });
     };
 
     let sent_message;
