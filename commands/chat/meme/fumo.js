@@ -146,11 +146,10 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
         const mem = process.memoryUsage();
         const ramFormatted = `${(mem.rss / 1024 / 1024).toFixed(1)} MB`;
         const consoleText = `${text} [RAM: ${ramFormatted}]`;
-        const discordText = `${text} \`[RAM: ${ramFormatted}]\``;
 
         if (isInteraction) {
             try {
-                await messageOrInteraction.editReply({ content: discordText });
+                await messageOrInteraction.editReply({ content: text });
             } catch (e) {
                 console.error("[FUMO] Error actualizando estado en slash command:", e);
             }
@@ -380,11 +379,10 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
         const mem = process.memoryUsage();
         const ramFormatted = `${(mem.rss / 1024 / 1024).toFixed(1)} MB`;
         const consoleText = `${text} [RAM: ${ramFormatted}]`;
-        const discordText = `${text} \`[RAM: ${ramFormatted}]\``;
 
         if (isInteraction) {
             try {
-                await messageOrInteraction.editReply({ content: discordText });
+                await messageOrInteraction.editReply({ content: text });
             } catch (e) {
                 console.error("[FUMO] Error actualizando estado en edit:", e);
             }
