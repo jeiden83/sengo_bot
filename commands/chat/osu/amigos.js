@@ -211,4 +211,6 @@ run.description = {
     'usage': `s.amigos : Muestra tus amigos por páginas.\ns.amigos -sengo : Compara tus amigos contra los vinculados al bot (solo OWNER).`
 };
 
+run.requireOAuth = true;
+
 module.exports = { run };

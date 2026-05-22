@@ -1,6 +1,31 @@
-const { SlashCommandBuilder, REST, Routes, Collection } = require("discord.js");
+const { SlashCommandBuilder, REST, Routes, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fs = require('fs');
 const path = require('path');
+
+// Maneja el fallo de verificación de OAuth enviando un DM instructivo con un botón de enlace directo
+async function handleOAuthFailure(author, logger) {
+    if (logger) logger.failed("OAuth requerido.");
+    try {
+        const { getRedirectUri, getAuthUrl } = require("../utils/osuAuth.js");
+        const { doOsuOAuthEmbed } = require("../views/osuUserViews.js");
+        
+        const redirectUri = getRedirectUri();
+        const authUrl = getAuthUrl(author.id, redirectUri);
+        const embed = doOsuOAuthEmbed(authUrl);
+        
+        const button = new ButtonBuilder()
+            .setLabel("Vincular Cuenta (OAuth)")
+            .setStyle(ButtonStyle.Link)
+            .setURL(authUrl);
+        const row = new ActionRowBuilder().addComponents(button);
+        
+        await author.send({ embeds: [embed], components: [row] });
+        return `❌ Para utilizar este comando, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒`;
+    } catch (dmError) {
+        console.error("Error al enviar DM de vinculación segura:", dmError);
+        return `❌ Para utilizar este comando, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link -oauth\`.`;
+    }
+}
 
 // Hacer comando de chat
 async function chatCommand(intialized_data, command_data) {
@@ -19,6 +44,15 @@ async function chatCommand(intialized_data, command_data) {
 				: null;
 	
         if (logger) logger.trigger(`Ejecutando s.${command}`);
+
+        // Verificar requerimiento de OAuth antes de ejecutar
+        if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
+            const { getValidTokenForUser } = require("../utils/osuAuth.js");
+            const token = await getValidTokenForUser(message.author.id);
+            if (!token) {
+                return await handleOAuthFailure(message.author, logger);
+            }
+        }
 
         try {
             const result = await found_command.run(
@@ -60,10 +94,36 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 
 	const { commandName } = interaction;
 
-	if (slash_commands_set.has(commandName))
+	if (slash_commands_set.has(commandName)) {
+        const found_command = slash_commands_map.get(commandName);
+        const corresponding_chat = chat_commands_map.get(commandName);
+        const requiresOAuth = found_command.requireOAuth || 
+                              (found_command.run && found_command.run.requireOAuth) ||
+                              (corresponding_chat && (corresponding_chat.requireOAuth || (corresponding_chat.run && corresponding_chat.run.requireOAuth)));
+                              
+        if (requiresOAuth) {
+            const { getValidTokenForUser } = require("../utils/osuAuth.js");
+            const token = await getValidTokenForUser(interaction.user.id);
+            if (!token) {
+                const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
+                await interaction.editReply(failureMsg);
+                return true;
+            }
+        }
 		return await slash_commands_map.get(commandName).run(interaction, res, chat_commands);
+    }
 	
 	if (chat_commands_map.has(commandName)) {
+        const found_command = chat_commands_map.get(commandName);
+        if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
+            const { getValidTokenForUser } = require("../utils/osuAuth.js");
+            const token = await getValidTokenForUser(interaction.user.id);
+            if (!token) {
+                const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
+                await interaction.editReply(failureMsg);
+                return true;
+            }
+        }
 		let interactionUsed = false;
 		const messages = {
 			message: {
