@@ -122,14 +122,14 @@ async function chat_command_listener(chat_commands, client, config, res) {
             const containsOsuLink = /osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/i.test(message.content) || /#(?:osu|taiko|fruits|mania)\/(\d+)/i.test(message.content);
             if (containsOsuLink) {
                 try {
-                    const { triggerBackgroundOsuPreload } = require("../commands/utils/osu.js");
+                    const { handlePredictivePreload } = require("../commands/utils/osu.js");
                     const regex = /#(?:osu|taiko|fruits|mania)\/(\d+)|osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/gi;
                     let match;
                     while ((match = regex.exec(message.content)) !== null) {
                         const id = match[1] || match[2];
                         if (id) {
                             console.log(`[PRELOAD-PASIVO] Detección de link de osu! en chat para precarga: ${id}`);
-                            triggerBackgroundOsuPreload(null, id, 'osu', message);
+                            handlePredictivePreload(message.author.id, id, 'osu', message);
                         }
                     }
                 } catch (err) {
@@ -213,27 +213,30 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
-        // Precarga en segundo plano de perfiles y beatmaps de osu! al detectar actividad
+        // Precarga predictiva en segundo plano según la actividad del usuario
         const OSU_COMMANDS = new Set([
             'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
             'm', 'map', 'subir', 'gap', 'bg', 'top', 't'
         ]);
         if (OSU_COMMANDS.has(message_command)) {
             try {
-                const { triggerBackgroundOsuPreload, findBeatmapInChannel } = require("../commands/utils/osu.js");
-                triggerBackgroundOsuPreload(message.author.id, null, null);
+                const { handlePredictivePreload, findBeatmapInChannel } = require("../commands/utils/osu.js");
+                
+                // Primero disparamos la precarga del usuario y sus top scores predictivos
+                handlePredictivePreload(message.author.id, null, 'osu', message);
                 
                 const isReply = !!message.reference;
                 const targetMessage = message_reply || message;
                 findBeatmapInChannel(targetMessage, isReply)
                     .then(result => {
                         if (result && result.beatmap_url) {
-                            triggerBackgroundOsuPreload(null, result.beatmap_url, null, message);
+                            // Si se encuentra un mapa, lo añadimos a la sesión predictiva para precargar su metadata y gap
+                            handlePredictivePreload(message.author.id, result.beatmap_url, 'osu', message);
                         }
                     })
                     .catch(() => {});
             } catch (err) {
-                console.error("[PRELOAD] Error al disparar la precarga en segundo plano:", err);
+                console.error("[PRELOAD] Error al disparar el flujo predictivo de precarga:", err);
             }
         }
 

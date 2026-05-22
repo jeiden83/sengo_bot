@@ -2285,6 +2285,52 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
         console.error(`[BG-GAP] Error al inicializar el proceso en segundo plano:`, err);
     }
 }
+
+const userPreloadRegistry = new Map();
+const PRELOAD_REGISTRY_TTL = 10 * 60 * 1000; // 10 minutos de expiración de sesión
+
+async function handlePredictivePreload(discordId, beatmapId, gamemode = 'osu', message = null) {
+    if (!discordId) return;
+
+    let cleanBeatmapId = beatmapId;
+    if (beatmapId && typeof beatmapId === 'string' && (beatmapId.includes('osu.ppy.sh') || beatmapId.includes('#'))) {
+        const match = /#(?:osu|taiko|fruits|mania)\/(\d+)|osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/i.exec(beatmapId);
+        if (match) {
+            cleanBeatmapId = match[1] || match[2];
+        }
+    }
+
+    const now = Date.now();
+    let userState = userPreloadRegistry.get(discordId);
+
+    // Si no existe, expiró o cambió de mapa, inicializamos el estado
+    if (!userState || (now - userState.timestamp) > PRELOAD_REGISTRY_TTL || (cleanBeatmapId && userState.beatmapId !== cleanBeatmapId)) {
+        userState = {
+            beatmapId: cleanBeatmapId || null,
+            stages: new Set(),
+            timestamp: now
+        };
+        setWithLimit(userPreloadRegistry, discordId, userState, 150);
+    } else {
+        userState.timestamp = now; // Refrescar vigencia
+        if (cleanBeatmapId && !userState.beatmapId) {
+            userState.beatmapId = cleanBeatmapId;
+        }
+    }
+
+    // FASE 1: Precarga de Beatmap (.osu) y Caché de Gap
+    if (userState.beatmapId && !userState.stages.has('beatmap_and_gap')) {
+        userState.stages.add('beatmap_and_gap');
+        triggerBackgroundOsuPreload(null, userState.beatmapId, gamemode, message);
+    }
+
+    // FASE 2: Precarga de Perfil de Usuario y Top Scores
+    if (!userState.stages.has('profile_and_top')) {
+        userState.stages.add('profile_and_top');
+        triggerBackgroundOsuPreload(discordId, null, gamemode, message);
+    }
+}
+
 async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu', message = null) {
     try {
         Promise.resolve().then(async () => {
@@ -2349,6 +2395,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
 }
 
 module.exports = { 
+    handlePredictivePreload,
     triggerBackgroundOsuPreload, 
     getUnrankedUserScores, 
     NewloadToken, 
