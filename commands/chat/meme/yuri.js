@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
-const { parseYuriFilename, sanitizeStorageKey } = require("../../utils/yuriSync.js");
+const { parseYuriFilename, sanitizeStorageKey } = require("../../../services/yuriSync.js");
 
 let list_order = [];
 

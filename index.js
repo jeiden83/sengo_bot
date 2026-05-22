@@ -78,7 +78,7 @@ async function main(reload) {
     res = await connectDB(config);
 
     if (res.status === 1) {
-        const { syncYuriImages } = require("./commands/utils/yuriSync.js");
+        const { syncYuriImages } = require("./services/yuriSync.js");
         syncYuriImages(res.supabaseClient).catch(err => {
             Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
         });
