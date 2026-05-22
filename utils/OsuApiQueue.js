@@ -39,6 +39,11 @@ class OsuApiQueue {
             try {
                 const result = await item.requestFn();
                 item.resolve(result);
+                
+                // Si la petición fue exitosa, reducir gradualmente el delay de vuelta al mínimo (100ms)
+                if (this.delayBetweenRequests > 100) {
+                    this.delayBetweenRequests = Math.max(100, this.delayBetweenRequests - 2);
+                }
             } catch (error) {
                 const status = error.response?.status || error.status;
                 if (status === 429) {
