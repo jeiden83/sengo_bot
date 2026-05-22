@@ -26,4 +26,10 @@ async function run(messages, args){
     return await sendMessage();
 }
 
-module.exports = { run }
+run.description = {
+    'header': 'Etiqueta a un usuario repetidamente (Solo Owner)',
+    'body': 'Envía menciones repetidas a un usuario con un intervalo de tiempo.',
+    'usage': 's.tag <usuario_mención_o_id> <veces> <segundos>'
+};
+
+module.exports = { run, description: run.description }

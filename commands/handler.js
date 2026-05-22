@@ -64,17 +64,55 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 		return await slash_commands_map.get(commandName).run(interaction, res, chat_commands);
 	
 	if (chat_commands_map.has(commandName)) {
+		let interactionUsed = false;
 		const messages = {
 			message: {
 				author: interaction.user,
-				member: interaction.member,
+				member: interaction.member || (interaction.guild ? interaction.guild.members.cache.get(interaction.user.id) : null),
 				guild: interaction.guild,
+				channel: {
+					send: async (options) => {
+						if (!interaction.replied && !interaction.deferred) {
+							interactionUsed = true;
+							return await interaction.reply(options);
+						}
+						if (interaction.deferred && !interactionUsed) {
+							interactionUsed = true;
+							return await interaction.editReply(options);
+						}
+						return await interaction.channel.send(options);
+					},
+					sendTyping: async () => {
+						try {
+							await interaction.channel.sendTyping();
+						} catch {}
+					}
+				}
 			},
 			res: res,
-			reply: null,
+			reply: {
+				reply: async (options) => {
+					if (!interaction.replied && !interaction.deferred) {
+						interactionUsed = true;
+						return await interaction.reply(options);
+					}
+					if (interaction.deferred && !interactionUsed) {
+						interactionUsed = true;
+						return await interaction.editReply(options);
+					}
+					return await interaction.channel.send(options);
+				}
+			},
 			logger: interaction.logger
 		};
-		return await chat_commands_map.get(commandName).run(messages, [], chat_commands);
+		const result = await chat_commands_map.get(commandName).run(messages, [], chat_commands);
+		if (interactionUsed || result === undefined) {
+			if (result !== undefined && result !== null) {
+				await interaction.editReply(result);
+			}
+			return true;
+		}
+		return result;
 	}
 }
 // Cargar slash commands
@@ -119,15 +157,28 @@ async function loadSlashCommands(chat_commands, config) {
 			}
 		}
 
+		let commandDescription = "No description available";
+		if (slash_commands_map.has(command_name)) {
+			const cmd = slash_commands_map.get(command_name);
+			if (typeof cmd.description === "string") commandDescription = cmd.description;
+			else if (cmd.description?.header) commandDescription = cmd.description.header;
+			else if (cmd.run?.description?.header) commandDescription = cmd.run.description.header;
+			else if (typeof cmd.run?.description === "string") commandDescription = cmd.run.description;
+		} else if (chat_commands_map.has(command_name)) {
+			const cmd = chat_commands_map.get(command_name);
+			if (typeof cmd.description === "string") commandDescription = cmd.description;
+			else if (cmd.description?.header) commandDescription = cmd.description.header;
+			else if (cmd.run?.description?.header) commandDescription = cmd.run.description.header;
+			else if (typeof cmd.run?.description === "string") commandDescription = cmd.run.description;
+		}
+
+		if (commandDescription.length > 100) {
+			commandDescription = commandDescription.slice(0, 97) + "...";
+		}
+
 		const default_command = new SlashCommandBuilder()
 			.setName(command_name)
-			.setDescription(
-				slash_commands_map.has(command_name) && typeof slash_commands_map.get(command_name).description === "string"
-					? slash_commands_map.get(command_name).description
-					: chat_commands_map.has(command_name) && typeof chat_commands_map.get(command_name).description === "string"
-						? chat_commands_map.get(command_name).description
-						: "No description available"
-			);
+			.setDescription(commandDescription);
 
 		if (typeof default_command.setIntegrationTypes === 'function') {
 			default_command.setIntegrationTypes([0, 1]);

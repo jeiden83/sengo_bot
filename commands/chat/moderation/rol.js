@@ -193,4 +193,10 @@ async function run(messages, args){
     return await modulos_rol.get(args[0])(message, args);
 }
 
-module.exports = { run };
+run.description = {
+    'header': "Gestión de roles y colores en el servidor",
+    'body': 'Permite cambiar colores de roles, otorgar/remover roles de forma individual o masiva.',
+    'usage': 's.rol color <rol_id> <hex> : Cambia color del rol.\ns.rol otorgar <rol_id> <user_id> : Otorga/remueve el rol a un usuario.\ns.rol otorgarTodos <rol_id> [otorgar|remover|ambos] : Otorga o remueve el rol a todo el servidor.'
+};
+
+module.exports = { run, description: run.description };

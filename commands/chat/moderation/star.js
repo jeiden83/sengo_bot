@@ -262,7 +262,7 @@ async function run(messages, args) {
     const logsChannel = await message.client.channels.fetch(config.logs_channel);
     await logsChannel.send(await aumentarScore(guildId, result.user.id, parseInt(config.exp_value), result));
 
-    return ;
+    return "✅ Starboard del día procesado exitosamente.";
 
   } else if(args[0] == "config"){
 

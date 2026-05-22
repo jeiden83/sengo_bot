@@ -28,6 +28,10 @@ async function run(messages, args) {
     return `${roll} (entre ${bottom} y ${top})`;
 }
 
+run.description = {
+    'header': "Lanza un número aleatorio",
+    'body': 'Genera un número entero pseudoaleatorio entre un rango mínimo y máximo.',
+    'usage': 's.roll [max] [min] : Por defecto entre 1 y 100.'
+};
 
-
-module.exports = { run }
+module.exports = { run, description: run.description }

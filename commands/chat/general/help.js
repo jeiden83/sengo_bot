@@ -63,8 +63,9 @@ async function run(messages, args, intialized_data) {
     if (commandsMap.has(commandName)) {
         const commandData = commandsMap.get(commandName);
 
-        const embedMsj_description = commandData.run.description;
-        const embedMsj_header = `:arrow_forward: ${embedMsj_description.header}` || "Auto explicable.";
+        const embedMsj_description = commandData.description || commandData.run?.description || {};
+        const headerText = embedMsj_description.header || (typeof embedMsj_description === 'string' ? embedMsj_description : "Auto explicable.");
+        const embedMsj_header = `:arrow_forward: ${headerText}`;
         const embedMsj_body = embedMsj_description.body || "No hay nada que explicar.";
         const embedMsj_usage = embedMsj_description.usage || `s.${commandName}`;
         const embed_msj = `**${embedMsj_header}**\n\n${embedMsj_body}\n\n:grey_question: **Como usarlo:** \n\`${embedMsj_usage}\``

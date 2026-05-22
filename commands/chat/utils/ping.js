@@ -6,4 +6,11 @@ async function run(message, args) {
     
     await sentMessage.edit(`Ping! en ${latency} ms`);
 }
-module.exports = { run }
+
+run.description = {
+    'header': 'Muestra la latencia del bot',
+    'body': 'Calcula el tiempo de respuesta en milisegundos desde Discord.',
+    'usage': 's.ping'
+};
+
+module.exports = { run, description: run.description }
