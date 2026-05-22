@@ -14,6 +14,11 @@ const rosu = require("rosu-pp-js");
 
 const beatmapCache = new Map();
 const userScoresCache = new Map();
+const userProfileCache = new Map();
+const userTopScoresCache = new Map();
+
+const PROFILE_CACHE_TTL = 300000; // 5 minutos
+const TOP_SCORES_CACHE_TTL = 300000; // 5 minutos
 
 function clearUserScoresCache(userId) {
     if (!userId) return;
@@ -498,6 +503,22 @@ async function getUserRecentScores(parsed_args){
 // Para obtener las mejores puntuaciones (top) de un usuario
 async function getUserTopScores(parsed_args){
     const server = parsed_args.server || 'bancho';
+    const mode = parsed_args.gamemode || 'osu';
+    const username = parsed_args.username[0];
+    const cacheKey = `${username}:${mode}:${server}`;
+    const now = Date.now();
+    const cached = userTopScoresCache.get(cacheKey);
+
+    if (cached && (now - cached.timestamp) < TOP_SCORES_CACHE_TTL) {
+        return cached.scores;
+    }
+
+    const returnAndCache = (scores) => {
+        if (scores && Array.isArray(scores) && scores.length > 0) {
+            userTopScoresCache.set(cacheKey, { scores, timestamp: now });
+        }
+        return scores;
+    };
 
     if (server === 'gatari') {
         try {
@@ -514,7 +535,7 @@ async function getUserTopScores(parsed_args){
             const userData = await userResponse.json();
             const u = userData.users && userData.users[0] ? userData.users[0] : { username: "Unknown", id: parsed_args.username[0], country: "XX" };
 
-            return data.scores.map(s => {
+            return returnAndCache(data.scores.map(s => {
                 const passed = s.ranking !== "F";
                 return {
                     accuracy: s.accuracy / 100,
@@ -553,7 +574,7 @@ async function getUserTopScores(parsed_args){
                         server: 'gatari'
                     }
                 };
-            });
+            }));
         } catch (e) {
             return [];
         }
@@ -607,7 +628,7 @@ async function getUserTopScores(parsed_args){
         if (Array.isArray(result)) {
             result.forEach(normalizeScore);
         }
-        return result;
+        return returnAndCache(result);
     } catch (e) {
         console.error("Error fetching top scores via fetch:", e);
         try {
@@ -622,7 +643,7 @@ async function getUserTopScores(parsed_args){
             if (!result1 || result1.length < 100) {
                 const res = result1 || [];
                 if (Array.isArray(res)) res.forEach(normalizeScore);
-                return res;
+                return returnAndCache(res);
             }
 
             const result2 = await v2.scores.list({
@@ -635,7 +656,7 @@ async function getUserTopScores(parsed_args){
 
             const res = result1.concat(result2 || []);
             if (Array.isArray(res)) res.forEach(normalizeScore);
-            return res;
+            return returnAndCache(res);
         } catch (err) {
             console.error("Error al obtener mejores jugadas de Bancho en fallback:", err);
             return [];
@@ -646,6 +667,21 @@ async function getUserTopScores(parsed_args){
 async function getOsuUser(parsed_args){
     const server = parsed_args.server || 'bancho';
     const look_gamemode = parsed_args.gamemode || 'osu';
+    const username = parsed_args.username[0];
+    const cacheKey = `${username}:${look_gamemode}:${server}`;
+    const now = Date.now();
+    const cached = userProfileCache.get(cacheKey);
+
+    if (cached && (now - cached.timestamp) < PROFILE_CACHE_TTL) {
+        return cached.user;
+    }
+
+    const returnAndCache = (user) => {
+        if (user && typeof user === 'object' && user.username !== undefined && user.username !== "El usuario no se encuentra en osu!" && user.username !== "El usuario no se encuentra en Gatari!") {
+            userProfileCache.set(cacheKey, { user, timestamp: now });
+        }
+        return user;
+    };
 
     if (server === 'gatari') {
         try {
@@ -679,7 +715,7 @@ async function getOsuUser(parsed_args){
             if (data.users && data.users.length > 0 && statsData.stats) {
                 const u = data.users[0];
                 const s = statsData.stats;
-                return {
+                return returnAndCache({
                     id: u.id,
                     username: u.username,
                     country_code: u.country,
@@ -699,7 +735,7 @@ async function getOsuUser(parsed_args){
                     },
                     server: 'gatari',
                     is_supporter: u.donor === 1 || u.donor === true || false
-                };
+                });
             }
             throw new Error("User not found in Gatari");
         } catch (e) {
@@ -723,7 +759,7 @@ async function getOsuUser(parsed_args){
         res = `El usuario no se encuentra en osu!`;
     }
     
-    return res;
+    return returnAndCache(res);
 }
 
 // Obtener y descargar el beatmap.osu dado el id del set y del .osu
@@ -2153,8 +2189,67 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
         console.error(`[BG-GAP] Error al inicializar el proceso en segundo plano:`, err);
     }
 }
+async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu') {
+    try {
+        Promise.resolve().then(async () => {
+            // 1. Precarga del Beatmap y del archivo .osu
+            if (beatmapId) {
+                try {
+                    console.log(`[BG-PRELOAD] Iniciando precarga para beatmap: ${beatmapId}`);
+                    const mapMeta = await getBeatmap(beatmapId);
+                    if (mapMeta && mapMeta.beatmapset_id) {
+                        await getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
+                        console.log(`[BG-PRELOAD] Archivo .osu y metadatos precargados para el mapa: ${beatmapId}`);
+                    }
+                } catch (err) {
+                    console.error(`[BG-PRELOAD] Error al precargar beatmap ${beatmapId}:`, err);
+                }
+            }
+
+            // 2. Precarga del Perfil de Usuario y mejores puntuaciones (Top 100)
+            if (discordId) {
+                try {
+                    const { getSupabaseClient } = require("../../db/database.js");
+                    const supabase = getSupabaseClient();
+                    if (supabase) {
+                        const { data: userRecord, error } = await supabase
+                            .from('users')
+                            .select('osu_id, username, main_gamemode')
+                            .eq('discord_id', discordId)
+                            .maybeSingle();
+
+                        if (!error && userRecord && userRecord.username) {
+                            const osuUsername = userRecord.username;
+                            const targetMode = gamemode || userRecord.main_gamemode || 'osu';
+                            const targetServer = 'bancho';
+
+                            console.log(`[BG-PRELOAD] Precargando perfil y top scores para el usuario discord: ${discordId} (osu!: ${osuUsername}, modo: ${targetMode})`);
+
+                            const dummyArgs = {
+                                username: [osuUsername],
+                                gamemode: targetMode,
+                                server: targetServer
+                            };
+
+                            await Promise.all([
+                                getOsuUser(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar perfil de ${osuUsername}:`, e)),
+                                getUserTopScores(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar top scores de ${osuUsername}:`, e))
+                            ]);
+                            console.log(`[BG-PRELOAD] Perfil y top scores precargados con éxito para ${osuUsername}`);
+                        }
+                    }
+                } catch (err) {
+                    console.error(`[BG-PRELOAD] Error al precargar perfil del usuario discord ${discordId}:`, err);
+                }
+            }
+        });
+    } catch (err) {
+        console.error(`[BG-PRELOAD] Error general en triggerBackgroundOsuPreload:`, err);
+    }
+}
 
 module.exports = { 
+    triggerBackgroundOsuPreload, 
     getUnrankedUserScores, 
     NewloadToken, 
     getNewBeatmapUserScores,

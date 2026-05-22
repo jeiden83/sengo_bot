@@ -192,6 +192,30 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
+        // Precarga en segundo plano de perfiles y beatmaps de osu! al detectar actividad
+        const OSU_COMMANDS = new Set([
+            'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
+            'm', 'map', 'subir', 'gap', 'bg', 'top', 't'
+        ]);
+        if (OSU_COMMANDS.has(message_command)) {
+            try {
+                const { triggerBackgroundOsuPreload, findBeatmapInChannel } = require("../commands/utils/osu.js");
+                triggerBackgroundOsuPreload(message.author.id, null, null);
+                
+                const isReply = !!message.reference;
+                const targetMessage = message_reply || message;
+                findBeatmapInChannel(targetMessage, isReply)
+                    .then(result => {
+                        if (result && result.beatmap_url) {
+                            triggerBackgroundOsuPreload(null, result.beatmap_url, null);
+                        }
+                    })
+                    .catch(() => {});
+            } catch (err) {
+                console.error("[PRELOAD] Error al disparar la precarga en segundo plano:", err);
+            }
+        }
+
         try {
             const command_result = await chatCommand(
                 chat_commands, 
@@ -312,6 +336,20 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
 
         try {
             logger.trigger(`Ejecutando /${message_command}`);
+            // Precarga en segundo plano de perfiles de osu! al detectar actividad en comandos slash
+            const OSU_COMMANDS = new Set([
+                'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
+                'm', 'map', 'subir', 'gap', 'bg', 'top', 't'
+            ]);
+            if (OSU_COMMANDS.has(message_command)) {
+                try {
+                    const { triggerBackgroundOsuPreload } = require("../commands/utils/osu.js");
+                    triggerBackgroundOsuPreload(interaction.user.id, null, null);
+                } catch (err) {
+                    console.error("[PRELOAD] Error al disparar la precarga en segundo plano para slash:", err);
+                }
+            }
+
             // Para avisar que se mandara un slash
             await interaction.deferReply();
 
