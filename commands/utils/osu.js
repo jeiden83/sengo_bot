@@ -17,6 +17,10 @@ const userScoresCache = new Map();
 const userProfileCache = new Map();
 const userTopScoresCache = new Map();
 
+const activeGapPromises = new Map();
+const activeProfilePromises = new Map();
+const activeTopScoresPromises = new Map();
+
 const PROFILE_CACHE_TTL = 300000; // 5 minutos
 const TOP_SCORES_CACHE_TTL = 300000; // 5 minutos
 
@@ -505,6 +509,34 @@ async function getUserTopScores(parsed_args){
     const server = parsed_args.server || 'bancho';
     const mode = parsed_args.gamemode || 'osu';
     const username = parsed_args.username[0];
+    const key = `${username}:${mode}:${server}`;
+
+    if (activeTopScoresPromises.has(key)) {
+        try {
+            await activeTopScoresPromises.get(key);
+        } catch (e) {
+            console.error(`[TOPSCORES-DEDUPLICATOR] La consulta de mejores puntuaciones en progreso para ${username} falló:`, e);
+        }
+        return getUserTopScores(parsed_args);
+    }
+
+    let resolveActivePromise;
+    const p = new Promise(resolve => { resolveActivePromise = resolve; });
+    activeTopScoresPromises.set(key, p);
+
+    try {
+        const result = await _getUserTopScores(parsed_args);
+        return result;
+    } finally {
+        resolveActivePromise();
+        activeTopScoresPromises.delete(key);
+    }
+}
+
+async function _getUserTopScores(parsed_args){
+    const server = parsed_args.server || 'bancho';
+    const mode = parsed_args.gamemode || 'osu';
+    const username = parsed_args.username[0];
     const cacheKey = `${username}:${mode}:${server}`;
     const now = Date.now();
     const cached = userTopScoresCache.get(cacheKey);
@@ -665,6 +697,34 @@ async function getUserTopScores(parsed_args){
 }
 
 async function getOsuUser(parsed_args){
+    const server = parsed_args.server || 'bancho';
+    const look_gamemode = parsed_args.gamemode || 'osu';
+    const username = parsed_args.username[0];
+    const key = `${username}:${look_gamemode}:${server}`;
+
+    if (activeProfilePromises.has(key)) {
+        try {
+            await activeProfilePromises.get(key);
+        } catch (e) {
+            console.error(`[PROFILE-DEDUPLICATOR] La consulta de perfil en progreso para ${username} falló:`, e);
+        }
+        return getOsuUser(parsed_args);
+    }
+
+    let resolveActivePromise;
+    const p = new Promise(resolve => { resolveActivePromise = resolve; });
+    activeProfilePromises.set(key, p);
+
+    try {
+        const result = await _getOsuUser(parsed_args);
+        return result;
+    } finally {
+        resolveActivePromise();
+        activeProfilePromises.delete(key);
+    }
+}
+
+async function _getOsuUser(parsed_args){
     const server = parsed_args.server || 'bancho';
     const look_gamemode = parsed_args.gamemode || 'osu';
     const username = parsed_args.username[0];
@@ -1614,6 +1674,34 @@ async function argsParser(args, command_parameters){
 }
 
 async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null) {
+    const key = `${beatmapId}_${gamemode}`;
+    if (!forceUpdate && activeGapPromises.has(key)) {
+        if (logger) logger.process(`Deduplicador: Ya existe una consulta de gap en curso para el mapa ${beatmapId}. Esperando resolución...`);
+        try {
+            await activeGapPromises.get(key);
+        } catch (e) {
+            console.error(`[GAP-DEDUPLICATOR] La consulta en progreso para ${beatmapId} falló:`, e);
+        }
+        if (logger) logger.process(`Deduplicador: Consulta en curso finalizada. Cargando datos desde caché.`);
+        return getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, logger, beatmapMetadata);
+    }
+
+    let resolveActivePromise;
+    if (!forceUpdate) {
+        const p = new Promise(resolve => { resolveActivePromise = resolve; });
+        activeGapPromises.set(key, p);
+    }
+
+    try {
+        const result = await _getNewBeatmapUserScores(beatmapId, usersArray, gamemode, forceUpdate, logger, beatmapMetadata);
+        return result;
+    } finally {
+        if (resolveActivePromise) resolveActivePromise();
+        if (!forceUpdate) activeGapPromises.delete(key);
+    }
+}
+
+async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null) {
     await NewloadToken();
     const scores = new Collection();
 
