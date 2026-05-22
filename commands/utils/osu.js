@@ -2189,7 +2189,7 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
         console.error(`[BG-GAP] Error al inicializar el proceso en segundo plano:`, err);
     }
 }
-async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu') {
+async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu', message = null) {
     try {
         Promise.resolve().then(async () => {
             // 1. Precarga del Beatmap y del archivo .osu
@@ -2200,6 +2200,14 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                     if (mapMeta && mapMeta.beatmapset_id) {
                         await getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
                         console.log(`[BG-PRELOAD] Archivo .osu y metadatos precargados para el mapa: ${beatmapId}`);
+
+                        // Si hay un mensaje provisto y pertenece a una guild, gatillar precarga del gap y compare
+                        if (message && message.guild) {
+                            console.log(`[BG-PRELOAD] Gatillando precarga de gap/c para el mapa: ${beatmapId}`);
+                            triggerBackgroundGapCache(message, beatmapId, gamemode).catch(err => {
+                                console.error(`[BG-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
+                            });
+                        }
                     }
                 } catch (err) {
                     console.error(`[BG-PRELOAD] Error al precargar beatmap ${beatmapId}:`, err);
