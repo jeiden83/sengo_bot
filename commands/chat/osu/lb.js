@@ -248,7 +248,7 @@ async function run(messages, args) {
         try {
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
-            urlObj.searchParams.append('type', 'friends');
+            urlObj.searchParams.append('type', 'friend');
             if (modsArray.length > 0) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
