@@ -41,7 +41,13 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
-    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+    const stats = score.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
 
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");

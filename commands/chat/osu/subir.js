@@ -47,7 +47,14 @@ function calculateRank(stats, accuracy, mods, passed) {
 }
 
 function calculatePP(recent_scores, map, maximo_pp, Attrs) {
-    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0, small_tick_miss = 0 } = recent_scores.statistics;
+    const stats = recent_scores.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+    const small_tick_miss = stats.small_tick_miss !== undefined ? stats.small_tick_miss : (stats.count_katu || 0);
     const mode = recent_scores.beatmap.mode || 'osu';
 
     // Se construye el performance constructor
@@ -577,7 +584,13 @@ async function run(messages, args, initialized_data) {
         beatmapset: { title: beatmap_metadata.beatmapset.title, covers: beatmap_metadata.beatmapset.covers }
     };
 
-    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
+    const stats = recent_scores.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
     const total_hits = perfect + great + good + ok + meh + miss;
 
     const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_id, beatmap_metadata);

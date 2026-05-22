@@ -44,7 +44,13 @@ async function doOsuSingleEmbed(message, score, pre_calculated, index, total_pla
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 
-    const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+    const stats = score.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
 
     const emoji_mods = require("../../../src/emoji_mods.json");
     const emoji_grades = require("../../../src/emoji_grades.json");
@@ -185,7 +191,13 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
         grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 
-        const { perfect = 0, great = 0, good = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+        const stats = score.statistics || {};
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
 
         // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
         const isLazer = score.build_id !== null && score.build_id !== undefined;
@@ -416,7 +428,11 @@ async function run(messages, args) {
         // Función auxiliar para procesar y construir el embed de un score determinado
         async function processScore(scoreIndex) {
             const score = filtered_scores[scoreIndex - 1];
-            const { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
+            const stats = score.statistics || {};
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+            const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+            const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+            const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
             const total_hits = great + ok + meh + miss;
             const beatmap = await getBeatmap(score.beatmap.id);
             const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
