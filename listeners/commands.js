@@ -160,23 +160,28 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
         const originalSend = message.channel.send;
         const originalReply = message.reply;
-        let originalReplyReply = null;
-        let referencedMessage = null;
 
-        // Wrap message.channel.send
-        message.channel.send = async (options) => {
+        // Crear proxy basado en prototipo para message.channel para evitar mutar el canal global compartido
+        const originalChannel = message.channel;
+        const customChannel = Object.create(originalChannel);
+        customChannel.send = async (options) => {
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
             }
-            const result = await originalSend.call(message.channel, injectLatencyToEmbeds(options, cachedLatencyText, true));
+            const result = await originalSend.call(originalChannel, injectLatencyToEmbeds(options, cachedLatencyText, true));
             if (result && result.id) {
                 setLatencyCache(result.id, cachedLatencyText);
             }
             return result;
         };
 
-        // Wrap message.reply
+        Object.defineProperty(message, 'channel', {
+            get: () => customChannel,
+            configurable: true
+        });
+
+        // Envolver message.reply (es seguro mutarlo directamente porque message es una instancia única por comando)
         message.reply = async (options) => {
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
@@ -192,16 +197,16 @@ async function chat_command_listener(chat_commands, client, config, res) {
         let message_reply = null;
         if (message.reference) {
             try {
-                message_reply = await message.channel.messages.fetch(message.reference.messageId);
-                if (message_reply) {
-                    referencedMessage = message_reply;
-                    originalReplyReply = message_reply.reply;
+                const fetchedReply = await message.channel.messages.fetch(message.reference.messageId);
+                if (fetchedReply) {
+                    // Crear proxy basado en prototipo para el mensaje referenciado para evitar contaminar la cache
+                    message_reply = Object.create(fetchedReply);
                     message_reply.reply = async (options) => {
                         if (!cachedLatencyText) {
                             const duration = Date.now() - startTime;
                             cachedLatencyText = `Latencia: ${duration}ms`;
                         }
-                        const result = await originalReplyReply.call(message_reply, injectLatencyToEmbeds(options, cachedLatencyText, true));
+                        const result = await fetchedReply.reply(injectLatencyToEmbeds(options, cachedLatencyText, true));
                         if (result && result.id) {
                             setLatencyCache(result.id, cachedLatencyText);
                         }
@@ -270,12 +275,6 @@ async function chat_command_listener(chat_commands, client, config, res) {
             console.error("Error ejecutando el comando:", error);
             const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
             await message.channel.send(`Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`);
-        } finally {
-            message.channel.send = originalSend;
-            message.reply = originalReply;
-            if (referencedMessage && originalReplyReply) {
-                referencedMessage.reply = originalReplyReply;
-            }
         }
     };
 
