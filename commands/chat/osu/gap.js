@@ -1,10 +1,7 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
 const { getLinkedUsers } = require("../../../models/OsuUserModel.js");
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
-const axios = require('axios');
-const fs = require('fs');
-const path = require('path');
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {

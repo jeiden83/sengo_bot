@@ -1,5 +1,3 @@
-const { Client, Auth } = require('osu-web.js');
-const { auth, v2 } = require('osu-api-extended');
 const { getOsuUser, loadToken, NewloadToken } = require("../../models/OsuUserModel.js");
 const { getBeatmap_osu, getBeatmap, lookupBeatmapByMD5 } = require("../../models/BeatmapModel.js");
 const { 
@@ -20,29 +18,7 @@ const {
     handlePredictivePreload,
     triggerBackgroundOsuPreload
 } = require("../../models/OsuScoreModel.js");
-const { Collection } = require('discord.js');
 
-const { localBeatmapStatus } = require("./admin.js");
-
-const CONFIG = require("../../config.js");
-
-const fs = require('fs');
-const path = require('path');
-const axios = require('axios');
-const https = require('https');
-const rosu = require("rosu-pp-js");
-
-// Caches y variables de gap movidas a OsuScoreModel.js
-
-const PROFILE_CACHE_TTL = 300000; // 5 minutos
-
-function setWithLimit(map, key, value, limit = 100) {
-    if (map.size >= limit && !map.has(key)) {
-        const firstKey = map.keys().next().value;
-        map.delete(firstKey);
-    }
-    map.set(key, value);
-}
 
 const getGamemodeFromMessage = (msg) => {
     if (!msg) return null;

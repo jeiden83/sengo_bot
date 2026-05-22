@@ -1,14 +1,12 @@
 const fs = require('fs');
 const path = require('path');
-const fetch = require('node-fetch');
-const axios = require('axios');
 const rosu = require("rosu-pp-js");
-const { v2 } = require('osu-api-extended');
 const { getSupabaseClient } = require("../db/database.js");
 const { loadToken, NewloadToken, getOsuUser } = require('./OsuUserModel.js');
 const { getBeatmap_osu, getBeatmap } = require('./BeatmapModel.js');
 const { Collection } = require('discord.js');
 const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+
 
 const userScoresCache = new Map();
 const userTopScoresCache = new Map();
