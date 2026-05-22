@@ -35,6 +35,72 @@ function setWithLimit(map, key, value, limit = 100) {
     map.set(key, value);
 }
 
+class OsuApiQueue {
+    constructor() {
+        this.queue = [];
+        this.running = false;
+        this.lastRequestTime = 0;
+        this.delayBetweenRequests = 100; // 100ms mínimo base para evitar ráfagas excesivas
+        this.cooldownUntil = 0;
+    }
+
+    async add(requestFn) {
+        return new Promise((resolve, reject) => {
+            this.queue.push({ requestFn, resolve, reject, attempts: 0 });
+            this.process();
+        });
+    }
+
+    async process() {
+        if (this.running) return;
+        this.running = true;
+
+        while (this.queue.length > 0) {
+            const now = Date.now();
+            if (now < this.cooldownUntil) {
+                const sleepTime = this.cooldownUntil - now;
+                await new Promise(resolve => setTimeout(resolve, sleepTime));
+                continue;
+            }
+
+            const timeSinceLast = Date.now() - this.lastRequestTime;
+            if (timeSinceLast < this.delayBetweenRequests) {
+                await new Promise(resolve => setTimeout(resolve, this.delayBetweenRequests - timeSinceLast));
+            }
+
+            const item = this.queue.shift();
+            if (!item) continue;
+
+            this.lastRequestTime = Date.now();
+
+            try {
+                const result = await item.requestFn();
+                item.resolve(result);
+            } catch (error) {
+                const status = error.response?.status || error.status;
+                if (status === 429) {
+                    item.attempts++;
+                    if (item.attempts < 3) {
+                        // Si no ha superado los intentos de reintento en la cola, lo ponemos de vuelta
+                        this.queue.unshift(item);
+                    } else {
+                        item.reject(error);
+                    }
+                    // Activar el pare general: pausar 3 segundos
+                    this.cooldownUntil = Date.now() + 3000;
+                    this.delayBetweenRequests = Math.min(this.delayBetweenRequests + 50, 500);
+                } else {
+                    item.reject(error);
+                }
+            }
+        }
+
+        this.running = false;
+    }
+}
+
+const osuApiQueue = new OsuApiQueue();
+
 function clearUserScoresCache(userId) {
     if (!userId) return;
     for (const key of userScoresCache.keys()) {
@@ -1945,36 +2011,27 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                             chunkTokensUsed.push(tokenName);
 
                             let poolAttempts = 0;
-                            while (poolAttempts < 2 && !success) {
-                                try {
-                                    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
-                                    const response = await axios.get(url, {
-                                        headers: {
-                                            'Authorization': `Bearer ${token}`,
-                                            'Content-Type': 'application/json',
-                                            'Accept': 'application/json',
-                                            'x-api-version': '20240728'
-                                        }
-                                    });
-                                    result = response.data;
-                                    success = true;
-                                } catch (error) {
-                                    const status = error.response?.status;
-                                    if (status === 404) {
-                                        // No tiene score, es un resultado válido
-                                        result = null;
-                                        success = true;
-                                    } else if (status === 429 && poolAttempts === 0) {
-                                        poolAttempts++;
-                                        console.warn(`[GAP] Recibido 429 para user_id ${user.osu_id} con token de la pool (${tokenName}). Reintentando tras 1.5s...`);
-                                        await new Promise(resolve => setTimeout(resolve, 1500));
-                                    } else {
-                                        // Otro error o segundo 429, hacemos fallback al token de bot
-                                        const errorMsg = error.response?.data ? ` | Detalles: ${JSON.stringify(error.response.data)}` : '';
-                                        console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status})${errorMsg}. Reintentando con token del bot...`);
-                                        useBotToken = true;
-                                        break;
+                            try {
+                                const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
+                                const response = await osuApiQueue.add(() => axios.get(url, {
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'Content-Type': 'application/json',
+                                        'Accept': 'application/json',
+                                        'x-api-version': '20240728'
                                     }
+                                }));
+                                result = response.data;
+                                success = true;
+                            } catch (error) {
+                                const status = error.response?.status;
+                                if (status === 404) {
+                                    result = null;
+                                    success = true;
+                                } else {
+                                    const errorMsg = error.response?.data ? ` | Detalles: ${JSON.stringify(error.response.data)}` : '';
+                                    console.warn(`[GAP] Petición fallida para user_id ${user.osu_id} con token de la pool (${tokenName}) (estado ${status})${errorMsg}. Reintentando con token del bot...`);
+                                    useBotToken = true;
                                 }
                             }
                         } else {
@@ -1982,27 +2039,16 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                         }
 
                         if (useBotToken && !success) {
-                            let botAttempts = 0;
-                            while (botAttempts < 2) {
-                                try {
-                                    result = await v2.scores.list({
-                                        type: 'user_beatmap_best',
-                                        beatmap_id: beatmapId,
-                                        user_id: user.osu_id,
-                                        mode: gamemode
-                                    });
-                                    success = true;
-                                    break;
-                                } catch (error) {
-                                    const status = error.status || error.response?.status;
-                                    if (status === 429 && botAttempts === 0) {
-                                        botAttempts++;
-                                        console.warn(`[GAP] Recibido 429 para user_id ${user.osu_id} con token del bot. Reintentando tras 1.5s...`);
-                                        await new Promise(resolve => setTimeout(resolve, 1500));
-                                    } else {
-                                        throw error;
-                                    }
-                                }
+                            try {
+                                result = await osuApiQueue.add(() => v2.scores.list({
+                                    type: 'user_beatmap_best',
+                                    beatmap_id: beatmapId,
+                                    user_id: user.osu_id,
+                                    mode: gamemode
+                                }));
+                                success = true;
+                            } catch (error) {
+                                throw error;
                             }
                         }
 
