@@ -574,23 +574,41 @@ async function handlePushEvent(client, dbRes, payload) {
     // Crear el resumen de cambios y uso de comandos
     let changesSummary = '';
     let commandUsage = '';
+    let commitsShown = 0;
+    const maxCommitsToShow = 12;
 
-    commits.forEach(commit => {
+    commits.forEach((commit, index) => {
         const messageLines = commit.message.split('\n').map(l => l.trim()).filter(Boolean);
         if (messageLines.length > 0) {
             const title = messageLines[0];
             const shortHash = commit.id.substring(0, 7);
-            changesSummary += `• [\`${shortHash}\`](${commit.url}) ${title} - *${commit.author.name}*\n`;
 
-            if (messageLines.length > 1) {
-                const bodyLines = messageLines.slice(1);
-                const bodyText = bodyLines.join('\n');
-                if (/uso|comando|flag|s\.|ejemplo|alias|run/i.test(bodyText)) {
-                    commandUsage += ` ▸ *Commit \`${shortHash}\`:*\n${bodyLines.map(l => `   ${l}`).join('\n')}\n`;
+            if (index < maxCommitsToShow) {
+                changesSummary += `• [\`${shortHash}\`](${commit.url}) ${title} - *${commit.author.name}*\n`;
+                commitsShown++;
+
+                if (messageLines.length > 1) {
+                    const bodyLines = messageLines.slice(1);
+                    const bodyText = bodyLines.join('\n');
+                    if (/uso|comando|flag|s\.|ejemplo|alias|run/i.test(bodyText)) {
+                        let chunk = ` ▸ *Commit \`${shortHash}\`:*\n${bodyLines.map(l => `   ${l}`).join('\n')}\n`;
+                        if (commandUsage.length + chunk.length < 1500) {
+                            commandUsage += chunk;
+                        }
+                    }
                 }
             }
         }
     });
+
+    if (commits.length > maxCommitsToShow) {
+        const remaining = commits.length - commitsShown;
+        let compareUrl = repoUrl;
+        if (payload.before && payload.after && payload.before !== '0000000000000000000000000000000000000000' && payload.after !== '0000000000000000000000000000000000000000') {
+            compareUrl = `${repoUrl}/compare/${payload.before.substring(0, 7)}...${payload.after.substring(0, 7)}`;
+        }
+        changesSummary += `• *...y ${remaining} commits más. [Ver comparación completa en GitHub](${compareUrl})*\n`;
+    }
 
     if (commandUsage) {
         commandUsage = `📖 **Uso de Comandos / Nuevas Funciones:**\n${commandUsage}\n`;
