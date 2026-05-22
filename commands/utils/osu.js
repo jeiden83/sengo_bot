@@ -27,6 +27,14 @@ const GAP_DISK_CACHE_TTL = 300000; // 5 minutos de vigencia en RAM antes de leer
 const PROFILE_CACHE_TTL = 300000; // 5 minutos
 const TOP_SCORES_CACHE_TTL = 300000; // 5 minutos
 
+function setWithLimit(map, key, value, limit = 100) {
+    if (map.size >= limit && !map.has(key)) {
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+    }
+    map.set(key, value);
+}
+
 function clearUserScoresCache(userId) {
     if (!userId) return;
     for (const key of userScoresCache.keys()) {
@@ -550,7 +558,7 @@ async function _getUserTopScores(parsed_args){
 
     const returnAndCache = (scores) => {
         if (scores && Array.isArray(scores) && scores.length > 0) {
-            userTopScoresCache.set(cacheKey, { scores, timestamp: now });
+            setWithLimit(userTopScoresCache, cacheKey, { scores, timestamp: now });
         }
         return scores;
     };
@@ -741,7 +749,7 @@ async function _getOsuUser(parsed_args){
 
     const returnAndCache = (user) => {
         if (user && typeof user === 'object' && user.username !== undefined && user.username !== "El usuario no se encuentra en osu!" && user.username !== "El usuario no se encuentra en Gatari!") {
-            userProfileCache.set(cacheKey, { user, timestamp: now });
+            setWithLimit(userProfileCache, cacheKey, { user, timestamp: now });
         }
         return user;
     };
@@ -912,7 +920,7 @@ async function getBeatmap(beatmap_id){
         id: beatmap_id
       });
 
-    beatmapCache.set(beatmap_id, { data: result, timestamp: now });
+    setWithLimit(beatmapCache, beatmap_id, { data: result, timestamp: now });
     return result;
 }
 
@@ -1004,7 +1012,7 @@ async function getBeatmapUserAllScores(parsed_args){
     if (Array.isArray(allScores)) {
         allScores.forEach(normalizeScore);
     }
-    userScoresCache.set(cacheKey, { scores: allScores, timestamp: now });
+    setWithLimit(userScoresCache, cacheKey, { scores: allScores, timestamp: now });
 
     return allScores;
 }
@@ -1721,7 +1729,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
     } else if (fs.existsSync(cacheFile) && !forceUpdate) {
         try {
             cachedData = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
-            gapDiskCacheInMemory.set(key, { data: cachedData, timestamp: nowTime });
+            setWithLimit(gapDiskCacheInMemory, key, { data: cachedData, timestamp: nowTime });
         } catch (e) {
             console.error("Error al leer cache de gap:", e);
         }
@@ -2109,7 +2117,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 }
                 cachedData.updated_at = Date.now();
                 fs.writeFileSync(cacheFile, JSON.stringify(cachedData, null, 2), 'utf8');
-                gapDiskCacheInMemory.set(key, { data: cachedData, timestamp: Date.now() });
+                setWithLimit(gapDiskCacheInMemory, key, { data: cachedData, timestamp: Date.now() });
             } catch (e) {
                 console.error("Error al guardar cache de gap:", e);
             }
