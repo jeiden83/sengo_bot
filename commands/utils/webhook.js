@@ -175,6 +175,114 @@ function startServer(client, dbRes, port, config) {
         const parsedUrl = url.parse(req.url, true);
         const pathname = parsedUrl.pathname;
 
+        // Ruta GET /osu/:beatmapsetId para lanzar osu!direct en PC
+        if (req.method === 'GET' && pathname && pathname.startsWith('/osu/')) {
+            const beatmapsetId = pathname.split('/')[2];
+            if (!beatmapsetId || isNaN(beatmapsetId)) {
+                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<h1>Error 400: Beatmapset ID inválido</h1>');
+                return;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+            res.end(`<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="refresh" content="0; url=osu://dl/${beatmapsetId}">
+    <title>Abriendo osu! Direct...</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: linear-gradient(135deg, #11111b 0%, #1e1e2e 100%);
+            color: #cdd6f4;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            background: rgba(49, 50, 68, 0.4);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(245, 194, 231, 0.2);
+            padding: 40px 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            max-width: 420px;
+            animation: fadeIn 0.6s ease-out;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .icon {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            animation: bounce 2s infinite ease-in-out;
+            display: inline-block;
+        }
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        h1 {
+            color: #f5c2e7;
+            margin-top: 0;
+            margin-bottom: 15px;
+            font-size: 1.8rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+        p {
+            margin-bottom: 25px;
+            font-size: 1rem;
+            color: #a6adc8;
+            line-height: 1.5;
+        }
+        .btn {
+            color: #11111b;
+            background: linear-gradient(90deg, #f5c2e7 0%, #cba6f7 100%);
+            text-decoration: none;
+            font-weight: 700;
+            padding: 12px 28px;
+            border-radius: 8px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            display: inline-block;
+            box-shadow: 0 4px 15px rgba(245, 194, 231, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(245, 194, 231, 0.5);
+        }
+        .btn:active {
+            transform: translateY(0);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="icon">🌸</div>
+        <h1>Abriendo en osu!</h1>
+        <p>Intentando abrir osu! Direct para descargar el set de mapas <strong>#${beatmapsetId}</strong>...</p>
+        <p>Si el juego no se abre automáticamente, haz clic en el botón de abajo:</p>
+        <a class="btn" href="osu://dl/${beatmapsetId}">Lanzar osu!</a>
+    </div>
+    <script>
+        window.location.href = "osu://dl/${beatmapsetId}";
+        // Intentar cerrar la ventana automáticamente tras 4 segundos
+        setTimeout(function() {
+            try { window.close(); } catch(e) {}
+        }, 4000);
+    </script>
+</body>
+</html>`);
+            return;
+        }
+
         // Ruta GET /oauth o /link
         if (req.method === 'GET' && (pathname === '/oauth' || pathname === '/link')) {
             const discordId = parsedUrl.query.state || parsedUrl.query.discord_id;

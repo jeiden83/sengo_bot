@@ -710,11 +710,18 @@ function doOsuMapEmbed({
         })
         .setTimestamp();
 
+    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const osuDirectPCUrl = `${redirectBase}/osu/${beatmap.beatmapset_id}`;
+
     // Construir la fila de botones de descarga
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setLabel('osu!direct')
+                .setLabel('Lanzar osu!')
+                .setStyle(ButtonStyle.Link)
+                .setURL(osuDirectPCUrl),
+            new ButtonBuilder()
+                .setLabel('osu.direct (Web)')
                 .setStyle(ButtonStyle.Link)
                 .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
             new ButtonBuilder()
