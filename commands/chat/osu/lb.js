@@ -17,7 +17,11 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
             .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
     };
 
-    const isFiltered = parsed_args.modFilter !== null || parsed_args.modContainFilter !== null;
+    const isFiltered = (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
+                       (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) ||
+                       (parsed_args.friendsFilter !== null && parsed_args.friendsFilter !== undefined) ||
+                       (parsed_args.country !== null && parsed_args.country !== undefined) ||
+                       (usedSupporter && usedSupporter.fallback === false);
 
     scores_chunk.forEach((score, i) => {
         const globalIndex = startIndex + i + 1;
@@ -210,6 +214,44 @@ async function run(messages, args) {
     let scores = null;
     let usedSupporter = null;
 
+    const hasFilters = (friendsFilter !== null && friendsFilter !== undefined) || 
+                        (countryFilter !== null && countryFilter !== undefined) || 
+                        (modsArray.length > 0) || 
+                        (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
+                        (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined);
+
+    let globalScoresPromise = null;
+    if (hasFilters) {
+        globalScoresPromise = (async () => {
+            try {
+                const fs = require('fs');
+                let globalToken = null;
+                try {
+                    const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+                    globalToken = tokenData.access_token;
+                } catch (e) {}
+
+                if (!globalToken) return [];
+
+                const globalUrl = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores?mode=${targetGamemode}`;
+                const apiRes = await fetch(globalUrl, {
+                    headers: {
+                        'Authorization': `Bearer ${globalToken}`,
+                        'Content-Type': 'application/json',
+                        'x-api-version': '20240728'
+                    }
+                });
+                if (apiRes.ok) {
+                    const resJson = await apiRes.json();
+                    return resJson.scores || resJson || [];
+                }
+            } catch (err) {
+                console.error("Error al obtener global scores en paralelo:", err);
+            }
+            return [];
+        })();
+    }
+
     // 0. Caso leaderboard de amigos
     if (friendsFilter) {
         const supabase = res.supabaseClient;
@@ -388,9 +430,25 @@ async function run(messages, args) {
         return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
     }
 
-    // Asignamos el índice original antes de cualquier filtro local
+    let globalScores = [];
+    if (globalScoresPromise) {
+        if (logger) logger.process("Esperando cruce de posiciones globales...");
+        globalScores = await globalScoresPromise;
+    }
+
+    const globalMap = new Map();
+    globalScores.forEach((s, idx) => {
+        globalMap.set(s.id.toString(), idx + 1);
+    });
+
+    // Asignamos la posición global si existe cruce, sino usamos el índice local
     scores.forEach((score, idx) => {
-        score.leaderboardRank = idx + 1;
+        if (hasFilters && globalScores.length > 0) {
+            const globalPos = globalMap.get(score.id.toString());
+            score.leaderboardRank = globalPos !== undefined ? globalPos : "50+";
+        } else {
+            score.leaderboardRank = idx + 1;
+        }
     });
 
     // APLICAR FILTROS DE MODS (Si no se hicieron a nivel de API o para el filtrado -mx de contención)
