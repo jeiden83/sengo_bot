@@ -21,6 +21,9 @@ const activeGapPromises = new Map();
 const activeProfilePromises = new Map();
 const activeTopScoresPromises = new Map();
 
+const gapDiskCacheInMemory = new Map();
+const GAP_DISK_CACHE_TTL = 300000; // 5 minutos de vigencia en RAM antes de leer de disco
+
 const PROFILE_CACHE_TTL = 300000; // 5 minutos
 const TOP_SCORES_CACHE_TTL = 300000; // 5 minutos
 
@@ -1708,10 +1711,17 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
     const cacheDir = path.join(process.cwd(), 'db/local/gap_cache');
     const cacheFile = path.join(cacheDir, `${beatmapId}_${gamemode}.json`);
 
+    const key = `${beatmapId}_${gamemode}`;
+    const nowTime = Date.now();
     let cachedData = { updated_at: 0, scores: {} };
-    if (fs.existsSync(cacheFile) && !forceUpdate) {
+
+    const inMemoryEntry = gapDiskCacheInMemory.get(key);
+    if (inMemoryEntry && (nowTime - inMemoryEntry.timestamp) < GAP_DISK_CACHE_TTL && !forceUpdate) {
+        cachedData = inMemoryEntry.data;
+    } else if (fs.existsSync(cacheFile) && !forceUpdate) {
         try {
             cachedData = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
+            gapDiskCacheInMemory.set(key, { data: cachedData, timestamp: nowTime });
         } catch (e) {
             console.error("Error al leer cache de gap:", e);
         }
@@ -2099,6 +2109,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 }
                 cachedData.updated_at = Date.now();
                 fs.writeFileSync(cacheFile, JSON.stringify(cachedData, null, 2), 'utf8');
+                gapDiskCacheInMemory.set(key, { data: cachedData, timestamp: Date.now() });
             } catch (e) {
                 console.error("Error al guardar cache de gap:", e);
             }
