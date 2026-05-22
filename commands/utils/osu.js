@@ -75,7 +75,7 @@ function normalizeScore(score) {
     const resolvedLegacy = (rawLegacy !== null && rawLegacy > 0) ? rawLegacy : (rawClassic !== null && rawClassic > 0 ? rawClassic : (rawScore !== null ? rawScore : 0));
     const resolvedTotal = rawTotal !== null ? rawTotal : (rawScore !== null ? rawScore : 0);
     const resolvedClassic = (rawClassic !== null && rawClassic > 0) ? rawClassic : (rawLegacy !== null && rawLegacy > 0 ? rawLegacy : (rawScore !== null ? rawScore : 0));
-    const resolvedScore = rawScore !== null ? rawScore : (rawTotal !== null ? rawTotal : (rawLegacy !== null && rawLegacy > 0 ? rawLegacy : 0));
+    const resolvedScore = (rawScore !== null && rawScore > 0) ? rawScore : (rawClassic !== null && rawClassic > 0 ? rawClassic : (rawLegacy !== null && rawLegacy > 0 ? rawLegacy : (rawTotal !== null && rawTotal > 0 ? rawTotal : 0)));
 
     score.legacy_total_score = resolvedLegacy;
     score.total_score = resolvedTotal;
@@ -864,7 +864,7 @@ async function getBeatmapUserScore(parsed_args) {
             }
         });
 
-        if (response.data && response.data.score) normalizeScore(response.data.score);
+        if (response.data) normalizeScore(response.data);
         return response.data;
     } catch (error) {
         return 'Error obteniendo las puntuaciones'
@@ -1574,12 +1574,30 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                 .eq('beatmap_id', beatmapId.toString());
             
             if (!dbError && dbScores) {
+                // Agrupar por usuario y elegir la mejor play pasada (o la más reciente si no hay pasadas)
+                const dbByUser = {};
                 for (const row of dbScores) {
                     const uId = row.user_id.toString();
+                    if (!dbByUser[uId]) dbByUser[uId] = [];
+                    dbByUser[uId].push(row);
+                }
+
+                for (const uId in dbByUser) {
+                    const rows = dbByUser[uId];
+                    // Priorizar plays pasadas sobre fallidas
+                    const passedRows = rows.filter(r => r.passed !== false);
+                    const bestRow = passedRows.length > 0
+                        ? passedRows.reduce((a, b) => (Number(a.pp || 0) > Number(b.pp || 0) ? a : b))
+                        : rows.reduce((a, b) => (new Date(a.ended_at).getTime() > new Date(b.ended_at).getTime() ? a : b));
+
+                    const row = bestRow;
                     const rowEndedAtTime = new Date(row.ended_at).getTime();
-                    const cachedEndedAtTime = cachedData.scores[uId] ? new Date(cachedData.scores[uId].ended_at || 0).getTime() : 0;
+                    const existing = cachedData.scores[uId];
+                    const cachedEndedAtTime = existing ? new Date(existing.ended_at || 0).getTime() : 0;
+                    // Solo reemplazar si no hay cached, o si el cached es noScore, o si la DB tiene una play mejor/más reciente
+                    const shouldReplace = !existing || existing.noScore === true || rowEndedAtTime > cachedEndedAtTime;
                     
-                    if (!cachedData.scores[uId] || rowEndedAtTime > cachedEndedAtTime) {
+                    if (shouldReplace) {
                         const mappedScore = {
                             id: Number(row.id),
                             accuracy: row.accuracy,
@@ -1606,6 +1624,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                             user_id: Number(row.user_id),
                             fetched_at: new Date(row.created_at).getTime()
                         };
+                        normalizeScore(mappedScore);
                         cachedData.scores[uId] = mappedScore;
                     }
                 }
@@ -1750,7 +1769,8 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                         headers: {
                                             'Authorization': `Bearer ${token}`,
                                             'Content-Type': 'application/json',
-                                            'Accept': 'application/json'
+                                            'Accept': 'application/json',
+                                            'x-api-version': '20240728'
                                         }
                                     });
                                     result = response.data;
@@ -1805,6 +1825,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                         if (success) {
                             processedCount++;
                             if (result && result.score) {
+                                normalizeScore(result.score);
                                 delete result.score.beatmap;
                                 delete result.score.beatmapset;
 
