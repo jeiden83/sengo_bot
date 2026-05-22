@@ -445,7 +445,7 @@ async function getAllOAuthUsers() {
     }
 }
 
-module.exports = {
+const OsuUserModel = {
     loadToken,
     NewloadToken,
     getOsuUser,
@@ -463,4 +463,6 @@ module.exports = {
     getSupporterTokenForCountry,
     getAllOAuthUsers
 };
+
+module.exports = OsuUserModel;
 

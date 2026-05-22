@@ -1,12 +1,5 @@
 const { EmbedBuilder } = require('discord.js');
-const { 
-    getOsuUser, 
-    getFriendsList, 
-    getLinkedUsers, 
-    getLinkedUsersMap, 
-    getOAuthUsernamesMap, 
-    fetchMeDetails 
-} = require('../../../models/OsuUserModel.js');
+const OsuUserModel = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
 
@@ -25,7 +18,7 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
             const dbInfo = linkedMap.get(friend.id.toString());
             
             try {
-                const friendFriendsList = await getFriendsList(dbInfo.discord_id);
+                const friendFriendsList = await OsuUserModel.getFriendsList(dbInfo.discord_id);
                 if (!friendFriendsList) {
                     friend.mutual = 'unknown'; // Sin token válido o sin scope friends.read
                     return;
@@ -55,13 +48,13 @@ async function run(messages, args) {
         }
 
         if (logger) logger.process("Obteniendo amigos del creador desde la API de osu!...");
-        const friendsList = await getFriendsList(authorId);
+        const friendsList = await OsuUserModel.getFriendsList(authorId);
         if (!friendsList) {
             return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.`;
         }
 
         if (logger) logger.process("Obteniendo usuarios vinculados de la base de datos...");
-        const dbUsers = await getLinkedUsers({ bypass: true });
+        const dbUsers = await OsuUserModel.getLinkedUsers({ bypass: true });
 
         if (!dbUsers || dbUsers.length === 0) {
             return `❌ No se encontraron usuarios vinculados de la base de datos.`;
@@ -73,7 +66,7 @@ async function run(messages, args) {
 
         // Obtener los nombres de usuario de osu! para los usuarios faltantes
         if (logger) logger.process("Obteniendo nombres de los usuarios faltantes...");
-        const oauthUsernames = await getOAuthUsernamesMap();
+        const oauthUsernames = await OsuUserModel.getOAuthUsernamesMap();
 
         await Promise.all(
             missingFriends.map(async (user) => {
@@ -82,7 +75,7 @@ async function run(messages, args) {
                     user.username = oauthUsernames.get(osuIdStr);
                 } else {
                     try {
-                        const osuUser = await getOsuUser({ username: [osuIdStr], gamemode: 'osu' });
+                        const osuUser = await OsuUserModel.getOsuUser({ username: [osuIdStr], gamemode: 'osu' });
                         user.username = osuUser?.username || `User ${osuIdStr}`;
                     } catch (e) {
                         user.username = `User ${osuIdStr}`;
@@ -99,13 +92,13 @@ async function run(messages, args) {
 
     // 2. Flujo normal: Listar amigos del autor
     if (logger) logger.process("Verificando token de OAuth...");
-    const meDetails = await fetchMeDetails(authorId);
+    const meDetails = await OsuUserModel.fetchMeDetails(authorId);
     if (!meDetails) {
         return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` para poder utilizar este comando.`;
     }
 
     if (logger) logger.process("Obteniendo amigos desde la API de osu!...");
-    const friends = await getFriendsList(authorId);
+    const friends = await OsuUserModel.getFriendsList(authorId);
     if (!friends) {
         return `❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.`;
     }
@@ -124,7 +117,7 @@ async function run(messages, args) {
 
     // Obtener usuarios vinculados en la BD
     if (logger) logger.process("Consultando usuarios vinculados al bot...");
-    const linkedMap = await getLinkedUsersMap();
+    const linkedMap = await OsuUserModel.getLinkedUsersMap();
 
     // Ordenar amigos alfabéticamente por username
     friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
