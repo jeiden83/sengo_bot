@@ -1,6 +1,7 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { getSupabaseClient } = require('../../../db/database.js');
 const { getValidTokenForUser } = require('../../../utils/osuAuth.js');
+const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
 const axios = require('axios');
 
 // Bandera emoji helper
@@ -100,32 +101,19 @@ async function run(messages, args) {
             .not('osu_id', 'is', null);
 
         if (dbUsersError) {
-            console.error("Error al obtener users de la BD:", dbUsersError);
-            return `❌ Error al consultar la base de datos de Sengo.`;
+            console.error("Error al obtener usuarios vinculados:", dbUsersError.message);
+            return `❌ Error al obtener usuarios vinculados de la base de datos.`;
         }
 
-        const { data: dbTokens } = await supabase
-            .from('oauth_tokens')
-            .select('discord_id, osu_id, username');
+        // Encontrar cuáles de los usuarios vinculados NO están en la lista de amigos del owner
+        const friendIds = new Set(friendsList.map(f => f.id.toString()));
+        const missingFriends = dbUsers.filter(u => !friendIds.has(u.osu_id.toString()));
 
-        const oauthUsernames = new Map();
-        if (dbTokens) {
-            dbTokens.forEach(token => {
-                oauthUsernames.set(token.osu_id.toString(), token.username);
-            });
-        }
+        // Obtener los nombres de usuario de osu! para los usuarios faltantes
+        if (logger) logger.process("Obteniendo nombres de los usuarios faltantes...");
+        const { data: oauthTokens } = await supabase.from('oauth_tokens').select('osu_id, username');
+        const oauthUsernames = new Map(oauthTokens?.map(t => [t.osu_id.toString(), t.username]) || []);
 
-        // Crear set de IDs de amigos del owner
-        const ownerFriendIds = new Set(friendsList.map(f => f.id.toString()));
-
-        // Filtrar cuáles usuarios del Sengo NO están en sus amigos
-        const missingFriends = dbUsers.filter(user => {
-            // No incluirse a sí mismo
-            if (user.discord_id === ownerId) return false;
-            return !ownerFriendIds.has(user.osu_id.toString());
-        });
-
-        // Para los que falten, resolvemos su username (de la caché o de la API si no los conocemos por OAuth)
         const { getOsuUser } = require("../../utils/osu.js");
 
         await Promise.all(
@@ -144,29 +132,8 @@ async function run(messages, args) {
             })
         );
 
-        const missingEmbed = new EmbedBuilder()
-            .setTitle("🕵️ Usuarios Vinculados al Sengo Faltantes")
-            .setColor(embedColor)
-            .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-            .setTimestamp();
-
-        if (missingFriends.length === 0) {
-            missingEmbed.setDescription("✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados al Sengo Bot en tu cuenta de osu!.");
-        } else {
-            let desc = `Los siguientes **${missingFriends.length}** usuarios vinculados al Sengo aún **no** están en tu lista de amigos de osu!:\n\n`;
-            let addedCount = 0;
-            for (let idx = 0; idx < missingFriends.length; idx++) {
-                const user = missingFriends[idx];
-                const line = `${idx + 1}. **${user.username}** (osu!: [perfil](https://osu.ppy.sh/users/${user.osu_id})) ▸ Discord: <@${user.discord_id}>\n`;
-                if (desc.length + line.length > 3900) {
-                    desc += `\n*...y **${missingFriends.length - addedCount}** usuarios vinculados más.*`;
-                    break;
-                }
-                desc += line;
-                addedCount++;
-            }
-            missingEmbed.setDescription(desc);
-        }
+        // Construir Embed utilizando la capa de visualización (View)
+        const missingEmbed = doOsuMissingFriendsEmbed(message, missingFriends);
 
         return { embeds: [missingEmbed] };
     }
@@ -254,37 +221,9 @@ async function run(messages, args) {
     let pageNum = 1;
     let startIndex = 0;
 
-    // Función para renderizar el embed de una página
+    // Función para renderizar el embed de una página utilizando la capa de visualización (View)
     const generateEmbed = (chunk, page, maxP) => {
-        let desc = `Total de amigos en osu!: **${totalFriends}**\n\n`;
-
-        chunk.forEach((friend, idx) => {
-            const globalIndex = startIndex + idx + 1;
-            const flag = getFlagEmoji(friend.country_code);
-            const userUrl = `https://osu.ppy.sh/users/${friend.id}`;
-
-            const suppIcon = friend.is_supporter ? '💖' : '❌';
-            const sengoIcon = friend.sengo ? '✅' : '❌';
-
-            let mutualIcon = '❌';
-            if (friend.mutual === 'yes') mutualIcon = '✅';
-            else if (friend.mutual === 'unknown') mutualIcon = '❓';
-
-            desc += `\`#${globalIndex.toString().padEnd(2, ' ')}\` ▸ ${flag} [**${friend.username}**](${userUrl}) ▸ Supporter: ${suppIcon} ▸ Mutual: ${mutualIcon} ▸ Sengo: ${sengoIcon}\n`;
-        });
-
-        desc += `\n**Leyenda:**\n` +
-                `• **Supporter**: Si el usuario tiene supporter en osu! activo.\n` +
-                `• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope \`friends.read\` (se requiere \`s.link -oauth\`).\n` +
-                `• **Sengo**: Cuenta vinculada al Sengo Bot.`;
-
-        return new EmbedBuilder()
-            .setTitle("👥 Lista de Amigos en osu!")
-            .setDescription(desc)
-            .setColor(embedColor)
-            .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-            .setFooter({ text: `SengoBot • Página ${page}/${maxP}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-            .setTimestamp();
+        return doOsuFriendsListEmbed(message, friends, chunk, page, maxP, startIndex, totalFriends);
     };
 
     const getButtonsRow = (start, total) => {

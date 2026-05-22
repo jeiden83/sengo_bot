@@ -1,7 +1,7 @@
 const { addUser, deleteUser } = require("../../../db/database.js"); 
 const { getOsuUser, argsParserNoCommand} = require("../../utils/osu.js"); 
 const { getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
-const { EmbedBuilder } = require("discord.js");
+const { doOsuOAuthEmbed } = require("../../../views/osuUserViews.js");
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
@@ -19,20 +19,8 @@ async function run(messages, args) {
             const redirectUri = getRedirectUri();
             const authUrl = getAuthUrl(discord_id, redirectUri);
 
-            // Crear Embed bonito
-            const embed = new EmbedBuilder()
-                .setTitle("Vinculación de Cuenta Segura - SengoBot")
-                .setDescription(
-                    "Para vincular tu cuenta de osu! de forma completamente segura y privada mediante la API oficial (OAuth), haz clic en el siguiente botón:\n\n" +
-                    `👉 **[Autorizar Cuenta de osu!](${authUrl})**\n\n` +
-                    "**¿Por qué usar OAuth?**\n" +
-                    "• **Seguridad**: No necesitamos tu contraseña.\n" +
-                    "• **Pool de Soporte**: Tu cuenta ayudará a consultar rankings nacionales si tienes supporter.\n" +
-                    "• **Privado**: Este proceso es completamente confidencial."
-                )
-                .setColor("#ff66aa")
-                .setFooter({ text: "SengoBot OAuth System v2" })
-                .setTimestamp();
+            // Crear Embed bonito utilizando la capa de visualización (View)
+            const embed = doOsuOAuthEmbed(authUrl);
 
             if (logger) logger.process("Enviando mensaje privado con instrucciones...");
             // Enviar por DM para máxima privacidad

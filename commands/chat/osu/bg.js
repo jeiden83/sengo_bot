@@ -1,5 +1,5 @@
 const { getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../../utils/osu.js");
-const { EmbedBuilder } = require("discord.js");
+const { doOsuBgEmbed } = require("../../../views/osuBeatmapViews.js");
 
 async function run(messages, args) {
     const { message, res, reply } = messages;
@@ -38,26 +38,8 @@ async function run(messages, args) {
         return `❌ No se pudieron cargar los metadatos del mapa con ID \`${beatmap_id}\`.`;
     }
 
-    const beatmapset_id = beatmap.beatmapset_id;
-    // La imagen en alta resolución del fondo completo del mapa
-    const bg_url = `https://assets.ppy.sh/beatmaps/${beatmapset_id}/covers/fullsize.jpg`;
-
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
-
-    // 4. Construir Embed
-    const embed = new EmbedBuilder()
-        .setAuthor({
-            name: `Fondo de: ${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]`,
-            url: `https://osu.ppy.sh/b/${beatmap.id}`
-        })
-        .setImage(bg_url)
-        .setColor(embedColor)
-        .setFooter({
-            text: `SengoBot • Beatmapset ID: ${beatmapset_id}`,
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-        })
-        .setTimestamp();
+    // 4. Construir Embed utilizando la capa de visualización (View)
+    const embed = doOsuBgEmbed(message, beatmap);
 
     if (reply) {
         reply.reply({ embeds: [embed] });
