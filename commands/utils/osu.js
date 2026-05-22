@@ -1,6 +1,7 @@
 const { Client, Auth } = require('osu-web.js');
 const { auth, v2 } = require('osu-api-extended');
 const { getOsuUser, loadToken, NewloadToken } = require("../../models/OsuUserModel.js");
+const { getBeatmap_osu, getBeatmap, lookupBeatmapByMD5 } = require("../../models/BeatmapModel.js");
 const { Collection } = require('discord.js');
 
 const { localBeatmapStatus } = require("./admin.js");
@@ -13,7 +14,6 @@ const axios = require('axios');
 const https = require('https');
 const rosu = require("rosu-pp-js");
 
-const beatmapCache = new Map();
 const userScoresCache = new Map();
 const userTopScoresCache = new Map();
 
@@ -731,107 +731,7 @@ async function _getUserTopScores(parsed_args){
 
 // Lógica de getOsuUser delegada a OsuUserModel
 
-// Obtener y descargar el beatmap.osu dado el id del set y del .osu
-// Usado principalmente para el calculo de pp
-async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
-    
-    return new rosu.Beatmap(fs.readFileSync(await run()));
-    
-    async function run() {
-        const unranked_statuses = new Set(['pending', 'graveyard', 'qualified']);
-    
-        // Ruta del archivo con la estructura correcta
-        const beatmapsetPath = path.join(__dirname, '../../db/local/beatmap.osu');
-        const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
-        const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
-    
-        // Verificar si el archivo ya existe en la carpeta /osu/
-        if (fs.existsSync(filePath)) {
-            // Si es un mapa rankeado, lo devolvemos de inmediato sin consultar la base de datos
-            if (!unranked_statuses.has(beatmap_metadata.status)) {
-                return filePath;
-            }
-    		
-            const beatmap_index = await localBeatmapStatus(beatmap_osu_id);
-    
-            // Si es un mapa rankeado entonces que lo devuelva, ya que ellos no sufren cambios
-            if(!unranked_statuses.has(beatmap_metadata.status)){
-    
-                // Si no se encuentra en el index, pues que lo actualice
-                if(!beatmap_index) await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
-                return filePath;
-            }
-    
-            // Si en el index local el beatmap.osu tiene el mismo tiempo de modificacion que el que unranked que se obtuvo
-            
-            if(beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated){
-    
-                return filePath;
-            }
-    
-            // Si bien existe, es unranked y cambio su tiempo de modificacion, por lo cual hay que cambiar el actual tanto guardado
-            // Como en el index
-        }
-    
-        // Realizar la solicitud HTTP si el archivo no está en caché
-        const options = {
-            method: 'GET',
-            url: `https://osu.direct/api/osu/${beatmap_osu_id}/raw`,
-            httpsAgent: new https.Agent({
-                rejectUnauthorized: false, // Ignorar certificados expirados
-            }),
-        };
-    
-        try {
-            const { data } = await axios.request(options);
-    
-            // Crear la carpeta /osu/ con la estructura correcta si no existe
-            fs.mkdirSync(folderPath, { recursive: true });
-    
-            // Guardar el archivo en la carpeta /osu/
-            fs.writeFileSync(filePath, data);
-    
-            // Se actualiza el index de los beatmaps
-            await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
-    
-            return filePath;
-        } catch (error) {
-    
-            console.error('Error al descargar el beatmap:', error.message);
-            throw error;
-        }
-    }
-}
-
-// Obtener los detalles de una dificultad de un beatmap dado
-async function getBeatmap(beatmap_id){
-    const cached = beatmapCache.get(beatmap_id);
-    const now = Date.now();
-    if (cached && (now - cached.timestamp) < 3600000) { // 1 hora de caché para metadatos del mapa
-        return cached.data;
-    }
-
-    await NewloadToken();
-
-    const result = await v2.beatmaps.details({
-        type: 'difficulty',
-        id: beatmap_id
-      });
-
-    setWithLimit(beatmapCache, beatmap_id, { data: result, timestamp: now });
-    return result;
-}
-
-// Obtener los detalles de un beatmap dado su MD5 checksum
-async function lookupBeatmapByMD5(md5){
-    await NewloadToken();
-    try {
-        const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: md5 });
-        return result;
-    } catch(e) {
-        return null;
-    }
-}
+// Lógicas de beatmaps delegadas a BeatmapModel
 
 // Obtener los detalles de una score dada su ID online
 async function getScoreDetails(score_id){
