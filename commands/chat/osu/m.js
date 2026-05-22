@@ -188,83 +188,43 @@ async function run(messages, args) {
     // Liberar memoria del mapa
     map.free();
 
-    // 7. Construcción del Embed Premium
-    const embed = new EmbedBuilder()
-        .setAuthor({
-            name: `Creado por ${beatmap.beatmapset.creator}`,
-            iconURL: `https://a.ppy.sh/${beatmap.beatmapset.user_id}`,
-            url: `https://osu.ppy.sh/users/${beatmap.beatmapset.user_id}`
-        })
-        .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
-        .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
-        .setDescription(`
-**Modo:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? ' *(Convertido)*' : ''}
-**Dificultad:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? `*(Base: ${baseStars.toFixed(2)}★)*` : ''}
-**Estado:** \`${statusName}\`
-
-**Valores de PP recomendados (Perfect Combo):**
-▸ **SS (100%):** \`${ppSS}pp\`
-▸ **99%:** \`${pp99}pp\`
-▸ **98%:** \`${pp98}pp\`
-▸ **95%:** \`${pp95}pp\`
-        `)
-        .addFields(
-            {
-                name: '📊 Atributos de Mapa',
-                value: `
-▸ **BPM:** \`${bpm}\` ${speedMultiplier !== 1.0 ? `*(Base: ${baseBpm})*` : ''}
-▸ **Duración:** \`${formatLength(totalLength)}\` *(Drain: ${formatLength(hitLength)})*
-▸ **Combo Máximo:** \`x${maxCombo}\`
-                `,
-                inline: true
-            },
-            {
-                name: '⚙️ Dificultad Física',
-                value: `
-▸ **${csLabel}:** \`${activeMode === 'mania' ? cs.toFixed(0) : cs.toFixed(1)}\` ${Math.abs(cs - baseCs) > 0.01 ? `*(Base: ${activeMode === 'mania' ? baseCs.toFixed(0) : baseCs.toFixed(1)})*` : ''}
-▸ **AR:** \`${ar.toFixed(1)}\` ${Math.abs(ar - baseAr) > 0.01 ? `*(Base: ${baseAr.toFixed(1)})*` : ''}
-▸ **OD:** \`${od.toFixed(1)}\` ${Math.abs(od - baseOd) > 0.01 ? `*(Base: ${baseOd.toFixed(1)})*` : ''}
-▸ **HP:** \`${hp.toFixed(1)}\` ${Math.abs(hp - baseHp) > 0.01 ? `*(Base: ${baseHp.toFixed(1)})*` : ''}
-                `,
-                inline: true
-            },
-            {
-                name: '🎯 Conteo de Objetos',
-                value: objectsValue,
-                inline: true
-            }
-        )
-        .setImage(beatmap.beatmapset.covers["cover@2x"])
-        .setColor(embedColor)
-        .setFooter({
-            text: `SengoBot • Beatmap ID: ${beatmap.id}`,
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-        })
-        .setTimestamp();
-
-    // Construir la fila de botones de descarga
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setLabel('osu!direct')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
-            new ButtonBuilder()
-                .setLabel('Nerinyan')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}?novideo=1`),
-            new ButtonBuilder()
-                .setLabel('Sayobot')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
-        );
+    const { doOsuMapEmbed } = require("../../../views/osuEmbeds.js");
+    const { embed, components } = doOsuMapEmbed({
+        beatmap,
+        activeMode,
+        isConverted,
+        stars,
+        baseStars,
+        statusName,
+        embedColor,
+        ppValues: { ppSS, pp99, pp98, pp95 },
+        attributes: {
+            bpm,
+            baseBpm,
+            speedMultiplier,
+            totalLength,
+            hitLength,
+            maxCombo,
+            cs,
+            baseCs,
+            ar,
+            baseAr,
+            od,
+            baseOd,
+            hp,
+            baseHp,
+            csLabel,
+            modsStr
+        },
+        objectsValue
+    });
 
     if (reply) {
-        reply.reply({ embeds: [embed], components: [row] });
+        reply.reply({ embeds: [embed], components });
         return;
     }
 
-    return { embeds: [embed], components: [row] };
+    return { embeds: [embed], components };
 }
 
 run.alias = {

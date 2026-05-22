@@ -1,130 +1,9 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-
-async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0){
-    let embed_description = '';
-
-    const emoji_mods = require("../../../src/emoji_mods.json");
-    const emoji_grades = require("../../../src/emoji_grades.json");
-
-    let position = startIndex + 1;
-
-    user_scores.forEach(score => {
-    
-        // Convierte el código de país a un emoji real usando Unicode.
-        const getFlagEmoji = (countryCode) => {
-            if (!countryCode || typeof countryCode !== 'string') return "🏴";
-            return countryCode
-                .toUpperCase()
-                .replace(/./g, char => String.fromCodePoint(0x1F1E6 - 65 + char.charCodeAt()));
-        };
-        let flag = getFlagEmoji((score.user && score.user.country_code) ? score.user.country_code : "XX");
-    
-        let username = score.user ? score.user.username : score.username;
-        let username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
-        if (!isLazer && score.mods) {
-            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-            if (!hasCL) {
-                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-                if (isObjectMod) {
-                    score.mods.push({ acronym: 'CL' });
-                } else {
-                    score.mods.push('CL');
-                }
-            }
-        }
-
-        let raw_total_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                              (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                              score.total_score || score.score || 0;
-        let total_score = raw_total_score.toLocaleString('es-ES');
-        let accuracy = (score.accuracy * 100).toFixed(2);
-    
-        let max_combo = score.max_combo;
-        let beatmap_max_combo = beatmap_metadata.max_combo;
- 
-        const stats = score.statistics || {};
-        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-        let statistics = "";
-        let ratio_str = "";
-        if (beatmap_metadata.mode === 'mania') {
-            statistics = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
-            ratio_str = ` - ${ratio}:1`;
-        } else if (beatmap_metadata.mode === 'taiko') {
-            statistics = `\`[${great}/${ok}/${miss}]\``;
-        } else {
-            statistics = `\`[${great}/${ok}/${meh}/${miss}]\``;
-        }
-        accuracy = `${accuracy}%${ratio_str}`;
-    
-        let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
-    
-        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
-    
-        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-    	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}: (${(score.map_completion*100).toFixed(2)}%)` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
- 
-        let mods_used = score.mods ? score.mods.reduce((acc, mod) => {
-            let settings_str = '';
-            if (mod.settings) {
-                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-                } else if (mod.acronym === 'DA') {
-                    let da_changes = [];
-                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                    if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-                }
-            }
-            const modAcronym = mod.acronym || mod;
-            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-        }, '') : '';
-
-        const isFirstGlobal = position === 1;
-        embed_description = embed_description.concat(isFirstGlobal ?
-            `#**${position++}** - ${flag} **${username_link}** - ${time_set} - ${grade_emoji}
-            **${total_score}** - **${accuracy}** - **x${max_combo}/${beatmap_max_combo}** - ${statistics} - **${pp}PP** - ${mods_used}\n\n`
-            :
-            `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
-            ${total_score} - ${accuracy} - x${max_combo}/${beatmap_max_combo} - ${statistics} - ${pp}PP - ${mods_used}\n\n`
-        );
-    
-    });
-    
-    const embed = new EmbedBuilder()
-        .setDescription(embed_description)
-        .setFooter({
-            text: `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + user_scores.length} de ${total_plays}`,
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-        })
-        .setTimestamp();
-
-    return embed;
-}
-
-async function doContent(beatmap_metadata, user_scores, sorted_user_scores, page = 1, max_pages = 1){
-    const { title } = beatmap_metadata.beatmapset;
-    const { difficulty_rating, version, url} = beatmap_metadata;
-
-    let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    let content = `**De \`${user_scores.length}\` usuarios, \`${sorted_user_scores.length}\` tienen una score en: \n${mapa}**`;
-
-    if(sorted_user_scores.length > 5) content = content.concat(`\n**Página \`${page}/${max_pages}\`**`);
-
-    return content;
-}
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
@@ -317,8 +196,8 @@ async function run(messages, args){
     let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
-    const content = await doContent(beatmap_metadata, usersArray, scoresArray, page, max_pages);
-    const initialEmbed = await doEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays);
+    const content = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, page, max_pages);
+    const initialEmbed = await doOsuGapEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays);
 
     const getGapButtonsRow = (start, total) => {
         return new ActionRowBuilder().addComponents(
@@ -383,9 +262,9 @@ async function run(messages, args){
             }
 
             const currentPage = Math.floor(startIndex / 5) + 1;
-            const updatedContent = await doContent(beatmap_metadata, usersArray, scoresArray, currentPage, max_pages);
+            const updatedContent = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, currentPage, max_pages);
             const chunk = scoresArray.slice(startIndex, startIndex + 5);
-            const embed = await doEmbed(message, chunk, beatmap_metadata, startIndex, total_plays);
+            const embed = await doOsuGapEmbed(message, chunk, beatmap_metadata, startIndex, total_plays);
 
             await i.editReply({
                 content: updatedContent,
