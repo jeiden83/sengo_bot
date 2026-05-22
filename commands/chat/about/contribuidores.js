@@ -51,7 +51,7 @@ async function run(messages, args) {
                     const flagEmoji = country !== 'UN' ? `:flag_${country.toLowerCase()}:` : '🏳️';
                     const totalInCountry = countryCounts[country] || 0;
                     description += `\n${flagEmoji} **${country}** (${totalInCountry})\n`;
-                    
+
                     groups[country].forEach(user => {
                         const suppIcon = user.is_supporter ? ' 💖' : '';
                         description += `  • **${user.username}**${suppIcon}\n`;
@@ -122,7 +122,7 @@ async function run(messages, args) {
             collector.on('end', async () => {
                 try {
                     await sent_message.edit({ components: [] });
-                } catch {}
+                } catch { }
             });
         } else {
             const embed = new EmbedBuilder()
@@ -154,9 +154,9 @@ run.alias = {
 }
 
 run.description = {
-    'header' : 'Lista de usuarios vinculados',
-    'body' : 'Muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
-    'usage' : undefined
+    'header': 'Lista de usuarios vinculados',
+    'body': 'Muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
+    'usage': undefined
 }
 
 module.exports = { run }
