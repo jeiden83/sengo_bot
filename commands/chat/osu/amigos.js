@@ -154,9 +154,17 @@ async function run(messages, args) {
             missingEmbed.setDescription("✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados al Sengo Bot en tu cuenta de osu!.");
         } else {
             let desc = `Los siguientes **${missingFriends.length}** usuarios vinculados al Sengo aún **no** están en tu lista de amigos de osu!:\n\n`;
-            missingFriends.forEach((user, idx) => {
-                desc += `${idx + 1}. **${user.username}** (osu!: [perfil](https://osu.ppy.sh/users/${user.osu_id})) ▸ Discord: <@${user.discord_id}>\n`;
-            });
+            let addedCount = 0;
+            for (let idx = 0; idx < missingFriends.length; idx++) {
+                const user = missingFriends[idx];
+                const line = `${idx + 1}. **${user.username}** (osu!: [perfil](https://osu.ppy.sh/users/${user.osu_id})) ▸ Discord: <@${user.discord_id}>\n`;
+                if (desc.length + line.length > 3900) {
+                    desc += `\n*...y **${missingFriends.length - addedCount}** usuarios vinculados más.*`;
+                    break;
+                }
+                desc += line;
+                addedCount++;
+            }
             missingEmbed.setDescription(desc);
         }
 
