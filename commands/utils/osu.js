@@ -44,25 +44,6 @@ function setWithLimit(map, key, value, limit = 100) {
     map.set(key, value);
 }
 
-// OsuApiQueue duplicada eliminada (se usa la central de utils/OsuApiQueue.js en el modelo)
-
-// Lógicas de normalización y base de datos locales delegadas a OsuScoreModel
-
-// Lógica de tokens delegada a OsuUserModel
-
-// Lógica de saveUserscore delegada a OsuScoreModel
-
-// convertGatariMods delegada a OsuScoreModel
-
-// Lógicas de scores delegadas a OsuScoreModel
-
-// Lógica de getOsuUser delegada a OsuUserModel
-
-// Lógicas de beatmaps delegadas a BeatmapModel
-
-// Obtener los detalles de una score dada su ID online
-// Lógicas de scores adicionales delegadas a OsuScoreModel
-
 const getGamemodeFromMessage = (msg) => {
     if (!msg) return null;
     
