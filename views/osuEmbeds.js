@@ -4,66 +4,47 @@ const emoji_mods = require("../src/emoji_mods.json");
 const emoji_grades = require("../src/emoji_grades.json");
 
 /**
- * Renderiza el embed para una única jugada reciente de osu!
- * @param {object} message Mensaje de Discord de origen (para extraer colores/roles)
- * @param {object} recent_scores Objeto de la jugada devuelto por la API de osu!/Gatari
- * @param {object} pre_calculated Atributos calculados previamente (PP, combo, estrellas)
- * @returns {Promise<EmbedBuilder>} EmbedBuilder configurado para Discord
+ * Helpers privados para generalizar la lógica visual de los embeds
  */
-async function doOsuEmbed(message, recent_scores, pre_calculated) {
-    const username = recent_scores.user.username;
-    const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
-    const avatar_url = recent_scores.user.avatar_url;
 
-    const song_title = recent_scores.beatmapset.title;
+function getEmbedColor(message) {
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    return roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+}
 
-    const beatmap_difficulty = recent_scores.beatmap.version;
-    const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
-    const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
+function getFormattedScore(score) {
+    const raw_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
+                      (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
+                      score.total_score || score.score || 0;
+    return raw_score.toLocaleString('es-ES');
+}
 
-    // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
-    const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
-    if (!isLazer && recent_scores.mods) {
-        const hasCL = recent_scores.mods.some(m => (m.acronym || m) === 'CL');
+function getGradeEmoji(rank, passed) {
+    const rank_aliases = { "SS": "X", "SSH": "XH" };
+    const rank_key = !passed ? "F" : (rank_aliases[rank] ?? rank);
+    const grade_emoji = emoji_grades[rank_key] ?? emoji_grades["F"];
+    return grade_emoji[0] === "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
+}
+
+function formatMods(mods, isLazer) {
+    if (!mods) return `<:NM:${emoji_mods["NM"]}>`;
+    
+    const modsCopy = [...mods];
+    if (!isLazer) {
+        const hasCL = modsCopy.some(m => (m.acronym || m) === 'CL');
         if (!hasCL) {
-            const isObjectMod = recent_scores.mods.length > 0 && typeof recent_scores.mods[0] === 'object';
+            const isObjectMod = modsCopy.length > 0 && typeof modsCopy[0] === 'object';
             if (isObjectMod) {
-                recent_scores.mods.push({ acronym: 'CL' });
+                modsCopy.push({ acronym: 'CL' });
             } else {
-                recent_scores.mods.push('CL');
+                modsCopy.push('CL');
             }
         }
     }
 
-    const raw_score = (recent_scores.legacy_total_score && recent_scores.legacy_total_score > 0) ? recent_scores.legacy_total_score :
-                      (recent_scores.classic_total_score && recent_scores.classic_total_score > 0) ? recent_scores.classic_total_score :
-                      recent_scores.total_score || recent_scores.score || 0;
-    const score = raw_score.toLocaleString('es-ES');
-    
-    const accuracy = (recent_scores.accuracy * 100).toFixed(2);
-    const user_max_combo = recent_scores.max_combo;
+    if (modsCopy.length === 0) return `<:NM:${emoji_mods["NM"]}>`;
 
-    const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-
-    const user_pp = `${pre_calculated.pp.toFixed(2)}`
-
-    const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
-
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
-
-    const stats = recent_scores.statistics || {};
-    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-
-    let grade_emoji = emoji_grades[!recent_scores.passed ? "F" : recent_scores.rank];
-    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-    const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => {
+    return modsCopy.reduce((acc, mod) => {
         let settings_str = '';
         if (mod.settings) {
             if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
@@ -79,21 +60,89 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
         }
         const modAcronym = mod.acronym || mod;
         return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-    }, '') : `<:NM:${emoji_mods["NM"]}>`;
+    }, '');
+}
 
+function getStatsString(statistics = {}, mode = 'osu') {
+    const perfect = statistics.perfect !== undefined ? statistics.perfect : (statistics.count_geki || 0);
+    const great = statistics.great !== undefined ? statistics.great : (statistics.count_300 || 0);
+    const good = statistics.good !== undefined ? statistics.good : (statistics.count_katu || 0);
+    const ok = statistics.ok !== undefined ? statistics.ok : (statistics.count_100 || 0);
+    const meh = statistics.meh !== undefined ? statistics.meh : (statistics.count_50 || 0);
+    const miss = statistics.miss !== undefined ? statistics.miss : (statistics.count_miss || 0);
+
+    if (mode === 'mania') {
+        return `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+    } else if (mode === 'taiko') {
+        return `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
+    } else {
+        return `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
+    }
+}
+
+function getPlainStatsString(statistics = {}, mode = 'osu') {
+    const perfect = statistics.perfect !== undefined ? statistics.perfect : (statistics.count_geki || 0);
+    const great = statistics.great !== undefined ? statistics.great : (statistics.count_300 || 0);
+    const good = statistics.good !== undefined ? statistics.good : (statistics.count_katu || 0);
+    const ok = statistics.ok !== undefined ? statistics.ok : (statistics.count_100 || 0);
+    const meh = statistics.meh !== undefined ? statistics.meh : (statistics.count_50 || 0);
+    const miss = statistics.miss !== undefined ? statistics.miss : (statistics.count_miss || 0);
+
+    if (mode === 'mania') {
+        return `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+    } else if (mode === 'taiko') {
+        return `\`[${great}/${ok}/${miss}]\``;
+    } else {
+        return `\`[${great}/${ok}/${meh}/${miss}]\``;
+    }
+}
+
+function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, accuracy, ratio_str, combo, max_combo) {
+    let pp_fc_str = pp_fc ? ` ${colorear("if(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` : "";
+    return `\`\`\`ansi\n${stats_str} ${colorear(user_pp + 'PP')}/${max_pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${combo}/${colorear(max_combo)}\n\`\`\``;
+}
+
+/**
+ * Renderiza el embed para una única jugada reciente de osu!
+ * @param {object} message Mensaje de Discord de origen (para extraer colores/roles)
+ * @param {object} recent_scores Objeto de la jugada devuelto por la API de osu!/Gatari
+ * @param {object} pre_calculated Atributos calculados previamente (PP, combo, estrellas)
+ * @returns {Promise<EmbedBuilder>} EmbedBuilder configurado para Discord
+ */
+async function doOsuEmbed(message, recent_scores, pre_calculated) {
+    const username = recent_scores.user.username;
+    const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
+    const avatar_url = recent_scores.user.avatar_url;
+
+    const song_title = recent_scores.beatmapset.title;
+    const beatmap_difficulty = recent_scores.beatmap.version;
+    const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
+    const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
+
+    const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+    const score = getFormattedScore(recent_scores);
+    const accuracy = (recent_scores.accuracy * 100).toFixed(2);
+    const user_max_combo = recent_scores.max_combo;
+    const beatmap_max_combo = pre_calculated.beatmap_max_combo;
+    const user_pp = `${pre_calculated.pp.toFixed(2)}`;
+    const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const embedColor = getEmbedColor(message);
+
+    const stats = recent_scores.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+
+    const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
+    const mods_used = formatMods(recent_scores.mods, isLazer);
     const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
 
-    let stats_str = "";
+    const stats_str = getStatsString(stats, recent_scores.beatmap.mode);
     let ratio_str = "";
     if (recent_scores.beatmap.mode === 'mania') {
-        stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
         const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
-    } else if (recent_scores.beatmap.mode === 'taiko') {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
-    } else {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
+
     let leaderboard_pos = null;
     let user_top_pos = null;
     if (recent_scores.passed) {
@@ -175,11 +224,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
         }
     }
 
-    // Construccion del embed
-    let pp_fc_str = "";
-    if (pre_calculated.pp_fc) {
-        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
-    }
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -190,9 +235,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
         .setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}
-\`\`\`ansi
-${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
-\`\`\`
+${ansiBlock}
 		`)
         .setImage(beatmap_cover)
         .setColor(embedColor)
@@ -201,7 +244,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp(new Date(recent_scores.ended_at || recent_scores.created_at));
-  
+
     return embed;
 }
 
@@ -220,18 +263,13 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 
     for (let i = 0; i < recent_scores_chunk.length; i++) {
         const score = recent_scores_chunk[i];
-        const globalIndex = startIndex + i + 1; // 1-indexed for display
+        const globalIndex = startIndex + i + 1;
 
-        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-        grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-        const stats = score.statistics || {};
-        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+        const grade_emoji = getGradeEmoji(score.rank, score.passed);
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const mods_used = formatMods(score.mods, isLazer);
+        const accuracy = (score.accuracy * 100).toFixed(2);
+        const max_combo = score.max_combo;
 
         let map_completion = "";
         if (score.calculatedPassPercent !== undefined) {
@@ -244,42 +282,24 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             const count_spinners = score.beatmap.count_spinners || 0;
             const total_objects = count_circles + count_sliders + count_spinners;
             if (total_objects > 0) {
-                map_completion = `*(${((score.statistics.great + score.statistics.ok + score.statistics.meh + score.statistics.miss) / total_objects * 100).toFixed(1)}% pass)*`;
-            }
-        }
-        
-        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
-        if (!isLazer && score.mods) {
-            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-            if (!hasCL) {
-                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-                if (isObjectMod) {
-                    score.mods.push({ acronym: 'CL' });
-                } else {
-                    score.mods.push('CL');
-                }
+                const stats = score.statistics || {};
+                const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+                const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+                const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+                const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+                map_completion = `*(${((great + ok + meh + miss) / total_objects * 100).toFixed(1)}% pass)*`;
             }
         }
 
-        let raw_legacy_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                               (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                               score.total_score || score.score || 0;
-        let legacy_score = raw_legacy_score.toLocaleString('es-ES');
-        let accuracy = (score.accuracy * 100).toFixed(2);
-        let max_combo = score.max_combo;
-
-        let stats_str = "";
-        let ratio_str = "";
+        const stats_str = getPlainStatsString(score.statistics, score.beatmap.mode);
         const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
+        let ratio_str = "";
         if (gamemode === 'mania') {
-            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const stats = score.statistics || {};
+            const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
-        } else if (gamemode === 'taiko') {
-            stats_str = `\`[${great}/${ok}/${miss}]\``;
-        } else {
-            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }
 
         let ppVal = score.calculatedPP !== undefined ? score.calculatedPP : score.pp;
@@ -289,25 +309,6 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
-
-        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-            let settings_str = '';
-            if (mod.settings) {
-                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-                } else if (mod.acronym === 'DA') {
-                    let da_changes = [];
-                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                    if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-                }
-            }
-            const modAcronym = mod.acronym || mod;
-            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-        }, '') : `<:NM:${emoji_mods["NM"]}>`;
-
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
         const score_line = `**#${globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
@@ -319,9 +320,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
     const username = recent_scores_chunk[0].user.username;
     const user_url = recent_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${recent_scores_chunk[0].user.id}`;
     const avatar_url = recent_scores_chunk[0].user.avatar_url;
-
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+    const embedColor = getEmbedColor(message);
 
     let footerText = `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`;
     if (loadingIndex !== null) {
@@ -358,75 +357,28 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const beatmap_url = `https://osu.ppy.sh/b/${score.beatmap.id}`;
     const beatmap_cover = score.beatmapset.covers["cover@2x"];
 
-    // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    if (!isLazer && score.mods) {
-        const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-        if (!hasCL) {
-            const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-            if (isObjectMod) {
-                score.mods.push({ acronym: 'CL' });
-            } else {
-                score.mods.push('CL');
-            }
-        }
-    }
-
-    const raw_score_val = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                          (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                          score.total_score || score.score || 0;
-    const score_val = raw_score_val.toLocaleString('es-ES');
-    
+    const score_val = getFormattedScore(score);
     const accuracy = (score.accuracy * 100).toFixed(2);
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
     const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const embedColor = getEmbedColor(message);
 
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
-
-    const stats = score.statistics || {};
-    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-
-    let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-    const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-        let settings_str = '';
-        if (mod.settings) {
-            if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-            } else if (mod.acronym === 'DA') {
-                let da_changes = [];
-                if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-            }
-        }
-        const modAcronym = mod.acronym || mod;
-        return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-    }, '') : `<:NM:${emoji_mods["NM"]}>`;
-
+    const grade_emoji = getGradeEmoji(score.rank, score.passed);
+    const mods_used = formatMods(score.mods, isLazer);
     const map_completion = score.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
 
-    let stats_str = "";
+    const stats = score.statistics || {};
+    const stats_str = getStatsString(stats, score.beatmap.mode);
+
     let ratio_str = "";
     if (score.beatmap.mode === 'mania') {
-        stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
-    } else if (score.beatmap.mode === 'taiko') {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
-    } else {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
 
     let prefix_desc = '';
@@ -450,10 +402,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    let pp_fc_str = "";
-    if (pre_calculated.pp_fc) {
-        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
-    }
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -464,9 +413,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
         .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
-\`\`\`ansi
-${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
-\`\`\`
+${ansiBlock}
         `)
         .setImage(beatmap_cover)
         .setColor(embedColor)
@@ -508,78 +455,29 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     for (let i = 0; i < top_scores_chunk.length; i++) {
         const score = top_scores_chunk[i];
-        const globalIndex = startIndex + i + 1; // 1-indexed for display
+        const globalIndex = startIndex + i + 1;
 
-        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-        grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-        const stats = score.statistics || {};
-        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-
-        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
+        const grade_emoji = getGradeEmoji(score.rank, score.passed);
         const isLazer = score.build_id !== null && score.build_id !== undefined;
-        if (!isLazer && score.mods) {
-            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-            if (!hasCL) {
-                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-                if (isObjectMod) {
-                    score.mods.push({ acronym: 'CL' });
-                } else {
-                    score.mods.push('CL');
-                }
-            }
-        }
+        const mods_used = formatMods(score.mods, isLazer);
+        const accuracy = (score.accuracy * 100).toFixed(2);
+        const max_combo = score.max_combo;
 
-        let raw_legacy_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                               (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                               score.total_score || score.score || 0;
-        let legacy_score = raw_legacy_score.toLocaleString('es-ES');
-        let accuracy = (score.accuracy * 100).toFixed(2);
-        let max_combo = score.max_combo;
-
-        let stats_str = "";
-        let ratio_str = "";
+        const stats_str = getPlainStatsString(score.statistics, score.beatmap.mode);
         const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
+        let ratio_str = "";
         if (gamemode === 'mania') {
-            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const stats = score.statistics || {};
+            const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
-        } else if (gamemode === 'taiko') {
-            stats_str = `\`[${great}/${ok}/${miss}]\``;
-        } else {
-            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }
 
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
-        
         let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
-        
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
-
-        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-            let settings_str = '';
-            if (mod.settings) {
-                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-                } else if (mod.acronym === 'DA') {
-                    let da_changes = [];
-                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                    if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-                }
-            }
-            const modAcronym = mod.acronym || mod;
-            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-        }, '') : `<:NM:${emoji_mods["NM"]}>`;
-
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
         const score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
@@ -590,9 +488,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     const user_url = top_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${top_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${top_scores_chunk[0].user.id}`;
     const avatar_url = top_scores_chunk[0].user.avatar_url;
-
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+    const embedColor = getEmbedColor(message);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -625,78 +521,32 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const beatmap_url = `https://osu.ppy.sh/b/${beatmap_metadata.id}`;
     const beatmap_cover = beatmap_metadata.beatmapset.covers["cover@2x"];
 
-    // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    if (!isLazer && score.mods) {
-        const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-        if (!hasCL) {
-            const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-            if (isObjectMod) {
-                score.mods.push({ acronym: 'CL' });
-            } else {
-                score.mods.push('CL');
-            }
-        }
-    }
-
-    const raw_score_val = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                          (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                          score.total_score || score.score || 0;
-    const score_val = raw_score_val.toLocaleString('es-ES');
-    
+    const score_val = getFormattedScore(score);
     const accuracy = (score.accuracy * 100).toFixed(2);
     const user_max_combo = score.max_combo;
 
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
     const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const embedColor = getEmbedColor(message);
 
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
-
-    const stats = score.statistics || {};
-    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-
-    let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-    grade_emoji = grade_emoji ? (grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`) : '❓';
-
-    const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-        let settings_str = '';
-        if (mod.settings) {
-            if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-            } else if (mod.acronym === 'DA') {
-                let da_changes = [];
-                if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-            }
-        }
-        const modAcronym = mod.acronym || mod;
-        return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-    }, '') : `<:NM:${emoji_mods["NM"]}>`;
+    const grade_emoji = getGradeEmoji(score.rank, score.passed);
+    const mods_used = formatMods(score.mods, isLazer);
 
     let compVal = pre_calculated.map_completion;
     if (compVal < 1.0) compVal = compVal * 100;
     const map_completion = score.passed ? `` : `(${compVal.toFixed(2)}%)`;
 
-    let stats_str = "";
+    const stats = score.statistics || {};
+    const stats_str = getStatsString(stats, beatmap_metadata.mode);
+
     let ratio_str = "";
     if (beatmap_metadata.mode === 'mania') {
-        stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
-    } else if (beatmap_metadata.mode === 'taiko') {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
-    } else {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
 
     let active_filters = [];
@@ -709,10 +559,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    let pp_fc_str = "";
-    if (pre_calculated.pp_fc) {
-        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
-    }
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -723,9 +570,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
         .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
-\`\`\`ansi
-${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${user_max_combo}/${colorear(beatmap_max_combo)}
-\`\`\`
+${ansiBlock}
         `)
         .setImage(beatmap_cover)
         .setColor(embedColor)
@@ -757,8 +602,12 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const score = user_scores_chunk[i];
         const globalIndex = startIndex + i + 1;
 
-        let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
-        grade_emoji = grade_emoji ? (grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`) : '❓';
+        const grade_emoji = getGradeEmoji(score.rank, score.passed);
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const mods_used = formatMods(score.mods, isLazer);
+        const legacy_score = getFormattedScore(score);
+        const accuracy = (score.accuracy * 100).toFixed(2);
+        const max_combo = score.max_combo;
 
         let map_completion = "";
         if (score.map_completion !== undefined && !score.passed) {
@@ -767,68 +616,19 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             map_completion = `*(${compVal.toFixed(1)}% pass)*`;
         }
 
-        // Asegurar que si no es en lazer (!isLazer), se le agregue el mod CL si no lo tiene
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
-        if (!isLazer && score.mods) {
-            const hasCL = score.mods.some(m => (m.acronym || m) === 'CL');
-            if (!hasCL) {
-                const isObjectMod = score.mods.length > 0 && typeof score.mods[0] === 'object';
-                if (isObjectMod) {
-                    score.mods.push({ acronym: 'CL' });
-                } else {
-                    score.mods.push('CL');
-                }
-            }
-        }
-
-        let raw_legacy_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                               (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                               score.total_score || score.score || 0;
-        let legacy_score = raw_legacy_score.toLocaleString('es-ES');
-        let accuracy = (score.accuracy * 100).toFixed(2);
-        let max_combo = score.max_combo;
-        let statistics = score.statistics;
-
-        const perfect = statistics.perfect || 0;
-        const great = statistics.great || 0;
-        const good = statistics.good || 0;
-        const ok = statistics.ok || 0;
-        const meh = statistics.meh || 0;
-        const miss = statistics.miss || 0;
-
-        let stats_str = "";
-        let ratio_str = "";
+        const stats_str = getPlainStatsString(score.statistics, beatmap_metadata.mode);
         const gamemode = beatmap_metadata.mode || parsed_args.gamemode || 'osu';
+        let ratio_str = "";
         if (gamemode === 'mania') {
-            stats_str = `\`[${perfect}/${great}/${good}/${ok}/${meh}/${miss}]\``;
+            const stats = score.statistics || {};
+            const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
             const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
-        } else if (gamemode === 'taiko') {
-            stats_str = `\`[${great}/${ok}/${miss}]\``;
-        } else {
-            stats_str = `\`[${great}/${ok}/${meh}/${miss}]\``;
         }
 
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
-
-        const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
-            let settings_str = '';
-            if (mod.settings) {
-                if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                    if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-                } else if (mod.acronym === 'DA') {
-                    let da_changes = [];
-                    if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                    if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                    if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                    if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                    if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-                }
-            }
-            const modAcronym = mod.acronym || mod;
-            return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-        }, '') : `<:NM:${emoji_mods["NM"]}>`;
 
         const isFirst = globalIndex === 1;
         const rank_pos = isFirst ? `**#${score.originalRank || globalIndex}**` : `#${score.originalRank || globalIndex}`;
@@ -844,9 +644,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
     }
 
     const avatar_url = user_scores_chunk[0]?.user?.avatar_url || `https://a.ppy.sh/${parsed_args.username[0]}`;
-
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+    const embedColor = getEmbedColor(message);
 
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
@@ -862,81 +660,38 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 }
 
 /**
- * Genera el contenido de texto que acompaña al embed de comparación de puntuaciones
- */
-function getOsuCompareContent(parsed_args, username, beatmap_metadata) {
-    const { title } = beatmap_metadata.beatmapset;
-    const { difficulty_rating, version, url } = beatmap_metadata;
-
-    let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
-    return `**Puntuaciones de \`${username}\` en \`osu!${displayMode}\`: \n${mapa}**`;
-}
-
-/**
  * Renderiza el embed para la confirmación de subida manual de score
  */
 function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id) {
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
-
-    const rank_aliases_embed = { "SS": "X", "SSH": "XH" };
-    const rank_key_embed = !recent_scores.passed ? "F" : (rank_aliases_embed[recent_scores.rank] ?? recent_scores.rank);
-    let grade_emoji = emoji_grades[rank_key_embed] ?? emoji_grades["F"];
-    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
-
-    const mods_used = recent_scores.mods.length > 0 ? recent_scores.mods.reduce((acc, mod) => {
-        let settings_str = '';
-        if (mod.settings) {
-            if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
-                if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
-            } else if (mod.acronym === 'DA') {
-                let da_changes = [];
-                if (mod.settings.circle_size !== undefined) da_changes.push(`CS${mod.settings.circle_size}`);
-                if (mod.settings.approach_rate !== undefined) da_changes.push(`AR${mod.settings.approach_rate}`);
-                if (mod.settings.overall_difficulty !== undefined) da_changes.push(`OD${mod.settings.overall_difficulty}`);
-                if (mod.settings.drain_rate !== undefined) da_changes.push(`HP${mod.settings.drain_rate}`);
-                if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
-            }
-        }
-        const modAcronym = mod.acronym || mod;
-        return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
-    }, '') : `<:NM:${emoji_mods["NM"]}>`;
-
+    const embedColor = getEmbedColor(message);
+    const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
+    const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+    const mods_used = formatMods(recent_scores.mods, isLazer);
     const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
 
     const stats = recent_scores.statistics || {};
-    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-    const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+    let stats_str = getStatsString(stats, recent_scores.beatmap.mode);
+    if (recent_scores.beatmap.mode === 'fruits') {
+        const { small_tick_miss = 0 } = stats;
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}/${colorear(small_tick_miss, "magenta")}]`;
+    }
 
-    let stats_str = "";
+    const formatted_score_val = getFormattedScore(recent_scores);
+    const accuracy = (recent_scores.accuracy * 100).toFixed(2);
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+
     let ratio_str = "";
     if (recent_scores.beatmap.mode === 'mania') {
-        stats_str = `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
         const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
-    } else if (recent_scores.beatmap.mode === 'taiko') {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
-    } else if (recent_scores.beatmap.mode === 'fruits') {
-        const { small_tick_miss = 0 } = recent_scores.statistics;
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}/${colorear(small_tick_miss, "magenta")}]`;
-    } else {
-        stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
     }
 
-    const raw_score_val = (recent_scores.legacy_total_score && recent_scores.legacy_total_score > 0) ? recent_scores.legacy_total_score :
-                          (recent_scores.classic_total_score && recent_scores.classic_total_score > 0) ? recent_scores.classic_total_score :
-                          recent_scores.total_score || recent_scores.score || 0;
-    const formatted_score_val = raw_score_val.toLocaleString('es-ES');
-
-    let pp_fc_str = "";
-    if (pre_calculated.pp_fc) {
-        pp_fc_str = ` ${colorear("if(" + pre_calculated.pp_fc.toFixed(2) + "PP)", "amarillo")}`;
-    }
+    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, recent_scores.max_combo, pre_calculated.beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -947,9 +702,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
         .setDescription(`**Puntuación**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
-\`\`\`ansi
-${stats_str} ${colorear(pre_calculated.pp.toFixed(2) + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)}PP${pp_fc_str} ${(recent_scores.accuracy * 100).toFixed(2)}%${ratio_str} x${recent_scores.max_combo}/${colorear(pre_calculated.beatmap_max_combo)}
-\`\`\`
+${ansiBlock}
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
@@ -1306,6 +1059,15 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false)
     return { embeds: [embed, embed2] };
 }
 
+function getOsuCompareContent(parsed_args, username, beatmap_metadata) {
+    const { title } = beatmap_metadata.beatmapset;
+    const { difficulty_rating, version, url } = beatmap_metadata;
+
+    let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
+    const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
+    return `**Puntuaciones de \`${username}\` en \`osu!${displayMode}\`: \n${mapa}**`;
+}
+
 module.exports = {
     doOsuEmbed,
     doOsuListEmbed,
@@ -1319,4 +1081,3 @@ module.exports = {
     doOsuSnipesEmbed,
     doOsuProfileEmbed
 };
-
