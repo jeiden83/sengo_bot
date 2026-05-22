@@ -43,8 +43,6 @@ async function compressImage(fileBuffer, ext) {
 
     if (ext === '.gif') {
         // Bypaseamos la compresión de GIFs para evitar picos de memoria y CPU extremos.
-        // Los GIFs ya suelen estar optimizados y procesarlos de forma animada requiere
-        // decodificar y codificar todos los frames, lo cual consume demasiada memoria en Render.
         return {
             buffer: fileBuffer,
             ext: '.gif',
@@ -53,37 +51,66 @@ async function compressImage(fileBuffer, ext) {
     }
     
     // Encolar la compresión de Sharp para que solo se procese una imagen a la vez a nivel global del bot.
-    // Esto previene que múltiples solicitudes concurrentes consuman RAM de forma simultánea.
     return runQueuedCompression(async () => {
-        let pipeline = sharp(fileBuffer);
-        
-        // Obtener metadatos sin decodificar completamente la imagen en memoria
-        const metadata = await pipeline.metadata();
-        
-        // Guardia de resolución máxima (evita procesar imágenes colosales que causan OOM)
-        if (metadata.width > 4000 || metadata.height > 4000) {
-            throw new Error(`La resolución de la imagen (${metadata.width}x${metadata.height}) supera el límite de seguridad de 4000x4000 píxeles.`);
-        }
-        
-        // Redimensionar si supera los 1280px para optimizar tamaño y RAM
-        if (metadata.width > 1280 || metadata.height > 1280) {
-            pipeline = pipeline.resize({
-                width: 1280,
-                height: 1280,
-                fit: 'inside',
-                withoutEnlargement: true
-            });
-        }
-
-        const compressed = await pipeline
-            .webp({ quality: 80 })
-            .toBuffer();
+        try {
+            let pipeline = sharp(fileBuffer);
             
-        return {
-            buffer: compressed,
-            ext: '.webp',
-            mime: 'image/webp'
-        };
+            // Obtener metadatos sin decodificar completamente la imagen en memoria
+            const metadata = await pipeline.metadata();
+            
+            // Guardia de resolución máxima (evita procesar imágenes colosales que causan OOM)
+            // Si supera los 8000x8000, no la comprimimos con Sharp para evitar OOM, sino que la subimos original.
+            if (metadata.width > 8000 || metadata.height > 8000) {
+                console.log(`[FUMO] Imagen gigante (${metadata.width}x${metadata.height}). Bypasseando compresión.`);
+                const mimeTypes = {
+                    '.png': 'image/png',
+                    '.gif': 'image/gif',
+                    '.webp': 'image/webp',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg'
+                };
+                return {
+                    buffer: fileBuffer,
+                    ext: ext,
+                    mime: mimeTypes[ext] || 'image/jpeg'
+                };
+            }
+            
+            // Redimensionar si supera los 1280px para optimizar tamaño y RAM
+            if (metadata.width > 1280 || metadata.height > 1280) {
+                pipeline = pipeline.resize({
+                    width: 1280,
+                    height: 1280,
+                    fit: 'inside',
+                    withoutEnlargement: true
+                });
+            }
+
+            const compressed = await pipeline
+                .webp({ quality: 80 })
+                .toBuffer();
+                
+            return {
+                buffer: compressed,
+                ext: '.webp',
+                mime: 'image/webp'
+            };
+        } catch (err) {
+            console.error("[FUMO] Error durante la compresión con Sharp. Subiendo original:", err);
+            // Fallback: dejarla subir sin comprimir
+            const mimeTypes = {
+                '.png': 'image/png',
+                '.gif': 'image/gif',
+                '.webp': 'image/webp',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg'
+            };
+            return {
+                buffer: fileBuffer,
+                ext: ext,
+                mime: mimeTypes[ext] || 'image/jpeg'
+            };
+        }
     });
 }
 
