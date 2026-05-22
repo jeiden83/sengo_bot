@@ -22,20 +22,43 @@ async function ensureBucketExists(supabase) {
 }
 
 async function compressImage(fileBuffer, ext) {
+    // Configurar límites de memoria y concurrencia de Sharp para evitar OOM en Render
+    sharp.cache(false);
+    sharp.concurrency(1);
+
     if (ext === '.gif') {
-        const compressed = await sharp(fileBuffer, { animated: true })
-            .gif({ colours: 192 })
-            .toBuffer();
+        // Bypaseamos la compresión de GIFs para evitar picos de memoria y CPU extremos.
+        // Los GIFs ya suelen estar optimizados y procesarlos de forma animada requiere
+        // decodificar y codificar todos los frames, lo cual consume demasiada memoria en Render.
         return {
-            buffer: compressed,
+            buffer: fileBuffer,
             ext: '.gif',
             mime: 'image/gif'
         };
     }
     
-    const compressed = await sharp(fileBuffer)
+    let pipeline = sharp(fileBuffer);
+    
+    try {
+        const metadata = await pipeline.metadata();
+        // Redimensionar si la imagen supera los 1920px en alguna de sus dimensiones.
+        // Esto ahorra espacio en Supabase y reduce enormemente el tiempo de compresión y uso de RAM.
+        if (metadata.width > 1920 || metadata.height > 1920) {
+            pipeline = pipeline.resize({
+                width: 1920,
+                height: 1920,
+                fit: 'inside',
+                withoutEnlargement: true
+            });
+        }
+    } catch (err) {
+        console.error("[FUMO] Error al obtener metadatos de la imagen para redimensionar:", err);
+    }
+
+    const compressed = await pipeline
         .webp({ quality: 80 })
         .toBuffer();
+        
     return {
         buffer: compressed,
         ext: '.webp',
