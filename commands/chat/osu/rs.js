@@ -116,7 +116,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 
 				if (best && best.score) {
 					const isRecentPlayBest = (
-						new Date(best.score.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() ||
+						new Date(best.score.ended_at || best.score.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() ||
 						best.score.total_score === recent_scores.total_score ||
 						best.score.legacy_total_score === recent_scores.legacy_total_score ||
 						(recent_scores.id && best.score.id === recent_scores.id)
@@ -129,7 +129,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 				if (topScores && Array.isArray(topScores)) {
 					const topIndex = topScores.findIndex(s => {
 						return (recent_scores.id && s.id === recent_scores.id) ||
-							(new Date(s.ended_at).getTime() === new Date(recent_scores.ended_at).getTime() &&
+							(new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
 							(s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
 					});
 					if (topIndex !== -1) {
@@ -147,7 +147,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated){
 				const data = await response.json();
 				if (data && Array.isArray(data.scores)) {
 					const topIndex = data.scores.findIndex(s => {
-						const recentTime = Math.floor(new Date(recent_scores.ended_at).getTime() / 1000);
+						const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
 						const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
 						return s.beatmap.beatmap_id === recent_scores.beatmap.id &&
 							Math.abs(s.score - scoreVal) < 100 &&
@@ -196,7 +196,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
 			text: footerText,
 			iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
 		})
-		.setTimestamp(new Date(recent_scores.ended_at));
+		.setTimestamp(new Date(recent_scores.ended_at || recent_scores.created_at));
   
 	return embed;
 }
@@ -272,7 +272,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         let starsVal = score.calculatedStars !== undefined ? score.calculatedStars : score.beatmap.difficulty_rating;
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         
-        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
             let settings_str = '';

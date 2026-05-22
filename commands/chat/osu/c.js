@@ -117,7 +117,7 @@ ${stats_str} ${colorear(user_pp + 'PP')}/${pre_calculated.maxAttrs.pp.toFixed(2)
             text: `SengoBot • Jugada #${index} de ${total_plays} comparadas`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
-        .setTimestamp(new Date(score.ended_at));
+        .setTimestamp(new Date(score.ended_at || score.created_at));
 
     return embed;
 }
@@ -195,7 +195,7 @@ async function doOsuListEmbed(message, parsed_args, user_scores_chunk, startInde
         }
 
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
-        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
             let settings_str = '';

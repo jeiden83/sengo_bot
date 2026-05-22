@@ -226,7 +226,7 @@ async function doOsuListEmbed(message, parsed_args, top_scores_chunk, startIndex
         let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         
-        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const mods_used = score.mods.length > 0 ? score.mods.reduce((acc, mod) => {
             let settings_str = '';
@@ -370,7 +370,7 @@ async function run(messages, args) {
 
     // 5. Ordenar por fecha/reciente (-r) si se solicita
     if (parser_res.parsed_args.recentSort) {
-        filtered_scores.sort((a, b) => new Date(b.ended_at) - new Date(a.ended_at));
+        filtered_scores.sort((a, b) => new Date(b.ended_at || b.created_at) - new Date(a.ended_at || a.created_at));
     }
 
     // 6. Ordenar por combo (-c) si se solicita

@@ -63,7 +63,7 @@ async function doEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
     
         let pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
     
-        let time_set = `<t:${Math.floor((new Date(score.ended_at)).getTime() / 1000)}:R>`;
+        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
     
         let grade_emoji = emoji_grades[!score.passed ? "F" : score.rank];
     	    grade_emoji = grade_emoji[0] == "grade_f" ? `:${grade_emoji[1]}: (${(score.map_completion*100).toFixed(2)}%)` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
