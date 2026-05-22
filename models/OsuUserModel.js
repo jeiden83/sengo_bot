@@ -232,8 +232,17 @@ async function getLinkedUser(User, discordId) {
 
 /**
  * Vincula un usuario de Discord con osu! de forma tradicional en la base de datos.
+ * Elimina cualquier credencial de OAuth previa para evitar conflictos.
  */
 async function linkUser(User, discordId, osuId, mainGamemode) {
+    const supabase = getSupabaseClient();
+    if (supabase) {
+        try {
+            await supabase.from('oauth_tokens').delete().eq('discord_id', discordId);
+        } catch (err) {
+            console.error(`Error al eliminar token OAuth al vincular tradicionalmente a ${discordId}:`, err);
+        }
+    }
     return addUser(User, discordId, osuId, mainGamemode);
 }
 
@@ -242,8 +251,6 @@ async function linkUser(User, discordId, osuId, mainGamemode) {
  */
 async function unlinkUser(User, discordId) {
     const supabase = getSupabaseClient();
-    const deleteResult = await deleteUser(User, discordId);
-    
     if (supabase) {
         try {
             await supabase.from('oauth_tokens').delete().eq('discord_id', discordId);
@@ -252,7 +259,7 @@ async function unlinkUser(User, discordId) {
         }
     }
     
-    return deleteResult;
+    return await deleteUser(User, discordId);
 }
 
 /**
