@@ -42,6 +42,40 @@ async function run(messages, args) {
     let friendsUsername = null;
     let detected_gamemode = null;
 
+    // Verificar requerimiento de OAuth para funciones avanzadas de ranking
+    const hasOAuthFilters = (friendsFilter !== null && friendsFilter !== undefined) || 
+                            (countryFilter !== null && countryFilter !== undefined) || 
+                            (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
+                            (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined);
+
+    if (hasOAuthFilters) {
+        const { getValidTokenForUser, getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
+        const token = await getValidTokenForUser(message.author.id);
+        if (!token) {
+            if (logger) logger.failed("OAuth requerido para filtros avanzados.");
+            try {
+                const { doOsuOAuthEmbed } = require("../../../views/osuUserViews.js");
+                const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+                
+                const redirectUri = getRedirectUri();
+                const authUrl = getAuthUrl(message.author.id, redirectUri);
+                const embed = doOsuOAuthEmbed(authUrl);
+                
+                const button = new ButtonBuilder()
+                    .setLabel("Vincular Cuenta (OAuth)")
+                    .setStyle(ButtonStyle.Link)
+                    .setURL(authUrl);
+                const row = new ActionRowBuilder().addComponents(button);
+                
+                await message.author.send({ embeds: [embed], components: [row] });
+                return `❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒`;
+            } catch (dmError) {
+                console.error("Error al enviar DM de vinculación segura:", dmError);
+                return `❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link -oauth\`.`;
+            }
+        }
+    }
+
     if (!beatmap_url) {
         if (logger) logger.process("Buscando beatmap reciente en el canal");
         const result = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
