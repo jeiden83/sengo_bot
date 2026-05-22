@@ -1831,8 +1831,8 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
         }
     }
 
-    if (tokenPool.length > 0) {
-        console.log(`[GAP] Pool de tokens OAuth cargada con ${tokenPool.length} tokens activos.`);
+    if (tokenPool.length > 0 && logger) {
+        logger.process(`Pool de tokens OAuth cargada con ${tokenPool.length} tokens activos.`);
     }
 
     let mapInstance = null;
@@ -2221,12 +2221,7 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
         if (!supabase) return;
 
         const guildId = message.guild ? message.guild.id : null;
-        if (!guildId) {
-            console.log(`[BG-GAP] No se inicia el cache en segundo plano: El mensaje no pertenece a un servidor.`);
-            return;
-        }
-
-        console.log(`[BG-GAP] Iniciando cache de gap en segundo plano para el mapa ${beatmapId} en el servidor ${guildId}...`);
+        if (!guildId) return;
 
         let { data: linkedUsers, error } = await supabase
             .from('users')
@@ -2239,10 +2234,7 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
             return;
         }
 
-        if (!linkedUsers || linkedUsers.length === 0) {
-            console.log(`[BG-GAP] No hay usuarios vinculados en este servidor.`);
-            return;
-        }
+        if (!linkedUsers || linkedUsers.length === 0) return;
 
         const targetMode = gamemode || 'osu';
         const filteredUsers = linkedUsers.filter(user => {
@@ -2259,15 +2251,11 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
             main_gamemode: user.main_gamemode
         }));
 
-        console.log(`[BG-GAP] ${usersArray.length} usuarios a procesar para el cache de gap.`);
+        if (usersArray.length === 0) return;
 
-        const bgLogger = {
-            process: (msg) => console.log(`[BG-GAP] [${new Date().toLocaleTimeString()}] ${msg}`)
-        };
-
-        getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, bgLogger)
+        getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, null)
             .then(() => {
-                console.log(`[BG-GAP] Cache de gap completado con éxito para el mapa ${beatmapId}.`);
+                console.log(`[BG-GAP] Caché de gap completado para el mapa ${beatmapId} (${usersArray.length} usuarios).`);
             })
             .catch(err => {
                 console.error(`[BG-GAP] Error en la ejecución de cache de gap:`, err);
@@ -2283,15 +2271,13 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
             // 1. Precarga del Beatmap y del archivo .osu
             if (beatmapId) {
                 try {
-                    console.log(`[BG-PRELOAD] Iniciando precarga para beatmap: ${beatmapId}`);
                     const mapMeta = await getBeatmap(beatmapId);
                     if (mapMeta && mapMeta.beatmapset_id) {
                         await getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
-                        console.log(`[BG-PRELOAD] Archivo .osu y metadatos precargados para el mapa: ${beatmapId}`);
+                        console.log(`[BG-PRELOAD] Mapa precargado: ${beatmapId}`);
 
                         // Si hay un mensaje provisto y pertenece a una guild, gatillar precarga del gap y compare
                         if (message && message.guild) {
-                            console.log(`[BG-PRELOAD] Gatillando precarga de gap/c para el mapa: ${beatmapId}`);
                             triggerBackgroundGapCache(message, beatmapId, gamemode).catch(err => {
                                 console.error(`[BG-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
                             });
@@ -2319,8 +2305,6 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                             const targetMode = gamemode || userRecord.main_gamemode || 'osu';
                             const targetServer = 'bancho';
 
-                            console.log(`[BG-PRELOAD] Precargando perfil y top scores para el usuario discord: ${discordId} (osu!: ${osuUsername}, modo: ${targetMode})`);
-
                             const dummyArgs = {
                                 username: [osuUsername],
                                 gamemode: targetMode,
@@ -2331,7 +2315,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                                 getOsuUser(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar perfil de ${osuUsername}:`, e)),
                                 getUserTopScores(dummyArgs).catch(e => console.error(`[BG-PRELOAD] Error al precargar top scores de ${osuUsername}:`, e))
                             ]);
-                            console.log(`[BG-PRELOAD] Perfil y top scores precargados con éxito para ${osuUsername}`);
+                            console.log(`[BG-PRELOAD] Perfil/top precargado: ${osuUsername}`);
                         }
                     }
                 } catch (err) {
