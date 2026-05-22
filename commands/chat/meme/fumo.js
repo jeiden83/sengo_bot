@@ -5,6 +5,21 @@ const sharp = require("sharp");
 
 let list_order = [];
 
+// Cola global de promesas para asegurar procesamiento secuencial de compresión en todo el bot
+let globalCompressionQueue = Promise.resolve();
+
+async function runQueuedCompression(fn) {
+    const previous = globalCompressionQueue;
+    const current = (async () => {
+        try {
+            await previous;
+        } catch (_) {}
+        return await fn();
+    })();
+    globalCompressionQueue = current.catch(() => {});
+    return current;
+}
+
 async function ensureBucketExists(supabase) {
     try {
         const { data: buckets, error: listError } = await supabase.storage.listBuckets();
@@ -37,33 +52,39 @@ async function compressImage(fileBuffer, ext) {
         };
     }
     
-    let pipeline = sharp(fileBuffer);
-    
-    try {
+    // Encolar la compresión de Sharp para que solo se procese una imagen a la vez a nivel global del bot.
+    // Esto previene que múltiples solicitudes concurrentes consuman RAM de forma simultánea.
+    return runQueuedCompression(async () => {
+        let pipeline = sharp(fileBuffer);
+        
+        // Obtener metadatos sin decodificar completamente la imagen en memoria
         const metadata = await pipeline.metadata();
-        // Redimensionar si la imagen supera los 1920px en alguna de sus dimensiones.
-        // Esto ahorra espacio en Supabase y reduce enormemente el tiempo de compresión y uso de RAM.
-        if (metadata.width > 1920 || metadata.height > 1920) {
+        
+        // Guardia de resolución máxima (evita procesar imágenes colosales que causan OOM)
+        if (metadata.width > 4000 || metadata.height > 4000) {
+            throw new Error(`La resolución de la imagen (${metadata.width}x${metadata.height}) supera el límite de seguridad de 4000x4000 píxeles.`);
+        }
+        
+        // Redimensionar si supera los 1280px para optimizar tamaño y RAM
+        if (metadata.width > 1280 || metadata.height > 1280) {
             pipeline = pipeline.resize({
-                width: 1920,
-                height: 1920,
+                width: 1280,
+                height: 1280,
                 fit: 'inside',
                 withoutEnlargement: true
             });
         }
-    } catch (err) {
-        console.error("[FUMO] Error al obtener metadatos de la imagen para redimensionar:", err);
-    }
 
-    const compressed = await pipeline
-        .webp({ quality: 80 })
-        .toBuffer();
-        
-    return {
-        buffer: compressed,
-        ext: '.webp',
-        mime: 'image/webp'
-    };
+        const compressed = await pipeline
+            .webp({ quality: 80 })
+            .toBuffer();
+            
+        return {
+            buffer: compressed,
+            ext: '.webp',
+            mime: 'image/webp'
+        };
+    });
 }
 
 function parseFumoFilename(filename) {
