@@ -72,10 +72,10 @@ function normalizeScore(score) {
     const rawTotal = score.total_score !== undefined && score.total_score !== null ? Number(score.total_score) : null;
     const rawScore = score.score !== undefined && score.score !== null ? Number(score.score) : null;
 
-    const resolvedLegacy = rawLegacy !== null ? rawLegacy : (rawClassic !== null ? rawClassic : (rawScore !== null ? rawScore : 0));
+    const resolvedLegacy = (rawLegacy !== null && rawLegacy > 0) ? rawLegacy : (rawClassic !== null && rawClassic > 0 ? rawClassic : (rawScore !== null ? rawScore : 0));
     const resolvedTotal = rawTotal !== null ? rawTotal : (rawScore !== null ? rawScore : 0);
-    const resolvedClassic = rawClassic !== null ? rawClassic : (rawLegacy !== null ? rawLegacy : (rawScore !== null ? rawScore : 0));
-    const resolvedScore = rawScore !== null ? rawScore : (rawTotal !== null ? rawTotal : (rawLegacy !== null ? rawLegacy : 0));
+    const resolvedClassic = (rawClassic !== null && rawClassic > 0) ? rawClassic : (rawLegacy !== null && rawLegacy > 0 ? rawLegacy : (rawScore !== null ? rawScore : 0));
+    const resolvedScore = rawScore !== null ? rawScore : (rawTotal !== null ? rawTotal : (rawLegacy !== null && rawLegacy > 0 ? rawLegacy : 0));
 
     score.legacy_total_score = resolvedLegacy;
     score.total_score = resolvedTotal;
@@ -854,7 +854,8 @@ async function getBeatmapUserScore(parsed_args) {
             headers: {
                 'Authorization': `Bearer ${osu_token.access_token}`,
                 'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'x-api-version': '20240728'
             },
             params: {
                 legacy_only: 0,
@@ -863,7 +864,7 @@ async function getBeatmapUserScore(parsed_args) {
             }
         });
 
-        if (response.data) normalizeScore(response.data);
+        if (response.data && response.data.score) normalizeScore(response.data.score);
         return response.data;
     } catch (error) {
         return 'Error obteniendo las puntuaciones'
