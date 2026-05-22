@@ -143,15 +143,20 @@ function validateAttachment(attachment) {
 async function handleUpload(supabase, author, guild, attachments, messageOrInteraction) {
     const isInteraction = messageOrInteraction && typeof messageOrInteraction.editReply === 'function';
     const updateStatus = async (text) => {
+        const mem = process.memoryUsage();
+        const ramFormatted = `${(mem.rss / 1024 / 1024).toFixed(1)} MB`;
+        const consoleText = `${text} [RAM: ${ramFormatted}]`;
+        const discordText = `${text} \`[RAM: ${ramFormatted}]\``;
+
         if (isInteraction) {
             try {
-                await messageOrInteraction.editReply({ content: text });
+                await messageOrInteraction.editReply({ content: discordText });
             } catch (e) {
                 console.error("[FUMO] Error actualizando estado en slash command:", e);
             }
         }
         if (messageOrInteraction && messageOrInteraction.logger) {
-            messageOrInteraction.logger.process(text);
+            messageOrInteraction.logger.process(consoleText);
         }
     };
 
@@ -372,15 +377,20 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
 
     const isInteraction = messageOrInteraction && typeof messageOrInteraction.editReply === 'function';
     const updateStatus = async (text) => {
+        const mem = process.memoryUsage();
+        const ramFormatted = `${(mem.rss / 1024 / 1024).toFixed(1)} MB`;
+        const consoleText = `${text} [RAM: ${ramFormatted}]`;
+        const discordText = `${text} \`[RAM: ${ramFormatted}]\``;
+
         if (isInteraction) {
             try {
-                await messageOrInteraction.editReply({ content: text });
+                await messageOrInteraction.editReply({ content: discordText });
             } catch (e) {
                 console.error("[FUMO] Error actualizando estado en edit:", e);
             }
         }
         if (messageOrInteraction && messageOrInteraction.logger) {
-            messageOrInteraction.logger.process(text);
+            messageOrInteraction.logger.process(consoleText);
         }
     };
 
