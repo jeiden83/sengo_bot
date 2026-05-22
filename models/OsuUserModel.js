@@ -259,7 +259,7 @@ async function getLinkedUsers({ guildId = null, bypass = false } = {}) {
             .select('discord_id, osu_id, main_gamemode')
             .not('osu_id', 'is', null);
 
-        if (guildId && !bypass) {
+        if (guildId) {
             query = query.contains('guilds', [guildId]);
         }
 
