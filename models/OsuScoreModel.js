@@ -1,3 +1,5 @@
+const { v2 } = require('osu-api-extended');
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const rosu = require("rosu-pp-js");

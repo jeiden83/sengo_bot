@@ -1,3 +1,4 @@
+const { EmbedBuilder } = require('discord.js');
 const { 
     getOsuUser, 
     getFriendsList, 

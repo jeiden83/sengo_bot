@@ -8,6 +8,8 @@ const {
     getPlainStatsString,
     buildAnsiBlock
 } = require("./osuViewHelpers.js");
+const { colorear } = require("../commands/utils/admin.js");
+const emoji_mods = require("../src/emoji_mods.json");
 
 /**
  * Renderiza el embed para una única jugada reciente de osu!
