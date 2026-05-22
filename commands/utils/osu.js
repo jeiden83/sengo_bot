@@ -231,10 +231,13 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
         "beatmap_id": recent_scores.beatmap.id.toString(),
         "user_id": (recent_scores.user_id || recent_scores.user?.id || '').toString(),
         "country_code": recent_scores.user?.country_code || null,
-        "multi_failed": false
+        "multi_failed": false,
+        // Incluir classic_total_score temporalmente para que normalizeScore resuelva legacy_total_score correctamente en jugadores Lazer
+        "classic_total_score": recent_scores.classic_total_score || null
     };
 
     normalizeScore(score);
+    // Eliminar campos que no existen en la tabla de Supabase
     delete score.classic_total_score;
     delete score.score;
 
@@ -1591,6 +1594,12 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                         : rows.reduce((a, b) => (new Date(a.ended_at).getTime() > new Date(b.ended_at).getTime() ? a : b));
 
                     const row = bestRow;
+                    // Saltar scores claramente inválidas (legacy y total son 0, no tiene datos útiles de score)
+                    const hasValidScore = Number(row.legacy_total_score || 0) > 0 || Number(row.total_score || 0) > 0;
+                    if (!hasValidScore && row.passed !== false) {
+                        // Score inválida (Lazer guardada sin classic_total_score), no usarla como caché
+                        continue;
+                    }
                     const rowEndedAtTime = new Date(row.ended_at).getTime();
                     const existing = cachedData.scores[uId];
                     const cachedEndedAtTime = existing ? new Date(existing.ended_at || 0).getTime() : 0;
@@ -1864,7 +1873,8 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
                                         status: metadata?.status || 'ranked'
                                     },
                                     user: {
-                                        username: scoreObj.user?.username || user.username || `User ${user.osu_id}`
+                                        username: scoreObj.user?.username || user.username || `User ${user.osu_id}`,
+                                        country_code: scoreObj.user?.country_code || null
                                     },
                                     user_id: user.osu_id
                                 };
