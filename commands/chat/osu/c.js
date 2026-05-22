@@ -1,6 +1,5 @@
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
-const { colorear } = require("../../utils/admin.js");
 
 const { doOsuCompareSingleEmbed, doOsuCompareListEmbed, getOsuCompareContent } = require("../../../views/osuEmbeds.js");
 
@@ -29,7 +28,7 @@ async function run(messages, args) {
     const targetGamemode = detected_gamemode || beatmap_metadata.mode;
 
     if (logger) logger.process("Consultando puntuaciones en el beatmap");
-    const { fn_response, parsed_args, user_found } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
+    const { fn_response, parsed_args } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
         { 
             "message": message, 
             "res": res, 
@@ -62,8 +61,7 @@ async function run(messages, args) {
     // APLICAR FILTROS SOLICITADOS
     let filtered_scores = scores;
 
-    // 1. Filtrar por mods exactos (-m) o (+mods en args)
-    let modsStr = parsed_args.modFilter || parsed_args.modContainFilter || "";
+
 
     if (parsed_args.modFilter !== null) {
         const filterStr = parsed_args.modFilter;

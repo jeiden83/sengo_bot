@@ -8,7 +8,7 @@ function formatLength(seconds) {
 }
 
 async function run(messages, args) {
-    const { message, res, reply } = messages;
+    const { message, reply } = messages;
 
     const parsed_args = argsParserNoCommand(args);
 
@@ -25,7 +25,7 @@ async function run(messages, args) {
 
     // 2. Si no hay ID explícito, buscar en el historial del canal
     if (!beatmap_id) {
-        const { beatmap_url, bad_response } = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
+        const { beatmap_url } = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         if (!beatmap_url) {
             return `❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.`;
         }
@@ -116,11 +116,7 @@ async function run(messages, args) {
     const pp98 = new rosu.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp.toFixed(2);
     const pp95 = new rosu.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp.toFixed(2);
 
-    // Emojis de mods para título
-    const emoji_mods = require("../../../src/emoji_mods.json");
-    const mods_emoji_str = modsStr ? modsStr.match(/.{1,2}/g).reduce((acc, mod) => {
-        return `${acc}<:${mod}:${emoji_mods[mod] || '123'}>`;
-    }, ' +') : '';
+
 
     // Estilo de estados de mapa
     const status_names = {
@@ -146,12 +142,7 @@ async function run(messages, args) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
 
-    const mode_names = {
-        'osu': 'osu!',
-        'taiko': 'osu!taiko',
-        'fruits': 'osu!catch',
-        'mania': 'osu!mania'
-    };
+
 
     const csLabel = activeMode === 'mania' ? 'Keys' : 'CS';
 

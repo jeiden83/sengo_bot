@@ -1,5 +1,5 @@
 const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP } = require("../../utils/osu.js");
-const { colorear } = require("../../utils/admin.js");
+
 const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 

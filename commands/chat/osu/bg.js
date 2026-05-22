@@ -2,7 +2,7 @@ const { getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../..
 const { doOsuBgEmbed } = require("../../../views/osuBeatmapViews.js");
 
 async function run(messages, args) {
-    const { message, res, reply } = messages;
+    const { message, reply } = messages;
     const parsed_args = argsParserNoCommand(args);
 
     // 1. Extraer ID de beatmap o link explícito si existe
@@ -23,7 +23,7 @@ async function run(messages, args) {
 
     // 2. Si no hay ID explícito, buscar en el historial del canal
     if (!beatmap_id) {
-        const { beatmap_url, bad_response } = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
+        const { beatmap_url } = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         if (!beatmap_url) {
             return `❌ No se encontró ningún mapa en el historial del canal para obtener el fondo.`;
         }

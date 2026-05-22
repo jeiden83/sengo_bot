@@ -1,7 +1,7 @@
 const config = require("../../../config.js");
 const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
-const { colorear } = require("../../utils/admin.js");
+
 const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
 const axios = require('axios');
 const rosu = require("rosu-pp-js");

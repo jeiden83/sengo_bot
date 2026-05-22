@@ -1,5 +1,4 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
-const { v2 } = require('osu-api-extended');
 const fetch = require('node-fetch');
 const { getSupporterTokenForCountry, getOAuthTokenRecord, getOAuthTokenRecordByUsernameOrId } = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
@@ -34,7 +33,7 @@ async function fetchLeaderboardCached(url, headers, logger = null) {
 const { doOsuLbEmbed, doOsuLbContent } = require("../../../views/osuLeaderboardViews.js");
 
 async function run(messages, args) {
-    const { message, res, reply, logger } = messages;
+    const { message, reply, logger } = messages;
 
     const parsed_args = argsParserNoCommand(args);
     let beatmap_url = parsed_args.beatmap_url;

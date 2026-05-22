@@ -41,7 +41,7 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
 }
 
 async function run(messages, args) {
-    const { message, res, reply, logger } = messages;
+    const { message, reply, logger } = messages;
     const authorId = message.author.id;
 
     // 1. Verificar si está solicitando el flag secreto -sengo
