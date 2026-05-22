@@ -1,8 +1,14 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { getSupabaseClient } = require('../../../db/database.js');
-const { getValidTokenForUser } = require('../../../utils/osuAuth.js');
+const { 
+    getValidTokenForUser, 
+    getOsuUser, 
+    getFriendsList, 
+    getLinkedUsers, 
+    getLinkedUsersMap, 
+    getOAuthUsernamesMap, 
+    fetchMeDetails 
+} = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
-const axios = require('axios');
 
 // Bandera emoji helper
 const getFlagEmoji = (countryCode) => {
@@ -27,21 +33,12 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
             const dbInfo = linkedMap.get(friend.id.toString());
             
             try {
-                const friendToken = await getValidTokenForUser(dbInfo.discord_id);
-                if (!friendToken) {
+                const friendFriendsList = await getFriendsList(dbInfo.discord_id);
+                if (!friendFriendsList) {
                     friend.mutual = 'unknown'; // Sin token válido o sin scope friends.read
                     return;
                 }
 
-                const res = await axios.get('https://osu.ppy.sh/api/v2/friends', {
-                    headers: {
-                        'Authorization': `Bearer ${friendToken}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 2000
-                });
-
-                const friendFriendsList = res.data;
                 const isMutual = friendFriendsList.some(f => f.id.toString() === myOsuId.toString());
                 friend.mutual = isMutual ? 'yes' : 'no';
             } catch (err) {
@@ -54,10 +51,6 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
-    const supabase = getSupabaseClient() || res?.supabaseClient;
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ff66aa';
-
     const authorId = message.author.id;
 
     // 1. Verificar si está solicitando el flag secreto -sengo
@@ -69,40 +62,17 @@ async function run(messages, args) {
             return `❌ Este flag es de uso exclusivo para el creador del Sengo Bot.`;
         }
 
-        // Obtener token del owner
-        const ownerToken = await getValidTokenForUser(authorId);
-        if (!ownerToken) {
-            return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` para poder realizar esta consulta.`;
-        }
-
         if (logger) logger.process("Obteniendo amigos del creador desde la API de osu!...");
-        let friendsList = [];
-        try {
-            const friendsRes = await axios.get('https://osu.ppy.sh/api/v2/friends', {
-                headers: {
-                    'Authorization': `Bearer ${ownerToken}`,
-                    'Content-Type': 'application/json'
-                }
-            });
-            friendsList = friendsRes.data;
-        } catch (err) {
-            console.error("Error al obtener amigos del owner:", err.message);
-            return `❌ Error al obtener tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado.`;
+        const friendsList = await getFriendsList(authorId);
+        if (!friendsList) {
+            return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.`;
         }
 
         if (logger) logger.process("Obteniendo usuarios vinculados de la base de datos...");
-        if (!supabase) {
-            return `❌ La base de datos no está disponible en este momento.`;
-        }
+        const dbUsers = await getLinkedUsers({ bypass: true });
 
-        const { data: dbUsers, error: dbUsersError } = await supabase
-            .from('users')
-            .select('discord_id, osu_id')
-            .not('osu_id', 'is', null);
-
-        if (dbUsersError) {
-            console.error("Error al obtener usuarios vinculados:", dbUsersError.message);
-            return `❌ Error al obtener usuarios vinculados de la base de datos.`;
+        if (!dbUsers || dbUsers.length === 0) {
+            return `❌ No se encontraron usuarios vinculados de la base de datos.`;
         }
 
         // Encontrar cuáles de los usuarios vinculados NO están en la lista de amigos del owner
@@ -111,10 +81,7 @@ async function run(messages, args) {
 
         // Obtener los nombres de usuario de osu! para los usuarios faltantes
         if (logger) logger.process("Obteniendo nombres de los usuarios faltantes...");
-        const { data: oauthTokens } = await supabase.from('oauth_tokens').select('osu_id, username');
-        const oauthUsernames = new Map(oauthTokens?.map(t => [t.osu_id.toString(), t.username]) || []);
-
-        const { getOsuUser } = require("../../utils/osu.js");
+        const oauthUsernames = await getOAuthUsernamesMap();
 
         await Promise.all(
             missingFriends.map(async (user) => {
@@ -140,38 +107,21 @@ async function run(messages, args) {
 
     // 2. Flujo normal: Listar amigos del autor
     if (logger) logger.process("Verificando token de OAuth...");
-    const userToken = await getValidTokenForUser(authorId);
-    if (!userToken) {
+    const meDetails = await fetchMeDetails(authorId);
+    if (!meDetails) {
         return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` para poder utilizar este comando.`;
     }
 
     if (logger) logger.process("Obteniendo amigos desde la API de osu!...");
-    let friends = [];
-    let myOsuId = null;
-
-    try {
-        // Obtener el ID de osu del propio usuario ejecutor
-        const meRes = await axios.get('https://osu.ppy.sh/api/v2/me', {
-            headers: {
-                'Authorization': `Bearer ${userToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        myOsuId = meRes.data.id;
-
-        const friendsRes = await axios.get('https://osu.ppy.sh/api/v2/friends', {
-            headers: {
-                'Authorization': `Bearer ${userToken}`,
-                'Content-Type': 'application/json'
-            }
-        });
-        friends = friendsRes.data;
-    } catch (err) {
-        console.error("Error al obtener amigos en flujo normal:", err.message);
-        return `❌ Error al consultar la API de osu!. Es posible que necesites re-vincular tu cuenta con \`s.link -oauth\`.`;
+    const friends = await getFriendsList(authorId);
+    if (!friends) {
+        return `❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.`;
     }
 
+    const myOsuId = meDetails.id;
+
     if (friends.length === 0) {
+        const embedColor = message.member?.roles?.highest?.color || '#ff66aa';
         const emptyEmbed = new EmbedBuilder()
             .setTitle("👥 Lista de Amigos en osu!")
             .setColor(embedColor)
@@ -182,36 +132,7 @@ async function run(messages, args) {
 
     // Obtener usuarios vinculados en la BD
     if (logger) logger.process("Consultando usuarios vinculados al bot...");
-    let linkedMap = new Map();
-    if (supabase) {
-        try {
-            const { data: dbUsers } = await supabase
-                .from('users')
-                .select('discord_id, osu_id')
-                .not('osu_id', 'is', null);
-
-            const { data: dbTokens } = await supabase
-                .from('oauth_tokens')
-                .select('discord_id, osu_id, username');
-            
-            if (dbTokens) {
-                dbTokens.forEach(t => {
-                    linkedMap.set(t.osu_id.toString(), { discord_id: t.discord_id, username: t.username });
-                });
-            }
-
-            if (dbUsers) {
-                dbUsers.forEach(u => {
-                    const osuIdStr = u.osu_id.toString();
-                    if (!linkedMap.has(osuIdStr)) {
-                        linkedMap.set(osuIdStr, { discord_id: u.discord_id, username: null });
-                    }
-                });
-            }
-        } catch (err) {
-            console.error("Error al consultar vinculados:", err);
-        }
-    }
+    const linkedMap = await getLinkedUsersMap();
 
     // Ordenar amigos alfabéticamente por username
     friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));

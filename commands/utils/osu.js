@@ -1,5 +1,6 @@
-const { Client, Auth } = require('osu-web.js'); // A remplazar por el nuevo 'osu-api-extended'
+const { Client, Auth } = require('osu-web.js');
 const { auth, v2 } = require('osu-api-extended');
+const { getOsuUser, loadToken, NewloadToken } = require("../../models/OsuUserModel.js");
 const { Collection } = require('discord.js');
 
 const { localBeatmapStatus } = require("./admin.js");
@@ -14,11 +15,9 @@ const rosu = require("rosu-pp-js");
 
 const beatmapCache = new Map();
 const userScoresCache = new Map();
-const userProfileCache = new Map();
 const userTopScoresCache = new Map();
 
 const activeGapPromises = new Map();
-const activeProfilePromises = new Map();
 const activeTopScoresPromises = new Map();
 
 const gapDiskCacheInMemory = new Map();
@@ -247,50 +246,7 @@ async function getUnrankedBeatmapUserAllScores(parsed_args) {
     }
 }
 
-async function loadToken(){
-    const fs = require('fs/promises');
-    const tokenFilePath = path.resolve('osu_token.json');
-
-    try{
-        const osu_token = JSON.parse(await fs.readFile(tokenFilePath, 'utf-8'));
-        
-        if(Date.now() >= osu_token.expires_at)
-            return await createToken();
-
-        return osu_token;
-    } catch(error){
-
-        return await createToken();
-    }
-    
-    async function createToken() {
-        const auth = new Auth(CONFIG.OSU_CLIENT_ID, CONFIG.OSU_CLIENT_SECRET, "");
-        const osu_token = await auth.clientCredentialsGrant();
-
-        const accessTokenData = {
-            access_token: osu_token.access_token,
-            expires_in: osu_token.expires_in,
-            token_type: osu_token.token_type,
-            expires_at: Date.now() + osu_token.expires_in * 1000
-        };
-
-        await fs.writeFile(tokenFilePath, JSON.stringify(accessTokenData, null, 2));
-
-        console.log("# Token recargado");
-
-        return osu_token;
-    }
-}
-
-async function NewloadToken(){
-    await auth.login({
-        type: 'v2',
-        client_id: CONFIG.OSU_CLIENT_ID,
-        client_secret: CONFIG.OSU_CLIENT_SECRET,
-        scopes: ['public'],
-        cachedTokenPath: './osu_token.json' 
-      });
-}
+// Lógica de tokens delegada a OsuUserModel
 
 // Usado para guardar la score del usuario en Supabase
 // Clave para tener una db propia de scores de usuarios
@@ -773,131 +729,7 @@ async function _getUserTopScores(parsed_args){
     }
 }
 
-async function getOsuUser(parsed_args){
-    const server = parsed_args.server || 'bancho';
-    const look_gamemode = parsed_args.gamemode || 'osu';
-    const username = parsed_args.username[0];
-    const key = `${username}:${look_gamemode}:${server}`;
-
-    if (activeProfilePromises.has(key)) {
-        try {
-            await activeProfilePromises.get(key);
-        } catch (e) {
-            console.error(`[PROFILE-DEDUPLICATOR] La consulta de perfil en progreso para ${username} falló:`, e);
-        }
-        return getOsuUser(parsed_args);
-    }
-
-    let resolveActivePromise;
-    const p = new Promise(resolve => { resolveActivePromise = resolve; });
-    activeProfilePromises.set(key, p);
-
-    try {
-        const result = await _getOsuUser(parsed_args);
-        return result;
-    } finally {
-        resolveActivePromise();
-        activeProfilePromises.delete(key);
-    }
-}
-
-async function _getOsuUser(parsed_args){
-    const server = parsed_args.server || 'bancho';
-    const look_gamemode = parsed_args.gamemode || 'osu';
-    const username = parsed_args.username[0];
-    const cacheKey = `${username}:${look_gamemode}:${server}`;
-    const now = Date.now();
-    const cached = userProfileCache.get(cacheKey);
-
-    if (cached && (now - cached.timestamp) < PROFILE_CACHE_TTL) {
-        return cached.user;
-    }
-
-    const returnAndCache = (user) => {
-        if (user && typeof user === 'object' && user.username !== undefined && user.username !== "El usuario no se encuentra en osu!" && user.username !== "El usuario no se encuentra en Gatari!") {
-            setWithLimit(userProfileCache, cacheKey, { user, timestamp: now });
-        }
-        return user;
-    };
-
-    if (server === 'gatari') {
-        try {
-            const response = await fetch(`https://api.gatari.pw/users/get?u=${parsed_args.username[0]}`);
-            const data = await response.json();
-            
-            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
-            const m = modeMap[look_gamemode];
-            const statsRes = await fetch(`https://api.gatari.pw/user/stats?u=${parsed_args.username[0]}&mode=${m}`);
-            const statsData = await statsRes.json();
-
-            let achCount = [];
-            if (data.users && data.users.length > 0) {
-                const u = data.users[0];
-                const achRes = await fetch(`https://api.gatari.pw/user/achievements?u=${u.id}`);
-                const achText = await achRes.text();
-                if (achText) {
-                    try {
-                        const achData = JSON.parse(achText);
-                        if (achData.data) {
-                            Object.values(achData.data).forEach(cat => {
-                                if (cat.achievements) {
-                                    achCount.push(...cat.achievements.filter(a => a !== null));
-                                }
-                            });
-                        }
-                    } catch (e) {}
-                }
-            }
-
-            if (data.users && data.users.length > 0 && statsData.stats) {
-                const u = data.users[0];
-                const s = statsData.stats;
-                return returnAndCache({
-                    id: u.id,
-                    username: u.username,
-                    country_code: u.country,
-                    avatar_url: `https://a.gatari.pw/${u.id}`,
-                    cover_url: `https://a.gatari.pw/${u.id}`,
-                    join_date: new Date(u.registered_on * 1000).toISOString(),
-                    rank_highest: null,
-                    user_achievements: achCount,
-                    statistics: {
-                        global_rank: s.rank,
-                        pp: s.pp,
-                        hit_accuracy: s.avg_accuracy,
-                        play_count: s.playcount,
-                        play_time: s.playtime,
-                        level: { current: s.level, progress: s.level_progress },
-                        rank: { country: s.country_rank }
-                    },
-                    server: 'gatari',
-                    is_supporter: u.donor === 1 || u.donor === true || false
-                });
-            }
-            throw new Error("User not found in Gatari");
-        } catch (e) {
-            if (/^\d+$/.test(parsed_args.username[0])) {
-                return `El usuario no se encuentra en Gatari!\n💡 **Consejo:** Si estás usando tu cuenta enlazada, recuerda que las IDs de Bancho y Gatari son diferentes. Prueba buscando con tu nombre de usuario: \`/osu usuario:TuNombre servidor:Gatari\``;
-            }
-            return `El usuario no se encuentra en Gatari!`;
-        }
-    }
-
-    const osu_token = await loadToken();
-    let res;
-
-    try {
-        
-        res = await new Client(osu_token.access_token).users.getUser(parsed_args.username[0], {urlParams:{mode: look_gamemode}});
-        
-        if(res.username === "undefined") throw("error");
-    } catch (error) {
-
-        res = `El usuario no se encuentra en osu!`;
-    }
-    
-    return returnAndCache(res);
-}
+// Lógica de getOsuUser delegada a OsuUserModel
 
 // Obtener y descargar el beatmap.osu dado el id del set y del .osu
 // Usado principalmente para el calculo de pp

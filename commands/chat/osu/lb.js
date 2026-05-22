@@ -2,7 +2,7 @@ const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = 
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { v2 } = require('osu-api-extended');
 const fetch = require('node-fetch');
-const { getSupporterTokenForCountry } = require("../../../utils/osuAuth.js");
+const { getSupporterTokenForCountry, getOAuthTokenRecord, getOAuthTokenRecordByUsernameOrId } = require("../../../models/OsuUserModel.js");
 
 const leaderboardCache = new Map();
 const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
@@ -61,21 +61,14 @@ async function run(messages, args) {
 
     // Resolver país si es "SELF"
     if (countryFilter === "SELF") {
-        const supabase = res.supabaseClient;
         let dbCountry = null;
-        if (supabase) {
-            try {
-                const { data: userToken } = await supabase
-                    .from('oauth_tokens')
-                    .select('country_code')
-                    .eq('discord_id', message.author.id)
-                    .maybeSingle();
-                if (userToken && userToken.country_code) {
-                    dbCountry = userToken.country_code.toUpperCase();
-                }
-            } catch (err) {
-                console.error("Error al buscar país del usuario:", err);
+        try {
+            const userToken = await getOAuthTokenRecord(message.author.id);
+            if (userToken && userToken.country_code) {
+                dbCountry = userToken.country_code.toUpperCase();
             }
+        } catch (err) {
+            console.error("Error al buscar país del usuario:", err);
         }
         countryFilter = dbCountry || "VE";
     }
@@ -132,25 +125,9 @@ async function run(messages, args) {
 
     // 0. Caso leaderboard de amigos
     if (friendsFilter) {
-        const supabase = res.supabaseClient;
-        if (!supabase) {
-            return `❌ No se pudo conectar a la base de datos de Supabase.`;
-        }
-
-        let query = supabase.from('oauth_tokens').select('*');
-        if (friendsFilter === "SELF") {
-            query = query.eq('discord_id', message.author.id);
-        } else {
-            const cleanId = friendsFilter.replace(/[<@!>]/g, "");
-            if (/^\d{17,19}$/.test(cleanId)) {
-                query = query.eq('discord_id', cleanId);
-            } else {
-                query = query.ilike('username', friendsFilter);
-            }
-        }
-
-        const { data: userToken, error } = await query.maybeSingle();
-        if (error || !userToken) {
+        const searchFilter = friendsFilter === "SELF" ? message.author.id : friendsFilter;
+        const userToken = await getOAuthTokenRecordByUsernameOrId(searchFilter);
+        if (!userToken) {
             return `❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **${friendsFilter === "SELF" ? message.author.username : friendsFilter}** en la base de datos.`;
         }
 

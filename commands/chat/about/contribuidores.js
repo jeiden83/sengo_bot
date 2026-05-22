@@ -1,39 +1,14 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+const { getAllOAuthUsers } = require('../../../models/OsuUserModel.js');
 
 async function run(messages, args) {
     const { message, res, reply } = messages;
-    const supabase = res?.supabaseClient;
 
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#378a91';
 
-    if (!supabase) {
-        const embed = new EmbedBuilder()
-            .setTitle('🌐 Usuarios Vinculados por oAuth')
-            .setColor(embedColor)
-            .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-            .setDescription(`*No se pudieron cargar los usuarios de la base de datos (Supabase no disponible).*`)
-            .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-            .setTimestamp();
-        return { embeds: [embed] };
-    }
-
     try {
-        const { data, error } = await supabase
-            .from('oauth_tokens')
-            .select('discord_id, username, country_code, is_supporter');
-
-        if (error) {
-            console.error("Error al obtener usuarios de Supabase:", error);
-            const embed = new EmbedBuilder()
-                .setTitle('🌐 Usuarios Vinculados por oAuth')
-                .setColor(embedColor)
-                .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-                .setDescription(`*Error al cargar los usuarios desde la base de datos.*`)
-                .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-                .setTimestamp();
-            return { embeds: [embed] };
-        }
+        const data = await getAllOAuthUsers();
 
         if (data && data.length > 0) {
             // Ordenar alfabéticamente por país y luego por username

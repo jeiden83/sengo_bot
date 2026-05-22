@@ -1,4 +1,5 @@
 const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
+const { getLinkedUsers } = require("../../../models/OsuUserModel.js");
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
 const axios = require('axios');
@@ -7,27 +8,8 @@ const path = require('path');
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
-        // Paso 1: Consultar Supabase buscando usuarios vinculados
-        let query = res.supabaseClient
-            .from('users')
-            .select('discord_id, osu_id, main_gamemode')
-            .not('osu_id', 'is', null);
-
-        if (targetGuildId) {
-            query = query.contains('guilds', [targetGuildId]);
-        } else if (!bypass) {
-            const guildId = message.guild ? message.guild.id : null;
-            if (guildId) {
-                query = query.contains('guilds', [guildId]);
-            }
-        }
-
-        const { data: linkedUsers, error } = await query;
-
-        if (error) {
-            console.error('Error al consultar usuarios vinculados en Supabase:', error);
-            return [];
-        }
+        const guildId = targetGuildId || (!bypass && message.guild ? message.guild.id : null);
+        const linkedUsers = await getLinkedUsers({ guildId, bypass });
 
         if (!linkedUsers || linkedUsers.length === 0) {
             return [];
