@@ -1145,6 +1145,7 @@ function argsParserNoCommand(args) {
     let filterPass = false;
     let targetGuildId = null;
     let country = null;
+    let friendsFilter = null;
     let beatmap_url = null;
     let args_aux = new String(args);
 
@@ -1286,6 +1287,35 @@ function argsParserNoCommand(args) {
         if (arg.startsWith("-country")) {
             let next = arg.slice(8).trim();
             country = next ? next.toUpperCase() : "SELF";
+            continue;
+        }
+
+        // Si es el flag de -friends o -amigo o -amigos
+        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    friendsFilter = next_arg;
+                    skip_next = true;
+                    continue;
+                }
+            }
+            friendsFilter = "SELF";
+            continue;
+        }
+        if (arg.startsWith("-friends")) {
+            let next = arg.slice(8).trim();
+            friendsFilter = next ? next : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-amigos")) {
+            let next = arg.slice(7).trim();
+            friendsFilter = next ? next : "SELF";
+            continue;
+        }
+        if (arg.startsWith("-amigo")) {
+            let next = arg.slice(6).trim();
+            friendsFilter = next ? next : "SELF";
             continue;
         }
 
@@ -1530,6 +1560,7 @@ function argsParserNoCommand(args) {
         'filterPass': filterPass,
         'targetGuildId': targetGuildId,
         'country': country,
+        'friendsFilter': friendsFilter,
         'beatmap_url': beatmap_url
     };
     return parsed_args;

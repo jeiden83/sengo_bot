@@ -130,15 +130,18 @@ async function doEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, 
     return embed;
 }
 
-async function doContent(beatmap_metadata, targetGamemode, countryCode = null) {
+async function doContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
     const displayMode = targetGamemode === 'osu' ? 'std' : (targetGamemode === 'fruits' ? 'ctb' : targetGamemode);
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    const titleText = countryCode 
-        ? `**Tabla de clasificación nacional (${countryCode.toUpperCase()}) en osu!${displayMode} para:**`
-        : `**Tabla de clasificación (leaderboard) en osu!${displayMode} para:**`;
+    let titleText = `**Tabla de clasificación (leaderboard) en osu!${displayMode} para:**`;
+    if (countryCode) {
+        titleText = `**Tabla de clasificación nacional (${countryCode.toUpperCase()}) en osu!${displayMode} para:**`;
+    } else if (friendsUsername) {
+        titleText = `**Tabla de clasificación de amigos de ${friendsUsername} en osu!${displayMode} para:**`;
+    }
     return `${titleText}\n${mapa}`;
 }
 
@@ -148,6 +151,8 @@ async function run(messages, args) {
     const parsed_args = argsParserNoCommand(args);
     let beatmap_url = parsed_args.beatmap_url;
     let countryFilter = parsed_args.country;
+    let friendsFilter = parsed_args.friendsFilter;
+    let friendsUsername = null;
     let detected_gamemode = null;
 
     if (!beatmap_url) {
@@ -205,8 +210,70 @@ async function run(messages, args) {
     let scores = null;
     let usedSupporter = null;
 
+    // 0. Caso leaderboard de amigos
+    if (friendsFilter) {
+        const supabase = res.supabaseClient;
+        if (!supabase) {
+            return `❌ No se pudo conectar a la base de datos de Supabase.`;
+        }
+
+        let query = supabase.from('oauth_tokens').select('*');
+        if (friendsFilter === "SELF") {
+            query = query.eq('discord_id', message.author.id);
+        } else {
+            const cleanId = friendsFilter.replace(/[<@!>]/g, "");
+            if (/^\d{17,19}$/.test(cleanId)) {
+                query = query.eq('discord_id', cleanId);
+            } else {
+                query = query.ilike('username', friendsFilter);
+            }
+        }
+
+        const { data: userToken, error } = await query.maybeSingle();
+        if (error || !userToken) {
+            return `❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **${friendsFilter === "SELF" ? message.author.username : friendsFilter}** en la base de datos.`;
+        }
+
+        if (!userToken.is_supporter) {
+            return `❌ El usuario **${userToken.username}** no tiene osu! supporter activo en su cuenta vinculada, lo cual es requerido por la API de osu! para consultar el ranking de amigos.`;
+        }
+
+        friendsUsername = userToken.username;
+        usedSupporter = {
+            username: userToken.username,
+            fallback: false
+        };
+
+        if (logger) logger.process(`Obteniendo ranking de amigos de ${friendsUsername}`);
+        try {
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
+            urlObj.searchParams.append('mode', targetGamemode);
+            urlObj.searchParams.append('type', 'friends');
+            if (modsArray.length > 0) {
+                modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
+            }
+
+            const apiRes = await fetch(urlObj.toString(), {
+                headers: {
+                    'Authorization': `Bearer ${userToken.access_token}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                }
+            });
+
+            if (!apiRes.ok) {
+                throw new Error(`Status ${apiRes.status}`);
+            }
+
+            const resJson = await apiRes.json();
+            scores = resJson.scores || resJson;
+        } catch (e) {
+            console.error("Error al obtener friends ranking:", e);
+            return `❌ Error al consultar la API de osu! usando el token de amigos de **${friendsUsername}**.`;
+        }
+    }
     // 1. Caso leaderboard nacional
-    if (countryFilter) {
+    else if (countryFilter) {
         if (logger) logger.process(`Buscando supporter de ${countryFilter} en la pool`);
         const supporterRes = await getSupporterTokenForCountry(countryFilter);
         if (!supporterRes) {
@@ -424,7 +491,7 @@ async function run(messages, args) {
     let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
-    const content = await doContent(beatmap_metadata, targetGamemode, countryFilter);
+    const content = await doContent(beatmap_metadata, targetGamemode, countryFilter, friendsUsername);
     const initialEmbed = await doEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
 
     const getLbButtonsRow = (start, total) => {
