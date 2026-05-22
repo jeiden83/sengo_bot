@@ -669,7 +669,7 @@ async function handleShow(supabase, author, targetId, messageOrInteraction) {
     collector.on('end', async () => {
         try {
             await sentMessage.edit({ components: [] });
-        } catch (e) {}
+        } catch {}
     });
 }
 

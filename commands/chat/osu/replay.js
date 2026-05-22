@@ -63,7 +63,7 @@ async function run(messages, args, initialized_data) {
         try {
             const unixTime = Number((replayData.timestamp - 621355968000000000n) / 10000n);
             dateObj = new Date(unixTime);
-        } catch(e) {}
+        } catch {}
 
         // Format the mods for display
         const displayMods = parsedMods.map(mod => {

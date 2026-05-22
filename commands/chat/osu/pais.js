@@ -39,23 +39,13 @@ async function run(messages, args) {
 
     // Revisar si el rol de país ya está en el servidor
     if (role) {
-
-        
-		if (role) {
-			// Si el usuario ya tiene un rol de país, evitar asignar otro
-			if (userHasCountryRole) {
-				return `Ya tienes un rol de país asignado.`;
-			}
-
-			// Si no tiene el rol, asignar el rol al usuario
-			try {
-				await message.member.roles.add(role);
-				return `Rol de país asignado exitosamente.`;
-			} catch (error) {
-				console.error(error);
-				return `Hubo un error al asignar el rol.`;
-			}
-		}
+        try {
+            await message.member.roles.add(role);
+            return `Rol de país asignado exitosamente.`;
+        } catch (error) {
+            console.error(error);
+            return `Hubo un error al asignar el rol.`;
+        }
     } else {
         // Si el rol no existe, crearlo
         // Obtener la información del país desde country_codes usando el código del país

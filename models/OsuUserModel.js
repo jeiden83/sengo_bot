@@ -148,7 +148,7 @@ async function _getOsuUser(parsed_args) {
                                 }
                             });
                         }
-                    } catch (e) {}
+                    } catch {}
                 }
             }
 

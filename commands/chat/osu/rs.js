@@ -68,7 +68,7 @@ async function run(messages, args) {
             if (!isMocked) {
                 try {
                     await loading_msg.delete();
-                } catch (e) {}
+                } catch {}
             }
         }
     }
@@ -104,7 +104,7 @@ async function run(messages, args) {
                     const tempEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, globalIndex);
                     try {
                         await msg_obj.edit({ embeds: [tempEmbed] });
-                    } catch (e) {}
+                    } catch {}
                 }
 
                 const stats = score.statistics || {};
@@ -163,7 +163,7 @@ async function run(messages, args) {
                 const finalEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, null);
                 try {
                     await msg_obj.edit({ embeds: [finalEmbed] });
-                } catch (e) {}
+                } catch {}
             }
         };
 
@@ -208,7 +208,7 @@ async function run(messages, args) {
         collector.on('end', async () => {
             try {
                 await sent_message.edit({ components: [] });
-            } catch (e) {}
+            } catch {}
         });
 
         // Iniciar cache del gap en segundo plano para el mapa más reciente de la lista

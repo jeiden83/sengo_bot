@@ -95,7 +95,7 @@ class OSRParser {
                 try {
                     const decompressed = lzma.decompress(lzmaData);
                     data.lazerScoreInfo = JSON.parse(decompressed.toString('utf8'));
-                } catch(e) {}
+                } catch {}
             }
             
             return data;

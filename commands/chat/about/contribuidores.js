@@ -122,7 +122,7 @@ async function run(messages, args) {
             collector.on('end', async () => {
                 try {
                     await sent_message.edit({ components: [] });
-                } catch (e) {}
+                } catch {}
             });
         } else {
             const embed = new EmbedBuilder()

@@ -265,7 +265,7 @@ async function run(messages, args) {
         collector.on('end', async () => {
             try {
                 await sent_message.edit({ components: [] });
-            } catch (e) {}
+            } catch {}
         });
 
         return;
@@ -330,7 +330,7 @@ async function run(messages, args) {
     collector.on('end', async () => {
         try {
             await sent_message.edit({ components: [] });
-        } catch (e) {}
+        } catch {}
     });
 
     return;

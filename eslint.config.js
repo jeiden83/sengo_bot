@@ -36,7 +36,7 @@ module.exports = [
                 "ignoreRestSiblings": true 
             }],
             "no-undef": "error",
-            "no-empty": "warn"
+            "no-empty": ["warn", { "allowEmptyCatch": true }]
         }
     }
 ];

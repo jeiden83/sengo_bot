@@ -325,7 +325,7 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
                 if (msg && msg.id) {
                     setLatencyCache(msg.id, cachedLatencyText);
                 }
-            } catch (e) {}
+            } catch {}
             return result;
         };
 
