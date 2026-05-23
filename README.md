@@ -35,6 +35,19 @@ SUPABASE_KEY=tu_anon_key_de_supabase_aqui
 
 # Configuración de Tatsu (Opcional - para ganar score de Tatsu)
 TATSU_API_KEY=tu_tatsu_key_aqui
+
+# IDS Maestras de Discord
+OWNER_ID=tu_discord_id_aqui
+SENGOBOT_GUILD_ID=tu_guild_id_aqui
+
+# Configuración de Despliegue (OAuth, Webhooks y Desarrollo Local)
+PORT=3000
+RENDER=false
+RENDER_EXTERNAL_URL=https://tu-url-de-render-o-ngrok.com
+START_NGROK=false
+
+# Token de apagado remoto seguro
+SHUTDOWN_TOKEN=tu_token_de_apagado_aqui
 ```
 
 - Correr el bot con el `run.sh` (recomendado), o bien con:
