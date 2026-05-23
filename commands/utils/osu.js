@@ -37,6 +37,7 @@ module.exports = {
     getBeatmapUserAllScores: OsuScoreModel.getBeatmapUserAllScores,
     calculatePP: OsuScoreModel.calculatePP,
     triggerBackgroundGapCache: OsuScoreModel.triggerBackgroundGapCache,
+    triggerBackgroundRecentPreload: OsuScoreModel.triggerBackgroundRecentPreload,
     normalizeScore: OsuScoreModel.normalizeScore,
     normalizeStatistics: OsuScoreModel.normalizeStatistics
 }

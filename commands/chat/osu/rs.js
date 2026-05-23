@@ -1,4 +1,4 @@
-const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundGapCache } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundRecentPreload } = require("../../utils/osu.js");
 
 
 
@@ -211,14 +211,14 @@ async function run(messages, args) {
             } catch {}
         });
 
-        // Iniciar cache del gap en segundo plano para el mapa más reciente de la lista
+        // Iniciar precargas en segundo plano para el mapa más reciente de la lista
         try {
             const targetScore = parser_res.fn_response[0];
             if (targetScore && targetScore.beatmap) {
-                triggerBackgroundGapCache(message, targetScore.beatmap.id, targetScore.beatmap.mode || 'osu');
+                triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
             }
         } catch (err) {
-            console.error("[BG-GAP] Error al disparar el cache de gap en segundo plano (lista):", err);
+            console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano (lista):", err);
         }
 
         return;
@@ -341,14 +341,14 @@ async function run(messages, args) {
         }
     });
 
-    // Iniciar cache del gap en segundo plano para el mapa mostrado
+    // Iniciar precargas en segundo plano para el mapa mostrado
     try {
         const targetScore = parser_res.fn_response[index - 1] || parser_res.fn_response[0];
         if (targetScore && targetScore.beatmap) {
-            triggerBackgroundGapCache(message, targetScore.beatmap.id, targetScore.beatmap.mode || 'osu');
+            triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
         }
     } catch (err) {
-        console.error("[BG-GAP] Error al disparar el cache de gap en segundo plano:", err);
+        console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano:", err);
     }
 
     return;

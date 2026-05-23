@@ -1502,6 +1502,72 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
     }
 }
 
+async function triggerBackgroundRecentPreload(message, recentScore, parsed_args) {
+    if (!recentScore || !recentScore.beatmap) return;
+    
+    const beatmapId = recentScore.beatmap.id;
+    const mode = recentScore.beatmap.mode || parsed_args?.gamemode || 'osu';
+    const userId = recentScore.user_id || recentScore.user?.id;
+    const username = recentScore.user?.username;
+    
+    let countryCode = recentScore.user?.country_code || recentScore.country_code;
+
+    Promise.resolve().then(async () => {
+        // 1. Precarga del Gap en segundo plano
+        try {
+            await triggerBackgroundGapCache(message, beatmapId, mode);
+        } catch (err) {
+            console.error(`[BG-RECENT-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
+        }
+
+        // 2. Precarga del Compare (.c) del usuario en ese mapa
+        if (username && beatmapId) {
+            try {
+                const compareArgs = {
+                    username: [username],
+                    beatmap_url: beatmapId.toString(),
+                    gamemode: mode,
+                    server: parsed_args?.server || 'bancho'
+                };
+                await getBeatmapUserAllScores(compareArgs);
+                console.log(`[BG-RECENT-PRELOAD] Compare (.c) precargado en segundo plano para ${username} en el mapa ${beatmapId}`);
+            } catch (err) {
+                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare para ${username} en el mapa ${beatmapId}:`, err);
+            }
+        }
+
+        // 3. Precarga del Leaderboard del país (.lb) de ese usuario en ese mapa
+        if (!countryCode && message && message.author) {
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    const { data: userToken } = await supabase
+                        .from('users')
+                        .select('country_code')
+                        .eq('discord_id', message.author.id)
+                        .maybeSingle();
+                    if (userToken && userToken.country_code) {
+                        countryCode = userToken.country_code;
+                    }
+                }
+            } catch (err) {
+                console.error(`[BG-RECENT-PRELOAD] Error al buscar país del usuario en DB:`, err);
+            }
+        }
+
+        if (countryCode && beatmapId) {
+            try {
+                const { preloadCountryLeaderboard } = require("../commands/chat/osu/lb.js");
+                await preloadCountryLeaderboard(beatmapId, mode, countryCode);
+            } catch (err) {
+                console.error(`[BG-RECENT-PRELOAD] Error al precargar leaderboard nacional de ${countryCode} para el mapa ${beatmapId}:`, err);
+            }
+        }
+    }).catch(err => {
+        console.error(`[BG-RECENT-PRELOAD] Error general en el proceso en segundo plano:`, err);
+    });
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
@@ -1518,7 +1584,8 @@ const OsuScoreModel = {
     getUnrankedUserScores,
     triggerBackgroundGapCache,
     handlePredictivePreload,
-    triggerBackgroundOsuPreload
+    triggerBackgroundOsuPreload,
+    triggerBackgroundRecentPreload
 };
 
 module.exports = OsuScoreModel;

@@ -499,4 +499,30 @@ run.description = {
     'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.`
 }
 
-module.exports = { run, "description": run.description }
+async function preloadCountryLeaderboard(beatmapId, mode, countryCode) {
+    if (!beatmapId || !countryCode) return;
+    const countryFilter = countryCode.toUpperCase();
+    
+    try {
+        const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
+        if (!supporterRes) {
+            console.log(`[BG-LB-PRELOAD] No hay supporter para el país ${countryFilter}`);
+            return;
+        }
+        
+        const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores`);
+        urlObj.searchParams.append('mode', mode || 'osu');
+        urlObj.searchParams.append('type', 'country');
+        
+        await fetchLeaderboardCached(urlObj.toString(), {
+            'Authorization': `Bearer ${supporterRes.token}`,
+            'Content-Type': 'application/json',
+            'x-api-version': '20240728'
+        });
+        console.log(`[BG-LB-PRELOAD] Leaderboard de país ${countryFilter} precargado exitosamente para el mapa ${beatmapId}`);
+    } catch (err) {
+        console.error(`[BG-LB-PRELOAD] Error al precargar leaderboard nacional de ${countryFilter}:`, err);
+    }
+}
+
+module.exports = { run, "description": run.description, preloadCountryLeaderboard }
