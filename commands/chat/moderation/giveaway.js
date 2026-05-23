@@ -232,21 +232,12 @@ async function run(messages, args) {
         return;
     }
 
-    // Función auxiliar para buscar y extraer la ID del mensaje en los argumentos
-    const getMessageIdFromArgs = (argsList) => {
-        const allArgs = argsList.slice(1);
-        for (const arg of allArgs) {
-            const match = arg.match(/\/channels\/\d+\/\d+\/(\d+)/) || arg.match(/\/messages\/(\d+)/) || arg.match(/^(\d+)$/);
-            if (match) {
-                return match[1];
-            }
-        }
-        return null;
-    };
+    const { argsParserNoCommand } = require("../../utils/argsParser.js");
+    const parsedArgs = argsParserNoCommand(args);
 
     // 2. SUBCOMANDO TERMINAR / END
     if (sub === 'terminar' || sub === 'end') {
-        const messageId = getMessageIdFromArgs(args);
+        const messageId = parsedArgs.discordMessageId;
         if (!messageId) {
             return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
         }
@@ -261,7 +252,7 @@ async function run(messages, args) {
 
     // 3. SUBCOMANDO REROLL
     if (sub === 'reroll') {
-        const messageId = getMessageIdFromArgs(args);
+        const messageId = parsedArgs.discordMessageId;
         if (!messageId) {
             return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
         }

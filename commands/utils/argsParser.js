@@ -260,6 +260,8 @@ function argsParserNoCommand(args) {
     let country = null;
     let friendsFilter = null;
     let beatmap_url = null;
+    let discordMessageId = null;
+    let discordMessageLink = null;
     let args_aux = new String(args);
 
     const extractId = str =>
@@ -386,10 +388,19 @@ function argsParserNoCommand(args) {
         let arg = args_list[i].trim();
         if (!arg) continue;
 
-        // Si es un enlace de mensaje de Discord, lo ignoramos para que no se guarde en username
+        // Si es un enlace de mensaje de Discord, lo ignoramos para que no se guarde en username y extraemos la ID y link
         const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
-        if (discordLinkRegex.test(arg)) {
+        const linkMatch = arg.match(discordLinkRegex);
+        if (linkMatch) {
+            discordMessageLink = arg;
+            discordMessageId = linkMatch[3] || linkMatch[5];
             continue;
+        }
+
+        // Si es una ID de mensaje de Discord cruda (17-20 dígitos), la registramos pero permitimos que siga su curso
+        const msgIdMatch = arg.match(/^(\d{17,20})$/);
+        if (msgIdMatch) {
+            discordMessageId = msgIdMatch[1];
         }
 
         // Si empieza con '+' (para mods exactos, ej: +HDHR)
@@ -719,7 +730,9 @@ function argsParserNoCommand(args) {
         'targetGuildId': targetGuildId,
         'country': country,
         'friendsFilter': friendsFilter,
-        'beatmap_url': beatmap_url
+        'beatmap_url': beatmap_url,
+        'discordMessageId': discordMessageId,
+        'discordMessageLink': discordMessageLink
     };
     return parsed_args;
 }
