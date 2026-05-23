@@ -113,37 +113,44 @@ async function endGiveaway(client, messageId, wasOffline = false) {
         // Limpiar botones si quedaran
         await msg.edit({ components: [] }).catch(() => {});
 
-        const reaction = msg.reactions.cache.get('🎉');
-        let participants = [];
-        if (reaction) {
-            const users = await reaction.users.fetch({ limit: 100 }).catch(() => new Map());
-            participants = Array.from(users.values())
-                .filter(u => !u.bot)
-                .map(u => u.id);
-        }
-
         const winners = [];
-        const pool = [...participants];
-        const countToPick = Math.min(gw.winnersCount, pool.length);
-        for (let i = 0; i < countToPick; i++) {
-            const idx = Math.floor(Math.random() * pool.length);
-            winners.push(pool.splice(idx, 1)[0]);
+        if (!wasOffline) {
+            const reaction = msg.reactions.cache.get('🎉');
+            let participants = [];
+            if (reaction) {
+                const users = await reaction.users.fetch({ limit: 100 }).catch(() => new Map());
+                participants = Array.from(users.values())
+                    .filter(u => !u.bot)
+                    .map(u => u.id);
+            }
+
+            const pool = [...participants];
+            const countToPick = Math.min(gw.winnersCount, pool.length);
+            for (let i = 0; i < countToPick; i++) {
+                const idx = Math.floor(Math.random() * pool.length);
+                winners.push(pool.splice(idx, 1)[0]);
+            }
         }
 
         gw.winners = winners;
         saveGiveaways();
 
-        const { getGiveawayEndedEmbed, getGiveawayEndedText } = require('../views/giveawayViews.js');
+        const { getGiveawayEndedEmbed } = require('../views/giveawayViews.js');
         const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, wasOffline);
         await msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
 
-        let winText = getGiveawayEndedText(gw, winners);
         if (wasOffline) {
-            winText += `\n⚠️ *Nota: Este sorteo finalizó mientras el bot estaba desconectado. Los ganadores se eligieron a partir de las reacciones registradas.*`;
+            const offlineText = `⚠️ El sorteo por **${gw.prize}** finalizó mientras el bot estaba desconectado. <@${gw.creatorId || ''}> ha sido notificado para decidir si realizar un re-roll o iniciar un sorteo nuevo.`;
+            await channel.send({ content: offlineText, reply: { messageReference: msg.id } }).catch(() => {
+                channel.send(offlineText).catch(() => {});
+            });
+        } else {
+            const { getGiveawayEndedText } = require('../views/giveawayViews.js');
+            const winText = getGiveawayEndedText(gw, winners);
+            await channel.send({ content: winText, reply: { messageReference: msg.id } }).catch(() => {
+                channel.send(winText).catch(() => {});
+            });
         }
-        await channel.send({ content: winText, reply: { messageReference: msg.id } }).catch(() => {
-            channel.send(winText).catch(() => {});
-        });
 
         // Enviar DM al creador avisándole del sorteo vencido offline
         if (wasOffline && gw.creatorId) {
@@ -151,8 +158,8 @@ async function endGiveaway(client, messageId, wasOffline = false) {
             if (creator) {
                 const prefix = client.config?.BOT_PREFIX || "s.";
                 const dmMessage = `⚠️ **Notificación de Sorteo**: Tu sorteo por **${gw.prize}** (ID: \`${gw.messageId}\`) finalizó mientras yo estaba desconectado.\n` +
-                    `He seleccionado ganadores con las reacciones actuales y anunciado los resultados en el canal, pero si deseas realizar un re-roll o iniciar uno nuevo, puedes hacerlo con:\n` +
-                    `- Para re-roll: \`${prefix}sorteo reroll ${gw.messageId}\`\n` +
+                    `No he seleccionado ganadores de forma automática. Si deseas elegir los ganadores a partir de los participantes registrados o iniciar uno nuevo, puedes hacerlo con:\n` +
+                    `- Para realizar re-roll (elegir ganadores): \`${prefix}sorteo reroll ${gw.messageId}\`\n` +
                     `- Para crear uno nuevo: \`${prefix}sorteo crear\``;
                 await creator.send(dmMessage).catch(() => {});
             }
