@@ -2,6 +2,11 @@ const { SlashCommandBuilder, REST, Routes, Collection, ActionRowBuilder, ButtonB
 const fs = require('fs');
 const path = require('path');
 
+const OSU_COMMANDS = new Set([
+    'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
+    'm', 'map', 'subir', 'gap', 'bg', 'top', 't', 'osu', 'snipes'
+]);
+
 // Maneja el fallo de verificación de OAuth enviando un DM instructivo con un botón de enlace directo
 async function handleOAuthFailure(author, logger) {
     if (logger) logger.failed("OAuth requerido.");
@@ -54,12 +59,132 @@ async function chatCommand(intialized_data, command_data) {
             }
         }
 
+        // Detección automática de sugerencias de optimización para el usuario
+        if (OSU_COMMANDS.has(command.toLowerCase())) {
+            try {
+                const { argsParserNoCommand } = require("./utils/argsParser.js");
+                const OsuUserModel = require("../models/OsuUserModel.js");
+                
+                const parsed_args = argsParserNoCommand(args);
+                const discordId = message.author.id;
+                
+                let suggestion = null;
+                let userToken = null;
+                let user_found = null;
+                const countryFilter = parsed_args.country;
+                const originalArgsStr = Array.isArray(args) ? args.join(' ') : String(args);
+                const argsLower = originalArgsStr.toLowerCase();
+
+                // 1. Sugerencia de País Redundante
+                if (countryFilter && countryFilter !== "SELF") {
+                    userToken = await OsuUserModel.getOAuthTokenRecord(discordId);
+                    if (userToken && userToken.country_code && countryFilter.toUpperCase() === userToken.country_code.toUpperCase()) {
+                        suggestion = `💡 *Tip: Como tu país ya es **${userToken.country_code.toUpperCase()}**, puedes usar simplemente \`-pais\` sin especificar el código y Sengo lo autodetectará.*`;
+                    }
+                }
+
+                // 2. Sugerencia de Nombre de Usuario Redundante
+                if (!suggestion && parsed_args.username && parsed_args.username.length > 0 && parsed_args.username[0] !== "") {
+                    const inputName = String(parsed_args.username[0]);
+                    const cleanInput = inputName.replace(/<@!?(\d+)>/, '$1').toLowerCase();
+                    
+                    user_found = await OsuUserModel.getLinkedUser(res.User, discordId);
+                    
+                    let isSelf = false;
+                    if (cleanInput === discordId) {
+                        isSelf = true;
+                    } else if (user_found && cleanInput === user_found.osu_id.toString()) {
+                        isSelf = true;
+                    } else {
+                        if (!userToken) {
+                            try {
+                                userToken = await OsuUserModel.getOAuthTokenRecord(discordId);
+                            } catch {}
+                        }
+                        if (userToken && userToken.username && cleanInput === userToken.username.toLowerCase()) {
+                            isSelf = true;
+                        }
+                    }
+
+                    if (isSelf) {
+                        suggestion = `💡 *Tip: Como ya estás vinculado al bot, no necesitas escribir tu nombre en el comando; puedes usarlo directamente.*`;
+                    }
+                }
+
+                // 3. Sugerencia de Servidor Redundante
+                if (!suggestion && (argsLower.includes('-bancho') || argsLower.includes('-server bancho'))) {
+                    suggestion = `💡 *Tip: El servidor por defecto es Bancho, por lo que no es necesario agregar \`-bancho\` o \`-server bancho\`.*`;
+                }
+
+                // 4. Sugerencia de Modo de Juego Redundante
+                if (!suggestion && (argsLower.includes('-osu') || argsLower.includes('-std'))) {
+                    if (!user_found) {
+                        user_found = await OsuUserModel.getLinkedUser(res.User, discordId);
+                    }
+                    const currentMode = (user_found && user_found.main_gamemode) ? user_found.main_gamemode : 'osu';
+                    if (currentMode === 'osu') {
+                        suggestion = `💡 *Tip: Como tu modo de juego por defecto es standard, no necesitas agregar \`-osu\` o \`-std\` al comando.*`;
+                    }
+                }
+
+                if (suggestion) {
+                    message.optimizationSuggestion = suggestion;
+                }
+            } catch (err) {
+                console.error("Error al procesar sugerencia de optimización:", err);
+            }
+        }
+
+        // Decorador para adjuntar la sugerencia de optimización si existe
+        const originalChannelSend = message.channel.send;
+        const originalMessageReply = message.reply;
+        
+        function decorateSend(originalSend, msgObj) {
+            if (!originalSend) return originalSend;
+            return async function(options) {
+                if (msgObj.optimizationSuggestion) {
+                    const suggestion = msgObj.optimizationSuggestion;
+                    delete msgObj.optimizationSuggestion;
+                    
+                    if (typeof options === 'string') {
+                        options = options + "\n" + suggestion;
+                    } else if (options && typeof options === 'object') {
+                        if (options.content) {
+                            options.content = options.content + "\n" + suggestion;
+                        } else {
+                            options.content = suggestion;
+                        }
+                    } else if (!options) {
+                        options = { content: suggestion };
+                    }
+                }
+                return await originalSend.apply(this, arguments);
+            };
+        }
+
+        message.channel.send = decorateSend(originalChannelSend, message);
+        message.reply = decorateSend(originalMessageReply, message);
+        
+        let originalReplyReply = null;
+        if (reply) {
+            originalReplyReply = reply.reply;
+            reply.reply = decorateSend(originalReplyReply, message);
+        }
+
         try {
-            const result = await found_command.run(
+            let result = await found_command.run(
                 { message, res, reply, logger },
                 [...args, alias_args],
                 intialized_data
             );
+
+            if (message.optimizationSuggestion) {
+                const suggestion = message.optimizationSuggestion;
+                delete message.optimizationSuggestion;
+                if (typeof result === 'string') {
+                    result = result + "\n" + suggestion;
+                }
+            }
 
             if (logger) {
                 // Si el comando devuelve un string con advertencia/error (ej. no vinculado) lo registramos como fallo controlado
@@ -73,6 +198,12 @@ async function chatCommand(intialized_data, command_data) {
         } catch (error) {
             if (logger) logger.failed(error.message);
             throw error; // Re-lanzar para el try/catch del despachador
+        } finally {
+            message.channel.send = originalChannelSend;
+            message.reply = originalMessageReply;
+            if (reply && originalReplyReply) {
+                reply.reply = originalReplyReply;
+            }
         }
 	}
 		
@@ -165,7 +296,46 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 			},
 			logger: interaction.logger
 		};
-		const result = await chat_commands_map.get(commandName).run(messages, [], chat_commands);
+		// Decorar funciones de messages para sugerencias de optimización
+		const originalSend = messages.message.channel.send;
+		const originalReply = messages.reply.reply;
+		
+		function decorateSend(originalSend, msgObj) {
+			if (!originalSend) return originalSend;
+			return async function(options) {
+				if (msgObj.optimizationSuggestion) {
+					const suggestion = msgObj.optimizationSuggestion;
+					delete msgObj.optimizationSuggestion;
+					
+					if (typeof options === 'string') {
+						options = options + "\n" + suggestion;
+					} else if (options && typeof options === 'object') {
+						if (options.content) {
+							options.content = options.content + "\n" + suggestion;
+						} else {
+							options.content = suggestion;
+						}
+					} else if (!options) {
+						options = { content: suggestion };
+					}
+				}
+				return await originalSend.apply(this, arguments);
+			};
+		}
+		
+		messages.message.channel.send = decorateSend(originalSend, messages.message);
+		messages.reply.reply = decorateSend(originalReply, messages.message);
+
+		let result = await chat_commands_map.get(commandName).run(messages, [], chat_commands);
+
+		if (messages.message.optimizationSuggestion) {
+			const suggestion = messages.message.optimizationSuggestion;
+			delete messages.message.optimizationSuggestion;
+			if (typeof result === 'string') {
+				result = result + "\n" + suggestion;
+			}
+		}
+
 		if (interactionUsed || result === undefined) {
 			if (result !== undefined && result !== null) {
 				await interaction.editReply(result);
