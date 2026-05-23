@@ -284,6 +284,15 @@ async function run(messages, args) {
         return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
     }
 
+    // Ordenar puntuaciones por score clásico/legacy descendente para evitar inconsistencias visuales
+    // (ya que la API de osu! v2 por defecto las retorna ordenadas por score estandarizado de Lazer)
+    const getRawScore = s => {
+        return (s.legacy_total_score && s.legacy_total_score > 0) ? s.legacy_total_score :
+               (s.classic_total_score && s.classic_total_score > 0) ? s.classic_total_score :
+               s.total_score || s.score || 0;
+    };
+    scores.sort((a, b) => getRawScore(b) - getRawScore(a));
+
     let globalScores = [];
     if (globalScoresPromise) {
         if (logger) logger.process("Esperando cruce de posiciones globales...");
