@@ -1,28 +1,4 @@
-const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-
-async function doEmbed(message, title, description, fields = []){
-    const roleColor = message.member?.roles?.highest?.color || 0xfe66aa;
-    const icon_url = message.author.displayAvatarURL({ dynamic: true, size: 512 });
-
-    const embed = new EmbedBuilder()
-        .setAuthor({
-            name: title,
-            iconURL: icon_url
-        })
-        .setDescription(description)
-        .setColor(roleColor)
-        .setFooter({
-            text: "SengoBot • s.help [comando]",
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-        })
-        .setTimestamp();
-
-    if (fields && fields.length > 0) {
-        embed.addFields(fields);
-    }
-
-    return embed;
-}
+const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
 
 function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
     const commandData = commandsMap.get(cmdName);
@@ -91,34 +67,6 @@ function getCategoryCommands(category, commandsMap, mainCommandsSet) {
     return list.sort();
 }
 
-function getButtonsRow(currentCmd, categoryCmds) {
-    if (categoryCmds.length <= 1) return null;
-
-    const currentIndex = categoryCmds.indexOf(currentCmd);
-    
-    // Anterior
-    const prevIndex = (currentIndex - 1 + categoryCmds.length) % categoryCmds.length;
-    const prevCmd = categoryCmds[prevIndex];
-    
-    // Siguiente
-    const nextIndex = (currentIndex + 1) % categoryCmds.length;
-    const nextCmd = categoryCmds[nextIndex];
-
-    const prevButton = new ButtonBuilder()
-        .setCustomId(`help_prev_${prevCmd}`)
-        .setLabel(`Anterior: s.${prevCmd}`)
-        .setEmoji("◀️")
-        .setStyle(ButtonStyle.Primary);
-
-    const nextButton = new ButtonBuilder()
-        .setCustomId(`help_next_${nextCmd}`)
-        .setLabel(`Siguiente: s.${nextCmd}`)
-        .setEmoji("▶️")
-        .setStyle(ButtonStyle.Primary);
-
-    return new ActionRowBuilder().addComponents(prevButton, nextButton);
-}
-
 async function run(messages, args, intialized_data) {
     const { message } = messages;
 
@@ -168,7 +116,7 @@ async function run(messages, args, intialized_data) {
         }
 
         const description = "**¡Hola! Soy Sengo**, un bot de Discord especializado en osu! y utilidades locales.\n\n> Usa `s.help [comando]` para ver la descripción detallada y los parámetros de un comando específico.";
-        const embed = await doEmbed(message, 'Menú de Ayuda • SengoBot', description, fields);
+        const embed = doHelpListEmbed(message, fields, description);
         
         await message.channel.send({ embeds: [embed] });
         return;
@@ -181,15 +129,10 @@ async function run(messages, args, intialized_data) {
         const helpData = getCommandHelpData(queryName, commandsMap, mainCommandsSet);
         if (!helpData) return;
 
-        const embed = await doEmbed(
-            message,
-            `Ayuda de Comando: s.${helpData.mainName}${helpData.mainName !== queryName ? ` (Alias: s.${queryName})` : ''}`,
-            `*${helpData.headerText}*`,
-            helpData.fields
-        );
+        const embed = doHelpCommandEmbed(message, helpData.mainName, queryName, helpData);
 
         const categoryCmds = getCategoryCommands(helpData.category, commandsMap, mainCommandsSet);
-        const row = getButtonsRow(helpData.mainName, categoryCmds);
+        const row = buildHelpNavigationRow(helpData.mainName, categoryCmds);
 
         const sentMessage = await message.channel.send({
             embeds: [embed],
@@ -214,22 +157,8 @@ async function run(messages, args, intialized_data) {
                 const nextHelpData = getCommandHelpData(targetCmd, commandsMap, mainCommandsSet);
                 if (!nextHelpData) return;
 
-                const roleColor = message.member?.roles?.highest?.color || 0xfe66aa;
-                const nextEmbed = new EmbedBuilder()
-                    .setAuthor({
-                        name: `Ayuda de Comando: s.${nextHelpData.mainName}`,
-                        iconURL: message.author.displayAvatarURL({ dynamic: true, size: 512 })
-                    })
-                    .setDescription(`*${nextHelpData.headerText}*`)
-                    .setColor(roleColor)
-                    .setFooter({
-                        text: "SengoBot • s.help [comando]",
-                        iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-                    })
-                    .setTimestamp()
-                    .addFields(nextHelpData.fields);
-
-                const nextRow = getButtonsRow(nextHelpData.mainName, categoryCmds);
+                const nextEmbed = doHelpCommandEmbed(message, nextHelpData.mainName, targetCmd, nextHelpData);
+                const nextRow = buildHelpNavigationRow(nextHelpData.mainName, categoryCmds);
 
                 await i.editReply({
                     embeds: [nextEmbed],
@@ -251,7 +180,7 @@ async function run(messages, args, intialized_data) {
         return;
     }
 
-    const errEmbed = await doEmbed(message, "Error • Ayuda", `El comando \`${queryName}\` no existe. Usa \`s.help\` para ver la lista de comandos.`);
+    const errEmbed = doHelpListEmbed(message, [], `El comando \`${queryName}\` no existe. Usa \`s.help\` para ver la lista de comandos.`);
     await message.channel.send({ embeds: [errEmbed] });
 }
 
