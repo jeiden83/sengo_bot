@@ -2,11 +2,6 @@ const { SlashCommandBuilder, REST, Routes, Collection, ActionRowBuilder, ButtonB
 const fs = require('fs');
 const path = require('path');
 
-const OSU_COMMANDS = new Set([
-    'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
-    'm', 'map', 'subir', 'gap', 'bg', 'top', 't', 'osu', 'snipes'
-]);
-
 // Maneja el fallo de verificación de OAuth enviando un DM instructivo con un botón de enlace directo
 async function handleOAuthFailure(author, logger) {
     if (logger) logger.failed("OAuth requerido.");
@@ -60,7 +55,7 @@ async function chatCommand(intialized_data, command_data) {
         }
 
         // Detección automática de sugerencias de optimización para el usuario
-        if (OSU_COMMANDS.has(command.toLowerCase())) {
+        if (found_command && found_command.type === "osu") {
             try {
                 const { argsParserNoCommand } = require("./utils/argsParser.js");
                 const OsuUserModel = require("../models/OsuUserModel.js");
