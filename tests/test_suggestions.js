@@ -196,7 +196,7 @@ async function runTests() {
     });
 
     console.log("Result 5:", res5);
-    if (res5 && typeof res5 === 'string' && res5.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res5.includes("MÉXICO (MX)")) {
+    if (res5 && typeof res5 === 'string' && res5.includes("**El comando** `.c` no tiene un parámetro `-lb` o `-pais`") && res5.includes("MÉXICO (MX)")) {
         console.log("✅ Caso 5 (c -lb mx): PASSED");
     } else {
         console.error("❌ Caso 5 (c -lb mx): FAILED");
@@ -215,7 +215,7 @@ async function runTests() {
     });
 
     console.log("Result 6:", res6);
-    if (res6 && typeof res6 === 'string' && res6.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res6.includes("VENEZUELA (VE)")) {
+    if (res6 && typeof res6 === 'string' && res6.includes("**El comando** `.c` no tiene un parámetro `-lb` o `-pais`") && res6.includes("VENEZUELA (VE)")) {
         console.log("✅ Caso 6 (c -lb): PASSED");
     } else {
         console.error("❌ Caso 6 (c -lb): FAILED");
@@ -256,10 +256,48 @@ async function runTests() {
     });
 
     console.log("Result 8:", res8);
-    if (res8 && typeof res8 === 'string' && res8.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res8.includes("VENEZUELA (VE)")) {
+    if (res8 && typeof res8 === 'string' && res8.includes("**El comando** `.c` no tiene un parámetro `-lb` o `-pais`") && res8.includes("VENEZUELA (VE)")) {
         console.log("✅ Caso 8 (c -lb - no se encuentra): PASSED");
     } else {
         console.error("❌ Caso 8 (c -lb - no se encuentra): FAILED");
+        process.exit(1);
+    }
+
+    // Caso 9: sd.osu -oauth
+    console.log("# Probando 'osu -oauth'...");
+    let res9 = await chatCommand(chat_commands, {
+        command: "osu",
+        args: ["-oauth"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 9:", res9);
+    if (res9 && typeof res9 === 'string' && res9.includes("**El parámetro** `-oauth` solo es válido en el comando `.link -oauth`")) {
+        console.log("✅ Caso 9 (osu -oauth): PASSED");
+    } else {
+        console.error("❌ Caso 9 (osu -oauth): FAILED");
+        process.exit(1);
+    }
+
+    // Caso 10: sd.rs https://osu.ppy.sh/b/12345
+    console.log("# Probando 'rs https://osu.ppy.sh/b/12345'...");
+    let res10 = await chatCommand(chat_commands, {
+        command: "rs",
+        args: ["https://osu.ppy.sh/b/12345"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 10:", res10);
+    if (res10 && typeof res10 === 'string' && res10.includes("no admite enlaces de beatmaps") && res10.includes("¿Habrás querido usar `.c`")) {
+        console.log("✅ Caso 10 (rs beatmap_url): PASSED");
+    } else {
+        console.error("❌ Caso 10 (rs beatmap_url): FAILED");
         process.exit(1);
     }
 

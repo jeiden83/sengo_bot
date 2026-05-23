@@ -84,9 +84,9 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
 
             const displayCountry = countryCode ? `${countryName} (${countryCode})` : "tu país";
             if (isCompare) {
-                return `❌ El comando \`.c\` no tiene un parámetro \`-lb\` o \`-pais\`. ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de ${displayCountry}?`;
+                return `❌ **El comando** \`.c\` no tiene un parámetro \`-lb\` o \`-pais\`. ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de **${displayCountry}**?`;
             } else {
-                return `❌ El comando \`.${command}\` no admite parámetros de tabla de clasificación (\`-lb\` o \`-pais\`). ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de ${displayCountry}?`;
+                return `❌ **El comando** \`.${command}\` no admite parámetros de tabla de clasificación (\`-lb\` o \`-pais\`). ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de **${displayCountry}**?`;
             }
         }
     }
@@ -101,6 +101,28 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
         });
         if (hasCompare) {
             return `❌ El comando \`.lb\` (leaderboard) no tiene un parámetro de comparación \`-c\`. ¿Habrás querido usar \`.c\` para comparar tu puntuación en este beatmap?`;
+        }
+    }
+
+    // Caso 4: El usuario intenta usar -oauth en un comando que no es link/vincular
+    if (!['link', 'vincular'].includes(commandLower)) {
+        const hasOAuth = args.some(arg => {
+            const lowerArg = arg.toLowerCase();
+            return lowerArg === 'oauth' || lowerArg === '-oauth' || lowerArg === '--oauth';
+        });
+        if (hasOAuth) {
+            return `❌ **El parámetro** \`-oauth\` solo es válido en el comando \`.link -oauth\` para vincular tu cuenta de osu! de forma privada y segura.`;
+        }
+    }
+
+    // Caso 5: El usuario intenta pasar un enlace de beatmap a comandos de perfil o jugadas recientes/top
+    if (['osu', 'o', 'perfil', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'top', 't'].includes(commandLower)) {
+        const hasBeatmapUrl = args.some(arg => {
+            if (typeof arg !== 'string') return false;
+            return arg.includes('osu.ppy.sh/b') || arg.includes('osu.ppy.sh/beatmaps') || arg.includes('osu.ppy.sh/beatmapsets');
+        });
+        if (hasBeatmapUrl) {
+            return `❌ **El comando** \`.${command}\` no admite enlaces de beatmaps (se utiliza para consultar el perfil o jugadas de un usuario). ¿Habrás querido usar \`.c\` (para comparar) o \`.lb\` (para ver la tabla de clasificación) con este beatmap?`;
         }
     }
 
@@ -244,6 +266,12 @@ async function chatCommand(intialized_data, command_data) {
         if (reply) {
             originalReplyReply = reply.reply;
             reply.reply = decorateSend(originalReplyReply, message);
+        }
+
+        const preSmartSuggestion = await smartErrorSuggester(command, args, message, res);
+        if (preSmartSuggestion) {
+            if (logger) logger.failed(`Sugerencia inteligente activa: ${preSmartSuggestion.replace(/❌\s*/g, '').slice(0, 100)}`);
+            return preSmartSuggestion;
         }
 
         try {
