@@ -232,17 +232,23 @@ async function run(messages, args) {
         return;
     }
 
+    // Función auxiliar para buscar y extraer la ID del mensaje en los argumentos
+    const getMessageIdFromArgs = (argsList) => {
+        const allArgs = argsList.slice(1);
+        for (const arg of allArgs) {
+            const match = arg.match(/\/channels\/\d+\/\d+\/(\d+)/) || arg.match(/\/messages\/(\d+)/) || arg.match(/^(\d+)$/);
+            if (match) {
+                return match[1];
+            }
+        }
+        return null;
+    };
+
     // 2. SUBCOMANDO TERMINAR / END
     if (sub === 'terminar' || sub === 'end') {
-        const input = args[1];
-        if (!input) {
-            return "❌ Debes proporcionar la ID del mensaje o el enlace del sorteo.";
-        }
-
-        const msgIdMatch = input.match(/\/messages\/(\d+)/) || input.match(/^(\d+)$/);
-        const messageId = msgIdMatch ? msgIdMatch[1] : null;
+        const messageId = getMessageIdFromArgs(args);
         if (!messageId) {
-            return "❌ ID de mensaje o enlace inválido.";
+            return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
         }
 
         const { endGiveaway } = require("../../../models/GiveawayModel.js");
@@ -255,15 +261,9 @@ async function run(messages, args) {
 
     // 3. SUBCOMANDO REROLL
     if (sub === 'reroll') {
-        const input = args[1];
-        if (!input) {
-            return "❌ Debes proporcionar la ID del mensaje o el enlace del sorteo.";
-        }
-
-        const msgIdMatch = input.match(/\/messages\/(\d+)/) || input.match(/^(\d+)$/);
-        const messageId = msgIdMatch ? msgIdMatch[1] : null;
+        const messageId = getMessageIdFromArgs(args);
         if (!messageId) {
-            return "❌ ID de mensaje o enlace inválido.";
+            return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
         }
 
         const { rerollGiveaway } = require("../../../models/GiveawayModel.js");
