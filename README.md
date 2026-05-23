@@ -110,6 +110,15 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
 *   **`s.say [texto]`**
     Hace que el bot repita el mensaje indicado.
 
+### 🛡️ Moderación
+
+*   **`s.giveaway` o `s.sorteo`**
+    Comando para gestionar sorteos al estilo Dyno Bot. Soporta subcomandos y un panel interactivo con botones y Modals para confirmar, cancelar o editar parámetros antes de iniciar.
+    *   **Subcomandos:**
+        *   `crear <#canal> <ganadores> <tiempo> <premio>`: Inicia el proceso de creación interactiva.
+        *   `terminar <mensaje_id|enlace>`: Termina inmediatamente un sorteo activo y selecciona los ganadores.
+        *   `reroll <mensaje_id|enlace>`: Vuelve a seleccionar ganadores de un sorteo ya finalizado a partir de las reacciones 🎉 existentes.
+
 ### 🌸 Memes y Diversión
 
 *   **`s.fumo`**

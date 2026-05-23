@@ -70,7 +70,8 @@ async function main(reload) {
             GatewayIntentBits.MessageContent, 
             GatewayIntentBits.GuildMembers,
             GatewayIntentBits.DirectMessages,
-            GatewayIntentBits.DirectMessageReactions
+            GatewayIntentBits.DirectMessageReactions,
+            GatewayIntentBits.GuildMessageReactions
         ],
         partials: [Partials.Channel, Partials.Message, Partials.Reaction]
     });
