@@ -85,10 +85,19 @@ async function runTests() {
     };
 
     map.get('lb').run = async (messages, args) => {
+        // Simular que falla si pasaron parámetros extraños
+        if (args.includes("-c")) {
+            return "❌ Error: Parámetro de comparación inválido.";
+        }
         return {
             content: "Tabla de clasificación",
             embeds: []
         };
+    };
+
+    map.get('c').run = async (messages, args) => {
+        // Simular que el comando c falla al no encontrar scores o por parámetros inválidos
+        return "❌ Error: No se encontraron puntuaciones del usuario.";
     };
 
     const message1 = {
@@ -175,7 +184,64 @@ async function runTests() {
         process.exit(1);
     }
 
-    console.log("🎉 ¡Todos los tests de sugerencias pasaron correctamente!");
+    // Caso 5: sd.c -lb mx
+    console.log("# Probando 'c -lb mx'...");
+    let res5 = await chatCommand(chat_commands, {
+        command: "c",
+        args: ["-lb", "mx"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 5:", res5);
+    if (res5 && typeof res5 === 'string' && res5.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res5.includes("MÉXICO (MX)")) {
+        console.log("✅ Caso 5 (c -lb mx): PASSED");
+    } else {
+        console.error("❌ Caso 5 (c -lb mx): FAILED");
+        process.exit(1);
+    }
+
+    // Caso 6: sd.c -lb (con detección de país desde el autor: VE)
+    console.log("# Probando 'c -lb'...");
+    let res6 = await chatCommand(chat_commands, {
+        command: "c",
+        args: ["-lb"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 6:", res6);
+    if (res6 && typeof res6 === 'string' && res6.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res6.includes("VENEZUELA (VE)")) {
+        console.log("✅ Caso 6 (c -lb): PASSED");
+    } else {
+        console.error("❌ Caso 6 (c -lb): FAILED");
+        process.exit(1);
+    }
+
+    // Caso 7: sd.lb -c
+    console.log("# Probando 'lb -c'...");
+    let res7 = await chatCommand(chat_commands, {
+        command: "lb",
+        args: ["-c"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 7:", res7);
+    if (res7 && typeof res7 === 'string' && res7.includes("El comando `.lb` (leaderboard) no tiene un parámetro de comparación `-c`")) {
+        console.log("✅ Caso 7 (lb -c): PASSED");
+    } else {
+        console.error("❌ Caso 7 (lb -c): FAILED");
+        process.exit(1);
+    }
+
+    console.log("🎉 ¡Todos los tests de sugerencias inteligentes y de optimización pasaron correctamente!");
     
     // Restaurar los mocks
     osuUtils.argsParser = originalArgsParser;

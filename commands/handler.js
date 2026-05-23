@@ -27,6 +27,75 @@ async function handleOAuthFailure(author, logger) {
     }
 }
 
+// Analiza un fallo o error en la ejecución de un comando de chat para sugerir alternativas inteligentes
+async function smartErrorSuggester(command, args, message, res, errorTextOrResult) {
+    if (!args || args.length === 0) return null;
+
+    const argsStr = args.join(' ').toLowerCase();
+    const commandLower = command.toLowerCase();
+
+    // Caso 1 & 2: El comando es de comparación u otros que no admiten -lb o -pais
+    const isCompare = ['c', 'compare', 'comparar', 'compara', 'cm', 'cc', 'ct'].includes(commandLower);
+    const isOtherNonLb = ['top', 't', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'osu', 'o', 'perfil'].includes(commandLower);
+
+    if (isCompare || isOtherNonLb) {
+        const hasLb = argsStr.includes('-lb') || argsStr.includes(' lb') || args.includes('lb') || args.includes('-lb');
+        const hasPais = argsStr.includes('-pais') || argsStr.includes(' pais') || args.includes('pais') || args.includes('-pais') || argsStr.includes('-country') || argsStr.includes(' country');
+
+        if (hasLb || hasPais) {
+            // Intentar detectar si pasaron un código de país en los argumentos
+            const countryCodes = require("../src/country_codes.json");
+            let countryCode = null;
+            
+            for (const arg of args) {
+                const cleanArg = arg.toUpperCase().replace(/^-+/, '').trim();
+                if (countryCodes[cleanArg]) {
+                    countryCode = cleanArg;
+                    break;
+                }
+            }
+
+            // Si no se detectó en los argumentos, buscar el país de su vinculación OAuth
+            if (!countryCode) {
+                try {
+                    const OsuUserModel = require("../models/OsuUserModel.js");
+                    const userToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+                    if (userToken && userToken.country_code) {
+                        countryCode = userToken.country_code.toUpperCase();
+                    }
+                } catch (err) {
+                    console.error("Error al obtener token para sugerencia inteligente de país:", err);
+                }
+            }
+
+            let countryName = "tu país";
+            if (countryCode) {
+                const countryInfo = countryCodes[countryCode];
+                if (countryInfo && countryInfo.country) {
+                    countryName = countryInfo.country.toUpperCase();
+                }
+            }
+
+            const displayCountry = countryCode ? `${countryName} (${countryCode})` : "tu país";
+            if (isCompare) {
+                return `❌ El comando \`.c\` no tiene un parámetro \`-lb\` o \`-pais\`. ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de ${displayCountry}?`;
+            } else {
+                return `❌ El comando \`.${command}\` no admite parámetros de tabla de clasificación (\`-lb\` o \`-pais\`). ¿Habrás querido hacer \`.lb -pais\` para revisar la tabla de clasificación de ${displayCountry}?`;
+            }
+        }
+    }
+
+    // Caso 3: El comando es .lb pero usaron parámetros de comparación como -c o compare
+    if (['lb', 'leaderboard'].includes(commandLower)) {
+        const hasCompare = argsStr.includes('-c') || argsStr.includes(' c') || args.includes('c') || args.includes('-c') || argsStr.includes('compare') || argsStr.includes('comparar') || argsStr.includes('compara');
+        if (hasCompare) {
+            return `❌ El comando \`.lb\` (leaderboard) no tiene un parámetro de comparación \`-c\`. ¿Habrás querido usar \`.c\` para comparar tu puntuación en este beatmap?`;
+        }
+    }
+
+    return null;
+}
+
 // Hacer comando de chat
 async function chatCommand(intialized_data, command_data) {
 	const {args, command, message, res, reply, logger} = command_data;
@@ -173,6 +242,13 @@ async function chatCommand(intialized_data, command_data) {
                 intialized_data
             );
 
+            if (typeof result === 'string' && (result.includes('❌') || result.toLowerCase().includes('error') || result.toLowerCase().includes('no vinculo') || result.toLowerCase().includes('no se encontró') || result.toLowerCase().includes('no encontró') || result.toLowerCase().includes('no tiene') || result.toLowerCase().includes('invalido'))) {
+                const smartSuggestion = await smartErrorSuggester(command, args, message, res, result);
+                if (smartSuggestion) {
+                    result = smartSuggestion;
+                }
+            }
+
             if (message.optimizationSuggestion) {
                 const suggestion = message.optimizationSuggestion;
                 delete message.optimizationSuggestion;
@@ -198,6 +274,10 @@ async function chatCommand(intialized_data, command_data) {
             return result;
         } catch (error) {
             if (logger) logger.failed(error.message);
+            const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message);
+            if (smartSuggestion) {
+                throw new Error(smartSuggestion);
+            }
             throw error; // Re-lanzar para el try/catch del despachador
         } finally {
             message.channel.send = originalChannelSend;
