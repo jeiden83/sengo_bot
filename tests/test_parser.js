@@ -39,4 +39,46 @@ assert.strictEqual(parsed6.country, "SELF", "Debe evitar URL en inline -pais");
 assert.strictEqual(parsed6.beatmap_url, "3607095", "Debe extraer la ID del beatmap");
 console.log("✅ Caso 6 (inline -pais + URL): PASSED");
 
-console.log("🎉 ¡Todos los tests de parseo de parámetros pasaron con éxito!");
+// Caso 7: argsParser con sugerencia de vinculación conteniendo el prefijo correcto
+const { argsParser } = require("../commands/utils/argsParser.js");
+const OsuUserModel = require("../models/OsuUserModel.js");
+const config = require("../config.js");
+
+const originalGetLinkedUser = OsuUserModel.getLinkedUser;
+OsuUserModel.getLinkedUser = async () => null;
+
+const mockMessage = {
+    author: {
+        id: "123456",
+        username: "TestUser"
+    }
+};
+
+const mockRes = {
+    User: {}
+};
+
+async function runAsyncTests() {
+    try {
+        const result = await argsParser([], {
+            message: mockMessage,
+            res: mockRes,
+            command_function: async () => {}
+        });
+
+        const prefix = config.BOT_PREFIX || "s.";
+        const expectedMessage = `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`TestUser\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link -oauth\` o slash \`/link -oauth\`.`;
+
+        assert.strictEqual(result.fn_response, expectedMessage, "Debe contener el prefijo del bot configurado en vez de undefined");
+        console.log("✅ Caso 7 (argsParser sugerencia link con prefijo correcto): PASSED");
+
+        OsuUserModel.getLinkedUser = originalGetLinkedUser;
+        console.log("🎉 ¡Todos los tests de parseo de parámetros pasaron con éxito!");
+    } catch (err) {
+        console.error("❌ Error en tests de parseo:", err);
+        process.exit(1);
+    }
+}
+
+runAsyncTests();
+
