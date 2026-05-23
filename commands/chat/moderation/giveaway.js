@@ -72,12 +72,31 @@ async function run(messages, args) {
     // 1. SUBCOMANDO CREAR
     if (sub === 'crear' || sub === 'create') {
         const channelArg = args[1];
-        const winnersArg = args[2];
+        let winnersArg = args[2];
         let timeArg = args[3];
-        let prize = args.slice(4).join(" ");
+        let prize = "";
+
+        // Si winnersArg coincide con un formato de tiempo (ej: 1m, 10s, 2h, 1d)
+        if (winnersArg && parseDurationLocal(winnersArg)) {
+            // El usuario puso el tiempo primero o no especificó los ganadores
+            if (timeArg && /^\d+$/.test(timeArg)) {
+                // Caso: s.giveaway crear #canal 10m 2 Nitro (tiempo ganadores premio)
+                const temp = winnersArg;
+                winnersArg = timeArg;
+                timeArg = temp;
+                prize = args.slice(4).join(" ");
+            } else {
+                // Caso: s.giveaway crear #canal 10m Nitro (tiempo premio, omitiendo ganadores que por defecto es 1)
+                timeArg = winnersArg;
+                winnersArg = "1";
+                prize = args.slice(3).join(" ");
+            }
+        } else {
+            prize = args.slice(4).join(" ");
+        }
 
         if (!channelArg || !winnersArg || !timeArg || !prize) {
-            return "❌ Parámetros insuficientes.\n> Uso: `s.giveaway crear <#canal> <ganadores> <tiempo> <premio>`\n> Ejemplo: `s.giveaway crear #sorteos 1 10m Nitro`";
+            return "❌ Parámetros insuficientes.\n> Uso: `s.giveaway crear <#canal> [ganadores] <tiempo> <premio>`\n> Ejemplo: `s.giveaway crear #sorteos 1 10m Nitro` o `s.giveaway crear #sorteos 10m Nitro`";
         }
 
         const channelIdMatch = channelArg.match(/<#?(\d+)>/) || channelArg.match(/^(\d+)$/);
