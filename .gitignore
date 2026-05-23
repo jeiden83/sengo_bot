@@ -16,9 +16,7 @@ src/yuri/
 config.json
 jsconfig.json
 osu_token.json
-
-# readme.inutil
-POR HACER.txt
+sengo_bot.code-workspace
 
 # CodeGraph
 .codegraph/
@@ -26,6 +24,7 @@ POR HACER.txt
 # Antigravity Rules
 .antigravity-rules.md
 .agents/
+.agents/rules/leer-antigravity-rules-md.md
 
 # Scratch files
 deprecated_commands/
