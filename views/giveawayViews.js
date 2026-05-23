@@ -110,8 +110,9 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
         `**Ganadores:** ${winnersText}\n\n`;
 
     if (gw.serverSeed) {
+        const checkUrl = `https://codebeautify.org/sha256-hash-generator?input=${encodeURIComponent(gw.serverSeed)}`;
         desc += `🔑 **Semilla Revelada (Server Seed):**\n\`${gw.serverSeed}\`\n` +
-            `🛡️ **Hash de Validación original:**\n\`${gw.serverSeedHash || ''}\`\n\n`;
+            `🛡️ **Hash de Validación original:**\n\`${gw.serverSeedHash || ''}\` ([Comprobar Hash](${checkUrl}))\n\n`;
     }
 
     desc += wasOffline 
