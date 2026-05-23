@@ -15,5 +15,8 @@ module.exports = {
     SUPABASE_KEY: process.env.SUPABASE_KEY,
 
     // Configuración de Tatsu (opcional)
-    TATSU_API_KEY: process.env.TATSU_API_KEY
+    TATSU_API_KEY: process.env.TATSU_API_KEY,
+
+    // Webhook de errores críticos
+    ERROR_WEBHOOK_URL: process.env.ERROR_WEBHOOK_URL
 };

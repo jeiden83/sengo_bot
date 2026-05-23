@@ -1,5 +1,6 @@
 const { chatCommand, slashCommand, loadCommands, loadSlashCommands } = require("../commands/handler.js");
 const { PermissionsBitField } = require('discord.js');
+const { reportErrorToWebhook } = require("../services/errorNotifier.js");
 
 const Logger = require("../utils/logger.js");
 
@@ -275,6 +276,16 @@ async function chat_command_listener(chat_commands, client, config, res) {
             console.error("Error ejecutando el comando:", error);
             const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
             await message.channel.send(`Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`);
+            
+            // Notificar al Webhook de errores de forma asíncrona
+            reportErrorToWebhook(error, {
+                commandName: message_command,
+                args: message_args,
+                user: message.author,
+                guild: message.guild,
+                channel: message.channel,
+                message: message
+            });
         }
     };
 
@@ -406,6 +417,16 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             await interaction.editReply(
                 `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`
             );
+            
+            // Notificar al Webhook de errores de forma asíncrona
+            reportErrorToWebhook(error, {
+                commandName: message_command,
+                args,
+                user: interaction.user,
+                guild: interaction.guild,
+                channel: interaction.channel,
+                interaction: interaction
+            });
         }
     });
 }
