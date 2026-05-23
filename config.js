@@ -5,6 +5,7 @@ module.exports = {
     TOKEN: process.env.DISCORD_TOKEN || process.env.TOKEN,
     CLIENT_ID: process.env.CLIENT_ID,
     BOT_PREFIX: process.env.BOT_PREFIX || "s.",
+    OWNER_ID: process.env.OWNER_ID,
 
     // Configuración de osu! API
     OSU_CLIENT_ID: process.env.OSU_CLIENT_ID ? parseInt(process.env.OSU_CLIENT_ID, 10) : undefined,
