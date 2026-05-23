@@ -92,8 +92,30 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
         return { beatmap_url: null, fromList: false };
     };
 
+    const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
+
     try {
         if (isReply) {
+            // Comprobar si el mensaje al que se responde contiene un enlace de Discord
+            const linkMatch = message.content?.match(discordLinkRegex);
+            if (linkMatch) {
+                const channelId = linkMatch[2] || linkMatch[4];
+                const messageId = linkMatch[3] || linkMatch[5];
+                if (channelId && messageId) {
+                    const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
+                    if (targetChannel) {
+                        const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
+                        if (targetMsg) {
+                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
+                            if (beatmap_url) {
+                                const gamemode = getGamemodeFromMessage(targetMsg);
+                                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
+                            }
+                        }
+                    }
+                }
+            }
+
             const { beatmap_url, fromList } = getBeatmapIdFromMessage(message, targetIndex);
             const gamemode = getGamemodeFromMessage(message);
             return beatmap_url
@@ -103,6 +125,27 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
 
         const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
         for (const msg of fetch_messages.values()) {
+            // Comprobar si el mensaje contiene un enlace de Discord a otro mensaje
+            const linkMatch = msg.content?.match(discordLinkRegex);
+            if (linkMatch) {
+                const channelId = linkMatch[2] || linkMatch[4];
+                const messageId = linkMatch[3] || linkMatch[5];
+                if (channelId && messageId) {
+                    const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
+                    if (targetChannel) {
+                        const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
+                        if (targetMsg) {
+                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
+                            if (beatmap_url) {
+                                const gamemode = getGamemodeFromMessage(targetMsg);
+                                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Extracción directa del mensaje
             const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
             if (beatmap_url) {
                 const gamemode = getGamemodeFromMessage(msg);
@@ -342,6 +385,12 @@ function argsParserNoCommand(args) {
         }
         let arg = args_list[i].trim();
         if (!arg) continue;
+
+        // Si es un enlace de mensaje de Discord, lo ignoramos para que no se guarde en username
+        const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
+        if (discordLinkRegex.test(arg)) {
+            continue;
+        }
 
         // Si empieza con '+' (para mods exactos, ej: +HDHR)
         if (arg.startsWith("+")) {
