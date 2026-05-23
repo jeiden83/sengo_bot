@@ -130,7 +130,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     if(no_args || parsed_args.override === 'rm' && parsed_args.username[0] == ''){
 
         // si no hay uno linkeado al bot
-        if(!user_found) return {'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a la cuenta de Discord de \`${message.author.username}\`. Puedes vincular tu cuenta usando el comando de chat \`.link <tu_usuario_osu>\` o el comando slash \`/link <tu_usuario_osu>\`.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+        if(!user_found) return {'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a la cuenta de Discord de \`${message.author.username}\`.\nTe recomendamos vincular tu cuenta de forma segura usando el comando de chat \`.link -oauth\` o el comando slash \`/link -oauth\` (se te enviará un mensaje privado con el enlace de autorización).\nTambién puedes optar por la vinculación tradicional mediante \`.link <tu_usuario_osu>\` o \`/link <tu_usuario_osu>\`.`, 'user_found': user_found, 'reparsed_args': parsed_args};
 
         // Aplicamos el comando con el linkeado al bot
         const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
@@ -168,7 +168,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         } else {
 
             // Se usa el linkeado al bot
-            if(!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a la cuenta de Discord de \`${message.author.username}\`. Puedes vincular tu cuenta usando el comando de chat \`.link <tu_usuario_osu>\` o el comando slash \`/link <tu_usuario_osu>\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+            if(!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a la cuenta de Discord de \`${message.author.username}\`.\nTe recomendamos vincular tu cuenta de forma segura usando el comando de chat \`.link -oauth\` o el comando slash \`/link -oauth\` (se te enviará un mensaje privado con el enlace de autorización).\nTambién puedes optar por la vinculación tradicional mediante \`.link <tu_usuario_osu>\` o \`/link <tu_usuario_osu>\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
             parsed_args.username[0] = user_found.osu_id;
         }
 
