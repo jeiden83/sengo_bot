@@ -39,7 +39,34 @@ async function run(messages, args) {
 
     const sub = args[0]?.toLowerCase();
     if (!sub || !['crear', 'create', 'terminar', 'end', 'reroll'].includes(sub)) {
-        return "❌ Uso inválido del comando.\n> Métodos disponibles: `crear`, `terminar`, `reroll`.\n> Ejemplo: `s.giveaway crear #canal 1 10m Nitro Classic`";
+        const prefix = message.content.startsWith("sd.") ? "sd." : "s.";
+        const trigger = message.content.slice(prefix.length).split(/\s+/)[0].toLowerCase() || "giveaway";
+        
+        const { doHelpCommandEmbed } = require("../../../views/generalViews.js");
+        
+        const helpData = {
+            headerText: "Gestión de sorteos interactiva",
+            fields: [
+                {
+                    name: "📝 Descripción",
+                    value: "Permite crear, terminar y re-rolear sorteos en el servidor.",
+                    inline: false
+                },
+                {
+                    name: "❓ Cómo usarlo",
+                    value: `\`\`\`\n${prefix}${trigger} crear <#canal> <ganadores> <tiempo> <premio>\n${prefix}${trigger} terminar <mensaje_id|enlace>\n${prefix}${trigger} reroll <mensaje_id|enlace>\n\`\`\``,
+                    inline: false
+                },
+                {
+                    name: "🔗 Alias",
+                    value: "`sorteo`",
+                    inline: true
+                }
+            ]
+        };
+
+        const embed = doHelpCommandEmbed(message, "giveaway", trigger, helpData);
+        return { embeds: [embed] };
     }
 
     // 1. SUBCOMANDO CREAR
