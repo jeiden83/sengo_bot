@@ -43,3 +43,75 @@ node .
 ```
 - Disfruta flexear al Sengo bot. 
 - *(Opcional)* Avisarle a `jeiden83` de que has hecho todo hasta aqui.
+
+## Guía de Comandos del Sengo
+
+El bot responde tanto a comandos de chat clásicos (usando el prefijo configurado, por ejemplo, `s.`) como a comandos de barra diagonal (Slash Commands).
+
+### 🎮 Comandos de osu!
+
+*   **`s.osu` o `s.o [usuario]`**
+    Muestra el perfil general de un jugador de osu!, incluyendo estadísticas de Ranked Play, PP, precisión, medallas, nivel y tiempo de juego.
+*   **`s.rs [usuario]` (Recent Score)**
+    Muestra la jugada más reciente del usuario.
+    *   *Parámetros útiles:*
+        *   `-d` o `-detail`: Muestra detalles completos (aciertos, fallos, UR, etc.).
+        *   `-l` o `-list`: Muestra una lista de las últimas 5 jugadas del usuario.
+        *   `-b` o `-pp`: Ordena las jugadas recientes por cantidad de PP en lugar de fecha.
+*   **`s.top [usuario]`**
+    Muestra los mejores registros (Top Plays) del usuario.
+*   **`s.c` o `s.compare`**
+    Compara las puntuaciones locales del usuario en el último mapa mostrado en el canal de Discord.
+*   **`s.subir`**
+    Sube y calcula los datos detallados de una jugada.
+*   **`s.lb` o `s.leaderboard`**
+    Muestra la tabla de clasificación general.
+    *   *Parámetro útil:* `-pais [código/nombre]` (ej: `-pais VE` para mostrar solo Venezuela).
+*   **`s.pais [código/nombre]`**
+    Muestra el ranking local del país especificado.
+*   **`s.gap [jugador1] [jugador2]`**
+    Muestra la brecha (gap) en rango y PP entre dos jugadores.
+*   **`s.amigos`**
+    Compara y muestra el ranking entre tus amigos mutuals agregados al bot.
+*   **`s.link [-oauth]`**
+    Vincula tu cuenta de osu! a tu Discord. El uso de `-oauth` te enviará un mensaje privado con un enlace web seguro de autorización oficial.
+*   **`s.bg`**
+    Muestra la imagen de fondo (background) del último mapa enviado en el chat.
+*   **`s.replay`**
+    Analiza un archivo `.osr` adjunto de replay y muestra sus estadísticas.
+*   **`s.digitos`**
+    Muestra cuántos dígitos tiene el rango de los usuarios.
+
+### 🛠️ Utilidades
+
+*   **`s.bcv [moneda]`**
+    Muestra la tasa oficial de cambio del Banco Central de Venezuela (soporta dolar, euro, yuan, etc.).
+*   **`s.binance [par]`**
+    Muestra el precio en tiempo real de criptomonedas o el P2P de Binance.
+*   **`s.ping`**
+    Muestra la latencia actual del bot.
+*   **`s.roll [rango]`**
+    Lanza un dado para obtener un número aleatorio (ej: `s.roll 1-100`).
+*   **`s.tag [nombre]`**
+    Permite guardar y reproducir textos o links personalizados (tags) en el servidor.
+*   **`s.say [texto]`**
+    Hace que el bot repita el mensaje indicado.
+
+### 🌸 Memes y Diversión
+
+*   **`s.fumo`**
+    Muestra una foto y detalles aleatorios de un Fumo de Touhou.
+*   **`s.yuri`**
+    Muestra una imagen de temática Yuri sincronizada de forma dinámica.
+*   **`s.globo [usuario]`**
+    Meme del globo de texto para responderle a alguien de forma divertida.
+*   **`s.jeiden` / `s.femboy` / `s.oye` / `s.sex`**
+    Diversos comandos cortos con chistes internos y reacciones de la comunidad.
+
+### ℹ️ Información General
+
+*   **`s.help` o `s.h`**
+    Despliega el menú de ayuda interactivo.
+*   **`s.contribuidores` o `s.con`**
+    Lista los desarrolladores y usuarios vinculados a la comunidad por oAuth, agrupados por país y mostrando su estado de osu! supporter.
+
