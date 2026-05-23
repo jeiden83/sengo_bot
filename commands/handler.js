@@ -130,7 +130,7 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
     // Esto se activa únicamente cuando el comando falló debido a que el usuario no fue encontrado (errorTextOrResult contiene "no se encuentra", "no existe", etc.)
     if (errorTextOrResult && typeof errorTextOrResult === 'string') {
         const errLower = errorTextOrResult.toLowerCase();
-        const isNotFoundError = errLower.includes('no se encuentra') || errLower.includes('no existe') || errLower.includes('no se encontró') || errLower.includes('no encontró');
+        const isNotFoundError = errLower.includes('no se encuentra') || errLower.includes('no existe') || errLower.includes('no se encontró') || errLower.includes('no encontró') || errLower.includes('not found') || errLower.includes("couldn't be found");
         
         if (isNotFoundError && ['c', 'compare', 'comparar', 'compara', 'cm', 'cc', 'ct', 'top', 't', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'osu', 'o', 'perfil'].includes(commandLower)) {
             const countryCodes = require("../src/country_codes.json");
@@ -361,7 +361,7 @@ async function chatCommand(intialized_data, command_data) {
             if (logger) logger.failed(error.message);
             const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message);
             if (smartSuggestion) {
-                throw new Error(smartSuggestion);
+                return smartSuggestion;
             }
             throw error; // Re-lanzar para el try/catch del despachador
         } finally {

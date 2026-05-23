@@ -345,6 +345,28 @@ async function runTests() {
         process.exit(1);
     }
 
+    // Caso 13: sd.c mx (falla lanzando Error: Specified beatmap difficulty couldn't be found.)
+    console.log("# Probando 'c mx' con excepción de beatmap no encontrado...");
+    map.get('c').run = async (messages, args) => {
+        throw new Error("Specified beatmap difficulty couldn't be found.");
+    };
+    let res13 = await chatCommand(chat_commands, {
+        command: "c",
+        args: ["mx"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 13:", res13);
+    if (res13 && typeof res13 === 'string' && res13.includes("no admite nombres o códigos de país como parámetro de usuario") && res13.includes(".lb -pais MX") && res13.includes("MÉXICO")) {
+        console.log("✅ Caso 13 (c mx - excepción beatmap no encontrado): PASSED");
+    } else {
+        console.error("❌ Caso 13 (c mx - excepción beatmap no encontrado): FAILED");
+        process.exit(1);
+    }
+
     console.log("🎉 ¡Todos los tests de sugerencias inteligentes y de optimización pasaron correctamente!");
     
     // Restaurar los mocks
