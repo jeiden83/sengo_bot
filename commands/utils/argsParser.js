@@ -216,6 +216,22 @@ function argsParserNoCommand(args) {
     let beatmap_url = null;
     let args_aux = new String(args);
 
+    const extractId = str =>
+        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
+        str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
+        (str?.match(/^\d{5,10}$/) ? str : null);
+
+    const isBeatmapUrlOrId = str => {
+        if (!str) return false;
+        const clean = str.trim();
+        const match = clean.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+                      clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                      clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+                      clean.match(/^\d{5,10}$/);
+        return !!match;
+    };
+
     const gamemode_set = {
         'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits'
     };
@@ -337,7 +353,7 @@ function argsParserNoCommand(args) {
         if (arg === "-pais" || arg === "-country") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {
                     country = next_arg.toUpperCase();
                     skip_next = true;
                     continue;
@@ -348,12 +364,24 @@ function argsParserNoCommand(args) {
         }
         if (arg.startsWith("-pais")) {
             let next = arg.slice(5).trim();
-            country = next ? next.toUpperCase() : "SELF";
+            if (isBeatmapUrlOrId(next)) {
+                country = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                country = next ? next.toUpperCase() : "SELF";
+            }
             continue;
         }
         if (arg.startsWith("-country")) {
             let next = arg.slice(8).trim();
-            country = next ? next.toUpperCase() : "SELF";
+            if (isBeatmapUrlOrId(next)) {
+                country = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                country = next ? next.toUpperCase() : "SELF";
+            }
             continue;
         }
 
@@ -361,7 +389,7 @@ function argsParserNoCommand(args) {
         if (arg === "-friends" || arg === "-amigo" || arg === "-amigos") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {
                     friendsFilter = next_arg;
                     skip_next = true;
                     continue;
@@ -372,27 +400,38 @@ function argsParserNoCommand(args) {
         }
         if (arg.startsWith("-friends")) {
             let next = arg.slice(8).trim();
-            friendsFilter = next ? next : "SELF";
+            if (isBeatmapUrlOrId(next)) {
+                friendsFilter = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                friendsFilter = next ? next : "SELF";
+            }
             continue;
         }
         if (arg.startsWith("-amigos")) {
             let next = arg.slice(7).trim();
-            friendsFilter = next ? next : "SELF";
+            if (isBeatmapUrlOrId(next)) {
+                friendsFilter = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                friendsFilter = next ? next : "SELF";
+            }
             continue;
         }
         if (arg.startsWith("-amigo")) {
             let next = arg.slice(6).trim();
-            friendsFilter = next ? next : "SELF";
+            if (isBeatmapUrlOrId(next)) {
+                friendsFilter = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                friendsFilter = next ? next : "SELF";
+            }
             continue;
         }
-
         // Si es una URL o ID de beatmap (evitando IDs de discord que son >= 17 digitos)
-        const extractId = str =>
-            str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-            str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-            str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-            (str?.match(/^\d{5,10}$/) ? str : null);
-
         const possible_id = extractId(arg);
         if (possible_id) {
             beatmap_url = possible_id;

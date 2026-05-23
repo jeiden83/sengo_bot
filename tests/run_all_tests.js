@@ -9,7 +9,8 @@ const testFiles = [
     "tests/test_snipes_views.js",
     "tests/test_osu_views.js",
     "tests/test_secondary_views.js",
-    "tests/test_suggestions.js"
+    "tests/test_suggestions.js",
+    "tests/test_parser.js"
 ];
 
 console.log("🚀 Iniciando suite de pruebas de regresión de Vistas (MVC Phase 1)...");
