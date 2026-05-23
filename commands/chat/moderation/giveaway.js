@@ -139,9 +139,10 @@ function resolveRole(guild, input) {
         let requiredRoleId = null;
         let allowHigherRoles = false;
         let blockOsuSupporters = false;
+        let blockNitro = false;
 
         // Enviar embed de prueba/vista previa con botones interactivos
-        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
+        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
         const components = getGiveawayPreviewComponents();
 
         const previewMsg = await message.channel.send({
@@ -165,7 +166,7 @@ function resolveRole(guild, input) {
                     const serverSeed = crypto.randomBytes(16).toString('hex');
                     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
 
-                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message.author.id, message);
+                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message);
                     const activeMsg = await targetChannel.send({ embeds: [activeEmbed] });
                     await activeMsg.react("🎉");
 
@@ -182,11 +183,12 @@ function resolveRole(guild, input) {
                         serverSeedHash,
                         requiredRoleId,
                         allowHigherRoles,
-                        blockOsuSupporters
+                        blockOsuSupporters,
+                        blockNitro
                     });
 
                     // Editar el sorteo activo para mostrar la ID real en el footer
-                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message.author.id, message);
+                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message);
                     await activeMsg.edit({ embeds: [activeEmbedWithId] }).catch(() => {});
 
                     await previewMsg.edit({
@@ -214,7 +216,7 @@ function resolveRole(guild, input) {
                         await modalSubmit.deferUpdate();
                         prize = modalSubmit.fields.getTextInputValue('title_input');
                         
-                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
+                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
                         console.error("Error modal título:", err);
@@ -234,7 +236,7 @@ function resolveRole(guild, input) {
                             await modalSubmit.deferUpdate();
                             durationMs = newDurationMs;
                             timeArg = newTimeArg;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
                             await modalSubmit.reply({ content: "❌ Formato de tiempo inválido. Usa `10s`, `5m`, `2h`, `1d`.", ephemeral: true });
@@ -256,7 +258,7 @@ function resolveRole(guild, input) {
                         if (!isNaN(newWinnersCount) && newWinnersCount > 0) {
                             await modalSubmit.deferUpdate();
                             winnersCount = newWinnersCount;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
                             await modalSubmit.reply({ content: "❌ La cantidad de ganadores debe ser un número entero positivo.", ephemeral: true });
@@ -268,8 +270,9 @@ function resolveRole(guild, input) {
                     const currentRoleVal = requiredRoleId ? requiredRoleId : '';
                     const currentHigherVal = allowHigherRoles ? 'SI' : 'NO';
                     const currentSuppVal = blockOsuSupporters ? 'SI' : 'NO';
+                    const currentNitroVal = blockNitro ? 'SI' : 'NO';
 
-                    const modal = getRequirementsModal(currentRoleVal, currentHigherVal, currentSuppVal);
+                    const modal = getRequirementsModal(currentRoleVal, currentHigherVal, currentSuppVal, currentNitroVal);
                     await i.showModal(modal);
 
                     try {
@@ -281,13 +284,14 @@ function resolveRole(guild, input) {
                         const roleInput = modalSubmit.fields.getTextInputValue('req_role_input').trim();
                         const higherInput = modalSubmit.fields.getTextInputValue('req_higher_input').trim().toUpperCase();
                         const suppInput = modalSubmit.fields.getTextInputValue('req_supp_input').trim().toUpperCase();
+                        const nitroInput = modalSubmit.fields.getTextInputValue('req_nitro_input').trim().toUpperCase();
 
                         let newRoleId = null;
                         if (roleInput) {
                             const role = resolveRole(message.guild, roleInput);
                             if (!role) {
                                 await modalSubmit.reply({ content: `❌ No se encontró ningún rol con la ID o nombre "${roleInput}" en este servidor.`, ephemeral: true });
-                                return;
+                                        return;
                             }
                             newRoleId = role.id;
                         }
@@ -296,6 +300,7 @@ function resolveRole(guild, input) {
                         requiredRoleId = newRoleId;
                         allowHigherRoles = (higherInput === 'SI' || higherInput === 'S');
                         blockOsuSupporters = (suppInput === 'SI' || suppInput === 'S');
+                        blockNitro = (nitroInput === 'SI' || nitroInput === 'S');
 
                         const updatedEmbed = getGiveawayPreviewEmbed({
                             prize,
@@ -304,7 +309,8 @@ function resolveRole(guild, input) {
                             targetChannelId,
                             requiredRoleId,
                             allowHigherRoles,
-                            blockOsuSupporters
+                            blockOsuSupporters,
+                            blockNitro
                         }, message);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {

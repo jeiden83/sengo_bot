@@ -75,6 +75,14 @@ async function filterParticipants(guild, participants, gw) {
             }
         }
 
+        if (gw.blockNitro) {
+            const hasNitro = !!(member.premiumSince || member.user?.avatar?.startsWith('a_'));
+            if (hasNitro) {
+                exclusions.push({ userId, userTag: tag, reason: "Ya posee Nitro o es Booster" });
+                continue;
+            }
+        }
+
         filtered.push(userId);
     }
     return { filtered, exclusions };
@@ -143,7 +151,7 @@ function initGiveawayManager(client) {
 /**
  * Registra un nuevo sorteo.
  */
-function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId, serverSeed, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }) {
+function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId, serverSeed, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }) {
     const finalServerSeed = serverSeed || crypto.randomBytes(16).toString('hex');
     const finalServerSeedHash = serverSeedHash || crypto.createHash('sha256').update(finalServerSeed).digest('hex');
 
@@ -163,6 +171,7 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
         requiredRoleId: requiredRoleId || null,
         allowHigherRoles: !!allowHigherRoles,
         blockOsuSupporters: !!blockOsuSupporters,
+        blockNitro: !!blockNitro,
         exclusions: []
     };
     giveaways.push(newGw);

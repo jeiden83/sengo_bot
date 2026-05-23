@@ -16,7 +16,7 @@ function formatDurationText(ms) {
 /**
  * Genera el embed de previsualización para el creador.
  */
-function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message) {
+function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message) {
     const embedColor = getEmbedColor(message);
     const durationText = formatDurationText(durationMs);
 
@@ -26,6 +26,9 @@ function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChanne
     }
     if (blockOsuSupporters) {
         reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot)*`;
+    }
+    if (blockNitro) {
+        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí`;
     }
     if (!reqsText) {
         reqsText = "\n▸ **Requisitos:** Ninguno";
@@ -126,7 +129,7 @@ function getGiveawayPreviewComponents() {
 /**
  * Genera el Modal para configurar requisitos del sorteo.
  */
-function getRequirementsModal(roleInput, higherInput, suppInput) {
+function getRequirementsModal(roleInput, higherInput, suppInput, nitroInput) {
     const modal = new ModalBuilder()
         .setCustomId('gw_modal_reqs')
         .setTitle('Configurar Requisitos');
@@ -155,11 +158,20 @@ function getRequirementsModal(roleInput, higherInput, suppInput) {
         .setRequired(false)
         .setMaxLength(2);
 
+    const nitroField = new TextInputBuilder()
+        .setCustomId('req_nitro_input')
+        .setLabel('¿Excluir si tiene Nitro/Booster? (SI/NO)')
+        .setStyle(TextInputStyle.Short)
+        .setValue(nitroInput || 'NO')
+        .setRequired(false)
+        .setMaxLength(2);
+
     const r1 = new ActionRowBuilder().addComponents(roleField);
     const r2 = new ActionRowBuilder().addComponents(higherField);
     const r3 = new ActionRowBuilder().addComponents(suppField);
+    const r4 = new ActionRowBuilder().addComponents(nitroField);
 
-    modal.addComponents(r1, r2, r3);
+    modal.addComponents(r1, r2, r3, r4);
     return modal;
 }
 
@@ -181,6 +193,9 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
     }
     if (gw.blockOsuSupporters) {
         reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot y no tener supporter activo)*`;
+    }
+    if (gw.blockNitro) {
+        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí *(No tener Nitro activo o ser booster)*`;
     }
     if (reqsText) {
         desc += `\n\n🛡️ **Requisitos de participación:**${reqsText}`;
@@ -221,6 +236,9 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
     }
     if (gw.blockOsuSupporters) {
         reqsText += `\n▸ **Excluir Supporter:** Sí *(No tener supporter activo)*`;
+    }
+    if (gw.blockNitro) {
+        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí *(No tener Nitro activo o ser booster)*`;
     }
     if (reqsText) {
         desc += `🛡️ **Requisitos:**${reqsText}\n\n`;
