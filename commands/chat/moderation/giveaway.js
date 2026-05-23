@@ -156,7 +156,8 @@ async function run(messages, args) {
                         messageId: activeMsg.id,
                         prize,
                         winnersCount,
-                        durationMs
+                        durationMs,
+                        creatorId: message.author.id
                     });
 
                     // Editar el sorteo activo para mostrar la ID real en el footer
@@ -295,7 +296,7 @@ async function run(messages, args) {
 
 run.alias = {
     "sorteo": {
-        "args": "crear/terminar/reroll"
+        "args": ""
     }
 };
 

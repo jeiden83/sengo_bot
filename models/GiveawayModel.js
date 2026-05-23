@@ -46,7 +46,7 @@ function initGiveawayManager(client) {
         if (!gw.ended) {
             const timeLeft = gw.endAt - now;
             if (timeLeft <= 0) {
-                endGiveaway(client, gw.messageId).catch(err => {
+                endGiveaway(client, gw.messageId, true).catch(err => {
                     console.error(`Error al terminar sorteo vencido al arrancar: ${err.message}`);
                 });
             } else {
@@ -64,7 +64,7 @@ function initGiveawayManager(client) {
 /**
  * Registra un nuevo sorteo.
  */
-function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs }) {
+function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId }) {
     const endAt = Date.now() + durationMs;
     const newGw = {
         guildId,
@@ -74,7 +74,8 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
         winnersCount,
         endAt,
         ended: false,
-        winners: []
+        winners: [],
+        creatorId
     };
     giveaways.push(newGw);
     saveGiveaways();
@@ -90,7 +91,7 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
 /**
  * Finaliza un sorteo activo inmediatamente y elige ganadores.
  */
-async function endGiveaway(client, messageId) {
+async function endGiveaway(client, messageId, wasOffline = false) {
     const gw = giveaways.find(g => g.messageId === messageId);
     if (!gw) return null;
     if (gw.ended) return gw;
@@ -133,13 +134,29 @@ async function endGiveaway(client, messageId) {
         saveGiveaways();
 
         const { getGiveawayEndedEmbed, getGiveawayEndedText } = require('../views/giveawayViews.js');
-        const endedEmbed = getGiveawayEndedEmbed(gw, winners);
+        const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, wasOffline);
         await msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
 
-        const winText = getGiveawayEndedText(gw, winners);
+        let winText = getGiveawayEndedText(gw, winners);
+        if (wasOffline) {
+            winText += `\n⚠️ *Nota: Este sorteo finalizó mientras el bot estaba desconectado. Los ganadores se eligieron a partir de las reacciones registradas.*`;
+        }
         await channel.send({ content: winText, reply: { messageReference: msg.id } }).catch(() => {
             channel.send(winText).catch(() => {});
         });
+
+        // Enviar DM al creador avisándole del sorteo vencido offline
+        if (wasOffline && gw.creatorId) {
+            const creator = await client.users.fetch(gw.creatorId).catch(() => null);
+            if (creator) {
+                const prefix = client.config?.BOT_PREFIX || "s.";
+                const dmMessage = `⚠️ **Notificación de Sorteo**: Tu sorteo por **${gw.prize}** (ID: \`${gw.messageId}\`) finalizó mientras yo estaba desconectado.\n` +
+                    `He seleccionado ganadores con las reacciones actuales y anunciado los resultados en el canal, pero si deseas realizar un re-roll o iniciar uno nuevo, puedes hacerlo con:\n` +
+                    `- Para re-roll: \`${prefix}sorteo reroll ${gw.messageId}\`\n` +
+                    `- Para crear uno nuevo: \`${prefix}sorteo crear\``;
+                await creator.send(dmMessage).catch(() => {});
+            }
+        }
 
         return gw;
     } catch (error) {

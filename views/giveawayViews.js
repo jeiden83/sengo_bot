@@ -91,9 +91,13 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
 /**
  * Genera el embed de sorteo finalizado.
  */
-function getGiveawayEndedEmbed(gw, winners, message) {
+function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
     const embedColor = message ? getEmbedColor(message) : 0xfe66aa;
     const winnersText = winners.length > 0 ? winners.map(w => `<@${w}>`).join(", ") : "Ninguno (no hubo participantes)";
+
+    const footerText = wasOffline 
+        ? `SengoBot Sorteos • ID: ${gw.messageId} • Finalizado offline`
+        : `SengoBot Sorteos • ID: ${gw.messageId}`;
 
     return new EmbedBuilder()
         .setTitle(`🎁 SORTEO FINALIZADO 🎁`)
@@ -103,7 +107,7 @@ function getGiveawayEndedEmbed(gw, winners, message) {
             `*El sorteo ha finalizado.*`
         )
         .setColor(embedColor)
-        .setFooter({ text: `SengoBot Sorteos • ID: ${gw.messageId}` })
+        .setFooter({ text: footerText })
         .setTimestamp();
 }
 
