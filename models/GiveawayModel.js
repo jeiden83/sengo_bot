@@ -26,9 +26,13 @@ function drawProvablyFair(serverSeed, participants, winnersCount) {
 
 async function filterParticipants(guild, participants, gw) {
     const filtered = [];
+    const exclusions = [];
     for (const userId of participants) {
         const member = await guild.members.fetch(userId).catch(() => null);
-        if (!member) continue;
+        if (!member) {
+            exclusions.push({ userId, reason: "No se encuentra en el servidor" });
+            continue;
+        }
 
         if (gw.requiredRoleId) {
             const hasRole = member.roles.cache.has(gw.requiredRoleId);
@@ -36,8 +40,12 @@ async function filterParticipants(guild, participants, gw) {
                 if (gw.allowHigherRoles) {
                     const reqRole = guild.roles.cache.get(gw.requiredRoleId);
                     const hasHigher = reqRole ? member.roles.cache.some(r => r.position >= reqRole.position) : false;
-                    if (!hasHigher) continue;
+                    if (!hasHigher) {
+                        exclusions.push({ userId, reason: "No posee el rol requerido ni uno superior" });
+                        continue;
+                    }
                 } else {
+                    exclusions.push({ userId, reason: "No posee el rol requerido" });
                     continue;
                 }
             }
@@ -49,17 +57,25 @@ async function filterParticipants(guild, participants, gw) {
             const oauthRecord = await OsuUserModel.getOAuthTokenRecord(userId);
             const osuId = linked?.osu_id || oauthRecord?.osu_id;
 
-            if (!osuId) continue;
+            if (!osuId) {
+                exclusions.push({ userId, reason: "No está vinculado a SengoBot" });
+                continue;
+            }
 
             const profile = await OsuUserModel.getOsuUser({ username: [osuId], server: 'bancho' }).catch(() => null);
-            if (!profile || profile === "El usuario no se encuentra en osu!" || profile.is_supporter) {
+            if (!profile || profile === "El usuario no se encuentra en osu!") {
+                exclusions.push({ userId, reason: "No se pudo validar su cuenta de osu!" });
+                continue;
+            }
+            if (profile.is_supporter) {
+                exclusions.push({ userId, reason: "Ya posee osu! supporter activo" });
                 continue;
             }
         }
 
         filtered.push(userId);
     }
-    return filtered;
+    return { filtered, exclusions };
 }
 
 const filePath = process.env.NODE_ENV === 'test'
@@ -144,7 +160,8 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
         serverSeedHash: finalServerSeedHash,
         requiredRoleId: requiredRoleId || null,
         allowHigherRoles: !!allowHigherRoles,
-        blockOsuSupporters: !!blockOsuSupporters
+        blockOsuSupporters: !!blockOsuSupporters,
+        exclusions: []
     };
     giveaways.push(newGw);
     saveGiveaways();
@@ -194,7 +211,8 @@ async function endGiveaway(client, messageId, wasOffline = false) {
             }
 
             if (participants.length > 0) {
-                const filtered = await filterParticipants(channel.guild, participants, gw);
+                const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw);
+                gw.exclusions = exclusions;
                 if (filtered.length > 0) {
                     if (gw.serverSeed) {
                         winners.push(...drawProvablyFair(gw.serverSeed, filtered, gw.winnersCount));
@@ -207,6 +225,8 @@ async function endGiveaway(client, messageId, wasOffline = false) {
                         }
                     }
                 }
+            } else {
+                gw.exclusions = [];
             }
         }
 
@@ -277,8 +297,10 @@ async function rerollGiveaway(client, messageId) {
             return { error: "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll." };
         }
 
-        const filtered = await filterParticipants(channel.guild, participants, gw);
+        const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw);
+        gw.exclusions = exclusions;
         if (filtered.length === 0) {
+            saveGiveaways();
             return { error: "Ningún participante que reaccionó cumple con los requisitos del sorteo (rol o no poseer supporter de osu!)." };
         }
 

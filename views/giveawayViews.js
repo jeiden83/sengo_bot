@@ -175,6 +175,17 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
         `▸ **Ganadores:** \`${gw.winnersCount}\`\n` +
         `▸ **Finaliza:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)`;
 
+    let reqsText = "";
+    if (gw.requiredRoleId) {
+        reqsText += `\n▸ **Rol Requerido:** <@&${gw.requiredRoleId}> ${gw.allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+    }
+    if (gw.blockOsuSupporters) {
+        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot y no tener supporter activo)*`;
+    }
+    if (reqsText) {
+        desc += `\n\n🛡️ **Requisitos de participación:**${reqsText}`;
+    }
+
     if (gw.serverSeedHash) {
         desc += `\n\n🛡️ **Hash de Validación (Fairness):**\n\`${gw.serverSeedHash}\`\n*Garantiza que el sorteo es inalterable y demostrablemente justo.*`;
     }
@@ -203,6 +214,25 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
 
     let desc = `**Premio:** \`${gw.prize}\`\n` +
         `**Ganadores:** ${winnersText}\n\n`;
+
+    let reqsText = "";
+    if (gw.requiredRoleId) {
+        reqsText += `\n▸ **Rol Requerido:** <@&${gw.requiredRoleId}> ${gw.allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+    }
+    if (gw.blockOsuSupporters) {
+        reqsText += `\n▸ **Excluir Supporter:** Sí *(No tener supporter activo)*`;
+    }
+    if (reqsText) {
+        desc += `🛡️ **Requisitos:**${reqsText}\n\n`;
+    }
+
+    if (gw.exclusions && gw.exclusions.length > 0) {
+        let exclusionsLines = gw.exclusions.slice(0, 10).map(ex => `• <@${ex.userId}>: *${ex.reason}*`).join("\n");
+        if (gw.exclusions.length > 10) {
+            exclusionsLines += `\n*...y otros ${gw.exclusions.length - 10} participantes.*`;
+        }
+        desc += `🚫 **Exclusiones por Requisitos:**\n${exclusionsLines}\n\n`;
+    }
 
     if (gw.serverSeed) {
         const checkUrl = `https://codebeautify.org/sha256-hash-generator?input=${encodeURIComponent(gw.serverSeed)}`;
