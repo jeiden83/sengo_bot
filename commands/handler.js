@@ -31,7 +31,6 @@ async function handleOAuthFailure(author, logger) {
 async function smartErrorSuggester(command, args, message, res, errorTextOrResult) {
     if (!args || args.length === 0) return null;
 
-    const argsStr = args.join(' ').toLowerCase();
     const commandLower = command.toLowerCase();
 
     // Caso 1 & 2: El comando es de comparación u otros que no admiten -lb o -pais
@@ -39,8 +38,15 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
     const isOtherNonLb = ['top', 't', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'osu', 'o', 'perfil'].includes(commandLower);
 
     if (isCompare || isOtherNonLb) {
-        const hasLb = argsStr.includes('-lb') || argsStr.includes(' lb') || args.includes('lb') || args.includes('-lb');
-        const hasPais = argsStr.includes('-pais') || argsStr.includes(' pais') || args.includes('pais') || args.includes('-pais') || argsStr.includes('-country') || argsStr.includes(' country');
+        const hasLb = args.some(arg => {
+            const lowerArg = arg.toLowerCase();
+            return lowerArg === 'lb' || lowerArg === '-lb' || lowerArg === '--lb';
+        });
+        const hasPais = args.some(arg => {
+            const lowerArg = arg.toLowerCase();
+            return lowerArg === 'pais' || lowerArg === '-pais' || lowerArg === '--pais' ||
+                   lowerArg === 'country' || lowerArg === '-country' || lowerArg === '--country';
+        });
 
         if (hasLb || hasPais) {
             // Intentar detectar si pasaron un código de país en los argumentos
@@ -87,7 +93,12 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
 
     // Caso 3: El comando es .lb pero usaron parámetros de comparación como -c o compare
     if (['lb', 'leaderboard'].includes(commandLower)) {
-        const hasCompare = argsStr.includes('-c') || argsStr.includes(' c') || args.includes('c') || args.includes('-c') || argsStr.includes('compare') || argsStr.includes('comparar') || argsStr.includes('compara');
+        const hasCompare = args.some(arg => {
+            const lowerArg = arg.toLowerCase();
+            return lowerArg === 'c' || lowerArg === '-c' || lowerArg === '--c' ||
+                   lowerArg === 'compare' || lowerArg === '-compare' || lowerArg === '--compare' ||
+                   lowerArg === 'comparar' || lowerArg === '-comparar' || lowerArg === '--comparar';
+        });
         if (hasCompare) {
             return `❌ El comando \`.lb\` (leaderboard) no tiene un parámetro de comparación \`-c\`. ¿Habrás querido usar \`.c\` para comparar tu puntuación en este beatmap?`;
         }
@@ -242,7 +253,7 @@ async function chatCommand(intialized_data, command_data) {
                 intialized_data
             );
 
-            if (typeof result === 'string' && (result.includes('❌') || result.toLowerCase().includes('error') || result.toLowerCase().includes('no vinculo') || result.toLowerCase().includes('no se encontró') || result.toLowerCase().includes('no encontró') || result.toLowerCase().includes('no tiene') || result.toLowerCase().includes('invalido'))) {
+            if (typeof result === 'string') {
                 const smartSuggestion = await smartErrorSuggester(command, args, message, res, result);
                 if (smartSuggestion) {
                     result = smartSuggestion;

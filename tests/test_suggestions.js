@@ -241,6 +241,28 @@ async function runTests() {
         process.exit(1);
     }
 
+    // Caso 8: sd.c -lb con error de tipo "El usuario no se encuentra en osu!"
+    console.log("# Probando 'c -lb' con respuesta 'El usuario no se encuentra en osu!'...");
+    map.get('c').run = async (messages, args) => {
+        return "El usuario no se encuentra en osu!";
+    };
+    let res8 = await chatCommand(chat_commands, {
+        command: "c",
+        args: ["-lb"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 8:", res8);
+    if (res8 && typeof res8 === 'string' && res8.includes("El comando `.c` no tiene un parámetro `-lb` o `-pais`") && res8.includes("VENEZUELA (VE)")) {
+        console.log("✅ Caso 8 (c -lb - no se encuentra): PASSED");
+    } else {
+        console.error("❌ Caso 8 (c -lb - no se encuentra): FAILED");
+        process.exit(1);
+    }
+
     console.log("🎉 ¡Todos los tests de sugerencias inteligentes y de optimización pasaron correctamente!");
     
     // Restaurar los mocks
