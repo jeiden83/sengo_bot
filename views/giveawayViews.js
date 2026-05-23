@@ -16,9 +16,20 @@ function formatDurationText(ms) {
 /**
  * Genera el embed de previsualización para el creador.
  */
-function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId }, message) {
+function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message) {
     const embedColor = getEmbedColor(message);
     const durationText = formatDurationText(durationMs);
+
+    let reqsText = "";
+    if (requiredRoleId) {
+        reqsText += `\n▸ **Rol Requerido:** <@&${requiredRoleId}> ${allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+    }
+    if (blockOsuSupporters) {
+        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot)*`;
+    }
+    if (!reqsText) {
+        reqsText = "\n▸ **Requisitos:** Ninguno";
+    }
 
     return new EmbedBuilder()
         .setTitle("🛠️ Vista Previa del Sorteo")
@@ -27,8 +38,9 @@ function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChanne
             `▸ **Premio:** \`${prize}\`\n` +
             `▸ **Ganadores:** \`${winnersCount}\`\n` +
             `▸ **Duración:** \`${durationText}\`\n` +
-            `▸ **Canal Destino:** <#${targetChannelId}>\n\n` +
-            `*Usa los botones de abajo para editar los valores antes de confirmar o cancelar.*`
+            `▸ **Canal Destino:** <#${targetChannelId}>\n` +
+            reqsText +
+            `\n\n*Usa los botones de abajo para editar los valores antes de confirmar o cancelar.*`
         )
         .setColor(embedColor)
         .setFooter({ text: "SengoBot Sorteos • Vista Previa" })
@@ -66,6 +78,89 @@ function getGiveawayPreviewButtons() {
             .setEmoji("❌")
             .setStyle(ButtonStyle.Danger)
     );
+}
+
+/**
+ * Crea ActionRows en doble fila para una vista de previsualización más completa (incluyendo requisitos).
+ */
+function getGiveawayPreviewComponents() {
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("gw_preview_confirm")
+            .setLabel("Confirmar")
+            .setEmoji("✅")
+            .setStyle(ButtonStyle.Success),
+        new ButtonBuilder()
+            .setCustomId("gw_preview_cancel")
+            .setLabel("Cancelar")
+            .setEmoji("❌")
+            .setStyle(ButtonStyle.Danger)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("gw_preview_edit_title")
+            .setLabel("Premio")
+            .setEmoji("📝")
+            .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId("gw_preview_edit_time")
+            .setLabel("Tiempo")
+            .setEmoji("⏳")
+            .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId("gw_preview_edit_winners")
+            .setLabel("Ganadores")
+            .setEmoji("👥")
+            .setStyle(ButtonStyle.Primary),
+        new ButtonBuilder()
+            .setCustomId("gw_preview_edit_reqs")
+            .setLabel("Requisitos")
+            .setEmoji("⚙️")
+            .setStyle(ButtonStyle.Primary)
+    );
+
+    return [row1, row2];
+}
+
+/**
+ * Genera el Modal para configurar requisitos del sorteo.
+ */
+function getRequirementsModal(roleInput, higherInput, suppInput) {
+    const modal = new ModalBuilder()
+        .setCustomId('gw_modal_reqs')
+        .setTitle('Configurar Requisitos');
+
+    const roleField = new TextInputBuilder()
+        .setCustomId('req_role_input')
+        .setLabel('ID o Mención del Rol Requerido')
+        .setStyle(TextInputStyle.Short)
+        .setValue(roleInput || '')
+        .setRequired(false)
+        .setPlaceholder('Dejar vacío si no requiere rol');
+
+    const higherField = new TextInputBuilder()
+        .setCustomId('req_higher_input')
+        .setLabel('¿Permitir Rango Superior? (SI / NO)')
+        .setStyle(TextInputStyle.Short)
+        .setValue(higherInput || 'NO')
+        .setRequired(false)
+        .setMaxLength(2);
+
+    const suppField = new TextInputBuilder()
+        .setCustomId('req_supp_input')
+        .setLabel('¿Excluir si ya tiene Supporter? (SI/NO)')
+        .setStyle(TextInputStyle.Short)
+        .setValue(suppInput || 'NO')
+        .setRequired(false)
+        .setMaxLength(2);
+
+    const r1 = new ActionRowBuilder().addComponents(roleField);
+    const r2 = new ActionRowBuilder().addComponents(higherField);
+    const r3 = new ActionRowBuilder().addComponents(suppField);
+
+    modal.addComponents(r1, r2, r3);
+    return modal;
 }
 
 /**
@@ -210,6 +305,8 @@ module.exports = {
     formatDurationText,
     getGiveawayPreviewEmbed,
     getGiveawayPreviewButtons,
+    getGiveawayPreviewComponents,
+    getRequirementsModal,
     getGiveawayActiveEmbed,
     getGiveawayEndedEmbed,
     getGiveawayEndedText,

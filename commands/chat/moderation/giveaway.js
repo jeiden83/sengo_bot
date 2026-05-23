@@ -3,6 +3,8 @@ const { parseDuration } = require("../../../models/GiveawayModel.js");
 const {
     getGiveawayPreviewEmbed,
     getGiveawayPreviewButtons,
+    getGiveawayPreviewComponents,
+    getRequirementsModal,
     getGiveawayActiveEmbed,
     getTitleModal,
     getTimeModal,
@@ -114,6 +116,16 @@ async function run(messages, args) {
             return "❌ Canal inválido. Asegúrate de mencionar el canal o usar una ID válida.";
         }
 
+function resolveRole(guild, input) {
+    if (!input) return null;
+    const cleanId = input.replace(/[<@&>]/g, "").trim();
+    if (/^\d+$/.test(cleanId)) {
+        const role = guild.roles.cache.get(cleanId);
+        if (role) return role;
+    }
+    return guild.roles.cache.find(r => r.name.toLowerCase() === input.trim().toLowerCase()) || null;
+}
+
         let winnersCount = parseInt(winnersArg, 10);
         if (isNaN(winnersCount) || winnersCount <= 0) {
             return "❌ La cantidad de ganadores debe ser un número entero positivo.";
@@ -124,13 +136,17 @@ async function run(messages, args) {
             return "❌ Formato de tiempo inválido. Usa formatos como `30s`, `10m`, `2h`, `1d`.";
         }
 
+        let requiredRoleId = null;
+        let allowHigherRoles = false;
+        let blockOsuSupporters = false;
+
         // Enviar embed de prueba/vista previa con botones interactivos
-        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId }, message);
-        const buttons = getGiveawayPreviewButtons();
+        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
+        const components = getGiveawayPreviewComponents();
 
         const previewMsg = await message.channel.send({
             embeds: [previewEmbed],
-            components: [buttons]
+            components
         });
 
         const filter = i => i.user.id === message.author.id;
@@ -149,7 +165,7 @@ async function run(messages, args) {
                     const serverSeed = crypto.randomBytes(16).toString('hex');
                     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
 
-                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash }, message.author.id, message);
+                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message.author.id, message);
                     const activeMsg = await targetChannel.send({ embeds: [activeEmbed] });
                     await activeMsg.react("🎉");
 
@@ -163,11 +179,14 @@ async function run(messages, args) {
                         durationMs,
                         creatorId: message.author.id,
                         serverSeed,
-                        serverSeedHash
+                        serverSeedHash,
+                        requiredRoleId,
+                        allowHigherRoles,
+                        blockOsuSupporters
                     });
 
                     // Editar el sorteo activo para mostrar la ID real en el footer
-                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash }, message.author.id, message);
+                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message.author.id, message);
                     await activeMsg.edit({ embeds: [activeEmbedWithId] }).catch(() => {});
 
                     await previewMsg.edit({
@@ -195,7 +214,7 @@ async function run(messages, args) {
                         await modalSubmit.deferUpdate();
                         prize = modalSubmit.fields.getTextInputValue('title_input');
                         
-                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId }, message);
+                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
                         console.error("Error modal título:", err);
@@ -215,7 +234,7 @@ async function run(messages, args) {
                             await modalSubmit.deferUpdate();
                             durationMs = newDurationMs;
                             timeArg = newTimeArg;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
                             await modalSubmit.reply({ content: "❌ Formato de tiempo inválido. Usa `10s`, `5m`, `2h`, `1d`.", ephemeral: true });
@@ -237,13 +256,59 @@ async function run(messages, args) {
                         if (!isNaN(newWinnersCount) && newWinnersCount > 0) {
                             await modalSubmit.deferUpdate();
                             winnersCount = newWinnersCount;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters }, message);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
                             await modalSubmit.reply({ content: "❌ La cantidad de ganadores debe ser un número entero positivo.", ephemeral: true });
                         }
                     } catch (err) {
                         console.error("Error modal ganadores:", err);
+                    }
+                } else if (i.customId === 'gw_preview_edit_reqs') {
+                    const currentRoleVal = requiredRoleId ? requiredRoleId : '';
+                    const currentHigherVal = allowHigherRoles ? 'SI' : 'NO';
+                    const currentSuppVal = blockOsuSupporters ? 'SI' : 'NO';
+
+                    const modal = getRequirementsModal(currentRoleVal, currentHigherVal, currentSuppVal);
+                    await i.showModal(modal);
+
+                    try {
+                        const modalSubmit = await i.awaitModalSubmit({
+                            filter: ms => ms.customId === 'gw_modal_reqs' && ms.user.id === message.author.id,
+                            time: 60000
+                        });
+
+                        const roleInput = modalSubmit.fields.getTextInputValue('req_role_input').trim();
+                        const higherInput = modalSubmit.fields.getTextInputValue('req_higher_input').trim().toUpperCase();
+                        const suppInput = modalSubmit.fields.getTextInputValue('req_supp_input').trim().toUpperCase();
+
+                        let newRoleId = null;
+                        if (roleInput) {
+                            const role = resolveRole(message.guild, roleInput);
+                            if (!role) {
+                                await modalSubmit.reply({ content: `❌ No se encontró ningún rol con la ID o nombre "${roleInput}" en este servidor.`, ephemeral: true });
+                                return;
+                            }
+                            newRoleId = role.id;
+                        }
+
+                        await modalSubmit.deferUpdate();
+                        requiredRoleId = newRoleId;
+                        allowHigherRoles = (higherInput === 'SI' || higherInput === 'S');
+                        blockOsuSupporters = (suppInput === 'SI' || suppInput === 'S');
+
+                        const updatedEmbed = getGiveawayPreviewEmbed({
+                            prize,
+                            winnersCount,
+                            durationMs,
+                            targetChannelId,
+                            requiredRoleId,
+                            allowHigherRoles,
+                            blockOsuSupporters
+                        }, message);
+                        await previewMsg.edit({ embeds: [updatedEmbed] });
+                    } catch (err) {
+                        console.error("Error modal requisitos:", err);
                     }
                 }
             } catch (err) {

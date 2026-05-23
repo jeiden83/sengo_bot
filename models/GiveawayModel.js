@@ -24,6 +24,44 @@ function drawProvablyFair(serverSeed, participants, winnersCount) {
     return winners;
 }
 
+async function filterParticipants(guild, participants, gw) {
+    const filtered = [];
+    for (const userId of participants) {
+        const member = await guild.members.fetch(userId).catch(() => null);
+        if (!member) continue;
+
+        if (gw.requiredRoleId) {
+            const hasRole = member.roles.cache.has(gw.requiredRoleId);
+            if (!hasRole) {
+                if (gw.allowHigherRoles) {
+                    const reqRole = guild.roles.cache.get(gw.requiredRoleId);
+                    const hasHigher = reqRole ? member.roles.cache.some(r => r.position >= reqRole.position) : false;
+                    if (!hasHigher) continue;
+                } else {
+                    continue;
+                }
+            }
+        }
+
+        if (gw.blockOsuSupporters) {
+            const OsuUserModel = require('./OsuUserModel.js');
+            const linked = await OsuUserModel.getLinkedUser(null, userId);
+            const oauthRecord = await OsuUserModel.getOAuthTokenRecord(userId);
+            const osuId = linked?.osu_id || oauthRecord?.osu_id;
+
+            if (!osuId) continue;
+
+            const profile = await OsuUserModel.getOsuUser({ username: [osuId], server: 'bancho' }).catch(() => null);
+            if (!profile || profile === "El usuario no se encuentra en osu!" || profile.is_supporter) {
+                continue;
+            }
+        }
+
+        filtered.push(userId);
+    }
+    return filtered;
+}
+
 const filePath = process.env.NODE_ENV === 'test'
     ? path.join(process.cwd(), 'db/local/giveaways_test.json')
     : path.join(process.cwd(), 'db/local/giveaways.json');
@@ -87,7 +125,7 @@ function initGiveawayManager(client) {
 /**
  * Registra un nuevo sorteo.
  */
-function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId, serverSeed, serverSeedHash }) {
+function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId, serverSeed, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters }) {
     const finalServerSeed = serverSeed || crypto.randomBytes(16).toString('hex');
     const finalServerSeedHash = serverSeedHash || crypto.createHash('sha256').update(finalServerSeed).digest('hex');
 
@@ -103,7 +141,10 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
         winners: [],
         creatorId,
         serverSeed: finalServerSeed,
-        serverSeedHash: finalServerSeedHash
+        serverSeedHash: finalServerSeedHash,
+        requiredRoleId: requiredRoleId || null,
+        allowHigherRoles: !!allowHigherRoles,
+        blockOsuSupporters: !!blockOsuSupporters
     };
     giveaways.push(newGw);
     saveGiveaways();
@@ -153,14 +194,17 @@ async function endGiveaway(client, messageId, wasOffline = false) {
             }
 
             if (participants.length > 0) {
-                if (gw.serverSeed) {
-                    winners.push(...drawProvablyFair(gw.serverSeed, participants, gw.winnersCount));
-                } else {
-                    const pool = [...participants];
-                    const countToPick = Math.min(gw.winnersCount, pool.length);
-                    for (let i = 0; i < countToPick; i++) {
-                        const idx = Math.floor(Math.random() * pool.length);
-                        winners.push(pool.splice(idx, 1)[0]);
+                const filtered = await filterParticipants(channel.guild, participants, gw);
+                if (filtered.length > 0) {
+                    if (gw.serverSeed) {
+                        winners.push(...drawProvablyFair(gw.serverSeed, filtered, gw.winnersCount));
+                    } else {
+                        const pool = [...filtered];
+                        const countToPick = Math.min(gw.winnersCount, pool.length);
+                        for (let i = 0; i < countToPick; i++) {
+                            const idx = Math.floor(Math.random() * pool.length);
+                            winners.push(pool.splice(idx, 1)[0]);
+                        }
                     }
                 }
             }
@@ -233,13 +277,18 @@ async function rerollGiveaway(client, messageId) {
             return { error: "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll." };
         }
 
+        const filtered = await filterParticipants(channel.guild, participants, gw);
+        if (filtered.length === 0) {
+            return { error: "Ningún participante que reaccionó cumple con los requisitos del sorteo (rol o no poseer supporter de osu!)." };
+        }
+
         // Generar una nueva semilla para el re-roll para asegurar transparencia fresquita
         const newServerSeed = crypto.randomBytes(16).toString('hex');
         const newServerSeedHash = crypto.createHash('sha256').update(newServerSeed).digest('hex');
         gw.serverSeed = newServerSeed;
         gw.serverSeedHash = newServerSeedHash;
 
-        const winners = drawProvablyFair(gw.serverSeed, participants, gw.winnersCount);
+        const winners = drawProvablyFair(gw.serverSeed, filtered, gw.winnersCount);
         gw.winners = winners;
         saveGiveaways();
 
