@@ -1526,18 +1526,18 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
         }
 
         // 2. Precarga del Compare (.c) del usuario en ese mapa
-        if (username && beatmapId) {
+        if (userId && beatmapId) {
             try {
                 const compareArgs = {
-                    username: [username],
+                    username: [userId.toString()],
                     beatmap_url: beatmapId.toString(),
                     gamemode: mode,
                     server: parsed_args?.server || 'bancho'
                 };
                 await getBeatmapUserAllScores(compareArgs);
-                console.log(`[BG-RECENT-PRELOAD] Compare (.c) precargado en segundo plano para ${username} en el mapa ${beatmapId}`);
+                console.log(`[BG-RECENT-PRELOAD] Compare (.c) precargado en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
             } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare para ${username} en el mapa ${beatmapId}:`, err);
+                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare para ${username || userId} en el mapa ${beatmapId}:`, err);
             }
         }
 
