@@ -178,6 +178,12 @@ async function chatCommand(intialized_data, command_data) {
                 delete message.optimizationSuggestion;
                 if (typeof result === 'string') {
                     result = result + "\n" + suggestion;
+                } else if (result && typeof result === 'object') {
+                    if (result.content) {
+                        result.content = result.content + "\n" + suggestion;
+                    } else {
+                        result.content = suggestion;
+                    }
                 }
             }
 
