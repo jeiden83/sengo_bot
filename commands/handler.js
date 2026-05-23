@@ -372,6 +372,11 @@ async function chatCommand(intialized_data, command_data) {
             }
         }
 	}
+	
+	const commandLower = command.toLowerCase();
+	if (['oauth', 'auth', 'vincular', 'linkear', 'linkeo', 'conectar', 'oauth2'].includes(commandLower)) {
+		return `❌ El comando \`s.${command}\` no existe. Si deseas vincular tu cuenta de osu! de forma segura mediante OAuth, por favor utiliza **\`s.link -oauth\`** o **\`s.link\`**. 🔒`;
+	}
 		
 	const not_found_responses = [
 		"Comando invalido", 
