@@ -591,10 +591,54 @@ async function getBeatmapUserAllScores(parsed_args) {
     // Buscamos también las locales (unranked), por si hay fallidas
     const local_scores = await getUnrankedBeatmapUserAllScores(parsed_args);  
 
-    const allScores = result.concat(local_scores || []);
-    if (Array.isArray(allScores)) {
-        allScores.forEach(normalizeScore);
+    const allScores = [];
+    const seenEndedAt = new Set();
+
+    if (Array.isArray(result)) {
+        result.forEach(score => {
+            normalizeScore(score);
+            allScores.push(score);
+            if (score.ended_at) {
+                seenEndedAt.add(new Date(score.ended_at).getTime());
+            }
+        });
     }
+
+    if (Array.isArray(local_scores)) {
+        local_scores.forEach(score => {
+            normalizeScore(score);
+            const time = score.ended_at ? new Date(score.ended_at).getTime() : 0;
+            let isDuplicate = false;
+
+            if (time > 0) {
+                for (const seenTime of seenEndedAt) {
+                    if (Math.abs(seenTime - time) <= 1000) {
+                        isDuplicate = true;
+                        break;
+                    }
+                }
+            }
+
+            if (!isDuplicate) {
+                const match = allScores.find(us => 
+                    Number(us.legacy_total_score) === Number(score.legacy_total_score) &&
+                    us.max_combo === score.max_combo &&
+                    Math.abs((us.accuracy || 0) - (score.accuracy || 0)) < 0.0001
+                );
+                if (match) {
+                    isDuplicate = true;
+                }
+            }
+
+            if (!isDuplicate) {
+                allScores.push(score);
+                if (time > 0) {
+                    seenEndedAt.add(time);
+                }
+            }
+        });
+    }
+
     setWithLimit(userScoresCache, cacheKey, { scores: allScores, timestamp: now });
 
     return allScores;
