@@ -219,7 +219,9 @@ function resolveRole(guild, input) {
                         const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
-                        console.error("Error modal título:", err);
+                        if (err.code !== 'InteractionCollectorError') {
+                            console.error("Error modal título:", err);
+                        }
                     }
                 } else if (i.customId === 'gw_preview_edit_time') {
                     const modal = getTimeModal(timeArg);
@@ -242,7 +244,9 @@ function resolveRole(guild, input) {
                             await modalSubmit.reply({ content: "❌ Formato de tiempo inválido. Usa `10s`, `5m`, `2h`, `1d`.", ephemeral: true });
                         }
                     } catch (err) {
-                        console.error("Error modal tiempo:", err);
+                        if (err.code !== 'InteractionCollectorError') {
+                            console.error("Error modal tiempo:", err);
+                        }
                     }
                 } else if (i.customId === 'gw_preview_edit_winners') {
                     const modal = getWinnersModal(winnersCount);
@@ -264,7 +268,9 @@ function resolveRole(guild, input) {
                             await modalSubmit.reply({ content: "❌ La cantidad de ganadores debe ser un número entero positivo.", ephemeral: true });
                         }
                     } catch (err) {
-                        console.error("Error modal ganadores:", err);
+                        if (err.code !== 'InteractionCollectorError') {
+                            console.error("Error modal ganadores:", err);
+                        }
                     }
                 } else if (i.customId === 'gw_preview_edit_reqs') {
                     const currentRoleVal = requiredRoleId ? requiredRoleId : '';
@@ -314,7 +320,9 @@ function resolveRole(guild, input) {
                         }, message);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
-                        console.error("Error modal requisitos:", err);
+                        if (err.code !== 'InteractionCollectorError') {
+                            console.error("Error modal requisitos:", err);
+                        }
                     }
                 }
             } catch (err) {
