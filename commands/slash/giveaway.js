@@ -3,7 +3,7 @@ const giveawayChatCommand = require("../chat/moderation/giveaway.js");
 
 const data = new SlashCommandBuilder()
     .setName("giveaway")
-    .setDescription("Gestión de sorteos al estilo Dyno Bot")
+    .setDescription("Gestión de sorteos en el servidor")
     .addSubcommand(sub =>
         sub.setName("crear")
             .setDescription("Crea un nuevo sorteo")
@@ -103,4 +103,4 @@ async function run(interaction, res, chat_commands) {
     return await giveawayChatCommand.run(messages, args, chat_commands);
 }
 
-module.exports = { data, run, description: "Gestión de sorteos al estilo Dyno Bot" };
+module.exports = { data, run, description: "Gestión de sorteos en el servidor" };

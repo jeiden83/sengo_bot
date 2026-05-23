@@ -251,7 +251,7 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Gestión de sorteos al estilo Dyno Bot",
+    'header': "Gestión de sorteos interactiva",
     'body': 'Permite crear, terminar y re-rolear sorteos en el servidor.',
     'usage': 's.giveaway crear <#canal> <ganadores> <tiempo> <premio>\ns.giveaway terminar <mensaje_id|enlace>\ns.giveaway reroll <mensaje_id|enlace>'
 };
