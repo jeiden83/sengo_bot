@@ -130,7 +130,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     if(no_args || parsed_args.override === 'rm' && parsed_args.username[0] == ''){
 
         // si no hay uno linkeado al bot
-        if(!user_found) return {'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`). Vincula tu cuenta de forma segura usando el comando de chat \`.link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+        if(!user_found) return {'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${res.command_prefix}.link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args};
 
         // Aplicamos el comando con el linkeado al bot
         const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
@@ -168,7 +168,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
         } else {
 
             // Se usa el linkeado al bot
-            if(!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`). Vincula tu cuenta de forma segura usando el comando de chat \`.link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+            if(!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${res.command_prefix}.link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
             parsed_args.username[0] = user_found.osu_id;
         }
 
