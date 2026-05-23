@@ -816,33 +816,12 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false)
     let supporterEmoji = "";
     if (isSupporter) {
         const level = osu_userdata.support_level || 1;
-        const client = message?.client;
-        let emoji = null;
-        if (client && client.emojis && client.emojis.cache) {
-            // Buscamos supporter, supporter2, supporter3
-            // o supporter_1, supporter_2, supporter_3
-            let nameToFind = "supporter";
-            if (level === 2) nameToFind = "supporter2";
-            if (level === 3) nameToFind = "supporter3";
-
-            emoji = client.emojis.cache.find(e => e.name.toLowerCase() === nameToFind);
-            if (!emoji && level > 1) {
-                let altName = `supporter_${level}`;
-                emoji = client.emojis.cache.find(e => e.name.toLowerCase() === altName);
-            }
-        }
-
-        if (emoji) {
-            supporterEmoji = `<:${emoji.name}:${emoji.id}> `;
+        if (level === 2) {
+            supporterEmoji = "<:supporter2:1507587013220503633> ";
+        } else if (level === 3) {
+            supporterEmoji = "<:supporter3:1507587014680383529> ";
         } else {
-            // Fallback estáticos
-            if (level === 2) {
-                supporterEmoji = "<:supporter2:1506770682136952893> ";
-            } else if (level === 3) {
-                supporterEmoji = "<:supporter3:1506770693524357181> ";
-            } else {
-                supporterEmoji = "<:supporter:1506770669742985376> ";
-            }
+            supporterEmoji = "<:supporter:1507587101481242704> ";
         }
     }
 
