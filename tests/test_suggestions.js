@@ -301,6 +301,50 @@ async function runTests() {
         process.exit(1);
     }
 
+    // Caso 11: sd.c mx (falla con usuario no encontrado)
+    console.log("# Probando 'c mx' con fallo de usuario no encontrado...");
+    map.get('c').run = async (messages, args) => {
+        return "El usuario no se encuentra en osu!";
+    };
+    let res11 = await chatCommand(chat_commands, {
+        command: "c",
+        args: ["mx"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 11:", res11);
+    if (res11 && typeof res11 === 'string' && res11.includes("no admite nombres o códigos de país como parámetro de usuario") && res11.includes(".lb -pais MX") && res11.includes("MÉXICO")) {
+        console.log("✅ Caso 11 (c mx - no encontrado): PASSED");
+    } else {
+        console.error("❌ Caso 11 (c mx - no encontrado): FAILED");
+        process.exit(1);
+    }
+
+    // Caso 12: sd.osu venezuela (falla con usuario no encontrado)
+    console.log("# Probando 'osu venezuela' con fallo de usuario no encontrado...");
+    map.get('osu').run = async (messages, args) => {
+        return "El usuario no se encuentra en osu!";
+    };
+    let res12 = await chatCommand(chat_commands, {
+        command: "osu",
+        args: ["venezuela"],
+        message: message1,
+        res: dbRes,
+        reply: message1,
+        logger: null
+    });
+
+    console.log("Result 12:", res12);
+    if (res12 && typeof res12 === 'string' && res12.includes("no admite nombres o códigos de país como parámetro de usuario") && res12.includes(".lb -pais VE") && res12.includes("VENEZUELA")) {
+        console.log("✅ Caso 12 (osu venezuela - no encontrado): PASSED");
+    } else {
+        console.error("❌ Caso 12 (osu venezuela - no encontrado): FAILED");
+        process.exit(1);
+    }
+
     console.log("🎉 ¡Todos los tests de sugerencias inteligentes y de optimización pasaron correctamente!");
     
     // Restaurar los mocks

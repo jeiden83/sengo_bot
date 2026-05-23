@@ -126,6 +126,52 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
         }
     }
 
+    // Caso 6: El usuario ingresa un país (ej. "mx" o "venezuela") en lugar de un nombre de usuario en comandos de perfil/recientes/top
+    // Esto se activa únicamente cuando el comando falló debido a que el usuario no fue encontrado (errorTextOrResult contiene "no se encuentra", "no existe", etc.)
+    if (errorTextOrResult && typeof errorTextOrResult === 'string') {
+        const errLower = errorTextOrResult.toLowerCase();
+        const isNotFoundError = errLower.includes('no se encuentra') || errLower.includes('no existe') || errLower.includes('no se encontró') || errLower.includes('no encontró');
+        
+        if (isNotFoundError && ['c', 'compare', 'comparar', 'compara', 'cm', 'cc', 'ct', 'top', 't', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'osu', 'o', 'perfil'].includes(commandLower)) {
+            const countryCodes = require("../src/country_codes.json");
+            let detectedCountryCode = null;
+            let detectedCountryName = null;
+
+            // 1. Verificar si algún argumento es un código de país directamente (ej. "MX", "VE")
+            for (const arg of args) {
+                if (typeof arg !== 'string') continue;
+                const cleanArg = arg.toUpperCase().replace(/^-+/, '').trim();
+                if (countryCodes[cleanArg]) {
+                    detectedCountryCode = cleanArg;
+                    detectedCountryName = countryCodes[cleanArg].country;
+                    break;
+                }
+            }
+
+            // 2. Si no, verificar si coincide con el nombre de un país (ej. "mexico", "venezuela")
+            if (!detectedCountryCode) {
+                const removeAccents = str => str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                for (const arg of args) {
+                    if (typeof arg !== 'string') continue;
+                    const cleanArg = removeAccents(arg.toLowerCase().trim());
+                    for (const code of Object.keys(countryCodes)) {
+                        const countryName = removeAccents(countryCodes[code].country.toLowerCase());
+                        if (countryName === cleanArg || (cleanArg.length > 3 && countryName.includes(cleanArg))) {
+                            detectedCountryCode = code;
+                            detectedCountryName = countryCodes[code].country;
+                            break;
+                        }
+                    }
+                    if (detectedCountryCode) break;
+                }
+            }
+
+            if (detectedCountryCode) {
+                return `❌ **El comando** \`.${command}\` no admite nombres o códigos de país como parámetro de usuario. ¿Habrás querido hacer \`.lb -pais ${detectedCountryCode}\` para revisar la tabla de clasificación de **${detectedCountryName.toUpperCase()} (${detectedCountryCode})**?`;
+            }
+        }
+    }
+
     return null;
 }
 
