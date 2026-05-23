@@ -26,6 +26,14 @@ function parseDurationLocal(str) {
 async function run(messages, args) {
     const { message } = messages;
 
+    // Limpiar el argumento de alias inyectado por el handler
+    if (args.length > 0) {
+        const lastArg = args[args.length - 1];
+        if (lastArg === null || lastArg === "crear/terminar/reroll") {
+            args.pop();
+        }
+    }
+
     if (!message.guild) {
         return "❌ Este comando solo se puede usar en un servidor.";
     }
