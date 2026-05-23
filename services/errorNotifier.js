@@ -29,9 +29,9 @@ async function reportErrorToWebhook(error, context) {
         // Construir enlace de contexto
         let contextUrl = null;
         if (message) {
-            contextUrl = guild 
+            contextUrl = message.url || (guild 
                 ? `https://discord.com/channels/${guild.id}/${channel.id}/${message.id}`
-                : `https://discord.com/channels/@me/${channel.id}/${message.id}`;
+                : `https://discord.com/channels/@me/${channel.id}/${message.id}`);
         }
 
         const embed = new EmbedBuilder()
@@ -74,10 +74,44 @@ async function reportErrorToWebhook(error, context) {
             embed.addFields({ name: '🔗 Tipo de Contexto', value: `Comando de barra (Slash) - ID Interacción: \`${interaction.id}\`` });
         }
 
+        // Crear el contenido del archivo .txt adjunto con toda la información detallada para depuración
+        const attachmentContent = `=========================================
+SENGO BOT - INFORME DETALLADO DE ERROR
+=========================================
+Fecha/Hora: ${new Date().toISOString()}
+Comando: ${commandName || 'Desconocido'}
+Argumentos: ${args && args.length > 0 ? args.join(' ') : '(Ninguno)'}
+Usuario: ${user ? `${user.username}#${user.discriminator || '0000'} (${user.id})` : 'N/A'}
+Servidor: ${guild ? `${guild.name} (${guild.id})` : 'DM'}
+Canal: ${channel ? `#${channel.name} (${channel.id})` : 'N/A'}
+Enlace al Mensaje: ${contextUrl || 'N/A'}
+
+-----------------------------------------
+MENSAJE DEL ERROR
+-----------------------------------------
+${error.message}
+
+-----------------------------------------
+STACK TRACE COMPLETO
+-----------------------------------------
+${error.stack || 'No hay stack trace disponible.'}
+
+-----------------------------------------
+CONTENIDO COMPLETO DEL MENSAJE (si aplica)
+-----------------------------------------
+${message ? message.content : 'N/A'}
+`;
+
+        const fileAttachment = {
+            attachment: Buffer.from(attachmentContent, 'utf-8'),
+            name: `error_report_${commandName || 'command'}_${Date.now()}.txt`
+        };
+
         await webhookClient.send({
             username: 'SengoBot Error Logger',
             avatarURL: 'https://i.imgur.com/HnB61P6.png', // Un avatar elegante por defecto
-            embeds: [embed]
+            embeds: [embed],
+            files: [fileAttachment]
         });
 
     } catch (notifierError) {
