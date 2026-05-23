@@ -585,7 +585,12 @@ async function getBeatmapUserAllScores(parsed_args) {
             mode: mode,
         });
     } catch (e) {
-        console.error("Error al obtener puntuaciones en v2.scores.list:", e);
+        const errorStr = e.message || String(e);
+        if (errorStr.includes("difficulty couldn't be found") || errorStr.includes("404")) {
+            console.log(`[API] Nota: El mapa ${beatmapId} no tiene leaderboard o dificultad oficial en Bancho.`);
+        } else {
+            console.error("Error al obtener puntuaciones en v2.scores.list:", e);
+        }
     }
 
     // Buscamos también las locales (unranked), por si hay fallidas
