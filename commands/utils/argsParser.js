@@ -94,6 +94,72 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
 
     const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
 
+    const resolveDiscordLink = async (channelId, messageId) => {
+        try {
+            const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
+            if (!targetChannel) return null;
+
+            // Intentar obtener el mensaje y los de su alrededor (limit 10) para encontrar el embed/mapa
+            const aroundMessages = await targetChannel.messages.fetch({ limit: 10, around: messageId }).catch(() => null);
+            if (aroundMessages && aroundMessages.size > 0) {
+                // 1. Comprobar el mensaje exacto
+                const exactMsg = aroundMessages.get(messageId);
+                if (exactMsg) {
+                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(exactMsg, targetIndex);
+                    if (beatmap_url) {
+                        const gamemode = getGamemodeFromMessage(exactMsg);
+                        return { beatmap_url, gamemode, fromList };
+                    }
+                    // Si el mensaje exacto es una respuesta, comprobar la referencia
+                    if (exactMsg.reference?.messageId) {
+                        const refMsg = await targetChannel.messages.fetch(exactMsg.reference.messageId).catch(() => null);
+                        if (refMsg) {
+                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(refMsg, targetIndex);
+                            if (beatmap_url) {
+                                const gamemode = getGamemodeFromMessage(refMsg);
+                                return { beatmap_url, gamemode, fromList };
+                            }
+                        }
+                    }
+                }
+
+                // 2. Comprobar mensajes de alrededor (más cercanos en tiempo primero)
+                const sortedMsgs = Array.from(aroundMessages.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+                for (const msg of sortedMsgs) {
+                    if (msg.id === messageId) continue;
+                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
+                    if (beatmap_url) {
+                        const gamemode = getGamemodeFromMessage(msg);
+                        return { beatmap_url, gamemode, fromList };
+                    }
+                }
+            } else {
+                // Fallback a solo el mensaje exacto
+                const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
+                if (targetMsg) {
+                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
+                    if (beatmap_url) {
+                        const gamemode = getGamemodeFromMessage(targetMsg);
+                        return { beatmap_url, gamemode, fromList };
+                    }
+                    if (targetMsg.reference?.messageId) {
+                        const refMsg = await targetChannel.messages.fetch(targetMsg.reference.messageId).catch(() => null);
+                        if (refMsg) {
+                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(refMsg, targetIndex);
+                            if (beatmap_url) {
+                                const gamemode = getGamemodeFromMessage(refMsg);
+                                return { beatmap_url, gamemode, fromList };
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (err) {
+            console.error("<#> Error en resolveDiscordLink:", err);
+        }
+        return null;
+    };
+
     try {
         if (isReply) {
             // Comprobar si el mensaje al que se responde contiene un enlace de Discord
@@ -102,16 +168,9 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 const channelId = linkMatch[2] || linkMatch[4];
                 const messageId = linkMatch[3] || linkMatch[5];
                 if (channelId && messageId) {
-                    const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
-                    if (targetChannel) {
-                        const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
-                        if (targetMsg) {
-                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
-                            if (beatmap_url) {
-                                const gamemode = getGamemodeFromMessage(targetMsg);
-                                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
-                            }
-                        }
+                    const resolved = await resolveDiscordLink(channelId, messageId);
+                    if (resolved) {
+                        return { ...resolved, bad_response: 'shh' };
                     }
                 }
             }
@@ -131,16 +190,9 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 const channelId = linkMatch[2] || linkMatch[4];
                 const messageId = linkMatch[3] || linkMatch[5];
                 if (channelId && messageId) {
-                    const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
-                    if (targetChannel) {
-                        const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
-                        if (targetMsg) {
-                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
-                            if (beatmap_url) {
-                                const gamemode = getGamemodeFromMessage(targetMsg);
-                                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
-                            }
-                        }
+                    const resolved = await resolveDiscordLink(channelId, messageId);
+                    if (resolved) {
+                        return { ...resolved, bad_response: 'shh' };
                     }
                 }
             }
