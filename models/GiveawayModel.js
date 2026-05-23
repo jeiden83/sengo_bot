@@ -30,9 +30,11 @@ async function filterParticipants(guild, participants, gw) {
     for (const userId of participants) {
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
-            exclusions.push({ userId, reason: "No se encuentra en el servidor" });
+            exclusions.push({ userId, userTag: `Desconocido (ID: ${userId})`, reason: "No se encuentra en el servidor" });
             continue;
         }
+
+        const tag = member.user ? (member.user.tag || member.user.username) : `Usuario (ID: ${userId})`;
 
         if (gw.requiredRoleId) {
             const hasRole = member.roles.cache.has(gw.requiredRoleId);
@@ -41,11 +43,11 @@ async function filterParticipants(guild, participants, gw) {
                     const reqRole = guild.roles.cache.get(gw.requiredRoleId);
                     const hasHigher = reqRole ? member.roles.cache.some(r => r.position >= reqRole.position) : false;
                     if (!hasHigher) {
-                        exclusions.push({ userId, reason: "No posee el rol requerido ni uno superior" });
+                        exclusions.push({ userId, userTag: tag, reason: "No posee el rol requerido ni uno superior" });
                         continue;
                     }
                 } else {
-                    exclusions.push({ userId, reason: "No posee el rol requerido" });
+                    exclusions.push({ userId, userTag: tag, reason: "No posee el rol requerido" });
                     continue;
                 }
             }
@@ -58,17 +60,17 @@ async function filterParticipants(guild, participants, gw) {
             const osuId = linked?.osu_id || oauthRecord?.osu_id;
 
             if (!osuId) {
-                exclusions.push({ userId, reason: "No está vinculado a SengoBot" });
+                exclusions.push({ userId, userTag: tag, reason: "No está vinculado a SengoBot" });
                 continue;
             }
 
             const profile = await OsuUserModel.getOsuUser({ username: [osuId], server: 'bancho' }).catch(() => null);
             if (!profile || profile === "El usuario no se encuentra en osu!") {
-                exclusions.push({ userId, reason: "No se pudo validar su cuenta de osu!" });
+                exclusions.push({ userId, userTag: tag, reason: "No se pudo validar su cuenta de osu!" });
                 continue;
             }
             if (profile.is_supporter) {
-                exclusions.push({ userId, reason: "Ya posee osu! supporter activo" });
+                exclusions.push({ userId, userTag: tag, reason: "Ya posee osu! supporter activo" });
                 continue;
             }
         }
@@ -235,7 +237,23 @@ async function endGiveaway(client, messageId, wasOffline = false) {
 
         const { getGiveawayEndedEmbed } = require('../views/giveawayViews.js');
         const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, wasOffline);
-        await msg.edit({ embeds: [endedEmbed], components: [] }).catch(() => {});
+
+        let editOptions = { embeds: [endedEmbed], components: [] };
+        if (gw.exclusions && gw.exclusions.length > 0) {
+            let fileContent = `REGISTRO DE EXCLUSIONES DE SORTEO (ID: ${gw.messageId})\n`;
+            fileContent += `Premio: ${gw.prize}\n`;
+            fileContent += `Ganadores planeados: ${gw.winnersCount}\n`;
+            fileContent += `Fecha finalizacion: ${new Date().toISOString()}\n`;
+            fileContent += `========================================================\n\n`;
+            for (const ex of gw.exclusions) {
+                fileContent += `• @${ex.userTag} (ID: ${ex.userId}) -> Razon: ${ex.reason}\n`;
+            }
+
+            const { AttachmentBuilder } = require('discord.js');
+            const attachment = new AttachmentBuilder(Buffer.from(fileContent, 'utf-8'), { name: `exclusiones_sorteo_${gw.messageId}.txt` });
+            editOptions.files = [attachment];
+        }
+        await msg.edit(editOptions).catch(() => {});
 
         if (wasOffline) {
             const offlineText = `⚠️ El sorteo por **${gw.prize}** finalizó mientras el bot estaba desconectado. <@${gw.creatorId || ''}> ha sido notificado para decidir si realizar un re-roll o iniciar un sorteo nuevo.`;
@@ -316,7 +334,23 @@ async function rerollGiveaway(client, messageId) {
 
         const { getGiveawayEndedEmbed, getGiveawayRerollText } = require('../views/giveawayViews.js');
         const endedEmbed = getGiveawayEndedEmbed(gw, winners);
-        await msg.edit({ embeds: [endedEmbed] }).catch(() => {});
+
+        let editOptions = { embeds: [endedEmbed] };
+        if (gw.exclusions && gw.exclusions.length > 0) {
+            let fileContent = `REGISTRO DE EXCLUSIONES DE REROLL (ID: ${gw.messageId})\n`;
+            fileContent += `Premio: ${gw.prize}\n`;
+            fileContent += `Ganadores planeados: ${gw.winnersCount}\n`;
+            fileContent += `Fecha re-roll: ${new Date().toISOString()}\n`;
+            fileContent += `========================================================\n\n`;
+            for (const ex of gw.exclusions) {
+                fileContent += `• @${ex.userTag} (ID: ${ex.userId}) -> Razon: ${ex.reason}\n`;
+            }
+
+            const { AttachmentBuilder } = require('discord.js');
+            const attachment = new AttachmentBuilder(Buffer.from(fileContent, 'utf-8'), { name: `exclusiones_sorteo_${gw.messageId}.txt` });
+            editOptions.files = [attachment];
+        }
+        await msg.edit(editOptions).catch(() => {});
 
         const rerollText = getGiveawayRerollText(gw, winners);
         await channel.send({ content: rerollText, reply: { messageReference: msg.id } }).catch(() => {

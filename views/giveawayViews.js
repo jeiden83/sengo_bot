@@ -227,11 +227,12 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
     }
 
     if (gw.exclusions && gw.exclusions.length > 0) {
-        let exclusionsLines = gw.exclusions.slice(0, 10).map(ex => `• <@${ex.userId}>: *${ex.reason}*`).join("\n");
-        if (gw.exclusions.length > 10) {
-            exclusionsLines += `\n*...y otros ${gw.exclusions.length - 10} participantes.*`;
+        if (gw.exclusions.length <= 5) {
+            let exclusionsLines = gw.exclusions.map(ex => `• <@${ex.userId}>: *${ex.reason}*`).join("\n");
+            desc += `🚫 **Exclusiones por Requisitos (${gw.exclusions.length}):**\n${exclusionsLines}\n\n`;
+        } else {
+            desc += `🚫 **Exclusiones por Requisitos:** Se excluyeron \`${gw.exclusions.length}\` participantes. *(Ver archivo de texto adjunto para más detalles)*\n\n`;
         }
-        desc += `🚫 **Exclusiones por Requisitos:**\n${exclusionsLines}\n\n`;
     }
 
     if (gw.serverSeed) {
