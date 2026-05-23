@@ -42,7 +42,7 @@ async function run(messages, args, intialized_data) {
     const mainCommandsSet = intialized_data.get('chat_main_commands_set');
 
     // Si no hay argumentos, listar comandos
-    if (args[0] == null) {
+    if (args[0] == null || args[0].trim() === "") {
         const excludeTypes = new Set(['admin']);
 
         // Agrupar por tipo
