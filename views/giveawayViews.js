@@ -75,16 +75,20 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
     const embedColor = getEmbedColor(message);
     const endTimestamp = Math.floor(gw.endAt / 1000);
 
+    let desc = `Reacciona con 🎉 para participar en el sorteo.\n\n` +
+        `▸ **Creado por:** <@${creatorId}>\n` +
+        `▸ **Ganadores:** \`${gw.winnersCount}\`\n` +
+        `▸ **Finaliza:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)`;
+
+    if (gw.serverSeedHash) {
+        desc += `\n\n🛡️ **Hash de Validación (Fairness):**\n\`${gw.serverSeedHash}\`\n*Garantiza que el sorteo es inalterable y demostrablemente justo.*`;
+    }
+
     return new EmbedBuilder()
         .setTitle(`🎉 ¡SORTEO: ${gw.prize}! 🎉`)
-        .setDescription(
-            `Reacciona con 🎉 para participar en el sorteo.\n\n` +
-            `▸ **Creado por:** <@${creatorId}>\n` +
-            `▸ **Ganadores:** \`${gw.winnersCount}\`\n` +
-            `▸ **Finaliza:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)`
-        )
+        .setDescription(desc)
         .setColor(embedColor)
-        .setFooter({ text: `SengoBot Sorteos • ID: ${gw.messageId}` })
+        .setFooter({ text: `SengoBot Sorteos • ID: ${gw.messageId || 'Nuevo'}` })
         .setTimestamp();
 }
 
@@ -93,19 +97,30 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
  */
 function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
     const embedColor = message ? getEmbedColor(message) : 0xfe66aa;
-    const winnersText = winners.length > 0 ? winners.map(w => `<@${w}>`).join(", ") : "Ninguno (no hubo participantes)";
+    let winnersText = winners.length > 0 ? winners.map(w => `<@${w}>`).join(", ") : "Ninguno (no hubo participantes)";
+    if (wasOffline) {
+        winnersText = "Ninguno (el sorteo finalizó con el bot desconectado)";
+    }
 
     const footerText = wasOffline 
         ? `SengoBot Sorteos • ID: ${gw.messageId} • Finalizado offline`
         : `SengoBot Sorteos • ID: ${gw.messageId}`;
 
+    let desc = `**Premio:** \`${gw.prize}\`\n` +
+        `**Ganadores:** ${winnersText}\n\n`;
+
+    if (gw.serverSeed) {
+        desc += `🔑 **Semilla Revelada (Server Seed):**\n\`${gw.serverSeed}\`\n` +
+            `🛡️ **Hash de Validación original:**\n\`${gw.serverSeedHash || ''}\`\n\n`;
+    }
+
+    desc += wasOffline 
+        ? `*El sorteo ha finalizado mientras el bot estaba desconectado. El creador puede hacer re-roll para elegir ganadores.*`
+        : `*El sorteo ha finalizado.*`;
+
     return new EmbedBuilder()
         .setTitle(`🎁 SORTEO FINALIZADO 🎁`)
-        .setDescription(
-            `**Premio:** \`${gw.prize}\`\n` +
-            `**Ganadores:** ${winnersText}\n\n` +
-            `*El sorteo ha finalizado.*`
-        )
+        .setDescription(desc)
         .setColor(embedColor)
         .setFooter({ text: footerText })
         .setTimestamp();

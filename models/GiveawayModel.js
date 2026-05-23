@@ -1,5 +1,28 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
+
+function drawProvablyFair(serverSeed, participants, winnersCount) {
+    const pool = [...participants].sort(); // Orden alfabético determinista de los IDs
+    const winners = [];
+    let round = 0;
+
+    while (winners.length < winnersCount && pool.length > 0) {
+        const hash = crypto.createHmac('sha256', serverSeed)
+            .update(`${pool.join(',')}:${round}`)
+            .digest('hex');
+
+        // Tomar primeros 8 caracteres hexadecimales y convertirlos a entero
+        const hexVal = hash.substring(0, 8);
+        const intVal = parseInt(hexVal, 16);
+        const winnerIndex = intVal % pool.length;
+
+        winners.push(pool.splice(winnerIndex, 1)[0]);
+        round++;
+    }
+
+    return winners;
+}
 
 const filePath = process.env.NODE_ENV === 'test'
     ? path.join(process.cwd(), 'db/local/giveaways_test.json')
@@ -64,7 +87,10 @@ function initGiveawayManager(client) {
 /**
  * Registra un nuevo sorteo.
  */
-function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId }) {
+function createGiveaway(client, { guildId, channelId, messageId, prize, winnersCount, durationMs, creatorId, serverSeed, serverSeedHash }) {
+    const finalServerSeed = serverSeed || crypto.randomBytes(16).toString('hex');
+    const finalServerSeedHash = serverSeedHash || crypto.createHash('sha256').update(finalServerSeed).digest('hex');
+
     const endAt = Date.now() + durationMs;
     const newGw = {
         guildId,
@@ -75,7 +101,9 @@ function createGiveaway(client, { guildId, channelId, messageId, prize, winnersC
         endAt,
         ended: false,
         winners: [],
-        creatorId
+        creatorId,
+        serverSeed: finalServerSeed,
+        serverSeedHash: finalServerSeedHash
     };
     giveaways.push(newGw);
     saveGiveaways();
@@ -124,11 +152,17 @@ async function endGiveaway(client, messageId, wasOffline = false) {
                     .map(u => u.id);
             }
 
-            const pool = [...participants];
-            const countToPick = Math.min(gw.winnersCount, pool.length);
-            for (let i = 0; i < countToPick; i++) {
-                const idx = Math.floor(Math.random() * pool.length);
-                winners.push(pool.splice(idx, 1)[0]);
+            if (participants.length > 0) {
+                if (gw.serverSeed) {
+                    winners.push(...drawProvablyFair(gw.serverSeed, participants, gw.winnersCount));
+                } else {
+                    const pool = [...participants];
+                    const countToPick = Math.min(gw.winnersCount, pool.length);
+                    for (let i = 0; i < countToPick; i++) {
+                        const idx = Math.floor(Math.random() * pool.length);
+                        winners.push(pool.splice(idx, 1)[0]);
+                    }
+                }
             }
         }
 
@@ -199,14 +233,13 @@ async function rerollGiveaway(client, messageId) {
             return { error: "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll." };
         }
 
-        const winners = [];
-        const pool = [...participants];
-        const countToPick = Math.min(gw.winnersCount, pool.length);
-        for (let i = 0; i < countToPick; i++) {
-            const idx = Math.floor(Math.random() * pool.length);
-            winners.push(pool.splice(idx, 1)[0]);
-        }
+        // Generar una nueva semilla para el re-roll para asegurar transparencia fresquita
+        const newServerSeed = crypto.randomBytes(16).toString('hex');
+        const newServerSeedHash = crypto.createHash('sha256').update(newServerSeed).digest('hex');
+        gw.serverSeed = newServerSeed;
+        gw.serverSeedHash = newServerSeedHash;
 
+        const winners = drawProvablyFair(gw.serverSeed, participants, gw.winnersCount);
         gw.winners = winners;
         saveGiveaways();
 

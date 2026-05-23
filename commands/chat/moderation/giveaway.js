@@ -145,7 +145,11 @@ async function run(messages, args) {
                     collector.stop('confirmed');
                     await i.deferUpdate();
 
-                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs }, message.author.id, message);
+                    const crypto = require('crypto');
+                    const serverSeed = crypto.randomBytes(16).toString('hex');
+                    const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
+
+                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash }, message.author.id, message);
                     const activeMsg = await targetChannel.send({ embeds: [activeEmbed] });
                     await activeMsg.react("🎉");
 
@@ -157,11 +161,13 @@ async function run(messages, args) {
                         prize,
                         winnersCount,
                         durationMs,
-                        creatorId: message.author.id
+                        creatorId: message.author.id,
+                        serverSeed,
+                        serverSeedHash
                     });
 
                     // Editar el sorteo activo para mostrar la ID real en el footer
-                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id }, message.author.id, message);
+                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash }, message.author.id, message);
                     await activeMsg.edit({ embeds: [activeEmbedWithId] }).catch(() => {});
 
                     await previewMsg.edit({
@@ -302,7 +308,7 @@ run.alias = {
 
 run.description = {
     'header': "Gestión de sorteos interactiva",
-    'body': 'Permite crear, terminar y re-rolear sorteos en el servidor.',
+    'body': 'Permite crear, terminar y re-rolear sorteos en el servidor.\n\n🛡️ **Demostrablemente Justo (Provably Fair):**\nCada sorteo genera un Hash SHA-256 de una semilla secreta al iniciar. Al finalizar, la semilla es revelada. Puedes comprobar que el sorteo no fue manipulado:\n1. Aplica SHA-256 a la semilla revelada (Server Seed) y comprueba que coincide con el Hash de Validación del inicio.\n2. Los ganadores se escogen ordenando a los participantes alfabéticamente por su ID y aplicando HMAC-SHA256 con la semilla.',
     'usage': 's.giveaway crear <#canal> <ganadores> <tiempo> <premio>\ns.giveaway terminar <mensaje_id|enlace>\ns.giveaway reroll <mensaje_id|enlace>'
 };
 
