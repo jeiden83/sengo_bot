@@ -95,24 +95,51 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
     const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
 
     const resolveDiscordLink = async (channelId, messageId) => {
+        let targetChannel;
         try {
-            const targetChannel = await message.client.channels.fetch(channelId).catch(() => null);
-            if (!targetChannel) return null;
+            targetChannel = await message.client.channels.fetch(channelId);
+        } catch (err) {
+            const errMsg = err.code === 50001 || err.message?.includes('Missing Access')
+                ? 'No tengo acceso a ese servidor/canal. Asegúrate de que el bot esté en ese servidor y tenga permisos para ver el canal.'
+                : `Error al acceder al canal: ${err.message || err}`;
+            return { error: errMsg };
+        }
 
-            // Intentar obtener el mensaje y los de su alrededor (limit 10) para encontrar el embed/mapa
-            const aroundMessages = await targetChannel.messages.fetch({ limit: 10, around: messageId }).catch(() => null);
-            if (aroundMessages && aroundMessages.size > 0) {
-                // 1. Comprobar el mensaje exacto
-                const exactMsg = aroundMessages.get(messageId);
-                if (exactMsg) {
-                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(exactMsg, targetIndex);
-                    if (beatmap_url) {
-                        const gamemode = getGamemodeFromMessage(exactMsg);
-                        return { beatmap_url, gamemode, fromList };
-                    }
-                    // Si el mensaje exacto es una respuesta, comprobar la referencia
-                    if (exactMsg.reference?.messageId) {
-                        const refMsg = await targetChannel.messages.fetch(exactMsg.reference.messageId).catch(() => null);
+        if (!targetChannel) {
+            return { error: 'No se pudo acceder al canal enlazado.' };
+        }
+
+        let aroundMessages;
+        try {
+            aroundMessages = await targetChannel.messages.fetch({ limit: 10, around: messageId });
+        } catch (err) {
+            // Fallback a solo el mensaje exacto
+            try {
+                const targetMsg = await targetChannel.messages.fetch(messageId);
+                aroundMessages = new Map([[messageId, targetMsg]]);
+            } catch (fallbackErr) {
+                const errMsg = fallbackErr.code === 50001 || fallbackErr.message?.includes('Missing Access')
+                    ? 'No tengo permisos para leer los mensajes de ese canal.'
+                    : (fallbackErr.code === 10008 || fallbackErr.message?.includes('Unknown Message')
+                        ? 'El mensaje enlazado no existe o fue eliminado.'
+                        : `No se pudo obtener el mensaje: ${fallbackErr.message || fallbackErr}`);
+                return { error: errMsg };
+            }
+        }
+
+        if (aroundMessages && aroundMessages.size > 0) {
+            // 1. Comprobar el mensaje exacto
+            const exactMsg = aroundMessages.get(messageId);
+            if (exactMsg) {
+                const { beatmap_url, fromList } = getBeatmapIdFromMessage(exactMsg, targetIndex);
+                if (beatmap_url) {
+                    const gamemode = getGamemodeFromMessage(exactMsg);
+                    return { beatmap_url, gamemode, fromList };
+                }
+                // Si el mensaje exacto es una respuesta, comprobar la referencia
+                if (exactMsg.reference?.messageId) {
+                    try {
+                        const refMsg = await targetChannel.messages.fetch(exactMsg.reference.messageId);
                         if (refMsg) {
                             const { beatmap_url, fromList } = getBeatmapIdFromMessage(refMsg, targetIndex);
                             if (beatmap_url) {
@@ -120,44 +147,25 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                                 return { beatmap_url, gamemode, fromList };
                             }
                         }
-                    }
-                }
-
-                // 2. Comprobar mensajes de alrededor (más cercanos en tiempo primero)
-                const sortedMsgs = Array.from(aroundMessages.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
-                for (const msg of sortedMsgs) {
-                    if (msg.id === messageId) continue;
-                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
-                    if (beatmap_url) {
-                        const gamemode = getGamemodeFromMessage(msg);
-                        return { beatmap_url, gamemode, fromList };
-                    }
-                }
-            } else {
-                // Fallback a solo el mensaje exacto
-                const targetMsg = await targetChannel.messages.fetch(messageId).catch(() => null);
-                if (targetMsg) {
-                    const { beatmap_url, fromList } = getBeatmapIdFromMessage(targetMsg, targetIndex);
-                    if (beatmap_url) {
-                        const gamemode = getGamemodeFromMessage(targetMsg);
-                        return { beatmap_url, gamemode, fromList };
-                    }
-                    if (targetMsg.reference?.messageId) {
-                        const refMsg = await targetChannel.messages.fetch(targetMsg.reference.messageId).catch(() => null);
-                        if (refMsg) {
-                            const { beatmap_url, fromList } = getBeatmapIdFromMessage(refMsg, targetIndex);
-                            if (beatmap_url) {
-                                const gamemode = getGamemodeFromMessage(refMsg);
-                                return { beatmap_url, gamemode, fromList };
-                            }
-                        }
+                    } catch (err) {
+                        // Ignorar fallos al obtener la referencia en segundo plano
                     }
                 }
             }
-        } catch (err) {
-            console.error("<#> Error en resolveDiscordLink:", err);
+
+            // 2. Comprobar mensajes de alrededor (más cercanos en tiempo primero)
+            const sortedMsgs = Array.from(aroundMessages.values()).sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+            for (const msg of sortedMsgs) {
+                if (msg.id === messageId) continue;
+                const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
+                if (beatmap_url) {
+                    const gamemode = getGamemodeFromMessage(msg);
+                    return { beatmap_url, gamemode, fromList };
+                }
+            }
         }
-        return null;
+
+        return { error: 'No se encontró ningún mapa de osu! en el mensaje enlazado ni en los mensajes cercanos.' };
     };
 
     try {
@@ -170,6 +178,9 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 if (channelId && messageId) {
                     const resolved = await resolveDiscordLink(channelId, messageId);
                     if (resolved) {
+                        if (resolved.error) {
+                            return { beatmap_url: null, gamemode: null, fromList: false, bad_response: `❌ Error al acceder al enlace de Discord: ${resolved.error}` };
+                        }
                         return { ...resolved, bad_response: 'shh' };
                     }
                 }
@@ -179,7 +190,7 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
             const gamemode = getGamemodeFromMessage(message);
             return beatmap_url
                 ? { beatmap_url, gamemode, fromList, bad_response: 'shh' }
-                : { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+                : { beatmap_url: null, gamemode: null, fromList: false, bad_response: '❌ No se encontró un mapa al cual hacerle c' };
         }
 
         const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
@@ -192,6 +203,14 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 if (channelId && messageId) {
                     const resolved = await resolveDiscordLink(channelId, messageId);
                     if (resolved) {
+                        if (resolved.error) {
+                            // Si el link proviene del propio comando, abortamos inmediatamente con el error específico
+                            if (msg.id === message.id) {
+                                return { beatmap_url: null, gamemode: null, fromList: false, bad_response: `❌ Error al acceder al enlace de Discord: ${resolved.error}` };
+                            }
+                            // Si proviene de otro mensaje del historial, lo ignoramos y seguimos buscando
+                            continue;
+                        }
                         return { ...resolved, bad_response: 'shh' };
                     }
                 }
@@ -205,10 +224,10 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
             }
         }
 
-        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: '❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.' };
     } catch (error) {
         console.error("<#> findBeatmapInChannel error:", error);
-        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: 'No se encontro un mapa al cual hacerle >c' };
+        return { beatmap_url: null, gamemode: null, fromList: false, bad_response: '❌ Ocurrió un error al buscar un mapa en el canal.' };
     }
 }
 
