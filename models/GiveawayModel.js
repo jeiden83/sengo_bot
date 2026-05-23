@@ -1,7 +1,9 @@
 const fs = require('fs');
 const path = require('path');
 
-const filePath = path.join(process.cwd(), 'db/local/giveaways.json');
+const filePath = process.env.NODE_ENV === 'test'
+    ? path.join(process.cwd(), 'db/local/giveaways_test.json')
+    : path.join(process.cwd(), 'db/local/giveaways.json');
 
 // Caché en memoria
 let giveaways = [];
