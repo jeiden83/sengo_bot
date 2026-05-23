@@ -132,6 +132,10 @@ async function run(messages, args) {
                         durationMs
                     });
 
+                    // Editar el sorteo activo para mostrar la ID real en el footer
+                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id }, message.author.id, message);
+                    await activeMsg.edit({ embeds: [activeEmbedWithId] }).catch(() => {});
+
                     await previewMsg.edit({
                         content: `✅ ¡Sorteo iniciado en <#${targetChannelId}>!`,
                         embeds: [],
