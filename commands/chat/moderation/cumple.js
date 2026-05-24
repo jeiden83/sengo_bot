@@ -41,11 +41,14 @@ async function run(messages, args) {
     const authorId = message.author.id;
     const guild = message.guild;
 
-    if (!args || args.length === 0) {
+    // Filtrar argumentos nulos, indefinidos o vacíos (p. ej. causados por alias_args)
+    const cleanArgs = (args || []).filter(arg => arg !== null && arg !== undefined && arg !== '');
+
+    if (cleanArgs.length === 0) {
         return helpMessage();
     }
 
-    const sub = args[0].toLowerCase();
+    const sub = cleanArgs[0].toLowerCase();
 
     // 1. Caso de configurar canal
     if (sub === "canal" || sub === "channel") {
@@ -60,7 +63,7 @@ async function run(messages, args) {
             return "❌ No tienes permisos para configurar el canal de cumpleaños (se requiere *Gestionar Servidor* o *Administrador*).";
         }
 
-        if (!args[1]) {
+        if (!cleanArgs[1]) {
             const currentChannelId = BirthdayModel.getGuildChannel(guild.id);
             if (currentChannelId) {
                 return `📢 El canal de anuncios de cumpleaños actual es <#${currentChannelId}>. Puedes cambiarlo con \`s.cumple canal #canal\` o desactivarlo con \`s.cumple canal desactivar\`.`;
@@ -68,14 +71,14 @@ async function run(messages, args) {
             return "📢 No hay ningún canal de cumpleaños configurado actualmente. Usa \`s.cumple canal #canal\` para establecer uno.";
         }
 
-        const channelArg = args[1].toLowerCase();
+        const channelArg = cleanArgs[1].toLowerCase();
         if (channelArg === "quitar" || channelArg === "desactivar" || channelArg === "none") {
             BirthdayModel.setGuildChannel(guild.id, null);
             return "✅ Se ha desactivado el canal de anuncios de cumpleaños. Sengo ya no anunciará los cumpleaños en este servidor.";
         }
 
         let channelId = null;
-        const match = args[1].match(/^<#(\d+)>$/) || args[1].match(/^(\d+)$/);
+        const match = cleanArgs[1].match(/^<#(\d+)>$/) || cleanArgs[1].match(/^(\d+)$/);
         if (match) {
             channelId = match[1];
         }
@@ -127,12 +130,12 @@ async function run(messages, args) {
     }
 
     // 6. Caso de establecer cumpleaños (por comando explícito o atajo)
-    let dateStr = args[1];
+    let dateStr = cleanArgs[1];
     let isSetSubcommand = sub === "set" || sub === "agregar" || sub === "establecer";
     
     // Si no es un subcomando set explícito, el primer argumento podría ser la fecha directamente (atajo)
     if (!isSetSubcommand) {
-        dateStr = args[0];
+        dateStr = cleanArgs[0];
     }
 
     const parsedDate = parseBirthday(dateStr);
