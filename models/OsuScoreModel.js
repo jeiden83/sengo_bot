@@ -1518,7 +1518,7 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
     let countryCode = recentScore.user?.country_code || recentScore.country_code;
 
     Promise.resolve().then(async () => {
-        // 1. Precarga del Compare (.c) y el perfil del usuario en ese mapa (Máxima prioridad)
+        // 1. Precarga del Compare (.c), perfil de usuario y metadatos del mapa en ese mapa (Máxima prioridad)
         if (userId && beatmapId) {
             try {
                 const compareArgs = {
@@ -1528,13 +1528,15 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
                     server: parsed_args?.server || 'bancho'
                 };
                 const OsuUserModel = require("./OsuUserModel.js");
+                const BeatmapModel = require("./BeatmapModel.js");
                 await Promise.all([
                     getBeatmapUserAllScores(compareArgs),
-                    OsuUserModel.getOsuUser(compareArgs).catch(() => {})
+                    OsuUserModel.getOsuUser(compareArgs).catch(() => {}),
+                    BeatmapModel.getBeatmap(beatmapId).catch(() => {})
                 ]);
-                console.log(`[BG-RECENT-PRELOAD] Compare (.c) y Perfil precargados en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
+                console.log(`[BG-RECENT-PRELOAD] Compare (.c), Perfil y Mapa precargados en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
             } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare/perfil para ${username || userId} en el mapa ${beatmapId}:`, err);
+                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare/perfil/mapa para ${username || userId} en el mapa ${beatmapId}:`, err);
             }
         }
 
