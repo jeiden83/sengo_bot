@@ -96,14 +96,25 @@ async function initSupabaseStorage() {
             const text = await data.text();
             const parsed = JSON.parse(text);
             if (parsed) {
-                db = parsed;
-                if (!db.configs) db.configs = {};
-                if (!db.users) db.users = {};
-                // Actualizar copia local
-                try {
-                    fs.writeFileSync(filePath, JSON.stringify(db, null, 4));
-                } catch (e) {}
-                console.log("[BirthdayModel] Sincronizado cumpleaños desde Supabase Storage con éxito.");
+                // Fusionar datos locales (prioritarios) con datos remotos
+                const mergedUsers = { ...parsed.users, ...db.users };
+                const mergedConfigs = { ...parsed.configs, ...db.configs };
+                
+                const hasChanges = JSON.stringify(db.users) !== JSON.stringify(mergedUsers) || 
+                                   JSON.stringify(db.configs) !== JSON.stringify(mergedConfigs);
+                
+                db.users = mergedUsers;
+                db.configs = mergedConfigs;
+
+                if (hasChanges) {
+                    saveBirthdays();
+                    console.log("[BirthdayModel] Cumpleaños locales fusionados con el storage remoto y resubidos.");
+                } else {
+                    try {
+                        fs.writeFileSync(filePath, JSON.stringify(db, null, 4));
+                    } catch (e) {}
+                    console.log("[BirthdayModel] Sincronizado cumpleaños desde Supabase Storage con éxito (sin cambios).");
+                }
             }
         } else if (error && error.message && error.message.includes("Object not found")) {
             // Si no existe, subir el local actual
