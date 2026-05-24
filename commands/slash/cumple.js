@@ -1,5 +1,5 @@
 const { SlashCommandBuilder, ChannelType } = require("discord.js");
-const cumpleChatCommand = require("../chat/utils/cumple.js");
+const cumpleChatCommand = require("../chat/moderation/cumple.js");
 
 const data = new SlashCommandBuilder()
     .setName("cumple")
