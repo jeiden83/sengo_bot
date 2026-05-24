@@ -42,8 +42,13 @@ function doBirthdayListEmbed(message, guild, bdayList) {
             if (list.length > 0) {
                 const monthName = MONTHS_ES[i];
                 const content = list.map(item => {
-                    const yearStr = item.year ? ` (${item.year})` : '';
-                    return `• <@${item.userId}> - **${item.day} de ${monthName}**${yearStr}`;
+                    let ageStr = '';
+                    if (item.year) {
+                        const currentYear = new Date().getFullYear();
+                        const age = currentYear - item.year;
+                        ageStr = ` (cumple ${age} años)`;
+                    }
+                    return `• <@${item.userId}> - **${item.day} de ${monthName}**${ageStr}`;
                 }).join('\n');
 
                 embed.addFields({ name: `📅 ${monthName}`, value: content, inline: false });
