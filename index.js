@@ -98,6 +98,10 @@ async function main(reload) {
     const { initWebhookServer } = require("./commands/utils/webhook.js");
     initWebhookServer(client, res, config);
 
+    // Inicializar el servicio de anuncios de cumpleaños
+    const { initBirthdayAnnouncer } = require("./services/birthdayAnnouncer.js");
+    initBirthdayAnnouncer(client);
+
     await login(client, config);  
 
     if (process.stdin.isTTY) {
