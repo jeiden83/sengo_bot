@@ -96,6 +96,15 @@ function setGuildChannel(guildId, channelId) {
 }
 
 /**
+ * Obtiene el canal de anuncios de cumpleaños de un servidor.
+ * @param {string} guildId - ID del servidor.
+ * @returns {string|null} ID del canal o null si no está configurado.
+ */
+function getGuildChannel(guildId) {
+    return db.configs[guildId]?.channelId || null;
+}
+
+/**
  * Obtiene la fecha del último anuncio realizado en el servidor.
  * @param {string} guildId - ID del servidor.
  * @returns {string|null} Fecha en formato YYYY-MM-DD o null.
@@ -254,6 +263,7 @@ module.exports = {
     getUserBirthday,
     removeUserBirthday,
     setGuildChannel,
+    getGuildChannel,
     getGuildLastAnnounced,
     setGuildLastAnnounced,
     getGuildConfig,
