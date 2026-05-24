@@ -174,7 +174,10 @@ async function run(messages, args) {
         const { day, month, year } = parsedDate;
         BirthdayModel.setUserBirthday(targetUserId, day, month, year);
         const yearStr = year ? `/${year}` : '';
-        return `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**.`;
+        return {
+            content: `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**.`,
+            allowedMentions: { users: [] }
+        };
     }
 
     // 7. Caso de establecer cumpleaños (por comando explícito o atajo)
