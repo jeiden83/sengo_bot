@@ -1518,14 +1518,7 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
     let countryCode = recentScore.user?.country_code || recentScore.country_code;
 
     Promise.resolve().then(async () => {
-        // 1. Precarga del Gap en segundo plano
-        try {
-            await triggerBackgroundGapCache(message, beatmapId, mode);
-        } catch (err) {
-            console.error(`[BG-RECENT-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
-        }
-
-        // 2. Precarga del Compare (.c) del usuario en ese mapa
+        // 1. Precarga del Compare (.c) y el perfil del usuario en ese mapa (Máxima prioridad)
         if (userId && beatmapId) {
             try {
                 const compareArgs = {
@@ -1534,14 +1527,18 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
                     gamemode: mode,
                     server: parsed_args?.server || 'bancho'
                 };
-                await getBeatmapUserAllScores(compareArgs);
-                console.log(`[BG-RECENT-PRELOAD] Compare (.c) precargado en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
+                const OsuUserModel = require("./OsuUserModel.js");
+                await Promise.all([
+                    getBeatmapUserAllScores(compareArgs),
+                    OsuUserModel.getOsuUser(compareArgs).catch(() => {})
+                ]);
+                console.log(`[BG-RECENT-PRELOAD] Compare (.c) y Perfil precargados en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
             } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare para ${username || userId} en el mapa ${beatmapId}:`, err);
+                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare/perfil para ${username || userId} en el mapa ${beatmapId}:`, err);
             }
         }
 
-        // 3. Precarga del Leaderboard del país (.lb) de ese usuario en ese mapa
+        // 2. Precarga del Leaderboard del país (.lb) de ese usuario en ese mapa (Prioridad media)
         if (!countryCode && message && message.author) {
             try {
                 const supabase = getSupabaseClient();
@@ -1567,6 +1564,13 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
             } catch (err) {
                 console.error(`[BG-RECENT-PRELOAD] Error al precargar leaderboard nacional de ${countryCode} para el mapa ${beatmapId}:`, err);
             }
+        }
+
+        // 3. Precarga del Gap en segundo plano (Prioridad baja)
+        try {
+            await triggerBackgroundGapCache(message, beatmapId, mode);
+        } catch (err) {
+            console.error(`[BG-RECENT-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
         }
     }).catch(err => {
         console.error(`[BG-RECENT-PRELOAD] Error general en el proceso en segundo plano:`, err);

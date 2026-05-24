@@ -110,7 +110,12 @@ async function _getOsuUser(parsed_args) {
     const username = parsed_args.username[0];
     const cacheKey = `${username}:${look_gamemode}:${server}`;
     const now = Date.now();
-    const cached = userProfileCache.get(cacheKey);
+    
+    let cached = userProfileCache.get(cacheKey);
+    if (!cached && typeof username === 'string') {
+        const cacheKeyLower = `${username.toLowerCase()}:${look_gamemode}:${server}`;
+        cached = userProfileCache.get(cacheKeyLower);
+    }
 
     if (cached && (now - cached.timestamp) < PROFILE_CACHE_TTL) {
         return cached.user;
@@ -119,6 +124,16 @@ async function _getOsuUser(parsed_args) {
     const returnAndCache = (user) => {
         if (user && typeof user === 'object' && user.username !== undefined && user.username !== "El usuario no se encuentra en osu!" && user.username !== "El usuario no se encuentra en Gatari!") {
             setWithLimit(userProfileCache, cacheKey, { user, timestamp: now });
+            if (user.id) {
+                const keyById = `${user.id}:${look_gamemode}:${server}`;
+                setWithLimit(userProfileCache, keyById, { user, timestamp: now });
+            }
+            if (user.username) {
+                const keyByName = `${user.username}:${look_gamemode}:${server}`;
+                setWithLimit(userProfileCache, keyByName, { user, timestamp: now });
+                const keyByNameLower = `${user.username.toLowerCase()}:${look_gamemode}:${server}`;
+                setWithLimit(userProfileCache, keyByNameLower, { user, timestamp: now });
+            }
         }
         return user;
     };

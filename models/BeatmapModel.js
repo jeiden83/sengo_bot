@@ -87,7 +87,19 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
  * Obtiene los detalles de dificultad de un beatmap dado, con caché de 1 hora.
  */
 async function getBeatmap(beatmap_id) {
-    const cached = beatmapCache.get(beatmap_id);
+    let cleanId = beatmap_id;
+    if (typeof beatmap_id === 'string') {
+        const match = beatmap_id.match(/\/beatmaps\/(\d+)/) || beatmap_id.match(/\/b\/(\d+)/);
+        if (match) {
+            cleanId = parseInt(match[1]);
+        } else if (/^\d+$/.test(beatmap_id)) {
+            cleanId = parseInt(beatmap_id);
+        }
+    } else if (typeof beatmap_id === 'number') {
+        cleanId = beatmap_id;
+    }
+
+    const cached = beatmapCache.get(cleanId);
     const now = Date.now();
     if (cached && (now - cached.timestamp) < 3600000) {
         return cached.data;
@@ -97,10 +109,10 @@ async function getBeatmap(beatmap_id) {
 
     const result = await v2.beatmaps.details({
         type: 'difficulty',
-        id: beatmap_id
+        id: cleanId
     });
 
-    setWithLimit(beatmapCache, beatmap_id, { data: result, timestamp: now });
+    setWithLimit(beatmapCache, cleanId, { data: result, timestamp: now });
     return result;
 }
 
