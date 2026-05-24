@@ -75,10 +75,25 @@ async function run(interaction, res) {
             member: interaction.member,
             guild: interaction.guild,
             client: interaction.client,
-            channel: interaction.channel
+            channel: {
+                send: async (options) => {
+                    return await interaction.editReply(options);
+                },
+                sendTyping: async () => {
+                    try {
+                        await interaction.channel.sendTyping();
+                    } catch {}
+                },
+                messages: interaction.channel.messages,
+                guild: interaction.guild
+            }
         },
         res: res,
-        reply: null,
+        reply: {
+            reply: async (options) => {
+                return await interaction.editReply(options);
+            }
+        },
         logger: interaction.logger
     };
 
