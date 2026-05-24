@@ -37,7 +37,7 @@ function parseBirthday(str) {
 }
 
 async function run(messages, args) {
-    const { message } = messages;
+    const { message, reply, logger } = messages;
     const authorId = message.author.id;
     const guild = message.guild;
 
@@ -108,10 +108,102 @@ async function run(messages, args) {
     // 3. Caso de ver lista de cumpleaños
     if (sub === "lista" || sub === "list") {
         if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
-        const pageArg = cleanArgs[1] || 1;
         const bdayList = await BirthdayModel.getGuildBirthdays(guild);
-        const embed = doBirthdayListEmbed(message, guild, bdayList, pageArg);
-        return { embeds: [embed] };
+        
+        if (bdayList.length === 0) {
+            const embed = doBirthdayListEmbed(message, guild, bdayList, 1);
+            return { embeds: [embed] };
+        }
+
+        // Agrupar por mes para calcular total de páginas
+        const grouped = {};
+        for (let i = 0; i < 12; i++) {
+            grouped[i] = [];
+        }
+        bdayList.forEach(item => {
+            grouped[item.month - 1].push(item);
+        });
+        const monthsWithBdays = [];
+        for (let i = 0; i < 12; i++) {
+            if (grouped[i].length > 0) {
+                monthsWithBdays.push(i);
+            }
+        }
+        const pageSize = 4;
+        const totalPages = Math.ceil(monthsWithBdays.length / pageSize) || 1;
+
+        let pageNum = parseInt(cleanArgs[1]) || 1;
+        if (pageNum < 1) pageNum = 1;
+        if (pageNum > totalPages) pageNum = totalPages;
+
+        const initialEmbed = doBirthdayListEmbed(message, guild, bdayList, pageNum);
+
+        const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+        const getButtonsRow = (current) => {
+            return buildPaginationRow({
+                prefix: 'cumple',
+                current: current,
+                total: totalPages,
+                oneIndexed: true,
+                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+            });
+        };
+
+        const sendOptions = {
+            embeds: [initialEmbed]
+        };
+
+        if (totalPages > 1) {
+            sendOptions.components = [getButtonsRow(pageNum)];
+        }
+
+        let sent_message;
+        if (reply) {
+            sent_message = await reply.reply(sendOptions);
+        } else {
+            sent_message = await message.channel.send(sendOptions);
+        }
+
+        if (totalPages <= 1) return;
+
+        const btnFilter = btnInt => btnInt.user.id === message.author.id;
+        const collector = sent_message.createMessageComponentCollector({
+            filter: btnFilter,
+            idle: 45000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === 'cumple_first') {
+                    pageNum = 1;
+                } else if (i.customId === 'cumple_prev') {
+                    pageNum = Math.max(1, pageNum - 1);
+                } else if (i.customId === 'cumple_next') {
+                    pageNum = Math.min(totalPages, pageNum + 1);
+                } else if (i.customId === 'cumple_last') {
+                    pageNum = totalPages;
+                }
+
+                const updatedEmbed = doBirthdayListEmbed(message, guild, bdayList, pageNum);
+
+                await i.editReply({
+                    embeds: [updatedEmbed],
+                    components: [getButtonsRow(pageNum)]
+                });
+            } catch (err) {
+                console.error("Error al navegar la lista de cumpleaños:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sent_message.edit({ components: [] });
+            } catch {}
+        });
+
+        return;
     }
 
     // 4. Caso de ver siguiente cumpleaños
