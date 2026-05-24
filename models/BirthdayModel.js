@@ -135,6 +135,22 @@ function getAllUsers() {
 }
 
 /**
+ * Obtiene los cumpleaños que coinciden con el día y mes especificados.
+ * @param {number} day - Día del mes.
+ * @param {number} month - Mes (1-12).
+ * @returns {Array} Lista de cumpleaños { userId, day, month, year }.
+ */
+function getBirthdaysToday(day, month) {
+    const list = [];
+    for (const [userId, info] of Object.entries(db.users)) {
+        if (info.day === day && info.month === month) {
+            list.push({ userId, ...info });
+        }
+    }
+    return list;
+}
+
+/**
  * Obtiene los cumpleaños de todos los miembros del servidor especificado.
  * @param {Guild} guild - Instancia de Guild de Discord.js.
  * @returns {Promise<Array>} Lista de cumpleaños ordenada cronológicamente.
@@ -242,6 +258,7 @@ module.exports = {
     setGuildLastAnnounced,
     getGuildConfig,
     getAllUsers,
+    getBirthdaysToday,
     getGuildBirthdays,
     getNextBirthdays,
     getPrevBirthdays
