@@ -31,5 +31,8 @@
   },
   "devDependencies": {
     "eslint": "^10.4.0"
+  },
+  "overrides": {
+    "tar": "^7.5.11"
   }
 }
