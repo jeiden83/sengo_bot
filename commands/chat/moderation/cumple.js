@@ -130,7 +130,54 @@ async function run(messages, args) {
         return { embeds: [embed] };
     }
 
-    // 6. Caso de establecer cumpleaños (por comando explícito o atajo)
+    // 6. Caso de añadir cumpleaños de otro usuario (Solo Owner)
+    if (sub === "añadir" || sub === "add") {
+        const ownerId = process.env.OWNER_ID;
+        if (authorId !== ownerId) {
+            return "❌ Este subcomando es exclusivo para el creador del bot.";
+        }
+
+        const targetArg = cleanArgs[1];
+        const dateArg = cleanArgs[2];
+
+        if (!targetArg || !dateArg) {
+            return "❌ Uso correcto: `s.cumple añadir [@usuario/ID] [DD/MM]` o `s.cumple añadir [@usuario/ID] [DD/MM/YYYY]`.";
+        }
+
+        // Extraer ID de usuario (mención o ID numérica)
+        const match = targetArg.match(/^<@!?(\d+)>$/) || targetArg.match(/^(\d+)$/);
+        if (!match) {
+            return "❌ Debes mencionar a un usuario válido o ingresar su ID de Discord.";
+        }
+        const targetUserId = match[1];
+
+        // Validar que el usuario exista
+        let targetUser = null;
+        if (guild) {
+            const member = await guild.members.fetch(targetUserId).catch(() => null);
+            if (member) {
+                targetUser = member.user;
+            }
+        }
+        if (!targetUser) {
+            targetUser = await message.client.users.fetch(targetUserId).catch(() => null);
+        }
+        if (!targetUser) {
+            return "❌ No se pudo encontrar a ese usuario de Discord. Verifica el ID.";
+        }
+
+        const parsedDate = parseBirthday(dateArg);
+        if (!parsedDate) {
+            return "❌ Formato de fecha inválido. Por favor usa `DD/MM` o `DD/MM/YYYY`.";
+        }
+
+        const { day, month, year } = parsedDate;
+        BirthdayModel.setUserBirthday(targetUserId, day, month, year);
+        const yearStr = year ? `/${year}` : '';
+        return `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**.`;
+    }
+
+    // 7. Caso de establecer cumpleaños (por comando explícito o atajo)
     let dateStr = cleanArgs[1];
     let isSetSubcommand = sub === "set" || sub === "agregar" || sub === "establecer";
     
@@ -167,7 +214,9 @@ function helpMessage() {
            "• `s.cumple anterior` (o `pasado`) : Muestra el cumpleaños más reciente en el pasado.\n\n" +
            "**Comandos de Moderación (Admin/Gestionar Servidor):**\n" +
            "• `s.cumple canal [#canal]` : Elige en qué canal se enviarán las felicitaciones diarias.\n" +
-           "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.";
+           "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.\n\n" +
+           "**Comandos de Administrador del Bot (Owner):**\n" +
+           "• `s.cumple añadir [@usuario/ID] [fecha]` : Registra el cumpleaños de otro usuario.";
 }
 
 run.description = {
