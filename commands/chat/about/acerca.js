@@ -8,9 +8,9 @@ async function run(messages, args) {
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ff66aa';
 
     const embed = new EmbedBuilder()
-        .setTitle('🌸 Acerca de SengoBot')
+        .setTitle('🌸 Acerca de Sengo')
         .setDescription(
-            `SengoBot es un bot de Discord de alto rendimiento especializado para la comunidad de **osu!**, diseñado con un enfoque centrado en la velocidad extrema, la automatización y la integración social.\n\nA continuación se presentan las características avanzadas que lo hacen sobresalir frente a otras alternativas tradicionales:`
+            `Sengo es un bot de Discord de alto rendimiento especializado para la comunidad de **osu!**, diseñado con un enfoque centrado en la velocidad extrema, la automatización y la integración social.\n\nA continuación se presentan las características avanzadas que lo hacen sobresalir frente a otras alternativas tradicionales:`
         )
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
@@ -36,15 +36,15 @@ async function run(messages, args) {
                 value: 'Sengo analiza enlaces de mapas de osu!, respuestas a mensajes anteriores, y enlaces directos de Discord para extraer el beatmap sobre el que deseas interactuar sin obligarte a copiar IDs manuales.'
             }
         )
-        .setFooter({ text: 'SengoBot • s.acerca / s.about', iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: 'Sengo • s.acerca / s.about', iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
     const sendOptions = { embeds: [embed] };
 
     if (reply) {
-        return await reply.reply(sendOptions);
+        await reply.reply(sendOptions);
     } else {
-        return await message.channel.send(sendOptions);
+        await message.channel.send(sendOptions);
     }
 }
 
@@ -55,8 +55,8 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Acerca de SengoBot',
-    'body': 'Muestra información sobre SengoBot y las características que lo hacen único frente a otros bots.',
+    'header': 'Acerca de Sengo',
+    'body': 'Muestra información sobre Sengo y las características que lo hacen único frente a otros bots.',
     'usage': undefined
 }
 

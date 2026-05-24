@@ -17,7 +17,7 @@ function doOsuBgEmbed(message, beatmap) {
         .setImage(bg_url)
         .setColor(embedColor)
         .setFooter({
-            text: `SengoBot • Beatmapset ID: ${beatmapset_id}`,
+            text: `Sengo • Beatmapset ID: ${beatmapset_id}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

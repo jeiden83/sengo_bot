@@ -35,7 +35,7 @@ function doOsuDailyEmbed(message, dailyRoom, beatmap, topScoresText) {
         .setImage(beatmapset.covers["cover@2x"] || beatmapset.covers.cover)
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot • Daily Challenge",
+            text: "Sengo • Daily Challenge",
             iconURL: message.client?.user?.displayAvatarURL() || "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();

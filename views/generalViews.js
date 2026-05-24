@@ -10,13 +10,13 @@ function doHelpListEmbed(message, fields, description) {
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: 'Menú de Ayuda • SengoBot',
+            name: 'Menú de Ayuda • Sengo',
             iconURL: icon_url
         })
         .setDescription(description)
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot • s.help [comando]",
+            text: "Sengo • s.help [comando]",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -45,7 +45,7 @@ function doHelpCommandEmbed(message, mainName, queryName, helpData) {
         .setDescription(`*${helpData.headerText}*`)
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot • s.help [comando]",
+            text: "Sengo • s.help [comando]",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

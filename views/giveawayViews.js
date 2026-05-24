@@ -25,7 +25,7 @@ function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChanne
         reqsText += `\n▸ **Rol Requerido:** <@&${requiredRoleId}> ${allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
     }
     if (blockOsuSupporters) {
-        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot)*`;
+        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a Sengo)*`;
     }
     if (blockNitro) {
         reqsText += `\n▸ **Excluir Nitro/Booster:** Sí`;
@@ -46,7 +46,7 @@ function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChanne
             `\n\n*Usa los botones de abajo para editar los valores antes de confirmar o cancelar.*`
         )
         .setColor(embedColor)
-        .setFooter({ text: "SengoBot Sorteos • Vista Previa" })
+        .setFooter({ text: "Sengo Sorteos • Vista Previa" })
         .setTimestamp();
 }
 
@@ -192,7 +192,7 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
         reqsText += `\n▸ **Rol Requerido:** <@&${gw.requiredRoleId}> ${gw.allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
     }
     if (gw.blockOsuSupporters) {
-        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a SengoBot y no tener supporter activo)*`;
+        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a Sengo y no tener supporter activo)*`;
     }
     if (gw.blockNitro) {
         reqsText += `\n▸ **Excluir Nitro/Booster:** Sí *(No tener Nitro activo o ser booster)*`;
@@ -209,7 +209,7 @@ function getGiveawayActiveEmbed(gw, creatorId, message) {
         .setTitle(`🎉 ¡SORTEO: ${gw.prize}! 🎉`)
         .setDescription(desc)
         .setColor(embedColor)
-        .setFooter({ text: `SengoBot Sorteos • ID: ${gw.messageId || 'Nuevo'}` })
+        .setFooter({ text: `Sengo Sorteos • ID: ${gw.messageId || 'Nuevo'}` })
         .setTimestamp();
 }
 
@@ -224,8 +224,8 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
     }
 
     const footerText = wasOffline 
-        ? `SengoBot Sorteos • ID: ${gw.messageId} • Finalizado offline`
-        : `SengoBot Sorteos • ID: ${gw.messageId}`;
+        ? `Sengo Sorteos • ID: ${gw.messageId} • Finalizado offline`
+        : `Sengo Sorteos • ID: ${gw.messageId}`;
 
     let desc = `**Premio:** \`${gw.prize}\`\n` +
         `**Ganadores:** ${winnersText}\n\n`;

@@ -6,7 +6,7 @@ const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
  */
 function doOsuOAuthEmbed(authUrl) {
     return new EmbedBuilder()
-        .setTitle("Vinculación de Cuenta Segura - SengoBot")
+        .setTitle("Vinculación de Cuenta Segura - Sengo")
         .setDescription(
             "Para vincular tu cuenta de osu! de forma completamente segura y privada mediante la API oficial (OAuth), haz clic en el siguiente botón:\n\n" +
             `👉 **[Autorizar Cuenta de osu!](${authUrl})**\n\n` +
@@ -16,7 +16,7 @@ function doOsuOAuthEmbed(authUrl) {
             "• **Privado**: Este proceso es completamente confidencial."
         )
         .setColor("#ff66aa")
-        .setFooter({ text: "SengoBot OAuth System v2" })
+        .setFooter({ text: "Sengo OAuth System v2" })
         .setTimestamp();
 }
 
@@ -83,7 +83,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         .setDescription(desc)
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-        .setFooter({ text: `SengoBot • Página ${page}/${maxPages}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: `Sengo • Página ${page}/${maxPages}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 }
 

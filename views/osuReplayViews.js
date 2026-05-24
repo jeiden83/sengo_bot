@@ -15,7 +15,7 @@ function doOsuReplayEmbed(replayData, modeStr, displayMods, dateObj) {
             { name: 'Beatmap MD5', value: `\`${replayData.beatmapMD5}\``, inline: false }
         )
         .setColor('#ff66aa')
-        .setFooter({ text: "SengoBot Replay Parser" });
+        .setFooter({ text: "Sengo Replay Parser" });
 
     if (dateObj && !isNaN(dateObj.getTime())) {
         embed.setTimestamp(dateObj);

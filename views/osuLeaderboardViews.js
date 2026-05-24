@@ -61,7 +61,7 @@ function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
         .setFooter({
-            text: `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + user_scores.length} de ${total_plays}`,
+            text: `Sengo • Mostrando posiciones ${startIndex + 1}-${startIndex + user_scores.length} de ${total_plays}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -147,7 +147,7 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 
     const beatmap_cover = beatmap_metadata.beatmapset.covers["list@2x"] || beatmap_metadata.beatmapset.covers.cover;
 
-    let footerText = `SengoBot • Mostrando posiciones ${startIndex + 1}-${startIndex + scores_chunk.length} de ${total_plays} (Página ${page}/${max_pages})`;
+    let footerText = `Sengo • Mostrando posiciones ${startIndex + 1}-${startIndex + scores_chunk.length} de ${total_plays} (Página ${page}/${max_pages})`;
     if (usedSupporter) {
         footerText += ` • Pool: ${usedSupporter.username}${usedSupporter.fallback ? ' (global)' : ''}`;
     }

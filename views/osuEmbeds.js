@@ -125,7 +125,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
         }
     }
 
-    let footerText = "SengoBot";
+    let footerText = "Sengo";
     if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null && ratioVal < 10) {
@@ -327,7 +327,7 @@ ${ansiBlock}
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
-            text: `SengoBot • Jugada #${index} de ${total_plays} del Top de PP`,
+            text: `Sengo • Jugada #${index} de ${total_plays} del Top de PP`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -484,7 +484,7 @@ ${ansiBlock}
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
-            text: `SengoBot • Jugada #${index} de ${total_plays} comparadas`,
+            text: `Sengo • Jugada #${index} de ${total_plays} comparadas`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp(new Date(score.ended_at || score.created_at));
@@ -615,7 +615,7 @@ ${ansiBlock}
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
-        .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp(new Date(recent_scores.ended_at));
 
     return embed;
@@ -705,7 +705,7 @@ function doOsuMapEmbed({
         .setImage(beatmap.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({
-            text: `SengoBot • Beatmap ID: ${beatmap.id}`,
+            text: `Sengo • Beatmap ID: ${beatmap.id}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -771,7 +771,7 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata) {
 `)
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot",
+            text: "Sengo",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -868,7 +868,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false)
         .setThumbnail(osu_userdata.avatar_url)
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot",
+            text: "Sengo",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -977,7 +977,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false)
         )
         .setColor(embedColor)
         .setFooter({
-            text: "SengoBot • Página 2 de 2 • Estadísticas Detalladas",
+            text: "Sengo • Página 2 de 2 • Estadísticas Detalladas",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
