@@ -108,8 +108,9 @@ async function run(messages, args) {
     // 3. Caso de ver lista de cumpleaños
     if (sub === "lista" || sub === "list") {
         if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        const pageArg = cleanArgs[1] || 1;
         const bdayList = await BirthdayModel.getGuildBirthdays(guild);
-        const embed = doBirthdayListEmbed(message, guild, bdayList);
+        const embed = doBirthdayListEmbed(message, guild, bdayList, pageArg);
         return { embeds: [embed] };
     }
 

@@ -9,7 +9,7 @@ const MONTHS_ES = [
 /**
  * Genera el embed con la lista de todos los cumpleaños del servidor agrupados por mes.
  */
-function doBirthdayListEmbed(message, guild, bdayList) {
+function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
     const embedColor = getEmbedColor(message);
     const guildIcon = guild.iconURL({ dynamic: true }) || "";
 
@@ -19,42 +19,68 @@ function doBirthdayListEmbed(message, guild, bdayList) {
             iconURL: guildIcon || undefined
         })
         .setColor(embedColor)
-        .setDescription(bdayList.length === 0 ? "✨ No hay cumpleaños registrados en este servidor. ¡Sé el primero usando `.cumple set`!" : null)
-        .setFooter({
-            text: "Sengo • s.cumple",
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
-        })
         .setTimestamp();
 
-    if (bdayList.length > 0) {
-        // Agrupar por mes
-        const grouped = {};
-        for (let i = 0; i < 12; i++) {
-            grouped[i] = [];
-        }
-
-        bdayList.forEach(item => {
-            grouped[item.month - 1].push(item);
+    if (bdayList.length === 0) {
+        embed.setDescription("✨ No hay cumpleaños registrados en este servidor. ¡Sé el primero usando `.cumple set`!");
+        embed.setFooter({
+            text: "Sengo • s.cumple",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         });
+        return embed;
+    }
 
-        for (let i = 0; i < 12; i++) {
-            const list = grouped[i];
-            if (list.length > 0) {
-                const monthName = MONTHS_ES[i];
-                const content = list.map(item => {
-                    let ageStr = '';
-                    if (item.year) {
-                        const currentYear = new Date().getFullYear();
-                        const age = currentYear - item.year;
-                        ageStr = ` (cumple ${age} años)`;
-                    }
-                    return `• <@${item.userId}> - **${item.day} de ${monthName}**${ageStr}`;
-                }).join('\n');
+    // Agrupar por mes
+    const grouped = {};
+    for (let i = 0; i < 12; i++) {
+        grouped[i] = [];
+    }
 
-                embed.addFields({ name: `📅 ${monthName}`, value: content, inline: false });
-            }
+    bdayList.forEach(item => {
+        grouped[item.month - 1].push(item);
+    });
+
+    // Quedarse solo con los meses que tienen cumpleaños
+    const monthsWithBdays = [];
+    for (let i = 0; i < 12; i++) {
+        if (grouped[i].length > 0) {
+            monthsWithBdays.push({
+                monthIndex: i,
+                monthName: MONTHS_ES[i],
+                list: grouped[i]
+            });
         }
     }
+
+    // Paginación: 4 meses por página
+    const pageSize = 4;
+    const totalPages = Math.ceil(monthsWithBdays.length / pageSize) || 1;
+    
+    let page = parseInt(pageArg) || 1;
+    if (page < 1) page = 1;
+    if (page > totalPages) page = totalPages;
+
+    const startIndex = (page - 1) * pageSize;
+    const pageMonths = monthsWithBdays.slice(startIndex, startIndex + pageSize);
+
+    pageMonths.forEach(m => {
+        const content = m.list.map(item => {
+            let ageStr = '';
+            if (item.year) {
+                const currentYear = new Date().getFullYear();
+                const age = currentYear - item.year;
+                ageStr = ` (cumple ${age} años)`;
+            }
+            return `• <@${item.userId}> - **${item.day} de ${m.monthName}**${ageStr}`;
+        }).join('\n');
+
+        embed.addFields({ name: `📅 ${m.monthName}`, value: content, inline: false });
+    });
+
+    embed.setFooter({
+        text: `Página ${page}/${totalPages} • Sengo • s.cumple`,
+        iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+    });
 
     return embed;
 }
