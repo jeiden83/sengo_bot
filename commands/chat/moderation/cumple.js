@@ -122,7 +122,7 @@ async function run(messages, args) {
     }
 
     // 5. Caso de ver cumpleaños anterior
-    if (sub === "anterior" || sub === "prev") {
+    if (sub === "anterior" || sub === "prev" || sub === "pasado") {
         if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
         const prevData = await BirthdayModel.getPrevBirthdays(guild, new Date());
         const embed = doBirthdayPrevEmbed(message, guild, prevData);
@@ -162,8 +162,8 @@ function helpMessage() {
            "• `s.cumple set [fecha]` : Alternativa para guardar tu cumpleaños.\n" +
            "• `s.cumple quitar` : Elimina tu cumpleaños de mi base de datos.\n" +
            "• `s.cumple lista` : Muestra todos los cumpleaños del servidor agrupados por mes.\n" +
-           "• `s.cumple proximo` : Muestra el cumpleaños más cercano en el futuro.\n" +
-           "• `s.cumple anterior` : Muestra el cumpleaños más reciente en el pasado.\n\n" +
+           "• `s.cumple proximo` (o `siguiente`) : Muestra el cumpleaños más cercano en el futuro.\n" +
+           "• `s.cumple anterior` (o `pasado`) : Muestra el cumpleaños más reciente en el pasado.\n\n" +
            "**Comandos de Moderación (Admin/Gestionar Servidor):**\n" +
            "• `s.cumple canal [#canal]` : Elige en qué canal se enviarán las felicitaciones diarias.\n" +
            "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.";
