@@ -9,53 +9,56 @@ const Logger = require("../utils/logger.js");
 async function checkBirthdays(client) {
     try {
         const now = new Date();
-        const day = now.getDate();
-        const month = now.getMonth() + 1; // 1-indexed
-        const currentDateStr = `${now.getFullYear()}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        const todayBirthdays = BirthdayModel.getBirthdaysToday(day, month);
-        if (todayBirthdays.length === 0) {
-            return;
-        }
-
-        // Obtener todos los servidores en los que está el bot
         const guilds = client.guilds.cache;
+
         for (const [guildId, guild] of guilds) {
             const channelId = BirthdayModel.getGuildChannel(guildId);
             if (!channelId) continue;
 
-            const lastAnnounced = BirthdayModel.getGuildLastAnnounced(guildId);
-            if (lastAnnounced === currentDateStr) continue;
+            const bdayList = await BirthdayModel.getGuildBirthdays(guild);
+            if (bdayList.length === 0) continue;
 
-            // Encontrar qué cumpleañeros están en este servidor
-            const birthdaysInGuild = [];
-            for (const item of todayBirthdays) {
-                const member = await guild.members.fetch(item.userId).catch(() => null);
-                if (member) {
-                    birthdaysInGuild.push({ member, ...item });
-                }
-            }
+            let channel = null;
 
-            if (birthdaysInGuild.length > 0) {
-                const channel = await client.channels.fetch(channelId).catch(() => null);
-                if (channel) {
-                    Logger.system(`Anunciando cumpleaños en el servidor ${guild.name} (#${channel.name})`);
-                    for (const { member, year } of birthdaysInGuild) {
-                        const age = year ? now.getFullYear() - year : null;
-                        const embed = doBirthdayAnnounceEmbed(client, member, age);
-                        
-                        await channel.send({
-                            content: `🎉 ¡Feliz cumpleaños, <@${member.id}>! 🎂`,
-                            embeds: [embed]
-                        }).catch(err => {
-                            console.error(`Error al enviar mensaje de cumpleaños a ${member.user.tag}:`, err);
-                        });
+            for (const bday of bdayList) {
+                const userId = bday.userId;
+                const countryCode = await BirthdayModel.getUserCountryCode(userId);
+                const offset = BirthdayModel.getCountryUtcOffset(countryCode);
+
+                // Calcular fecha local del usuario desplazando la marca de tiempo de Date.now()
+                const localNow = new Date(now.getTime() + offset * 60 * 60 * 1000);
+                const localDay = localNow.getUTCDate();
+                const localMonth = localNow.getUTCMonth() + 1;
+                const localYear = localNow.getUTCFullYear();
+
+                // Verificar si hoy es el cumpleaños del usuario en su zona horaria
+                if (localDay === bday.day && localMonth === bday.month) {
+                    const lastAnnouncedYear = BirthdayModel.getGuildUserAnnounced(guildId, userId);
+                    if (lastAnnouncedYear === localYear) continue; // Ya felicitado este año
+
+                    // Carga perezosa del canal si tenemos un anuncio que hacer
+                    if (!channel) {
+                        channel = await client.channels.fetch(channelId).catch(() => null);
                     }
+                    if (!channel) break; // Si el canal no es válido, salir de este servidor
+
+                    Logger.system(`Anunciando cumpleaños de ${bday.member.user.tag} en el servidor ${guild.name} (#${channel.name})`);
+                    
+                    const age = bday.year ? localYear - bday.year : null;
+                    const isLinked = !!countryCode;
+                    const embed = doBirthdayAnnounceEmbed(client, bday.member, age, isLinked);
+
+                    await channel.send({
+                        content: `🎉 ¡Feliz cumpleaños, <@${userId}>! 🎂`,
+                        embeds: [embed]
+                    }).catch(err => {
+                        console.error(`Error al enviar mensaje de cumpleaños a ${bday.member.user.tag}:`, err);
+                    });
+
+                    // Registrar como anunciado este año en este servidor
+                    BirthdayModel.setGuildUserAnnounced(guildId, userId, localYear);
                 }
             }
-
-            // Marcar como anunciado hoy para este servidor para evitar duplicados
-            BirthdayModel.setGuildLastAnnounced(guildId, currentDateStr);
         }
     } catch (error) {
         console.error("Error en la tarea de verificación de cumpleaños:", error);

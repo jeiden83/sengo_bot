@@ -175,23 +175,33 @@ function doBirthdayPrevEmbed(message, guild, prevData) {
 /**
  * Genera el embed para el anuncio automático diario.
  */
-function doBirthdayAnnounceEmbed(client, member, age = null) {
+function doBirthdayAnnounceEmbed(client, member, age = null, isLinked = true) {
     // Usar el color rosa por defecto para celebraciones de cumpleaños
     const embedColor = "#FF69B4";
     const userAvatar = member.user.displayAvatarURL({ dynamic: true, size: 512 });
 
     const titleText = age ? `🎉 ¡Felices ${age} años! 🎉` : "🎉 ¡Feliz Cumpleaños! 🎉";
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setTitle(titleText)
         .setDescription(`✨ Hoy es el cumpleaños de ${member}! Deseémosle un excelente día lleno de alegrías y regalos. 🎂🎁🎈`)
         .setColor(embedColor)
         .setThumbnail(userAvatar)
-        .setFooter({
+        .setTimestamp();
+
+    if (!isLinked) {
+        embed.setFooter({
+            text: "Sengo • Tip: ¡Vincula tu cuenta de osu! (.link o /vincular) para que te felicite exactamente a tu hora local! ⏰",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        });
+    } else {
+        embed.setFooter({
             text: "Sengo • Anuncios de Cumpleaños",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
-        })
-        .setTimestamp();
+        });
+    }
+
+    return embed;
 }
 
 module.exports = {

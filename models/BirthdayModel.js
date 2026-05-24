@@ -339,6 +339,116 @@ async function getPrevBirthdays(guild, today) {
     };
 }
 
+const countryCodeCache = {};
+
+/**
+ * Obtiene el código de país de un usuario desde la base de datos de Supabase.
+ * @param {string} discordId - ID de Discord del usuario.
+ * @returns {Promise<string|null>} Código de país en mayúsculas o null.
+ */
+async function getUserCountryCode(discordId) {
+    if (countryCodeCache[discordId] !== undefined) {
+        return countryCodeCache[discordId];
+    }
+
+    const { getSupabaseClient } = require('../db/database.js');
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    try {
+        // 1. Intentar en oauth_tokens
+        const { data: tokenData } = await supabase
+            .from('oauth_tokens')
+            .select('country_code')
+            .eq('discord_id', discordId)
+            .maybeSingle();
+
+        if (tokenData?.country_code) {
+            countryCodeCache[discordId] = tokenData.country_code.toUpperCase();
+            return countryCodeCache[discordId];
+        }
+
+        // 2. Intentar en users
+        const { data: userData } = await supabase
+            .from('users')
+            .select('osu_id')
+            .eq('discord_id', discordId)
+            .maybeSingle();
+
+        if (userData?.osu_id) {
+            const { data: scoreData } = await supabase
+                .from('local_scores')
+                .select('country_code')
+                .eq('user_id', userData.osu_id)
+                .not('country_code', 'is', null)
+                .limit(1)
+                .maybeSingle();
+
+            if (scoreData?.country_code) {
+                countryCodeCache[discordId] = scoreData.country_code.toUpperCase();
+                return countryCodeCache[discordId];
+            }
+        }
+    } catch (e) {
+        console.error(`[BirthdayModel] Error al obtener el país para ${discordId}:`, e);
+    }
+
+    // No cachear null indefinidamente por si se vincula después,
+    // o cachear con un corto periodo, pero para simplificar, no cachear null.
+    return null;
+}
+
+/**
+ * Obtiene la desviación horaria UTC para un código de país.
+ * @param {string} countryCode - Código del país.
+ * @returns {number} Desviación horaria (offset) en horas.
+ */
+function getCountryUtcOffset(countryCode) {
+    if (!countryCode) return -4; // Default timezone offset (-4, ej. Venezuela/Chile/etc.)
+    
+    const COUNTRY_OFFSETS = {
+        "AR": -3, // Argentina
+        "CL": -4, // Chile
+        "VE": -4, // Venezuela
+        "CO": -5, // Colombia
+        "PE": -5, // Perú
+        "EC": -5, // Ecuador
+        "BO": -4, // Bolivia
+        "PY": -4, // Paraguay
+        "UY": -3, // Uruguay
+        "MX": -6, // México
+        "ES": 1,  // España
+        "US": -5, // EE.UU.
+        "BR": -3, // Brasil
+        "PA": -5, // Panamá
+        "CR": -6, // Costa Rica
+        "SV": -6, // El Salvador
+        "GT": -6, // Guatemala
+        "HN": -6, // Honduras
+        "NI": -6, // Nicaragua
+        "DO": -4, // República Dominicana
+        "PR": -4  // Puerto Rico
+    };
+
+    const code = countryCode.toUpperCase();
+    return code in COUNTRY_OFFSETS ? COUNTRY_OFFSETS[code] : -4;
+}
+
+function setGuildUserAnnounced(guildId, userId, year) {
+    if (!db.configs[guildId]) {
+        db.configs[guildId] = {};
+    }
+    if (!db.configs[guildId].announcedUsers) {
+        db.configs[guildId].announcedUsers = {};
+    }
+    db.configs[guildId].announcedUsers[userId] = year;
+    saveBirthdays();
+}
+
+function getGuildUserAnnounced(guildId, userId) {
+    return db.configs[guildId]?.announcedUsers?.[userId] || null;
+}
+
 module.exports = {
     setUserBirthday,
     getUserBirthday,
@@ -353,5 +463,9 @@ module.exports = {
     getGuildBirthdays,
     getNextBirthdays,
     getPrevBirthdays,
-    initSupabaseStorage
+    initSupabaseStorage,
+    getUserCountryCode,
+    getCountryUtcOffset,
+    setGuildUserAnnounced,
+    getGuildUserAnnounced
 };
