@@ -79,6 +79,12 @@ async function main(reload) {
     res = await connectDB(config);
 
     if (res.status === 1) {
+        // Inicializar almacenamiento persistente de cumpleaños
+        const BirthdayModel = require("./models/BirthdayModel.js");
+        BirthdayModel.initSupabaseStorage().catch(err => {
+            Logger.system(`Error al inicializar almacenamiento de cumpleaños: ${err.message}`);
+        });
+
         const { syncYuriImages } = require("./services/yuriSync.js");
         syncYuriImages(res.supabaseClient).catch(err => {
             Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);

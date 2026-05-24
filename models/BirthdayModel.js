@@ -28,19 +28,89 @@ function loadBirthdays() {
             fs.writeFileSync(filePath, JSON.stringify(db, null, 4));
         }
     } catch (error) {
-        console.error('Error al cargar cumpleaños:', error);
+        console.error('Error al cargar cumpleaños localmente:', error);
         db = { configs: {}, users: {} };
     }
 }
 
 /**
- * Guarda los datos de cumpleaños en el archivo local JSON.
+ * Guarda los datos de cumpleaños en el archivo local JSON y los sube a Supabase Storage.
  */
 function saveBirthdays() {
     try {
         fs.writeFileSync(filePath, JSON.stringify(db, null, 4));
+        
+        const { getSupabaseClient } = require('../db/database.js');
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            supabase.storage
+                .from('bot_db')
+                .upload('birthdays.json', Buffer.from(JSON.stringify(db, null, 4)), {
+                    contentType: 'application/json',
+                    upsert: true
+                })
+                .then(({ error }) => {
+                    if (error) {
+                        console.error('[BirthdayModel] Error al subir cumpleaños a Supabase:', error.message);
+                    }
+                })
+                .catch(err => {
+                    console.error('[BirthdayModel] Excepción al subir cumpleaños a Supabase:', err);
+                });
+        }
     } catch (error) {
         console.error('Error al guardar cumpleaños:', error);
+    }
+}
+
+/**
+ * Inicializa y sincroniza los datos de cumpleaños desde Supabase Storage.
+ */
+async function initSupabaseStorage() {
+    const { getSupabaseClient } = require('../db/database.js');
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+        const bucketName = 'bot_db';
+        const { data: buckets, error: listError } = await supabase.storage.listBuckets();
+        if (listError) {
+            console.error("[BirthdayModel] Error al listar buckets de storage:", listError.message);
+            return;
+        }
+
+        const exists = buckets?.find(b => b.name === bucketName);
+        if (!exists) {
+            const { error: createError } = await supabase.storage.createBucket(bucketName, { public: false });
+            if (createError) {
+                console.error("[BirthdayModel] Error al crear bucket 'bot_db':", createError.message);
+                return;
+            }
+        }
+
+        const { data, error } = await supabase.storage
+            .from(bucketName)
+            .download('birthdays.json');
+
+        if (!error && data) {
+            const text = await data.text();
+            const parsed = JSON.parse(text);
+            if (parsed) {
+                db = parsed;
+                if (!db.configs) db.configs = {};
+                if (!db.users) db.users = {};
+                // Actualizar copia local
+                try {
+                    fs.writeFileSync(filePath, JSON.stringify(db, null, 4));
+                } catch (e) {}
+                console.log("[BirthdayModel] Sincronizado cumpleaños desde Supabase Storage con éxito.");
+            }
+        } else if (error && error.message && error.message.includes("Object not found")) {
+            // Si no existe, subir el local actual
+            await saveBirthdays();
+        }
+    } catch (err) {
+        console.error("[BirthdayModel] Error en la inicialización de Supabase Storage:", err);
     }
 }
 
@@ -271,5 +341,6 @@ module.exports = {
     getBirthdaysToday,
     getGuildBirthdays,
     getNextBirthdays,
-    getPrevBirthdays
+    getPrevBirthdays,
+    initSupabaseStorage
 };
