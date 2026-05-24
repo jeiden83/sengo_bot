@@ -206,6 +206,34 @@ async function run(messages, args) {
         return;
     }
 
+    // 3.5 Caso de actualizar/chequear cumpleaños (Moderación/Admin)
+    if (sub === "actualizar" || sub === "update" || sub === "check" || sub === "revisar") {
+        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+
+        const member = message.member || await guild.members.fetch(authorId).catch(() => null);
+        if (!member) return "❌ No se pudo validar tu membresía en el servidor.";
+        
+        const hasPermission = member.permissions.has(PermissionFlagsBits.ManageGuild) || 
+                              member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!hasPermission) {
+            return "❌ No tienes permisos para forzar la revisión de cumpleaños (se requiere *Gestionar Servidor* o *Administrador*).";
+        }
+
+        const channelId = BirthdayModel.getGuildChannel(guild.id);
+        if (!channelId) {
+            return "📢 No hay ningún canal de anuncios de cumpleaños configurado actualmente en este servidor. Configura uno con `s.cumple canal #canal` antes de actualizar.";
+        }
+
+        const { checkGuildBirthdays } = require("../../../services/birthdayAnnouncer.js");
+        const announcedTags = await checkGuildBirthdays(guild, message.client);
+
+        if (announcedTags.length > 0) {
+            return `✅ Se revisaron los cumpleaños del día. Se felicitó a: ${announcedTags.join(", ")}.`;
+        }
+
+        return "📢 Se revisaron los cumpleaños del día. No hay nuevos cumpleaños para anunciar hoy en este servidor.";
+    }
+
     // 4. Caso de ver siguiente cumpleaños
     if (sub === "siguiente" || sub === "next" || sub === "proximo" || sub === "próximo") {
         if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
@@ -309,7 +337,8 @@ function helpMessage() {
            "• `s.cumple anterior` (o `pasado`) : Muestra el cumpleaños más reciente en el pasado.\n\n" +
            "**Comandos de Moderación (Admin/Gestionar Servidor):**\n" +
            "• `s.cumple canal [#canal]` : Elige en qué canal se enviarán las felicitaciones diarias.\n" +
-           "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.\n\n" +
+           "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.\n" +
+           "• `s.cumple actualizar` : Fuerza la comprobación de cumpleaños del día y felicita a los que falten.\n\n" +
            "**Comandos de Administrador del Bot (Owner):**\n" +
            "• `s.cumple añadir [@usuario/ID] [fecha]` : Registra el cumpleaños de otro usuario.";
 }

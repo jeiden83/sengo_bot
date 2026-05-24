@@ -41,6 +41,10 @@ const data = new SlashCommandBuilder()
                 opt.setName("desactivar")
                     .setDescription("Establece en True para desactivar los anuncios")
             )
+    )
+    .addSubcommand(sub =>
+        sub.setName("actualizar")
+            .setDescription("Fuerza la comprobación de cumpleaños del día y felicita a los que falten")
     );
 
 // Permitir instalación de usuario y contextos
