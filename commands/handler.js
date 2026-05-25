@@ -195,8 +195,8 @@ async function chatCommand(intialized_data, command_data) {
 
         // Verificar requerimiento de OAuth antes de ejecutar
         if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
-            const { getValidTokenForUser } = require("../utils/osuAuth.js");
-            const token = await getValidTokenForUser(message.author.id);
+            const OsuUserModel = require("../models/OsuUserModel.js");
+            const token = await OsuUserModel.getValidTokenForUser(message.author.id);
             if (!token) {
                 return await handleOAuthFailure(message.author, logger);
             }
@@ -404,8 +404,8 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
                               (corresponding_chat && (corresponding_chat.requireOAuth || (corresponding_chat.run && corresponding_chat.run.requireOAuth)));
                               
         if (requiresOAuth) {
-            const { getValidTokenForUser } = require("../utils/osuAuth.js");
-            const token = await getValidTokenForUser(interaction.user.id);
+            const OsuUserModel = require("../models/OsuUserModel.js");
+            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
             if (!token) {
                 const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
                 await interaction.editReply(failureMsg);
@@ -418,8 +418,8 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 	if (chat_commands_map.has(commandName)) {
         const found_command = chat_commands_map.get(commandName);
         if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
-            const { getValidTokenForUser } = require("../utils/osuAuth.js");
-            const token = await getValidTokenForUser(interaction.user.id);
+            const OsuUserModel = require("../models/OsuUserModel.js");
+            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
             if (!token) {
                 const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
                 await interaction.editReply(failureMsg);

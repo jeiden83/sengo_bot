@@ -49,8 +49,9 @@ async function run(messages, args) {
                             (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined);
 
     if (hasOAuthFilters) {
-        const { getValidTokenForUser, getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
-        const token = await getValidTokenForUser(message.author.id);
+        const { getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
+        const OsuUserModel = require("../../../models/OsuUserModel.js");
+        const token = await OsuUserModel.getValidTokenForUser(message.author.id);
         if (!token) {
             if (logger) logger.failed("OAuth requerido para filtros avanzados.");
             try {

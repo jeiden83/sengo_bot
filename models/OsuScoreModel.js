@@ -966,10 +966,10 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 .select('discord_id, username, access_token, refresh_token, expires_at');
             
             if (!dbError && dbTokens) {
-                const { getValidTokenForUser } = require("../utils/osuAuth.js");
+                const OsuUserModel = require("./OsuUserModel.js");
                 const refreshed = await Promise.all(dbTokens.map(async (row) => {
                     try {
-                        const token = await getValidTokenForUser(row.discord_id);
+                        const token = await OsuUserModel.getValidTokenForUser(row.discord_id);
                         if (token) {
                             return {
                                 token,

@@ -7,7 +7,8 @@ const Logger = require('../../utils/logger.js');
 const { EmbedBuilder, ActivityType } = require('discord.js');
 const fetch = require('node-fetch');
 const url = require('url');
-const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe, saveOAuthToken } = require('../../utils/osuAuth.js');
+const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
+const OsuUserModel = require('../../models/OsuUserModel.js');
 const { getWebhookChannels } = require('../../db/database.js');
 
 function getFlagEmoji(countryCode) {
@@ -315,7 +316,7 @@ function startServer(client, dbRes, port, config) {
             exchangeCode(code, redirectUri)
                 .then(async (tokenData) => {
                     const osuUser = await fetchOsuMe(tokenData.access_token);
-                    const dbResult = await saveOAuthToken(discordId, osuUser, tokenData);
+                    const dbResult = await OsuUserModel.saveOAuthToken(discordId, osuUser, tokenData);
 
                     Logger.system(`[OAuth] Vinculación exitosa por OAuth para Discord ID: ${discordId} -> osu!: ${osuUser.username} (${osuUser.id})`);
 
