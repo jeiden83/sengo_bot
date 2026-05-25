@@ -14,12 +14,10 @@ async function run(messages, args) {
 
     // 1. Extraer ID de beatmap o link explícito si existe
     let beatmap_id = parsed_args.beatmap_url;
-    if (!beatmap_id && args && args.length > 0) {
-        for (const arg of args) {
-            if (arg && typeof arg === 'string' && /^\d+$/.test(arg)) {
-                beatmap_id = arg;
-                break;
-            }
+    if (!beatmap_id && parsed_args.username && parsed_args.username[0]) {
+        const potential_id = parsed_args.username[0].trim();
+        if (/^\d+$/.test(potential_id)) {
+            beatmap_id = potential_id;
         }
     }
 

@@ -1,5 +1,18 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
+const emoji_mods = require("../src/emoji_mods.json");
+
+function formatRecommendMods(modsStr) {
+    if (!modsStr || modsStr === "NoMod") {
+        return `<:NM:${emoji_mods["NM"] || '123'}> \`NM\``;
+    }
+    const modsList = modsStr.match(/.{1,2}/g) || [];
+    const emojiStr = modsList.map(mod => {
+        const id = emoji_mods[mod];
+        return id ? `<:${mod}:${id}>` : mod;
+    }).join("");
+    return `${emojiStr} \`${modsStr}\``;
+}
 
 /**
  * Renderiza el embed para las recomendaciones de mapas (s.recommend / s.recomendar)
@@ -21,7 +34,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
         recommendations.forEach((c, index) => {
             const map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
             description += `**${index + 1}.** ${map_link}\n`;
-            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: \`${c.mods}\`\n`;
+            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)}\n`;
             description += `   ▸ **${c.maxPP.toFixed(1)}pp** (100% FC) | **${c.pp99.toFixed(1)}pp** (99% FC)\n`;
 
             const minutes = Math.floor(c.length / 60);

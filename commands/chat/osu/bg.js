@@ -6,18 +6,11 @@ async function run(messages, args) {
     const parsed_args = argsParserNoCommand(args);
 
     // 1. Extraer ID de beatmap o link explícito si existe
-    let beatmap_id = null;
-    if (args && args.length > 0) {
-        for (const arg of args) {
-            if (arg && typeof arg === 'string') {
-                const match = arg.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                              arg.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                              arg.match(/^\d+$/);
-                if (match) {
-                    beatmap_id = match[1] || match[0];
-                    break;
-                }
-            }
+    let beatmap_id = parsed_args.beatmap_url;
+    if (!beatmap_id && parsed_args.username && parsed_args.username[0]) {
+        const potential_id = parsed_args.username[0].trim();
+        if (/^\d+$/.test(potential_id)) {
+            beatmap_id = potential_id;
         }
     }
 

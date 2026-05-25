@@ -228,7 +228,7 @@ async function run(messages, args) {
 
     // Consultar si el usuario que invocó el comando tiene supporter activo
     const linkedUser = await OsuUserModel.getLinkedUser(res.User, message.author.id);
-    const hasSupporter = linkedUser ? !!linkedUser.is_supporter : false;
+    let hasSupporter = linkedUser ? !!linkedUser.is_supporter : false;
 
     // Verificar si es una consulta por defecto (sin filtros custom)
     const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false);
@@ -383,6 +383,22 @@ async function run(messages, args) {
                 profile,
                 timestamp: Date.now()
             });
+        }
+    }
+
+    if (profile && profile.id && linkedUser && profile.id.toString() === linkedUser.osu_id.toString()) {
+        const apiSupporter = !!profile.is_supporter;
+        if (apiSupporter && !hasSupporter) {
+            hasSupporter = true;
+            // Actualizar Supabase en segundo plano
+            const supabase = OsuUserModel.getSupabaseClient();
+            if (supabase) {
+                supabase.from('users')
+                    .update({ is_supporter: true })
+                    .eq('discord_id', message.author.id)
+                    .then(() => {})
+                    .catch(() => {});
+            }
         }
     }
 
