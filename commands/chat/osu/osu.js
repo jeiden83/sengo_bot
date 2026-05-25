@@ -23,6 +23,15 @@ async function run(messages, args) {
                 res
             ).catch(() => {});
         }
+
+        // Actualizar el estado de supporter en segundo plano si está en la DB
+        const OsuUserModel = require("../../../models/OsuUserModel.js");
+        if (OsuUserModel.updateSupporterStatusInBackground) {
+            OsuUserModel.updateSupporterStatusInBackground(
+                osu_userdata.fn_response.id.toString(),
+                osu_userdata.fn_response.is_supporter
+            ).catch(() => {});
+        }
     }
 
     const is_detailed = osu_userdata.parsed_args.detailed || false;

@@ -108,6 +108,10 @@ async function main(reload) {
     const { initBirthdayAnnouncer } = require("./services/birthdayAnnouncer.js");
     initBirthdayAnnouncer(client);
 
+    // Inicializar el servicio de sincronización diaria de supporter
+    const { initSupporterSync } = require("./services/supporterSync.js");
+    initSupporterSync();
+
     await login(client, config);  
 
     if (process.stdin.isTTY) {

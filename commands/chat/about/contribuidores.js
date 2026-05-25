@@ -8,6 +8,35 @@ async function run(messages, args) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#378a91';
 
+    const isForce = args && args.some(arg => arg && typeof arg === 'string' && (arg.toLowerCase() === '-force' || arg.toLowerCase() === 'force'));
+    let syncSummary = "";
+
+    if (isForce) {
+        let tempMsg;
+        const msgText = `⏳ *Iniciando chequeo forzoso de estatus de supporter para todos los vinculados...*`;
+        if (reply) {
+            tempMsg = await reply.reply({ content: msgText });
+        } else {
+            tempMsg = await message.channel.send({ content: msgText });
+        }
+
+        try {
+            const syncResult = await OsuUserModel.syncAllSupporterStatuses();
+            syncSummary = `🔄 **Sincronización forzada:** ${syncResult.successCount} exitosos, ${syncResult.failCount} fallidos.`;
+            if (syncResult.changes.length > 0) {
+                const changesStr = syncResult.changes.map(c => `${c.username}: ${c.oldStatus ? '💖' : '❌'}→${c.newStatus ? '💖' : '❌'}`).join(', ');
+                syncSummary += `\n ▸ *Cambios:* ${changesStr}`;
+            }
+        } catch (err) {
+            console.error("Error en s.con -force:", err);
+            syncSummary = `❌ **Error al forzar la sincronización:** ${err.message}`;
+        }
+
+        if (tempMsg && !reply) {
+            try { await tempMsg.delete(); } catch {}
+        }
+    }
+
     try {
         const data = await OsuUserModel.getAllOAuthUsers();
 
@@ -35,7 +64,11 @@ async function run(messages, args) {
 
             const generateEmbed = (start, page, maxP) => {
                 const chunk = data.slice(start, start + 10);
-                let description = `Total de usuarios vinculados: **${totalUsers}**\n`;
+                let description = "";
+                if (syncSummary) {
+                    description += `${syncSummary}\n\n`;
+                }
+                description += `Total de usuarios vinculados: **${totalUsers}**\n`;
 
                 // Agrupar el chunk por pais
                 const groups = {};

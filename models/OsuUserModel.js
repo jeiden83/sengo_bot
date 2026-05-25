@@ -631,6 +631,114 @@ async function getSupporterTokenForCountry(countryCode) {
     return null;
 }
 
+/**
+ * Actualiza el estado de supporter de un usuario en segundo plano (no bloqueante).
+ */
+async function updateSupporterStatusInBackground(osuId, isSupporter) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+
+    try {
+        const isSupp = !!isSupporter;
+        // 1. Actualizar en oauth_tokens
+        const { data: tokenRecord, error: tokenError } = await supabase
+            .from('oauth_tokens')
+            .update({ 
+                is_supporter: isSupp,
+                supporter_until: isSupp ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null 
+            })
+            .eq('osu_id', osuId.toString())
+            .select('discord_id');
+
+        if (tokenError) {
+            console.error(`[BACKGROUND-SUPPORTER] Error al actualizar oauth_tokens para osu_id ${osuId}:`, tokenError);
+        }
+
+        // 2. Si se encontró el registro de token, actualizar también en la tabla 'users'
+        if (tokenRecord && tokenRecord.length > 0) {
+            const discordId = tokenRecord[0].discord_id;
+            const { error: userError } = await supabase
+                .from('users')
+                .update({ is_supporter: isSupp })
+                .eq('discord_id', discordId);
+            
+            if (userError) {
+                console.error(`[BACKGROUND-SUPPORTER] Error al actualizar la tabla 'users' para discord_id ${discordId}:`, userError);
+            }
+        }
+    } catch (err) {
+        console.error(`[BACKGROUND-SUPPORTER] Error inesperado actualizando estatus de supporter para osu_id ${osuId}:`, err);
+    }
+}
+
+/**
+ * Sincroniza forzosamente el estatus de supporter de todos los usuarios vinculados por oAuth.
+ */
+async function syncAllSupporterStatuses() {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        throw new Error("Cliente de Supabase no inicializado");
+    }
+
+    const oauthUsers = await getAllOAuthUsers();
+    let successCount = 0;
+    let failCount = 0;
+    const changes = [];
+
+    for (const user of oauthUsers) {
+        try {
+            const token = await getValidTokenForUser(user.discord_id);
+            if (!token) {
+                failCount++;
+                continue;
+            }
+
+            const me = await fetchOsuMe(token);
+            if (me) {
+                const newSuppStatus = !!me.is_supporter;
+                const oldSuppStatus = !!user.is_supporter;
+
+                if (newSuppStatus !== oldSuppStatus) {
+                    changes.push({
+                        username: user.username,
+                        oldStatus: oldSuppStatus,
+                        newStatus: newSuppStatus
+                    });
+                }
+
+                // Actualizar oauth_tokens
+                await supabase
+                    .from('oauth_tokens')
+                    .update({
+                        is_supporter: newSuppStatus,
+                        username: me.username,
+                        country_code: me.country_code,
+                        supporter_until: newSuppStatus ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null
+                    })
+                    .eq('discord_id', user.discord_id);
+
+                // Sincronizar con la tabla 'users'
+                await supabase
+                    .from('users')
+                    .update({ is_supporter: newSuppStatus })
+                    .eq('discord_id', user.discord_id);
+
+                successCount++;
+            } else {
+                failCount++;
+            }
+        } catch (err) {
+            console.error(`Error al sincronizar estatus de supporter para ${user.username}:`, err);
+            failCount++;
+        }
+
+        // Delay de 500ms para no saturar la API
+        await new Promise(resolve => setTimeout(resolve, 500));
+    }
+
+    return { successCount, failCount, changes };
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -648,7 +756,9 @@ const OsuUserModel = {
     getValidTokenForUser,
     getSupporterTokenForCountry,
     saveOAuthToken,
-    getAllOAuthUsers
+    getAllOAuthUsers,
+    updateSupporterStatusInBackground,
+    syncAllSupporterStatuses
 };
 
 module.exports = OsuUserModel;
