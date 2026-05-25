@@ -63,6 +63,10 @@ async function checkGuildBirthdays(guild, client) {
  */
 async function checkBirthdays(client) {
     try {
+        if (!BirthdayModel.getIsInitialized()) {
+            Logger.system("Evitando comprobación de cumpleaños: BirthdayModel aún no se ha sincronizado con Supabase.");
+            return;
+        }
         const guilds = client.guilds.cache;
         for (const [guildId, guild] of guilds) {
             await checkGuildBirthdays(guild, client);

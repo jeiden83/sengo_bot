@@ -30,12 +30,12 @@ function matchesModFilter(mValStr, filterStr) {
     return true;
 }
 
-async function checkHasScore(beatmapId, userId) {
+async function checkHasScore(beatmapId, userId, gamemode = 'osu') {
     try {
         const score = await getBeatmapUserScore({
             beatmap_url: beatmapId,
             username: [userId],
-            gamemode: 'osu'
+            gamemode: gamemode
         });
         return score !== null && score !== undefined;
     } catch {
@@ -43,16 +43,18 @@ async function checkHasScore(beatmapId, userId) {
     }
 }
 
-async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res) {
+async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res, gamemode = 'osu') {
     try {
-        const existing = recommendCache.get(osuUserId);
+        const gamemodeKey = gamemode || 'osu';
+        const cacheKey = `${osuUserId}:${gamemodeKey}`;
+        const existing = recommendCache.get(cacheKey);
         if (existing && (Date.now() - existing.timestamp < CACHE_TTL)) {
             return;
         }
 
         const topScores = await getUserTopScores({
             username: [osuUserId],
-            gamemode: 'osu',
+            gamemode: gamemodeKey,
             limit: 100
         });
 
@@ -98,7 +100,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res)
         const minPP = averagePP * 0.90;
         const maxPP = averagePP * 1.10;
 
-        const ppsData = await getOsuPpsData();
+        const ppsData = await getOsuPpsData(gamemodeKey);
         const { diffs, mapsetsMap } = ppsData;
 
         const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
@@ -141,7 +143,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res)
         const finalRecs = [];
         for (const candidate of candidates) {
             if (finalRecs.length >= 3) break;
-            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId);
+            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, gamemodeKey);
             if (!hasScore) {
                 finalRecs.push(candidate);
             }
@@ -149,7 +151,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res)
         }
 
         if (finalRecs.length > 0) {
-            recommendCache.set(osuUserId, {
+            recommendCache.set(cacheKey, {
                 recommendations: finalRecs,
                 minPP,
                 maxPP,
@@ -242,7 +244,9 @@ async function run(messages, args) {
     let suggestedMod;
     let profile;
 
-    const cached = isDefaultRun ? recommendCache.get(osuUserId) : null;
+    const activeGamemode = parser_res.parsed_args.gamemode || "osu";
+    const cacheKey = `${osuUserId}:${activeGamemode}`;
+    const cached = isDefaultRun ? recommendCache.get(cacheKey) : null;
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
         currentRecs = cached.recommendations;
         minPP = cached.minPP;
@@ -256,7 +260,7 @@ async function run(messages, args) {
             const { Client } = require('osu-web.js');
             const token = await OsuUserModel.loadToken();
             const client = new Client(token.access_token);
-            profile = await client.users.getUser(parseInt(osuUserId), { urlParams: { mode: 'osu' } });
+            profile = await client.users.getUser(parseInt(osuUserId), { urlParams: { mode: activeGamemode } });
         } catch {
             profile = {
                 id: osuUserId,
@@ -305,7 +309,7 @@ async function run(messages, args) {
         // Cargar datos de osu-pps
         let ppsData;
         try {
-            ppsData = await getOsuPpsData();
+            ppsData = await getOsuPpsData(activeGamemode);
         } catch (e) {
             return `❌ Error al cargar los datos de farm: ${e.message}`;
         }
@@ -356,7 +360,7 @@ async function run(messages, args) {
             for (const candidate of candidates) {
                 if (finalRecs.length >= 3) break;
 
-                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId);
+                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
 
                 if (showPlayed) {
                     if (hasScore) {
@@ -377,7 +381,7 @@ async function run(messages, args) {
         currentRecs = await getRecommendations();
 
         if (isDefaultRun && currentRecs.length > 0) {
-            recommendCache.set(osuUserId, {
+            recommendCache.set(cacheKey, {
                 recommendations: currentRecs,
                 minPP,
                 maxPP,
@@ -425,7 +429,7 @@ async function run(messages, args) {
     async function getRecommendationsForButtons() {
         let ppsData;
         try {
-            ppsData = await getOsuPpsData();
+            ppsData = await getOsuPpsData(activeGamemode);
         } catch {
             return [];
         }
@@ -471,7 +475,7 @@ async function run(messages, args) {
         for (const candidate of candidates) {
             if (finalRecs.length >= 3) break;
 
-            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId);
+            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
 
             if (showPlayed) {
                 if (hasScore) {

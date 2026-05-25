@@ -63,19 +63,29 @@ function saveBirthdays() {
     }
 }
 
+let isInitialized = false;
+
+function getIsInitialized() {
+    return isInitialized;
+}
+
 /**
  * Inicializa y sincroniza los datos de cumpleaños desde Supabase Storage.
  */
 async function initSupabaseStorage() {
     const { getSupabaseClient } = require('../db/database.js');
     const supabase = getSupabaseClient();
-    if (!supabase) return;
+    if (!supabase) {
+        isInitialized = true;
+        return;
+    }
 
     try {
         const bucketName = 'bot_db';
         const { data: buckets, error: listError } = await supabase.storage.listBuckets();
         if (listError) {
             console.error("[BirthdayModel] Error al listar buckets de storage:", listError.message);
+            isInitialized = true;
             return;
         }
 
@@ -84,6 +94,7 @@ async function initSupabaseStorage() {
             const { error: createError } = await supabase.storage.createBucket(bucketName, { public: false });
             if (createError) {
                 console.error("[BirthdayModel] Error al crear bucket 'bot_db':", createError.message);
+                isInitialized = true;
                 return;
             }
         }
@@ -122,6 +133,8 @@ async function initSupabaseStorage() {
         }
     } catch (err) {
         console.error("[BirthdayModel] Error en la inicialización de Supabase Storage:", err);
+    } finally {
+        isInitialized = true;
     }
 }
 
@@ -467,5 +480,6 @@ module.exports = {
     getUserCountryCode,
     getCountryUtcOffset,
     setGuildUserAnnounced,
-    getGuildUserAnnounced
+    getGuildUserAnnounced,
+    getIsInitialized
 };

@@ -53,8 +53,10 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
         if (e?.description) {
             const ids = extractAllIds(e.description);
             if (ids.length > 0) {
-                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
-                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
+                if (index >= 1 && index <= ids.length) {
+                    return { beatmap_url: ids[index - 1], fromList: ids.length > 1 };
+                }
+                return { beatmap_url: null, fromList: false };
             }
         }
 
@@ -66,8 +68,10 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                 ids.push(...extractAllIds(field.name));
             }
             if (ids.length > 0) {
-                const idx = (index >= 1 && index <= ids.length) ? index - 1 : 0;
-                return { beatmap_url: ids[idx], fromList: ids.length > 1 };
+                if (index >= 1 && index <= ids.length) {
+                    return { beatmap_url: ids[index - 1], fromList: ids.length > 1 };
+                }
+                return { beatmap_url: null, fromList: false };
             }
         }
 
@@ -85,8 +89,12 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
                     uniqueOther.push(id);
                 }
             }
-            const idx = (index >= 1 && index <= uniqueOther.length) ? index - 1 : 0;
-            return { beatmap_url: uniqueOther[idx], fromList: uniqueOther.length > 1 };
+            if (uniqueOther.length > 0) {
+                if (index >= 1 && index <= uniqueOther.length) {
+                    return { beatmap_url: uniqueOther[index - 1], fromList: uniqueOther.length > 1 };
+                }
+                return { beatmap_url: null, fromList: false };
+            }
         }
 
         return { beatmap_url: null, fromList: false };

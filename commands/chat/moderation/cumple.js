@@ -38,6 +38,11 @@ function parseBirthday(str) {
 
 async function run(messages, args) {
     const { message, reply, logger } = messages;
+    
+    if (!BirthdayModel.getIsInitialized()) {
+        return "⏳ El sistema de cumpleaños se está inicializando. Por favor, intenta de nuevo en unos segundos.";
+    }
+
     const authorId = message.author.id;
     const guild = message.guild;
 

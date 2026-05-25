@@ -129,8 +129,7 @@ async function lookupBeatmapByMD5(md5) {
     }
 }
 
-let ppsCache = null;
-let ppsCacheTimestamp = 0;
+const ppsCaches = {};
 const PPS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
 
 function parseCSV(csvText) {
@@ -167,14 +166,19 @@ function parseCSV(csvText) {
     });
 }
 
-async function getOsuPpsData() {
+async function getOsuPpsData(gamemode = 'osu') {
+    const normalizedMode = (gamemode || 'osu').toLowerCase();
+    const validModes = ['osu', 'taiko', 'mania', 'fruits'];
+    const mode = validModes.includes(normalizedMode) ? normalizedMode : 'osu';
+
     const now = Date.now();
-    if (ppsCache && (now - ppsCacheTimestamp) < PPS_CACHE_TTL) {
-        return ppsCache;
+    const cached = ppsCaches[mode];
+    if (cached && (now - cached.timestamp) < PPS_CACHE_TTL) {
+        return cached.data;
     }
 
-    const diffsUrl = "https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/osu/diffs.csv";
-    const mapsetsUrl = "https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/osu/mapsets.csv";
+    const diffsUrl = `https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/${mode}/diffs.csv`;
+    const mapsetsUrl = `https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/${mode}/mapsets.csv`;
 
     try {
         const [diffsRes, mapsetsRes] = await Promise.all([
@@ -190,13 +194,13 @@ async function getOsuPpsData() {
             mapsetsMap.set(set.s, set);
         });
 
-        ppsCache = { diffs, mapsetsMap };
-        ppsCacheTimestamp = now;
-        return ppsCache;
+        const data = { diffs, mapsetsMap };
+        ppsCaches[mode] = { data, timestamp: now };
+        return data;
     } catch (error) {
-        console.error("Error al descargar datos de osu-pps:", error.message);
-        if (ppsCache) {
-            return ppsCache; // Fallback a la caché expirada
+        console.error(`Error al descargar datos de osu-pps para el modo ${mode}:`, error.message);
+        if (cached) {
+            return cached.data; // Fallback a la caché expirada
         }
         throw error;
     }
