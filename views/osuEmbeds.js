@@ -822,7 +822,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             const subdivision = iso.subdivision(osuworld_data.region_id);
             const regionName = (subdivision && subdivision.name) ? subdivision.name : osuworld_data.region_id;
             const urlRegionName = regionName.replace(/[\s,]+/g, "_");
-            regionalRankStr = ` / [#${osuworld_data.placement}](https://osuworld.octo.moe/#${urlRegionName})`;
+            regionalRankStr = ` / **[#${osuworld_data.placement}](https://osuworld.octo.moe/#${urlRegionName})**`;
         } catch (e) {
             // Silencioso
         }
