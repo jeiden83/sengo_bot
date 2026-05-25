@@ -174,10 +174,11 @@ async function run(messages, args) {
         const candidates = [];
         diffs.forEach(diff => {
             const beatmapId = diff.b;
-            const maxPPValue = parseFloat(diff.x);
+            const pp99Value = parseFloat(diff.pp99);
+            const estimated100PP = pp99Value * 1.11;
 
             if (top100MapIds.has(beatmapId) || skipSet.has(beatmapId)) return;
-            if (maxPPValue < minPP || maxPPValue > maxPP) return;
+            if (pp99Value < minPP || pp99Value > maxPP) return;
             if (!matchesModFilter(diff.m, activeMods)) return;
 
             const set = mapsetsMap.get(diff.s);
@@ -189,8 +190,8 @@ async function run(messages, args) {
                     artist: set.art,
                     version: diff.v,
                     stars: parseFloat(diff.d),
-                    maxPP: maxPPValue,
-                    pp99: parseFloat(diff.pp99),
+                    maxPP: estimated100PP,
+                    pp99: pp99Value,
                     mods: diff.m === "0" ? "NoMod" : (diff.m === "8" ? "HD" : (diff.m === "72" ? "HDDT" : (diff.m === "64" ? "DT" : (diff.m === "16" ? "HR" : "Mods")))),
                     popularity: parseInt(diff.h || 0)
                 });
