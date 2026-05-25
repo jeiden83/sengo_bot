@@ -35,7 +35,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
         recommendations.forEach((c, index) => {
             let map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
             if (hasSupporter) {
-                map_link += ` [ [📥 Directo](${redirectBase}/osu/${c.beatmapsetId}) ]`;
+                map_link += ` [ [📥 osu!direct](${redirectBase}/osu/${c.beatmapsetId}) ]`;
             }
             description += `**${index + 1}.** ${map_link}\n`;
             description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)}\n`;
@@ -44,7 +44,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
             const minutes = Math.floor(c.length / 60);
             const seconds = c.length % 60;
             const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${c.popularity.toLocaleString()}\`\n\n`;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${(c.playcount || 0).toLocaleString()}\`\n\n`;
         });
     }
 
