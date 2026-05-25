@@ -6,6 +6,28 @@ const Logger = require("../utils/logger.js");
 
 const MAX_MESSAGE_LENGTH = 2000;
 
+function getFriendlyErrorMessage(error) {
+    const errorStr = (error.message || String(error)).toLowerCase();
+    const status = error.status || error.statusCode || error.response?.status || error.response?.statusCode;
+
+    const is522 = status === 522 || errorStr.includes('522') || errorStr.includes('cloudflare');
+    const isTimeoutOrConn = errorStr.includes('timeout') || 
+                            errorStr.includes('etimedout') || 
+                            errorStr.includes('econnreset') || 
+                            errorStr.includes('econnrefused') || 
+                            errorStr.includes('socket hang up') || 
+                            errorStr.includes('fetch failed') ||
+                            errorStr.includes('network error');
+
+    if (is522) {
+        return `⚠️ **Error de Conexión (Cloudflare/API de osu!)**: Parece que los servidores de osu! o los servicios de Cloudflare están experimentando problemas (Error 522 - Conexión agotada). Por favor, intenta de nuevo en unos minutos.`;
+    }
+    if (isTimeoutOrConn) {
+        return `⚠️ **Tiempo de espera agotado**: Hubo problemas de conexión al intentar comunicarse con la API de osu! o los servidores del mirror. Intenta de nuevo más tarde.`;
+    }
+    return null;
+}
+
 const userGuildCache = new Set(); // Guarda "userId:guildId"
 
 async function trackUserGuild(userId, guildId, res) {
@@ -274,8 +296,13 @@ async function chat_command_listener(chat_commands, client, config, res) {
         } catch (error) {
             logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
-            const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
-            await message.channel.send(`Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`);
+            const friendlyMsg = getFriendlyErrorMessage(error);
+            if (friendlyMsg) {
+                await message.channel.send(friendlyMsg);
+            } else {
+                const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
+                await message.channel.send(`Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`);
+            }
             
             // Notificar al Webhook de errores de forma asíncrona
             reportErrorToWebhook(error, {
@@ -413,9 +440,10 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         } catch (error) {
             logger.failed(error.message);
             console.error("Error ejecutando el comando:", error);
+            const friendlyMsg = getFriendlyErrorMessage(error);
             const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
             await interaction.editReply(
-                `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`
+                friendlyMsg || `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`
             );
             
             // Notificar al Webhook de errores de forma asíncrona

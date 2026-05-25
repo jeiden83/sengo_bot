@@ -56,17 +56,41 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     }
 
     // Realizar la solicitud HTTP si el archivo no está en caché
-    const options = {
-        method: 'GET',
-        url: `https://osu.direct/api/osu/${beatmap_osu_id}/raw`,
-        httpsAgent: new https.Agent({
-            rejectUnauthorized: false, // Ignorar certificados expirados
-        }),
-    };
+    let data;
+    let downloadSuccess = false;
+
+    // Intentar primero con osu.direct (con un timeout razonable de 5 segundos)
+    try {
+        const response = await axios.get(`https://osu.direct/api/osu/${beatmap_osu_id}/raw`, {
+            timeout: 5000,
+            httpsAgent: new https.Agent({
+                rejectUnauthorized: false, // Ignorar certificados expirados
+            }),
+        });
+        data = response.data;
+        downloadSuccess = true;
+    } catch (error) {
+        console.warn(`[BeatmapModel] Error al descargar el beatmap ${beatmap_osu_id} desde osu.direct (${error.message}). Intentando fallback a osu.ppy.sh...`);
+    }
+
+    // Si falló osu.direct, intentar con osu.ppy.sh como fallback
+    if (!downloadSuccess) {
+        try {
+            const response = await axios.get(`https://osu.ppy.sh/osu/${beatmap_osu_id}`, {
+                timeout: 5000,
+                headers: {
+                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+                }
+            });
+            data = response.data;
+            downloadSuccess = true;
+        } catch (error) {
+            console.error(`[BeatmapModel] Error crítico: No se pudo descargar el beatmap ${beatmap_osu_id} desde ninguna fuente.`, error.message);
+            throw error;
+        }
+    }
 
     try {
-        const { data } = await axios.request(options);
-
         // Crear la carpeta recursivamente si no existe
         fs.mkdirSync(folderPath, { recursive: true });
 
@@ -78,7 +102,7 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
 
         return filePath;
     } catch (error) {
-        console.error('Error al descargar el beatmap:', error.message);
+        console.error('Error al guardar el beatmap localmente:', error.message);
         throw error;
     }
 }
