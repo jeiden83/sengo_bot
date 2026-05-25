@@ -129,11 +129,86 @@ async function lookupBeatmapByMD5(md5) {
     }
 }
 
+let ppsCache = null;
+let ppsCacheTimestamp = 0;
+const PPS_CACHE_TTL = 24 * 60 * 60 * 1000; // 24 horas
+
+function parseCSV(csvText) {
+    const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+    if (lines.length === 0) return [];
+    const headers = lines[0].split(",");
+    
+    return lines.slice(1).map(line => {
+        const parts = [];
+        let current = "";
+        let inQuotes = false;
+        for (let i = 0; i < line.length; i++) {
+            const char = line[i];
+            if (char === '"') {
+                inQuotes = !inQuotes;
+            } else if (char === ',' && !inQuotes) {
+                parts.push(current);
+                current = "";
+            } else {
+                current += char;
+            }
+        }
+        parts.push(current);
+        
+        const row = {};
+        headers.forEach((header, index) => {
+            let val = parts[index] || "";
+            if (val.startsWith('"') && val.endsWith('"')) {
+                val = val.slice(1, -1);
+            }
+            row[header.trim()] = val.trim();
+        });
+        return row;
+    });
+}
+
+async function getOsuPpsData() {
+    const now = Date.now();
+    if (ppsCache && (now - ppsCacheTimestamp) < PPS_CACHE_TTL) {
+        return ppsCache;
+    }
+
+    const diffsUrl = "https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/osu/diffs.csv";
+    const mapsetsUrl = "https://raw.githubusercontent.com/grumd/osu-pps/data/data/maps/osu/mapsets.csv";
+
+    try {
+        const [diffsRes, mapsetsRes] = await Promise.all([
+            axios.get(diffsUrl, { timeout: 10000 }),
+            axios.get(mapsetsUrl, { timeout: 10000 })
+        ]);
+
+        const diffs = parseCSV(diffsRes.data);
+        const mapsets = parseCSV(mapsetsRes.data);
+
+        const mapsetsMap = new Map();
+        mapsets.forEach(set => {
+            mapsetsMap.set(set.s, set);
+        });
+
+        ppsCache = { diffs, mapsetsMap };
+        ppsCacheTimestamp = now;
+        return ppsCache;
+    } catch (error) {
+        console.error("Error al descargar datos de osu-pps:", error.message);
+        if (ppsCache) {
+            return ppsCache; // Fallback a la caché expirada
+        }
+        throw error;
+    }
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
-    lookupBeatmapByMD5
+    lookupBeatmapByMD5,
+    getOsuPpsData
 };
 
 module.exports = BeatmapModel;
+

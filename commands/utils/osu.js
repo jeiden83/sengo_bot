@@ -24,6 +24,7 @@ module.exports = {
     getUserRecentScores: OsuScoreModel.getUserRecentScores,
     getUserTopScores: OsuScoreModel.getUserTopScores,
     getBeatmap: BeatmapModel.getBeatmap,
+    getOsuPpsData: BeatmapModel.getOsuPpsData,
     lookupBeatmapByMD5: BeatmapModel.lookupBeatmapByMD5,
     getScoreDetails: OsuScoreModel.getScoreDetails,
     findBeatmapInChannel,
