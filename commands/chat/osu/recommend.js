@@ -391,7 +391,7 @@ async function run(messages, args) {
         if (apiSupporter && !hasSupporter) {
             hasSupporter = true;
             // Actualizar Supabase en segundo plano
-            const supabase = OsuUserModel.getSupabaseClient();
+            const supabase = res.supabaseClient;
             if (supabase) {
                 supabase.from('users')
                     .update({ is_supporter: true })

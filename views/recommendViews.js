@@ -128,7 +128,7 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
             const btnOpen = new ButtonBuilder()
                 .setStyle(ButtonStyle.Link)
                 .setLabel(`📥 Abrir #${index + 1}`)
-                .setURL(`osu://dl/${c.beatmapsetId}`);
+                .setURL(`https://osu.ppy.sh/d/${c.beatmapsetId}`);
             downloadRow.addComponents(btnOpen);
         });
         rows.push(downloadRow);
