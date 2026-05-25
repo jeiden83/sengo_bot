@@ -12,6 +12,19 @@ async function run(messages, args) {
         return osu_userdata.fn_response;
     }
 
+    // Preload de recomendaciones de farm en segundo plano
+    if (osu_userdata.fn_response && osu_userdata.fn_response.id) {
+        const recommendCommand = require("./recommend.js");
+        if (recommendCommand.preloadDefaultRecommendation) {
+            recommendCommand.preloadDefaultRecommendation(
+                osu_userdata.fn_response.id.toString(),
+                osu_userdata.fn_response.username,
+                osu_userdata.fn_response.avatar_url,
+                res
+            ).catch(() => {});
+        }
+    }
+
     const is_detailed = osu_userdata.parsed_args.detailed || false;
     return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed);
 }

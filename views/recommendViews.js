@@ -16,14 +16,18 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
     let description = "";
 
     if (recommendations.length === 0) {
-        description = `*No se encontraron mapas recomendados en el rango de **${minPP.toFixed(0)} - ${maxPP.toFixed(0)} pp** con los filtros seleccionados.*`;
+        description = `*No se encontraron mapas recomendados en el rango de **${minPP.toFixed(0)} - ${maxPP.toFixed(0)} pp** con los filtros seleccionados.*\n\n*Prueba usando los botones de abajo para probar alguna otra configuración (Más PP, otros mods, o incluyendo mapas ya jugados).*`;
     } else {
         recommendations.forEach((c, index) => {
             const map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
             description += `**${index + 1}.** ${map_link}\n`;
             description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: \`${c.mods}\`\n`;
-            description += `   ▸ 🎯 **${c.maxPP.toFixed(1)}pp** (100% FC) | **${c.pp99.toFixed(1)}pp** (99% FC)\n`;
-            description += `   ▸ 📈 Popularidad: \`${c.popularity.toLocaleString()} jugadores\`\n\n`;
+            description += `   ▸ **${c.maxPP.toFixed(1)}pp** (100% FC) | **${c.pp99.toFixed(1)}pp** (99% FC)\n`;
+
+            const minutes = Math.floor(c.length / 60);
+            const seconds = c.length % 60;
+            const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${c.popularity.toLocaleString()}\`\n\n`;
         });
     }
 
@@ -33,7 +37,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
             url: `https://osu.ppy.sh/users/${profile.id}`,
             iconURL: profile.avatar_url
         })
-        .setTitle(`🎯 Mapas Sugeridos (~${((minPP + maxPP) / 2).toFixed(0)}pp)`)
+        .setTitle(`Mapas Sugeridos (~${((minPP + maxPP) / 2).toFixed(0)}pp)`)
         .setDescription(description)
         .addFields(
             {
@@ -55,18 +59,23 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
 }
 
 /**
- * Construye la fila de botones interactivos para la recomendación.
+ * Construye las filas de botones interactivos para la recomendación.
  * @param {object} params Parámetros actuales (minPP, maxPP, mods, showPlayed)
  * @param {string} suggestedMod El mod alternativo sugerido según su perfil (ej: "HDDT", "NM")
- * @returns {ActionRowBuilder} Fila de botones de Discord
+ * @param {boolean} hasRecs Si hay recomendaciones disponibles
+ * @param {Array} recommendations Lista de mapas recomendados
+ * @param {boolean} hasSupporter Si el usuario que ejecuta el comando tiene supporter activo
+ * @returns {Array} Array de ActionRowBuilder
  */
-function buildRecommendButtonsRow(params, suggestedMod) {
+function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = [], hasSupporter = false) {
     const { showPlayed } = params;
+    const rows = [];
 
     const btnRefresh = new ButtonBuilder()
         .setCustomId("rec_refresh")
         .setLabel("🔄 Otra")
-        .setStyle(ButtonStyle.Secondary);
+        .setStyle(ButtonStyle.Secondary)
+        .setDisabled(!hasRecs);
 
     const btnMorePP = new ButtonBuilder()
         .setCustomId("rec_more_pp")
@@ -90,16 +99,32 @@ function buildRecommendButtonsRow(params, suggestedMod) {
         .setLabel(showPlayed ? "🚫 Excluir Jugados" : "🎮 Incluir Jugados")
         .setStyle(showPlayed ? ButtonStyle.Danger : ButtonStyle.Primary);
 
-    return new ActionRowBuilder().addComponents(
+    const controlRow = new ActionRowBuilder().addComponents(
         btnRefresh,
         btnMorePP,
         btnLessPP,
         btnToggleMods,
         btnTogglePlayed
     );
+    rows.push(controlRow);
+
+    // Si tiene supporter y hay recomendaciones, añadir fila con links directos
+    if (hasSupporter && hasRecs && recommendations.length > 0) {
+        const downloadRow = new ActionRowBuilder();
+        recommendations.forEach((c, index) => {
+            const btnOpen = new ButtonBuilder()
+                .setStyle(ButtonStyle.Link)
+                .setLabel(`📥 Abrir #${index + 1}`)
+                .setURL(`osu://dl/${c.beatmapsetId}`);
+            downloadRow.addComponents(btnOpen);
+        });
+        rows.push(downloadRow);
+    }
+
+    return rows;
 }
 
 module.exports = {
     doOsuRecommendEmbed,
-    buildRecommendButtonsRow
+    buildRecommendButtonsRow: buildRecommendButtons
 };
