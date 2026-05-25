@@ -271,8 +271,20 @@ async function parsingCommandFunction(parsed_args, command_parameters){
             // Para manejar mejor el username
             let arg_user = parsed_args.username[0].split(" ")[0];
 
-            // Si es una id de discord, buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
-            if(arg_user.length >= 17) {
+            // Si es un enlace de perfil de osu!, extraemos el usuario/ID
+            const profileLinkMatch = arg_user.match(/osu\.ppy\.sh\/u(?:sers)?\/([^\/\s\?#]+)/i);
+            if (profileLinkMatch) {
+                try {
+                    arg_user = decodeURIComponent(profileLinkMatch[1]);
+                } catch (e) {
+                    arg_user = profileLinkMatch[1];
+                }
+                parsed_args.username[0] = arg_user;
+            }
+
+            // Si es una id de discord (de 17 a 20 dígitos), buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
+            const isDiscordId = /^\d{17,20}$/.test(arg_user);
+            if(isDiscordId) {
                 user_found = await OsuUserModel.getLinkedUser(res.User, arg_user);
 
                 if(!user_found) return {'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args};
