@@ -1,4 +1,4 @@
-const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../../utils/osu.js");
+const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand, getBeatmapsetTags } = require("../../utils/osu.js");
 const rosu = require("rosu-pp-js");
 
 function formatLength(seconds) {
@@ -146,35 +146,28 @@ async function run(messages, args) {
 
     let objectsValue = '';
     if (activeMode === 'osu') {
-        objectsValue = `
-▸ **Círculos:** \`${map.nCircles}\`
-▸ **Sliders:** \`${map.nSliders}\`
-▸ **Spinners:** \`${map.nSpinners}\`
-        `;
+        objectsValue = `Círculos: \`${map.nCircles}\` | Sliders: \`${map.nSliders}\` | Spinners: \`${map.nSpinners}\``;
     } else if (activeMode === 'taiko') {
-        objectsValue = `
-▸ **Notas:** \`${map.nCircles}\`
-▸ **Drumrolls:** \`${map.nSliders}\`
-▸ **Dendens:** \`${map.nSpinners}\`
-        `;
+        objectsValue = `Notas: \`${map.nCircles}\` | Drumrolls: \`${map.nSliders}\` | Dendens: \`${map.nSpinners}\``;
     } else if (activeMode === 'fruits') {
         const nFruits = difficulty.nFruits !== undefined ? difficulty.nFruits : map.nCircles;
         const nDroplets = difficulty.nDroplets !== undefined ? difficulty.nDroplets : map.nSliders;
         const nTinyDroplets = difficulty.nTinyDroplets !== undefined ? difficulty.nTinyDroplets : 0;
-        objectsValue = `
-▸ **Frutas:** \`${nFruits}\`
-▸ **Droplets:** \`${nDroplets}\`
-▸ **Tiny Droplets:** \`${nTinyDroplets}\`
-        `;
+        objectsValue = `Frutas: \`${nFruits}\` | Droplets: \`${nDroplets}\` | Tiny: \`${nTinyDroplets}\``;
     } else if (activeMode === 'mania') {
-        objectsValue = `
-▸ **Notas:** \`${map.nCircles}\`
-▸ **Hold Notes:** \`${map.nHolds}\`
-        `;
+        objectsValue = `Notas: \`${map.nCircles}\` | Hold: \`${map.nHolds}\``;
     }
 
     // Liberar memoria del mapa
     map.free();
+
+    // Obtener tags del beatmapset
+    let userTags = [];
+    try {
+        userTags = await getBeatmapsetTags(beatmap.beatmapset_id);
+    } catch (e) {
+        console.error("Error al obtener tags en m.js:", e);
+    }
 
     const { doOsuMapEmbed } = require("../../../views/osuEmbeds.js");
     const { embed, components } = doOsuMapEmbed({
@@ -204,7 +197,8 @@ async function run(messages, args) {
             csLabel,
             modsStr
         },
-        objectsValue
+        objectsValue,
+        userTags
     });
 
     if (reply) {

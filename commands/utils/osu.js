@@ -40,5 +40,6 @@ module.exports = {
     triggerBackgroundGapCache: OsuScoreModel.triggerBackgroundGapCache,
     triggerBackgroundRecentPreload: OsuScoreModel.triggerBackgroundRecentPreload,
     normalizeScore: OsuScoreModel.normalizeScore,
-    normalizeStatistics: OsuScoreModel.normalizeStatistics
+    normalizeStatistics: OsuScoreModel.normalizeStatistics,
+    getBeatmapsetTags: BeatmapModel.getBeatmapsetTags
 }

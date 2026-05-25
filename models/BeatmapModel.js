@@ -206,12 +206,49 @@ async function getOsuPpsData(gamemode = 'osu') {
     }
 }
 
+const tagsCache = new Map();
+
+/**
+ * Obtiene las etiquetas de usuario (related_tags) de un beatmapset mediante scraping de la web oficial de osu!.
+ */
+async function getBeatmapsetTags(beatmapsetId) {
+    const cached = tagsCache.get(beatmapsetId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < 3600000 * 24) { // Caché por 24 horas
+        return cached.data;
+    }
+
+    try {
+        const url = `https://osu.ppy.sh/beatmapsets/${beatmapsetId}`;
+        const res = await axios.get(url, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            timeout: 5000
+        });
+        const cheerio = require('cheerio');
+        const $ = cheerio.load(res.data);
+        const jsonText = $('#json-beatmapset').html();
+        if (!jsonText) {
+            return [];
+        }
+        const data = JSON.parse(jsonText);
+        const related = data.related_tags || [];
+        const tags = related.map(t => t.name);
+        
+        tagsCache.set(beatmapsetId, { data: tags, timestamp: now });
+        return tags;
+    } catch (e) {
+        console.error(`Error al obtener tags para el beatmapset ${beatmapsetId}:`, e.message);
+        return [];
+    }
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
     lookupBeatmapByMD5,
-    getOsuPpsData
+    getOsuPpsData,
+    getBeatmapsetTags
 };
 
 module.exports = BeatmapModel;

@@ -634,7 +634,8 @@ function doOsuMapEmbed({
     embedColor,
     ppValues,
     attributes,
-    objectsValue
+    objectsValue,
+    userTags
 }) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
     
@@ -657,6 +658,10 @@ function doOsuMapEmbed({
         return `${m}:${s}`;
     };
 
+    const userTagsStr = userTags && userTags.length > 0 
+        ? `\n▸ **Etiquetas:** ${userTags.slice(0, 3).map(t => `\`${t}\``).join(', ')}` 
+        : '';
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Creado por ${beatmap.beatmapset.creator}`,
@@ -666,43 +671,16 @@ function doOsuMapEmbed({
         .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
         .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
         .setDescription(`
-**Modo:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? ' *(Convertido)*' : ''}
-**Dificultad:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? `*(Base: ${baseStars.toFixed(2)}★)*` : ''}
-**Estado:** \`${statusName}\`
+▸ **Modo:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? ' *(Convertido)*' : ''} ▸ **Dificultad:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? `*(Base: ${baseStars.toFixed(2)}★)*` : ''} ▸ **Estado:** \`${statusName}\`
 
-**Valores de PP recomendados (Perfect Combo):**
-▸ **SS (100%):** \`${ppValues.ppSS}pp\`
-▸ **99%:** \`${ppValues.pp99}pp\`
-▸ **98%:** \`${ppValues.pp98}pp\`
-▸ **95%:** \`${ppValues.pp95}pp\`
+▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? `*(Base: ${attributes.baseBpm})*` : ''} ▸ **Duración:** \`${formatLength(attributes.totalLength)}\` *(Drain: ${formatLength(attributes.hitLength)})* ▸ **Combo:** \`x${attributes.maxCombo}\`
+▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? `*(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''} ▸ **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? `*(${attributes.baseAr.toFixed(1)})*` : ''} ▸ **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? `*(${attributes.baseOd.toFixed(1)})*` : ''} ▸ **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? `*(${attributes.baseHp.toFixed(1)})*` : ''}
+
+▸ **Objetos:** ${objectsValue}
+
+▸ **PP (100%-95%):** SS: \`${ppValues.ppSS}pp\` | 99%: \`${ppValues.pp99}pp\` | 98%: \`${ppValues.pp98}pp\` | 95%: \`${ppValues.pp95}pp\`${userTagsStr}
         `)
-        .addFields(
-            {
-                name: '📊 Atributos de Mapa',
-                value: `
-▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? `*(Base: ${attributes.baseBpm})*` : ''}
-▸ **Duración:** \`${formatLength(attributes.totalLength)}\` *(Drain: ${formatLength(attributes.hitLength)})*
-▸ **Combo Máximo:** \`x${attributes.maxCombo}\`
-                `,
-                inline: true
-            },
-            {
-                name: '⚙️ Dificultad Física',
-                value: `
-▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\` ${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? `*(Base: ${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''}
-▸ **AR:** \`${attributes.ar.toFixed(1)}\` ${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? `*(Base: ${attributes.baseAr.toFixed(1)})*` : ''}
-▸ **OD:** \`${attributes.od.toFixed(1)}\` ${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? `*(Base: ${attributes.baseOd.toFixed(1)})*` : ''}
-▸ **HP:** \`${attributes.hp.toFixed(1)}\` ${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? `*(Base: ${attributes.baseHp.toFixed(1)})*` : ''}
-                `,
-                inline: true
-            },
-            {
-                name: '🎯 Conteo de Objetos',
-                value: objectsValue,
-                inline: true
-            }
-        )
-        .setImage(beatmap.beatmapset.covers["cover@2x"])
+        .setThumbnail(beatmap.beatmapset.covers.list || beatmap.beatmapset.covers["list@2x"])
         .setColor(embedColor)
         .setFooter({
             text: `Sengo • Beatmap ID: ${beatmap.id}`,
