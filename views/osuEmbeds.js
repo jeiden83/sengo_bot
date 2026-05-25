@@ -783,7 +783,7 @@ function checkOsuData(osu_userdata) {
 /**
  * Renderiza el embed para el perfil de osu! (s.osu)
  */
-function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false) {
+function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false, osuworld_data = null) {
     const { global_ranking, discord_last_peak, peak_ranking, country_rank } = checkOsuData(osu_userdata);
 
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
@@ -815,13 +815,25 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false)
         }
     }
 
+    let regionalRankStr = "";
+    if (osuworld_data && osuworld_data.region_id && osuworld_data.placement) {
+        try {
+            const iso = require("iso-3166-2");
+            const subdivision = iso.subdivision(osuworld_data.region_id);
+            const regionName = (subdivision && subdivision.name) ? subdivision.name : osuworld_data.region_id;
+            regionalRankStr = `\n**• Ranking regional:** :flag_${osu_userdata.country_code.toLowerCase()}: \`${regionName}\` \`#${osuworld_data.placement}\``;
+        } catch (e) {
+            // Silencioso
+        }
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `Perfil osu!${osu_mode} de ${osu_userdata.team ? `[${osu_userdata.team.short_name}]` : ""} ${osu_userdata.username}`,
             url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
-        .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n${top_ranking_str}**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: ${supporterEmoji}\`#${country_rank}\`\n${rankedPlayStr}${osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : ``}**• Fecha de inicio: **${join_date}`)
+        .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n${top_ranking_str}**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: ${supporterEmoji}\`#${country_rank}\`${regionalRankStr}\n${rankedPlayStr}${osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : ``}**• Fecha de inicio: **${join_date}`)
         .addFields(
             {
                 name: "Medallas",

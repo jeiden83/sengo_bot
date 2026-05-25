@@ -1,6 +1,24 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { doOsuProfileEmbed } = require("../../../views/osuEmbeds.js");
 
+async function getOsuWorldUser(userId) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 1500);
+    try {
+        const response = await fetch(`https://osuworld.octo.moe/api/users/${userId}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        if (!response.ok) return null;
+        const data = await response.json();
+        if (data && data.error) return null;
+        return data;
+    } catch (e) {
+        clearTimeout(timeout);
+        return null;
+    }
+}
+
 async function run(messages, args) {
     const { message, res, logger } = messages;
 
@@ -35,7 +53,13 @@ async function run(messages, args) {
     }
 
     const is_detailed = osu_userdata.parsed_args.detailed || false;
-    return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed);
+
+    let osuworld_data = null;
+    if (osu_userdata.fn_response && osu_userdata.fn_response.id) {
+        osuworld_data = await getOsuWorldUser(osu_userdata.fn_response.id);
+    }
+
+    return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data);
 }
 
 run.alias = {
