@@ -24,7 +24,8 @@ function formatRecommendMods(modsStr) {
  */
 function doOsuRecommendEmbed(message, profile, recommendations, params) {
     const embedColor = getEmbedColor(message);
-    const { minPP, maxPP, mods, showPlayed } = params;
+    const { minPP, maxPP, mods, showPlayed, hasSupporter } = params;
+    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
 
     let description = "";
 
@@ -32,7 +33,10 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
         description = `*No se encontraron mapas recomendados en el rango de **${minPP.toFixed(0)} - ${maxPP.toFixed(0)} pp** con los filtros seleccionados.*\n\n*Prueba usando los botones de abajo para probar alguna otra configuración (Más PP, otros mods, o incluyendo mapas ya jugados).*`;
     } else {
         recommendations.forEach((c, index) => {
-            const map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
+            let map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
+            if (hasSupporter) {
+                map_link += ` [ [📥 Directo](${redirectBase}/osu/${c.beatmapsetId}) ]`;
+            }
             description += `**${index + 1}.** ${map_link}\n`;
             description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)}\n`;
             description += `   ▸ **${c.maxPP.toFixed(1)}pp** (100% FC) | **${c.pp99.toFixed(1)}pp** (99% FC)\n`;
@@ -120,19 +124,6 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
         btnTogglePlayed
     );
     rows.push(controlRow);
-
-    // Si tiene supporter y hay recomendaciones, añadir fila con links directos
-    if (hasSupporter && hasRecs && recommendations.length > 0) {
-        const downloadRow = new ActionRowBuilder();
-        recommendations.forEach((c, index) => {
-            const btnOpen = new ButtonBuilder()
-                .setStyle(ButtonStyle.Link)
-                .setLabel(`📥 Abrir #${index + 1}`)
-                .setURL(`https://osu.ppy.sh/d/${c.beatmapsetId}`);
-            downloadRow.addComponents(btnOpen);
-        });
-        rows.push(downloadRow);
-    }
 
     return rows;
 }

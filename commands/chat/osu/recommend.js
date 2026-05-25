@@ -405,7 +405,7 @@ async function run(messages, args) {
     const skipSet = new Set();
     currentRecs.forEach(c => skipSet.add(c.beatmapId));
 
-    let params = { minPP, maxPP, mods: activeMods, showPlayed };
+    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter };
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
     let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
 
@@ -519,7 +519,7 @@ async function run(messages, args) {
             currentRecs = await getRecommendationsForButtons();
             currentRecs.forEach(c => skipSet.add(c.beatmapId));
 
-            params = { minPP, maxPP, mods: activeMods, showPlayed };
+            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter };
             embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
             rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
 
