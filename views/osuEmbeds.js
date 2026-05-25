@@ -658,9 +658,20 @@ function doOsuMapEmbed({
         return `${m}:${s}`;
     };
 
-    const userTagsStr = userTags && userTags.length > 0 
-        ? `\n▸ **Etiquetas:** ${userTags.slice(0, 3).map(t => `\`${t}\``).join(', ')}` 
+    let tagsToDisplay = userTags;
+    if (!tagsToDisplay || tagsToDisplay.length === 0) {
+        if (beatmap.beatmapset.tags) {
+            tagsToDisplay = beatmap.beatmapset.tags.split(/\s+/).filter(t => t.length > 0);
+        }
+    }
+    const userTagsStr = tagsToDisplay && tagsToDisplay.length > 0 
+        ? `\n▸ **Etiquetas:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}` 
         : '';
+
+    const ppSSColor = `\u001b[1;32m${ppValues.ppSS}pp\u001b[0m`;
+    const pp99Color = `\u001b[1;33m${ppValues.pp99}pp\u001b[0m`;
+    const pp98Color = `\u001b[1;36m${ppValues.pp98}pp\u001b[0m`;
+    const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}/100% - ${pp99Color}/99% - ${pp98Color}/98%\n\`\`\``;
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -678,9 +689,10 @@ function doOsuMapEmbed({
 
 ▸ **Objetos:** ${objectsValue}
 
-▸ **PP (100%-95%):** SS: \`${ppValues.ppSS}pp\` | 99%: \`${ppValues.pp99}pp\` | 98%: \`${ppValues.pp98}pp\` | 95%: \`${ppValues.pp95}pp\`${userTagsStr}
+▸ **Valores de PP recomendados:**
+${ppAnsiBlock}${userTagsStr}
         `)
-        .setThumbnail(beatmap.beatmapset.covers.list || beatmap.beatmapset.covers["list@2x"])
+        .setImage(beatmap.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({
             text: `Sengo • Beatmap ID: ${beatmap.id}`,
