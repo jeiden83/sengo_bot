@@ -7,6 +7,10 @@ const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
 
+let osuDirectOnline = true;
+let lastOsuDirectCheck = 0;
+const OSU_DIRECT_COOLDOWN = 60000; // 1 minuto de cooldown si falla
+
 const beatmapCache = new Map();
 
 function setWithLimit(map, key, value, limit = 100) {
@@ -58,22 +62,33 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     // Realizar la solicitud HTTP si el archivo no está en caché
     let data;
     let downloadSuccess = false;
+    const nowTime = Date.now();
 
-    // Intentar primero con osu.direct (con un timeout razonable de 5 segundos)
-    try {
-        const response = await axios.get(`https://osu.direct/api/osu/${beatmap_osu_id}/raw`, {
-            timeout: 5000,
-            httpsAgent: new https.Agent({
-                rejectUnauthorized: false, // Ignorar certificados expirados
-            }),
-        });
-        data = response.data;
-        downloadSuccess = true;
-    } catch (error) {
-        console.warn(`[BeatmapModel] Error al descargar el beatmap ${beatmap_osu_id} desde osu.direct (${error.message}). Intentando fallback a osu.ppy.sh...`);
+    // Comprobar si debemos intentar con osu.direct (si está online o el cooldown expiró)
+    const shouldTryDirect = osuDirectOnline || (nowTime - lastOsuDirectCheck > OSU_DIRECT_COOLDOWN);
+
+    if (shouldTryDirect) {
+        try {
+            const response = await axios.get(`https://osu.direct/api/osu/${beatmap_osu_id}/raw`, {
+                timeout: 2500, // Timeout reducido a 2.5s para no hacer esperar demasiado en caso de caída
+                httpsAgent: new https.Agent({
+                    rejectUnauthorized: false, // Ignorar certificados expirados
+                }),
+            });
+            data = response.data;
+            downloadSuccess = true;
+            if (!osuDirectOnline) {
+                osuDirectOnline = true;
+                console.log("[BeatmapModel] osu.direct ha vuelto a estar online.");
+            }
+        } catch (error) {
+            osuDirectOnline = false;
+            lastOsuDirectCheck = Date.now();
+            console.warn(`[BeatmapModel] osu.direct falló (${error.message}). Marcado como OFFLINE por 1 minuto. Intentando fallback a osu.ppy.sh...`);
+        }
     }
 
-    // Si falló osu.direct, intentar con osu.ppy.sh como fallback
+    // Si falló osu.direct o está marcado como offline temporalmente, usar osu.ppy.sh como fallback inmediato
     if (!downloadSuccess) {
         try {
             const response = await axios.get(`https://osu.ppy.sh/osu/${beatmap_osu_id}`, {
