@@ -220,7 +220,14 @@ async function _getOsuUser(parsed_args) {
 async function getLinkedUser(User, discordId) {
     if (User && typeof User.findOne === 'function') {
         try {
-            return await User.findOne({ discord_id: discordId });
+            const user = await User.findOne({ discord_id: discordId });
+            if (user) {
+                const oauthRecord = await getOAuthTokenRecord(discordId);
+                if (oauthRecord) {
+                    user.is_supporter = !!oauthRecord.is_supporter;
+                }
+            }
+            return user;
         } catch (err) {
             console.error(`Error al buscar vinculación para ${discordId} usando User.findOne:`, err);
             return null;
@@ -238,6 +245,13 @@ async function getLinkedUser(User, discordId) {
             .maybeSingle();
 
         if (error) throw error;
+        
+        if (data) {
+            const oauthRecord = await getOAuthTokenRecord(discordId);
+            if (oauthRecord) {
+                data.is_supporter = !!oauthRecord.is_supporter;
+            }
+        }
         return data;
     } catch (err) {
         console.error(`Error al buscar vinculación para ${discordId} en OsuUserModel:`, err);
@@ -641,30 +655,16 @@ async function updateSupporterStatusInBackground(osuId, isSupporter) {
     try {
         const isSupp = !!isSupporter;
         // 1. Actualizar en oauth_tokens
-        const { data: tokenRecord, error: tokenError } = await supabase
+        const { error: tokenError } = await supabase
             .from('oauth_tokens')
             .update({ 
                 is_supporter: isSupp,
                 supporter_until: isSupp ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null 
             })
-            .eq('osu_id', osuId.toString())
-            .select('discord_id');
+            .eq('osu_id', osuId.toString());
 
         if (tokenError) {
             console.error(`[BACKGROUND-SUPPORTER] Error al actualizar oauth_tokens para osu_id ${osuId}:`, tokenError);
-        }
-
-        // 2. Si se encontró el registro de token, actualizar también en la tabla 'users'
-        if (tokenRecord && tokenRecord.length > 0) {
-            const discordId = tokenRecord[0].discord_id;
-            const { error: userError } = await supabase
-                .from('users')
-                .update({ is_supporter: isSupp })
-                .eq('discord_id', discordId);
-            
-            if (userError) {
-                console.error(`[BACKGROUND-SUPPORTER] Error al actualizar la tabla 'users' para discord_id ${discordId}:`, userError);
-            }
         }
     } catch (err) {
         console.error(`[BACKGROUND-SUPPORTER] Error inesperado actualizando estatus de supporter para osu_id ${osuId}:`, err);
@@ -715,12 +715,6 @@ async function syncAllSupporterStatuses() {
                         country_code: me.country_code,
                         supporter_until: newSuppStatus ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null
                     })
-                    .eq('discord_id', user.discord_id);
-
-                // Sincronizar con la tabla 'users'
-                await supabase
-                    .from('users')
-                    .update({ is_supporter: newSuppStatus })
                     .eq('discord_id', user.discord_id);
 
                 successCount++;
