@@ -69,8 +69,23 @@ async function run(messages, args) {
         }
 
         if (!reworkUser) {
-            return `❌ No se encontraron datos recalculados para **${player.username}** en el rework **${rework.name}**.\n💡 *Nota: Es probable que el usuario no esté en la base de datos de recalculación o deba ser agregado a la cola en pp.huismetbenen.nl.*`;
+            const queueStatus = ReworkModel.getQueueStatus(player.id, rework.id);
+            if (queueStatus) {
+                const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
+                return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
+            } else {
+                await ReworkModel.addToQueue(player.id, rework.id, player.username);
+                const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
+                if (reqResult.success) {
+                    console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);
+                } else {
+                    console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
+                }
+                return `⏳ **${player.username}** no ha sido recalculado aún en **${rework.name}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.`;
+            }
         }
+
+        await ReworkModel.removeFromQueue(player.id, rework.id);
 
         const embed = await doOsuReworkUserEmbed(message, player, reworkUser, rework);
         if (reply) {
@@ -115,8 +130,23 @@ async function run(messages, args) {
         }
 
         if (!scores || scores.length === 0) {
-            return `❌ No se encontraron puntuaciones recalculadas para **${player.username}** en el rework **${rework.name}**.\n💡 *Nota: Es probable que el usuario no esté en la base de datos de recalculación o deba ser agregado a la cola en pp.huismetbenen.nl.*`;
+            const queueStatus = ReworkModel.getQueueStatus(player.id, rework.id);
+            if (queueStatus) {
+                const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
+                return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
+            } else {
+                await ReworkModel.addToQueue(player.id, rework.id, player.username);
+                const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
+                if (reqResult.success) {
+                    console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);
+                } else {
+                    console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
+                }
+                return `⏳ **${player.username}** no ha sido recalculado aún en **${rework.name}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.`;
+            }
         }
+
+        await ReworkModel.removeFromQueue(player.id, rework.id);
 
         // Ordenar por local_pp descendente
         const sortedScores = scores

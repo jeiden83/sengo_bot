@@ -564,6 +564,22 @@ async function getValidTokenForUser(discordId) {
             return newTokens.access_token;
         } catch (err) {
             console.error(`Error refreshing OAuth token for user ${discordId}:`, err);
+            const errMsg = err.message || '';
+            const isInvalidOrRevoked = errMsg.includes('revoked') || 
+                                       errMsg.includes('invalid_request') || 
+                                       errMsg.includes('invalid') || 
+                                       errMsg.includes('revocado');
+            if (isInvalidOrRevoked) {
+                console.log(`[OAuth] Token inválido o revocado para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
+                try {
+                    await supabase
+                        .from('oauth_tokens')
+                        .delete()
+                        .eq('discord_id', discordId);
+                } catch (dbErr) {
+                    console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
+                }
+            }
             return null;
         }
     }

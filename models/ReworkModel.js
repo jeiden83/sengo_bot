@@ -8,6 +8,9 @@ const CACHE_FILE = path.resolve('rework_user_cache.json');
 const reworksListCache = { data: null, timestamp: 0 };
 const beatmapScoresCache = new Map();
 
+let reworkQueue = new Map();
+const QUEUE_FILE = path.resolve('rework_queue.json');
+
 // Cargar caché desde archivo si existe
 async function initCache() {
     try {
@@ -17,6 +20,79 @@ async function initCache() {
     } catch (err) {
         // Si no existe o tiene formato inválido, inicializamos vacío
         reworkUserCache = new Map();
+    }
+    await initQueue();
+}
+
+// Cargar cola desde archivo si existe
+async function initQueue() {
+    try {
+        const data = await fs.readFile(QUEUE_FILE, 'utf-8');
+        const parsed = JSON.parse(data);
+        reworkQueue = new Map(Object.entries(parsed));
+    } catch (err) {
+        reworkQueue = new Map();
+    }
+}
+
+// Guardar cola en archivo
+async function saveQueue() {
+    try {
+        const obj = Object.fromEntries(reworkQueue);
+        await fs.writeFile(QUEUE_FILE, JSON.stringify(obj, null, 2), 'utf-8');
+    } catch (err) {
+        console.error("Error al guardar la cola de reworks:", err);
+    }
+}
+
+// Agregar usuario a la cola local
+async function addToQueue(osuId, reworkId, username) {
+    const key = `${osuId}:${reworkId}`;
+    reworkQueue.set(key, {
+        osuId,
+        reworkId,
+        username,
+        addedAt: Date.now()
+    });
+    await saveQueue();
+}
+
+// Eliminar usuario de la cola local
+async function removeFromQueue(osuId, reworkId) {
+    const key = `${osuId}:${reworkId}`;
+    if (reworkQueue.has(key)) {
+        reworkQueue.delete(key);
+        await saveQueue();
+    }
+}
+
+// Obtener estado de la cola para un usuario
+function getQueueStatus(osuId, reworkId) {
+    const key = `${osuId}:${reworkId}`;
+    return reworkQueue.get(key) || null;
+}
+
+// Solicitar recalculación de rework a pp.huismetbenen.nl
+async function requestReworkRecalculation(osuId, reworkId) {
+    const cookie = process.env.HUISMETBENEN_COOKIE;
+    const url = 'https://api.pp.huismetbenen.nl/queue/add-to-queue';
+    const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'SengoBot'
+    };
+    if (cookie) {
+        headers['Cookie'] = `HUISMETBENEN_ACCESS_TOKEN=${cookie}`;
+    }
+
+    try {
+        const res = await axios.patch(url, {
+            user_id: Number(osuId),
+            rework: Number(reworkId)
+        }, { headers, timeout: 8000 });
+        return { success: true, status: res.status, data: res.data };
+    } catch (err) {
+        const errorMsg = err.response ? JSON.stringify(err.response.data) : err.message;
+        return { success: false, error: errorMsg };
     }
 }
 
@@ -278,6 +354,10 @@ module.exports = {
     getBeatmapReworkScores,
     normalizeMods,
     calculateReworkPPForMap,
-    getUserReworkScores
+    getUserReworkScores,
+    addToQueue,
+    removeFromQueue,
+    getQueueStatus,
+    requestReworkRecalculation
 };
 
