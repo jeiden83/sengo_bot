@@ -25,7 +25,14 @@ async function run(messages, args) {
         }
     }
 
-    const wantsMapCalculation = hasMapIdOrUrl || hasMods || hasReply || potential_pure_map_id;
+    // Verificar si explícitamente se incluyó una flag de mods, aunque esté vacía o no parseada por argsParserNoCommand
+    const argsStr = Array.isArray(args) ? args.join(' ') : String(args);
+    const hasModFlag = argsStr.split(/\s+/).some(arg => {
+        const clean = arg.trim();
+        return clean === '-m' || clean === '-mods' || clean === '-mod' || clean === '-mx' || clean.startsWith('+');
+    });
+
+    const wantsMapCalculation = hasMapIdOrUrl || hasMods || hasReply || potential_pure_map_id || hasModFlag;
 
     // Si no se pide lista, ni top, ni cálculo de mapa, por defecto es comparación de perfil (-o)
     let isUserCompare = initial_parsed.reworkCompare;
