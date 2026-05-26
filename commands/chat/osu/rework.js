@@ -161,7 +161,19 @@ async function run(messages, args) {
         // Ordenar por local_pp descendente
         let sortedScores = scores
             .filter(s => s.values && typeof s.values.local_pp === 'number')
-            .sort((a, b) => b.values.local_pp - a.values.local_pp);
+            .sort((a, b) => b.values.local_pp - a.values.local_pp)
+            .map((s, idx) => {
+                s.new_rank = idx + 1;
+                return s;
+            });
+
+        if (initial_parsed.sortByPPChange) {
+            sortedScores.sort((a, b) => {
+                const changeA = (a.values.local_pp || 0) - (a.values.live_pp || 0);
+                const changeB = (b.values.local_pp || 0) - (b.values.live_pp || 0);
+                return changeB - changeA;
+            });
+        }
 
         if (initial_parsed.ppThreshold !== null) {
             sortedScores = sortedScores.filter(s => s.values.local_pp >= initial_parsed.ppThreshold);

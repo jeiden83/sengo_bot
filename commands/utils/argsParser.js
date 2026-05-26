@@ -357,6 +357,7 @@ function argsParserNoCommand(args) {
     let reworkQuery = null;
     let reworkCompare = false;
     let reworkTop = false;
+    let sortByPPChange = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -764,29 +765,33 @@ function argsParserNoCommand(args) {
 
         // Si es exactamente "-g" o "-pp"
         if (arg === "-g" || arg === "-pp") {
+            if (arg === "-pp") {
+                sortByPPChange = true;
+            }
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 let num = parseFloat(next_arg);
                 if (!isNaN(num)) {
                     ppThreshold = num;
                     skip_next = true;
-                    continue;
                 }
             }
+            continue;
         }
         if (arg.startsWith("-g")) {
             let num = parseFloat(arg.slice(2).trim());
             if (!isNaN(num)) {
                 ppThreshold = num;
-                continue;
             }
+            continue;
         }
         if (arg.startsWith("-pp")) {
+            sortByPPChange = true;
             let num = parseFloat(arg.slice(3).trim());
             if (!isNaN(num)) {
                 ppThreshold = num;
-                continue;
             }
+            continue;
         }
 
         // Si es exactamente "-o" o "-osu"
@@ -857,7 +862,8 @@ function argsParserNoCommand(args) {
         'discordMessageLink': discordMessageLink,
         'reworkQuery': reworkQuery,
         'reworkCompare': reworkCompare,
-        'reworkTop': reworkTop
+        'reworkTop': reworkTop,
+        'sortByPPChange': sortByPPChange
     };
     return parsed_args;
 }
