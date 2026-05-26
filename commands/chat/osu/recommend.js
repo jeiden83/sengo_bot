@@ -6,6 +6,35 @@ const { EmbedBuilder } = require("discord.js");
 const recommendCache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
 
+function getModAcronyms(modsBitmask) {
+    const bitVal = parseInt(modsBitmask, 10);
+    if (isNaN(bitVal) || bitVal === 0) return "NoMod";
+
+    const ModList = [
+        { bit: 1, acronym: 'NF' },
+        { bit: 2, acronym: 'EZ' },
+        { bit: 8, acronym: 'HD' },
+        { bit: 16, acronym: 'HR' },
+        { bit: 32, acronym: 'SD' },
+        { bit: 64, acronym: 'DT' },
+        { bit: 128, acronym: 'RX' },
+        { bit: 256, acronym: 'HT' },
+        { bit: 512, acronym: 'NC' },
+        { bit: 1024, acronym: 'FL' },
+        { bit: 4096, acronym: 'SO' },
+        { bit: 16384, acronym: 'PF' }
+    ];
+    let mods = [];
+    for (let mod of ModList) {
+        if ((bitVal & mod.bit) === mod.bit) {
+            if (mod.acronym === 'NC') mods = mods.filter(m => m !== 'DT');
+            if (mod.acronym === 'PF') mods = mods.filter(m => m !== 'SD');
+            mods.push(mod.acronym);
+        }
+    }
+    return mods.length > 0 ? mods.join("") : "NoMod";
+}
+
 function matchesModFilter(mValStr, filterStr) {
     const m = parseInt(mValStr);
     if (isNaN(m)) return false;
@@ -126,7 +155,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
                     stars: parseFloat(diff.d),
                     maxPP: estimated100PP,
                     pp99: pp99Value,
-                    mods: diff.m === "0" ? "NoMod" : (diff.m === "8" ? "HD" : (diff.m === "72" ? "HDDT" : (diff.m === "64" ? "DT" : (diff.m === "16" ? "HR" : "Mods")))),
+                    mods: getModAcronyms(diff.m),
                     popularity: parseInt(diff.h || 0),
                     playcount: parseInt(diff.p || 0),
                     length: parseInt(diff.l || 0),
@@ -346,7 +375,7 @@ async function run(messages, args) {
                         stars: parseFloat(diff.d),
                         maxPP: estimated100PP,
                         pp99: pp99Value,
-                        mods: diff.m === "0" ? "NoMod" : (diff.m === "8" ? "HD" : (diff.m === "72" ? "HDDT" : (diff.m === "64" ? "DT" : (diff.m === "16" ? "HR" : "Mods")))),
+                        mods: getModAcronyms(diff.m),
                         popularity: parseInt(diff.h || 0),
                         playcount: parseInt(diff.p || 0),
                         length: parseInt(diff.l || 0),
@@ -461,7 +490,7 @@ async function run(messages, args) {
                     stars: parseFloat(diff.d),
                     maxPP: estimated100PP,
                     pp99: pp99Value,
-                    mods: diff.m === "0" ? "NoMod" : (diff.m === "8" ? "HD" : (diff.m === "72" ? "HDDT" : (diff.m === "64" ? "DT" : (diff.m === "16" ? "HR" : "Mods")))),
+                    mods: getModAcronyms(diff.m),
                     popularity: parseInt(diff.h || 0),
                     playcount: parseInt(diff.p || 0),
                     length: parseInt(diff.l || 0),
