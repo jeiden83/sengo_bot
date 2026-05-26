@@ -179,9 +179,68 @@ async function run(messages, args) {
             sortedScores = sortedScores.filter(s => s.values.local_pp >= initial_parsed.ppThreshold);
         }
 
+        // 1. Filtrar por mods exactos (-m o +mods)
+        if (initial_parsed.modFilter !== null) {
+            const filterStr = initial_parsed.modFilter;
+            const hasExplicitCL = filterStr.includes("CL");
+
+            sortedScores = sortedScores.filter(score => {
+                const scoreAcronyms = (score.mods || []).map(m => m.acronym);
+                const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+
+                if (filterStr === "NM" || filterStr === "NONE") {
+                    return filteredScoreAcronyms.length === 0;
+                }
+
+                const getModChunks = (str) => {
+                    const chunks = [];
+                    for (let j = 0; j < str.length; j += 2) {
+                        chunks.push(str.slice(j, j + 2));
+                    }
+                    return chunks.sort().join("").toUpperCase();
+                };
+                const filterNormalized = getModChunks(filterStr);
+                const scoreNormalized = filteredScoreAcronyms.sort().join("").toUpperCase();
+                return scoreNormalized === filterNormalized;
+            });
+        }
+
+        // 2. Filtrar por mods contenidos (-mx)
+        if (initial_parsed.modContainFilter !== null) {
+            const filterStr = initial_parsed.modContainFilter;
+            const hasExplicitCL = filterStr.includes("CL");
+
+            const filterChunks = [];
+            for (let j = 0; j < filterStr.length; j += 2) {
+                filterChunks.push(filterStr.slice(j, j + 2));
+            }
+
+            sortedScores = sortedScores.filter(score => {
+                const scoreAcronyms = (score.mods || []).map(m => m.acronym);
+                const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
+
+                if (filterStr === "NM" || filterStr === "NONE") {
+                    return filteredScoreAcronyms.length === 0;
+                }
+
+                return filterChunks.every(mod => filteredScoreAcronyms.includes(mod));
+            });
+        }
+
+        // 3. Filtrar por nombre de mapa, artista o dificultad (-?)
+        if (initial_parsed.searchFilter !== null) {
+            const query = initial_parsed.searchFilter.toLowerCase();
+            sortedScores = sortedScores.filter(score => {
+                const title = (score.beatmap?.title || "").toLowerCase();
+                const artist = (score.beatmap?.artist || "").toLowerCase();
+                const version = (score.beatmap?.diff_name || "").toLowerCase();
+                return title.includes(query) || artist.includes(query) || version.includes(query);
+            });
+        }
+
         const total_plays = sortedScores.length;
         if (total_plays === 0) {
-            return `❌ No se encontraron jugadas en el top del rework que coincidan con los filtros (ej: -pp).`;
+            return `❌ No se encontraron jugadas en el top del rework que coincidan con los filtros (ej: -pp, mods).`;
         }
 
         const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
