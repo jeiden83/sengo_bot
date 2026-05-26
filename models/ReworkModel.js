@@ -240,6 +240,34 @@ function calculateReworkPPForMap(beatmapScores, modsStr, livePPValues) {
     };
 }
 
+const userReworkScoresCache = new Map();
+
+// Obtener todas las puntuaciones recalculadas del jugador en un rework
+async function getUserReworkScores(osuId, reworkId, gamemode) {
+    let modeNum = 0;
+    if (gamemode === 'taiko' || gamemode === 1) modeNum = 1;
+    else if (gamemode === 'fruits' || gamemode === 'catch' || gamemode === 2) modeNum = 2;
+    else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
+
+    const key = `${osuId}:${reworkId}:${modeNum}`;
+    if (userReworkScoresCache.has(key)) {
+        return userReworkScoresCache.get(key);
+    }
+
+    try {
+        const url = `https://api.pp.huismetbenen.nl/player/scores/${osuId}/${reworkId}/${modeNum}`;
+        const res = await axios.get(url, { timeout: 15000 });
+        if (Array.isArray(res.data)) {
+            userReworkScoresCache.set(key, res.data);
+            return res.data;
+        }
+        return [];
+    } catch (err) {
+        console.error(`Error al obtener top scores del rework para el usuario ${osuId}:`, err.message);
+        return [];
+    }
+}
+
 // Inicializar la caché al cargar el módulo
 initCache();
 
@@ -249,6 +277,7 @@ module.exports = {
     getUserReworkData,
     getBeatmapReworkScores,
     normalizeMods,
-    calculateReworkPPForMap
+    calculateReworkPPForMap,
+    getUserReworkScores
 };
 

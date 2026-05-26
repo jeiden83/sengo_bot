@@ -356,6 +356,7 @@ function argsParserNoCommand(args) {
     let args_aux = new String(args);
     let reworkQuery = null;
     let reworkCompare = false;
+    let reworkTop = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -794,6 +795,12 @@ function argsParserNoCommand(args) {
             continue;
         }
 
+        // Si es exactamente "-top"
+        if (arg === "-top") {
+            reworkTop = true;
+            continue;
+        }
+
         // Si es exactamente "-rework"
         if (arg === "-rework") {
             if (i + 1 < args_list.length) {
@@ -849,7 +856,8 @@ function argsParserNoCommand(args) {
         'discordMessageId': discordMessageId,
         'discordMessageLink': discordMessageLink,
         'reworkQuery': reworkQuery,
-        'reworkCompare': reworkCompare
+        'reworkCompare': reworkCompare,
+        'reworkTop': reworkTop
     };
     return parsed_args;
 }

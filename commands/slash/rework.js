@@ -33,6 +33,11 @@ const data = new SlashCommandBuilder()
         option.setName("lista")
             .setDescription("Ver lista de reworks próximos, propuestos y WIP")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("top")
+            .setDescription("Ver el top de jugadas de PP recalculado para el rework")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -42,12 +47,16 @@ async function run(interaction, res) {
     const usuario = interaction.options.getString("usuario");
     const comparar = interaction.options.getBoolean("comparar");
     const lista = interaction.options.getBoolean("lista");
+    const top = interaction.options.getBoolean("top");
 
     const args = [];
     if (lista) {
         args.push("-lista");
     }
-    if (comparar || usuario) {
+    if (top) {
+        args.push("-top");
+        if (usuario) args.push(usuario);
+    } else if (comparar || usuario) {
         args.push("-o");
         if (usuario) args.push(usuario);
     }

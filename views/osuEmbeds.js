@@ -1154,6 +1154,52 @@ ${formatCategory(wip)}
     return embed;
 }
 
+async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework) {
+    const embedColor = getEmbedColor(message);
+    const topScores = sortedScores.slice(0, 5); // Tomar los mejores 5 recalculados
+
+    let description = `Aquí tienes las mejores jugadas recalculadas para **${osuUser.username}** bajo el rework **${rework.name}** (\`${rework.code}\`).\n\n`;
+
+    topScores.forEach((score, index) => {
+        const beatmap = score.beatmap || {};
+        const values = score.values || {};
+        const localPP = values.local_pp || 0;
+        const livePP = values.live_pp || 0;
+        const diff = localPP - livePP;
+        const diffSign = diff >= 0 ? "+" : "";
+        
+        // Formatear mods
+        const modsStr = score.mods && score.mods.length > 0
+            ? `+${score.mods.map(m => m.acronym).filter(a => a !== 'CL').join("")}`
+            : "";
+
+        const mapName = `${beatmap.artist} - ${beatmap.title} [${beatmap.diff_name}]`;
+        const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
+        
+        const diffString = `${diffSign}${diff.toFixed(2)}pp`;
+        
+        const oldRank = score.old_rank || "-";
+        const newRank = score.new_rank || (index + 1);
+
+        description += `**${index + 1}.** [${mapName}](${mapUrl}) **${modsStr}**\n`;
+        description += ` ▸ **PP:** \`${livePP.toFixed(1)} pp\` ➔ **\`${localPP.toFixed(1)} pp\`** (${diffString})\n`;
+        description += ` ▸ **Acc:** \`${score.accuracy.toFixed(2)}%\` | **Rank:** \`#${oldRank}\` ➔ \`#${newRank}\`\n\n`;
+    });
+
+    const embed = new EmbedBuilder()
+        .setTitle(`Top 5 de Rework de PP - ${osuUser.username}`)
+        .setColor(embedColor)
+        .setThumbnail(osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`)
+        .setDescription(description)
+        .setFooter({
+            text: "Sengo • PP Rework Top Plays",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
 module.exports = {
     doOsuEmbed,
     doOsuListEmbed,
@@ -1168,6 +1214,7 @@ module.exports = {
     doOsuProfileEmbed,
     doOsuReworkMapEmbed,
     doOsuReworkUserEmbed,
-    doOsuReworkListEmbed
+    doOsuReworkListEmbed,
+    doOsuReworkTopEmbed
 };
 

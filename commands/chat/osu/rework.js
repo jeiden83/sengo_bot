@@ -1,7 +1,7 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParser, argsParserNoCommand, getOsuUser } = require("../../utils/osu.js");
 const ReworkModel = require("../../../models/ReworkModel.js");
 const rosu = require("rosu-pp-js");
-const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed } = require("../../../views/osuEmbeds.js");
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
@@ -10,6 +10,7 @@ async function run(messages, args) {
     const initial_parsed = argsParserNoCommand(args);
     const isLista = initial_parsed.listMode;
     const isUserCompare = initial_parsed.reworkCompare;
+    const isTop = initial_parsed.reworkTop;
     const reworkQuery = initial_parsed.reworkQuery || "";
 
     // ----------------------------------------------------
@@ -72,6 +73,57 @@ async function run(messages, args) {
         }
 
         const embed = await doOsuReworkUserEmbed(message, player, reworkUser, rework);
+        if (reply) {
+            reply.reply({ embeds: [embed] });
+            return;
+        }
+        return { embeds: [embed] };
+    }
+
+    // ----------------------------------------------------
+    // Caso 2.5: s.rework -top [usuario] (Top recalculado en Rework)
+    // ----------------------------------------------------
+    if (isTop) {
+        if (logger) logger.process("Resolviendo usuario para obtener top de rework");
+        const osu_userdata = await argsParser(args, {
+            "message": message,
+            "res": res,
+            "command_function": getOsuUser
+        });
+
+        if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
+            return osu_userdata.fn_response || "❌ No se pudo resolver el usuario de osu!.";
+        }
+
+        const player = osu_userdata.fn_response;
+        const requestedMode = osu_userdata.parsed_args.gamemode || player.playmode || "osu";
+        const finalReworkQuery = osu_userdata.parsed_args.reworkQuery || "";
+
+        // Obtener el rework correspondiente
+        const rework = await ReworkModel.getReworkByQuery(finalReworkQuery, requestedMode);
+        if (!rework) {
+            return `❌ No se encontró ningún rework que coincida con "${finalReworkQuery}" para el modo de juego especificado.`;
+        }
+
+        if (logger) logger.process(`Obteniendo top scores para el rework: ${rework.name}`);
+        let scores;
+        try {
+            scores = await ReworkModel.getUserReworkScores(player.id, rework.id, requestedMode);
+        } catch (e) {
+            console.error("Error al obtener top scores del jugador en Rework:", e);
+            return `❌ Hubo un error al conectar con la API de Reworks.`;
+        }
+
+        if (!scores || scores.length === 0) {
+            return `❌ No se encontraron puntuaciones recalculadas para **${player.username}** en el rework **${rework.name}**.\n💡 *Nota: Es probable que el usuario no esté en la base de datos de recalculación o deba ser agregado a la cola en pp.huismetbenen.nl.*`;
+        }
+
+        // Ordenar por local_pp descendente
+        const sortedScores = scores
+            .filter(s => s.values && typeof s.values.local_pp === 'number')
+            .sort((a, b) => b.values.local_pp - a.values.local_pp);
+
+        const embed = await doOsuReworkTopEmbed(message, player, sortedScores, rework);
         if (reply) {
             reply.reply({ embeds: [embed] });
             return;
@@ -182,8 +234,8 @@ async function run(messages, args) {
 
 run.description = {
     'header': "Comando de Reworks Próximos de PP",
-    'body': "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, o muestra el perfil recalculado de un usuario en un rework.",
-    'usage': `s.rework : Estima el PP del último mapa del canal con el rework por defecto (master).\ns.rework +HDDT : Estima el PP del último mapa con mods HDDT.\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -o : Compara tus estadísticas y PP actual frente al rework.\ns.rework -o 'usuario' : Compara a otro jugador frente al rework.`
+    'body': "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
+    'usage': `s.rework : Estima el PP del último mapa del canal con el rework por defecto (master).\ns.rework +HDDT : Estima el PP del último mapa con mods HDDT.\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -o : Compara tus estadísticas y PP actual frente al rework.\ns.rework -o 'usuario' : Compara a otro jugador frente al rework.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador.`
 };
 
 module.exports = { run, "description": run.description };
