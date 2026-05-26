@@ -37,7 +37,7 @@ async function run(messages, args) {
     // ----------------------------------------------------
     // Caso 2: s.rework -o/-osu [usuario] (Perfil en Rework)
     // ----------------------------------------------------
-    if (isUserCompare) {
+    if (isUserCompare && !isTop) {
         if (logger) logger.process("Resolviendo usuario para comparación de rework");
         const osu_userdata = await argsParser(args, {
             "message": message,

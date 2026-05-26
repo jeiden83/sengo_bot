@@ -883,26 +883,41 @@ function argsParserNoCommand(args) {
             }
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                let num = parseFloat(next_arg);
-                if (!isNaN(num)) {
-                    ppThreshold = num;
+                if (/^\d{17,20}$/.test(next_arg)) {
+                    username.push(next_arg);
                     skip_next = true;
+                } else {
+                    let num = parseFloat(next_arg);
+                    if (!isNaN(num)) {
+                        ppThreshold = num;
+                        skip_next = true;
+                    }
                 }
             }
             continue;
         }
         if (arg.startsWith("-g")) {
-            let num = parseFloat(arg.slice(2).trim());
-            if (!isNaN(num)) {
-                ppThreshold = num;
+            let val = arg.slice(2).trim();
+            if (/^\d{17,20}$/.test(val)) {
+                username.push(val);
+            } else {
+                let num = parseFloat(val);
+                if (!isNaN(num)) {
+                    ppThreshold = num;
+                }
             }
             continue;
         }
         if (arg.startsWith("-pp")) {
             sortByPPChange = true;
-            let num = parseFloat(arg.slice(3).trim());
-            if (!isNaN(num)) {
-                ppThreshold = num;
+            let val = arg.slice(3).trim();
+            if (/^\d{17,20}$/.test(val)) {
+                username.push(val);
+            } else {
+                let num = parseFloat(val);
+                if (!isNaN(num)) {
+                    ppThreshold = num;
+                }
             }
             continue;
         }
