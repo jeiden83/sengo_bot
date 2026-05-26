@@ -449,8 +449,14 @@ async function getUserReworkScores(osuId, reworkId, gamemode) {
         const url = `https://api.pp.huismetbenen.nl/player/scores/${osuId}/${reworkId}/topranks`;
         const res = await axios.get(url, { timeout: 15000 });
         if (Array.isArray(res.data)) {
-            userReworkScoresCache.set(key, res.data);
-            return res.data;
+            const filtered = res.data.filter(score => {
+                const scoreMode = (score.beatmap && typeof score.beatmap.gamemode === 'number')
+                    ? score.beatmap.gamemode
+                    : 0;
+                return scoreMode === modeNum;
+            });
+            userReworkScoresCache.set(key, filtered);
+            return filtered;
         }
         return [];
     } catch (err) {

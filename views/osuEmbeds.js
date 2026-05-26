@@ -1094,7 +1094,9 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
 
         const oldRankMap = new Map();
         sortedByLive.forEach((score, idx) => {
-            if (score.beatmap && score.beatmap.id) {
+            if (score.score_id) {
+                oldRankMap.set(score.score_id, idx + 1);
+            } else if (score.beatmap && score.beatmap.id) {
                 oldRankMap.set(score.beatmap.id, idx + 1);
             }
         });
@@ -1107,7 +1109,9 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
         for (let idx = 0; idx < sortedByLocal.length; idx++) {
             const score = sortedByLocal[idx];
             const newRank = idx + 1;
-            const oldRank = (score.beatmap && score.beatmap.id && oldRankMap.has(score.beatmap.id))
+            const oldRank = (score.score_id && oldRankMap.has(score.score_id))
+                ? oldRankMap.get(score.score_id)
+                : (score.beatmap && score.beatmap.id && oldRankMap.has(score.beatmap.id))
                 ? oldRankMap.get(score.beatmap.id)
                 : (score.old_rank || 101);
 
