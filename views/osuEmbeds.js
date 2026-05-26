@@ -1085,13 +1085,23 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
     } else if (scores && scores.length > 0) {
         breakdownTitle = "Impacto de PP por Mods (Top Rework):";
         const modChangesMap = {};
+        const modOrder = ["NF", "EZ", "TD", "HD", "HR", "DT", "NC", "HT", "FL", "SO", "SD", "PF"];
+
         for (const score of scores) {
             if (!score.values || typeof score.values.local_pp !== 'number' || typeof score.values.live_pp !== 'number') {
                 continue;
             }
-            const modStr = score.mods && score.mods.length > 0
-                ? score.mods.map(m => m.acronym).filter(a => a !== 'CL').sort().join("")
-                : "NM";
+            
+            const filteredMods = score.mods ? score.mods.map(m => m.acronym).filter(a => a !== 'CL') : [];
+            filteredMods.sort((a, b) => {
+                let idxA = modOrder.indexOf(a);
+                let idxB = modOrder.indexOf(b);
+                if (idxA === -1) idxA = 999;
+                if (idxB === -1) idxB = 999;
+                return idxA - idxB;
+            });
+
+            const modStr = filteredMods.length > 0 ? filteredMods.join("") : "NM";
             const diff = score.values.local_pp - score.values.live_pp;
             if (!modChangesMap[modStr]) {
                 modChangesMap[modStr] = 0;
