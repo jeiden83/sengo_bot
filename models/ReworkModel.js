@@ -75,14 +75,15 @@ function getQueueStatus(osuId, reworkId) {
 // Solicitar recalculación de rework a pp.huismetbenen.nl
 async function requestReworkRecalculation(osuId, reworkId) {
     const cookie = process.env.HUISMETBENEN_COOKIE;
+    if (!cookie) {
+        return { success: false, error: "HUISMETBENEN_COOKIE no configurado en .env" };
+    }
     const url = 'https://api.pp.huismetbenen.nl/queue/add-to-queue';
     const headers = {
         'Content-Type': 'application/json',
-        'User-Agent': 'SengoBot'
+        'User-Agent': 'SengoBot',
+        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${cookie}`
     };
-    if (cookie) {
-        headers['Cookie'] = `HUISMETBENEN_ACCESS_TOKEN=${cookie}`;
-    }
 
     try {
         const res = await axios.patch(url, {

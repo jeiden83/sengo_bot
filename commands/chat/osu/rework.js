@@ -78,6 +78,8 @@ async function run(messages, args) {
                 const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
                 if (reqResult.success) {
                     console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);
+                } else if (reqResult.error.includes("no configurado")) {
+                    console.log(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 } else {
                     console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 }
@@ -139,6 +141,8 @@ async function run(messages, args) {
                 const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
                 if (reqResult.success) {
                     console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);
+                } else if (reqResult.error.includes("no configurado")) {
+                    console.log(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 } else {
                     console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 }
