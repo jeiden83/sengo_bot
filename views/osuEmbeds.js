@@ -1114,11 +1114,8 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
             change
         }));
 
-        // Ordenar por impacto absoluto
-        modChangesArray.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
-
-        // Tomar los 4 más influyentes y ordenarlos de más positivo a más negativo
-        const top4ModChanges = modChangesArray.slice(0, 4).sort((a, b) => b.change - a.change);
+        const positives = modChangesArray.filter(x => x.change > 0).sort((a, b) => b.change - a.change).slice(0, 3);
+        const negatives = modChangesArray.filter(x => x.change < 0).sort((a, b) => a.change - b.change).slice(0, 3);
 
         const formatChange = (val) => {
             const sign = val >= 0 ? "+" : "";
@@ -1127,13 +1124,22 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
             return `\u001b[1;30m0.00pp\u001b[0m`;
         };
 
-        const lines = top4ModChanges.map(item => {
-            const labelText = item.mods === "NM" ? "NM" : `+${item.mods}`;
-            const label = `\u001b[1;30m${labelText.padEnd(12)}:\u001b[0m`;
-            return `${label} ${formatChange(item.change)}`;
-        });
+        const formatModList = (list) => {
+            if (list.length === 0) return " \u001b[1;30mNinguno\u001b[0m\n";
+            return list.map(item => {
+                const labelText = item.mods === "NM" ? "NM" : `+${item.mods}`;
+                const label = `\u001b[1;30m ${labelText.padEnd(12)}:\u001b[0m`;
+                return `${label} ${formatChange(item.change)}`;
+            }).join("\n") + "\n";
+        };
 
-        statsBlock = `\`\`\`ansi\n${lines.join("\n")}\n\`\`\``;
+        let blockText = "";
+        blockText += `\u001b[1;32m▲ Aportan más:\u001b[0m\n`;
+        blockText += formatModList(positives);
+        blockText += `\n\u001b[1;31m▼ Quitan más:\u001b[0m\n`;
+        blockText += formatModList(negatives);
+
+        statsBlock = `\`\`\`ansi\n${blockText}\`\`\``;
     } else {
         const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
         const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
