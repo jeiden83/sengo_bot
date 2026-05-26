@@ -997,6 +997,163 @@ function getOsuCompareContent(parsed_args, username, beatmap_metadata) {
     return `**Puntuaciones de \`${username}\` en \`osu!${displayMode}\`: \n${mapa}**`;
 }
 
+
+function diffString(diff) {
+    if (diff > 0) return `+${diff.toFixed(2)}`;
+    if (diff < 0) return `${diff.toFixed(2)}`;
+    return `0.00`;
+}
+
+async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr) {
+    const embedColor = getEmbedColor(message);
+    const beatmap_url = `https://osu.ppy.sh/b/${beatmap.id}`;
+    const beatmap_cover = beatmap.beatmapset.covers["cover@2x"];
+
+    const diffPPColor = (diff) => {
+        if (diff > 0) return `\u001b[1;32m+${diff.toFixed(2)}\u001b[0m`;
+        if (diff < 0) return `\u001b[1;31m${diff.toFixed(2)}\u001b[0m`;
+        return `\u001b[1;30m0.00\u001b[0m`;
+    };
+
+    const ppSSColor = `\u001b[1;30mSS:\u001b[0m  ${livePPValues.ppSS.toFixed(2)}pp -> ${reworkResult.ppSS.toFixed(2)}pp (${diffPPColor(reworkResult.ppSS - livePPValues.ppSS)})`;
+    const pp99Color = `\u001b[1;30m99%:\u001b[0m ${livePPValues.pp99.toFixed(2)}pp -> ${reworkResult.pp99.toFixed(2)}pp (${diffPPColor(reworkResult.pp99 - livePPValues.pp99)})`;
+    const pp98Color = `\u001b[1;30m98%:\u001b[0m ${livePPValues.pp98.toFixed(2)}pp -> ${reworkResult.pp98.toFixed(2)}pp (${diffPPColor(reworkResult.pp98 - livePPValues.pp98)})`;
+    const pp95Color = `\u001b[1;30m95%:\u001b[0m ${livePPValues.pp95.toFixed(2)}pp -> ${reworkResult.pp95.toFixed(2)}pp (${diffPPColor(reworkResult.pp95 - livePPValues.pp95)})`;
+    const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}\n${pp99Color}\n${pp98Color}\n${pp95Color}\n\`\`\``;
+
+    let modsDisplay = modsStr ? `+${modsStr.toUpperCase()}` : "Nomod";
+    let statusText = "";
+    if (!reworkResult.hasScores) {
+        statusText = "💡 *Nota: Este mapa no tiene puntuaciones en este rework. Se muestran valores estimativos iguales a Live.*";
+    } else if (reworkResult.hasExactMatch) {
+        statusText = `✅ *Coincidencia exacta de mods en las jugadas del rework. (Ratio: ${(reworkResult.ratio * 100).toFixed(1)}%)*`;
+    } else {
+        statusText = `⚠️ *No hay jugadas con esta combinación de mods en el rework. Estimación basada en el promedio del mapa. (Ratio: ${(reworkResult.ratio * 100).toFixed(1)}%)*`;
+    }
+
+    const diffSR = reworkResult.stars - livePPValues.baseStars;
+    const srDiffStr = diffSR > 0 ? `+${diffSR.toFixed(2)}` : diffSR.toFixed(2);
+    const srDisplay = `${livePPValues.baseStars.toFixed(2)}★ -> ${reworkResult.stars.toFixed(2)}★ (${srDiffStr})`;
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Estimación de PP en Rework: ${rework.name}`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]`)
+        .setURL(beatmap_url)
+        .setImage(beatmap_cover)
+        .setColor(embedColor)
+        .setDescription(`
+**• Mods:** \`${modsDisplay}\`
+**• Dificultad:** \`${srDisplay}\`
+**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
+
+**Valores de PP recalculados (Estimación):**
+${ppAnsiBlock}
+${statusText}
+        `)
+        .setFooter({
+            text: "Sengo • PP Rework Beatmap Calc",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
+async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
+    const embedColor = getEmbedColor(message);
+    const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
+    
+    // pp_change_relative es por ejemplo 0.938963 (lo cual es -6.10%)
+    const pctChange = ((reworkUser.pp_change_relative - 1) * 100).toFixed(2);
+    const pctSign = pctChange > 0 ? "+" : "";
+
+    const diffPPColor = (diff) => {
+        if (diff > 0) return `\u001b[1;32m+${diff.toFixed(2)}\u001b[0m`;
+        if (diff < 0) return `\u001b[1;31m${diff.toFixed(2)}\u001b[0m`;
+        return `\u001b[1;30m0.00\u001b[0m`;
+    };
+
+    const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
+    const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
+    const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
+    const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
+    
+    const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Detalles de PP en Rework para ${osuUser.username}!`,
+            url: user_url,
+            iconURL: osuUser.avatar_url,
+        })
+        .setThumbnail(osuUser.avatar_url)
+        .setColor(embedColor)
+        .setDescription(`
+**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
+**• Precisión Promedio:** \`${(reworkUser.overall_accuracy || 0).toFixed(2)}%\`
+
+**Comparación de PP:**
+▸ **PP Live:** \`${reworkUser.old_pp.toFixed(2)} pp\`
+▸ **PP Rework:** \`${reworkUser.new_pp_incl_bonus.toFixed(2)} pp\`
+▸ **Cambio:** \`${diffString(reworkUser.pp_change)} pp (${pctSign}${pctChange}%)\`
+
+**Desglose de PP ponderado en Rework:**
+${statsBlock}
+        `)
+        .setFooter({
+            text: "Sengo • PP Rework User Profile",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
+async function doOsuReworkListEmbed(message, reworks) {
+    const embedColor = getEmbedColor(message);
+
+    // Agrupar por categoría
+    const confirmed = reworks.filter(r => r.category === 'CONFIRMED');
+    const proposed = reworks.filter(r => r.category === 'PROPOSED');
+    const wip = reworks.filter(r => r.category === 'WIP');
+
+    const formatCategory = (list) => {
+        if (list.length === 0) return "*Ninguno*";
+        return list.slice(0, 15).map(r => {
+            const modeNames = ["std", "taiko", "ctb", "mania"];
+            const mode = modeNames[r.gamemode] || "std";
+            return `• \`${r.id}\` | **${r.name}** (\`${r.code}\` - *osu!${mode}*)`;
+        }).join("\n");
+    };
+
+    const embed = new EmbedBuilder()
+        .setTitle("Lista de Reworks Próximos y Propuestos")
+        .setColor(embedColor)
+        .setDescription(`
+Aquí puedes ver la lista de reworks disponibles en pp.huismetbenen.nl.
+Usa \`.rework -rework <nombre/id>\` para calcular con respecto a un rework específico.
+
+### 🔴 Confirmados para el próximo deploy (${confirmed.length})
+${formatCategory(confirmed)}
+
+### 🟡 Propuestos (${proposed.length})
+${formatCategory(proposed)}
+
+### 🔵 En Progreso (WIP) (${wip.length})
+${formatCategory(wip)}
+        `)
+        .setFooter({
+            text: "Sengo • Rework List",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
 module.exports = {
     doOsuEmbed,
     doOsuListEmbed,
@@ -1008,5 +1165,9 @@ module.exports = {
     doOsuSubirEmbed,
     doOsuMapEmbed,
     doOsuSnipesEmbed,
-    doOsuProfileEmbed
+    doOsuProfileEmbed,
+    doOsuReworkMapEmbed,
+    doOsuReworkUserEmbed,
+    doOsuReworkListEmbed
 };
+

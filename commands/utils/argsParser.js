@@ -354,6 +354,8 @@ function argsParserNoCommand(args) {
     let discordMessageId = null;
     let discordMessageLink = null;
     let args_aux = new String(args);
+    let reworkQuery = null;
+    let reworkCompare = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -605,8 +607,8 @@ function argsParserNoCommand(args) {
             }
         }
 
-        // Si es exactamente "-l"
-        if (arg === "-l") {
+        // Si es exactamente "-l", "-list" o "-lista"
+        if (arg === "-l" || arg === "-list" || arg === "-lista") {
             listMode = true;
             continue;
         }
@@ -786,6 +788,28 @@ function argsParserNoCommand(args) {
             }
         }
 
+        // Si es exactamente "-o" o "-osu"
+        if (arg === "-o" || arg === "-osu") {
+            reworkCompare = true;
+            continue;
+        }
+
+        // Si es exactamente "-rework"
+        if (arg === "-rework") {
+            if (i + 1 < args_list.length) {
+                reworkQuery = args_list[i + 1].trim();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-rework")) {
+            let next = arg.slice(7).trim();
+            if (next.length > 0) {
+                reworkQuery = next.startsWith("=") ? next.slice(1).trim() : next;
+                continue;
+            }
+        }
+
         let handled = false;
 
         args_commands.forEach(fn => {
@@ -823,7 +847,9 @@ function argsParserNoCommand(args) {
         'friendsFilter': friendsFilter,
         'beatmap_url': beatmap_url,
         'discordMessageId': discordMessageId,
-        'discordMessageLink': discordMessageLink
+        'discordMessageLink': discordMessageLink,
+        'reworkQuery': reworkQuery,
+        'reworkCompare': reworkCompare
     };
     return parsed_args;
 }

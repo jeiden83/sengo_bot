@@ -32,3 +32,4 @@ tests/
 scratch/
 osu_token.json.bak
 dev_docs/
+rework_user_cache.json
