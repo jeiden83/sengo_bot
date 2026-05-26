@@ -1015,9 +1015,9 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
         return `\u001b[1;37m0.00\u001b[0m`;
     };
 
-    const ppSSColor = `\u001b[1;37mSS:\u001b[0m  ${livePPValues.ppSS.toFixed(2)}pp -> ${reworkResult.ppSS.toFixed(2)}pp (${diffPPColor(reworkResult.ppSS - livePPValues.ppSS)})`;
-    const pp99Color = `\u001b[1;37m99%:\u001b[0m ${livePPValues.pp99.toFixed(2)}pp -> ${reworkResult.pp99.toFixed(2)}pp (${diffPPColor(reworkResult.pp99 - livePPValues.pp99)})`;
-    const pp98Color = `\u001b[1;37m98%:\u001b[0m ${livePPValues.pp98.toFixed(2)}pp -> ${reworkResult.pp98.toFixed(2)}pp (${diffPPColor(reworkResult.pp98 - livePPValues.pp98)})`;
+    const ppSSColor = `\u001b[1;33mSS:\u001b[0m  ${livePPValues.ppSS.toFixed(2)}pp -> ${reworkResult.ppSS.toFixed(2)}pp (${diffPPColor(reworkResult.ppSS - livePPValues.ppSS)})`;
+    const pp99Color = `\u001b[1;32m99%:\u001b[0m ${livePPValues.pp99.toFixed(2)}pp -> ${reworkResult.pp99.toFixed(2)}pp (${diffPPColor(reworkResult.pp99 - livePPValues.pp99)})`;
+    const pp98Color = `\u001b[1;36m98%:\u001b[0m ${livePPValues.pp98.toFixed(2)}pp -> ${reworkResult.pp98.toFixed(2)}pp (${diffPPColor(reworkResult.pp98 - livePPValues.pp98)})`;
     const pp95Color = `\u001b[1;37m95%:\u001b[0m ${livePPValues.pp95.toFixed(2)}pp -> ${reworkResult.pp95.toFixed(2)}pp (${diffPPColor(reworkResult.pp95 - livePPValues.pp95)})`;
     const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}\n${pp99Color}\n${pp98Color}\n${pp95Color}\n\`\`\``;
 
