@@ -9,9 +9,29 @@ async function run(messages, args) {
     // 1. Parsear argumentos usando argsParserNoCommand
     const initial_parsed = argsParserNoCommand(args);
     const isLista = initial_parsed.listMode;
-    const isUserCompare = initial_parsed.reworkCompare;
     const isTop = initial_parsed.reworkTop;
     const reworkQuery = initial_parsed.reworkQuery || "";
+
+    // Determinar si el usuario quiere realizar el cálculo de un mapa
+    const hasMapIdOrUrl = !!initial_parsed.beatmap_url;
+    const hasMods = !!(initial_parsed.modFilter || initial_parsed.modContainFilter);
+    const hasReply = !!(message.reference || reply);
+
+    let potential_pure_map_id = false;
+    if (initial_parsed.username && initial_parsed.username[0]) {
+        const potential_id = initial_parsed.username[0].trim();
+        if (/^\d+$/.test(potential_id)) {
+            potential_pure_map_id = true;
+        }
+    }
+
+    const wantsMapCalculation = hasMapIdOrUrl || hasMods || hasReply || potential_pure_map_id;
+
+    // Si no se pide lista, ni top, ni cálculo de mapa, por defecto es comparación de perfil (-o)
+    let isUserCompare = initial_parsed.reworkCompare;
+    if (!isLista && !isTop && !wantsMapCalculation) {
+        isUserCompare = true;
+    }
 
     // ----------------------------------------------------
     // Caso 1: s.rework -lista (Listado de reworks)
@@ -524,7 +544,7 @@ async function run(messages, args) {
 run.description = {
     'header': "Comando de Reworks Próximos de PP",
     'body': "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
-    'usage': `s.rework : Estima el PP del último mapa del canal con el rework por defecto (master).\ns.rework +HDDT : Estima el PP del último mapa con mods HDDT.\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -o : Compara tus estadísticas y PP actual frente al rework.\ns.rework -o 'usuario' : Compara a otro jugador frente al rework.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador.`
+    'usage': `s.rework : Compara tus estadísticas y PP actual frente al rework (por defecto).\ns.rework 'usuario' : Compara a otro jugador frente al rework.\ns.rework -m +HDDT : Estima el PP del último mapa con mods HDDT (o respondiendo a un mapa).\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador.`
 };
 
 module.exports = { run, "description": run.description };
