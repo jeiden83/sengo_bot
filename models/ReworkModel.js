@@ -74,9 +74,9 @@ function getQueueStatus(osuId, reworkId) {
 
 // Solicitar recalculación de rework a pp.huismetbenen.nl
 async function requestReworkRecalculation(osuId, reworkId) {
-    const cookie = process.env.HUISMETBENEN_COOKIE;
+    const cookie = process.env.HUISMETBENEN_COOKIE || process.env.HUISMETBENEN_ACCESS_TOKEN;
     if (!cookie) {
-        return { success: false, error: "HUISMETBENEN_COOKIE no configurado en .env" };
+        return { success: false, error: "HUISMETBENEN_COOKIE o HUISMETBENEN_ACCESS_TOKEN no configurado en .env" };
     }
     const url = 'https://api.pp.huismetbenen.nl/queue/add-to-queue';
     const headers = {
