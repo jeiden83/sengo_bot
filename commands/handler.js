@@ -31,6 +31,17 @@ async function handleOAuthFailure(author, logger) {
 async function smartErrorSuggester(command, args, message, res, errorTextOrResult) {
     if (!args || args.length === 0) return null;
 
+    // Caso 0: Sintaxis de mods inválida o incorrecta
+    try {
+        const { argsParserNoCommand } = require("./utils/argsParser.js");
+        const parsed_args = argsParserNoCommand(args);
+        if (parsed_args.invalidModsWarning) {
+            return `❌ Sintaxis de mods incorrecta. Para filtrar por mods, debes usar **-mods HDDT** o **+HDDT** (ej: \`s.${command} -mods hddt\` o \`s.${command} +hddt\`).`;
+        }
+    } catch (err) {
+        console.error("Error al verificar sintaxis de mods en smartErrorSuggester:", err);
+    }
+
     const commandLower = command.toLowerCase();
 
     // Caso 1 & 2: El comando es de comparación u otros que no admiten -lb o -pais

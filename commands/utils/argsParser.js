@@ -349,6 +349,7 @@ function argsParserNoCommand(args) {
     let listMode = false;
     let modFilter = null;
     let modContainFilter = null;
+    let invalidModsWarning = false;
     let searchFilter = null;
     let ppThreshold = null;
     let recentSort = false;
@@ -722,6 +723,58 @@ function argsParserNoCommand(args) {
             }
         }
 
+        // Detectar si el usuario usó por error la sintaxis de mods incorrecta o incompleta
+        const lowerArg = arg.toLowerCase();
+        if (lowerArg === "mods" || lowerArg === "mod") {
+            invalidModsWarning = true;
+            continue;
+        }
+
+        // Si empieza con "+" (ej: "+HDDT")
+        if (arg.startsWith("+")) {
+            const possibleMods = arg.slice(1).toUpperCase();
+            if (/^[A-Z]{2,}$/.test(possibleMods)) {
+                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const chars = possibleMods.split('');
+                if (chars.every(c => validModChars.has(c)) && possibleMods.length % 2 === 0) {
+                    modFilter = possibleMods;
+                    continue;
+                }
+            }
+        }
+
+        // Si empieza con "-" y coincide con una combinación de mods válidos, pero no es un flag oficial (ej: "-HDDT")
+        if (arg.startsWith("-") && !arg.startsWith("-mods") && !arg.startsWith("-mod")) {
+            const potentialMods = arg.slice(1).toUpperCase();
+            const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+            const chars = potentialMods.split('');
+            const isAllMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
+            
+            const knownFlags = new Set(['pm', 'mx', 'pp', 'ps']);
+            if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
+                invalidModsWarning = true;
+                continue;
+            }
+        }
+
+        // Si es exactamente "-mods" o "-mod" (soportar sintaxis alternativa antes de -m genérico)
+        if (arg === "-mods" || arg === "-mod") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                modFilter = next_arg.toUpperCase();
+                skip_next = true;
+                continue;
+            }
+        }
+        if (arg.startsWith("-mods") || arg.startsWith("-mod")) {
+            const prefixLen = arg.startsWith("-mods") ? 5 : 4;
+            let next = arg.slice(prefixLen).trim();
+            if (next.length > 0) {
+                modFilter = next.toUpperCase();
+                continue;
+            }
+        }
+
         // Si es exactamente "-mx" (revisar antes de -m para evitar falsos positivos)
         if (arg === "-mx") {
             if (i + 1 < args_list.length) {
@@ -873,7 +926,8 @@ function argsParserNoCommand(args) {
         'reworkQuery': reworkQuery,
         'reworkCompare': reworkCompare,
         'reworkTop': reworkTop,
-        'sortByPPChange': sortByPPChange
+        'sortByPPChange': sortByPPChange,
+        'invalidModsWarning': invalidModsWarning
     };
     return parsed_args;
 }
