@@ -92,12 +92,27 @@ async function run(messages, args) {
 
         await ReworkModel.removeFromQueue(player.id, rework.id);
 
-        const embed = await doOsuReworkUserEmbed(message, player, reworkUser, rework);
+        const initialEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, [], true);
+        let sentMessage;
         if (reply) {
-            reply.reply({ embeds: [embed] });
-            return;
+            sentMessage = await reply.reply({ embeds: [initialEmbed] });
+        } else {
+            sentMessage = await message.channel.send({ embeds: [initialEmbed] });
         }
-        return { embeds: [embed] };
+
+        // Cargar scores en segundo plano
+        let scores = [];
+        try {
+            scores = await ReworkModel.getUserReworkScores(player.id, rework.id, requestedMode);
+        } catch (e) {
+            console.error("Error al obtener las jugadas del jugador en Rework:", e);
+        }
+
+        const finalEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, scores, false);
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            await sentMessage.edit({ embeds: [finalEmbed] });
+        }
+        return;
     }
 
     // ----------------------------------------------------

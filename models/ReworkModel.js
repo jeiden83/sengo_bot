@@ -114,7 +114,8 @@ async function sendQueueCompletionNotification(item, reworkUser) {
 
             embed = await doOsuReworkTopEmbed(mockMessage, player, sortedScores, rework);
         } else {
-            embed = await doOsuReworkUserEmbed(mockMessage, player, reworkUser, rework);
+            const scores = await getUserReworkScores(item.osuId, item.reworkId, item.gamemode || "osu").catch(() => []);
+            embed = await doOsuReworkUserEmbed(mockMessage, player, reworkUser, rework, scores);
         }
 
         if (embed && embed.setFooter) {

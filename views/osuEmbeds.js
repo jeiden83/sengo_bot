@@ -1062,7 +1062,7 @@ ${statusText}
     return embed;
 }
 
-async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
+async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores = [], isLoading = false) {
     const embedColor = getEmbedColor(message);
     const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
 
@@ -1076,12 +1076,61 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
         return `\u001b[1;30m0.00\u001b[0m`;
     };
 
-    const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
-    const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
-    const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
-    const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
+    let statsBlock = "";
+    let breakdownTitle = "Desglose de PP ponderado en Rework:";
 
-    const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
+    if (isLoading) {
+        breakdownTitle = "Impacto de PP por Mods (Top Rework):";
+        statsBlock = `\`\`\`ansi\n⏳ Calculando impacto de mods...\n\`\`\``;
+    } else if (scores && scores.length > 0) {
+        breakdownTitle = "Impacto de PP por Mods (Top Rework):";
+        const modChangesMap = {};
+        for (const score of scores) {
+            if (!score.values || typeof score.values.local_pp !== 'number' || typeof score.values.live_pp !== 'number') {
+                continue;
+            }
+            const modStr = score.mods && score.mods.length > 0
+                ? score.mods.map(m => m.acronym).filter(a => a !== 'CL').sort().join("")
+                : "NM";
+            const diff = score.values.local_pp - score.values.live_pp;
+            if (!modChangesMap[modStr]) {
+                modChangesMap[modStr] = 0;
+            }
+            modChangesMap[modStr] += diff;
+        }
+
+        const modChangesArray = Object.entries(modChangesMap).map(([mods, change]) => ({
+            mods,
+            change
+        }));
+
+        // Ordenar por impacto absoluto
+        modChangesArray.sort((a, b) => Math.abs(b.change) - Math.abs(a.change));
+
+        // Tomar los 4 más influyentes y ordenarlos de más positivo a más negativo
+        const top4ModChanges = modChangesArray.slice(0, 4).sort((a, b) => b.change - a.change);
+
+        const formatChange = (val) => {
+            const sign = val >= 0 ? "+" : "";
+            if (val > 0) return `\u001b[1;32m${sign}${val.toFixed(2)}pp\u001b[0m`;
+            if (val < 0) return `\u001b[1;31m${val.toFixed(2)}pp\u001b[0m`;
+            return `\u001b[1;30m0.00pp\u001b[0m`;
+        };
+
+        const lines = top4ModChanges.map(item => {
+            const labelText = item.mods === "NM" ? "NM" : `+${item.mods}`;
+            const label = `\u001b[1;30m${labelText.padEnd(12)}:\u001b[0m`;
+            return `${label} ${formatChange(item.change)}`;
+        });
+
+        statsBlock = `\`\`\`ansi\n${lines.join("\n")}\n\`\`\``;
+    } else {
+        const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
+        const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
+        const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
+        const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
+        statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
+    }
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -1100,7 +1149,7 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
 ▸ **PP Rework:** \`${reworkUser.new_pp_incl_bonus.toFixed(2)} pp\`
 ▸ **Cambio:** \`${diffString(reworkUser.pp_change)} pp (${pctSign}${pctChange}%)\`
 
-**Desglose de PP ponderado en Rework:**
+**${breakdownTitle}**
 ${statsBlock}
         `)
         .setFooter({
