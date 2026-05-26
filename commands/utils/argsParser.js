@@ -7,27 +7,37 @@ const getGamemodeFromMessage = (msg) => {
     const e = msg.embeds?.[0];
     if (e) {
         const authorText = (e.author?.name || '').toLowerCase();
+        const footerText = (e.footer?.text || '').toLowerCase();
         const titleText = (e.title || '').toLowerCase();
         const descText = (e.description || '').toLowerCase();
-        const footerText = (e.footer?.text || '').toLowerCase();
-        const combined = `${authorText} | ${titleText} | ${descText} | ${footerText}`;
 
-        if (combined.includes('mania')) return 'mania';
-        if (combined.includes('taiko')) return 'taiko';
-        if (combined.includes('fruits') || combined.includes('ctb') || combined.includes('catch')) return 'fruits';
-        if (combined.includes('std') || combined.includes('standard') || combined.includes('osu!')) {
-            if (!combined.includes('mania') && !combined.includes('taiko') && !combined.includes('fruits')) {
-                return 'osu';
-            }
-        }
+        // Regex para buscar modos como palabras completas o con prefijo/sufijo común
+        const maniaRegex = /\bmania\b/i;
+        const taikoRegex = /\btaiko\b/i;
+        const fruitsRegex = /\b(fruits|ctb|catch)\b/i;
+        const stdRegex = /\b(std|standard|osu)\b/i;
+
+        // Primero buscar en Autor y Footer (altísima confianza)
+        const metadataCombined = `${authorText} | ${footerText}`;
+        if (maniaRegex.test(metadataCombined)) return 'mania';
+        if (taikoRegex.test(metadataCombined)) return 'taiko';
+        if (fruitsRegex.test(metadataCombined)) return 'fruits';
+        if (stdRegex.test(metadataCombined)) return 'osu';
+
+        // Si no se encuentra en autor/footer, buscar en Título y Descripción
+        const contentCombined = `${titleText} | ${descText}`;
+        if (maniaRegex.test(contentCombined)) return 'mania';
+        if (taikoRegex.test(contentCombined)) return 'taiko';
+        if (fruitsRegex.test(contentCombined)) return 'fruits';
+        if (stdRegex.test(contentCombined)) return 'osu';
     }
 
     // 2. Buscar en contenido de texto
     const content = (msg.content || '').toLowerCase();
-    if (content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
-    if (content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
-    if (content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits') || content.includes('catch')) return 'fruits';
-    if (content.includes('osu!std') || content.includes(' en standard') || content.includes(' en osu')) return 'osu';
+    if (/\bmania\b/i.test(content) || content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
+    if (/\btaiko\b/i.test(content) || content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
+    if (/\b(fruits|ctb|catch)\b/i.test(content) || content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits')) return 'fruits';
+    if (/\b(std|standard|osu)\b/i.test(content) || content.includes('osu!std') || content.includes(' en standard') || content.includes(' en osu')) return 'osu';
 
     return null;
 };
