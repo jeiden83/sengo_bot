@@ -1176,7 +1176,8 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework) {
         const mapName = `${beatmap.artist} - ${beatmap.title} [${beatmap.diff_name}]`;
         const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
         
-        const diffString = `${diffSign}${diff.toFixed(2)}pp`;
+        const emoji = diff >= 0 ? "🟢" : "🔴";
+        const diffString = `${emoji} ${diffSign}${diff.toFixed(2)}pp`;
         
         const oldRank = score.old_rank || "-";
         const newRank = score.new_rank || (index + 1);
