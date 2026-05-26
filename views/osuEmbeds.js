@@ -43,7 +43,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
 
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const mods_used = formatMods(recent_scores.mods, isLazer);
-    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
+    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
 
     const stats_str = getStatsString(stats, recent_scores.beatmap.mode);
     let ratio_str = "";
@@ -92,7 +92,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
                     const topIndex = topScores.findIndex(s => {
                         return (recent_scores.id && s.id === recent_scores.id) ||
                             (new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
-                            (s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
+                                (s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
                     });
                     if (topIndex !== -1) {
                         user_top_pos = topIndex + 1;
@@ -213,10 +213,10 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 
         let ppVal = score.calculatedPP !== undefined ? score.calculatedPP : score.pp;
         let pp = `${ppVal ? ppVal.toFixed(2) + "pp" : "⏳ pp"}`;
-        
+
         let starsVal = score.calculatedStars !== undefined ? score.calculatedStars : score.beatmap.difficulty_rating;
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
-        
+
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
@@ -277,7 +277,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
     const mods_used = formatMods(score.mods, isLazer);
-    const map_completion = score.passed ? `` : `(${((pre_calculated.map_completion)*100).toFixed(2)}%)`;
+    const map_completion = score.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
 
     const stats = score.statistics || {};
     const stats_str = getStatsString(stats, score.beatmap.mode);
@@ -541,7 +541,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 
         const isFirst = globalIndex === 1;
         const rank_pos = isFirst ? `**#${score.originalRank || globalIndex}**` : `#${score.originalRank || globalIndex}`;
-        
+
         const formatted_score = isFirst ? `**${legacy_score}**` : `${legacy_score}`;
         const formatted_accuracy = isFirst ? `**${accuracy}%**` : `${accuracy}%`;
         const formatted_pp = isFirst ? `__**${pp}**__` : `__${pp}__`;
@@ -638,7 +638,7 @@ function doOsuMapEmbed({
     userTags
 }) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-    
+
     // Emojis de mods para título
     let modsStr = attributes.modsStr || "";
     const mods_emoji_str = modsStr ? modsStr.match(/.{1,2}/g).reduce((acc, mod) => {
@@ -664,8 +664,8 @@ function doOsuMapEmbed({
             tagsToDisplay = beatmap.beatmapset.tags.split(/\s+/).filter(t => t.length > 0);
         }
     }
-    const userTagsStr = tagsToDisplay && tagsToDisplay.length > 0 
-        ? `\n▸ **Etiquetas:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}` 
+    const userTagsStr = tagsToDisplay && tagsToDisplay.length > 0
+        ? `\n▸ **Etiquetas:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}`
         : '';
 
     const ppSSColor = `\u001b[1;32m${ppValues.ppSS}pp\u001b[0m`;
@@ -750,7 +750,7 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata) {
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `${osu_userdata.team ? `[${osu_userdata.team.short_name}]`: ""} ${osu_userdata.username}: ${osu_userdata.statistics.pp}pp`,
+            name: `${osu_userdata.team ? `[${osu_userdata.team.short_name}]` : ""} ${osu_userdata.username}: ${osu_userdata.statistics.pp}pp`,
             url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
@@ -1065,7 +1065,7 @@ ${statusText}
 async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
     const embedColor = getEmbedColor(message);
     const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
-    
+
     // pp_change_relative es por ejemplo 0.938963 (lo cual es -6.10%)
     const pctChange = ((reworkUser.pp_change_relative - 1) * 100).toFixed(2);
     const pctSign = pctChange > 0 ? "+" : "";
@@ -1080,7 +1080,7 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework) {
     const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
     const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
     const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
-    
+
     const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
 
     const embed = new EmbedBuilder()
@@ -1154,9 +1154,10 @@ ${formatCategory(wip)}
     return embed;
 }
 
-async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework) {
+async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, startIndex = 0) {
     const embedColor = getEmbedColor(message);
-    const topScores = sortedScores.slice(0, 5); // Tomar los mejores 5 recalculados
+    const total_plays = sortedScores.length;
+    const topScores = sortedScores.slice(startIndex, startIndex + 5);
 
     let description = `Aquí tienes las mejores jugadas recalculadas para **${osuUser.username}** bajo el rework **${rework.name}** (\`${rework.code}\`).\n\n`;
 
@@ -1167,7 +1168,7 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework) {
         const livePP = values.live_pp || 0;
         const diff = localPP - livePP;
         const diffSign = diff >= 0 ? "+" : "";
-        
+
         // Formatear mods
         const modsStr = score.mods && score.mods.length > 0
             ? `+${score.mods.map(m => m.acronym).filter(a => a !== 'CL').join("")}`
@@ -1175,25 +1176,97 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework) {
 
         const mapName = `${beatmap.artist} - ${beatmap.title} [${beatmap.diff_name}]`;
         const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
-        
+
         const emoji = diff >= 0 ? "🟢" : "🔴";
         const diffString = `${emoji} ${diffSign}${diff.toFixed(2)}pp`;
-        
-        const oldRank = score.old_rank || "-";
-        const newRank = score.new_rank || (index + 1);
 
-        description += `**${index + 1}.** [${mapName}](${mapUrl}) **${modsStr}**\n`;
+        const oldRank = score.old_rank || "-";
+        const newRank = score.new_rank || (startIndex + index + 1);
+
+        description += `**${startIndex + index + 1}.** [${mapName}](${mapUrl}) **${modsStr}**\n`;
         description += ` ▸ **PP:** \`${livePP.toFixed(1)} pp\` ➔ **\`${localPP.toFixed(1)} pp\`** (${diffString})\n`;
         description += ` ▸ **Acc:** \`${score.accuracy.toFixed(2)}%\` | **Rank:** \`#${oldRank}\` ➔ \`#${newRank}\`\n\n`;
     });
 
     const embed = new EmbedBuilder()
-        .setTitle(`Top 5 de Rework de PP - ${osuUser.username}`)
+        .setTitle(`Top Rework de PP - ${osuUser.username}`)
         .setColor(embedColor)
         .setThumbnail(osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`)
         .setDescription(description)
         .setFooter({
-            text: "Sengo • PP Rework Top Plays",
+            text: `Sengo • PP Rework Top Plays (${startIndex + 1}-${Math.min(total_plays, startIndex + 5)} de ${total_plays}) Birb`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
+async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index, total_plays) {
+    const embedColor = getEmbedColor(message);
+    const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
+    const avatar_url = osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`;
+
+    const beatmap = score.beatmap || {};
+    const values = score.values || {};
+    const localPP = values.local_pp || 0;
+    const livePP = values.live_pp || 0;
+    const diff = localPP - livePP;
+    const diffSign = diff >= 0 ? "+" : "";
+    const emoji = diff >= 0 ? "🟢" : "🔴";
+    const diffString = `${emoji} ${diffSign}${diff.toFixed(2)}pp`;
+
+    // Formatear mods
+    const modsStr = score.mods && score.mods.length > 0
+        ? `+${score.mods.map(m => m.acronym).filter(a => a !== 'CL').join("")}`
+        : "";
+
+    const mapName = `${beatmap.artist} - ${beatmap.title} [${beatmap.diff_name}]`;
+    const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
+
+    const oldRank = score.old_rank || "-";
+    const newRank = score.new_rank || index;
+
+    // Calcular/mostrar estrellas si están disponibles
+    const liveSR = beatmap.star_rating || 0;
+    const reworkSR = values.sr || liveSR;
+    const srDiff = reworkSR - liveSR;
+    const srDiffSign = srDiff >= 0 ? "+" : "";
+    const srDisplay = `${liveSR.toFixed(2)}★ -> ${reworkSR.toFixed(2)}★ (${srDiffSign}${srDiff.toFixed(2)})`;
+
+    // Desglose de PP en Rework
+    const aimPP = `\\u001b[1;30mWeighted Aim:\\u001b[0m     ${(values.aim_pp || 0).toFixed(2)}pp`;
+    const tapPP = `\\u001b[1;30mWeighted Tap:\\u001b[0m     ${(values.tap_pp || 0).toFixed(2)}pp`;
+    const accPP = `\\u001b[1;30mWeighted Acc:\\u001b[0m     ${(values.acc_pp || 0).toFixed(2)}pp`;
+    const readPP = `\\u001b[1;30mWeighted Reading:\\u001b[0m ${(values.reading_pp || 0).toFixed(2)}pp`;
+    const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Puntuación #${index} en el Rework para ${osuUser.username}`,
+            url: user_url,
+            iconURL: avatar_url
+        })
+        .setTitle(mapName)
+        .setURL(mapUrl)
+        .setColor(embedColor)
+        .setDescription(`
+**• Mods:** \`${modsStr || 'None'}\`
+**• Dificultad:** \`${srDisplay}\`
+**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})
+
+**Comparación de PP:**
+▸ **PP Live:** \`${livePP.toFixed(2)} pp\`
+▸ **PP Rework:** \`${localPP.toFixed(2)} pp\`
+▸ **Cambio:** \`${diffString}\`
+▸ **Precisión:** \`${score.accuracy ? score.accuracy.toFixed(2) : '0.00'}%\`
+▸ **Rango en Top:** \`#${oldRank}\` ➔ \`#${newRank}\`
+
+**Desglose de PP ponderado en Rework:**
+${statsBlock}
+        `)
+        .setFooter({
+            text: `Sengo • PP Rework Top Play #${index} de ${total_plays}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -1216,6 +1289,7 @@ module.exports = {
     doOsuReworkMapEmbed,
     doOsuReworkUserEmbed,
     doOsuReworkListEmbed,
-    doOsuReworkTopEmbed
+    doOsuReworkTopEmbed,
+    doOsuReworkTopSingleEmbed
 };
 

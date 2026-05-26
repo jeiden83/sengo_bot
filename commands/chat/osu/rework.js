@@ -159,16 +159,179 @@ async function run(messages, args) {
         await ReworkModel.removeFromQueue(player.id, rework.id);
 
         // Ordenar por local_pp descendente
-        const sortedScores = scores
+        let sortedScores = scores
             .filter(s => s.values && typeof s.values.local_pp === 'number')
             .sort((a, b) => b.values.local_pp - a.values.local_pp);
 
-        const embed = await doOsuReworkTopEmbed(message, player, sortedScores, rework);
-        if (reply) {
-            reply.reply({ embeds: [embed] });
+        if (initial_parsed.ppThreshold !== null) {
+            sortedScores = sortedScores.filter(s => s.values.local_pp >= initial_parsed.ppThreshold);
+        }
+
+        const total_plays = sortedScores.length;
+        if (total_plays === 0) {
+            return `❌ No se encontraron jugadas en el top del rework que coincidan con los filtros (ej: -pp).`;
+        }
+
+        const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+        const { doOsuReworkTopSingleEmbed } = require("../../../views/osuEmbeds.js");
+
+        // ----------------------------------------------------
+        // Modo 1: Single Play Display (-i <index>)
+        // ----------------------------------------------------
+        if (initial_parsed.explicitIndex) {
+            let index = initial_parsed.index || 1;
+            let content_msg = '';
+
+            if (index > total_plays) {
+                content_msg = `⚠️ Solo se encontraron **${total_plays}** jugadas en el rework. Mostrando la última (#${total_plays}):`;
+                index = total_plays;
+            } else if (index < 1) {
+                content_msg = `⚠️ Índice inválido. Mostrando la mejor (#1):`;
+                index = 1;
+            } else {
+                content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** en el Rework:`;
+            }
+
+            const initialEmbed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays);
+
+            const getSingleButtonsRow = (curr, max) => {
+                return buildPaginationRow({
+                    prefix: 'rew_top_single',
+                    current: curr,
+                    total: max,
+                    oneIndexed: true,
+                    customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+                });
+            };
+
+            let sent_message;
+            if (reply) {
+                sent_message = await reply.reply({
+                    content: content_msg,
+                    embeds: [initialEmbed],
+                    components: total_plays > 1 ? [getSingleButtonsRow(index, total_plays)] : []
+                });
+            } else {
+                sent_message = await message.channel.send({
+                    content: content_msg,
+                    embeds: [initialEmbed],
+                    components: total_plays > 1 ? [getSingleButtonsRow(index, total_plays)] : []
+                });
+            }
+
+            if (total_plays <= 1) return;
+
+            const filter = btnInt => btnInt.user.id === message.author.id;
+            const collector = sent_message.createMessageComponentCollector({
+                filter,
+                idle: 30000
+            });
+
+            collector.on('collect', async i => {
+                try {
+                    await i.deferUpdate();
+
+                    if (i.customId === 'rew_top_single_first') {
+                        index = 1;
+                    } else if (i.customId === 'rew_top_single_prev') {
+                        index = Math.max(1, index - 1);
+                    } else if (i.customId === 'rew_top_single_next') {
+                        index = Math.min(total_plays, index + 1);
+                    } else if (i.customId === 'rew_top_single_last') {
+                        index = total_plays;
+                    }
+
+                    const content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** en el Rework:`;
+                    const embed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays);
+
+                    await i.editReply({
+                        content: content_msg,
+                        embeds: [embed],
+                        components: [getSingleButtonsRow(index, total_plays)]
+                    });
+                } catch (err) {
+                    console.error("Error al navegar single rework top play:", err);
+                }
+            });
+
+            collector.on('end', async () => {
+                try {
+                    await sent_message.edit({ components: [] });
+                } catch {}
+            });
+
             return;
         }
-        return { embeds: [embed] };
+
+        // ----------------------------------------------------
+        // Modo 2: List Mode Display (Paginación con botones)
+        // ----------------------------------------------------
+        let page = initial_parsed.page || 1;
+        const max_pages = Math.ceil(total_plays / 5);
+        if (page > max_pages) page = max_pages;
+        if (page < 1) page = 1;
+
+        let startIndex = (page - 1) * 5;
+
+        const initialEmbed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex);
+
+        const getListButtonsRow = (start, total) => {
+            return buildPaginationRow({ prefix: 'rew_top_list', current: start, total, pageSize: 5 });
+        };
+
+        let sent_message;
+        if (reply) {
+            sent_message = await reply.reply({
+                embeds: [initialEmbed],
+                components: total_plays > 5 ? [getListButtonsRow(startIndex, total_plays)] : []
+            });
+        } else {
+            sent_message = await message.channel.send({
+                embeds: [initialEmbed],
+                components: total_plays > 5 ? [getListButtonsRow(startIndex, total_plays)] : []
+            });
+        }
+
+        if (total_plays <= 5) return;
+
+        const filter = btnInt => btnInt.user.id === message.author.id;
+        const collector = sent_message.createMessageComponentCollector({
+            filter,
+            idle: 30000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === 'rew_top_list_first') {
+                    startIndex = 0;
+                } else if (i.customId === 'rew_top_list_prev') {
+                    startIndex = Math.max(0, startIndex - 5);
+                } else if (i.customId === 'rew_top_list_next') {
+                    startIndex = startIndex + 5;
+                } else if (i.customId === 'rew_top_list_last') {
+                    startIndex = Math.floor((total_plays - 1) / 5) * 5;
+                }
+
+                const embed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex);
+
+                await i.editReply({
+                    embeds: [embed],
+                    components: [getListButtonsRow(startIndex, total_plays)]
+                });
+            } catch (err) {
+                console.error("Error al navegar lista de rework top plays:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sent_message.edit({ components: [] });
+            } catch {}
+        });
+
+        return;
     }
 
     // ----------------------------------------------------
