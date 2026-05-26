@@ -1128,7 +1128,7 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
             if (list.length === 0) return " \u001b[1;30mNinguno\u001b[0m\n";
             return list.map(item => {
                 const labelText = item.mods === "NM" ? "NM" : `+${item.mods}`;
-                const label = `\u001b[1;30m ${labelText.padEnd(12)}:\u001b[0m`;
+                const label = ` \u001b[1;37m${labelText.padEnd(12)}\u001b[1;30m:\u001b[0m`;
                 return `${label} ${formatChange(item.change)}`;
             }).join("\n") + "\n";
         };
@@ -1141,10 +1141,10 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
 
         statsBlock = `\`\`\`ansi\n${blockText}\`\`\``;
     } else {
-        const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
-        const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
-        const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
-        const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
+        const aimPP = `\u001b[1;37mWeighted Aim\u001b[1;30m:\u001b[0m     ${(reworkUser.weighted_aim_pp || 0).toFixed(2)}pp`;
+        const tapPP = `\u001b[1;37mWeighted Tap\u001b[1;30m:\u001b[0m     ${(reworkUser.weighted_tap_pp || 0).toFixed(2)}pp`;
+        const accPP = `\u001b[1;37mWeighted Acc\u001b[1;30m:\u001b[0m     ${(reworkUser.weighted_acc_pp || 0).toFixed(2)}pp`;
+        const readPP = `\u001b[1;37mWeighted Reading\u001b[1;30m:\u001b[0m ${(reworkUser.weighted_reading_pp || 0).toFixed(2)}pp`;
         statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
     }
 
