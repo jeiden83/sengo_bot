@@ -1087,11 +1087,38 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
         const modChangesMap = {};
         const modOrder = ["NF", "EZ", "TD", "HD", "HR", "DT", "NC", "HT", "FL", "SO", "SD", "PF"];
 
-        for (const score of scores) {
-            if (!score.values || typeof score.values.local_pp !== 'number' || typeof score.values.live_pp !== 'number') {
-                continue;
+        // 1. Determinar el rango original (old_rank) ordenando por live_pp descendente
+        const sortedByLive = [...scores]
+            .filter(s => s.values && typeof s.values.live_pp === 'number')
+            .sort((a, b) => (b.values.live_pp || 0) - (a.values.live_pp || 0));
+
+        const oldRankMap = new Map();
+        sortedByLive.forEach((score, idx) => {
+            if (score.beatmap && score.beatmap.id) {
+                oldRankMap.set(score.beatmap.id, idx + 1);
             }
-            
+        });
+
+        // 2. Determinar el nuevo rango (new_rank) ordenando por local_pp descendente
+        const sortedByLocal = [...scores]
+            .filter(s => s.values && typeof s.values.local_pp === 'number')
+            .sort((a, b) => (b.values.local_pp || 0) - (a.values.local_pp || 0));
+
+        for (let idx = 0; idx < sortedByLocal.length; idx++) {
+            const score = sortedByLocal[idx];
+            const newRank = idx + 1;
+            const oldRank = (score.beatmap && score.beatmap.id && oldRankMap.has(score.beatmap.id))
+                ? oldRankMap.get(score.beatmap.id)
+                : (score.old_rank || 101);
+
+            const localPP = score.values.local_pp || 0;
+            const livePP = score.values.live_pp || 0;
+
+            // Calcular el PP ponderado (sólo aportan los primeros 100 puestos)
+            const weightedLocal = newRank <= 100 ? localPP * Math.pow(0.95, newRank - 1) : 0;
+            const weightedLive = oldRank <= 100 ? livePP * Math.pow(0.95, oldRank - 1) : 0;
+            const weightedDiff = weightedLocal - weightedLive;
+
             const filteredMods = score.mods ? score.mods.map(m => m.acronym).filter(a => a !== 'CL') : [];
             filteredMods.sort((a, b) => {
                 let idxA = modOrder.indexOf(a);
@@ -1102,11 +1129,10 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
             });
 
             const modStr = filteredMods.length > 0 ? filteredMods.join("") : "NM";
-            const diff = score.values.local_pp - score.values.live_pp;
             if (!modChangesMap[modStr]) {
                 modChangesMap[modStr] = 0;
             }
-            modChangesMap[modStr] += diff;
+            modChangesMap[modStr] += weightedDiff;
         }
 
         const modChangesArray = Object.entries(modChangesMap).map(([mods, change]) => ({
