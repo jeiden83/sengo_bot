@@ -42,6 +42,40 @@ const getGamemodeFromMessage = (msg) => {
     return null;
 };
 
+const extractUserFromLeaderboardMessage = (msg, targetIndex = 1) => {
+    if (!msg) return null;
+    const e = msg.embeds?.[0];
+    if (!e || !e.description) return null;
+
+    const description = e.description;
+    const entryRegex = /(?:#|\*\*#|\*\*#\*\*)\s*(\d+)[\s\S]*?\[([^\]]+)\]\(https:\/\/osu\.ppy\.sh\/users\/(\d+)\)/g;
+    
+    const entries = [];
+    let match;
+    while ((match = entryRegex.exec(description)) !== null) {
+        entries.push({
+            rank: parseInt(match[1]),
+            username: match[2],
+            userId: match[3]
+        });
+    }
+
+    if (entries.length === 0) return null;
+
+    // 1. Intentar buscar coincidencia por rango absoluto (ej. rango 3)
+    const absoluteMatch = entries.find(entry => entry.rank === targetIndex);
+    if (absoluteMatch) {
+        return absoluteMatch;
+    }
+
+    // 2. Fallback a coincidencia por índice relativo en pantalla (1-indexed)
+    if (targetIndex >= 1 && targetIndex <= entries.length) {
+        return entries[targetIndex - 1];
+    }
+
+    return null;
+};
+
 async function findBeatmapInChannel(message, isReply, targetIndex = 1){
     const extractAllIds = str => {
         if (!str) return [];
@@ -256,6 +290,22 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     
     // Buscamos el user linkeado con el bot 
     user_found = await OsuUserModel.getLinkedUser(res.User, discord_id);
+
+    // Si el parámetro resolveUserByIndex está habilitado, el usuario especificó un índice y es una respuesta
+    if (command_parameters.resolveUserByIndex && parsed_args.explicitIndex && message.reference?.messageId && (!parsed_args.username || parsed_args.username.length === 0 || parsed_args.username[0] === "")) {
+        try {
+            const targetChannel = message.channel;
+            const refMsg = await targetChannel.messages.fetch(message.reference.messageId);
+            const extracted = extractUserFromLeaderboardMessage(refMsg, parsed_args.index || 1);
+            if (extracted) {
+                if (!parsed_args.username) parsed_args.username = [];
+                parsed_args.username[0] = extracted.userId;
+                parsed_args.explicitIndex = false; // Limpiar para evitar conflictos con la lógica posterior del comando
+            }
+        } catch (err) {
+            console.error("Error al extraer usuario por índice en parsingCommandFunction:", err);
+        }
+    }
 
     const config = require("../../config.js");
     const prefix = config.BOT_PREFIX || "s.";

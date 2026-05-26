@@ -218,7 +218,8 @@ async function run(messages, args) {
     const parser_res = await argsParser(cleanArgs, {
         "message": message,
         "res": res,
-        "command_function": getUserTopScores
+        "command_function": getUserTopScores,
+        "resolveUserByIndex": true
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;

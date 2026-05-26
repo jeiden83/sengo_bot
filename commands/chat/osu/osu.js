@@ -24,7 +24,7 @@ async function run(messages, args) {
 
     if (logger) logger.process("Consultando base de datos y API de osu!");
     const osu_userdata = await argsParser(args,
-        { "message": message, "res": res, "command_function": getOsuUser });
+        { "message": message, "res": res, "command_function": getOsuUser, "resolveUserByIndex": true });
 
     if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
         return osu_userdata.fn_response;
