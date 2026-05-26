@@ -98,6 +98,9 @@ async function main(reload) {
         });
     }
 
+    const ReworkModel = require("./models/ReworkModel.js");
+    ReworkModel.initClient(client);
+
     await load_listeners(res, client, config);
 
     // Inicializar el servidor HTTP de webhook de GitHub (para asegurar el puerto de Render)

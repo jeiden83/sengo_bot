@@ -74,7 +74,10 @@ async function run(messages, args) {
                 const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
                 return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
             } else {
-                await ReworkModel.addToQueue(player.id, rework.id, player.username);
+                const channelId = message.channel ? message.channel.id : null;
+                const messageId = message.id || null;
+                const authorId = message.author ? message.author.id : null;
+                await ReworkModel.addToQueue(player.id, rework.id, player.username, channelId, messageId, false, requestedMode, authorId);
                 const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
                 if (reqResult.success) {
                     console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);
@@ -137,7 +140,10 @@ async function run(messages, args) {
                 const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
                 return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
             } else {
-                await ReworkModel.addToQueue(player.id, rework.id, player.username);
+                const channelId = message.channel ? message.channel.id : null;
+                const messageId = message.id || null;
+                const authorId = message.author ? message.author.id : null;
+                await ReworkModel.addToQueue(player.id, rework.id, player.username, channelId, messageId, true, requestedMode, authorId);
                 const reqResult = await ReworkModel.requestReworkRecalculation(player.id, rework.id);
                 if (reqResult.success) {
                     console.log(`[Rework] Usuario ${player.username} (${player.id}) agregado exitosamente a la cola de pp.huismetbenen.nl`);

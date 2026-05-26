@@ -10,6 +10,13 @@ const beatmapScoresCache = new Map();
 
 let reworkQueue = new Map();
 const QUEUE_FILE = path.resolve('rework_queue.json');
+let clientInstance = null;
+let checkerInterval = null;
+
+// Inicializar el cliente Discord
+function initClient(client) {
+    clientInstance = client;
+}
 
 // Cargar caché desde archivo si existe
 async function initCache() {
@@ -33,6 +40,106 @@ async function initQueue() {
     } catch (err) {
         reworkQueue = new Map();
     }
+    startQueueChecker();
+}
+
+// Iniciar verificador de cola en segundo plano
+function startQueueChecker() {
+    if (checkerInterval) return;
+    checkerInterval = setInterval(async () => {
+        if (reworkQueue.size === 0 || !clientInstance) return;
+
+        for (const [key, item] of reworkQueue.entries()) {
+            try {
+                const url = `https://api.pp.huismetbenen.nl/player/userdata/${item.osuId}/${item.reworkId}`;
+                let res;
+                try {
+                    res = await axios.get(url, { timeout: 8000 });
+                } catch (err) {
+                    // Si la API del rework da 404/error, significa que aún está recalculando o falló
+                    continue;
+                }
+
+                if (res.data && res.data.user_id) {
+                    console.log(`[Rework Queue] Recalculo finalizado para ${item.username} (${item.osuId}) en rework ${item.reworkId}`);
+
+                    const cacheKey = `${item.osuId}:${item.reworkId}`;
+                    reworkUserCache.set(cacheKey, res.data);
+                    await saveCache();
+
+                    reworkQueue.delete(key);
+                    await saveQueue();
+
+                    await sendQueueCompletionNotification(item, res.data);
+                }
+            } catch (err) {
+                console.error(`[Rework Queue] Error al procesar cola para el usuario ${item.username}:`, err);
+            }
+        }
+    }, 30000); // Cada 30 segundos
+}
+
+// Notificar por Discord cuando se complete
+async function sendQueueCompletionNotification(item, reworkUser) {
+    if (!clientInstance || !item.channelId) return;
+
+    try {
+        const channel = await clientInstance.channels.fetch(item.channelId).catch(() => null);
+        if (!channel) return;
+
+        const OsuUserModel = require("./OsuUserModel.js");
+        const player = await OsuUserModel.getOsuUser({ username: [item.osuId], server: 'bancho' }).catch(() => null);
+        if (!player || typeof player === 'string') return;
+
+        const reworks = await getReworksList();
+        const rework = reworks.find(r => r.id === Number(item.reworkId));
+        if (!rework) return;
+
+        const { doOsuReworkUserEmbed, doOsuReworkTopEmbed } = require("../views/osuEmbeds.js");
+
+        const mockMessage = {
+            author: { id: item.authorId || "", username: "" },
+            member: { roles: { highest: { color: 0xff66aa } } },
+            guild: channel.guild || null
+        };
+
+        let embed;
+        let contentText = `🎉 **${item.username}** ha terminado de ser recalculado para **${rework.name}**!`;
+
+        if (item.isTop) {
+            const scores = await getUserReworkScores(item.osuId, item.reworkId, item.gamemode || "osu").catch(() => []);
+            const sortedScores = scores
+                .filter(s => s.values && typeof s.values.local_pp === 'number')
+                .sort((a, b) => b.values.local_pp - a.values.local_pp);
+
+            embed = await doOsuReworkTopEmbed(mockMessage, player, sortedScores, rework);
+        } else {
+            embed = await doOsuReworkUserEmbed(mockMessage, player, reworkUser, rework);
+        }
+
+        if (embed && embed.setFooter) {
+            embed.setFooter({
+                text: `Notificación de Cola de Recalculo Sengo`,
+                iconURL: clientInstance.user.displayAvatarURL()
+            });
+        }
+
+        const sendOptions = {
+            content: contentText,
+            embeds: [embed]
+        };
+
+        if (item.messageId) {
+            const originalMsg = await channel.messages.fetch(item.messageId).catch(() => null);
+            if (originalMsg) {
+                sendOptions.reply = { messageReference: originalMsg.id };
+            }
+        }
+
+        await channel.send(sendOptions);
+    } catch (err) {
+        console.error(`[Rework Queue] Error al enviar notificación a Discord para ${item.username}:`, err);
+    }
 }
 
 // Guardar cola en archivo
@@ -46,13 +153,18 @@ async function saveQueue() {
 }
 
 // Agregar usuario a la cola local
-async function addToQueue(osuId, reworkId, username) {
+async function addToQueue(osuId, reworkId, username, channelId = null, messageId = null, isTop = false, gamemode = "osu", authorId = null) {
     const key = `${osuId}:${reworkId}`;
     reworkQueue.set(key, {
         osuId,
         reworkId,
         username,
-        addedAt: Date.now()
+        addedAt: Date.now(),
+        channelId,
+        messageId,
+        isTop,
+        gamemode,
+        authorId
     });
     await saveQueue();
 }
@@ -349,6 +461,7 @@ async function getUserReworkScores(osuId, reworkId, gamemode) {
 initCache();
 
 module.exports = {
+    initClient,
     getReworksList,
     getReworkByQuery,
     getUserReworkData,
