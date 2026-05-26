@@ -21,7 +21,7 @@ async function run(messages, args) {
     let potential_pure_map_id = false;
     if (initial_parsed.username && initial_parsed.username[0]) {
         const potential_id = initial_parsed.username[0].trim();
-        if (/^\d+$/.test(potential_id)) {
+        if (/^\d{5,10}$/.test(potential_id)) {
             potential_pure_map_id = true;
         }
     }
@@ -458,7 +458,7 @@ async function run(messages, args) {
 
     if (!beatmap_id && initial_parsed.username && initial_parsed.username[0]) {
         const potential_id = initial_parsed.username[0].trim();
-        if (/^\d+$/.test(potential_id)) {
+        if (/^\d{5,10}$/.test(potential_id)) {
             beatmap_id = potential_id;
         }
     }

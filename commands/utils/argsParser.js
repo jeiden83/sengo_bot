@@ -812,9 +812,11 @@ function argsParserNoCommand(args, options = {}) {
         if (arg === "-mods" || arg === "-mod") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                modFilter = next_arg.toUpperCase();
-                skip_next = true;
-                continue;
+                if (!next_arg.startsWith("-")) {
+                    modFilter = next_arg.toUpperCase();
+                    skip_next = true;
+                    continue;
+                }
             }
         }
         if (arg.startsWith("-mods") || arg.startsWith("-mod")) {
@@ -830,9 +832,11 @@ function argsParserNoCommand(args, options = {}) {
         if (arg === "-mx") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                modContainFilter = next_arg.toUpperCase();
-                skip_next = true;
-                continue;
+                if (!next_arg.startsWith("-")) {
+                    modContainFilter = next_arg.toUpperCase();
+                    skip_next = true;
+                    continue;
+                }
             }
         }
         if (arg.startsWith("-mx")) {
@@ -847,9 +851,11 @@ function argsParserNoCommand(args, options = {}) {
         if (arg === "-m") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                modFilter = next_arg.toUpperCase();
-                skip_next = true;
-                continue;
+                if (!next_arg.startsWith("-")) {
+                    modFilter = next_arg.toUpperCase();
+                    skip_next = true;
+                    continue;
+                }
             }
         }
         if (arg.startsWith("-m")) {
