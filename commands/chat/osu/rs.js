@@ -15,7 +15,8 @@ async function run(messages, args) {
     const parser_res = await argsParser(args, {
         "message": message,
         "res": res,
-        "command_function": getUserRecentScores
+        "command_function": getUserRecentScores,
+        "ignoreBeatmap": true
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;

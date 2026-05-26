@@ -7,7 +7,8 @@ async function run(messages, args) {
     const { message, res, reply, logger } = messages;
 
     // 1. Parsear argumentos usando argsParserNoCommand
-    const initial_parsed = argsParserNoCommand(args);
+    const isUserCompareQuery = args.some(arg => typeof arg === 'string' && (arg.toLowerCase().trim() === '-o' || arg.toLowerCase().trim() === '-osu' || arg.toLowerCase().trim() === '-top'));
+    const initial_parsed = argsParserNoCommand(args, { ignoreBeatmap: isUserCompareQuery });
     const isLista = initial_parsed.listMode;
     const isTop = initial_parsed.reworkTop;
     const reworkQuery = initial_parsed.reworkQuery || "";
@@ -69,7 +70,8 @@ async function run(messages, args) {
         const osu_userdata = await argsParser(args, {
             "message": message,
             "res": res,
-            "command_function": getOsuUser
+            "command_function": getOsuUser,
+            "ignoreBeatmap": true
         });
 
         if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
@@ -150,7 +152,8 @@ async function run(messages, args) {
         const osu_userdata = await argsParser(args, {
             "message": message,
             "res": res,
-            "command_function": getOsuUser
+            "command_function": getOsuUser,
+            "ignoreBeatmap": true
         });
 
         if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {

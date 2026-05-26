@@ -389,7 +389,8 @@ async function parsingCommandFunction(parsed_args, command_parameters){
     }
 }
 
-function argsParserNoCommand(args) {
+function argsParserNoCommand(args, options = {}) {
+    const ignoreBeatmap = options.ignoreBeatmap || false;
     let username = [];
     let gamemode = args.gamemode || "";
     let server = args.server || "bancho";
@@ -424,7 +425,7 @@ function argsParserNoCommand(args) {
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
         str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
         str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        (str?.match(/^\d{5,10}$/) ? str : null);
+        (!ignoreBeatmap && str?.match(/^\d{5,10}$/) ? str : null);
 
     const isBeatmapUrlOrId = str => {
         if (!str) return false;
@@ -432,7 +433,7 @@ function argsParserNoCommand(args) {
         const match = clean.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
                       clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
                       clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                      clean.match(/^\d{5,10}$/);
+                      (!ignoreBeatmap && clean.match(/^\d{5,10}$/));
         return !!match;
     };
 
@@ -997,8 +998,8 @@ function argsParserNoCommand(args) {
     return parsed_args;
 }
 
-async function argsParser(args, command_parameters){
-    const parsed_args = argsParserNoCommand(args);
+async function argsParser(args, command_parameters = {}){
+    const parsed_args = argsParserNoCommand(args, command_parameters);
     const { fn_response, user_found, reparsed_args} = await parsingCommandFunction(parsed_args, command_parameters);
 
     return {

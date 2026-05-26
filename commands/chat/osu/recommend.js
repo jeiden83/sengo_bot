@@ -251,7 +251,8 @@ async function run(messages, args) {
         "message": message,
         "res": res,
         "command_function": getUserTopScores,
-        "resolveUserByIndex": true
+        "resolveUserByIndex": true,
+        "ignoreBeatmap": true
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;

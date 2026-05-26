@@ -19,7 +19,7 @@ async function run(messages, args){
 
     // Parseamos args
     const osu_userdata = await argsParser(args,
-        {"message" : message, "res" : res, "command_function" : getOsuUser, "resolveUserByIndex": true});  
+        {"message" : message, "res" : res, "command_function" : getOsuUser, "resolveUserByIndex": true, "ignoreBeatmap": true});  
 
     // Obtenemos el nombre y pais, y obtenemos los datos de la pagina
     const { country_code, id } = osu_userdata.fn_response;
