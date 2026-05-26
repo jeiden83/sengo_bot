@@ -438,13 +438,14 @@ async function getUserReworkScores(osuId, reworkId, gamemode) {
     else if (gamemode === 'fruits' || gamemode === 'catch' || gamemode === 2) modeNum = 2;
     else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
 
-    const key = `${osuId}:${reworkId}:${modeNum}`;
+    // Usar la caché con la clave que incluye topranks
+    const key = `${osuId}:${reworkId}:${modeNum}:topranks`;
     if (userReworkScoresCache.has(key)) {
         return userReworkScoresCache.get(key);
     }
 
     try {
-        const url = `https://api.pp.huismetbenen.nl/player/scores/${osuId}/${reworkId}/${modeNum}`;
+        const url = `https://api.pp.huismetbenen.nl/player/scores/${osuId}/${reworkId}/topranks`;
         const res = await axios.get(url, { timeout: 15000 });
         if (Array.isArray(res.data)) {
             userReworkScoresCache.set(key, res.data);
