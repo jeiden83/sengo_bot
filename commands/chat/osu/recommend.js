@@ -181,13 +181,16 @@ async function run(messages, args) {
             skipNext = false;
             continue;
         }
+        if (args[i] === null || args[i] === undefined || typeof args[i] !== 'string') {
+            continue;
+        }
         const arg = args[i].trim().toLowerCase();
         if (arg === "-jugados" || arg === "-played") {
             showPlayed = true;
             continue;
         }
         if (arg === "-pp" || arg === "-g") {
-            if (i + 1 < args.length) {
+            if (i + 1 < args.length && typeof args[i + 1] === 'string') {
                 const nextVal = args[i + 1].trim();
                 const rangeMatch = nextVal.match(/^(\d+(?:\.\d+)?)-(\d+(?:\.\d+)?)$/);
                 if (rangeMatch) {
@@ -205,7 +208,7 @@ async function run(messages, args) {
             continue;
         }
         if (arg === "-mods" || arg === "-m") {
-            if (i + 1 < args.length) {
+            if (i + 1 < args.length && typeof args[i + 1] === 'string') {
                 customMods = args[i + 1].trim().toUpperCase();
                 skipNext = true;
             }
