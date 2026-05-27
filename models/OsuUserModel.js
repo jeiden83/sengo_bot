@@ -11,6 +11,7 @@ const axios = require('axios');
 // Cachés locales en memoria
 const userProfileCache = new Map();
 const activeProfilePromises = new Map();
+const activeRefreshPromises = new Map();
 const PROFILE_CACHE_TTL = 300000; // 5 minutos de vigencia del perfil en caché
 
 // Helper para limitar el tamaño de los mapas de caché
@@ -525,10 +526,16 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
 
 /**
  * Obtiene un token válido para un usuario de Discord específico (lo refresca si expiró).
+ * Deduplica llamadas concurrentes y actualiza la base de datos de manera atómica para evitar
+ * perder credenciales por fallos de red en llamadas secundarias (como /me).
  */
 async function getValidTokenForUser(discordId) {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
+
+    if (activeRefreshPromises.has(discordId)) {
+        return activeRefreshPromises.get(discordId);
+    }
 
     const { data, error } = await supabase
         .from('oauth_tokens')
@@ -540,48 +547,81 @@ async function getValidTokenForUser(discordId) {
 
     const isExpired = new Date(data.expires_at) <= new Date(Date.now() + 60 * 1000); // 1 minuto de margen
     if (isExpired) {
-        try {
-            const newTokens = await refreshAccessToken(data.refresh_token);
-            // Actualizar la base de datos
-            const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
+        const refreshPromise = (async () => {
+            try {
+                // 1. Refrescar tokens
+                const newTokens = await refreshAccessToken(data.refresh_token);
+                const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
-            // Actualizar su perfil de paso
-            const userMe = await fetchOsuMe(newTokens.access_token);
-            const isSupporter = !!userMe.is_supporter;
+                // 2. Guardar inmediatamente los nuevos tokens en base de datos.
+                // Esto previene que si fallan los pasos siguientes (/me, etc), nos quedemos con un refresh_token viejo e inválido.
+                await supabase
+                    .from('oauth_tokens')
+                    .update({
+                        access_token: newTokens.access_token,
+                        refresh_token: newTokens.refresh_token,
+                        expires_at: expiresAt
+                    })
+                    .eq('discord_id', discordId);
 
-            await supabase
-                .from('oauth_tokens')
-                .update({
-                    access_token: newTokens.access_token,
-                    refresh_token: newTokens.refresh_token,
-                    expires_at: expiresAt,
-                    is_supporter: isSupporter,
-                    username: userMe.username,
-                    country_code: userMe.country_code
-                })
-                .eq('discord_id', discordId);
-
-            return newTokens.access_token;
-        } catch (err) {
-            console.error(`Error refreshing OAuth token for user ${discordId}:`, err);
-            const errMsg = err.message || '';
-            const isInvalidOrRevoked = errMsg.includes('revoked') || 
-                                       errMsg.includes('invalid_request') || 
-                                       errMsg.includes('invalid') || 
-                                       errMsg.includes('revocado');
-            if (isInvalidOrRevoked) {
-                console.log(`[OAuth] Token inválido o revocado para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
+                // 3. Opcional: Actualizar el perfil del usuario de paso, pero de forma no bloqueante/segura
+                let isSupporter = data.is_supporter;
+                let username = data.username;
+                let countryCode = data.country_code;
                 try {
-                    await supabase
-                        .from('oauth_tokens')
-                        .delete()
-                        .eq('discord_id', discordId);
-                } catch (dbErr) {
-                    console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
+                    const userMe = await fetchOsuMe(newTokens.access_token);
+                    if (userMe) {
+                        isSupporter = !!userMe.is_supporter;
+                        username = userMe.username;
+                        countryCode = userMe.country_code;
+
+                        // Actualizar detalles del perfil en la base de datos
+                        await supabase
+                            .from('oauth_tokens')
+                            .update({
+                                is_supporter: isSupporter,
+                                username: username,
+                                country_code: countryCode
+                            })
+                            .eq('discord_id', discordId);
+                    }
+                } catch (meErr) {
+                    // Si falla obtener /me (ej: timeout, red), no invalidamos todo el flujo de refresco de token exitoso
+                    console.error(`[OAuth] Error no crítico al obtener /me para ${discordId} después de refrescar:`, meErr);
                 }
+
+                return newTokens.access_token;
+            } catch (err) {
+                console.error(`Error refreshing OAuth token for user ${discordId}:`, err);
+                const errMsg = err.message || '';
+                
+                // Determinar si es un error real de revocación o token inválido de osu!.
+                // En la API de osu!, si el refresh_token es inválido o revocado, el endpoint /oauth/token responde
+                // con un status 400 Bad Request y un JSON conteniendo {"error": "invalid_grant"}.
+                const isInvalidGrant = errMsg.includes('invalid_grant');
+                
+                // Solo si estamos 100% seguros de que el token fue revocado o es inválido,
+                // eliminamos el registro. Evitamos eliminarlo por errores genéricos de red o JSON inválido de Cloudflare.
+                if (isInvalidGrant) {
+                    console.log(`[OAuth] Token inválido o revocado (invalid_grant) para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
+                    try {
+                        await supabase
+                            .from('oauth_tokens')
+                            .delete()
+                            .eq('discord_id', discordId);
+                    } catch (dbErr) {
+                        console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
+                    }
+                }
+                
+                return null;
+            } finally {
+                activeRefreshPromises.delete(discordId);
             }
-            return null;
-        }
+        })();
+
+        activeRefreshPromises.set(discordId, refreshPromise);
+        return refreshPromise;
     }
 
     return data.access_token;
