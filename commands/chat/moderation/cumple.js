@@ -36,6 +36,32 @@ function parseBirthday(str) {
     return { day, month, year };
 }
 
+function formatAgeInfo(day, month, year, isSelf) {
+    if (year === null) return "";
+    
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    const bdayThisYear = new Date(currentYear, month - 1, day);
+    const todayMidnight = new Date(currentYear, now.getMonth(), now.getDate());
+    const ageThisYear = currentYear - year;
+    
+    if (bdayThisYear < todayMidnight) {
+        const ageNextYear = ageThisYear + 1;
+        return isSelf 
+            ? ` (Este año cumpliste ${ageThisYear} años. ¡En tu próximo cumpleaños cumplirás ${ageNextYear}!)`
+            : ` (Este año cumplió ${ageThisYear} años. ¡En su próximo cumpleaños cumplirá ${ageNextYear}!)`;
+    } else if (bdayThisYear.getTime() === todayMidnight.getTime()) {
+        return isSelf
+            ? ` (¡Hoy cumples ${ageThisYear} años! 🎉)`
+            : ` (¡Hoy cumple ${ageThisYear} años! 🎉)`;
+    } else {
+        const currentAge = ageThisYear - 1;
+        return isSelf
+            ? ` (Actualmente tienes ${currentAge} años. ¡En tu próximo cumpleaños cumplirás ${ageThisYear}!)`
+            : ` (Actualmente tiene ${currentAge} años. ¡En su próximo cumpleaños cumplirá ${ageThisYear}!)`;
+    }
+}
+
 async function run(messages, args) {
     const { message, reply, logger } = messages;
     
@@ -304,8 +330,9 @@ async function run(messages, args) {
         const { day, month, year } = parsedDate;
         BirthdayModel.setUserBirthday(targetUserId, day, month, year);
         const yearStr = year ? `/${year}` : '';
+        const ageInfo = formatAgeInfo(day, month, year, false);
         return {
-            content: `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**.`,
+            content: `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**${ageInfo}.`,
             allowedMentions: { users: [] }
         };
     }
@@ -324,7 +351,8 @@ async function run(messages, args) {
         const { day, month, year } = parsedDate;
         BirthdayModel.setUserBirthday(authorId, day, month, year);
         const yearStr = year ? `/${year}` : '';
-        return `✅ Cumpleaños guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**. Sengo te felicitará en tu día. 🎉`;
+        const ageInfo = formatAgeInfo(day, month, year, true);
+        return `✅ Cumpleaños guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**${ageInfo}. Sengo te felicitará en tu día. 🎉`;
     }
 
     // Si falló el parsing y usó el subcomando set
