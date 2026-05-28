@@ -4,29 +4,36 @@ const country_codes = require("../src/country_codes.json");
 /**
  * Genera el embed con la tabla del ranking nacional comprimido.
  */
-function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode }) {
+function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort }) {
     const countryInfo = country_codes[countryFilter];
     const countryName = countryInfo ? countryInfo.country : (chunk[0]?.user?.country?.name || countryFilter);
     const embedColor = countryInfo && countryInfo.color ? (countryInfo.color.startsWith('#') ? countryInfo.color : `#${countryInfo.color}`) : "#00ffcc";
 
-    const lines = chunk.map((item) => {
+    const lines = chunk.map((item, index) => {
         const flag = `:flag_${item.user.country_code.toLowerCase()}:`;
-        const localRank = `**#${item.country_rank}**`;
+        const displayRank = startIndex + index + 1;
+        const localRank = `**#${displayRank}**`;
         const globalRankStr = `(Global: \`#${item.global_rank.toLocaleString()}\`)`;
         const ppStr = `**${Math.round(item.pp).toLocaleString()} pp**`;
-        const accStr = `\`${item.hit_accuracy.toFixed(2)}%\``;
-        const playCountStr = `\`${item.play_count.toLocaleString()}\` pc`;
+        const accStr = `\`${item.hit_accuracy.toFixed(2)}%\` acc`;
 
-        return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) ${globalRankStr} - ${ppStr} | ${accStr} acc | ${playCountStr}`;
+        if (isAccSort) {
+            const origRankStr = `(Local: \`#${item.country_rank}\`)`;
+            return `${localRank} ${origRankStr} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | ${globalRankStr}`;
+        } else {
+            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | ${globalRankStr}`;
+        }
     });
 
-    const currentPage = Math.floor(startIndex / 25) + 1;
-    const maxPages = Math.ceil(total / 25);
+    const currentPage = Math.floor(startIndex / 20) + 1;
+    const maxPages = Math.ceil(total / 20);
     const fromRank = startIndex + 1;
     const toRank = startIndex + chunk.length;
 
+    const titlePrefix = isAccSort ? "Ranking Nacional por Precisión (Acc)" : "Ranking Nacional";
+
     const embed = new EmbedBuilder()
-        .setTitle(`Ranking Nacional (${gamemodeName}) - ${countryName}`)
+        .setTitle(`${titlePrefix} (${gamemodeName}) - ${countryName}`)
         .setDescription(lines.join('\n'))
         .setColor(embedColor)
         .setThumbnail(`https://flagcdn.com/w160/${countryFilter.toLowerCase()}.png`)

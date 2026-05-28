@@ -10,8 +10,8 @@ async function run(messages, args) {
     let countryFilter = parsed_args.country;
 
     // Si no se usó el flag -pais, pero hay palabras no consumidas, tomamos la primera palabra de 2 caracteres como el país
-    if (!countryFilter && parsed_args.words && parsed_args.words.length > 0) {
-        const potential = parsed_args.words[0].toUpperCase();
+    if (!countryFilter && parsed_args.username && parsed_args.username[0]) {
+        const potential = parsed_args.username[0].trim().toUpperCase();
         if (potential.length === 2) {
             countryFilter = potential;
         }
@@ -47,21 +47,62 @@ async function run(messages, args) {
     let embedPage = parsed_args.page || 1;
     if (embedPage < 1) embedPage = 1;
 
-    let startIndex = (embedPage - 1) * 25;
+    let startIndex = (embedPage - 1) * 20;
 
-    let initialData;
-    try {
-        initialData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
-    } catch (err) {
-        console.error("Error al obtener ranking nacional:", err);
-        return `❌ Hubo un error al consultar el ranking nacional de **${countryFilter}** en la API de osu!.`;
+    const isAccSort = !!parsed_args.accSort;
+    let playersList = [];
+    let total = 0;
+    let progressMessage = null;
+
+    if (isAccSort) {
+        let lastUpdate = 0;
+        const onProgress = async (current, totalVal) => {
+            const now = Date.now();
+            if (!progressMessage) {
+                progressMessage = await message.channel.send(`⏳ Obteniendo top 1000 jugadores para ordenar por precisión (Acc)... **${current}/${totalVal}**`);
+                lastUpdate = now;
+            } else if (now - lastUpdate > 1500 || current === totalVal) {
+                try {
+                    await progressMessage.edit(`⏳ Obteniendo top 1000 jugadores para ordenar por precisión (Acc)... **${current}/${totalVal}**`);
+                    lastUpdate = now;
+                } catch {}
+            }
+        };
+
+        try {
+            playersList = await OsuUserModel.fetchRankingAcc(countryFilter, targetGamemode, onProgress);
+            total = playersList.length;
+        } catch (err) {
+            console.error("Error al obtener ranking por Acc:", err);
+            const errMsg = `❌ Hubo un error al consultar el ranking por Acc de **${countryFilter}** en la API de osu!.`;
+            if (progressMessage) {
+                await progressMessage.edit(errMsg);
+                return;
+            }
+            return errMsg;
+        }
+    } else {
+        let initialData;
+        try {
+            initialData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
+            playersList = initialData.chunk;
+            total = initialData.total;
+        } catch (err) {
+            console.error("Error al obtener ranking nacional:", err);
+            return `❌ Hubo un error al consultar el ranking nacional de **${countryFilter}** en la API de osu!.`;
+        }
     }
 
-    const { chunk, total } = initialData;
-
-    if (!chunk || chunk.length === 0) {
-        return `❌ No se encontraron jugadores en el ranking nacional de **${countryFilter}** (Modo: \`${gamemodeName}\`).`;
+    if (!playersList || playersList.length === 0) {
+        const noPlayersMsg = `❌ No se encontraron jugadores en el ranking nacional de **${countryFilter}** (Modo: \`${gamemodeName}\`).`;
+        if (progressMessage) {
+            await progressMessage.edit(noPlayersMsg);
+            return;
+        }
+        return noPlayersMsg;
     }
+
+    const chunk = isAccSort ? playersList.slice(startIndex, startIndex + 20) : playersList;
 
     const embed = doOsuRankingEmbed({
         chunk,
@@ -69,20 +110,30 @@ async function run(messages, args) {
         startIndex,
         countryFilter,
         gamemodeName,
-        targetGamemode
+        targetGamemode,
+        isAccSort
     });
 
     const getButtonsRow = (start, totalPlays) => {
-        return buildPaginationRow({ prefix: 'nacional', current: start, total: totalPlays, pageSize: 25 });
+        return buildPaginationRow({ prefix: 'nacional', current: start, total: totalPlays, pageSize: 20 });
     };
 
-    const hasButtons = total > 25;
+    const hasButtons = total > 20;
     const components = hasButtons ? [getButtonsRow(startIndex, total)] : [];
 
-    const sent_message = await message.channel.send({
-        embeds: [embed],
-        components
-    });
+    let sent_message;
+    if (progressMessage) {
+        sent_message = await progressMessage.edit({
+            content: null,
+            embeds: [embed],
+            components
+        });
+    } else {
+        sent_message = await message.channel.send({
+            embeds: [embed],
+            components
+        });
+    }
 
     if (!hasButtons) return;
 
@@ -99,26 +150,34 @@ async function run(messages, args) {
             if (i.customId === 'nacional_first') {
                 startIndex = 0;
             } else if (i.customId === 'nacional_prev') {
-                startIndex = Math.max(0, startIndex - 25);
+                startIndex = Math.max(0, startIndex - 20);
             } else if (i.customId === 'nacional_next') {
-                startIndex = startIndex + 25;
+                startIndex = startIndex + 20;
             } else if (i.customId === 'nacional_last') {
-                startIndex = Math.floor((total - 1) / 25) * 25;
+                startIndex = Math.floor((total - 1) / 20) * 20;
             }
 
-            const currentData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
+            let currentChunk;
+            if (isAccSort) {
+                currentChunk = playersList.slice(startIndex, startIndex + 20);
+            } else {
+                const currentData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
+                currentChunk = currentData.chunk;
+            }
+
             const currentEmbed = doOsuRankingEmbed({
-                chunk: currentData.chunk,
-                total: currentData.total,
+                chunk: currentChunk,
+                total,
                 startIndex,
                 countryFilter,
                 gamemodeName,
-                targetGamemode
+                targetGamemode,
+                isAccSort
             });
 
             await i.editReply({
                 embeds: [currentEmbed],
-                components: [getButtonsRow(startIndex, currentData.total)]
+                components: [getButtonsRow(startIndex, total)]
             });
         } catch (err) {
             console.error("Error al navegar el ranking nacional:", err);
@@ -135,7 +194,7 @@ async function run(messages, args) {
 run.description = {
     'header': 'Ranking nacional de rendimiento',
     'body': 'Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!.',
-    'usage': 's.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.'
+    'usage': 's.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).'
 }
 
 module.exports = { run, description: run.description };

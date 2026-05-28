@@ -16,6 +16,11 @@ const data = new SlashCommandBuilder()
             .setDescription("Página del ranking nacional a mostrar")
             .setRequired(false)
             .setMinValue(1)
+    )
+    .addBooleanOption(option =>
+        option.setName("acc")
+            .setDescription("Ordenar por precisión (Acc) en lugar de Performance Points")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -23,12 +28,16 @@ async function run(interaction, res) {
 
     const pais = interaction.options.getString("pais");
     const pagina = interaction.options.getInteger("pagina");
+    const acc = interaction.options.getBoolean("acc");
 
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
     }
     if (pagina) {
         args.push(`-p${pagina}`);
+    }
+    if (acc) {
+        args.push("-acc");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

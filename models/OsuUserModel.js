@@ -794,7 +794,7 @@ async function syncAllSupporterStatuses() {
  * combinando resultados si es necesario para retornar un chunk de 25 elementos.
  */
 async function fetchRankingPage(countryFilter, gamemode, startIndex) {
-    const embedPageSize = 25;
+    const embedPageSize = 20;
     const apiPageSize = 50;
 
     const apiPage1 = Math.floor(startIndex / apiPageSize) + 1;
@@ -840,6 +840,88 @@ async function fetchRankingPage(countryFilter, gamemode, startIndex) {
     return { chunk, total };
 }
 
+/**
+ * Obtiene los primeros 1000 jugadores de un país y modo de juego,
+ * ordenándolos por precisión (acc) de forma descendente, con caché persistente de 2 horas.
+ */
+async function fetchRankingAcc(countryFilter, gamemode, onProgress) {
+    const cacheKey = `${countryFilter.toUpperCase()}_${gamemode.toLowerCase()}`;
+    const cacheFile = path.join(__dirname, "../data/nacional_acc_cache.json");
+
+    let cache = {};
+    try {
+        const data = await fs.readFile(cacheFile, "utf-8");
+        cache = JSON.parse(data);
+    } catch (e) {}
+
+    const now = Date.now();
+    const TTL = 7200000; // 2 horas
+
+    if (cache[cacheKey] && (now - cache[cacheKey].timestamp < TTL)) {
+        console.log(`[CACHE]: Utilizando ranking nacional de Acc en caché para ${cacheKey}`);
+        return cache[cacheKey].players;
+    }
+
+    const totalPages = 20;
+    const tokenData = await loadToken();
+    const accessToken = tokenData.access_token;
+
+    const fetchPage = async (page) => {
+        return osuApiQueue.add(async () => {
+            const url = `https://osu.ppy.sh/api/v2/rankings/${gamemode}/performance?country=${countryFilter}&page=${page}`;
+            const res = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            });
+            return res.data;
+        });
+    };
+
+    let allPlayers = [];
+
+    for (let p = 1; p <= totalPages; p++) {
+        try {
+            const data = await fetchPage(p);
+            if (data.ranking && data.ranking.length > 0) {
+                allPlayers = allPlayers.concat(data.ranking);
+                if (data.ranking.length < 50) {
+                    break;
+                }
+            } else {
+                break;
+            }
+        } catch (err) {
+            console.error(`Error al obtener página ${p} de ranking para Acc:`, err);
+            if (p === 1) throw err;
+            break;
+        }
+
+        if (onProgress) {
+            await onProgress(allPlayers.length, 1000);
+        }
+    }
+
+    allPlayers.sort((a, b) => b.hit_accuracy - a.hit_accuracy);
+
+    cache[cacheKey] = {
+        timestamp: now,
+        players: allPlayers
+    };
+
+    try {
+        await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+        await fs.writeFile(cacheFile, JSON.stringify(cache, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error al escribir caché de ranking nacional de Acc:", e);
+    }
+
+    return allPlayers;
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -860,7 +942,8 @@ const OsuUserModel = {
     getAllOAuthUsers,
     updateSupporterStatusInBackground,
     syncAllSupporterStatuses,
-    fetchRankingPage
+    fetchRankingPage,
+    fetchRankingAcc
 };
 
 module.exports = OsuUserModel;
