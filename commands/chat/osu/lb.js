@@ -8,7 +8,7 @@ const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
 
 async function fetchLeaderboardCached(url, headers, logger = null) {
     const now = Date.now();
-    const isPersonalized = url.includes('type=friend') || url.includes('type=country');
+    const isPersonalized = url.includes('type=friend');
     const authHeader = isPersonalized && headers && headers['Authorization'] ? headers['Authorization'] : '';
     const cacheKey = isPersonalized ? `${url}|${authHeader}` : url;
     const cached = leaderboardCache.get(cacheKey);
@@ -229,6 +229,7 @@ async function run(messages, args) {
             urlObj.searchParams.append('mode', targetGamemode);
             urlObj.searchParams.append('type', 'country');
             urlObj.searchParams.append('legacy_only', legacyOnlyVal);
+            urlObj.searchParams.append('country', countryFilter.toUpperCase());
             if (modsArray.length > 0) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
@@ -547,6 +548,7 @@ async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer =
         urlObj.searchParams.append('mode', mode || 'osu');
         urlObj.searchParams.append('type', 'country');
         urlObj.searchParams.append('legacy_only', legacyOnlyVal);
+        urlObj.searchParams.append('country', countryFilter.toUpperCase());
         
         await fetchLeaderboardCached(urlObj.toString(), {
             'Authorization': `Bearer ${supporterRes.token}`,
