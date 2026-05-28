@@ -41,23 +41,6 @@ function findSubdivision(countryCode, searchStr) {
 /**
  * Obtiene los detalles de un usuario en osu!World.
  */
-async function getOsuWorldUser(osuId) {
-    const fetch = require('node-fetch');
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
-    try {
-        const response = await fetch(`https://osuworld.octo.moe/api/users/${osuId}`, {
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
-        if (!response.ok) return null;
-        return await response.json();
-    } catch {
-        clearTimeout(timeout);
-        return null;
-    }
-}
-
 async function run(messages, args) {
     const { message } = messages;
 
@@ -148,7 +131,7 @@ async function run(messages, args) {
                 return `❌ No se encontró una cuenta de osu! vinculada a tu Discord.\nUsa \`s.link -oauth\` para vincularla primero.`;
             }
 
-            const worldUser = await getOsuWorldUser(osuId);
+            const worldUser = await OsuUserModel.getOsuWorldUser(osuId);
             if (!worldUser || !worldUser.region_id) {
                 return `❌ Tu cuenta de osu! no tiene una región configurada en osu!World.\nConfigúrala entrando a https://osuworld.octo.moe/ con tu cuenta de osu! y luego reintenta.`;
             }

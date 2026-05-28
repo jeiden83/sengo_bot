@@ -937,17 +937,92 @@ async function fetchRankingAcc(countryFilter, gamemode, onProgress) {
     return allPlayers;
 }
 
-const regionalRankingCache = new Map();
+const regionalRankingCacheFile = path.join(__dirname, "../data/regional_rankings_cache.json");
+let regionalRankingCache = {};
+let regionalRankingCacheLoaded = false;
+
 const REGIONAL_CACHE_TTL = 300000; // 5 minutos en ms
+
+async function loadRegionalRankingCache() {
+    if (regionalRankingCacheLoaded) return;
+    try {
+        const data = await fs.readFile(regionalRankingCacheFile, "utf-8");
+        regionalRankingCache = JSON.parse(data);
+    } catch {}
+    regionalRankingCacheLoaded = true;
+}
+
+const osuWorldUserCacheFile = path.join(__dirname, "../data/osuworld_users_cache.json");
+let osuWorldUserCache = {};
+let osuWorldUserCacheLoaded = false;
+
+async function loadOsuWorldUserCache() {
+    if (osuWorldUserCacheLoaded) return;
+    try {
+        const data = await fs.readFile(osuWorldUserCacheFile, "utf-8");
+        osuWorldUserCache = JSON.parse(data);
+    } catch {}
+    osuWorldUserCacheLoaded = true;
+}
+
+/**
+ * Obtiene los detalles de un usuario en osu!World con caché persistente y fallback en caso de error.
+ */
+async function getOsuWorldUser(osuId) {
+    await loadOsuWorldUserCache();
+    const now = Date.now();
+    const cacheKey = String(osuId);
+    const TTL = 86400000; // 24 horas
+
+    if (osuWorldUserCache[cacheKey]) {
+        const cached = osuWorldUserCache[cacheKey];
+        if (now - cached.timestamp < TTL) {
+            return cached.data;
+        }
+    }
+
+    const fetch = require('node-fetch');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    try {
+        const response = await fetch(`https://osuworld.octo.moe/api/users/${osuId}`, {
+            signal: controller.signal
+        });
+        clearTimeout(timeout);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        osuWorldUserCache[cacheKey] = { data, timestamp: now };
+        
+        try {
+            await fs.mkdir(path.dirname(osuWorldUserCacheFile), { recursive: true });
+            await fs.writeFile(osuWorldUserCacheFile, JSON.stringify(osuWorldUserCache, null, 2), "utf-8");
+        } catch (e) {
+            console.error("Error al escribir caché de osu!World:", e);
+        }
+        return data;
+    } catch (err) {
+        clearTimeout(timeout);
+        console.error(`Error al obtener usuario ${osuId} de osu!World:`, err);
+        if (osuWorldUserCache[cacheKey]) {
+            return osuWorldUserCache[cacheKey].data;
+        }
+        return null;
+    }
+}
 
 /**
  * Obtiene una página de ranking regional desde osu!World.
  */
 async function fetchRegionalRankingPage(countryFilter, regionFilter, gamemode, page = 1) {
+    await loadRegionalRankingCache();
     const cacheKey = `${gamemode.toLowerCase()}_${countryFilter.toUpperCase()}_${regionFilter.toUpperCase()}_page_${page}`;
     const now = Date.now();
-    if (regionalRankingCache.has(cacheKey)) {
-        const cached = regionalRankingCache.get(cacheKey);
+    if (regionalRankingCache[cacheKey]) {
+        const cached = regionalRankingCache[cacheKey];
         if (now - cached.timestamp < REGIONAL_CACHE_TTL) {
             return cached.data;
         }
@@ -991,10 +1066,21 @@ async function fetchRegionalRankingPage(countryFilter, regionFilter, gamemode, p
             total: (data.pages || 1) * 10
         };
 
-        regionalRankingCache.set(cacheKey, { data: result, timestamp: now });
+        regionalRankingCache[cacheKey] = { data: result, timestamp: now };
+        
+        try {
+            await fs.mkdir(path.dirname(regionalRankingCacheFile), { recursive: true });
+            await fs.writeFile(regionalRankingCacheFile, JSON.stringify(regionalRankingCache, null, 2), "utf-8");
+        } catch (e) {
+            console.error("Error al escribir caché de ranking regional:", e);
+        }
+        
         return result;
     } catch (err) {
         clearTimeout(timeout);
+        if (regionalRankingCache[cacheKey]) {
+            return regionalRankingCache[cacheKey].data;
+        }
         throw err;
     }
 }
@@ -1021,7 +1107,8 @@ const OsuUserModel = {
     syncAllSupporterStatuses,
     fetchRankingPage,
     fetchRankingAcc,
-    fetchRegionalRankingPage
+    fetchRegionalRankingPage,
+    getOsuWorldUser
 };
 
 module.exports = OsuUserModel;
