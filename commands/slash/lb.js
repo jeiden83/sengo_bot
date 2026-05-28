@@ -26,6 +26,16 @@ const data = new SlashCommandBuilder()
         option.setName("mods_contiene")
             .setDescription("Filtrar por jugadas que contengan estos mods (ej: HR)")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("stable")
+            .setDescription("Fuerza el leaderboard al estilo classic/stable.")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("lazer")
+            .setDescription("Fuerza el leaderboard al estilo lazer (scoring normalizado).")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -35,6 +45,8 @@ async function run(interaction, res) {
     const pagina = interaction.options.getInteger("pagina");
     const modsExactos = interaction.options.getString("mods_exactos");
     const modsContiene = interaction.options.getString("mods_contiene");
+    const stable = interaction.options.getBoolean("stable");
+    const lazer = interaction.options.getBoolean("lazer");
 
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
@@ -47,6 +59,12 @@ async function run(interaction, res) {
     }
     if (modsContiene) {
         args.push("-mx", modsContiene);
+    }
+    if (stable) {
+        args.push("-stable");
+    }
+    if (lazer) {
+        args.push("-lazer");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

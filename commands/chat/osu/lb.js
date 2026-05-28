@@ -515,13 +515,16 @@ run.alias = {
     },
     "lbt": {
         "args": "-taiko"
+    },
+    "lbp": {
+        "args": "-pais"
     }
 }
 
 run.description = {
     'header': 'Tabla de clasificación global y nacional',
-    'body': 'Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales y filtro de mods dedicados a través de la pool de supporter.',
-    'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.`
+    'body': 'Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales, filtro de mods dedicados a través de la pool de supporter, y los flags `-stable` / `-lazer` para alternar la versión de las puntuaciones (por defecto es predictivo según la jugada reciente).',
+    'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.\ns.lb -stable : Fuerza el leaderboard al estilo classic/stable.\ns.lb -lazer : Fuerza el leaderboard al estilo lazer (scoring normalizado).`
 }
 
 async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer = null) {
