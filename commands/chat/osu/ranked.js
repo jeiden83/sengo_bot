@@ -412,6 +412,9 @@ run.alias = {
     },
     "ranked": {
         "args": ""
+    },
+    "rks": {
+        "args": "-server"
     }
 };
 
