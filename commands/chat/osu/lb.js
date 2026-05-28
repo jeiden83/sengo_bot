@@ -210,6 +210,10 @@ async function run(messages, args) {
             }, logger);
         } catch (e) {
             console.error("Error al obtener friends ranking:", e);
+            const is403 = e.message && e.message.includes('403');
+            if (is403) {
+                return `❌ **Error de autorización (403):** La vinculación de osu! de **${friendsUsername}** no tiene el permiso necesario (\`friends.read\`) para consultar el ranking de amigos.\n\n💡 **Solución:** Vuelve a vincular tu cuenta con \`s.link -oauth\` asegurándote de autorizar todos los permisos solicitados.`;
+            }
             return `❌ Error al consultar la API de osu! usando el token de amigos de **${friendsUsername}**.`;
         }
     }
