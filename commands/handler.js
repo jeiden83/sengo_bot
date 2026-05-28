@@ -44,6 +44,46 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
 
     const commandLower = command.toLowerCase();
 
+    // Caso 0.1: El usuario busca ayuda del comando
+    const hasHelpWord = args.some(arg => {
+        if (typeof arg !== 'string') return false;
+        const lowerArg = arg.toLowerCase().trim();
+        return lowerArg === 'ayuda' || lowerArg === 'help' || lowerArg === '?';
+    });
+    if (hasHelpWord) {
+        return `❌ ¿Habrás querido ver la ayuda de este comando? Usa **s.help ${command}** para ver todos los parámetros y opciones disponibles.`;
+    }
+
+    // Caso 0.5: Parámetros del comando ranked sin guion
+    if (commandLower === 'ranked') {
+        const hasServerWord = args.some(arg => {
+            if (typeof arg !== 'string') return false;
+            const lowerArg = arg.toLowerCase().trim();
+            return lowerArg === 'server' || lowerArg === 'srv';
+        });
+        if (hasServerWord) {
+            return `❌ **El parámetro** \`server\` debe llevar un guion: \`-server\` (ej: \`s.ranked -server\` o \`s.ranked -server ALL\`).`;
+        }
+
+        const hasTopWord = args.some(arg => {
+            if (typeof arg !== 'string') return false;
+            const lowerArg = arg.toLowerCase().trim();
+            return lowerArg === 'top';
+        });
+        if (hasTopWord) {
+            return `❌ **El parámetro** \`top\` debe llevar un guion: \`-top\` (ej: \`s.ranked -top\`).`;
+        }
+
+        const hasWinsWord = args.some(arg => {
+            if (typeof arg !== 'string') return false;
+            const lowerArg = arg.toLowerCase().trim();
+            return lowerArg === 'wins';
+        });
+        if (hasWinsWord) {
+            return `❌ **El parámetro** \`wins\` debe llevar un guion: \`-wins\` (ej: \`s.ranked -top -wins\`).`;
+        }
+    }
+
     // Caso 1 & 2: El comando es de comparación u otros que no admiten -lb o -pais
     const isCompare = ['c', 'compare', 'comparar', 'compara', 'cm', 'cc', 'ct'].includes(commandLower);
     const isOtherNonLb = ['top', 't', 'rs', 'recent', 'r', 'rm', 'rc', 'rt', 'osu', 'o', 'perfil'].includes(commandLower);
@@ -700,5 +740,5 @@ async function loadCommands() {
 }
 
 
-module.exports = { chatCommand, slashCommand, loadSlashCommands, loadCommands }
+module.exports = { chatCommand, slashCommand, loadSlashCommands, loadCommands, smartErrorSuggester }
 // por ahora los slashs estan rotos; a revisar
