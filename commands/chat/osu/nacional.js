@@ -65,7 +65,7 @@ async function run(messages, args) {
     let embedPage = parsed_args.page || 1;
     if (embedPage < 1) embedPage = 1;
 
-    let startIndex = (embedPage - 1) * 20;
+    let startIndex = (embedPage - 1) * 10;
 
     const isAccSort = !!parsed_args.accSort;
     let playersList = [];
@@ -120,7 +120,7 @@ async function run(messages, args) {
         return noPlayersMsg;
     }
 
-    const chunk = isAccSort ? playersList.slice(startIndex, startIndex + 20) : playersList;
+    const chunk = isAccSort ? playersList.slice(startIndex, startIndex + 10) : playersList;
 
     const embed = doOsuRankingEmbed({
         chunk,
@@ -133,10 +133,10 @@ async function run(messages, args) {
     });
 
     const getButtonsRow = (start, totalPlays) => {
-        return buildPaginationRow({ prefix: 'nacional', current: start, total: totalPlays, pageSize: 20 });
+        return buildPaginationRow({ prefix: 'nacional', current: start, total: totalPlays, pageSize: 10 });
     };
 
-    const hasButtons = total > 20;
+    const hasButtons = total > 10;
     const components = hasButtons ? [getButtonsRow(startIndex, total)] : [];
 
     let sent_message;
@@ -168,16 +168,16 @@ async function run(messages, args) {
             if (i.customId === 'nacional_first') {
                 startIndex = 0;
             } else if (i.customId === 'nacional_prev') {
-                startIndex = Math.max(0, startIndex - 20);
+                startIndex = Math.max(0, startIndex - 10);
             } else if (i.customId === 'nacional_next') {
-                startIndex = startIndex + 20;
+                startIndex = startIndex + 10;
             } else if (i.customId === 'nacional_last') {
-                startIndex = Math.floor((total - 1) / 20) * 20;
+                startIndex = Math.floor((total - 1) / 10) * 10;
             }
 
             let currentChunk;
             if (isAccSort) {
-                currentChunk = playersList.slice(startIndex, startIndex + 20);
+                currentChunk = playersList.slice(startIndex, startIndex + 10);
             } else {
                 const currentData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
                 currentChunk = currentData.chunk;

@@ -794,7 +794,7 @@ async function syncAllSupporterStatuses() {
  * combinando resultados si es necesario para retornar un chunk de 25 elementos.
  */
 async function fetchRankingPage(countryFilter, gamemode, startIndex) {
-    const embedPageSize = 20;
+    const embedPageSize = 10;
     const apiPageSize = 50;
 
     const apiPage1 = Math.floor(startIndex / apiPageSize) + 1;

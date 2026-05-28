@@ -26,8 +26,8 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         return `${firstLine}\n${secondLine}`;
     });
 
-    const currentPage = Math.floor(startIndex / 20) + 1;
-    const maxPages = Math.ceil(total / 20);
+    const currentPage = Math.floor(startIndex / 10) + 1;
+    const maxPages = Math.ceil(total / 10);
     const fromRank = startIndex + 1;
     const toRank = startIndex + chunk.length;
 
@@ -35,7 +35,7 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
 
     const embed = new EmbedBuilder()
         .setTitle(`${titlePrefix} (${gamemodeName}) - ${countryName}`)
-        .setDescription(lines.join('\n'))
+        .setDescription(lines.join('\n\n'))
         .setColor(embedColor)
         .setThumbnail(`https://flagcdn.com/w160/${countryFilter.toLowerCase()}.png`)
         .setFooter({
