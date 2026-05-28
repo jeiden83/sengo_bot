@@ -41,5 +41,6 @@ module.exports = {
     triggerBackgroundRecentPreload: OsuScoreModel.triggerBackgroundRecentPreload,
     normalizeScore: OsuScoreModel.normalizeScore,
     normalizeStatistics: OsuScoreModel.normalizeStatistics,
-    getBeatmapsetTags: BeatmapModel.getBeatmapsetTags
+    getBeatmapsetTags: BeatmapModel.getBeatmapsetTags,
+    fetchRankingPage: OsuUserModel.fetchRankingPage
 }

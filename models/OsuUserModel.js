@@ -789,6 +789,57 @@ async function syncAllSupporterStatuses() {
     return { successCount, failCount, changes };
 }
 
+/**
+ * Obtiene una página del ranking nacional para un modo y país específico,
+ * combinando resultados si es necesario para retornar un chunk de 25 elementos.
+ */
+async function fetchRankingPage(countryFilter, gamemode, startIndex) {
+    const embedPageSize = 25;
+    const apiPageSize = 50;
+
+    const apiPage1 = Math.floor(startIndex / apiPageSize) + 1;
+    const apiPage2 = Math.floor((startIndex + embedPageSize - 1) / apiPageSize) + 1;
+
+    const tokenData = await loadToken();
+    const accessToken = tokenData.access_token;
+
+    const fetchPage = async (page) => {
+        return osuApiQueue.add(async () => {
+            const url = `https://osu.ppy.sh/api/v2/rankings/${gamemode}/performance?country=${countryFilter}&page=${page}`;
+            const res = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            });
+            return res.data;
+        });
+    };
+
+    let rankings = [];
+    let total = 0;
+
+    const data1 = await fetchPage(apiPage1);
+    rankings = data1.ranking || [];
+    total = Math.min(data1.total || 0, 10000);
+
+    if (apiPage1 !== apiPage2) {
+        try {
+            const data2 = await fetchPage(apiPage2);
+            rankings = rankings.concat(data2.ranking || []);
+        } catch (e) {
+            console.error("Error al obtener la segunda página de ranking:", e);
+        }
+    }
+
+    const offset = startIndex % apiPageSize;
+    const chunk = rankings.slice(offset, offset + embedPageSize);
+
+    return { chunk, total };
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -808,7 +859,8 @@ const OsuUserModel = {
     saveOAuthToken,
     getAllOAuthUsers,
     updateSupporterStatusInBackground,
-    syncAllSupporterStatuses
+    syncAllSupporterStatuses,
+    fetchRankingPage
 };
 
 module.exports = OsuUserModel;
