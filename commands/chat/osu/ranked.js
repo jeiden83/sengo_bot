@@ -192,6 +192,32 @@ async function run(messages, args) {
                     plays: p.plays,
                     isProvisional: p.is_provisional
                 }));
+
+            // Identificar usuarios vinculados que faltan en la base de datos
+            const foundOsuIds = new Set(dbPlayers.map(p => p.osu_id));
+            const missingUsers = linkedUsers.filter(u => !foundOsuIds.has(u.osu_id.toString()));
+
+            if (missingUsers.length > 0) {
+                // Actualizar en segundo plano de manera asíncrona
+                (async () => {
+                    console.log(`[BACKGROUND-RANKED] Detectados ${missingUsers.length} usuarios vinculados sin datos en la DB. Iniciando actualización...`);
+                    for (const u of missingUsers) {
+                        try {
+                            // Delay de 1 segundo para ser gentiles con la API de osu!
+                            await new Promise(resolve => setTimeout(resolve, 1000));
+                            const osuUser = await OsuUserModel.getOsuUser({ 
+                                username: [u.osu_id.toString()], 
+                                gamemode: u.main_gamemode || 'osu' 
+                            });
+                            if (osuUser) {
+                                await OsuMatchmakingModel.updateUserRankedStats(osuUser);
+                            }
+                        } catch (err) {
+                            console.error(`[BACKGROUND-RANKED] Error al actualizar usuario faltante ${u.osu_id}:`, err.message);
+                        }
+                    }
+                })().catch(() => {});
+            }
         } catch (err) {
             console.error("Error al obtener ranking del servidor desde la base de datos:", err);
             return "❌ Hubo un error al consultar las estadísticas en la base de datos.";

@@ -144,16 +144,15 @@ async function updateUserRankedStats(osuUser) {
     if (!supabase) return null;
 
     const matchmaking = (osuUser.matchmaking_stats || []).find(m => m.pool && m.pool.type === 'ranked_play');
-    if (!matchmaking) return null;
 
     const record = {
         osu_id: osuUser.id.toString(),
         username: osuUser.username,
         country_code: osuUser.country_code,
-        rating: matchmaking.rating || 0,
-        wins: matchmaking.first_placements || 0,
-        plays: matchmaking.plays || 0,
-        is_provisional: matchmaking.is_rating_provisional || false,
+        rating: matchmaking ? (matchmaking.rating || 0) : 0,
+        wins: matchmaking ? (matchmaking.first_placements || 0) : 0,
+        plays: matchmaking ? (matchmaking.plays || 0) : 0,
+        is_provisional: matchmaking ? (matchmaking.is_rating_provisional || false) : false,
         updated_at: new Date().toISOString()
     };
 
@@ -182,7 +181,7 @@ async function updateUserRankedStats(osuUser) {
         throw error;
     }
 
-    console.log(`[BACKGROUND-RANKED] Guardadas estadísticas de Ranked Play para ${record.username} (${record.rating} ELO)`);
+    console.log(`[BACKGROUND-RANKED] Guardadas estadísticas de Ranked Play para ${record.username} (${record.rating} ELO, Plays: ${record.plays})`);
     return data;
 }
 
