@@ -55,6 +55,11 @@ async function run(messages, args) {
 
     const sub = cleanArgs[0].toLowerCase();
 
+    // Error predictivo para cuando intentan usar comandos de ayuda
+    if (sub === "ayuda" || sub === "help" || sub === "guia" || sub === "guía" || sub === "?") {
+        return "❌ Para ver la guía de ayuda, usa simplemente `s.cumple` (sin subcomandos).";
+    }
+
     // 1. Caso de configurar canal
     if (sub === "canal" || sub === "channel") {
         if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
@@ -328,7 +333,7 @@ async function run(messages, args) {
     }
 
     // Caso de comando no reconocido
-    return `❌ Subcomando o fecha no reconocido. Usa \`s.cumple ayuda\` para ver las opciones disponibles.`;
+    return `❌ Subcomando o fecha no reconocido. Usa \`s.cumple\` para ver las opciones disponibles.`;
 }
 
 function helpMessage() {
