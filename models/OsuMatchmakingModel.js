@@ -96,11 +96,24 @@ function parseMaxOsuPages(html) {
     return pages.length > 0 ? Math.max(...pages) : 1;
 }
 
+const leaderboardCache = new Map();
+const CACHE_TTL = 300000; // 5 minutos en milisegundos
+
 /**
  * Obtiene los jugadores y el máximo de páginas de la tabla de clasificación.
  */
 async function fetchRankedPlayLeaderboard(page = 1) {
     const poolId = await getActivePoolId();
+    const cacheKey = `pool_${poolId}_page_${page}`;
+    const now = Date.now();
+
+    if (leaderboardCache.has(cacheKey)) {
+        const cached = leaderboardCache.get(cacheKey);
+        if (now - cached.timestamp < CACHE_TTL) {
+            return cached.data;
+        }
+    }
+
     const url = `https://osu.ppy.sh/rankings/ranked-play/osu/${poolId}?page=${page}`;
     const res = await fetch(url, {
         headers: {
@@ -113,7 +126,14 @@ async function fetchRankedPlayLeaderboard(page = 1) {
     const html = await res.text();
     const players = parseRankedPlayLeaderboard(html);
     const maxPages = parseMaxOsuPages(html);
-    return { players, maxPages };
+    const result = { players, maxPages };
+
+    leaderboardCache.set(cacheKey, {
+        timestamp: now,
+        data: result
+    });
+
+    return result;
 }
 
 module.exports = {

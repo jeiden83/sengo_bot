@@ -19,6 +19,11 @@ const data = new SlashCommandBuilder()
             .setDescription("Mostrar la tabla de clasificación del servidor")
             .setRequired(false)
     )
+    .addStringOption(option =>
+        option.setName("server_id")
+            .setDescription("ID de un servidor específico")
+            .setRequired(false)
+    )
     .addBooleanOption(option =>
         option.setName("wins")
             .setDescription("Ordenar por victorias en lugar de rating (ELO)")
@@ -34,6 +39,7 @@ async function run(interaction, res) {
     const usuario = interaction.options.getString("usuario");
     const top = interaction.options.getBoolean("top");
     const server = interaction.options.getBoolean("server");
+    const server_id = interaction.options.getString("server_id");
     const wins = interaction.options.getBoolean("wins");
     const pagina = interaction.options.getInteger("pagina");
 
@@ -46,6 +52,11 @@ async function run(interaction, res) {
     }
     if (server) {
         args.push("-server");
+        if (server_id) {
+            args.push(server_id);
+        }
+    } else if (server_id) {
+        args.push("-server", server_id);
     }
     if (wins) {
         args.push("-wins");

@@ -764,18 +764,27 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es exactamente "-server"
-        if (arg === "-server") {
+        // Si es exactamente "-server" o "-srv"
+        if (arg === "-server" || arg === "-srv") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                targetGuildId = next_arg;
-                skip_next = true;
-                continue;
+                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    targetGuildId = next_arg;
+                    skip_next = true;
+                    continue;
+                }
             }
         }
         if (arg.startsWith("-server")) {
             let next = arg.slice(7).trim();
-            if (next.length > 0) {
+            if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
+                targetGuildId = next;
+                continue;
+            }
+        }
+        if (arg.startsWith("-srv")) {
+            let next = arg.slice(4).trim();
+            if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
                 targetGuildId = next;
                 continue;
             }
@@ -804,8 +813,8 @@ function argsParserNoCommand(args, options = {}) {
             }
         }
 
-        // Si es exactamente "-p"
-        if (arg === "-p") {
+        // Si es exactamente "-p", "-pagina" o "-page"
+        if (arg === "-p" || arg === "-pagina" || arg === "-page") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 let num = parseInt(next_arg);
@@ -816,9 +825,16 @@ function argsParserNoCommand(args, options = {}) {
                 }
             }
         }
-        // Si empieza con "-p" seguido de un numero (ej: "-p2")
+        // Si empieza con "-p", "-pagina" o "-page" seguido de un numero (ej: "-p2", "-pagina2", "-page2")
         if (arg.startsWith("-p")) {
-            let num = parseInt(arg.slice(2));
+            let num;
+            if (arg.startsWith("-pagina")) {
+                num = parseInt(arg.slice(7));
+            } else if (arg.startsWith("-page")) {
+                num = parseInt(arg.slice(5));
+            } else {
+                num = parseInt(arg.slice(2));
+            }
             if (!isNaN(num)) {
                 page = num;
                 continue;

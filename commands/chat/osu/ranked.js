@@ -4,6 +4,9 @@ const OsuMatchmakingModel = require("../../../models/OsuMatchmakingModel.js");
 const { doOsuRankedProfileEmbed, doOsuRankedLeaderboardEmbed } = require("../../../views/osuRankingViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
+const serverLeaderboardCache = new Map();
+const SERVER_CACHE_TTL = 300000; // 5 minutos en milisegundos
+
 async function run(messages, args) {
     const { message, res, logger } = messages;
 
@@ -147,175 +150,208 @@ async function run(messages, args) {
         const parsed_args = argsParserNoCommand(args);
         let targetGuildId = parsed_args.targetGuildId;
 
+        // Si se especificó un targetGuildId, validamos permisos
         if (targetGuildId && targetGuildId !== "SELF") {
+            const isCurrentGuild = message.guild && targetGuildId === message.guild.id;
             const ownerId = process.env.OWNER_ID;
-            if (message.author.id !== ownerId) {
+            if (!isCurrentGuild && message.author.id !== ownerId) {
                 return "❌ Solo el creador del bot puede consultar otros servidores con `-server <id>`.";
             }
-        } else {
-            if (message.guild) {
-                targetGuildId = message.guild.id;
-            } else {
-                return "❌ Este comando debe ejecutarse en un servidor o especificar un ID de servidor válido con `-server <id>`.";
+        }
+
+        // Si es SELF o el comando vino en un servidor por defecto, resolvemos
+        let guildFilterId = targetGuildId;
+        if (guildFilterId === "SELF") {
+            guildFilterId = message.guild ? message.guild.id : null;
+        }
+
+        const isAllServers = !guildFilterId;
+        const cacheKey = isAllServers ? "all_servers" : `guild_${guildFilterId}`;
+        const now = Date.now();
+
+        let playersData = [];
+        let fromCache = false;
+
+        if (serverLeaderboardCache.has(cacheKey)) {
+            const cached = serverLeaderboardCache.get(cacheKey);
+            if (now - cached.timestamp < SERVER_CACHE_TTL) {
+                playersData = cached.data;
+                fromCache = true;
             }
         }
 
-        if (logger) logger.process("Obteniendo usuarios vinculados del servidor...");
-        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: targetGuildId });
+        if (!fromCache) {
+            if (logger) logger.process(isAllServers ? "Obteniendo usuarios vinculados de todos los servidores..." : "Obteniendo usuarios vinculados del servidor...");
+            
+            const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId });
 
-        if (!linkedUsers || linkedUsers.length === 0) {
-            return "❌ No hay usuarios vinculados en este servidor.";
-        }
+            if (!linkedUsers || linkedUsers.length === 0) {
+                return isAllServers ? "❌ No hay usuarios vinculados en el bot." : "❌ No hay usuarios vinculados en este servidor.";
+            }
 
-        const total = linkedUsers.length;
-        let loadingMsg;
-        try {
-            loadingMsg = await message.channel.send(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios del servidor (0/${total})...`);
-        } catch (e) {
-            console.error("Error al enviar mensaje temporal en ranked -server:", e);
-        }
+            const total = linkedUsers.length;
+            let loadingMsg;
+            try {
+                const label = isAllServers ? "todos los servidores" : "el servidor";
+                loadingMsg = await message.channel.send(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios de ${label} (0/${total})...`);
+            } catch (e) {
+                console.error("Error al enviar mensaje temporal en ranked -server:", e);
+            }
 
-        const playersData = [];
-        const batchSize = 5;
-        try {
-            for (let i = 0; i < total; i += batchSize) {
-                const batch = linkedUsers.slice(i, i + batchSize);
-                await Promise.all(batch.map(async (u) => {
-                    try {
-                        const osuUser = await OsuUserModel.getOsuUser({ username: [u.osu_id.toString()], gamemode: u.main_gamemode || 'osu' });
-                        if (osuUser && osuUser.matchmaking_stats) {
-                            const matchmaking = osuUser.matchmaking_stats.find(m => m.pool && m.pool.type === 'ranked_play') || osuUser.matchmaking_stats[0];
-                            if (matchmaking && matchmaking.plays > 0) {
-                                playersData.push({
-                                    username: osuUser.username,
-                                    userId: osuUser.id.toString(),
-                                    countryCode: osuUser.country_code,
-                                    rating: matchmaking.rating || 0,
-                                    wins: matchmaking.first_placements || 0,
-                                    plays: matchmaking.plays || 0,
-                                    isProvisional: matchmaking.is_rating_provisional || false
-                                });
+            const batchSize = 5;
+            try {
+                for (let i = 0; i < total; i += batchSize) {
+                    const batch = linkedUsers.slice(i, i + batchSize);
+                    await Promise.all(batch.map(async (u) => {
+                        try {
+                            const osuUser = await OsuUserModel.getOsuUser({ username: [u.osu_id.toString()], gamemode: u.main_gamemode || 'osu' });
+                            if (osuUser && osuUser.matchmaking_stats) {
+                                const matchmaking = osuUser.matchmaking_stats.find(m => m.pool && m.pool.type === 'ranked_play') || osuUser.matchmaking_stats[0];
+                                if (matchmaking && matchmaking.plays > 0) {
+                                    playersData.push({
+                                        username: osuUser.username,
+                                        userId: osuUser.id.toString(),
+                                        countryCode: osuUser.country_code,
+                                        rating: matchmaking.rating || 0,
+                                        wins: matchmaking.first_placements || 0,
+                                        plays: matchmaking.plays || 0,
+                                        isProvisional: matchmaking.is_rating_provisional || false
+                                    });
+                                }
                             }
+                        } catch (err) {
+                            console.error(`[RANKED] Error al obtener perfil de ${u.osu_id}:`, err);
                         }
-                    } catch (err) {
-                        console.error(`[RANKED] Error al obtener perfil de ${u.osu_id}:`, err);
-                    }
-                }));
+                    }));
 
-                const currentCount = Math.min(i + batchSize, total);
+                    const currentCount = Math.min(i + batchSize, total);
+                    if (loadingMsg) {
+                        try {
+                            const label = isAllServers ? "todos los servidores" : "el servidor";
+                            await loadingMsg.edit(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios de ${label} (${currentCount}/${total})...`);
+                        } catch {}
+                    }
+                }
+
+                serverLeaderboardCache.set(cacheKey, {
+                    timestamp: now,
+                    data: playersData
+                });
+
                 if (loadingMsg) {
                     try {
-                        await loadingMsg.edit(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios del servidor (${currentCount}/${total})...`);
+                        await loadingMsg.delete();
                     } catch {}
                 }
-            }
-
-            if (playersData.length === 0) {
-                if (loadingMsg) await loadingMsg.edit("❌ Ningún usuario vinculado en este servidor ha jugado partidas de Ranked Play esta temporada.");
+            } catch (err) {
+                console.error("Error en ranked -server:", err);
+                if (loadingMsg) await loadingMsg.edit("❌ Hubo un error al procesar la clasificación.");
                 return;
             }
-
-            // Ordenar lista
-            if (isWinsSort) {
-                playersData.sort((a, b) => {
-                    if (b.wins !== a.wins) return b.wins - a.wins;
-                    return b.rating - a.rating;
-                });
-            } else {
-                playersData.sort((a, b) => {
-                    if (b.rating !== a.rating) return b.rating - a.rating;
-                    return b.wins - a.wins;
-                });
-            }
-
-            // Paginación en memoria
-            const totalPlayers = playersData.length;
-            const maxDiscordPages = Math.ceil(totalPlayers / 10);
-            let currentPage = parsed_args.page || 1;
-
-            if (currentPage > maxDiscordPages) currentPage = maxDiscordPages;
-            if (currentPage < 1) currentPage = 1;
-
-            const guildName = message.guild ? message.guild.name : "Servidor";
-
-            const getEmbed = (pageVal) => {
-                const startIdx = (pageVal - 1) * 10;
-                const chunk = playersData.slice(startIdx, startIdx + 10);
-                return doOsuRankedLeaderboardEmbed({
-                    chunk,
-                    total: totalPlayers,
-                    startIndex: startIdx,
-                    isServer: true,
-                    serverName: guildName,
-                    isWinsSort,
-                    message
-                });
-            };
-
-            const getButtons = (pageVal) => {
-                return buildPaginationRow({
-                    prefix: 'ranked_srv',
-                    current: (pageVal - 1) * 10,
-                    total: totalPlayers,
-                    pageSize: 10
-                });
-            };
-
-            let sent_message;
-            if (loadingMsg) {
-                sent_message = await loadingMsg.edit({
-                    content: null,
-                    embeds: [getEmbed(currentPage)],
-                    components: totalPlayers > 10 ? [getButtons(currentPage)] : []
-                });
-            } else {
-                sent_message = await message.channel.send({
-                    embeds: [getEmbed(currentPage)],
-                    components: totalPlayers > 10 ? [getButtons(currentPage)] : []
-                });
-            }
-
-            if (totalPlayers <= 10) return;
-
-            const filter = btnInt => btnInt.user.id === message.author.id;
-            const collector = sent_message.createMessageComponentCollector({
-                filter,
-                idle: 60000
-            });
-
-            collector.on('collect', async i => {
-                try {
-                    await i.deferUpdate();
-
-                    if (i.customId === 'ranked_srv_first') {
-                        currentPage = 1;
-                    } else if (i.customId === 'ranked_srv_prev') {
-                        currentPage = Math.max(1, currentPage - 1);
-                    } else if (i.customId === 'ranked_srv_next') {
-                        currentPage = Math.min(maxDiscordPages, currentPage + 1);
-                    } else if (i.customId === 'ranked_srv_last') {
-                        currentPage = maxDiscordPages;
-                    }
-
-                    await i.editReply({
-                        embeds: [getEmbed(currentPage)],
-                        components: [getButtons(currentPage)]
-                    });
-                } catch (err) {
-                    console.error("Error al navegar ranking de servidor de ranked play:", err);
-                }
-            });
-
-            collector.on('end', async () => {
-                try {
-                    await sent_message.edit({ components: [] });
-                } catch {}
-            });
-
-        } catch (err) {
-            console.error("Error en ranked -server:", err);
-            if (loadingMsg) await loadingMsg.edit("❌ Hubo un error al procesar la clasificación del servidor.");
         }
+
+        if (playersData.length === 0) {
+            return isAllServers 
+                ? "❌ Ningún usuario vinculado en el bot ha jugado partidas de Ranked Play esta temporada." 
+                : "❌ Ningún usuario vinculado en este servidor ha jugado partidas de Ranked Play esta temporada.";
+        }
+
+        // Ordenar lista
+        if (isWinsSort) {
+            playersData.sort((a, b) => {
+                if (b.wins !== a.wins) return b.wins - a.wins;
+                return b.rating - a.rating;
+            });
+        } else {
+            playersData.sort((a, b) => {
+                if (b.rating !== a.rating) return b.rating - a.rating;
+                return b.wins - a.wins;
+            });
+        }
+
+        // Paginación en memoria
+        const totalPlayers = playersData.length;
+        const maxDiscordPages = Math.ceil(totalPlayers / 10);
+        let currentPage = parsed_args.page || 1;
+
+        if (currentPage > maxDiscordPages) currentPage = maxDiscordPages;
+        if (currentPage < 1) currentPage = 1;
+
+        let guildName = "Todos los Servidores";
+        if (guildFilterId) {
+            try {
+                const guild = await message.client.guilds.fetch(guildFilterId);
+                if (guild) guildName = guild.name;
+            } catch {
+                guildName = `Servidor (ID: ${guildFilterId})`;
+            }
+        }
+
+        const getEmbed = (pageVal) => {
+            const startIdx = (pageVal - 1) * 10;
+            const chunk = playersData.slice(startIdx, startIdx + 10);
+            return doOsuRankedLeaderboardEmbed({
+                chunk,
+                total: totalPlayers,
+                startIndex: startIdx,
+                isServer: true,
+                serverName: guildName,
+                isWinsSort,
+                message
+            });
+        };
+
+        const getButtons = (pageVal) => {
+            return buildPaginationRow({
+                prefix: 'ranked_srv',
+                current: (pageVal - 1) * 10,
+                total: totalPlayers,
+                pageSize: 10
+            });
+        };
+
+        const sent_message = await message.channel.send({
+            embeds: [getEmbed(currentPage)],
+            components: totalPlayers > 10 ? [getButtons(currentPage)] : []
+        });
+
+        if (totalPlayers <= 10) return;
+
+        const filter = btnInt => btnInt.user.id === message.author.id;
+        const collector = sent_message.createMessageComponentCollector({
+            filter,
+            idle: 60000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === 'ranked_srv_first') {
+                    currentPage = 1;
+                } else if (i.customId === 'ranked_srv_prev') {
+                    currentPage = Math.max(1, currentPage - 1);
+                } else if (i.customId === 'ranked_srv_next') {
+                    currentPage = Math.min(maxDiscordPages, currentPage + 1);
+                } else if (i.customId === 'ranked_srv_last') {
+                    currentPage = maxDiscordPages;
+                }
+
+                await i.editReply({
+                    embeds: [getEmbed(currentPage)],
+                    components: [getButtons(currentPage)]
+                });
+            } catch (err) {
+                console.error("Error al navegar ranking de servidor de ranked play:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sent_message.edit({ components: [] });
+            } catch {}
+        });
+
         return;
     }
 
@@ -360,7 +396,7 @@ run.alias = {
 run.description = {
     'header': 'Detalles de Ranked Play de un usuario',
     'body': 'Muestra el rango global, rating (ELO), victorias, partidas jugadas y tasa de victoria de Ranked Play (lazer) del usuario.',
-    'usage': `s.ranked : Muestra tus estadísticas.\ns.ranked 'usuario_osu' : Muestra las estadísticas del usuario especificado.\ns.ranked -top : Muestra la clasificación global de Ranked Play.\ns.ranked -top -wins : Muestra la clasificación global ordenada por victorias.\ns.ranked -server : Muestra la clasificación de los usuarios del servidor.`
+    'usage': `s.ranked : Muestra tus estadísticas.\ns.ranked 'usuario_osu' : Muestra las estadísticas del usuario especificado.\ns.ranked -top : Muestra la clasificación global de Ranked Play.\ns.ranked -top -wins : Muestra la clasificación global ordenada por victorias.\ns.ranked -server : Muestra la clasificación de todos los usuarios vinculados en el bot.\ns.ranked -server 'id_servidor' : Muestra la clasificación de un servidor específico.`
 };
 
 module.exports = { run };
