@@ -150,104 +150,51 @@ async function run(messages, args) {
         const parsed_args = argsParserNoCommand(args);
         let targetGuildId = parsed_args.targetGuildId;
 
-        // Si se especificó un targetGuildId, validamos permisos
-        if (targetGuildId && targetGuildId !== "SELF") {
-            const isCurrentGuild = message.guild && targetGuildId === message.guild.id;
-            const ownerId = process.env.OWNER_ID;
-            if (!isCurrentGuild && message.author.id !== ownerId) {
-                return "❌ Solo el creador del bot puede consultar otros servidores con `-server <id>`.";
+        let guildFilterId = null;
+        let isAllServers = false;
+
+        if (targetGuildId) {
+            if (targetGuildId.toUpperCase() === "ALL") {
+                isAllServers = true;
+            } else {
+                guildFilterId = targetGuildId;
+            }
+        } else {
+            if (message.guild) {
+                guildFilterId = message.guild.id;
+            } else {
+                return "❌ Por favor ejecuta este comando en un servidor o usa `-server ALL` para ver todos los servidores.";
             }
         }
-
-        // Si es SELF o el comando vino en un servidor por defecto, resolvemos
-        let guildFilterId = targetGuildId;
-        if (guildFilterId === "SELF") {
-            guildFilterId = message.guild ? message.guild.id : null;
-        }
-
-        const isAllServers = !guildFilterId;
-        const cacheKey = isAllServers ? "all_servers" : `guild_${guildFilterId}`;
-        const now = Date.now();
 
         let playersData = [];
-        let fromCache = false;
 
-        if (serverLeaderboardCache.has(cacheKey)) {
-            const cached = serverLeaderboardCache.get(cacheKey);
-            if (now - cached.timestamp < SERVER_CACHE_TTL) {
-                playersData = cached.data;
-                fromCache = true;
-            }
+        if (logger) logger.process(isAllServers ? "Obteniendo usuarios vinculados de todos los servidores desde la base de datos..." : "Obteniendo usuarios vinculados del servidor desde la base de datos...");
+        
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId });
+
+        if (!linkedUsers || linkedUsers.length === 0) {
+            return isAllServers ? "❌ No hay usuarios vinculados en el bot." : "❌ No hay usuarios vinculados en este servidor.";
         }
 
-        if (!fromCache) {
-            if (logger) logger.process(isAllServers ? "Obteniendo usuarios vinculados de todos los servidores..." : "Obteniendo usuarios vinculados del servidor...");
-            
-            const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId });
+        const linkedOsuIds = linkedUsers.map(u => u.osu_id.toString());
 
-            if (!linkedUsers || linkedUsers.length === 0) {
-                return isAllServers ? "❌ No hay usuarios vinculados en el bot." : "❌ No hay usuarios vinculados en este servidor.";
-            }
-
-            const total = linkedUsers.length;
-            let loadingMsg;
-            try {
-                const label = isAllServers ? "todos los servidores" : "el servidor";
-                loadingMsg = await message.channel.send(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios de ${label} (0/${total})...`);
-            } catch (e) {
-                console.error("Error al enviar mensaje temporal en ranked -server:", e);
-            }
-
-            const batchSize = 5;
-            try {
-                for (let i = 0; i < total; i += batchSize) {
-                    const batch = linkedUsers.slice(i, i + batchSize);
-                    await Promise.all(batch.map(async (u) => {
-                        try {
-                            const osuUser = await OsuUserModel.getOsuUser({ username: [u.osu_id.toString()], gamemode: u.main_gamemode || 'osu' });
-                            if (osuUser && osuUser.matchmaking_stats) {
-                                const matchmaking = osuUser.matchmaking_stats.find(m => m.pool && m.pool.type === 'ranked_play') || osuUser.matchmaking_stats[0];
-                                if (matchmaking && matchmaking.plays > 0) {
-                                    playersData.push({
-                                        username: osuUser.username,
-                                        userId: osuUser.id.toString(),
-                                        countryCode: osuUser.country_code,
-                                        rating: matchmaking.rating || 0,
-                                        wins: matchmaking.first_placements || 0,
-                                        plays: matchmaking.plays || 0,
-                                        isProvisional: matchmaking.is_rating_provisional || false
-                                    });
-                                }
-                            }
-                        } catch (err) {
-                            console.error(`[RANKED] Error al obtener perfil de ${u.osu_id}:`, err);
-                        }
-                    }));
-
-                    const currentCount = Math.min(i + batchSize, total);
-                    if (loadingMsg) {
-                        try {
-                            const label = isAllServers ? "todos los servidores" : "el servidor";
-                            await loadingMsg.edit(`⏳ Obteniendo estadísticas de Ranked Play para los usuarios de ${label} (${currentCount}/${total})...`);
-                        } catch {}
-                    }
-                }
-
-                serverLeaderboardCache.set(cacheKey, {
-                    timestamp: now,
-                    data: playersData
-                });
-
-                if (loadingMsg) {
-                    try {
-                        await loadingMsg.delete();
-                    } catch {}
-                }
-            } catch (err) {
-                console.error("Error en ranked -server:", err);
-                if (loadingMsg) await loadingMsg.edit("❌ Hubo un error al procesar la clasificación.");
-                return;
-            }
+        try {
+            const dbPlayers = await OsuMatchmakingModel.fetchServerRankedLeaderboard(linkedOsuIds);
+            playersData = dbPlayers
+                .filter(p => p.plays > 0)
+                .map(p => ({
+                    username: p.username,
+                    userId: p.osu_id,
+                    countryCode: p.country_code,
+                    rating: p.rating,
+                    wins: p.wins,
+                    plays: p.plays,
+                    isProvisional: p.is_provisional
+                }));
+        } catch (err) {
+            console.error("Error al obtener ranking del servidor desde la base de datos:", err);
+            return "❌ Hubo un error al consultar las estadísticas en la base de datos.";
         }
 
         if (playersData.length === 0) {
@@ -379,6 +326,9 @@ async function run(messages, args) {
     if (!matchmaking) {
         return `❌ El usuario **${osuUser.username}** no tiene estadísticas de Ranked Play.`;
     }
+
+    // Actualizar estadísticas de Ranked Play en segundo plano en la base de datos
+    OsuMatchmakingModel.updateUserRankedStatsInBackground(osuUser);
 
     const embed = doOsuRankedProfileEmbed(message, osuUser, matchmaking);
     return { embeds: [embed] };

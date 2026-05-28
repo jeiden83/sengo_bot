@@ -50,6 +50,12 @@ async function run(messages, args) {
                 osu_userdata.fn_response.is_supporter
             ).catch(() => {});
         }
+
+        // Actualizar estadísticas de Ranked Play en segundo plano
+        const OsuMatchmakingModel = require("../../../models/OsuMatchmakingModel.js");
+        if (OsuMatchmakingModel.updateUserRankedStatsInBackground) {
+            OsuMatchmakingModel.updateUserRankedStatsInBackground(osu_userdata.fn_response);
+        }
     }
 
     const is_detailed = osu_userdata.parsed_args.detailed || false;

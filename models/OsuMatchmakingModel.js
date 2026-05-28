@@ -136,9 +136,86 @@ async function fetchRankedPlayLeaderboard(page = 1) {
     return result;
 }
 
+const { getSupabaseClient } = require('../db/database.js');
+
+async function updateUserRankedStats(osuUser) {
+    if (!osuUser || !osuUser.id) return null;
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const matchmaking = (osuUser.matchmaking_stats || []).find(m => m.pool && m.pool.type === 'ranked_play');
+    if (!matchmaking) return null;
+
+    const record = {
+        osu_id: osuUser.id.toString(),
+        username: osuUser.username,
+        country_code: osuUser.country_code,
+        rating: matchmaking.rating || 0,
+        wins: matchmaking.first_placements || 0,
+        plays: matchmaking.plays || 0,
+        is_provisional: matchmaking.is_rating_provisional || false,
+        updated_at: new Date().toISOString()
+    };
+
+    try {
+        const { data: userLink } = await supabase
+            .from('users')
+            .select('discord_id')
+            .eq('osu_id', record.osu_id)
+            .maybeSingle();
+
+        if (userLink) {
+            record.discord_id = userLink.discord_id;
+        }
+    } catch (err) {
+        console.error(`[BACKGROUND-RANKED] Error al buscar discord_id para osu_id ${record.osu_id}:`, err);
+    }
+
+    const { data, error } = await supabase
+        .from('user_ranked_stats')
+        .upsert(record, { onConflict: 'osu_id' })
+        .select()
+        .maybeSingle();
+
+    if (error) {
+        console.error(`[BACKGROUND-RANKED] Error al guardar estadísticas en user_ranked_stats para ${record.username}:`, error);
+        throw error;
+    }
+
+    console.log(`[BACKGROUND-RANKED] Guardadas estadísticas de Ranked Play para ${record.username} (${record.rating} ELO)`);
+    return data;
+}
+
+function updateUserRankedStatsInBackground(osuUser) {
+    if (!osuUser || !osuUser.id) return;
+    updateUserRankedStats(osuUser).catch(err => {
+        console.error(`[BACKGROUND-RANKED] Error silencioso al actualizar:`, err.message);
+    });
+}
+
+async function fetchServerRankedLeaderboard(linkedOsuIds) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+    if (!linkedOsuIds || linkedOsuIds.length === 0) return [];
+
+    const { data, error } = await supabase
+        .from('user_ranked_stats')
+        .select('*')
+        .in('osu_id', linkedOsuIds);
+
+    if (error) {
+        console.error("[DB] Error al obtener ranking del servidor desde la DB:", error);
+        throw error;
+    }
+    return data || [];
+}
+
 module.exports = {
     getActivePoolId,
     parseRankedPlayLeaderboard,
     parseMaxOsuPages,
-    fetchRankedPlayLeaderboard
+    fetchRankedPlayLeaderboard,
+    updateUserRankedStats,
+    updateUserRankedStatsInBackground,
+    fetchServerRankedLeaderboard
 };
