@@ -868,7 +868,10 @@ function argsParserNoCommand(args, options = {}) {
             const chars = potentialMods.split('');
             const isAllMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
             
-            const knownFlags = new Set(['pm', 'mx', 'pp', 'ps']);
+            const knownFlags = new Set([
+                'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region', 
+                'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina'
+            ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;
                 continue;
