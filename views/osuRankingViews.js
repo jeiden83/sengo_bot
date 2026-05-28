@@ -16,11 +16,14 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         const ppStr = `**${Math.round(item.pp).toLocaleString()} pp**`;
         const accStr = `\`${item.hit_accuracy.toFixed(2)}%\` acc`;
 
+        const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr}`;
+        let secondLine;
         if (isAccSort) {
-            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | \`#${item.country_rank}\` / \`#${item.global_rank.toLocaleString()}\``;
+            secondLine = `  ↳ Rango: **#${item.country_rank}** Nacional • **#${item.global_rank.toLocaleString()}** Global`;
         } else {
-            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | \`#${item.global_rank.toLocaleString()}\``;
+            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString()}** Global`;
         }
+        return `${firstLine}\n${secondLine}`;
     });
 
     const currentPage = Math.floor(startIndex / 20) + 1;
