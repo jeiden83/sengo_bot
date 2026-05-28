@@ -48,7 +48,15 @@ async function run(messages, args) {
         }
 
         if (logger) logger.process("Obteniendo amigos del creador desde la API de osu!...");
-        const friendsList = await OsuUserModel.getFriendsList(authorId);
+        let friendsList = null;
+        try {
+            friendsList = await OsuUserModel.getFriendsList(authorId);
+        } catch (err) {
+            if (err.response && err.response.status === 403) {
+                return `❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (\`friends.read\`) para consultar tu lista de amigos.\n\n💡 **Solución:** Desvincula tu cuenta usando \`s.link unlink\` y vuelve a vincularte con \`s.link -oauth\` asegurándote de autorizar todos los permisos solicitados.`;
+            }
+            throw err;
+        }
         if (!friendsList) {
             return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.`;
         }
@@ -98,7 +106,15 @@ async function run(messages, args) {
     }
 
     if (logger) logger.process("Obteniendo amigos desde la API de osu!...");
-    const friends = await OsuUserModel.getFriendsList(authorId);
+    let friends = null;
+    try {
+        friends = await OsuUserModel.getFriendsList(authorId);
+    } catch (err) {
+        if (err.response && err.response.status === 403) {
+            return `❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (\`friends.read\`) para consultar tu lista de amigos.\n\n💡 **Solución:** Desvincula tu cuenta usando \`s.link unlink\` y vuelve a vincularte con \`s.link -oauth\` asegurándote de autorizar todos los permisos solicitados.`;
+        }
+        throw err;
+    }
     if (!friends) {
         return `❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.`;
     }
