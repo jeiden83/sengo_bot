@@ -21,7 +21,6 @@
     "dotenv": "^17.4.2",
     "es-set-tostringtag": "^2.1.0",
     "gifencoder": "^2.0.1",
-    "iso-3166-2": "^1.0.0",
     "lzma": "^2.3.2",
     "node-fetch": "^2.7.0",
     "osu-api-extended": "^3.1.12",

@@ -2,19 +2,19 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuRankingEmbed, doSubdivisionsEmbed } = require("../../../views/osuRankingViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { argsParserNoCommand } = require("../../utils/argsParser.js");
-const iso = require("iso-3166-2");
+const regionsData = require("../../../src/regions.json");
 
 /**
  * Obtiene todas las subdivisiones disponibles para un país específico.
  */
 function getCountrySubdivisions(countryCode) {
     try {
-        const countryData = iso.country(countryCode.toUpperCase());
-        if (!countryData || !countryData.sub) return [];
-        return Object.entries(countryData.sub).map(([code, sub]) => ({
+        const countrySub = regionsData[countryCode.toUpperCase()];
+        if (!countrySub) return [];
+        return Object.entries(countrySub).map(([code, name]) => ({
             code,
-            name: sub.name,
-            type: sub.type
+            name,
+            type: "State"
         })).sort((a, b) => a.name.localeCompare(b.name));
     } catch {
         return [];
@@ -140,8 +140,9 @@ async function run(messages, args) {
             // Si el código de región no empieza con el país (ej: "VE-B" vs "B"), nos aseguramos
             countryFilter = worldUser.country_id ? worldUser.country_id.toUpperCase() : countryFilter;
             
-            const subData = iso.subdivision(selectedRegion);
-            selectedRegionName = (subData && subData.name) ? subData.name : selectedRegion;
+            const countryCode = selectedRegion.split("-")[0];
+            const countrySub = regionsData[countryCode];
+            selectedRegionName = (countrySub && countrySub[selectedRegion]) ? countrySub[selectedRegion] : selectedRegion;
             viewMode = 'regional';
         } else {
             // Buscar por nombre/código de región provisto

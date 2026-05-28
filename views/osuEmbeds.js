@@ -818,9 +818,10 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     let regionalRankStr = "";
     if (osuworld_data && osuworld_data.region_id && osuworld_data.placement) {
         try {
-            const iso = require("iso-3166-2");
-            const subdivision = iso.subdivision(osuworld_data.region_id);
-            const regionName = (subdivision && subdivision.name) ? subdivision.name : osuworld_data.region_id;
+            const regionsData = require("../src/regions.json");
+            const regionId = osuworld_data.region_id;
+            const countryCode = regionId.split("-")[0];
+            const regionName = (regionsData[countryCode] && regionsData[countryCode][regionId]) || regionId;
             const urlRegionName = regionName.replace(/[\s,]+/g, "_");
             regionalRankStr = ` / **[#${osuworld_data.placement}](https://osuworld.octo.moe/#${urlRegionName})**`;
         } catch (e) {
