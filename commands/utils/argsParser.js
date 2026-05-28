@@ -420,6 +420,8 @@ function argsParserNoCommand(args, options = {}) {
     let reworkCompare = false;
     let reworkTop = false;
     let sortByPPChange = false;
+    let stableMode = false;
+    let lazerMode = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -713,6 +715,18 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
+        // Si es exactamente "-stable"
+        if (arg === "-stable") {
+            stableMode = true;
+            continue;
+        }
+
+        // Si es exactamente "-lazer")
+        if (arg === "-lazer") {
+            lazerMode = true;
+            continue;
+        }
+
         // Si es exactamente "-server"
         if (arg === "-server") {
             if (i + 1 < args_list.length) {
@@ -999,7 +1013,9 @@ function argsParserNoCommand(args, options = {}) {
         'reworkCompare': reworkCompare,
         'reworkTop': reworkTop,
         'sortByPPChange': sortByPPChange,
-        'invalidModsWarning': invalidModsWarning
+        'invalidModsWarning': invalidModsWarning,
+        'stableMode': stableMode,
+        'lazerMode': lazerMode
     };
     return parsed_args;
 }

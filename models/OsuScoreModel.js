@@ -1562,7 +1562,8 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
         if (countryCode && beatmapId) {
             try {
                 const { preloadCountryLeaderboard } = require("../commands/chat/osu/lb.js");
-                await preloadCountryLeaderboard(beatmapId, mode, countryCode);
+                const isLazer = recentScore.build_id !== null && recentScore.build_id !== undefined;
+                await preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer);
             } catch (err) {
                 console.error(`[BG-RECENT-PRELOAD] Error al precargar leaderboard nacional de ${countryCode} para el mapa ${beatmapId}:`, err);
             }

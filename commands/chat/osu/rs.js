@@ -216,6 +216,9 @@ async function run(messages, args) {
         try {
             const targetScore = parser_res.fn_response[0];
             if (targetScore && targetScore.beatmap) {
+                const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+                const isLazer = targetScore.build_id !== null && targetScore.build_id !== undefined;
+                setChannelRecentPlayType(message.channel.id, targetScore.beatmap.id, isLazer);
                 triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
             }
         } catch (err) {
@@ -240,6 +243,10 @@ async function run(messages, args) {
     // Función auxiliar para procesar y construir el embed de un score determinado
     async function processScore(scoreIndex) {
         const recent_scores = parser_res.fn_response[scoreIndex - 1];
+        const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+        const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+        setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
+
         const stats = recent_scores.statistics || {};
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);

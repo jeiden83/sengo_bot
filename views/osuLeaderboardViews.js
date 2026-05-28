@@ -109,7 +109,10 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
 
-        const legacy_score = getFormattedScore(score);
+        const isLazerMode = parsed_args.lazerMode || parsed_args.isLazerMode;
+        const legacy_score = isLazerMode 
+            ? (score.total_score || score.score || 0).toLocaleString('es-ES')
+            : getFormattedScore(score);
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
@@ -168,17 +171,18 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 /**
  * Genera el string de contenido de encabezado para el comando lb
  */
-function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null) {
+function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
     const displayMode = targetGamemode === 'osu' ? 'std' : (targetGamemode === 'fruits' ? 'ctb' : targetGamemode);
+    const suffix = isLazerMode ? " (lazer)" : " (stable)";
 
     const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    let titleText = `**Tabla de clasificación (leaderboard) en osu!${displayMode} para:**`;
+    let titleText = `**Tabla de clasificación (leaderboard) en osu!${displayMode}${suffix} para:**`;
     if (countryCode) {
-        titleText = `**Tabla de clasificación nacional (${countryCode.toUpperCase()}) en osu!${displayMode} para:**`;
+        titleText = `**Tabla de clasificación nacional (${countryCode.toUpperCase()})${suffix} en osu!${displayMode} para:**`;
     } else if (friendsUsername) {
-        titleText = `**Tabla de clasificación de amigos de ${friendsUsername} en osu!${displayMode} para:**`;
+        titleText = `**Tabla de clasificación de amigos de ${friendsUsername}${suffix} en osu!${displayMode} para:**`;
     }
     return `${titleText}\n${mapa}`;
 }

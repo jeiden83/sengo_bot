@@ -88,6 +88,24 @@ async function run(messages, args) {
     if (logger) logger.process("Obteniendo metadatos del beatmap");
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
+    let isStableMode = parsed_args.stableMode;
+    let isLazerMode = parsed_args.lazerMode;
+
+    if (!isStableMode && !isLazerMode) {
+        const { getChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+        const cachedType = getChannelRecentPlayType(message.channel.id, beatmap_metadata.id);
+        if (cachedType === 'lazer') {
+            isLazerMode = true;
+        } else if (cachedType === 'stable') {
+            isStableMode = true;
+        } else {
+            isStableMode = true; // default fallback
+        }
+    }
+
+    const legacyOnlyVal = isStableMode ? 1 : 0;
+    parsed_args.isLazerMode = isLazerMode;
+
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
     if (unranked_statuses.has(beatmap_metadata.status)) {
         return `❌ Este mapa no tiene tabla de clasificación (leaderboard) online porque está en estado **${beatmap_metadata.status}**.`;
@@ -144,7 +162,7 @@ async function run(messages, args) {
 
                 if (!globalToken) return [];
 
-                const globalUrl = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores?mode=${targetGamemode}`;
+                const globalUrl = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores?mode=${targetGamemode}&legacy_only=${legacyOnlyVal}`;
                 return await fetchLeaderboardCached(globalUrl, {
                     'Authorization': `Bearer ${globalToken}`,
                     'Content-Type': 'application/json',
@@ -180,6 +198,7 @@ async function run(messages, args) {
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
             urlObj.searchParams.append('type', 'friend');
+            urlObj.searchParams.append('legacy_only', legacyOnlyVal);
             if (modsArray.length > 0) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
@@ -209,6 +228,7 @@ async function run(messages, args) {
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
             urlObj.searchParams.append('type', 'country');
+            urlObj.searchParams.append('legacy_only', legacyOnlyVal);
             if (modsArray.length > 0) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
@@ -233,6 +253,7 @@ async function run(messages, args) {
             try {
                 const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
                 urlObj.searchParams.append('mode', targetGamemode);
+                urlObj.searchParams.append('legacy_only', legacyOnlyVal);
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
 
                 scores = await fetchLeaderboardCached(urlObj.toString(), {
@@ -266,6 +287,7 @@ async function run(messages, args) {
 
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
+            urlObj.searchParams.append('legacy_only', legacyOnlyVal);
             if (modsArray.length > 0) {
                 modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
@@ -285,9 +307,11 @@ async function run(messages, args) {
         return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
     }
 
-    // Ordenar puntuaciones por score clásico/legacy descendente para evitar inconsistencias visuales
-    // (ya que la API de osu! v2 por defecto las retorna ordenadas por score estandarizado de Lazer)
+    // Ordenar puntuaciones por score clásico/legacy o score de Lazer descendente para evitar inconsistencias visuales
     const getRawScore = s => {
+        if (isLazerMode) {
+            return s.total_score || s.score || 0;
+        }
         return (s.legacy_total_score && s.legacy_total_score > 0) ? s.legacy_total_score :
                (s.classic_total_score && s.classic_total_score > 0) ? s.classic_total_score :
                s.total_score || s.score || 0;
@@ -500,9 +524,14 @@ run.description = {
     'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.`
 }
 
-async function preloadCountryLeaderboard(beatmapId, mode, countryCode) {
+async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer = null) {
     if (!beatmapId || !countryCode) return;
     const countryFilter = countryCode.toUpperCase();
+    
+    let legacyOnlyVal = 1;
+    if (isLazer === true) {
+        legacyOnlyVal = 0;
+    }
     
     try {
         const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
@@ -514,6 +543,7 @@ async function preloadCountryLeaderboard(beatmapId, mode, countryCode) {
         const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores`);
         urlObj.searchParams.append('mode', mode || 'osu');
         urlObj.searchParams.append('type', 'country');
+        urlObj.searchParams.append('legacy_only', legacyOnlyVal);
         
         await fetchLeaderboardCached(urlObj.toString(), {
             'Authorization': `Bearer ${supporterRes.token}`,
