@@ -870,7 +870,8 @@ function argsParserNoCommand(args, options = {}) {
             
             const knownFlags = new Set([
                 'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region', 
-                'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina'
+                'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina',
+                'wins', 'w', 'wr', 'winrate'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;

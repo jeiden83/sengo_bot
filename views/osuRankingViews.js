@@ -120,8 +120,9 @@ function doOsuRankedProfileEmbed(message, osuUser, matchmaking) {
 /**
  * Genera el embed con la tabla de clasificación de Ranked Play (Global o Servidor).
  */
-function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serverName, isWinsSort, message }) {
+function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serverName, isWinsSort, sortType, message }) {
     const embedColor = getEmbedColor(message);
+    const effectiveSortType = sortType || (isWinsSort ? 'wins' : 'rating');
     
     const lines = chunk.map((player, index) => {
         const flag = player.countryCode ? `:flag_${player.countryCode.toLowerCase()}:` : "🏳️";
@@ -132,7 +133,7 @@ function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serve
         const statsStr = `**${player.wins}** wins / **${player.plays}** plays (${winRate}% WR)`;
         
         let displayStr = "";
-        if (isWinsSort) {
+        if (effectiveSortType === 'wins' || effectiveSortType === 'winrate' || effectiveSortType === 'plays') {
             displayStr = `${statsStr} ▸ ${ratingStr}`;
         } else {
             displayStr = `${ratingStr} ▸ ${statsStr}`;
@@ -142,7 +143,15 @@ function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serve
     });
 
     const titlePrefix = isServer ? `Tabla de Clasificación del Servidor (${serverName})` : "Tabla de Clasificación Global";
-    const sortPrefix = isWinsSort ? "por Victorias" : "por Rating (ELO)";
+    
+    let sortPrefix = "por Rating (ELO)";
+    if (effectiveSortType === 'wins') {
+        sortPrefix = "por Victorias";
+    } else if (effectiveSortType === 'winrate') {
+        sortPrefix = "por Win Rate";
+    } else if (effectiveSortType === 'plays') {
+        sortPrefix = "por Partidas Jugadas";
+    }
     
     const currentPage = Math.floor(startIndex / 10) + 1;
     const maxPages = Math.ceil(total / 10) || 1;

@@ -12,7 +12,29 @@ async function run(messages, args) {
 
     const hasTop = args.some(arg => typeof arg === 'string' && ['-top', '-t'].includes(arg.toLowerCase().trim()));
     const hasServer = args.some(arg => typeof arg === 'string' && ['-server', '-srv'].includes(arg.toLowerCase().trim()));
-    const isWinsSort = args.some(arg => typeof arg === 'string' && ['-wins', '-w'].includes(arg.toLowerCase().trim()));
+    
+    let sortType = 'rating';
+    const hasPlaysSort = args.some((arg, index) => {
+        if (typeof arg !== 'string') return false;
+        const clean = arg.toLowerCase().trim();
+        if (['-plays', '-play', '-pl'].includes(clean)) return true;
+        if (clean === '-p') {
+            if (index + 1 < args.length) {
+                const nextNum = parseInt(args[index + 1]);
+                if (!isNaN(nextNum)) return false;
+            }
+            return true;
+        }
+        return false;
+    });
+
+    if (args.some(arg => typeof arg === 'string' && ['-wins', '-w'].includes(arg.toLowerCase().trim()))) {
+        sortType = 'wins';
+    } else if (args.some(arg => typeof arg === 'string' && ['-wr', '-winrate'].includes(arg.toLowerCase().trim()))) {
+        sortType = 'winrate';
+    } else if (hasPlaysSort) {
+        sortType = 'plays';
+    }
 
     // 1. MODO TABLA DE CLASIFICACIÓN GLOBAL (s.ranked -top)
     if (hasTop && !hasServer) {
@@ -39,9 +61,21 @@ async function run(messages, args) {
 
             const sortAndSlice = (pageVal, playersList) => {
                 let list = [...playersList];
-                if (isWinsSort) {
+                if (sortType === 'wins') {
                     list.sort((a, b) => {
                         if (b.wins !== a.wins) return b.wins - a.wins;
+                        return b.rating - a.rating;
+                    });
+                } else if (sortType === 'winrate') {
+                    list.sort((a, b) => {
+                        const wrA = a.plays > 0 ? (a.wins / a.plays) : 0;
+                        const wrB = b.plays > 0 ? (b.wins / b.plays) : 0;
+                        if (wrB !== wrA) return wrB - wrA;
+                        return b.rating - a.rating;
+                    });
+                } else if (sortType === 'plays') {
+                    list.sort((a, b) => {
+                        if (b.plays !== a.plays) return b.plays - a.plays;
                         return b.rating - a.rating;
                     });
                 }
@@ -55,7 +89,7 @@ async function run(messages, args) {
                 total: totalPlayers,
                 startIndex: (currentPage - 1) * 10,
                 isServer: false,
-                isWinsSort,
+                sortType,
                 message
             });
 
@@ -119,7 +153,7 @@ async function run(messages, args) {
                         total: maxOsuPages * 50,
                         startIndex: (currentPage - 1) * 10,
                         isServer: false,
-                        isWinsSort,
+                        sortType,
                         message
                     });
 
@@ -230,9 +264,21 @@ async function run(messages, args) {
         }
 
         // Ordenar lista
-        if (isWinsSort) {
+        if (sortType === 'wins') {
             playersData.sort((a, b) => {
                 if (b.wins !== a.wins) return b.wins - a.wins;
+                return b.rating - a.rating;
+            });
+        } else if (sortType === 'winrate') {
+            playersData.sort((a, b) => {
+                const wrA = a.plays > 0 ? (a.wins / a.plays) : 0;
+                const wrB = b.plays > 0 ? (b.wins / b.plays) : 0;
+                if (wrB !== wrA) return wrB - wrA;
+                return b.rating - a.rating;
+            });
+        } else if (sortType === 'plays') {
+            playersData.sort((a, b) => {
+                if (b.plays !== a.plays) return b.plays - a.plays;
                 return b.rating - a.rating;
             });
         } else {
@@ -269,7 +315,7 @@ async function run(messages, args) {
                 startIndex: startIdx,
                 isServer: true,
                 serverName: guildName,
-                isWinsSort,
+                sortType,
                 message
             });
         };
