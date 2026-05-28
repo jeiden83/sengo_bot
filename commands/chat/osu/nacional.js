@@ -33,8 +33,26 @@ async function run(messages, args) {
 
     countryFilter = countryFilter.toUpperCase();
 
-    // Determinar modo de juego
-    const targetGamemode = parsed_args.gamemode || "osu";
+    // Determinar modo de juego con soporte completo
+    let targetGamemode = parsed_args.gamemode;
+    if (!targetGamemode) {
+        try {
+            const user_found = await OsuUserModel.getLinkedUser(messages.res?.User, message.author.id);
+            if (user_found && user_found.main_gamemode) {
+                targetGamemode = user_found.main_gamemode;
+            }
+        } catch (e) {
+            console.error("Error al obtener main_gamemode del usuario para nacional:", e);
+        }
+        targetGamemode = targetGamemode || "osu";
+    }
+
+    if (targetGamemode === "std") {
+        targetGamemode = "osu";
+    } else if (targetGamemode === "ctb") {
+        targetGamemode = "fruits";
+    }
+
     const gamemodeNames = {
         'osu': 'osu!standard',
         'taiko': 'osu!taiko',

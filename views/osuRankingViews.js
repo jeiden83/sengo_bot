@@ -13,15 +13,13 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         const flag = `:flag_${item.user.country_code.toLowerCase()}:`;
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
-        const globalRankStr = `(Global: \`#${item.global_rank.toLocaleString()}\`)`;
         const ppStr = `**${Math.round(item.pp).toLocaleString()} pp**`;
         const accStr = `\`${item.hit_accuracy.toFixed(2)}%\` acc`;
 
         if (isAccSort) {
-            const origRankStr = `(Local: \`#${item.country_rank}\`)`;
-            return `${localRank} ${origRankStr} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | ${globalRankStr}`;
+            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | \`#${item.country_rank}\` / \`#${item.global_rank.toLocaleString()}\``;
         } else {
-            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | ${globalRankStr}`;
+            return `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr} | ${accStr} | \`#${item.global_rank.toLocaleString()}\``;
         }
     });
 
