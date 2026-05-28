@@ -789,6 +789,9 @@ async function syncAllSupporterStatuses() {
     return { successCount, failCount, changes };
 }
 
+const rankingPageCache = new Map();
+const RANKING_CACHE_TTL = 300000; // 5 minutos en ms
+
 /**
  * Obtiene una página del ranking nacional para un modo y país específico,
  * combinando resultados si es necesario para retornar un chunk de 25 elementos.
@@ -804,7 +807,16 @@ async function fetchRankingPage(countryFilter, gamemode, startIndex) {
     const accessToken = tokenData.access_token;
 
     const fetchPage = async (page) => {
-        return osuApiQueue.add(async () => {
+        const cacheKey = `${gamemode.toLowerCase()}_${countryFilter.toUpperCase()}_page_${page}`;
+        const now = Date.now();
+        if (rankingPageCache.has(cacheKey)) {
+            const cached = rankingPageCache.get(cacheKey);
+            if (now - cached.timestamp < RANKING_CACHE_TTL) {
+                return cached.data;
+            }
+        }
+
+        const data = await osuApiQueue.add(async () => {
             const url = `https://osu.ppy.sh/api/v2/rankings/${gamemode}/performance?country=${countryFilter}&page=${page}`;
             const res = await axios.get(url, {
                 headers: {
@@ -816,6 +828,9 @@ async function fetchRankingPage(countryFilter, gamemode, startIndex) {
             });
             return res.data;
         });
+
+        rankingPageCache.set(cacheKey, { data, timestamp: now });
+        return data;
     };
 
     let rankings = [];
