@@ -69,9 +69,20 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
         const content = m.list.map(item => {
             let ageStr = '';
             if (item.year) {
-                const currentYear = new Date().getFullYear();
-                const age = currentYear - item.year;
-                ageStr = ` (cumple ${age} años)`;
+                const now = new Date();
+                const currentYear = now.getFullYear();
+                const bdayThisYear = new Date(currentYear, item.month - 1, item.day);
+                const todayMidnight = new Date(currentYear, now.getMonth(), now.getDate());
+                const ageThisYear = currentYear - item.year;
+                
+                if (bdayThisYear < todayMidnight) {
+                    const nextAge = ageThisYear + 1;
+                    ageStr = ` (cumplió ${ageThisYear} ✔️, cumple ${nextAge})`;
+                } else if (bdayThisYear.getTime() === todayMidnight.getTime()) {
+                    ageStr = ` (¡hoy cumple ${ageThisYear}! 🎉)`;
+                } else {
+                    ageStr = ` (cumple ${ageThisYear})`;
+                }
             }
             return `• <@${item.userId}> - **${item.day} de ${m.monthName}**${ageStr}`;
         }).join('\n');
