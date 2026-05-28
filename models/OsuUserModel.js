@@ -608,7 +608,8 @@ async function getValidTokenForUser(discordId) {
                         await supabase
                             .from('oauth_tokens')
                             .delete()
-                            .eq('discord_id', discordId);
+                            .eq('discord_id', discordId)
+                            .eq('refresh_token', data.refresh_token);
                     } catch (dbErr) {
                         console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
                     }

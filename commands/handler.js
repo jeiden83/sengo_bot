@@ -207,9 +207,14 @@ async function chatCommand(intialized_data, command_data) {
         // Verificar requerimiento de OAuth antes de ejecutar
         if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
             const OsuUserModel = require("../models/OsuUserModel.js");
+            const hasTokenRecord = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+            if (!hasTokenRecord) {
+                return await handleOAuthFailure(message.author, logger);
+            }
+            
             const token = await OsuUserModel.getValidTokenForUser(message.author.id);
             if (!token) {
-                return await handleOAuthFailure(message.author, logger);
+                return `❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.`;
             }
         }
 
@@ -416,10 +421,16 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
                               
         if (requiresOAuth) {
             const OsuUserModel = require("../models/OsuUserModel.js");
-            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
-            if (!token) {
+            const hasTokenRecord = await OsuUserModel.getOAuthTokenRecord(interaction.user.id);
+            if (!hasTokenRecord) {
                 const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
                 await interaction.editReply(failureMsg);
+                return true;
+            }
+            
+            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
+            if (!token) {
+                await interaction.editReply(`❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.`);
                 return true;
             }
         }
@@ -430,10 +441,16 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
         const found_command = chat_commands_map.get(commandName);
         if (found_command.requireOAuth || (found_command.run && found_command.run.requireOAuth)) {
             const OsuUserModel = require("../models/OsuUserModel.js");
-            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
-            if (!token) {
+            const hasTokenRecord = await OsuUserModel.getOAuthTokenRecord(interaction.user.id);
+            if (!hasTokenRecord) {
                 const failureMsg = await handleOAuthFailure(interaction.user, interaction.logger);
                 await interaction.editReply(failureMsg);
+                return true;
+            }
+            
+            const token = await OsuUserModel.getValidTokenForUser(interaction.user.id);
+            if (!token) {
+                await interaction.editReply(`❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.`);
                 return true;
             }
         }

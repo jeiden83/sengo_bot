@@ -51,8 +51,8 @@ async function run(messages, args) {
     if (hasOAuthFilters) {
         const { getRedirectUri, getAuthUrl } = require("../../../utils/osuAuth.js");
         const OsuUserModel = require("../../../models/OsuUserModel.js");
-        const token = await OsuUserModel.getValidTokenForUser(message.author.id);
-        if (!token) {
+        const hasTokenRecord = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+        if (!hasTokenRecord) {
             if (logger) logger.failed("OAuth requerido para filtros avanzados.");
             try {
                 const { doOsuOAuthEmbed } = require("../../../views/osuUserViews.js");
@@ -74,6 +74,11 @@ async function run(messages, args) {
                 console.error("Error al enviar DM de vinculación segura:", dmError);
                 return `❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link -oauth\`.`;
             }
+        }
+        
+        const token = await OsuUserModel.getValidTokenForUser(message.author.id);
+        if (!token) {
+            return `❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.`;
         }
     }
 
