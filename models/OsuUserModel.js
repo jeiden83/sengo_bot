@@ -937,6 +937,68 @@ async function fetchRankingAcc(countryFilter, gamemode, onProgress) {
     return allPlayers;
 }
 
+const regionalRankingCache = new Map();
+const REGIONAL_CACHE_TTL = 300000; // 5 minutos en ms
+
+/**
+ * Obtiene una página de ranking regional desde osu!World.
+ */
+async function fetchRegionalRankingPage(countryFilter, regionFilter, gamemode, page = 1) {
+    const cacheKey = `${gamemode.toLowerCase()}_${countryFilter.toUpperCase()}_${regionFilter.toUpperCase()}_page_${page}`;
+    const now = Date.now();
+    if (regionalRankingCache.has(cacheKey)) {
+        const cached = regionalRankingCache.get(cacheKey);
+        if (now - cached.timestamp < REGIONAL_CACHE_TTL) {
+            return cached.data;
+        }
+    }
+
+    // Convert catch/fruits mode name correctly
+    let osuWorldMode = gamemode.toLowerCase();
+    if (osuWorldMode === 'fruits' || osuWorldMode === 'ctb') {
+        osuWorldMode = 'fruits';
+    }
+
+    const url = `https://osuworld.octo.moe/api/${countryFilter.toUpperCase()}/${regionFilter.toUpperCase()}/top/${osuWorldMode}?page=${page}`;
+    
+    const fetch = require('node-fetch');
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    try {
+        const response = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeout);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+        }
+        
+        const data = await response.json();
+        
+        const chunk = (data.top || []).map(item => ({
+            pp: item.pp,
+            global_rank: item.rank,
+            user: {
+                username: item.username,
+                id: item.id,
+                country_code: countryFilter
+            }
+        }));
+
+        const result = {
+            chunk,
+            pages: data.pages || 1,
+            total: (data.pages || 1) * 10
+        };
+
+        regionalRankingCache.set(cacheKey, { data: result, timestamp: now });
+        return result;
+    } catch (err) {
+        clearTimeout(timeout);
+        throw err;
+    }
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -958,7 +1020,8 @@ const OsuUserModel = {
     updateSupporterStatusInBackground,
     syncAllSupporterStatuses,
     fetchRankingPage,
-    fetchRankingAcc
+    fetchRankingAcc,
+    fetchRegionalRankingPage
 };
 
 module.exports = OsuUserModel;

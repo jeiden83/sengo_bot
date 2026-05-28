@@ -21,6 +21,11 @@ const data = new SlashCommandBuilder()
         option.setName("acc")
             .setDescription("Ordenar por precisión (Acc) en lugar de Performance Points")
             .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("regional")
+            .setDescription("Nombre o código de la región para mostrar, o 'lista' para ver las opciones")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -29,6 +34,7 @@ async function run(interaction, res) {
     const pais = interaction.options.getString("pais");
     const pagina = interaction.options.getInteger("pagina");
     const acc = interaction.options.getBoolean("acc");
+    const regional = interaction.options.getString("regional");
 
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
@@ -38,6 +44,9 @@ async function run(interaction, res) {
     }
     if (acc) {
         args.push("-acc");
+    }
+    if (regional !== null && regional !== undefined) {
+        args.push("-regional", regional);
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

@@ -422,6 +422,7 @@ function argsParserNoCommand(args, options = {}) {
     let sortByPPChange = false;
     let stableMode = false;
     let lazerMode = false;
+    let regional = null;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -603,6 +604,42 @@ function argsParserNoCommand(args, options = {}) {
                 if (possible_id) beatmap_url = possible_id;
             } else {
                 country = next ? next.toUpperCase() : "SELF";
+            }
+            continue;
+        }
+
+        // Si es el flag de -regional o -region
+        if (arg === "-regional" || arg === "-region") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {
+                    regional = next_arg;
+                    skip_next = true;
+                    continue;
+                }
+            }
+            regional = "SELF";
+            continue;
+        }
+        if (arg.startsWith("-regional")) {
+            let next = arg.slice(9).trim();
+            if (isBeatmapUrlOrId(next)) {
+                regional = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                regional = next ? next : "SELF";
+            }
+            continue;
+        }
+        if (arg.startsWith("-region")) {
+            let next = arg.slice(7).trim();
+            if (isBeatmapUrlOrId(next)) {
+                regional = "SELF";
+                const possible_id = extractId(next);
+                if (possible_id) beatmap_url = possible_id;
+            } else {
+                regional = next ? next : "SELF";
             }
             continue;
         }
@@ -1006,6 +1043,7 @@ function argsParserNoCommand(args, options = {}) {
         'targetGuildId': targetGuildId,
         'country': country,
         'friendsFilter': friendsFilter,
+        'regional': regional,
         'beatmap_url': beatmap_url,
         'discordMessageId': discordMessageId,
         'discordMessageLink': discordMessageLink,
