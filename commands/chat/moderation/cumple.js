@@ -143,11 +143,45 @@ async function run(messages, args) {
 
     // 3. Caso de ver lista de cumpleaños
     if (sub === "lista" || sub === "list") {
-        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
-        const bdayList = await BirthdayModel.getGuildBirthdays(guild);
+        let isGlobalList = false;
+        let pageArg = cleanArgs[1];
+        
+        // Comprobar si se pasa la flag -todos
+        const hasTodosFlag = cleanArgs.some(arg => arg.toLowerCase() === "-todos");
+        if (hasTodosFlag) {
+            const ownerId = process.env.OWNER_ID;
+            if (authorId !== ownerId) {
+                return "❌ La flag `-todos` es exclusiva para el creador del bot.";
+            }
+            isGlobalList = true;
+            // Filtrar la flag de los argumentos para extraer la página si existe
+            const remainingArgs = cleanArgs.slice(1).filter(arg => arg.toLowerCase() !== "-todos");
+            pageArg = remainingArgs[0];
+        }
+
+        if (!guild && !isGlobalList) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+
+        let bdayList = [];
+        let listGuild = guild;
+        
+        if (isGlobalList) {
+            listGuild = { isGlobal: true };
+            const allUsers = BirthdayModel.getAllUsers();
+            for (const [userId, info] of Object.entries(allUsers)) {
+                bdayList.push({ userId, ...info });
+            }
+            // Ordenar de forma cronológica por mes, luego día
+            bdayList.sort((a, b) => {
+                if (a.month !== b.month) return a.month - b.month;
+                if (a.day !== b.day) return a.day - b.day;
+                return a.userId.localeCompare(b.userId);
+            });
+        } else {
+            bdayList = await BirthdayModel.getGuildBirthdays(guild);
+        }
         
         if (bdayList.length === 0) {
-            const embed = doBirthdayListEmbed(message, guild, bdayList, 1);
+            const embed = doBirthdayListEmbed(message, listGuild, bdayList, 1);
             return { embeds: [embed] };
         }
 
@@ -168,11 +202,11 @@ async function run(messages, args) {
         const pageSize = 4;
         const totalPages = Math.ceil(monthsWithBdays.length / pageSize) || 1;
 
-        let pageNum = parseInt(cleanArgs[1]) || 1;
+        let pageNum = parseInt(pageArg) || 1;
         if (pageNum < 1) pageNum = 1;
         if (pageNum > totalPages) pageNum = totalPages;
 
-        const initialEmbed = doBirthdayListEmbed(message, guild, bdayList, pageNum);
+        const initialEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum);
 
         const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
         const getButtonsRow = (current) => {
@@ -222,7 +256,7 @@ async function run(messages, args) {
                     pageNum = totalPages;
                 }
 
-                const updatedEmbed = doBirthdayListEmbed(message, guild, bdayList, pageNum);
+                const updatedEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum);
 
                 await i.editReply({
                     embeds: [updatedEmbed],

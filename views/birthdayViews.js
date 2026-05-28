@@ -11,11 +11,13 @@ const MONTHS_ES = [
  */
 function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
     const embedColor = getEmbedColor(message);
-    const guildIcon = guild.iconURL({ dynamic: true }) || "";
+    const isGlobal = !guild || guild.isGlobal;
+    const guildIcon = (!isGlobal && typeof guild.iconURL === 'function') ? guild.iconURL({ dynamic: true }) : "";
+    const authorName = isGlobal ? "Todos los Cumpleaños Registrados" : `Cumpleaños en ${guild.name}`;
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Cumpleaños en ${guild.name}`,
+            name: authorName,
             iconURL: guildIcon || undefined
         })
         .setColor(embedColor)
