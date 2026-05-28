@@ -8,9 +8,9 @@ const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
 
 async function fetchLeaderboardCached(url, headers, logger = null) {
     const now = Date.now();
-    const isFriendQuery = url.includes('type=friend');
-    const authHeader = isFriendQuery && headers && headers['Authorization'] ? headers['Authorization'] : '';
-    const cacheKey = isFriendQuery ? `${url}|${authHeader}` : url;
+    const isPersonalized = url.includes('type=friend') || url.includes('type=country');
+    const authHeader = isPersonalized && headers && headers['Authorization'] ? headers['Authorization'] : '';
+    const cacheKey = isPersonalized ? `${url}|${authHeader}` : url;
     const cached = leaderboardCache.get(cacheKey);
 
     if (cached && (now - cached.timestamp) < CACHE_TTL) {
