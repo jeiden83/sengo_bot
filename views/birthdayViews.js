@@ -77,7 +77,7 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
                 
                 if (bdayThisYear < todayMidnight) {
                     const nextAge = ageThisYear + 1;
-                    ageStr = ` (cumplió ${ageThisYear} ✔️, cumple ${nextAge})`;
+                    ageStr = ` (cumplió ${ageThisYear} 🎉)`;
                 } else if (bdayThisYear.getTime() === todayMidnight.getTime()) {
                     ageStr = ` (¡hoy cumple ${ageThisYear}! 🎉)`;
                 } else {

@@ -781,36 +781,36 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
 
                 if (selectError) throw selectError;
 
+                let exactDuplicate = null;
                 if (existingPassed && existingPassed.length > 0) {
-                    // Encontrar la mejor de las existentes
-                    const existingScore = existingPassed.reduce((a, b) => 
-                        (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b)
-                    );
-
-                    const samePlay = existingScore.ended_at === score.ended_at || 
-                                     Number(existingScore.legacy_total_score) === Number(score.legacy_total_score) ||
-                                     existingScore.pp === score.pp;
-
-                    const isBetter = Number(score.total_score || score.legacy_total_score || 0) >= Number(existingScore.total_score || existingScore.legacy_total_score || 0);
-
-                    if (samePlay || isBetter) {
-                        const { error: updateError } = await supabase
-                            .from('local_scores')
-                            .update(score)
-                            .eq('id', existingScore.id);
+                    const time = score.ended_at ? new Date(score.ended_at).getTime() : 0;
+                    exactDuplicate = existingPassed.find(existing => {
+                        const exTime = existing.ended_at ? new Date(existing.ended_at).getTime() : 0;
+                        const isSameTime = time > 0 && exTime > 0 && Math.abs(exTime - time) <= 1000;
                         
-                        if (updateError) throw updateError;
-                    }
+                        const isSameStats = Number(existing.legacy_total_score) === Number(score.legacy_total_score) &&
+                                            existing.max_combo === score.max_combo &&
+                                            Math.abs((existing.accuracy || 0) - (score.accuracy || 0)) < 0.0001;
+                        
+                        // Si tienen tiempos válidos y difieren por más de 5 segundos, son jugadas distintas
+                        if (time > 0 && exTime > 0 && Math.abs(exTime - time) > 5000) {
+                            return false;
+                        }
+                        
+                        return isSameTime || isSameStats;
+                    });
+                }
 
-                    // Limpiar duplicados si hubiera más de un registro en la base de datos
-                    const idsToDelete = existingPassed.filter(s => s.id !== existingScore.id).map(s => s.id);
-                    if (idsToDelete.length > 0) {
-                        await supabase
-                            .from('local_scores')
-                            .delete()
-                            .in('id', idsToDelete);
-                    }
+                if (exactDuplicate) {
+                    // Si es la misma play exacta, actualizamos sus campos (por si hay mejores cálculos de PP, etc.)
+                    const { error: updateError } = await supabase
+                        .from('local_scores')
+                        .update(score)
+                        .eq('id', exactDuplicate.id);
+                    
+                    if (updateError) throw updateError;
                 } else {
+                    // Si no es la misma play exacta, la insertamos como una nueva play
                     const { error: insertError } = await supabase
                         .from('local_scores')
                         .insert(score);
