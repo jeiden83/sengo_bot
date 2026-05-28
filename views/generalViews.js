@@ -35,7 +35,7 @@ function doHelpCommandEmbed(message, mainName, queryName, helpData) {
     const embedColor = getEmbedColor(message);
     const icon_url = message.author.displayAvatarURL({ dynamic: true, size: 512 });
 
-    const title = `Ayuda de Comando: s.${mainName}${mainName !== queryName ? ` (Alias: s.${queryName})` : ''}`;
+    const title = `Ayuda de Comando: .${mainName}${mainName !== queryName ? ` (Alias: .${queryName})` : ''}`;
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -75,13 +75,13 @@ function buildHelpNavigationRow(currentCmd, categoryCmds) {
 
     const prevButton = new ButtonBuilder()
         .setCustomId(`help_prev_${prevCmd}`)
-        .setLabel(`Anterior: s.${prevCmd}`)
+        .setLabel(`Anterior: .${prevCmd}`)
         .setEmoji("◀️")
         .setStyle(ButtonStyle.Primary);
 
     const nextButton = new ButtonBuilder()
         .setCustomId(`help_next_${nextCmd}`)
-        .setLabel(`Siguiente: s.${nextCmd}`)
+        .setLabel(`Siguiente: .${nextCmd}`)
         .setEmoji("▶️")
         .setStyle(ButtonStyle.Primary);
 

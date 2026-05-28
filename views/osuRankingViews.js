@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
+const { getEmbedColor } = require("./osuViewHelpers.js");
 
 /**
  * Genera el embed con la tabla del ranking nacional o regional comprimido.
@@ -86,4 +87,82 @@ function doSubdivisionsEmbed({ subdivisions, countryFilter, page, total }) {
     return embed;
 }
 
-module.exports = { doOsuRankingEmbed, doSubdivisionsEmbed };
+/**
+ * Genera el embed con los detalles de Ranked Play de un único usuario.
+ */
+function doOsuRankedProfileEmbed(message, osuUser, matchmaking) {
+    const embedColor = getEmbedColor(message);
+    const winRate = matchmaking.plays > 0 ? ((matchmaking.first_placements / matchmaking.plays) * 100).toFixed(1) : "0.0";
+    
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Estadísticas de Ranked Play para ${osuUser.username}`,
+            url: `https://osu.ppy.sh/users/${osuUser.id}`,
+            iconURL: osuUser.avatar_url
+        })
+        .setThumbnail(osuUser.avatar_url)
+        .setImage(osuUser.cover_url)
+        .setColor(embedColor)
+        .setDescription(`🏆 **Ranked Play (lazer)**
+ ▸ **Temporada:** \`${matchmaking.pool?.name || 'N/A'}\`
+ ▸ **Rango Global:** \`#${matchmaking.rank ? matchmaking.rank.toLocaleString('es-ES') : 'Sin clasificar'}\`
+ ▸ **Rating (ELO):** \`${(matchmaking.rating || 0).toLocaleString('es-ES')}\` rating ${matchmaking.is_rating_provisional ? '*(Provisional)*' : ''}
+ ▸ **Partidas Jugadas:** \`${matchmaking.plays || 0}\`
+ ▸ **Victorias:** \`${matchmaking.first_placements || 0}\`
+ ▸ **Tasa de Victoria:** \`${winRate}%\`
+        `)
+        .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+
+    return embed;
+}
+
+/**
+ * Genera el embed con la tabla de clasificación de Ranked Play (Global o Servidor).
+ */
+function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serverName, isWinsSort, message }) {
+    const embedColor = getEmbedColor(message);
+    
+    const lines = chunk.map((player, index) => {
+        const flag = player.countryCode ? `:flag_${player.countryCode.toLowerCase()}:` : "🏳️";
+        const displayRank = startIndex + index + 1;
+        const localRank = `**#${displayRank}**`;
+        const ratingStr = `**${player.rating.toLocaleString('es-ES')}** rating${player.isProvisional ? '*' : ''}`;
+        const winRate = player.plays > 0 ? ((player.wins / player.plays) * 100).toFixed(1) : "0.0";
+        const statsStr = `**${player.wins}** wins / **${player.plays}** plays (${winRate}% WR)`;
+        
+        let displayStr = "";
+        if (isWinsSort) {
+            displayStr = `${statsStr} ▸ ${ratingStr}`;
+        } else {
+            displayStr = `${ratingStr} ▸ ${statsStr}`;
+        }
+        
+        return `${localRank} ${flag} [**${player.username}**](https://osu.ppy.sh/users/${player.userId}) ▸ ${displayStr}`;
+    });
+
+    const titlePrefix = isServer ? `Tabla de Clasificación del Servidor (${serverName})` : "Tabla de Clasificación Global";
+    const sortPrefix = isWinsSort ? "por Victorias" : "por Rating (ELO)";
+    
+    const currentPage = Math.floor(startIndex / 10) + 1;
+    const maxPages = Math.ceil(total / 10) || 1;
+    
+    const embed = new EmbedBuilder()
+        .setTitle(`${titlePrefix} - Ranked Play ${sortPrefix}`)
+        .setDescription(lines.length > 0 ? lines.join('\n') : "*No hay jugadores en esta página.*")
+        .setColor(embedColor)
+        .setFooter({
+            text: `Sengo • Página ${currentPage} de ${maxPages} • Mostrando #${startIndex + 1} - #${startIndex + chunk.length} de ${total.toLocaleString()}`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+        
+    return embed;
+}
+
+module.exports = {
+    doOsuRankingEmbed,
+    doSubdivisionsEmbed,
+    doOsuRankedProfileEmbed,
+    doOsuRankedLeaderboardEmbed
+};

@@ -1,24 +1,27 @@
 const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
 
 function formatUsage(usageText, mainName, aliases = []) {
-    if (!usageText) return `s.${mainName}`;
+    if (!usageText) return `.${mainName}`;
     
-    const lines = usageText.split('\n').map(l => l.trim()).filter(Boolean);
+    // Normalizar a usar prefijo de punto "."
+    const cleanUsageText = usageText.replace(/\bs\./g, '.');
+    
+    const lines = cleanUsageText.split('\n').map(l => l.trim()).filter(Boolean);
     if (lines.length <= 1) {
-        return usageText;
+        return cleanUsageText;
     }
 
-    const prefixes = [`s.${mainName}`, ...aliases.map(a => `s.${a}`)];
+    const prefixes = [`.${mainName}`, ...aliases.map(a => `.${a}`)];
     
     const allStartWithPrefix = lines.every(line => {
         return prefixes.some(p => line.startsWith(p));
     });
 
     if (!allStartWithPrefix) {
-        return usageText;
+        return cleanUsageText;
     }
 
-    let formatted = `s.${mainName}\n`;
+    let formatted = `.${mainName}\n`;
     const parsedLines = [];
     for (const line of lines) {
         const matchedPrefix = prefixes.find(p => line.startsWith(p));
@@ -232,7 +235,7 @@ async function run(messages, args, intialized_data) {
         collector.on('end', async () => {
             try {
                 await sentMessage.edit({ components: [] });
-            } catch (e) {
+            } catch {
                 // Mensaje eliminado
             }
         });
