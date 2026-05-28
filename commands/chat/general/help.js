@@ -1,5 +1,63 @@
 const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
 
+function formatUsage(usageText, mainName, aliases = []) {
+    if (!usageText) return `s.${mainName}`;
+    
+    const lines = usageText.split('\n').map(l => l.trim()).filter(Boolean);
+    if (lines.length <= 1) {
+        return usageText;
+    }
+
+    const prefixes = [`s.${mainName}`, ...aliases.map(a => `s.${a}`)];
+    
+    const allStartWithPrefix = lines.every(line => {
+        return prefixes.some(p => line.startsWith(p));
+    });
+
+    if (!allStartWithPrefix) {
+        return usageText;
+    }
+
+    let formatted = `s.${mainName}\n`;
+    const parsedLines = [];
+    for (const line of lines) {
+        const matchedPrefix = prefixes.find(p => line.startsWith(p));
+        let remaining = line.slice(matchedPrefix.length).trim();
+        
+        let args = "";
+        let desc = "";
+        
+        if (remaining.startsWith(':')) {
+            args = "(sin argumentos)";
+            desc = remaining.slice(1).trim();
+        } else {
+            const colonIdx = remaining.indexOf(':');
+            if (colonIdx !== -1) {
+                args = remaining.slice(0, colonIdx).trim();
+                desc = remaining.slice(colonIdx + 1).trim();
+            } else {
+                args = remaining;
+                desc = "";
+            }
+        }
+        
+        parsedLines.push({ args, desc });
+    }
+
+    const maxArgsLen = Math.max(...parsedLines.map(p => p.args.length));
+    
+    for (const { args, desc } of parsedLines) {
+        const paddedArgs = args.padEnd(maxArgsLen, ' ');
+        if (desc) {
+            formatted += `  ▸ ${paddedArgs} : ${desc}\n`;
+        } else {
+            formatted += `  ▸ ${args}\n`;
+        }
+    }
+
+    return formatted.trimEnd();
+}
+
 function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
     const commandData = commandsMap.get(cmdName);
     if (!commandData) return null;
@@ -18,12 +76,14 @@ function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
     const embedMsj_description = commandData.description || commandData.run?.description || {};
     const headerText = embedMsj_description.header || (typeof embedMsj_description === 'string' ? embedMsj_description : "Auto explicable.");
     const bodyText = embedMsj_description.body || "No hay detalles adicionales.";
-    const usageText = embedMsj_description.usage || `s.${mainName}`;
 
     const aliases = [];
     if (commandData.run?.alias) {
         aliases.push(...Object.keys(commandData.run.alias));
     }
+
+    const rawUsage = embedMsj_description.usage || `s.${mainName}`;
+    const usageText = formatUsage(rawUsage, mainName, aliases);
 
     const fields = [
         {
