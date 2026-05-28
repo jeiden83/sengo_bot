@@ -334,7 +334,7 @@ async function chatCommand(intialized_data, command_data) {
         try {
             let result = await found_command.run(
                 { message, res, reply, logger },
-                [...args, alias_args],
+                alias_args ? [alias_args, ...args] : args,
                 intialized_data
             );
 
