@@ -115,6 +115,10 @@ async function main(reload) {
     const { initSupporterSync } = require("./services/supporterSync.js");
     initSupporterSync();
 
+    // Inicializar el servicio de sincronización diaria de beatmaps
+    const { initBeatmapCrawler } = require("./services/beatmapCrawler.js");
+    initBeatmapCrawler();
+
     await login(client, config);  
 
     if (process.stdin.isTTY) {

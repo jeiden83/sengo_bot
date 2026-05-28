@@ -1,0 +1,127 @@
+const { auth, v2 } = require('osu-api-extended');
+const { getSupabaseClient } = require('../db/database.js');
+const CONFIG = require('../config.js');
+const Logger = require('../utils/logger.js');
+
+const GENRES = {
+    0: 'Any', 1: 'Unspecified', 2: 'Video Game', 3: 'Anime', 4: 'Rock', 5: 'Pop',
+    6: 'Other', 7: 'Novelty', 9: 'Hip Hop', 10: 'Electronic', 11: 'Metal',
+    12: 'Classical', 13: 'Folk', 14: 'Jazz'
+};
+
+const LANGUAGES = {
+    0: 'Any', 1: 'Unspecified', 2: 'English', 3: 'Japanese', 4: 'Chinese',
+    5: 'Instrumental', 6: 'Korean', 7: 'French', 8: 'German', 9: 'Swedish',
+    10: 'Spanish', 11: 'Italian', 12: 'Russian', 13: 'Polish', 14: 'Other'
+};
+
+async function checkNewBeatmaps() {
+    Logger.system("Iniciando actualización diaria de nuevos beatmaps...");
+    
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        Logger.system("Error: Cliente de Supabase no disponible para actualizar beatmaps.");
+        return;
+    }
+
+    try {
+        await auth.login({
+            type: 'v2',
+            client_id: CONFIG.OSU_CLIENT_ID,
+            client_secret: CONFIG.OSU_CLIENT_SECRET,
+            scopes: ['public'],
+            cachedTokenPath: './osu_token.json'
+        });
+
+        const statuses = ['ranked', 'loved'];
+        let totalSaved = 0;
+
+        for (const status of statuses) {
+            // Para el crawler diario, solo necesitamos la primera página (50 sets de mapas más recientes)
+            const response = await v2.search({
+                type: 'beatmaps',
+                mode: 0, // standard
+                status: status
+            });
+
+            if (!response || !response.beatmapsets || response.beatmapsets.length === 0) {
+                continue;
+            }
+
+            const beatmapsToInsert = [];
+
+            for (const set of response.beatmapsets) {
+                const genre = GENRES[set.genre_id] || 'Unspecified';
+                const language = LANGUAGES[set.language_id] || 'Unspecified';
+                const tagsArray = set.tags 
+                    ? set.tags.toLowerCase().split(/\s+/).filter(t => t.length > 1)
+                    : [];
+
+                for (const map of set.beatmaps) {
+                    if (map.mode_int !== 0) continue;
+
+                    beatmapsToInsert.push({
+                        beatmap_id: map.id,
+                        beatmapset_id: set.id,
+                        title: set.title,
+                        artist: set.artist,
+                        creator: set.creator,
+                        version: map.version,
+                        stars: map.difficulty_rating,
+                        mode: map.mode_int,
+                        bpm: map.bpm,
+                        total_length: map.total_length,
+                        hit_length: map.hit_length,
+                        ar: map.ar,
+                        cs: map.cs,
+                        od: map.accuracy,
+                        hp: map.drain,
+                        max_combo: map.max_combo,
+                        genre: genre,
+                        language: language,
+                        tags: tagsArray,
+                        playcount: set.play_count || 0,
+                        favourite_count: set.favourite_count || 0,
+                        ranked_status: set.ranked,
+                        created_at: new Date().toISOString()
+                    });
+                }
+            }
+
+            if (beatmapsToInsert.length > 0) {
+                const { error } = await supabase
+                    .from('ranked_beatmaps')
+                    .upsert(beatmapsToInsert, { onConflict: 'beatmap_id' });
+
+                if (error) {
+                    Logger.system(`Error al guardar nuevos mapas (${status}) en Supabase: ${error.message}`);
+                } else {
+                    totalSaved += beatmapsToInsert.length;
+                }
+            }
+        }
+
+        Logger.system(`Actualización diaria de beatmaps completada: ${totalSaved} mapas actualizados/guardados.`);
+    } catch (err) {
+        console.error("Error en la sincronización diaria de beatmaps:", err);
+    }
+}
+
+function initBeatmapCrawler() {
+    Logger.system("Inicializando servicio de sincronización diaria de beatmaps...");
+    
+    // Ejecutar después de 45 segundos al iniciar (para evitar colisiones de tokens con el startup)
+    setTimeout(() => {
+        checkNewBeatmaps();
+    }, 45000);
+
+    // Ejecutar cada 24 horas (86400000 ms)
+    setInterval(() => {
+        checkNewBeatmaps();
+    }, 24 * 60 * 60 * 1000);
+}
+
+module.exports = {
+    initBeatmapCrawler,
+    checkNewBeatmaps
+};

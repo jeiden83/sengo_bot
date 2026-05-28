@@ -1,6 +1,7 @@
-const { getOsuPpsData, argsParser, getUserTopScores, getBeatmapUserScore } = require("../../utils/osu.js");
+const { argsParser, getUserTopScores, getBeatmapUserScore } = require("../../utils/osu.js");
 const { doOsuRecommendEmbed, buildRecommendButtonsRow } = require("../../../views/recommendViews.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
+const RecommendationModel = require("../../../models/RecommendationModel.js");
 const { EmbedBuilder } = require("discord.js");
 
 const recommendCache = new Map();
@@ -33,30 +34,6 @@ function getModAcronyms(modsBitmask) {
         }
     }
     return mods.length > 0 ? mods.join("") : "NoMod";
-}
-
-function matchesModFilter(mValStr, filterStr) {
-    const m = parseInt(mValStr);
-    if (isNaN(m)) return false;
-
-    if (!filterStr) return true;
-    const normalizedFilter = filterStr.toUpperCase().trim();
-    if (normalizedFilter === "NM" || normalizedFilter === "NOMOD") {
-        const invalidMods = 64 | 16 | 2 | 1024 | 256; // DT, HR, EZ, FL, HT
-        return (m & invalidMods) === 0;
-    }
-
-    if (normalizedFilter.includes("DT")) {
-        return (m & 64) !== 0;
-    }
-    if (normalizedFilter.includes("HR")) {
-        return (m & 16) !== 0;
-    }
-    if (normalizedFilter.includes("HD")) {
-        return (m & 8) !== 0;
-    }
-
-    return true;
 }
 
 async function checkHasScore(beatmapId, userId, gamemode = 'osu') {
@@ -95,31 +72,10 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             avatar_url: avatarUrl || topScores[0].user.avatar_url
         };
 
+        const userProfile = RecommendationModel.buildUserProfile(topScores);
+        if (!userProfile) return;
+
         const top15 = topScores.slice(0, 15);
-        let dtCount = 0;
-        let hrCount = 0;
-        let nmCount = 0;
-
-        top15.forEach(score => {
-            const acronyms = (score.mods || []).map(m => m.acronym);
-            if (acronyms.includes("DT") || acronyms.includes("NC")) {
-                dtCount++;
-            } else if (acronyms.includes("HR")) {
-                hrCount++;
-            } else {
-                nmCount++;
-            }
-        });
-
-        let preferredMod = "NM";
-        if (dtCount > nmCount && dtCount > hrCount) {
-            preferredMod = "DT";
-        } else if (hrCount > nmCount && hrCount > dtCount) {
-            preferredMod = "HR";
-        }
-
-        const activeMods = preferredMod;
-
         let totalPP = 0;
         top15.forEach(score => {
             totalPP += score.pp;
@@ -129,63 +85,23 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
         const minPP = averagePP * 0.90;
         const maxPP = averagePP * 1.10;
 
-        const ppsData = await getOsuPpsData(gamemodeKey);
-        const { diffs, mapsetsMap } = ppsData;
-
-        const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
-
-        const candidates = [];
-        diffs.forEach(diff => {
-            const beatmapId = diff.b;
-            const pp99Value = parseFloat(diff.pp99);
-            const estimated100PP = pp99Value * 1.11;
-
-            if (top100MapIds.has(beatmapId)) return;
-            if (pp99Value < minPP || pp99Value > maxPP) return;
-            if (!matchesModFilter(diff.m, activeMods)) return;
-
-            const set = mapsetsMap.get(diff.s);
-            if (set) {
-                candidates.push({
-                    beatmapId: beatmapId,
-                    beatmapsetId: diff.s,
-                    title: set.t,
-                    artist: set.art,
-                    version: diff.v,
-                    stars: parseFloat(diff.d),
-                    maxPP: estimated100PP,
-                    pp99: pp99Value,
-                    mods: getModAcronyms(diff.m),
-                    popularity: parseInt(diff.h || 0),
-                    playcount: parseInt(diff.p || 0),
-                    length: parseInt(diff.l || 0),
-                    ar: parseFloat(diff.ar || 0),
-                    od: parseFloat(diff.accuracy || 0),
-                    hp: parseFloat(diff.drain || 0),
-                    cs: parseFloat(diff.cs || 0)
-                });
-            }
+        const finalRecs = await RecommendationModel.getPersonalizedRecommendations({
+            topScores,
+            customMinPP: minPP,
+            customMaxPP: maxPP,
+            customMods: userProfile.preferredMod,
+            style: 'standard',
+            showPlayed: false
         });
-
-        candidates.sort((a, b) => b.popularity - a.popularity);
-
-        const finalRecs = [];
-        for (const candidate of candidates) {
-            if (finalRecs.length >= 3) break;
-            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, gamemodeKey);
-            if (!hasScore) {
-                finalRecs.push(candidate);
-            }
-            await new Promise(resolve => setTimeout(resolve, 50));
-        }
 
         if (finalRecs.length > 0) {
             recommendCache.set(cacheKey, {
                 recommendations: finalRecs,
                 minPP,
                 maxPP,
-                suggestedMod: activeMods,
+                suggestedMod: userProfile.preferredMod,
                 profile,
+                style: 'standard',
                 timestamp: Date.now()
             });
         }
@@ -270,17 +186,18 @@ async function run(messages, args) {
     // Verificar si es una consulta por defecto (sin filtros custom)
     const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false);
 
-    let currentRecs;
-    let preferredMod;
+    let currentRecs = [];
     let minPP;
     let maxPP;
     let activeMods;
     let suggestedMod;
     let profile;
+    let currentStyle = 'standard';
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     const cacheKey = `${osuUserId}:${activeGamemode}`;
     const cached = isDefaultRun ? recommendCache.get(cacheKey) : null;
+
     if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
         currentRecs = cached.recommendations;
         minPP = cached.minPP;
@@ -288,6 +205,7 @@ async function run(messages, args) {
         activeMods = cached.suggestedMod;
         suggestedMod = cached.suggestedMod === "DT" ? "NM" : "DT";
         profile = cached.profile;
+        currentStyle = cached.style || 'standard';
     } else {
         // Obtener perfil del usuario para mostrar información correcta en el embed
         try {
@@ -303,33 +221,11 @@ async function run(messages, args) {
             };
         }
 
-        // Calcular mod preferido del usuario basado en su Top 15 de PP
-        const top15 = topScores.slice(0, 15);
-        let dtCount = 0;
-        let hrCount = 0;
-        let nmCount = 0;
-
-        top15.forEach(score => {
-            const acronyms = (score.mods || []).map(m => m.acronym);
-            if (acronyms.includes("DT") || acronyms.includes("NC")) {
-                dtCount++;
-            } else if (acronyms.includes("HR")) {
-                hrCount++;
-            } else {
-                nmCount++;
-            }
-        });
-
-        preferredMod = "NM";
-        if (dtCount > nmCount && dtCount > hrCount) {
-            preferredMod = "DT";
-        } else if (hrCount > nmCount && hrCount > dtCount) {
-            preferredMod = "HR";
-        }
-
-        suggestedMod = preferredMod === "DT" ? "NM" : "DT";
+        const userProfile = RecommendationModel.buildUserProfile(topScores);
+        suggestedMod = userProfile.preferredMod === "DT" ? "NM" : "DT";
 
         // Calcular rango de PP recomendado
+        const top15 = topScores.slice(0, 15);
         let totalPP = 0;
         top15.forEach(score => {
             totalPP += score.pp;
@@ -338,78 +234,40 @@ async function run(messages, args) {
 
         minPP = customMinPP || (averagePP * 0.90);
         maxPP = customMaxPP || (averagePP * 1.10);
-        activeMods = customMods || preferredMod;
+        activeMods = customMods || userProfile.preferredMod;
 
-        // Cargar datos de osu-pps
-        let ppsData;
-        try {
-            ppsData = await getOsuPpsData(activeGamemode);
-        } catch (e) {
-            return `❌ Error al cargar los datos de farm: ${e.message}`;
-        }
-
-        const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
         const skipSetLocal = new Set();
 
-        // Función auxiliar para obtener recomendaciones usando los parámetros activos
         async function getRecommendations() {
-            const { diffs, mapsetsMap } = ppsData;
+            try {
+                const candidates = await RecommendationModel.getPersonalizedRecommendations({
+                    topScores,
+                    customMinPP: minPP,
+                    customMaxPP: maxPP,
+                    customMods: activeMods,
+                    style: currentStyle,
+                    showPlayed,
+                    skipSet: skipSetLocal
+                });
 
-            const candidates = [];
-            diffs.forEach(diff => {
-                const beatmapId = diff.b;
-                const pp99Value = parseFloat(diff.pp99);
-                const estimated100PP = pp99Value * 1.11;
+                const finalRecs = [];
+                for (const candidate of candidates) {
+                    if (finalRecs.length >= 3) break;
 
-                if (top100MapIds.has(beatmapId) || skipSetLocal.has(beatmapId)) return;
-                if (pp99Value < minPP || pp99Value > maxPP) return;
-                if (!matchesModFilter(diff.m, activeMods)) return;
-
-                const set = mapsetsMap.get(diff.s);
-                if (set) {
-                    candidates.push({
-                        beatmapId: beatmapId,
-                        beatmapsetId: diff.s,
-                        title: set.t,
-                        artist: set.art,
-                        version: diff.v,
-                        stars: parseFloat(diff.d),
-                        maxPP: estimated100PP,
-                        pp99: pp99Value,
-                        mods: getModAcronyms(diff.m),
-                        popularity: parseInt(diff.h || 0),
-                        playcount: parseInt(diff.p || 0),
-                        length: parseInt(diff.l || 0),
-                        ar: parseFloat(diff.ar || 0),
-                        od: parseFloat(diff.accuracy || 0),
-                        hp: parseFloat(diff.drain || 0),
-                        cs: parseFloat(diff.cs || 0)
-                    });
-                }
-            });
-
-            candidates.sort((a, b) => b.popularity - a.popularity);
-
-            const finalRecs = [];
-            for (const candidate of candidates) {
-                if (finalRecs.length >= 3) break;
-
-                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
-
-                if (showPlayed) {
-                    if (hasScore) {
-                        finalRecs.push(candidate);
+                    const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
+                    if (showPlayed) {
+                        if (hasScore) finalRecs.push(candidate);
+                    } else {
+                        if (!hasScore) finalRecs.push(candidate);
                     }
-                } else {
-                    if (!hasScore) {
-                        finalRecs.push(candidate);
-                    }
-                }
 
-                await new Promise(resolve => setTimeout(resolve, 150));
+                    await new Promise(resolve => setTimeout(resolve, 80));
+                }
+                return finalRecs;
+            } catch (err) {
+                console.error("Error al obtener recomendaciones de base de datos:", err);
+                return [];
             }
-
-            return finalRecs;
         }
 
         currentRecs = await getRecommendations();
@@ -421,6 +279,7 @@ async function run(messages, args) {
                 maxPP,
                 suggestedMod: activeMods,
                 profile,
+                style: currentStyle,
                 timestamp: Date.now()
             });
         }
@@ -430,7 +289,6 @@ async function run(messages, args) {
         const apiSupporter = !!profile.is_supporter;
         if (apiSupporter && !hasSupporter) {
             hasSupporter = true;
-            // Actualizar Supabase en segundo plano
             const supabase = res.supabaseClient;
             if (supabase) {
                 supabase.from('users')
@@ -445,7 +303,7 @@ async function run(messages, args) {
     const skipSet = new Set();
     currentRecs.forEach(c => skipSet.add(c.beatmapId));
 
-    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter };
+    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
     let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
 
@@ -459,72 +317,36 @@ async function run(messages, args) {
         idle: 120000
     });
 
-    // Función auxiliar para obtener recomendaciones usando los parámetros activos durante interacción de botones
     async function getRecommendationsForButtons() {
-        let ppsData;
         try {
-            ppsData = await getOsuPpsData(activeGamemode);
-        } catch {
+            const candidates = await RecommendationModel.getPersonalizedRecommendations({
+                topScores,
+                customMinPP: minPP,
+                customMaxPP: maxPP,
+                customMods: activeMods,
+                style: currentStyle,
+                showPlayed,
+                skipSet: skipSet
+            });
+
+            const finalRecs = [];
+            for (const candidate of candidates) {
+                if (finalRecs.length >= 3) break;
+
+                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
+                if (showPlayed) {
+                    if (hasScore) finalRecs.push(candidate);
+                } else {
+                    if (!hasScore) finalRecs.push(candidate);
+                }
+
+                await new Promise(resolve => setTimeout(resolve, 80));
+            }
+            return finalRecs;
+        } catch (err) {
+            console.error("Error al obtener recomendaciones de botones:", err);
             return [];
         }
-        const { diffs, mapsetsMap } = ppsData;
-        const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
-
-        const candidates = [];
-        diffs.forEach(diff => {
-            const beatmapId = diff.b;
-            const pp99Value = parseFloat(diff.pp99);
-            const estimated100PP = pp99Value * 1.11;
-
-            if (top100MapIds.has(beatmapId) || skipSet.has(beatmapId)) return;
-            if (pp99Value < minPP || pp99Value > maxPP) return;
-            if (!matchesModFilter(diff.m, activeMods)) return;
-
-            const set = mapsetsMap.get(diff.s);
-            if (set) {
-                candidates.push({
-                    beatmapId: beatmapId,
-                    beatmapsetId: diff.s,
-                    title: set.t,
-                    artist: set.art,
-                    version: diff.v,
-                    stars: parseFloat(diff.d),
-                    maxPP: estimated100PP,
-                    pp99: pp99Value,
-                    mods: getModAcronyms(diff.m),
-                    popularity: parseInt(diff.h || 0),
-                    playcount: parseInt(diff.p || 0),
-                    length: parseInt(diff.l || 0),
-                    ar: parseFloat(diff.ar || 0),
-                    od: parseFloat(diff.accuracy || 0),
-                    hp: parseFloat(diff.drain || 0),
-                    cs: parseFloat(diff.cs || 0)
-                });
-            }
-        });
-
-        candidates.sort((a, b) => b.popularity - a.popularity);
-
-        const finalRecs = [];
-        for (const candidate of candidates) {
-            if (finalRecs.length >= 3) break;
-
-            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
-
-            if (showPlayed) {
-                if (hasScore) {
-                    finalRecs.push(candidate);
-                }
-            } else {
-                if (!hasScore) {
-                    finalRecs.push(candidate);
-                }
-            }
-
-            await new Promise(resolve => setTimeout(resolve, 150));
-        }
-
-        return finalRecs;
     }
 
     collector.on('collect', async i => {
@@ -532,7 +354,7 @@ async function run(messages, args) {
             await i.deferUpdate();
 
             const loadingEmbed = EmbedBuilder.from(embed)
-                .setDescription(`⏳ *Buscando nuevas recomendaciones de farm...*`);
+                .setDescription(`⏳ *Buscando recomendaciones personalizadas...*`);
             await i.editReply({ embeds: [loadingEmbed] });
 
             if (i.customId === 'rec_refresh') {
@@ -555,12 +377,27 @@ async function run(messages, args) {
             } else if (i.customId === 'rec_toggle_played') {
                 showPlayed = !showPlayed;
                 skipSet.clear();
+            } else if (i.customId === 'rec_style_aim') {
+                currentStyle = 'aim';
+                skipSet.clear();
+            } else if (i.customId === 'rec_style_speed') {
+                currentStyle = 'speed';
+                skipSet.clear();
+            } else if (i.customId === 'rec_style_length') {
+                currentStyle = 'length';
+                skipSet.clear();
+            } else if (i.customId === 'rec_style_rarezas') {
+                currentStyle = 'rarezas';
+                skipSet.clear();
+            } else if (i.customId === 'rec_style_reset') {
+                currentStyle = 'standard';
+                skipSet.clear();
             }
 
             currentRecs = await getRecommendationsForButtons();
             currentRecs.forEach(c => skipSet.add(c.beatmapId));
 
-            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter };
+            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
             embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
             rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
 
@@ -592,8 +429,8 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Recomienda mapas de farm (PP)",
-    'body': 'Sugiere mapas populares de farm que coinciden con tu rango de nivel de PP basándose en datos de osu-pps.',
+    'header': "Recomienda mapas de farm (PP) personalizados",
+    'body': 'Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.',
     'usage': 's.recommend [-pp rango] [-mods mod] [-jugados]\nEjemplos:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -jugados'
 };
 
