@@ -41,6 +41,10 @@ async function run(messages, args) {
     return nacional.run(messages, modifiedArgs);
 }
 
+run.alias = {
+    "regiones": { "args": "lista" }
+}
+
 run.description = {
     'header': 'Ranking regional de rendimiento',
     'body': 'Muestra la tabla de clasificación por Performance Points (pp) para una región específica en osu!.',
