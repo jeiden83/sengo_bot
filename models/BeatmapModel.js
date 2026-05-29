@@ -255,8 +255,8 @@ const tagsCache = new Map();
 async function getBeatmapsetTags(beatmapsetId) {
     const now = Date.now();
     
-    // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP
-    if (now - lastScraperBlockTime < 5 * 60 * 1000) {
+    // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 12 horas
+    if (now - lastScraperBlockTime < 12 * 60 * 60 * 1000) {
         return [];
     }
 
