@@ -478,7 +478,45 @@ async function getPersonalizedRecommendations({
     // Ordenar por afinidad descendente
     scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
 
-    return scoredCandidates.slice(0, 3);
+    const finalRecs = scoredCandidates.slice(0, 3);
+
+    // Recalcular PP exacto con rosu-pp para las 3 mejores sugerencias
+    try {
+        const rosu = require("rosu-pp-js");
+        const BeatmapModel = require("./BeatmapModel.js");
+        const activeModsStr = activeMods.replace(/CL/g, "");
+
+        for (const rec of finalRecs) {
+            try {
+                // Construir metadatos para descargar el archivo .osu y registrarlo localmente en la caché de base de datos
+                const meta = {
+                    status: 'ranked',
+                    last_updated: new Date().toISOString(),
+                    version: rec.version,
+                    beatmapset: {
+                        artist: rec.artist,
+                        title: rec.title
+                    }
+                };
+                const map = await BeatmapModel.getBeatmap_osu(rec.beatmapsetId, rec.beatmapId, meta);
+                if (map) {
+                    const ppSS = new rosu.Performance({ mods: activeModsStr }).calculate(map).pp;
+                    const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
+
+                    rec.maxPP = Math.round(ppSS);
+                    rec.pp99 = Math.round(pp99);
+
+                    map.free();
+                }
+            } catch (innerErr) {
+                Logger.system(`Error al recalcular PP exacto con rosu para mapa ${rec.beatmapId}: ${innerErr.message}`);
+            }
+        }
+    } catch (outerErr) {
+        Logger.system(`Error cargando rosu-pp para recalculación de recomendaciones: ${outerErr.message}`);
+    }
+
+    return finalRecs;
 }
 
 module.exports = {

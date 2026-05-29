@@ -69,6 +69,13 @@ async function checkNewBeatmaps() {
                 
                 const cleanUserTags = userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
 
+                const sanitizeNumeric = (val, defaultVal = 0) => {
+                    if (val === null || val === undefined || isNaN(val) || !isFinite(val)) {
+                        return defaultVal;
+                    }
+                    return val;
+                };
+
                 for (const map of set.beatmaps) {
                     if (map.mode_int !== 0) continue;
 
@@ -79,22 +86,22 @@ async function checkNewBeatmaps() {
                         artist: set.artist,
                         creator: set.creator,
                         version: map.version,
-                        stars: map.difficulty_rating,
+                        stars: sanitizeNumeric(map.difficulty_rating, 0),
                         mode: map.mode_int,
-                        bpm: map.bpm,
-                        total_length: map.total_length,
-                        hit_length: map.hit_length,
-                        ar: map.ar,
-                        cs: map.cs,
-                        od: map.accuracy,
-                        hp: map.drain,
-                        max_combo: map.max_combo,
+                        bpm: sanitizeNumeric(map.bpm, 0),
+                        total_length: sanitizeNumeric(map.total_length, 0),
+                        hit_length: sanitizeNumeric(map.hit_length, 0),
+                        ar: sanitizeNumeric(map.ar, 0),
+                        cs: sanitizeNumeric(map.cs, 0),
+                        od: sanitizeNumeric(map.accuracy, 0),
+                        hp: sanitizeNumeric(map.drain, 0),
+                        max_combo: map.max_combo ? sanitizeNumeric(map.max_combo, 0) : null,
                         genre: genre,
                         language: language,
                         tags: mapperTags,
                         user_tags: cleanUserTags,
-                        playcount: set.play_count || 0,
-                        favourite_count: set.favourite_count || 0,
+                        playcount: sanitizeNumeric(set.play_count, 0),
+                        favourite_count: sanitizeNumeric(set.favourite_count, 0),
                         ranked_status: set.ranked,
                         created_at: new Date().toISOString()
                     });

@@ -246,14 +246,21 @@ async function getOsuPpsData(gamemode = 'osu') {
     }
 }
 
+let lastScraperBlockTime = 0;
 const tagsCache = new Map();
 
 /**
  * Obtiene las etiquetas de usuario (related_tags) de un beatmapset mediante scraping de la web oficial de osu!.
  */
 async function getBeatmapsetTags(beatmapsetId) {
-    const cached = tagsCache.get(beatmapsetId);
     const now = Date.now();
+    
+    // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP
+    if (now - lastScraperBlockTime < 5 * 60 * 1000) {
+        return [];
+    }
+
+    const cached = tagsCache.get(beatmapsetId);
     if (cached && (now - cached.timestamp) < (cached.isError ? 3600000 : 3600000 * 24)) { // Caché de error por 1 hora, tags por 24 horas
         return cached.data;
     }
@@ -286,7 +293,8 @@ async function getBeatmapsetTags(beatmapsetId) {
     } catch (e) {
         const is403 = e.response && e.response.status === 403;
         if (is403) {
-            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (reintentando más tarde).`);
+            lastScraperBlockTime = now;
+            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 5 minutos).`);
         } else {
             Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
         }
