@@ -1668,7 +1668,10 @@ async function ensureNoChokeScores(scores, gamemode) {
         if (!beatmap_id) return;
 
         try {
-            const beatmap = await BeatmapModel.getBeatmap(beatmap_id);
+            let beatmap = score.beatmap;
+            if (!beatmap || beatmap.max_combo === undefined || beatmap.status === undefined) {
+                beatmap = await BeatmapModel.getBeatmap(beatmap_id);
+            }
             const maxCombo = beatmap.max_combo || 0;
             const isFC = miss === 0 && score.max_combo >= (maxCombo - 2);
 

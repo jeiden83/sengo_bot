@@ -123,6 +123,8 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     }
 }
 
+const activeBeatmapPromises = new Map();
+
 /**
  * Obtiene los detalles de dificultad de un beatmap dado, con caché de 1 hora.
  */
@@ -145,15 +147,26 @@ async function getBeatmap(beatmap_id) {
         return cached.data;
     }
 
-    await OsuUserModel.NewloadToken();
+    if (activeBeatmapPromises.has(cleanId)) {
+        return activeBeatmapPromises.get(cleanId);
+    }
 
-    const result = await v2.beatmaps.details({
-        type: 'difficulty',
-        id: cleanId
-    });
+    const promise = (async () => {
+        await OsuUserModel.NewloadToken();
+        const result = await v2.beatmaps.details({
+            type: 'difficulty',
+            id: cleanId
+        });
+        setWithLimit(beatmapCache, cleanId, { data: result, timestamp: Date.now() });
+        return result;
+    })();
 
-    setWithLimit(beatmapCache, cleanId, { data: result, timestamp: now });
-    return result;
+    activeBeatmapPromises.set(cleanId, promise);
+    try {
+        return await promise;
+    } finally {
+        activeBeatmapPromises.delete(cleanId);
+    }
 }
 
 /**
