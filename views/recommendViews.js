@@ -53,7 +53,11 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
             const minutes = Math.floor(c.length / 60);
             const seconds = c.length % 60;
             const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${(c.popularity || 0).toLocaleString()}\`\n\n`;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${(c.popularity || 0).toLocaleString()}\`\n`;
+            if (c.matchReasons && c.matchReasons.length > 0) {
+                description += `   ▸ *Razones: ${c.matchReasons.join(" • ")}*\n`;
+            }
+            description += `\n`;
         });
     }
 
@@ -68,11 +72,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
         .addFields(
             {
                 name: "🔍 Filtros Activos",
-                value: `▸ **Rango de PP:** \`${minPP.toFixed(0)} - ${maxPP.toFixed(0)}pp\`\n` +
-                       `▸ **Filtro de Mods:** \`${mods || "Cualquiera"}\`\n` +
-                       `▸ **Jugados:** \`${showPlayed ? "Incluidos ✅" : "Excluidos 🚫"}\`\n` +
-                       `▸ **Estilo:** \`${currentStyleLabel}\``,
-                inline: true
+                value: `\`PP: ${minPP.toFixed(0)}-${maxPP.toFixed(0)}pp\` | \`Mods: ${mods || "Cualquiera"}\` | \`Jugados: ${showPlayed ? "Sí" : "No"}\` | \`Estilo: ${currentStyleLabel}\``
             }
         )
         .setColor(embedColor)

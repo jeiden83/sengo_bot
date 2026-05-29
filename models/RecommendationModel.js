@@ -391,18 +391,25 @@ async function getPersonalizedRecommendations({
                     return SPEED_TAGS.some(st => tag === st);
                 });
                 if (!hasSpeedTag) return false;
+            } else if (style === 'length') {
+                // Filtrar estrictamente: mínimo 5 minutos (300 segundos) para maratones
+                if (c.total_length < 300) return false;
             }
 
             return true;
         })
         .map(c => {
             let score = 0;
+            const reasons = [];
 
             // BPM similarity (Max 25 pts)
             const mapBpm = (activeMods.includes("DT") || activeMods.includes("NC")) ? c.bpm * 1.5 : c.bpm;
             const bpmDiff = Math.abs(mapBpm - profile.avgBpm);
             const bpmScore = Math.max(0, 25 * (1 - bpmDiff / 50));
             score += bpmScore;
+            if (bpmScore >= 18) {
+                reasons.push("BPM similar");
+            }
 
             // Length similarity (Max 15 pts)
             const mapLength = (activeMods.includes("DT") || activeMods.includes("NC")) ? c.total_length / 1.5 : c.total_length;
@@ -410,9 +417,22 @@ async function getPersonalizedRecommendations({
             const lengthScore = Math.max(0, 15 * (1 - lengthDiff / 120));
             score += lengthScore;
 
+            if (style === 'length') {
+                if (c.total_length >= 600) {
+                    score += 40;
+                    reasons.push("Maratón extra largo (+10m)");
+                } else {
+                    score += 25;
+                    reasons.push("Maratón largo (+5m)");
+                }
+            } else if (lengthScore >= 11) {
+                reasons.push("Duración similar");
+            }
+
             // Tag similarity (Max 30 pts)
             let tagMatches = 0;
             let userTagMatches = 0;
+            const matchedTagsList = [];
 
             if (Array.isArray(c.user_tags)) {
                 c.user_tags.forEach(t => {
@@ -423,31 +443,50 @@ async function getPersonalizedRecommendations({
                         if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
                             userTagMatches++;
                         }
+                        if (matchedTagsList.length < 2) {
+                            const displayName = cleanTag.includes('/') ? cleanTag.split('/')[1] : cleanTag;
+                            matchedTagsList.push(displayName);
+                        }
                     }
                 });
             }
             const tagScore = Math.min(30, (tagMatches * 3) + (userTagMatches * 4));
             score += tagScore;
+            if (matchedTagsList.length > 0) {
+                reasons.push(`Estilo: ${matchedTagsList.join(', ')}`);
+            }
 
             // Mapper affinity (Max 15 pts)
             if (profile.favoriteMappers.includes(c.creator)) {
                 score += 15;
+                reasons.push("Mapper favorito");
             }
 
             // Popularity/Playcount influence (Max 15 pts)
             // Logarítmico para suavizar grandes números
             const playcountScore = Math.min(15, Math.log10(c.playcount + 1) * 2.5);
             score += playcountScore;
+            if (playcountScore >= 12) {
+                reasons.push("Mapa popular");
+            }
 
             // Ajuste por estilo solicitado
             if (style === 'aim') {
                 const hasAimTag = Array.isArray(c.user_tags) && c.user_tags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
-                if (hasAimTag) score += 25;
+                if (hasAimTag) {
+                    score += 25;
+                    reasons.push("Enfoque: Aim");
+                }
             } else if (style === 'speed') {
                 const hasSpeedTag = Array.isArray(c.user_tags) && c.user_tags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
-                if (hasSpeedTag) score += 25;
-            } else if (style === 'length') {
-                if (c.total_length >= 180) score += 25;
+                if (hasSpeedTag) {
+                    score += 25;
+                    reasons.push("Enfoque: Speed");
+                }
+            }
+
+            if (reasons.length === 0) {
+                reasons.push("Compatible con tu nivel");
             }
 
             // Estimar PP
@@ -471,7 +510,8 @@ async function getPersonalizedRecommendations({
                 hp: parseFloat(c.hp),
                 cs: parseFloat(c.cs),
                 creator: c.creator,
-                matchScore: Math.round(score)
+                matchScore: Math.round(score),
+                matchReasons: reasons
             };
         });
 
