@@ -119,6 +119,14 @@ async function main(reload) {
     const { initBeatmapCrawler } = require("./services/beatmapCrawler.js");
     initBeatmapCrawler();
 
+    // Inicializar el worker silencioso de enriquecimiento de user tags (5 peticiones/min) tras 60 segundos
+    setTimeout(() => {
+        const { startTagEnricherWorker } = require("./services/tagEnricherWorker.js");
+        startTagEnricherWorker().catch(err => {
+            Logger.system(`Error en el worker de user tags: ${err.message}`);
+        });
+    }, 60000);
+
     await login(client, config);  
 
     if (process.stdin.isTTY) {
