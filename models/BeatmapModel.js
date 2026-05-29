@@ -262,12 +262,12 @@ async function getBeatmapsetTags(beatmapsetId) {
     
     // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 15 minutos
     if (now - lastScraperBlockTime < 15 * 60 * 1000) {
-        return [];
+        return null;
     }
 
     const cached = tagsCache.get(beatmapsetId);
     if (cached && (now - cached.timestamp) < (cached.isError ? 3600000 : 3600000 * 24)) { // Caché de error por 1 hora, tags por 24 horas
-        return cached.data;
+        return cached.isError ? null : cached.data;
     }
 
     try {
@@ -305,7 +305,7 @@ async function getBeatmapsetTags(beatmapsetId) {
             Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
         }
         tagsCache.set(beatmapsetId, { data: [], timestamp: now, isError: true });
-        return [];
+        return null;
     }
 }
 

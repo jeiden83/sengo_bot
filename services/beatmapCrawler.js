@@ -53,7 +53,7 @@ async function checkNewBeatmaps() {
 
             for (const set of response.beatmapsets) {
                 // Obtener tags de usuario raspando la web
-                let userTags = [];
+                let userTags = null;
                 try {
                     userTags = await getBeatmapsetTags(set.id);
                 } catch (e) {
@@ -67,7 +67,9 @@ async function checkNewBeatmaps() {
                     ? set.tags.toLowerCase().split(/\s+/).filter(t => t.length > 1)
                     : [];
                 
-                const cleanUserTags = userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
+                const cleanUserTags = userTags !== null
+                    ? userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1)
+                    : null;
 
                 const sanitizeNumeric = (val, defaultVal = 0) => {
                     if (val === null || val === undefined || isNaN(val) || !isFinite(val)) {
