@@ -49,7 +49,7 @@ async function run(interaction, res) {
         messages: interaction.channel.messages,
         guild: interaction.guild
     };
-
+    messages.interaction = interaction;
     const result = await recommendChatCommand.run(messages, args);
 
     if (result) {

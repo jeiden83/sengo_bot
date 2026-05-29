@@ -130,7 +130,29 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
 }
 
 async function run(messages, args) {
-    const { message, res } = messages;
+    const { message, res, logger, interaction } = messages;
+    const isSlash = !!interaction;
+    let statusMessage = null;
+    let isInitialRun = true;
+
+    async function updateStatus(stepText, consoleText) {
+        if (logger) {
+            logger.process(consoleText || stepText);
+        }
+        try {
+            if (isSlash) {
+                await interaction.editReply({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+            } else {
+                if (!statusMessage) {
+                    statusMessage = await message.channel.send({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+                } else {
+                    await statusMessage.edit({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+                }
+            }
+        } catch (err) {
+            console.error("Error al actualizar estado de recommend:", err.message);
+        }
+    }
 
     // 1. Filtrar los flags personalizados de recommend para que argsParser no se confunda
     let showPlayed = false;
@@ -182,6 +204,7 @@ async function run(messages, args) {
     }
 
     // 2. Parseamos argumentos con argsParser de Sengo
+    await updateStatus("🔍 Obteniendo datos del perfil de osu!...", "Obteniendo datos del perfil de osu!");
     const parser_res = await argsParser(cleanArgs, {
         "message": message,
         "res": res,
@@ -190,9 +213,26 @@ async function run(messages, args) {
         "ignoreBeatmap": true
     });
 
-    if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
+    if (typeof parser_res.fn_response === 'string') {
+        if (isSlash) {
+            await interaction.editReply({ content: parser_res.fn_response });
+        } else if (statusMessage) {
+            await statusMessage.edit({ content: parser_res.fn_response });
+        } else {
+            await message.channel.send(parser_res.fn_response);
+        }
+        return;
+    }
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
-        return "No se encontraron jugadas recientes o el perfil no existe.";
+        const errorMsg = "No se encontraron jugadas recientes o el perfil no existe.";
+        if (isSlash) {
+            await interaction.editReply({ content: errorMsg });
+        } else if (statusMessage) {
+            await statusMessage.edit({ content: errorMsg });
+        } else {
+            await message.channel.send(errorMsg);
+        }
+        return;
     }
 
     const topScores = parser_res.fn_response;
@@ -231,6 +271,7 @@ async function run(messages, args) {
     } else {
         // Obtener perfil del usuario para mostrar información correcta en el embed
         try {
+            await updateStatus("📊 Analizando el top 100 de jugadas para perfilar el estilo...", "Analizando el top 100 de jugadas para perfilar el estilo");
             const { Client } = require('osu-web.js');
             const token = await OsuUserModel.loadToken();
             const client = new Client(token.access_token);
@@ -263,6 +304,9 @@ async function run(messages, args) {
 
         async function getRecommendations() {
             try {
+                if (isInitialRun) {
+                    await updateStatus("🗄️ Consultando y puntuando mapas candidatos en la base de datos...", "Consultando y puntuando mapas candidatos en la base de datos");
+                }
                 const candidates = await RecommendationModel.getPersonalizedRecommendations({
                     topScores,
                     customMinPP: minPP,
@@ -272,6 +316,10 @@ async function run(messages, args) {
                     showPlayed,
                     skipSet: skipSetLocal
                 });
+
+                if (isInitialRun) {
+                    await updateStatus("⚔️ Filtrando mapas jugados y preparando recomendaciones...", "Filtrando mapas jugados y preparando recomendaciones");
+                }
 
                 const finalRecs = [];
                 for (const candidate of candidates) {
@@ -337,10 +385,29 @@ async function run(messages, args) {
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
     let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
 
-    const sentMessage = await message.channel.send({
-        embeds: [embed],
-        components: rows
-    });
+    let sentMessage;
+    if (isSlash) {
+        sentMessage = await interaction.editReply({
+            content: "",
+            embeds: [embed],
+            components: rows
+        });
+    } else {
+        if (statusMessage) {
+            sentMessage = await statusMessage.edit({
+                content: "",
+                embeds: [embed],
+                components: rows
+            });
+        } else {
+            sentMessage = await message.channel.send({
+                embeds: [embed],
+                components: rows
+            });
+        }
+    }
+
+    isInitialRun = false;
 
     const collector = sentMessage.createMessageComponentCollector({
         filter: btnInt => btnInt.user.id === message.author.id,
