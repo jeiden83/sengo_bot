@@ -108,6 +108,8 @@ async function buildUserProfileAsync(topScores, supabase = null) {
     let lowArCountTop100 = 0;
     let nonDtCountTop100 = 0;
 
+    const flLengths = [];
+
     topScores.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasEZ = mods.includes("EZ");
@@ -116,6 +118,14 @@ async function buildUserProfileAsync(topScores, supabase = null) {
 
         if (hasEZ) ezCountTop100++;
         if (hasFL) flCountTop100++;
+
+        if (hasFL) {
+            let length = score.beatmap?.total_length || 0;
+            if (length > 0) {
+                if (hasDT) length /= 1.5;
+                flLengths.push(length);
+            }
+        }
 
         if (!hasDT) {
             nonDtCountTop100++;
@@ -132,6 +142,17 @@ async function buildUserProfileAsync(topScores, supabase = null) {
     const isEZPlayer = (ezCountTop100 / topScores.length) >= 0.05;
     const isFLPlayer = (flCountTop100 / topScores.length) >= 0.05;
     const isLowArPlayer = nonDtCountTop100 > 0 && (lowArCountTop100 / nonDtCountTop100) >= 0.15;
+    
+    let avgFlDuration = null;
+    if (flLengths.length > 0) {
+        flLengths.sort((a, b) => a - b);
+        const half = Math.floor(flLengths.length / 2);
+        if (flLengths.length % 2 !== 0) {
+            avgFlDuration = flLengths[half];
+        } else {
+            avgFlDuration = (flLengths[half - 1] + flLengths[half]) / 2;
+        }
+    }
 
     // Analizar mappers favoritos y obtener tags de la BD en el Top 50
     const top50 = topScores.slice(0, 50);
@@ -236,7 +257,8 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         frequentTags,
         isEZPlayer,
         isFLPlayer,
-        isLowArPlayer
+        isLowArPlayer,
+        avgFlDuration
     };
 }
 
@@ -307,6 +329,8 @@ function buildUserProfile(topScores) {
     let lowArCountTop100 = 0;
     let nonDtCountTop100 = 0;
 
+    const flLengths = [];
+
     topScores.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasEZ = mods.includes("EZ");
@@ -315,6 +339,14 @@ function buildUserProfile(topScores) {
 
         if (hasEZ) ezCountTop100++;
         if (hasFL) flCountTop100++;
+
+        if (hasFL) {
+            let length = score.beatmap?.total_length || 0;
+            if (length > 0) {
+                if (hasDT) length /= 1.5;
+                flLengths.push(length);
+            }
+        }
 
         if (!hasDT) {
             nonDtCountTop100++;
@@ -331,6 +363,17 @@ function buildUserProfile(topScores) {
     const isEZPlayer = (ezCountTop100 / topScores.length) >= 0.05;
     const isFLPlayer = (flCountTop100 / topScores.length) >= 0.05;
     const isLowArPlayer = nonDtCountTop100 > 0 && (lowArCountTop100 / nonDtCountTop100) >= 0.15;
+    
+    let avgFlDuration = null;
+    if (flLengths.length > 0) {
+        flLengths.sort((a, b) => a - b);
+        const half = Math.floor(flLengths.length / 2);
+        if (flLengths.length % 2 !== 0) {
+            avgFlDuration = flLengths[half];
+        } else {
+            avgFlDuration = (flLengths[half - 1] + flLengths[half]) / 2;
+        }
+    }
 
     const top50 = topScores.slice(0, 50);
     const mapperCounts = {};
@@ -368,7 +411,8 @@ function buildUserProfile(topScores) {
         frequentTags,
         isEZPlayer,
         isFLPlayer,
-        isLowArPlayer
+        isLowArPlayer,
+        avgFlDuration
     };
 }
 
@@ -667,14 +711,15 @@ async function getPersonalizedRecommendations({
                     score += 35;
                     reasons.push("Estilo Flashlight");
                 }
-                if (c.total_length < 120) {
-                    score += 20;
-                    reasons.push("Mapa corto (ideal para FL)");
-                } else if (c.total_length < 160) {
-                    score += 10;
-                    reasons.push("Duración cómoda para FL");
-                } else if (activeMods.includes("FL") && c.total_length > 200) {
-                    score -= 40; // Penalizar mapas largos con FL
+                
+                // Si el jugador tiene jugadas de FL en su top, recomendar mapas de esa duración o mayor
+                if (activeMods.includes("FL") && profile.avgFlDuration !== undefined && profile.avgFlDuration !== null) {
+                    if (c.total_length >= profile.avgFlDuration) {
+                        score += 25;
+                        reasons.push(`Duración adecuada para FL (≥ ${Math.round(profile.avgFlDuration)}s)`);
+                    } else {
+                        score -= 30; // Penalizar mapas notablemente más cortos que su promedio FL
+                    }
                 }
             }
 
