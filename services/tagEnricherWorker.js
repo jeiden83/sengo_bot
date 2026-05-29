@@ -26,11 +26,12 @@ async function startTagEnricherWorker() {
                 continue;
             }
 
-            // Obtener un solo beatmapset pendiente de tags
+            // Obtener un solo beatmapset pendiente de tags (ordenando por más antiguo primero para evitar colisiones con local)
             const { data: rows, error: fetchError } = await supabase
                 .from('ranked_beatmaps')
                 .select('beatmapset_id')
                 .is('user_tags', null)
+                .order('created_at', { ascending: true })
                 .limit(1);
 
             if (fetchError) {
@@ -66,7 +67,13 @@ async function startTagEnricherWorker() {
 
             // Cada 5 peticiones (aproximadamente cada minuto), registrar reporte de progreso
             if (sessionCount % 5 === 0) {
-                const { data: stats } = await supabase.rpc('get_user_tags_stats').catch(() => ({ data: null }));
+                let stats = null;
+                try {
+                    const { data } = await supabase.rpc('get_user_tags_stats');
+                    stats = data;
+                } catch (e) {
+                    // Silenciar
+                }
                 let progressStr = "N/A";
                 if (stats) {
                     const completed = stats.total_sets - stats.pending_sets;
