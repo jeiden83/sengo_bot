@@ -445,11 +445,10 @@ async function getPersonalizedRecommendations({
             let tagMatches = 0;
             let userTagMatches = 0;
             const matchedTagsList = [];
-            const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
+            const combinedTags = (c.user_tags || []).concat(c.tags || []).map(t => t.toLowerCase().trim());
 
-            combinedTags.forEach(t => {
-                const cleanTag = t.toLowerCase().trim();
-                if (profile.frequentTags.includes(cleanTag)) {
+            profile.frequentTags.forEach(cleanTag => {
+                if (combinedTags.includes(cleanTag)) {
                     tagMatches++;
                     // Si es un tag de estilo específico, darle doble peso
                     if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
