@@ -2,6 +2,10 @@ const { auth, v2 } = require('osu-api-extended');
 const { getSupabaseClient } = require('../db/database.js');
 const CONFIG = require('../config.js');
 const Logger = require('../utils/logger.js');
+const fs = require('fs');
+const path = require('path');
+
+const STATUS_FILE = path.join(__dirname, "../db/local/beatmap_sync_status.json");
 
 const GENRES = {
     0: 'Any', 1: 'Unspecified', 2: 'Video Game', 3: 'Anime', 4: 'Rock', 5: 'Pop',
@@ -127,6 +131,11 @@ async function checkNewBeatmaps() {
         }
 
         Logger.system(`Actualización diaria de beatmaps completada: ${totalSaved} mapas actualizados/guardados.`);
+        try {
+            fs.writeFileSync(STATUS_FILE, JSON.stringify({ lastSyncTime: Date.now() }, null, 2));
+        } catch (writeErr) {
+            console.error("Error al escribir el status de beatmap crawler:", writeErr);
+        }
     } catch (err) {
         console.error("Error en la sincronización diaria de beatmaps:", err);
     }
@@ -135,15 +144,39 @@ async function checkNewBeatmaps() {
 function initBeatmapCrawler() {
     Logger.system("Inicializando servicio de sincronización diaria de beatmaps...");
     
-    // Ejecutar después de 45 segundos al iniciar (para evitar colisiones de tokens con el startup)
-    setTimeout(() => {
-        checkNewBeatmaps();
-    }, 45000);
+    let lastSyncTime = 0;
+    try {
+        if (fs.existsSync(STATUS_FILE)) {
+            const data = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'));
+            lastSyncTime = data.lastSyncTime || 0;
+        }
+    } catch (e) {
+        // Silenciar
+    }
 
-    // Ejecutar cada 24 horas (86400000 ms)
-    setInterval(() => {
-        checkNewBeatmaps();
-    }, 24 * 60 * 60 * 1000);
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+    const timeSinceLastSync = now - lastSyncTime;
+
+    let delayBeforeNextSync = 0;
+    if (timeSinceLastSync < oneDay) {
+        delayBeforeNextSync = oneDay - timeSinceLastSync;
+        const hoursLeft = (delayBeforeNextSync / (60 * 60 * 1000)).toFixed(2);
+        Logger.system(`[Beatmap Sync] La actualización de beatmaps ya se realizó recientemente. Próxima en ${hoursLeft} horas.`);
+    } else {
+        // Ejecutar después de 60 segundos si ha pasado más de 24 horas
+        delayBeforeNextSync = 60000;
+    }
+
+    // Programar la primera ejecución
+    setTimeout(async () => {
+        await checkNewBeatmaps();
+        
+        // Y programar para ejecutarse cada 24 horas de ahí en adelante
+        setInterval(() => {
+            checkNewBeatmaps();
+        }, oneDay);
+    }, delayBeforeNextSync);
 }
 
 module.exports = {

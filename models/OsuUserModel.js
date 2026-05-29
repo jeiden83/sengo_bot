@@ -550,7 +550,7 @@ async function getValidTokenForUser(discordId) {
         const refreshPromise = (async () => {
             try {
                 // 1. Refrescar tokens
-                const newTokens = await refreshAccessToken(data.refresh_token);
+                const newTokens = await osuApiQueue.add(() => refreshAccessToken(data.refresh_token));
                 const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
                 // 2. Guardar inmediatamente los nuevos tokens en base de datos.
@@ -569,7 +569,7 @@ async function getValidTokenForUser(discordId) {
                 let username = data.username;
                 let countryCode = data.country_code;
                 try {
-                    const userMe = await fetchOsuMe(newTokens.access_token);
+                    const userMe = await osuApiQueue.add(() => fetchOsuMe(newTokens.access_token));
                     if (userMe) {
                         isSupporter = !!userMe.is_supporter;
                         username = userMe.username;
@@ -659,7 +659,7 @@ async function getSupporterTokenForCountry(countryCode) {
                 if (!token) continue;
                 // Verificar que el token todavía corresponde a un usuario con supporter activo
                 try {
-                    const me = await fetchOsuMe(token);
+                    const me = await osuApiQueue.add(() => fetchOsuMe(token));
                     if (me && me.is_supporter) {
                         // Actualizar registro en caso de que el flag haya cambiado
                         await supabase.from('oauth_tokens')
@@ -750,7 +750,7 @@ async function syncAllSupporterStatuses() {
                 continue;
             }
 
-            const me = await fetchOsuMe(token);
+            const me = await osuApiQueue.add(() => fetchOsuMe(token));
             if (me) {
                 const newSuppStatus = !!me.is_supporter;
                 const oldSuppStatus = !!user.is_supporter;
@@ -783,8 +783,8 @@ async function syncAllSupporterStatuses() {
             failCount++;
         }
 
-        // Delay de 500ms para no saturar la API
-        await new Promise(resolve => setTimeout(resolve, 500));
+        // Delay de 4000ms para no saturar la API
+        await new Promise(resolve => setTimeout(resolve, 4000));
     }
 
     return { successCount, failCount, changes };
