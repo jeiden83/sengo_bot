@@ -7,6 +7,7 @@ const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
 const Logger = require("../utils/logger.js");
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 
 let osuDirectOnline = true;
 let lastOsuDirectCheck = 0;
@@ -283,43 +284,45 @@ async function getBeatmapsetTags(beatmapsetId) {
         return cached.isError ? null : cached.data;
     }
 
-    try {
-        const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-        const url = `https://osu.ppy.sh/beatmapsets/${beatmapsetId}`;
-        const res = await axios.get(url, {
-            headers: { 
-                'User-Agent': randomUA,
-                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
-                'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
-                'Referer': 'https://osu.ppy.sh/beatmapsets',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-            },
-            timeout: 5000
-        });
-        const cheerio = require('cheerio');
-        const $ = cheerio.load(res.data);
-        const jsonText = $('#json-beatmapset').html();
-        if (!jsonText) {
-            return [];
+    return osuApiQueue.add(async () => {
+        try {
+            const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+            const url = `https://osu.ppy.sh/beatmapsets/${beatmapsetId}`;
+            const res = await axios.get(url, {
+                headers: { 
+                    'User-Agent': randomUA,
+                    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
+                    'Referer': 'https://osu.ppy.sh/beatmapsets',
+                    'Cache-Control': 'no-cache',
+                    'Pragma': 'no-cache'
+                },
+                timeout: 5000
+            });
+            const cheerio = require('cheerio');
+            const $ = cheerio.load(res.data);
+            const jsonText = $('#json-beatmapset').html();
+            if (!jsonText) {
+                return [];
+            }
+            const data = JSON.parse(jsonText);
+            const related = data.related_tags || [];
+            const tags = related.map(t => t.name);
+            
+            tagsCache.set(beatmapsetId, { data: tags, timestamp: Date.now(), isError: false });
+            return tags;
+        } catch (e) {
+            const is403 = e.response && e.response.status === 403;
+            if (is403) {
+                lastScraperBlockTime = Date.now();
+                Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
+            } else {
+                Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
+            }
+            tagsCache.set(beatmapsetId, { data: [], timestamp: Date.now(), isError: true });
+            return null;
         }
-        const data = JSON.parse(jsonText);
-        const related = data.related_tags || [];
-        const tags = related.map(t => t.name);
-        
-        tagsCache.set(beatmapsetId, { data: tags, timestamp: now, isError: false });
-        return tags;
-    } catch (e) {
-        const is403 = e.response && e.response.status === 403;
-        if (is403) {
-            lastScraperBlockTime = now;
-            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
-        } else {
-            Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
-        }
-        tagsCache.set(beatmapsetId, { data: [], timestamp: now, isError: true });
-        return null;
-    }
+    });
 }
 
 function isScraperBlocked() {
