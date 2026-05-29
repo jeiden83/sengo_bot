@@ -15,6 +15,8 @@ const LANGUAGES = {
     10: 'Spanish', 11: 'Italian', 12: 'Russian', 13: 'Polish', 14: 'Other'
 };
 
+const { getBeatmapsetTags } = require('../models/BeatmapModel.js');
+
 async function checkNewBeatmaps() {
     Logger.system("Iniciando actualización diaria de nuevos beatmaps...");
     
@@ -37,7 +39,6 @@ async function checkNewBeatmaps() {
         let totalSaved = 0;
 
         for (const status of statuses) {
-            // Para el crawler diario, solo necesitamos la primera página (50 sets de mapas más recientes)
             const response = await v2.search({
                 type: 'beatmaps',
                 mode: 0, // standard
@@ -51,11 +52,26 @@ async function checkNewBeatmaps() {
             const beatmapsToInsert = [];
 
             for (const set of response.beatmapsets) {
+                // Obtener tags de usuario raspando la web
+                let userTags = [];
+                try {
+                    userTags = await getBeatmapsetTags(set.id);
+                } catch (e) {
+                    // Silenciar y continuar
+                }
+
                 const genre = GENRES[set.genre_id] || 'Unspecified';
                 const language = LANGUAGES[set.language_id] || 'Unspecified';
-                const tagsArray = set.tags 
+                
+                const mapperTags = set.tags 
                     ? set.tags.toLowerCase().split(/\s+/).filter(t => t.length > 1)
                     : [];
+                
+                // Combinar los tags del mapper y los tags oficiales del usuario
+                const combinedTags = [...new Set([
+                    ...mapperTags,
+                    ...userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1)
+                ])];
 
                 for (const map of set.beatmaps) {
                     if (map.mode_int !== 0) continue;
@@ -79,13 +95,15 @@ async function checkNewBeatmaps() {
                         max_combo: map.max_combo,
                         genre: genre,
                         language: language,
-                        tags: tagsArray,
+                        tags: combinedTags,
                         playcount: set.play_count || 0,
                         favourite_count: set.favourite_count || 0,
                         ranked_status: set.ranked,
                         created_at: new Date().toISOString()
                     });
                 }
+                // Esperar un breve delay entre raspados para ser respetuosos con rate limit de la web
+                await new Promise(resolve => setTimeout(resolve, 300));
             }
 
             if (beatmapsToInsert.length > 0) {

@@ -42,7 +42,135 @@ function ppToStars(pp) {
 }
 
 /**
- * Analiza el Top 100 de jugadas de un usuario para construir su perfil vectorial.
+ * Analiza el Top 100 de jugadas de un usuario de forma asíncrona para construir su perfil
+ * utilizando los tags enriquecidos de la base de datos local.
+ */
+async function buildUserProfileAsync(topScores, supabase) {
+    if (!Array.isArray(topScores) || topScores.length === 0) {
+        return null;
+    }
+
+    const top25 = topScores.slice(0, 25);
+    let totalStars = 0;
+    let totalBpm = 0;
+    let totalLength = 0;
+    let validBpmCount = 0;
+    let validLengthCount = 0;
+
+    let dtCount = 0;
+    let hrCount = 0;
+    let nmCount = 0;
+
+    top25.forEach(score => {
+        const mods = (score.mods || []).map(m => m.acronym);
+        const hasDT = mods.includes("DT") || mods.includes("NC");
+        const hasHR = mods.includes("HR");
+
+        if (hasDT) dtCount++;
+        else if (hasHR) hrCount++;
+        else nmCount++;
+
+        totalStars += score.beatmap?.difficulty_rating || 0;
+
+        let bpm = score.beatmap?.bpm || 0;
+        let length = score.beatmap?.total_length || 0;
+
+        if (bpm > 0) {
+            if (hasDT) bpm *= 1.5;
+            totalBpm += bpm;
+            validBpmCount++;
+        }
+        if (length > 0) {
+            if (hasDT) length /= 1.5;
+            totalLength += length;
+            validLengthCount++;
+        }
+    });
+
+    let preferredMod = "NM";
+    if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
+    else if (hrCount > nmCount && hrCount > dtCount) preferredMod = "HR";
+
+    const avgStars = totalStars / top25.length;
+    const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
+    const avgLength = validLengthCount > 0 ? (totalLength / validLengthCount) : 120;
+
+    // Analizar mappers favoritos y obtener tags de la BD en el Top 50
+    const top50 = topScores.slice(0, 50);
+    const mapperCounts = {};
+    const tagCounts = {};
+
+    // Obtener los tags desde nuestra BD local para el Top 50 de forma masiva
+    const mapIds = top50.map(score => score.beatmap?.id).filter(Boolean);
+    let dbTagsMap = new Map();
+    if (supabase && mapIds.length > 0) {
+        try {
+            const { data } = await supabase
+                .from('ranked_beatmaps')
+                .select('beatmap_id, tags')
+                .in('beatmap_id', mapIds);
+            
+            if (data) {
+                data.forEach(row => {
+                    dbTagsMap.set(row.beatmap_id.toString(), row.tags || []);
+                });
+            }
+        } catch (e) {
+            Logger.system("Error consultando tags de perfil en BD: " + e.message);
+        }
+    }
+
+    top50.forEach(score => {
+        const creator = score.beatmapset?.creator;
+        if (creator) {
+            mapperCounts[creator] = (mapperCounts[creator] || 0) + 1;
+        }
+
+        const mapIdStr = score.beatmap?.id?.toString();
+        const dbTags = dbTagsMap.get(mapIdStr);
+        if (dbTags && dbTags.length > 0) {
+            dbTags.forEach(tag => {
+                const cleanTag = tag.toLowerCase().trim();
+                if (cleanTag.length > 2) {
+                    // Darle el doble de peso a los tags de patrón específicos (jumps/linear, etc)
+                    const weight = cleanTag.includes('/') ? 3 : 2;
+                    tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + weight;
+                }
+            });
+        } else {
+            // Fallback a tags del score
+            const tags = score.beatmapset?.tags;
+            if (typeof tags === 'string') {
+                tags.toLowerCase().split(/\s+/).forEach(tag => {
+                    const cleanTag = tag.toLowerCase().trim();
+                    if (cleanTag.length > 2) {
+                        tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
+                    }
+                });
+            }
+        }
+    });
+
+    const favoriteMappers = Object.keys(mapperCounts)
+        .sort((a, b) => mapperCounts[b] - mapperCounts[a])
+        .slice(0, 5);
+
+    const frequentTags = Object.keys(tagCounts)
+        .sort((a, b) => tagCounts[b] - tagCounts[a])
+        .slice(0, 20); // Incrementar a 20 para capturar más variedad de user tags
+
+    return {
+        avgStars,
+        avgBpm,
+        avgLength,
+        preferredMod,
+        favoriteMappers,
+        frequentTags
+    };
+}
+
+/**
+ * Analiza el perfil de forma síncrona (compatibilidad).
  */
 function buildUserProfile(topScores) {
     if (!Array.isArray(topScores) || topScores.length === 0) {
@@ -94,7 +222,6 @@ function buildUserProfile(topScores) {
     const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
     const avgLength = validLengthCount > 0 ? (totalLength / validLengthCount) : 120;
 
-    // Analizar mappers favoritos en el Top 50
     const top50 = topScores.slice(0, 50);
     const mapperCounts = {};
     const tagCounts = {};
@@ -104,7 +231,6 @@ function buildUserProfile(topScores) {
         if (creator) {
             mapperCounts[creator] = (mapperCounts[creator] || 0) + 1;
         }
-        // Extraer tags si están disponibles en el score
         const tags = score.beatmapset?.tags;
         if (typeof tags === 'string') {
             tags.toLowerCase().split(/\s+/).forEach(tag => {
@@ -150,8 +276,8 @@ async function getPersonalizedRecommendations({
         throw new Error("Supabase client not initialized");
     }
 
-    // 1. Perfilado
-    const profile = buildUserProfile(topScores);
+    // 1. Perfilado asíncrono
+    const profile = await buildUserProfileAsync(topScores, supabase);
     if (!profile) {
         throw new Error("Could not build user profile");
     }
@@ -161,10 +287,8 @@ async function getPersonalizedRecommendations({
     // Determinar rango de estrellas objetivo
     let targetStars = profile.avgStars;
     if (customMinPP !== null) {
-        // Si hay un PP especificado, estimamos las estrellas basadas en el promedio
         const targetPP = (customMinPP + (customMaxPP || customMinPP * 1.2)) / 2;
         targetStars = ppToStars(targetPP);
-        // Si el usuario juega DT, ajustamos las estrellas a NM
         if (activeMods.includes("DT") || activeMods.includes("NC")) {
             targetStars /= 1.35;
         } else if (activeMods.includes("HR")) {
@@ -183,7 +307,7 @@ async function getPersonalizedRecommendations({
         .lte('stars', maxStars)
         .eq('mode', 0); // standard
 
-    // Si estilo es loved o rarezas, filtramos de forma distinta
+    // Soporte para approved (1 = ranked, 2 = approved, 3 = qualified, 4 = loved)
     if (style === 'rarezas') {
         query = query.in('ranked_status', [3, 4]); // Qualified, Loved
     } else {
@@ -206,7 +330,7 @@ async function getPersonalizedRecommendations({
     const scoredCandidates = candidates
         .filter(c => {
             const idStr = c.beatmap_id.toString();
-            // Filtrar jugados si no se solicita mostrarlos
+            // Filtrar jugados si no se solicita mostrarlos explicitamente con flag -jugados
             if (!showPlayed && top100MapIds.has(idStr)) return false;
             // Filtrar mostrados en esta sesión
             if (skipSet.has(idStr)) return false;
@@ -229,14 +353,21 @@ async function getPersonalizedRecommendations({
 
             // Tag similarity (Max 30 pts)
             let tagMatches = 0;
+            let userTagMatches = 0;
+
             if (Array.isArray(c.tags)) {
                 c.tags.forEach(t => {
-                    if (profile.frequentTags.includes(t)) {
+                    const cleanTag = t.toLowerCase().trim();
+                    if (profile.frequentTags.includes(cleanTag)) {
                         tagMatches++;
+                        // Si es un user tag de estilo específico, darle doble peso
+                        if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
+                            userTagMatches++;
+                        }
                     }
                 });
             }
-            const tagScore = Math.min(30, tagMatches * 4);
+            const tagScore = Math.min(30, (tagMatches * 3) + (userTagMatches * 4));
             score += tagScore;
 
             // Mapper affinity (Max 15 pts)
@@ -251,10 +382,10 @@ async function getPersonalizedRecommendations({
 
             // Ajuste por estilo solicitado
             if (style === 'aim') {
-                const hasAimTag = Array.isArray(c.tags) && c.tags.some(t => AIM_TAGS.includes(t));
+                const hasAimTag = Array.isArray(c.tags) && c.tags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
                 if (hasAimTag) score += 25;
             } else if (style === 'speed') {
-                const hasSpeedTag = Array.isArray(c.tags) && c.tags.some(t => SPEED_TAGS.includes(t));
+                const hasSpeedTag = Array.isArray(c.tags) && c.tags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
                 if (hasSpeedTag) score += 25;
             } else if (style === 'length') {
                 if (c.total_length >= 180) score += 25;
@@ -288,12 +419,12 @@ async function getPersonalizedRecommendations({
     // Ordenar por afinidad descendente
     scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
 
-    // Tomar las 3 mejores
     return scoredCandidates.slice(0, 3);
 }
 
 module.exports = {
     buildUserProfile,
+    buildUserProfileAsync,
     getPersonalizedRecommendations,
     estimatePP,
     ppToStars
