@@ -107,16 +107,46 @@ async function buildUserProfileAsync(topScores, supabase) {
         try {
             const { data } = await supabase
                 .from('ranked_beatmaps')
-                .select('beatmap_id, tags')
+                .select('beatmap_id, beatmapset_id, user_tags')
                 .in('beatmap_id', mapIds);
             
             if (data) {
+                const missingSets = new Map();
                 data.forEach(row => {
-                    dbTagsMap.set(row.beatmap_id.toString(), row.tags || []);
+                    if (row.user_tags && row.user_tags.length > 0) {
+                        dbTagsMap.set(row.beatmap_id.toString(), row.user_tags);
+                    } else if (row.beatmapset_id) {
+                        missingSets.set(row.beatmapset_id.toString(), row.beatmap_id.toString());
+                    }
                 });
+
+                // Si faltan tags, raspar un máximo de 5 al vuelo para autocurar la base de datos
+                if (missingSets.size > 0) {
+                    const uniqueMissingSetIds = Array.from(missingSets.keys()).slice(0, 5);
+                    const { getBeatmapsetTags } = require('./BeatmapModel.js');
+                    
+                    for (const setId of uniqueMissingSetIds) {
+                        try {
+                            const tags = await getBeatmapsetTags(setId);
+                            if (tags && tags.length > 0) {
+                                const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
+                                
+                                await supabase
+                                    .from('ranked_beatmaps')
+                                    .update({ user_tags: cleanTags })
+                                    .eq('beatmapset_id', setId);
+                                
+                                const mapId = missingSets.get(setId);
+                                dbTagsMap.set(mapId, cleanTags);
+                            }
+                        } catch (err) {
+                            // Continuar silenciosamente
+                        }
+                    }
+                }
             }
         } catch (e) {
-            Logger.system("Error consultando tags de perfil en BD: " + e.message);
+            Logger.system("Error consultando/raspando user_tags de perfil en BD: " + e.message);
         }
     }
 
@@ -355,8 +385,8 @@ async function getPersonalizedRecommendations({
             let tagMatches = 0;
             let userTagMatches = 0;
 
-            if (Array.isArray(c.tags)) {
-                c.tags.forEach(t => {
+            if (Array.isArray(c.user_tags)) {
+                c.user_tags.forEach(t => {
                     const cleanTag = t.toLowerCase().trim();
                     if (profile.frequentTags.includes(cleanTag)) {
                         tagMatches++;
@@ -382,10 +412,10 @@ async function getPersonalizedRecommendations({
 
             // Ajuste por estilo solicitado
             if (style === 'aim') {
-                const hasAimTag = Array.isArray(c.tags) && c.tags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
+                const hasAimTag = Array.isArray(c.user_tags) && c.user_tags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
                 if (hasAimTag) score += 25;
             } else if (style === 'speed') {
-                const hasSpeedTag = Array.isArray(c.tags) && c.tags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
+                const hasSpeedTag = Array.isArray(c.user_tags) && c.user_tags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
                 if (hasSpeedTag) score += 25;
             } else if (style === 'length') {
                 if (c.total_length >= 180) score += 25;

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS public.ranked_beatmaps (
     genre TEXT,                -- E.g., Electronic, Anime, Rock
     language TEXT,             -- E.g., Japanese, English, Instrumental
     tags TEXT[],               -- Array de tags del mapa
+    user_tags TEXT[],          -- Array de tags del usuario (comunidad)
     playcount BIGINT DEFAULT 0,
     favourite_count INT DEFAULT 0,
     ranked_status INT NOT NULL, -- 1 = Ranked, 2 = Approved, 3 = Qualified, 4 = Loved

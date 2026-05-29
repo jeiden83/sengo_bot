@@ -67,11 +67,7 @@ async function checkNewBeatmaps() {
                     ? set.tags.toLowerCase().split(/\s+/).filter(t => t.length > 1)
                     : [];
                 
-                // Combinar los tags del mapper y los tags oficiales del usuario
-                const combinedTags = [...new Set([
-                    ...mapperTags,
-                    ...userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1)
-                ])];
+                const cleanUserTags = userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
 
                 for (const map of set.beatmaps) {
                     if (map.mode_int !== 0) continue;
@@ -95,7 +91,8 @@ async function checkNewBeatmaps() {
                         max_combo: map.max_combo,
                         genre: genre,
                         language: language,
-                        tags: combinedTags,
+                        tags: mapperTags,
+                        user_tags: cleanUserTags,
                         playcount: set.play_count || 0,
                         favourite_count: set.favourite_count || 0,
                         ranked_status: set.ranked,
