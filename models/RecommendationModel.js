@@ -342,6 +342,10 @@ async function getPersonalizedRecommendations({
         query = query.in('ranked_status', [1, 2]); // Ranked, Approved
     }
 
+    if (style === 'tags') {
+        query = query.not('user_tags', 'is', null);
+    }
+
     const { data: candidates, error } = await query;
     if (error) {
         throw error;
