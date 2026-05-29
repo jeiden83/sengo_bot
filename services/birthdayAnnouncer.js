@@ -1,6 +1,7 @@
 const BirthdayModel = require("../models/BirthdayModel.js");
 const { doBirthdayAnnounceEmbed } = require("../views/birthdayViews.js");
 const Logger = require("../utils/logger.js");
+const { Events } = require('discord.js');
 
 async function checkGuildBirthdays(guild, client) {
     const channelId = BirthdayModel.getGuildChannel(guild.id);
@@ -84,7 +85,7 @@ function initBirthdayAnnouncer(client) {
     Logger.system("Inicializando servicio de anuncios de cumpleaños...");
     
     // Comprobar al iniciar tras un breve delay para asegurar que los canales/guilds estén cargados
-    client.once('ready', () => {
+    client.once(Events.ClientReady, () => {
         setTimeout(() => {
             checkBirthdays(client);
         }, 10000); // 10 segundos después del ready
