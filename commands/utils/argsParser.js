@@ -585,27 +585,29 @@ function argsParserNoCommand(args, options = {}) {
             country = "SELF";
             continue;
         }
-        if (arg.startsWith("-pais")) {
+        if (arg.startsWith("-pais") && arg !== "-pais") {
             let next = arg.slice(5).trim();
             if (isBeatmapUrlOrId(next)) {
                 country = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                country = next ? next.toUpperCase() : "SELF";
+                continue;
+            } else if (next.length === 2 && /^[A-Za-z]{2}$/.test(next)) {
+                country = next.toUpperCase();
+                continue;
             }
-            continue;
         }
-        if (arg.startsWith("-country")) {
+        if (arg.startsWith("-country") && arg !== "-country") {
             let next = arg.slice(8).trim();
             if (isBeatmapUrlOrId(next)) {
                 country = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                country = next ? next.toUpperCase() : "SELF";
+                continue;
+            } else if (next.length === 2 && /^[A-Za-z]{2}$/.test(next)) {
+                country = next.toUpperCase();
+                continue;
             }
-            continue;
         }
 
         // Si es el flag de -regional o -region
@@ -621,27 +623,29 @@ function argsParserNoCommand(args, options = {}) {
             regional = "SELF";
             continue;
         }
-        if (arg.startsWith("-regional")) {
+        if (arg.startsWith("-regional") && arg !== "-regional") {
             let next = arg.slice(9).trim();
             if (isBeatmapUrlOrId(next)) {
                 regional = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                regional = next ? next : "SELF";
+                continue;
+            } else if (next.length > 0) {
+                regional = next;
+                continue;
             }
-            continue;
         }
-        if (arg.startsWith("-region")) {
+        if (arg.startsWith("-region") && arg !== "-region") {
             let next = arg.slice(7).trim();
             if (isBeatmapUrlOrId(next)) {
                 regional = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                regional = next ? next : "SELF";
+                continue;
+            } else if (next.length > 0) {
+                regional = next;
+                continue;
             }
-            continue;
         }
 
         // Si es el flag de -friends o -amigo o -amigos
@@ -657,38 +661,41 @@ function argsParserNoCommand(args, options = {}) {
             friendsFilter = "SELF";
             continue;
         }
-        if (arg.startsWith("-friends")) {
+        if (arg.startsWith("-friends") && arg !== "-friends") {
             let next = arg.slice(8).trim();
             if (isBeatmapUrlOrId(next)) {
                 friendsFilter = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                friendsFilter = next ? next : "SELF";
+                continue;
+            } else if (next.length > 0) {
+                friendsFilter = next;
+                continue;
             }
-            continue;
         }
-        if (arg.startsWith("-amigos")) {
+        if (arg.startsWith("-amigos") && arg !== "-amigos") {
             let next = arg.slice(7).trim();
             if (isBeatmapUrlOrId(next)) {
                 friendsFilter = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                friendsFilter = next ? next : "SELF";
+                continue;
+            } else if (next.length > 0) {
+                friendsFilter = next;
+                continue;
             }
-            continue;
         }
-        if (arg.startsWith("-amigo")) {
+        if (arg.startsWith("-amigo") && arg !== "-amigo") {
             let next = arg.slice(6).trim();
             if (isBeatmapUrlOrId(next)) {
                 friendsFilter = "SELF";
                 const possible_id = extractId(next);
                 if (possible_id) beatmap_url = possible_id;
-            } else {
-                friendsFilter = next ? next : "SELF";
+                continue;
+            } else if (next.length > 0) {
+                friendsFilter = next;
+                continue;
             }
-            continue;
         }
         // Si es una URL o ID de beatmap (evitando IDs de discord que son >= 17 digitos)
         const possible_id = extractId(arg);
@@ -894,8 +901,14 @@ function argsParserNoCommand(args, options = {}) {
             const prefixLen = arg.startsWith("-mods") ? 5 : 4;
             let next = arg.slice(prefixLen).trim();
             if (next.length > 0) {
-                modFilter = next.toUpperCase();
-                continue;
+                const possibleMods = next.toUpperCase();
+                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const chars = possibleMods.split('');
+                const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
+                if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
+                    modFilter = possibleMods;
+                    continue;
+                }
             }
         }
 
@@ -910,11 +923,17 @@ function argsParserNoCommand(args, options = {}) {
                 }
             }
         }
-        if (arg.startsWith("-mx")) {
+        if (arg.startsWith("-mx") && arg !== "-mx") {
             let next = arg.slice(3).trim();
             if (next.length > 0) {
-                modContainFilter = next.toUpperCase();
-                continue;
+                const possibleMods = next.toUpperCase();
+                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const chars = possibleMods.split('');
+                const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
+                if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
+                    modContainFilter = possibleMods;
+                    continue;
+                }
             }
         }
 
@@ -929,11 +948,17 @@ function argsParserNoCommand(args, options = {}) {
                 }
             }
         }
-        if (arg.startsWith("-m")) {
+        if (arg.startsWith("-m") && arg !== "-m") {
             let next = arg.slice(2).trim();
             if (next.length > 0) {
-                modFilter = next.toUpperCase();
-                continue;
+                const possibleMods = next.toUpperCase();
+                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const chars = possibleMods.split('');
+                const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
+                if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
+                    modFilter = possibleMods;
+                    continue;
+                }
             }
         }
 
@@ -946,7 +971,7 @@ function argsParserNoCommand(args, options = {}) {
                 continue;
             }
         }
-        if (arg.startsWith("-?")) {
+        if (arg.startsWith("-?") && arg !== "-?") {
             let next = arg.slice(2).trim();
             if (next.length > 0) {
                 searchFilter = next.toLowerCase();
@@ -974,30 +999,32 @@ function argsParserNoCommand(args, options = {}) {
             }
             continue;
         }
-        if (arg.startsWith("-g")) {
+        if (arg.startsWith("-g") && arg !== "-g") {
             let val = arg.slice(2).trim();
             if (/^\d{17,20}$/.test(val)) {
                 username.push(val);
+                continue;
             } else {
                 let num = parseFloat(val);
                 if (!isNaN(num)) {
                     ppThreshold = num;
+                    continue;
                 }
             }
-            continue;
         }
-        if (arg.startsWith("-pp")) {
+        if (arg.startsWith("-pp") && arg !== "-pp") {
             sortByPPChange = true;
             let val = arg.slice(3).trim();
             if (/^\d{17,20}$/.test(val)) {
                 username.push(val);
+                continue;
             } else {
                 let num = parseFloat(val);
                 if (!isNaN(num)) {
                     ppThreshold = num;
+                    continue;
                 }
             }
-            continue;
         }
 
         // Si es exactamente "-o" o "-osu"
