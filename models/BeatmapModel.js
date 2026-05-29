@@ -309,13 +309,18 @@ async function getBeatmapsetTags(beatmapsetId) {
     }
 }
 
+function isScraperBlocked() {
+    return (Date.now() - lastScraperBlockTime) < 15 * 60 * 1000;
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
     lookupBeatmapByMD5,
     getOsuPpsData,
-    getBeatmapsetTags
+    getBeatmapsetTags,
+    isScraperBlocked
 };
 
 module.exports = BeatmapModel;
