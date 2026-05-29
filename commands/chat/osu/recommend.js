@@ -402,10 +402,10 @@ async function run(messages, args) {
                     }
                 }
 
-                // Ordenar cada lista por afinidad descendente
-                acceptedHigh.sort((a, b) => b.matchScore - a.matchScore);
-                acceptedMid.sort((a, b) => b.matchScore - a.matchScore);
-                acceptedLow.sort((a, b) => b.matchScore - a.matchScore);
+                // Ordenar cada lista por afinidad descendente usando rawScore
+                acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
+                acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
+                acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
 
                 let finalRecs = [];
                 // Intentar tomar la mejor de cada categoría
@@ -427,7 +427,7 @@ async function run(messages, args) {
                             remaining.push(c);
                         }
                     });
-                    remaining.sort((a, b) => b.matchScore - a.matchScore);
+                    remaining.sort((a, b) => b.rawScore - a.rawScore);
                     for (const item of remaining) {
                         if (finalRecs.length >= 3) break;
                         finalRecs.push(item);
@@ -561,10 +561,10 @@ async function run(messages, args) {
                 }
             }
 
-            // Ordenar cada lista por afinidad descendente
-            acceptedHigh.sort((a, b) => b.matchScore - a.matchScore);
-            acceptedMid.sort((a, b) => b.matchScore - a.matchScore);
-            acceptedLow.sort((a, b) => b.matchScore - a.matchScore);
+            // Ordenar cada lista por afinidad descendente usando rawScore
+            acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
+            acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
+            acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
 
             let finalRecs = [];
             // Intentar tomar la mejor de cada categoría
@@ -586,7 +586,7 @@ async function run(messages, args) {
                         remaining.push(c);
                     }
                 });
-                remaining.sort((a, b) => b.matchScore - a.matchScore);
+                remaining.sort((a, b) => b.rawScore - a.rawScore);
                 for (const item of remaining) {
                     if (finalRecs.length >= 3) break;
                     finalRecs.push(item);

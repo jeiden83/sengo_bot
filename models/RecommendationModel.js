@@ -57,14 +57,20 @@ async function buildUserProfileAsync(topScores, supabase = null) {
 
     let dtCount = 0;
     let hrCount = 0;
+    let ezCount = 0;
+    let flCount = 0;
     let nmCount = 0;
 
     top25.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasDT = mods.includes("DT") || mods.includes("NC");
         const hasHR = mods.includes("HR");
+        const hasEZ = mods.includes("EZ");
+        const hasFL = mods.includes("FL");
 
-        if (hasDT) dtCount++;
+        if (hasEZ) ezCount++;
+        else if (hasFL) flCount++;
+        else if (hasDT) dtCount++;
         else if (hasHR) hrCount++;
         else nmCount++;
 
@@ -85,13 +91,47 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         }
     });
 
+    // Selección inteligente de preferredMod con soporte para EZ y FL
     let preferredMod = "NM";
-    if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
+    if (ezCount >= 3 && ezCount >= flCount) preferredMod = "EZ";
+    else if (flCount >= 3 && flCount > ezCount) preferredMod = "FL";
+    else if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
     else if (hrCount > nmCount && hrCount > dtCount) preferredMod = "HR";
 
     const avgStars = totalStars / top25.length;
     const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
     const avgLength = validLengthCount > 0 ? (totalLength / validLengthCount) : 120;
+
+    // Analizar tendencias de lectura/rarezas en el Top 100
+    let ezCountTop100 = 0;
+    let flCountTop100 = 0;
+    let lowArCountTop100 = 0;
+    let nonDtCountTop100 = 0;
+
+    topScores.forEach(score => {
+        const mods = (score.mods || []).map(m => m?.acronym || m);
+        const hasEZ = mods.includes("EZ");
+        const hasFL = mods.includes("FL");
+        const hasDT = mods.includes("DT") || mods.includes("NC");
+
+        if (hasEZ) ezCountTop100++;
+        if (hasFL) flCountTop100++;
+
+        if (!hasDT) {
+            nonDtCountTop100++;
+            const ar = score.beatmap?.ar;
+            if (ar !== undefined) {
+                const effectiveAr = hasEZ ? ar * 0.5 : ar;
+                if (effectiveAr <= 8.0) {
+                    lowArCountTop100++;
+                }
+            }
+        }
+    });
+
+    const isEZPlayer = (ezCountTop100 / topScores.length) >= 0.05;
+    const isFLPlayer = (flCountTop100 / topScores.length) >= 0.05;
+    const isLowArPlayer = nonDtCountTop100 > 0 && (lowArCountTop100 / nonDtCountTop100) >= 0.15;
 
     // Analizar mappers favoritos y obtener tags de la BD en el Top 50
     const top50 = topScores.slice(0, 50);
@@ -193,7 +233,10 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         avgLength,
         preferredMod,
         favoriteMappers,
-        frequentTags
+        frequentTags,
+        isEZPlayer,
+        isFLPlayer,
+        isLowArPlayer
     };
 }
 
@@ -214,14 +257,20 @@ function buildUserProfile(topScores) {
 
     let dtCount = 0;
     let hrCount = 0;
+    let ezCount = 0;
+    let flCount = 0;
     let nmCount = 0;
 
     top25.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasDT = mods.includes("DT") || mods.includes("NC");
         const hasHR = mods.includes("HR");
+        const hasEZ = mods.includes("EZ");
+        const hasFL = mods.includes("FL");
 
-        if (hasDT) dtCount++;
+        if (hasEZ) ezCount++;
+        else if (hasFL) flCount++;
+        else if (hasDT) dtCount++;
         else if (hasHR) hrCount++;
         else nmCount++;
 
@@ -243,12 +292,45 @@ function buildUserProfile(topScores) {
     });
 
     let preferredMod = "NM";
-    if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
+    if (ezCount >= 3 && ezCount >= flCount) preferredMod = "EZ";
+    else if (flCount >= 3 && flCount > ezCount) preferredMod = "FL";
+    else if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
     else if (hrCount > nmCount && hrCount > dtCount) preferredMod = "HR";
 
     const avgStars = totalStars / top25.length;
     const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
     const avgLength = validLengthCount > 0 ? (totalLength / validLengthCount) : 120;
+
+    // Analizar tendencias de lectura/rarezas en el Top 100
+    let ezCountTop100 = 0;
+    let flCountTop100 = 0;
+    let lowArCountTop100 = 0;
+    let nonDtCountTop100 = 0;
+
+    topScores.forEach(score => {
+        const mods = (score.mods || []).map(m => m?.acronym || m);
+        const hasEZ = mods.includes("EZ");
+        const hasFL = mods.includes("FL");
+        const hasDT = mods.includes("DT") || mods.includes("NC");
+
+        if (hasEZ) ezCountTop100++;
+        if (hasFL) flCountTop100++;
+
+        if (!hasDT) {
+            nonDtCountTop100++;
+            const ar = score.beatmap?.ar;
+            if (ar !== undefined) {
+                const effectiveAr = hasEZ ? ar * 0.5 : ar;
+                if (effectiveAr <= 8.0) {
+                    lowArCountTop100++;
+                }
+            }
+        }
+    });
+
+    const isEZPlayer = (ezCountTop100 / topScores.length) >= 0.05;
+    const isFLPlayer = (flCountTop100 / topScores.length) >= 0.05;
+    const isLowArPlayer = nonDtCountTop100 > 0 && (lowArCountTop100 / nonDtCountTop100) >= 0.15;
 
     const top50 = topScores.slice(0, 50);
     const mapperCounts = {};
@@ -283,7 +365,10 @@ function buildUserProfile(topScores) {
         avgLength,
         preferredMod,
         favoriteMappers,
-        frequentTags
+        frequentTags,
+        isEZPlayer,
+        isFLPlayer,
+        isLowArPlayer
     };
 }
 
@@ -326,6 +411,8 @@ async function getPersonalizedRecommendations({
             scale = 1.35;
         } else if (activeMods.includes("HR")) {
             scale = 1.06;
+        } else if (activeMods.includes("EZ")) {
+            scale = 0.70;
         }
         
         minStars = Math.max(1, (minTargetStars / scale) - 0.1);
@@ -557,6 +644,52 @@ async function getPersonalizedRecommendations({
                 reasons.push("Afinidad de patrones");
             }
 
+            // Niche / Rarezas player boosts
+            // A) EZ Player Boost
+            if (profile.isEZPlayer) {
+                if (activeMods.includes("EZ")) {
+                    score += 25;
+                }
+                const hasEZTag = combinedTags.some(t => t === 'ez' || t === 'reading' || t === 'technical' || t === 'low ar' || t.includes('reading') || t.includes('gimmick'));
+                if (hasEZTag) {
+                    score += 25;
+                    reasons.push("Estilo EZ / Gimmick");
+                }
+            }
+
+            // B) FL Player Boost
+            if (profile.isFLPlayer) {
+                if (activeMods.includes("FL")) {
+                    score += 25;
+                }
+                const hasFLTag = combinedTags.some(t => t === 'fl' || t === 'flashlight' || t.includes('flashlight') || t === 'memory');
+                if (hasFLTag) {
+                    score += 35;
+                    reasons.push("Estilo Flashlight");
+                }
+                if (c.total_length < 120) {
+                    score += 20;
+                    reasons.push("Mapa corto (ideal para FL)");
+                } else if (c.total_length < 160) {
+                    score += 10;
+                    reasons.push("Duración cómoda para FL");
+                } else if (activeMods.includes("FL") && c.total_length > 200) {
+                    score -= 40; // Penalizar mapas largos con FL
+                }
+            }
+
+            // C) Low AR Player Boost
+            if (profile.isLowArPlayer) {
+                const mapAr = parseFloat(c.ar);
+                if (mapAr <= 8.0) {
+                    score += 35;
+                    reasons.push(`Lectura: AR Bajo (${mapAr})`);
+                } else if (mapAr <= 8.5) {
+                    score += 15;
+                    reasons.push(`AR cómodo (${mapAr})`);
+                }
+            }
+
             if (reasons.length === 0) {
                 reasons.push("Compatible con tu nivel");
             }
@@ -583,6 +716,7 @@ async function getPersonalizedRecommendations({
                 cs: parseFloat(c.cs),
                 creator: c.creator,
                 matchScore: Math.min(100, Math.round(score)),
+                rawScore: score,
                 matchReasons: reasons
             };
         });
@@ -603,10 +737,10 @@ async function getPersonalizedRecommendations({
         }
     }
 
-    // Ordenar cada tier por afinidad descendente
-    highTier.sort((a, b) => b.matchScore - a.matchScore);
-    midTier.sort((a, b) => b.matchScore - a.matchScore);
-    lowTier.sort((a, b) => b.matchScore - a.matchScore);
+    // Ordenar cada tier por afinidad descendente (usando rawScore para que los boosts de nicho destaquen sobre la popularidad)
+    highTier.sort((a, b) => b.rawScore - a.rawScore);
+    midTier.sort((a, b) => b.rawScore - a.rawScore);
+    lowTier.sort((a, b) => b.rawScore - a.rawScore);
 
     // Tomar hasta 10 candidatos de cada tier
     const selectedHigh = highTier.slice(0, 10);
