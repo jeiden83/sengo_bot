@@ -71,6 +71,7 @@ async function checkHasScore(beatmapId, userId, gamemode = 'osu', top100Ids = nu
 async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res, gamemode = 'osu') {
     try {
         const gamemodeKey = gamemode || 'osu';
+        if (gamemodeKey !== 'osu') return;
         const cacheKey = `${osuUserId}:${gamemodeKey}`;
         const existing = recommendCache.get(cacheKey);
         if (existing && (Date.now() - existing.timestamp < CACHE_TTL)) {
@@ -301,6 +302,17 @@ async function run(messages, args) {
     let currentStyle = 'standard';
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
+    if (activeGamemode !== "osu") {
+        const errorMsg = "❌ El comando de recomendaciones (`sd.rec`) solo está disponible para el modo de juego **osu! standard**. Los demás modos (Taiko, Mania, Catch) no están soportados actualmente.";
+        if (isSlash) {
+            await interaction.editReply({ content: errorMsg });
+        } else if (statusMessage) {
+            await statusMessage.edit({ content: errorMsg });
+        } else {
+            await message.channel.send(errorMsg);
+        }
+        return;
+    }
     const cacheKey = `${osuUserId}:${activeGamemode}`;
     const cached = isDefaultRun ? recommendCache.get(cacheKey) : null;
 
