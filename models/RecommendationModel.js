@@ -14,7 +14,7 @@ function estimatePP(stars, accuracy = 0.99, mods = "NM") {
     } else if (mods.includes("HR")) {
         scaledStars *= 1.06;
     } else if (mods.includes("EZ")) {
-        scaledStars *= 0.70;
+        scaledStars *= 0.88;
     }
     
     let basePP = 0.15 * Math.pow(scaledStars, 4.15);
@@ -456,7 +456,7 @@ async function getPersonalizedRecommendations({
         } else if (activeMods.includes("HR")) {
             scale = 1.06;
         } else if (activeMods.includes("EZ")) {
-            scale = 0.70;
+            scale = 0.88;
         }
         
         minStars = Math.max(1, (minTargetStars / scale) - 0.1);
