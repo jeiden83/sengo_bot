@@ -121,7 +121,12 @@ function doAboutEmbed(message, pageIndex = 0) {
             title: "👥 Brecha de Scores (.gap)",
             description: "**Brecha de Puntuaciones (.gap / -friends)**\n\nCompara y analiza cómo te posicionas frente a tus amigos y conocidos del servidor en un abrir y cerrar de ojos.\n\n**Detalle y Uso:**\n• **Comando `.gap`**: Muestra la brecha y diferencia exacta de puntuación, precisión y PP de los usuarios del servidor en el mapa consultado.\n• **Filtro `-friends`**: Añade el flag `-friends` a tus comandos (como `.lb -friends`) para aislar la tabla de clasificación y competir únicamente contra tus amigos de osu!."
         },
-        // Página 5: Otros Comandos
+        // Página 5: Recomendador
+        {
+            title: "🎯 Recomendador de Farm (.rec)",
+            description: "**Recomendaciones Inteligentes y Personalizadas (.recommend / .rec)**\n\n¿Buscas mapas para subir PP? Sengo analiza tu Top 100 y crea recomendaciones a medida en tiempo real.\n\n**Detalle y Uso:**\n• **Perfilado Dinámico**: El bot estudia tu precisión, BPM predilecto, mods favoritos y mappers en tus jugadas destacadas.\n• **Filtros por Botón**: Cambia al instante entre estilos de juego como **Saltos**, **Streams**, **Maratones**, mapas **Loved** o **Afinidad por Tags**.\n• **Búsqueda Avanzada**: Personaliza tu rango objetivo con flags (ej. `s.rec -pp 250-300 -mods HDDT`).\n• **User Tags**: El bot conecta con tags de la comunidad de osu! para recomendarte mapas con los patrones exactos de tu skillset actual."
+        },
+        // Página 6: Otros Comandos
         {
             title: "🛠️ Lista de Comandos",
             description: "**Otros Comandos de Sengo**\n\nAquí tienes una guía rápida de otros comandos esenciales del bot:\n\n• **Comandos de osu!**:\n  ▸ `s.r` / `s.rs`: Muestra tu jugada reciente más reciente. Admite `-l` para listar las últimas 10 y `-b` para ordenar por PP.\n  ▸ `s.c`: Compara tu puntuación en el último beatmap del canal.\n  ▸ `s.lb`: Muestra la tabla de clasificación global del beatmap.\n  ▸ `s.osu`: Muestra tu perfil de osu! o de otro jugador (admite modo detallado).\n  ▸ `s.top`: Muestra tus mejores puntuaciones de PP.\n  ▸ `s.daily`: Muestra los detalles y clasificación del Osu! Daily Challenge actual.\n  ▸ `s.subir`: Guarda/sube una puntuación manualmente al sistema del bot.\n• **Comandos de Utilidad & Comunidad**:\n  ▸ `s.link`: Vincula tu cuenta de Discord con la de osu!.\n  ▸ `s.amigos`: Gestiona y audita tu lista de amigos de osu! dentro del bot.\n  ▸ `s.contribuidores`: Conoce al equipo de desarrolladores y colaboradores detrás de Sengo.\n  ▸ `s.sorteo`: Crea y gestiona sorteos/giveaways avanzados con filtros de rol, booster y nitro.\n• **Diversión**:\n  ▸ `s.fumo`: Comando de entretenimiento con imágenes de Fumos."
@@ -177,9 +182,14 @@ function buildAboutNavigationRows(currentPageIndex) {
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("about_page_5")
+            .setLabel("Recomendador")
+            .setEmoji("🎯")
+            .setStyle(currentPageIndex === 5 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("about_page_6")
             .setLabel("Otros Comandos")
             .setEmoji("🛠️")
-            .setStyle(currentPageIndex === 5 ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setStyle(currentPageIndex === 6 ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     return [row1, row2];
