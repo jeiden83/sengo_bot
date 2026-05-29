@@ -116,7 +116,7 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
         .setLabel("➖ Menos PP")
         .setStyle(ButtonStyle.Success);
 
-    const toggleLabel = params.mods === suggestedMod ? "🕶️ Probar NM/Cualquiera" : `🕶️ Probar ${suggestedMod || "Mods"}`;
+    const toggleLabel = `🕶️ Probar ${suggestedMod || "Mods"}`;
     const btnToggleMods = new ButtonBuilder()
         .setCustomId("rec_toggle_mods")
         .setLabel(toggleLabel)

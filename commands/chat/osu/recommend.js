@@ -210,6 +210,7 @@ async function run(messages, args) {
     let minPP;
     let maxPP;
     let activeMods;
+    let preferredMod = "NM";
     let suggestedMod;
     let profile;
     let currentStyle = 'standard';
@@ -222,8 +223,9 @@ async function run(messages, args) {
         currentRecs = cached.recommendations;
         minPP = cached.minPP;
         maxPP = cached.maxPP;
-        activeMods = cached.suggestedMod;
-        suggestedMod = cached.suggestedMod === "DT" ? "NM" : "DT";
+        activeMods = cached.activeMods || cached.suggestedMod || "NM";
+        preferredMod = cached.preferredMod || (cached.suggestedMod === "DT" ? "DT" : "NM");
+        suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
         profile = cached.profile;
         currentStyle = cached.style || 'standard';
     } else {
@@ -242,7 +244,9 @@ async function run(messages, args) {
         }
 
         const userProfile = await RecommendationModel.buildUserProfileAsync(topScores);
-        suggestedMod = userProfile.preferredMod === "DT" ? "NM" : "DT";
+        preferredMod = userProfile.preferredMod || "NM";
+        activeMods = customMods || preferredMod;
+        suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
 
         // Calcular rango de PP recomendado
         const top15 = topScores.slice(0, 15);
@@ -254,7 +258,6 @@ async function run(messages, args) {
 
         minPP = customMinPP || (averagePP * 0.90);
         maxPP = customMaxPP || (averagePP * 1.10);
-        activeMods = customMods || userProfile.preferredMod;
 
         const skipSetLocal = new Set();
 
@@ -302,6 +305,8 @@ async function run(messages, args) {
                 recommendations: currentRecs,
                 minPP,
                 maxPP,
+                activeMods,
+                preferredMod,
                 suggestedMod: activeMods,
                 profile,
                 style: currentStyle,
@@ -398,11 +403,8 @@ async function run(messages, args) {
                 maxPP *= 0.90;
                 skipSet.clear();
             } else if (i.customId === 'rec_toggle_mods') {
-                if (activeMods === "NM") {
-                    activeMods = suggestedMod || "DT";
-                } else {
-                    activeMods = "NM";
-                }
+                activeMods = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
+                suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
                 skipSet.clear();
             } else if (i.customId === 'rec_toggle_played') {
                 showPlayed = !showPlayed;
