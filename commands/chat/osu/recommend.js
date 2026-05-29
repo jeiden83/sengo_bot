@@ -366,10 +366,12 @@ async function run(messages, args) {
                     await updateStatus("⚔️ Filtrando mapas jugados y preparando recomendaciones...", "Filtrando mapas jugados y preparando recomendaciones");
                 }
 
-                const filteredCandidates = [];
+                const acceptedHigh = [];
+                const acceptedMid = [];
+                const acceptedLow = [];
                 const seenBeatmapsets = new Set();
+
                 for (const candidate of candidates) {
-                    if (filteredCandidates.length >= 12) break;
                     if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
 
                     const idStr = candidate.beatmapId.toString();
@@ -385,7 +387,14 @@ async function run(messages, args) {
 
                     if (accepted) {
                         seenBeatmapsets.add(candidate.beatmapsetId);
-                        filteredCandidates.push(candidate);
+                        const pop = candidate.popularity;
+                        if (pop >= 1000000) {
+                            acceptedHigh.push(candidate);
+                        } else if (pop >= 150000) {
+                            acceptedMid.push(candidate);
+                        } else {
+                            acceptedLow.push(candidate);
+                        }
                     }
 
                     if (!isCached) {
@@ -393,39 +402,40 @@ async function run(messages, args) {
                     }
                 }
 
+                // Ordenar cada lista por afinidad descendente
+                acceptedHigh.sort((a, b) => b.matchScore - a.matchScore);
+                acceptedMid.sort((a, b) => b.matchScore - a.matchScore);
+                acceptedLow.sort((a, b) => b.matchScore - a.matchScore);
+
                 let finalRecs = [];
-                if (filteredCandidates.length >= 3) {
-                    const pool = filteredCandidates.slice(0, 12);
-                    pool.sort((a, b) => b.popularity - a.popularity);
-                    const N = pool.length;
-                    const tierSize = Math.floor(N / 3);
-                    const highTier = pool.slice(0, tierSize);
-                    const midTier = pool.slice(tierSize, 2 * tierSize);
-                    const lowTier = pool.slice(2 * tierSize);
-                    
-                    const selectBestByScore = (tier) => {
-                        if (tier.length === 0) return null;
-                        return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
-                    };
-                    
-                    const rec1 = selectBestByScore(highTier);
-                    const rec2 = selectBestByScore(midTier);
-                    const rec3 = selectBestByScore(lowTier);
-                    
-                    if (rec1) finalRecs.push(rec1);
-                    if (rec2) finalRecs.push(rec2);
-                    if (rec3) finalRecs.push(rec3);
-                    
-                    for (const item of filteredCandidates) {
-                        if (finalRecs.length >= 3) break;
-                        if (!finalRecs.some(r => r.beatmapId === item.beatmapId)) {
-                            finalRecs.push(item);
+                // Intentar tomar la mejor de cada categoría
+                if (acceptedHigh.length > 0) finalRecs.push(acceptedHigh[0]);
+                if (acceptedMid.length > 0) finalRecs.push(acceptedMid[0]);
+                if (acceptedLow.length > 0) finalRecs.push(acceptedLow[0]);
+
+                // Si no llegamos a 3, rellenamos con el resto
+                if (finalRecs.length < 3) {
+                    const remaining = [];
+                    const usedIds = new Set(finalRecs.map(r => r.beatmapId));
+                    const allRemaining = [
+                        ...acceptedHigh.slice(1),
+                        ...acceptedMid.slice(1),
+                        ...acceptedLow.slice(1)
+                    ];
+                    allRemaining.forEach(c => {
+                        if (!usedIds.has(c.beatmapId)) {
+                            remaining.push(c);
                         }
+                    });
+                    remaining.sort((a, b) => b.matchScore - a.matchScore);
+                    for (const item of remaining) {
+                        if (finalRecs.length >= 3) break;
+                        finalRecs.push(item);
                     }
-                    finalRecs.sort((a, b) => b.popularity - a.popularity);
-                } else {
-                    finalRecs = filteredCandidates;
                 }
+
+                // Ordenar por popularidad descendente para presentación
+                finalRecs.sort((a, b) => b.popularity - a.popularity);
 
                 await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
                 return finalRecs;
@@ -515,10 +525,12 @@ async function run(messages, args) {
                 skipSet: skipSet
             });
 
-            const filteredCandidates = [];
+            const acceptedHigh = [];
+            const acceptedMid = [];
+            const acceptedLow = [];
             const seenBeatmapsets = new Set();
+
             for (const candidate of candidates) {
-                if (filteredCandidates.length >= 12) break;
                 if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
 
                 const idStr = candidate.beatmapId.toString();
@@ -534,7 +546,14 @@ async function run(messages, args) {
 
                 if (accepted) {
                     seenBeatmapsets.add(candidate.beatmapsetId);
-                    filteredCandidates.push(candidate);
+                    const pop = candidate.popularity;
+                    if (pop >= 1000000) {
+                        acceptedHigh.push(candidate);
+                    } else if (pop >= 150000) {
+                        acceptedMid.push(candidate);
+                    } else {
+                        acceptedLow.push(candidate);
+                    }
                 }
 
                 if (!isCached) {
@@ -542,39 +561,40 @@ async function run(messages, args) {
                 }
             }
 
+            // Ordenar cada lista por afinidad descendente
+            acceptedHigh.sort((a, b) => b.matchScore - a.matchScore);
+            acceptedMid.sort((a, b) => b.matchScore - a.matchScore);
+            acceptedLow.sort((a, b) => b.matchScore - a.matchScore);
+
             let finalRecs = [];
-            if (filteredCandidates.length >= 3) {
-                const pool = filteredCandidates.slice(0, 12);
-                pool.sort((a, b) => b.popularity - a.popularity);
-                const N = pool.length;
-                const tierSize = Math.floor(N / 3);
-                const highTier = pool.slice(0, tierSize);
-                const midTier = pool.slice(tierSize, 2 * tierSize);
-                const lowTier = pool.slice(2 * tierSize);
-                
-                const selectBestByScore = (tier) => {
-                    if (tier.length === 0) return null;
-                    return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
-                };
-                
-                const rec1 = selectBestByScore(highTier);
-                const rec2 = selectBestByScore(midTier);
-                const rec3 = selectBestByScore(lowTier);
-                
-                if (rec1) finalRecs.push(rec1);
-                if (rec2) finalRecs.push(rec2);
-                if (rec3) finalRecs.push(rec3);
-                
-                for (const item of filteredCandidates) {
-                    if (finalRecs.length >= 3) break;
-                    if (!finalRecs.some(r => r.beatmapId === item.beatmapId)) {
-                        finalRecs.push(item);
+            // Intentar tomar la mejor de cada categoría
+            if (acceptedHigh.length > 0) finalRecs.push(acceptedHigh[0]);
+            if (acceptedMid.length > 0) finalRecs.push(acceptedMid[0]);
+            if (acceptedLow.length > 0) finalRecs.push(acceptedLow[0]);
+
+            // Si no llegamos a 3, rellenamos con el resto
+            if (finalRecs.length < 3) {
+                const remaining = [];
+                const usedIds = new Set(finalRecs.map(r => r.beatmapId));
+                const allRemaining = [
+                    ...acceptedHigh.slice(1),
+                    ...acceptedMid.slice(1),
+                    ...acceptedLow.slice(1)
+                ];
+                allRemaining.forEach(c => {
+                    if (!usedIds.has(c.beatmapId)) {
+                        remaining.push(c);
                     }
+                });
+                remaining.sort((a, b) => b.matchScore - a.matchScore);
+                for (const item of remaining) {
+                    if (finalRecs.length >= 3) break;
+                    finalRecs.push(item);
                 }
-                finalRecs.sort((a, b) => b.popularity - a.popularity);
-            } else {
-                finalRecs = filteredCandidates;
             }
+
+            // Ordenar por popularidad descendente para presentación
+            finalRecs.sort((a, b) => b.popularity - a.popularity);
 
             await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
             return finalRecs;

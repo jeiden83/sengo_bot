@@ -332,57 +332,85 @@ async function getPersonalizedRecommendations({
         maxStars = (maxTargetStars / scale) + 0.45;
     }
 
-    // 2. Query de candidatos en Supabase
-    let query = supabase
-        .from('ranked_beatmaps')
-        .select('*')
-        .gte('stars', minStars)
-        .lte('stars', maxStars)
-        .eq('mode', 0); // standard
-
-    // Soporte para approved (1 = ranked, 2 = approved, 3 = qualified, 4 = loved)
-    if (style === 'rarezas') {
-        query = query.in('ranked_status', [3, 4]); // Qualified, Loved
-    } else {
-        query = query.in('ranked_status', [1, 2]); // Ranked, Approved
-    }
-
+    // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho)
     const useTagsFilter = ['tags', 'aim', 'speed'].includes(style);
-    if (useTagsFilter) {
-        query = query.not('user_tags', 'is', null);
-    }
-
-    query = query.order('playcount', { ascending: false }).limit(1000);
-
-    let { data: candidates, error } = await query;
-    if (error) {
-        throw error;
-    }
-
-    // Fallback: si intentamos filtrar por user_tags pero no encontramos suficientes candidatos,
-    // reintentamos sin el filtro de user_tags para aim/speed.
-    if (useTagsFilter && style !== 'tags' && (!candidates || candidates.length < 5)) {
-        let fallbackQuery = supabase
+    
+    const buildBaseQuery = () => {
+        let q = supabase
             .from('ranked_beatmaps')
             .select('*')
             .gte('stars', minStars)
             .lte('stars', maxStars)
-            .eq('mode', 0);
+            .eq('mode', 0); // standard
 
         if (style === 'rarezas') {
-            fallbackQuery = fallbackQuery.in('ranked_status', [3, 4]);
+            q = q.in('ranked_status', [3, 4]); // Qualified, Loved
         } else {
-            fallbackQuery = fallbackQuery.in('ranked_status', [1, 2]);
+            q = q.in('ranked_status', [1, 2]); // Ranked, Approved
         }
 
-        fallbackQuery = fallbackQuery.order('playcount', { ascending: false }).limit(1000);
-        const fallbackRes = await fallbackQuery;
-        if (!fallbackRes.error && fallbackRes.data && fallbackRes.data.length > 0) {
-            candidates = fallbackRes.data;
+        if (useTagsFilter) {
+            q = q.not('user_tags', 'is', null);
         }
+        return q;
+    };
+
+    const [highRes, midRes, lowRes] = await Promise.all([
+        buildBaseQuery().gte('playcount', 1000000).order('playcount', { ascending: false }).limit(400),
+        buildBaseQuery().lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(300),
+        buildBaseQuery().lt('playcount', 150000).gte('playcount', 5000).order('playcount', { ascending: false }).limit(300)
+    ]);
+
+    let candidates = [];
+    const seenIds = new Set();
+    const addCandidates = (data) => {
+        if (data) {
+            for (const item of data) {
+                if (!seenIds.has(item.beatmap_id)) {
+                    seenIds.add(item.beatmap_id);
+                    candidates.push(item);
+                }
+            }
+        }
+    };
+
+    addCandidates(highRes.data);
+    addCandidates(midRes.data);
+    addCandidates(lowRes.data);
+
+    // Fallback: si intentamos filtrar por user_tags pero no encontramos suficientes candidatos,
+    // reintentamos sin el filtro de user_tags para aim/speed.
+    if (useTagsFilter && style !== 'tags' && candidates.length < 5) {
+        const buildFallbackQuery = () => {
+            let q = supabase
+                .from('ranked_beatmaps')
+                .select('*')
+                .gte('stars', minStars)
+                .lte('stars', maxStars)
+                .eq('mode', 0);
+
+            if (style === 'rarezas') {
+                q = q.in('ranked_status', [3, 4]);
+            } else {
+                q = q.in('ranked_status', [1, 2]);
+            }
+            return q;
+        };
+
+        const [fbHigh, fbMid, fbLow] = await Promise.all([
+            buildFallbackQuery().gte('playcount', 1000000).order('playcount', { ascending: false }).limit(400),
+            buildFallbackQuery().lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(300),
+            buildFallbackQuery().lt('playcount', 150000).gte('playcount', 5000).order('playcount', { ascending: false }).limit(300)
+        ]);
+
+        candidates = [];
+        seenIds.clear();
+        addCandidates(fbHigh.data);
+        addCandidates(fbMid.data);
+        addCandidates(fbLow.data);
     }
 
-    if (!candidates || candidates.length === 0) {
+    if (candidates.length === 0) {
         return [];
     }
 
@@ -559,10 +587,34 @@ async function getPersonalizedRecommendations({
             };
         });
 
-    // Ordenar por afinidad descendente
-    scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
+    // Separar candidatos en 3 categorías de popularidad para asegurar que no se eclipsen
+    const highTier = [];
+    const midTier = [];
+    const lowTier = [];
 
-    return scoredCandidates.slice(0, 30);
+    for (const c of scoredCandidates) {
+        const pop = c.popularity;
+        if (pop >= 1000000) {
+            highTier.push(c);
+        } else if (pop >= 150000) {
+            midTier.push(c);
+        } else {
+            lowTier.push(c);
+        }
+    }
+
+    // Ordenar cada tier por afinidad descendente
+    highTier.sort((a, b) => b.matchScore - a.matchScore);
+    midTier.sort((a, b) => b.matchScore - a.matchScore);
+    lowTier.sort((a, b) => b.matchScore - a.matchScore);
+
+    // Tomar hasta 10 candidatos de cada tier
+    const selectedHigh = highTier.slice(0, 10);
+    const selectedMid = midTier.slice(0, 10);
+    const selectedLow = lowTier.slice(0, 10);
+
+    // Combinar en una lista final equilibrada
+    return [...selectedHigh, ...selectedMid, ...selectedLow];
 }
 
 async function recalculateExactPP(recs, activeMods) {
