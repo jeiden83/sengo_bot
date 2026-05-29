@@ -394,6 +394,14 @@ async function getPersonalizedRecommendations({
             } else if (style === 'length') {
                 // Filtrar estrictamente: mínimo 5 minutos (300 segundos) para maratones
                 if (c.total_length < 300) return false;
+            } else if (style === 'tags') {
+                // Filtrar estrictamente: solo mapas que contengan user_tags y que coincidan con al menos un tag frecuente del jugador
+                if (!c.user_tags || c.user_tags.length === 0) return false;
+                const hasMatchingTag = c.user_tags.some(t => {
+                    const cleanTag = t.toLowerCase().trim();
+                    return profile.frequentTags.includes(cleanTag);
+                });
+                if (!hasMatchingTag) return false;
             }
 
             return true;
@@ -482,6 +490,9 @@ async function getPersonalizedRecommendations({
                     score += 25;
                     reasons.push("Enfoque: Speed");
                 }
+            } else if (style === 'tags') {
+                score += 25;
+                reasons.push("Afinidad de patrones");
             }
 
             if (reasons.length === 0) {
@@ -509,7 +520,7 @@ async function getPersonalizedRecommendations({
                 hp: parseFloat(c.hp),
                 cs: parseFloat(c.cs),
                 creator: c.creator,
-                matchScore: Math.round(score),
+                matchScore: Math.min(100, Math.round(score)),
                 matchReasons: reasons
             };
         });

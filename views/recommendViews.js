@@ -34,7 +34,8 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
         'aim': '🎯 Saltos / Aim',
         'speed': '⚡ Streams / Speed',
         'length': '⏳ Maratones / Largo',
-        'rarezas': '🔮 Loved / Raros'
+        'rarezas': '🔮 Loved / Raros',
+        'tags': '🏷️ Afinidad por Tags'
     };
     const currentStyleLabel = styleLabels[style] || 'Estándar';
 
@@ -135,7 +136,7 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
     );
     rows.push(controlRow);
 
-    // Fila 2: Estilos de Juego y Especialidad
+    // Fila 2: Estilos de Juego y Especialidad (Filtros principales)
     const btnAim = new ButtonBuilder()
         .setCustomId("rec_style_aim")
         .setLabel("🎯 Saltos")
@@ -156,20 +157,29 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
         .setLabel("🔮 Loved")
         .setStyle(style === 'rarezas' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
-    const btnReset = new ButtonBuilder()
-        .setCustomId("rec_style_reset")
-        .setLabel("🏠 Reset")
-        .setStyle(ButtonStyle.Danger)
-        .setDisabled(style === 'standard' || !style);
+    const btnTags = new ButtonBuilder()
+        .setCustomId("rec_style_tags")
+        .setLabel("🏷️ User Tags")
+        .setStyle(style === 'tags' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const styleRow = new ActionRowBuilder().addComponents(
         btnAim,
         btnSpeed,
         btnLength,
         btnRarezas,
-        btnReset
+        btnTags
     );
     rows.push(styleRow);
+
+    // Fila 3: Acciones especiales (Reset)
+    const btnReset = new ButtonBuilder()
+        .setCustomId("rec_style_reset")
+        .setLabel("🏠 Reset Filtros")
+        .setStyle(ButtonStyle.Danger)
+        .setDisabled(style === 'standard' || !style);
+
+    const resetRow = new ActionRowBuilder().addComponents(btnReset);
+    rows.push(resetRow);
 
     return rows;
 }

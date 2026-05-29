@@ -419,6 +419,9 @@ async function run(messages, args) {
             } else if (i.customId === 'rec_style_rarezas') {
                 currentStyle = 'rarezas';
                 skipSet.clear();
+            } else if (i.customId === 'rec_style_tags') {
+                currentStyle = 'tags';
+                skipSet.clear();
             } else if (i.customId === 'rec_style_reset') {
                 currentStyle = 'standard';
                 skipSet.clear();
