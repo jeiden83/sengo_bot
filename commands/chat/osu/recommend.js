@@ -6,6 +6,7 @@ const { EmbedBuilder } = require("discord.js");
 
 const recommendCache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
+const scoreCheckCache = new Map();
 
 function getModAcronyms(modsBitmask) {
     const bitVal = parseInt(modsBitmask, 10);
@@ -36,14 +37,32 @@ function getModAcronyms(modsBitmask) {
     return mods.length > 0 ? mods.join("") : "NoMod";
 }
 
-async function checkHasScore(beatmapId, userId, gamemode = 'osu') {
+async function checkHasScore(beatmapId, userId, gamemode = 'osu', top100Ids = null) {
+    const idStr = beatmapId.toString();
+    if (top100Ids && top100Ids.has(idStr)) {
+        return true;
+    }
+
+    const cacheKey = `${userId}:${idStr}:${gamemode}`;
+    const cached = scoreCheckCache.get(cacheKey);
+    if (cached) {
+        if (cached.hasScore || (Date.now() - cached.timestamp < 60 * 60 * 1000)) {
+            return cached.hasScore;
+        }
+    }
+
     try {
         const score = await getBeatmapUserScore({
-            beatmap_url: beatmapId,
+            beatmap_url: idStr,
             username: [userId],
             gamemode: gamemode
         });
-        return score !== null && score !== undefined;
+        const hasScore = score !== null && score !== undefined;
+        scoreCheckCache.set(cacheKey, {
+            hasScore,
+            timestamp: Date.now()
+        });
+        return hasScore;
     } catch {
         return false;
     }
@@ -178,6 +197,7 @@ async function run(messages, args) {
 
     const topScores = parser_res.fn_response;
     const osuUserId = parser_res.parsed_args.username[0];
+    const top100Ids = new Set(topScores.map(score => score.beatmap.id.toString()));
 
     // Consultar si el usuario que invocó el comando tiene supporter activo
     const linkedUser = await OsuUserModel.getLinkedUser(res.User, message.author.id);
@@ -254,14 +274,19 @@ async function run(messages, args) {
                 for (const candidate of candidates) {
                     if (finalRecs.length >= 3) break;
 
-                    const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
+                    const idStr = candidate.beatmapId.toString();
+                    const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
+
+                    const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
                     if (showPlayed) {
                         if (hasScore) finalRecs.push(candidate);
                     } else {
                         if (!hasScore) finalRecs.push(candidate);
                     }
 
-                    await new Promise(resolve => setTimeout(resolve, 80));
+                    if (!isCached) {
+                        await new Promise(resolve => setTimeout(resolve, 80));
+                    }
                 }
                 return finalRecs;
             } catch (err) {
@@ -333,14 +358,19 @@ async function run(messages, args) {
             for (const candidate of candidates) {
                 if (finalRecs.length >= 3) break;
 
-                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode);
+                const idStr = candidate.beatmapId.toString();
+                const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
+
+                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
                 if (showPlayed) {
                     if (hasScore) finalRecs.push(candidate);
                 } else {
                     if (!hasScore) finalRecs.push(candidate);
                 }
 
-                await new Promise(resolve => setTimeout(resolve, 80));
+                if (!isCached) {
+                    await new Promise(resolve => setTimeout(resolve, 80));
+                }
             }
             return finalRecs;
         } catch (err) {
