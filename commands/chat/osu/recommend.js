@@ -463,7 +463,17 @@ run.alias = {
 
 run.description = {
     'header': "Recomienda mapas de farm (PP) personalizados",
-    'body': 'Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.',
+    'body': 'Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.\n\n' +
+            '**Parámetros:**\n' +
+            '• `-pp <valor o rango>`: Filtra por un PP objetivo (ej. `-pp 300` o `-pp 250-300`). Si indicas un valor único, buscará dentro de un rango de +-10%.\n' +
+            '• `-mods <mods>`: Filtra recomendaciones para mods específicos (ej. `-mods HDDT`, `-mods HR`, `-mods NM`).\n' +
+            '• `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100 de osu! (por defecto los excluye).\n\n' +
+            '**Estilos de Juego (Botones interactivos):**\n' +
+            '• **🎯 Saltos**: Filtra mapas con enfoque en patrones de saltos y aim.\n' +
+            '• **⚡ Streams**: Filtra mapas con enfoque en velocidad, stamina y streams.\n' +
+            '• **⏳ Maratones**: Recomienda mapas largos (+5 minutos).\n' +
+            '• **🔮 Loved**: Busca mapas en estado Loved/Qualified en lugar de Ranked/Approved.\n' +
+            '• **🏷️ User Tags**: Filtra exclusivamente mapas que tengan tags de la comunidad cargados en la BD y que tengan afinidad directa con tus patrones más jugados.',
     'usage': 's.recommend [-pp rango] [-mods mod] [-jugados]\nEjemplos:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -jugados'
 };
 
