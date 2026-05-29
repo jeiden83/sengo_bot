@@ -6,15 +6,15 @@ CREATE TABLE IF NOT EXISTS public.ranked_beatmaps (
     artist TEXT NOT NULL,
     creator TEXT NOT NULL, -- Mapper
     version TEXT NOT NULL, -- Nombre de la dificultad
-    stars NUMERIC(4,2) NOT NULL,
+    stars NUMERIC NOT NULL,
     mode INT NOT NULL DEFAULT 0,
-    bpm NUMERIC(6,2) NOT NULL,
+    bpm NUMERIC NOT NULL,
     total_length INT NOT NULL, -- Segundos
     hit_length INT NOT NULL,   -- Segundos de juego activo
-    ar NUMERIC(4,2) NOT NULL,
-    cs NUMERIC(4,2) NOT NULL,
-    od NUMERIC(4,2) NOT NULL,
-    hp NUMERIC(4,2) NOT NULL,
+    ar NUMERIC NOT NULL,
+    cs NUMERIC NOT NULL,
+    od NUMERIC NOT NULL,
+    hp NUMERIC NOT NULL,
     max_combo INT,
     genre TEXT,                -- E.g., Electronic, Anime, Rock
     language TEXT,             -- E.g., Japanese, English, Instrumental

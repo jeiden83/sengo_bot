@@ -33,12 +33,9 @@ function estimatePP(stars, accuracy = 0.99, mods = "NM") {
     return Math.round(basePP);
 }
 
-/**
- * Traduce un valor aproximado de PP a una calificación de estrellas estimada.
- */
 function ppToStars(pp) {
     if (pp <= 0) return 0;
-    return 0.5 + Math.sqrt(pp) * 0.33;
+    return Math.pow(pp / 0.15, 1 / 4.15);
 }
 
 /**
@@ -326,8 +323,8 @@ async function getPersonalizedRecommendations({
         }
     }
 
-    const minStars = Math.max(1, targetStars - 0.75);
-    const maxStars = targetStars + 0.75;
+    const minStars = Math.max(1, targetStars - 0.85);
+    const maxStars = targetStars + 0.85;
 
     // 2. Query de candidatos en Supabase
     let query = supabase
@@ -364,6 +361,37 @@ async function getPersonalizedRecommendations({
             if (!showPlayed && top100MapIds.has(idStr)) return false;
             // Filtrar mostrados en esta sesión
             if (skipSet.has(idStr)) return false;
+
+            // 1. Filtrar estrictamente por el rango de PP estimado al 100% de acc
+            if (customMinPP !== null) {
+                const est100 = estimatePP(c.stars, 1.0, activeMods);
+                const limitMaxPP = customMaxPP !== null ? customMaxPP : customMinPP * 1.3;
+                if (est100 < customMinPP || est100 > limitMaxPP) {
+                    return false;
+                }
+            }
+
+            // 2. Filtrar estrictamente por estilo para Aim/Streams (usando user_tags y tags de creador como fallback)
+            if (style === 'aim') {
+                const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
+                const hasAimTag = combinedTags.some(t => {
+                    const tag = t.toLowerCase().trim();
+                    if (tag === 'aim' || tag === 'jump' || tag === 'jumps') return true;
+                    if (tag.includes('/') && (tag.includes('aim') || tag.includes('jump'))) return true;
+                    return AIM_TAGS.some(at => tag === at);
+                });
+                if (!hasAimTag) return false;
+            } else if (style === 'speed') {
+                const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
+                const hasSpeedTag = combinedTags.some(t => {
+                    const tag = t.toLowerCase().trim();
+                    if (tag === 'stream' || tag === 'streams' || tag === 'speed' || tag === 'burst' || tag === 'bursts' || tag === 'alt' || tag === 'alternate' || tag === 'stamina') return true;
+                    if (tag.includes('/') && (tag.includes('stream') || tag.includes('speed') || tag.includes('burst') || tag.includes('alt') || tag.includes('stamina'))) return true;
+                    return SPEED_TAGS.some(st => tag === st);
+                });
+                if (!hasSpeedTag) return false;
+            }
+
             return true;
         })
         .map(c => {

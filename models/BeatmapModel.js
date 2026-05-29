@@ -6,6 +6,7 @@ const rosu = require("rosu-pp-js");
 const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
+const Logger = require("../utils/logger.js");
 
 let osuDirectOnline = true;
 let lastOsuDirectCheck = 0;
@@ -253,14 +254,21 @@ const tagsCache = new Map();
 async function getBeatmapsetTags(beatmapsetId) {
     const cached = tagsCache.get(beatmapsetId);
     const now = Date.now();
-    if (cached && (now - cached.timestamp) < 3600000 * 24) { // Caché por 24 horas
+    if (cached && (now - cached.timestamp) < (cached.isError ? 3600000 : 3600000 * 24)) { // Caché de error por 1 hora, tags por 24 horas
         return cached.data;
     }
 
     try {
         const url = `https://osu.ppy.sh/beatmapsets/${beatmapsetId}`;
         const res = await axios.get(url, {
-            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            headers: { 
+                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
+                'Referer': 'https://osu.ppy.sh/beatmapsets',
+                'Cache-Control': 'no-cache',
+                'Pragma': 'no-cache'
+            },
             timeout: 5000
         });
         const cheerio = require('cheerio');
@@ -273,10 +281,16 @@ async function getBeatmapsetTags(beatmapsetId) {
         const related = data.related_tags || [];
         const tags = related.map(t => t.name);
         
-        tagsCache.set(beatmapsetId, { data: tags, timestamp: now });
+        tagsCache.set(beatmapsetId, { data: tags, timestamp: now, isError: false });
         return tags;
     } catch (e) {
-        console.error(`Error al obtener tags para el beatmapset ${beatmapsetId}:`, e.message);
+        const is403 = e.response && e.response.status === 403;
+        if (is403) {
+            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (reintentando más tarde).`);
+        } else {
+            Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
+        }
+        tagsCache.set(beatmapsetId, { data: [], timestamp: now, isError: true });
         return [];
     }
 }
