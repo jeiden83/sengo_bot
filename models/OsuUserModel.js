@@ -529,7 +529,7 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
  * Deduplica llamadas concurrentes y actualiza la base de datos de manera atómica para evitar
  * perder credenciales por fallos de red en llamadas secundarias (como /me).
  */
-async function getValidTokenForUser(discordId) {
+async function getValidTokenForUser(discordId, priority = 2) {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
@@ -550,7 +550,7 @@ async function getValidTokenForUser(discordId) {
         const refreshPromise = (async () => {
             try {
                 // 1. Refrescar tokens
-                const newTokens = await osuApiQueue.add(() => refreshAccessToken(data.refresh_token));
+                const newTokens = await osuApiQueue.add(() => refreshAccessToken(data.refresh_token), priority);
                 const expiresAt = new Date(Date.now() + newTokens.expires_in * 1000).toISOString();
 
                 // 2. Guardar inmediatamente los nuevos tokens en base de datos.
@@ -569,7 +569,7 @@ async function getValidTokenForUser(discordId) {
                 let username = data.username;
                 let countryCode = data.country_code;
                 try {
-                    const userMe = await osuApiQueue.add(() => fetchOsuMe(newTokens.access_token));
+                    const userMe = await osuApiQueue.add(() => fetchOsuMe(newTokens.access_token), priority);
                     if (userMe) {
                         isSupporter = !!userMe.is_supporter;
                         username = userMe.username;
@@ -744,13 +744,13 @@ async function syncAllSupporterStatuses() {
 
     for (const user of oauthUsers) {
         try {
-            const token = await getValidTokenForUser(user.discord_id);
+            const token = await getValidTokenForUser(user.discord_id, 0);
             if (!token) {
                 failCount++;
                 continue;
             }
 
-            const me = await osuApiQueue.add(() => fetchOsuMe(token));
+            const me = await osuApiQueue.add(() => fetchOsuMe(token), 0);
             if (me) {
                 const newSuppStatus = !!me.is_supporter;
                 const oldSuppStatus = !!user.is_supporter;

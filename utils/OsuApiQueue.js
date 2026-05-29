@@ -7,9 +7,17 @@ class OsuApiQueue {
         this.cooldownUntil = 0;
     }
 
-    async add(requestFn) {
+    async add(requestFn, priority = 2) {
         return new Promise((resolve, reject) => {
-            this.queue.push({ requestFn, resolve, reject, attempts: 0 });
+            this.queue.push({ requestFn, resolve, reject, attempts: 0, priority, timestamp: Date.now() });
+            
+            // Ordenar por prioridad descendente; a igual prioridad, mantener el orden FIFO estable
+            this.queue.sort((a, b) => {
+                if (b.priority !== a.priority) {
+                    return b.priority - a.priority;
+                }
+                return a.timestamp - b.timestamp;
+            });
             this.process();
         });
     }

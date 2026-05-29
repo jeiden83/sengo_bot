@@ -164,7 +164,7 @@ async function run(messages, args) {
     // Obtener tags del beatmapset
     let userTags = [];
     try {
-        userTags = await getBeatmapsetTags(beatmap.beatmapset_id);
+        userTags = await getBeatmapsetTags(beatmap.beatmapset_id, 2);
     } catch (e) {
         console.error("Error al obtener tags en m.js:", e);
     }

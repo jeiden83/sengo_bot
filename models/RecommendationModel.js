@@ -186,7 +186,7 @@ async function buildUserProfileAsync(topScores, supabase = null) {
                     
                     for (const setId of uniqueMissingSetIds) {
                         try {
-                            const tags = await getBeatmapsetTags(setId);
+                            const tags = await getBeatmapsetTags(setId, 2);
                             if (tags && tags.length > 0) {
                                 const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
                                 

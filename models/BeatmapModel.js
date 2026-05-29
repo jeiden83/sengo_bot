@@ -271,7 +271,7 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 OPR/107.0.0.0'
 ];
 
-async function getBeatmapsetTags(beatmapsetId) {
+async function getBeatmapsetTags(beatmapsetId, priority = 0) {
     const now = Date.now();
     
     // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 15 minutos
@@ -322,7 +322,7 @@ async function getBeatmapsetTags(beatmapsetId) {
             tagsCache.set(beatmapsetId, { data: [], timestamp: Date.now(), isError: true });
             return null;
         }
-    });
+    }, priority);
 }
 
 function isScraperBlocked() {
