@@ -72,7 +72,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             avatar_url: avatarUrl || topScores[0].user.avatar_url
         };
 
-        const userProfile = RecommendationModel.buildUserProfile(topScores);
+        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores);
         if (!userProfile) return;
 
         const top15 = topScores.slice(0, 15);
@@ -221,7 +221,7 @@ async function run(messages, args) {
             };
         }
 
-        const userProfile = RecommendationModel.buildUserProfile(topScores);
+        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores);
         suggestedMod = userProfile.preferredMod === "DT" ? "NM" : "DT";
 
         // Calcular rango de PP recomendado

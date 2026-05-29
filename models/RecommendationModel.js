@@ -42,10 +42,11 @@ function ppToStars(pp) {
  * Analiza el Top 100 de jugadas de un usuario de forma asíncrona para construir su perfil
  * utilizando los tags enriquecidos de la base de datos local.
  */
-async function buildUserProfileAsync(topScores, supabase) {
+async function buildUserProfileAsync(topScores, supabase = null) {
     if (!Array.isArray(topScores) || topScores.length === 0) {
         return null;
     }
+    const dbClient = supabase || getSupabaseClient();
 
     const top25 = topScores.slice(0, 25);
     let totalStars = 0;
@@ -100,9 +101,9 @@ async function buildUserProfileAsync(topScores, supabase) {
     // Obtener los tags desde nuestra BD local para el Top 50 de forma masiva
     const mapIds = top50.map(score => score.beatmap?.id).filter(Boolean);
     let dbTagsMap = new Map();
-    if (supabase && mapIds.length > 0) {
+    if (dbClient && mapIds.length > 0) {
         try {
-            const { data } = await supabase
+            const { data } = await dbClient
                 .from('ranked_beatmaps')
                 .select('beatmap_id, beatmapset_id, user_tags')
                 .in('beatmap_id', mapIds);
@@ -128,7 +129,7 @@ async function buildUserProfileAsync(topScores, supabase) {
                             if (tags && tags.length > 0) {
                                 const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
                                 
-                                await supabase
+                                await dbClient
                                     .from('ranked_beatmaps')
                                     .update({ user_tags: cleanTags })
                                     .eq('beatmapset_id', setId);
