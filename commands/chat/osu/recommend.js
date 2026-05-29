@@ -104,7 +104,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
         const minPP = averagePP * 0.90;
         const maxPP = averagePP * 1.10;
 
-        const finalRecs = await RecommendationModel.getPersonalizedRecommendations({
+        const candidates = await RecommendationModel.getPersonalizedRecommendations({
             topScores,
             customMinPP: minPP,
             customMaxPP: maxPP,
@@ -112,6 +112,51 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             style: 'standard',
             showPlayed: false
         });
+
+        const filteredCandidates = [];
+        const seenBeatmapsets = new Set();
+        for (const candidate of candidates) {
+            if (filteredCandidates.length >= 12) break;
+            if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
+            seenBeatmapsets.add(candidate.beatmapsetId);
+            filteredCandidates.push(candidate);
+        }
+
+        let finalRecs = [];
+        if (filteredCandidates.length >= 3) {
+            const pool = filteredCandidates.slice(0, 12);
+            pool.sort((a, b) => b.popularity - a.popularity);
+            const N = pool.length;
+            const tierSize = Math.floor(N / 3);
+            const highTier = pool.slice(0, tierSize);
+            const midTier = pool.slice(tierSize, 2 * tierSize);
+            const lowTier = pool.slice(2 * tierSize);
+            
+            const selectBestByScore = (tier) => {
+                if (tier.length === 0) return null;
+                return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
+            };
+            
+            const rec1 = selectBestByScore(highTier);
+            const rec2 = selectBestByScore(midTier);
+            const rec3 = selectBestByScore(lowTier);
+            
+            if (rec1) finalRecs.push(rec1);
+            if (rec2) finalRecs.push(rec2);
+            if (rec3) finalRecs.push(rec3);
+            
+            for (const item of filteredCandidates) {
+                if (finalRecs.length >= 3) break;
+                if (!finalRecs.some(r => r.beatmapId === item.beatmapId)) {
+                    finalRecs.push(item);
+                }
+            }
+            finalRecs.sort((a, b) => b.popularity - a.popularity);
+        } else {
+            finalRecs = filteredCandidates;
+        }
+
+        await RecommendationModel.recalculateExactPP(finalRecs, userProfile.preferredMod);
 
         if (finalRecs.length > 0) {
             recommendCache.set(cacheKey, {
@@ -321,24 +366,68 @@ async function run(messages, args) {
                     await updateStatus("⚔️ Filtrando mapas jugados y preparando recomendaciones...", "Filtrando mapas jugados y preparando recomendaciones");
                 }
 
-                const finalRecs = [];
+                const filteredCandidates = [];
+                const seenBeatmapsets = new Set();
                 for (const candidate of candidates) {
-                    if (finalRecs.length >= 3) break;
+                    if (filteredCandidates.length >= 12) break;
+                    if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
 
                     const idStr = candidate.beatmapId.toString();
                     const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
 
                     const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+                    let accepted = false;
                     if (showPlayed) {
-                        if (hasScore) finalRecs.push(candidate);
+                        if (hasScore) accepted = true;
                     } else {
-                        if (!hasScore) finalRecs.push(candidate);
+                        if (!hasScore) accepted = true;
+                    }
+
+                    if (accepted) {
+                        seenBeatmapsets.add(candidate.beatmapsetId);
+                        filteredCandidates.push(candidate);
                     }
 
                     if (!isCached) {
                         await new Promise(resolve => setTimeout(resolve, 80));
                     }
                 }
+
+                let finalRecs = [];
+                if (filteredCandidates.length >= 3) {
+                    const pool = filteredCandidates.slice(0, 12);
+                    pool.sort((a, b) => b.popularity - a.popularity);
+                    const N = pool.length;
+                    const tierSize = Math.floor(N / 3);
+                    const highTier = pool.slice(0, tierSize);
+                    const midTier = pool.slice(tierSize, 2 * tierSize);
+                    const lowTier = pool.slice(2 * tierSize);
+                    
+                    const selectBestByScore = (tier) => {
+                        if (tier.length === 0) return null;
+                        return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
+                    };
+                    
+                    const rec1 = selectBestByScore(highTier);
+                    const rec2 = selectBestByScore(midTier);
+                    const rec3 = selectBestByScore(lowTier);
+                    
+                    if (rec1) finalRecs.push(rec1);
+                    if (rec2) finalRecs.push(rec2);
+                    if (rec3) finalRecs.push(rec3);
+                    
+                    for (const item of filteredCandidates) {
+                        if (finalRecs.length >= 3) break;
+                        if (!finalRecs.some(r => r.beatmapId === item.beatmapId)) {
+                            finalRecs.push(item);
+                        }
+                    }
+                    finalRecs.sort((a, b) => b.popularity - a.popularity);
+                } else {
+                    finalRecs = filteredCandidates;
+                }
+
+                await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
                 return finalRecs;
             } catch (err) {
                 console.error("Error al obtener recomendaciones de base de datos:", err);
@@ -426,24 +515,68 @@ async function run(messages, args) {
                 skipSet: skipSet
             });
 
-            const finalRecs = [];
+            const filteredCandidates = [];
+            const seenBeatmapsets = new Set();
             for (const candidate of candidates) {
-                if (finalRecs.length >= 3) break;
+                if (filteredCandidates.length >= 12) break;
+                if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
 
                 const idStr = candidate.beatmapId.toString();
                 const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
 
                 const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+                let accepted = false;
                 if (showPlayed) {
-                    if (hasScore) finalRecs.push(candidate);
+                    if (hasScore) accepted = true;
                 } else {
-                    if (!hasScore) finalRecs.push(candidate);
+                    if (!hasScore) accepted = true;
+                }
+
+                if (accepted) {
+                    seenBeatmapsets.add(candidate.beatmapsetId);
+                    filteredCandidates.push(candidate);
                 }
 
                 if (!isCached) {
                     await new Promise(resolve => setTimeout(resolve, 80));
                 }
             }
+
+            let finalRecs = [];
+            if (filteredCandidates.length >= 3) {
+                const pool = filteredCandidates.slice(0, 12);
+                pool.sort((a, b) => b.popularity - a.popularity);
+                const N = pool.length;
+                const tierSize = Math.floor(N / 3);
+                const highTier = pool.slice(0, tierSize);
+                const midTier = pool.slice(tierSize, 2 * tierSize);
+                const lowTier = pool.slice(2 * tierSize);
+                
+                const selectBestByScore = (tier) => {
+                    if (tier.length === 0) return null;
+                    return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
+                };
+                
+                const rec1 = selectBestByScore(highTier);
+                const rec2 = selectBestByScore(midTier);
+                const rec3 = selectBestByScore(lowTier);
+                
+                if (rec1) finalRecs.push(rec1);
+                if (rec2) finalRecs.push(rec2);
+                if (rec3) finalRecs.push(rec3);
+                
+                for (const item of filteredCandidates) {
+                    if (finalRecs.length >= 3) break;
+                    if (!finalRecs.some(r => r.beatmapId === item.beatmapId)) {
+                        finalRecs.push(item);
+                    }
+                }
+                finalRecs.sort((a, b) => b.popularity - a.popularity);
+            } else {
+                finalRecs = filteredCandidates;
+            }
+
+            await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
             return finalRecs;
         } catch (err) {
             console.error("Error al obtener recomendaciones de botones:", err);

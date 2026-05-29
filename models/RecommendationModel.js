@@ -562,17 +562,17 @@ async function getPersonalizedRecommendations({
     // Ordenar por afinidad descendente
     scoredCandidates.sort((a, b) => b.matchScore - a.matchScore);
 
-    const finalRecs = scoredCandidates.slice(0, 3);
+    return scoredCandidates.slice(0, 30);
+}
 
-    // Recalcular PP exacto con rosu-pp para las 3 mejores sugerencias
+async function recalculateExactPP(recs, activeMods) {
     try {
         const rosu = require("rosu-pp-js");
         const BeatmapModel = require("./BeatmapModel.js");
         const activeModsStr = activeMods.replace(/CL/g, "");
 
-        for (const rec of finalRecs) {
+        for (const rec of recs) {
             try {
-                // Construir metadatos para descargar el archivo .osu y registrarlo localmente en la caché de base de datos
                 const meta = {
                     status: 'ranked',
                     last_updated: new Date().toISOString(),
@@ -599,14 +599,14 @@ async function getPersonalizedRecommendations({
     } catch (outerErr) {
         Logger.system(`Error cargando rosu-pp para recalculación de recomendaciones: ${outerErr.message}`);
     }
-
-    return finalRecs;
+    return recs;
 }
 
 module.exports = {
     buildUserProfile,
     buildUserProfileAsync,
     getPersonalizedRecommendations,
+    recalculateExactPP,
     estimatePP,
     ppToStars
 };
