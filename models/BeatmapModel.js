@@ -249,14 +249,19 @@ async function getOsuPpsData(gamemode = 'osu') {
 let lastScraperBlockTime = 0;
 const tagsCache = new Map();
 
-/**
- * Obtiene las etiquetas de usuario (related_tags) de un beatmapset mediante scraping de la web oficial de osu!.
- */
+const USER_AGENTS = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:123.0) Gecko/20100101 Firefox/123.0',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3 Safari/605.1.15',
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 OPR/107.0.0.0'
+];
+
 async function getBeatmapsetTags(beatmapsetId) {
     const now = Date.now();
     
-    // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 12 horas
-    if (now - lastScraperBlockTime < 12 * 60 * 60 * 1000) {
+    // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 15 minutos
+    if (now - lastScraperBlockTime < 15 * 60 * 1000) {
         return [];
     }
 
@@ -266,10 +271,11 @@ async function getBeatmapsetTags(beatmapsetId) {
     }
 
     try {
+        const randomUA = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
         const url = `https://osu.ppy.sh/beatmapsets/${beatmapsetId}`;
         const res = await axios.get(url, {
             headers: { 
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                'User-Agent': randomUA,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
                 'Accept-Language': 'es-ES,es;q=0.8,en-US;q=0.5,en;q=0.3',
                 'Referer': 'https://osu.ppy.sh/beatmapsets',
@@ -294,7 +300,7 @@ async function getBeatmapsetTags(beatmapsetId) {
         const is403 = e.response && e.response.status === 403;
         if (is403) {
             lastScraperBlockTime = now;
-            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 5 minutos).`);
+            Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
         } else {
             Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
         }

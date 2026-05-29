@@ -106,8 +106,9 @@ async function checkNewBeatmaps() {
                         created_at: new Date().toISOString()
                     });
                 }
-                // Esperar un breve delay entre raspados para ser respetuosos con rate limit de la web
-                await new Promise(resolve => setTimeout(resolve, 300));
+                // Esperar un delay aleatorio entre 2.5 y 5 segundos para evitar detección de bots por Cloudflare
+                const randomDelay = Math.floor(Math.random() * 2500) + 2500;
+                await new Promise(resolve => setTimeout(resolve, randomDelay));
             }
 
             if (beatmapsToInsert.length > 0) {
