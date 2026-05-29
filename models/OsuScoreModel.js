@@ -1653,6 +1653,21 @@ function calculateNoChokeRank(stats, mods, mode = 'osu') {
 }
 
 async function ensureNoChokeScores(scores, gamemode) {
+    if (!Array.isArray(scores) || scores.length === 0) return;
+
+    // Precargar todos los mapas de las puntuaciones en lote desde la base de datos
+    const beatmapIds = scores
+        .map(s => s.beatmap?.id || s.beatmap_id)
+        .filter(Boolean);
+        
+    if (beatmapIds.length > 0) {
+        try {
+            await BeatmapModel.batchGetBeatmaps(beatmapIds);
+        } catch (err) {
+            // Silencioso, getBeatmap individual se encargará
+        }
+    }
+
     const promises = scores.map(async (score) => {
         if (score.noChoke) return;
 

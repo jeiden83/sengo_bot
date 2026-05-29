@@ -8,6 +8,7 @@ const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
 const Logger = require("../utils/logger.js");
 const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { getSupabaseClient } = require("../db/database.js");
 
 let osuDirectOnline = true;
 let lastOsuDirectCheck = 0;
@@ -129,7 +130,7 @@ const activeBeatmapPromises = new Map();
 /**
  * Obtiene los detalles de dificultad de un beatmap dado, con caché de 1 hora.
  */
-async function getBeatmap(beatmap_id) {
+async function getBeatmap(beatmap_id, priority = 2) {
     let cleanId = beatmap_id;
     if (typeof beatmap_id === 'string') {
         const match = beatmap_id.match(/\/beatmaps\/(\d+)/) || beatmap_id.match(/\/b\/(\d+)/);
@@ -148,16 +149,56 @@ async function getBeatmap(beatmap_id) {
         return cached.data;
     }
 
+    // 1. Intentar buscar en la base de datos local (ranked_beatmaps) primero
+    try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            const { data: dbMap, error } = await supabase
+                .from('ranked_beatmaps')
+                .select('*')
+                .eq('beatmap_id', cleanId)
+                .maybeSingle();
+
+            if (!error && dbMap) {
+                const STATUS_MAP = {
+                    1: 'ranked',
+                    2: 'approved',
+                    3: 'qualified',
+                    4: 'loved'
+                };
+                const result = {
+                    id: dbMap.beatmap_id,
+                    beatmapset_id: dbMap.beatmapset_id,
+                    max_combo: dbMap.max_combo || 0,
+                    status: STATUS_MAP[dbMap.ranked_status] || 'ranked',
+                    ar: dbMap.ar,
+                    cs: dbMap.cs,
+                    accuracy: dbMap.od,
+                    hp: dbMap.hp,
+                    bpm: dbMap.bpm,
+                    difficulty_rating: dbMap.stars,
+                    mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
+                    mode_int: dbMap.mode,
+                    version: dbMap.version
+                };
+                setWithLimit(beatmapCache, cleanId, { data: result, timestamp: Date.now() });
+                return result;
+            }
+        }
+    } catch (dbErr) {
+        Logger.system(`Error al consultar ranked_beatmaps para beatmap ${cleanId}: ${dbErr.message}`);
+    }
+
     if (activeBeatmapPromises.has(cleanId)) {
         return activeBeatmapPromises.get(cleanId);
     }
 
     const promise = (async () => {
         await OsuUserModel.NewloadToken();
-        const result = await v2.beatmaps.details({
+        const result = await osuApiQueue.add(() => v2.beatmaps.details({
             type: 'difficulty',
             id: cleanId
-        });
+        }), priority);
         setWithLimit(beatmapCache, cleanId, { data: result, timestamp: Date.now() });
         return result;
     })();
@@ -168,6 +209,86 @@ async function getBeatmap(beatmap_id) {
     } finally {
         activeBeatmapPromises.delete(cleanId);
     }
+}
+
+/**
+ * Obtiene los detalles de dificultad para múltiples beatmaps en lote consultando a la DB.
+ * Esto evita consultas secuenciales individuales y peticiones HTTP.
+ */
+async function batchGetBeatmaps(beatmapIds) {
+    if (!Array.isArray(beatmapIds) || beatmapIds.length === 0) {
+        return [];
+    }
+
+    const cleanIds = beatmapIds.map(id => {
+        if (typeof id === 'string') {
+            return parseInt(id);
+        }
+        return id;
+    }).filter(id => !isNaN(id));
+
+    if (cleanIds.length === 0) return [];
+
+    // Encontrar qué IDs NO están en la caché
+    const idsToQuery = [];
+    const now = Date.now();
+    for (const id of cleanIds) {
+        const cached = beatmapCache.get(id);
+        if (!cached || (now - cached.timestamp) >= 3600000) {
+            idsToQuery.push(id);
+        }
+    }
+
+    if (idsToQuery.length > 0) {
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data, error } = await supabase
+                    .from('ranked_beatmaps')
+                    .select('*')
+                    .in('beatmap_id', idsToQuery);
+
+                if (!error && data) {
+                    const STATUS_MAP = {
+                        1: 'ranked',
+                        2: 'approved',
+                        3: 'qualified',
+                        4: 'loved'
+                    };
+                    for (const dbMap of data) {
+                        const result = {
+                            id: dbMap.beatmap_id,
+                            beatmapset_id: dbMap.beatmapset_id,
+                            max_combo: dbMap.max_combo || 0,
+                            status: STATUS_MAP[dbMap.ranked_status] || 'ranked',
+                            ar: dbMap.ar,
+                            cs: dbMap.cs,
+                            accuracy: dbMap.od,
+                            hp: dbMap.hp,
+                            bpm: dbMap.bpm,
+                            difficulty_rating: dbMap.stars,
+                            mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
+                            mode_int: dbMap.mode,
+                            version: dbMap.version
+                        };
+                        setWithLimit(beatmapCache, dbMap.beatmap_id, { data: result, timestamp: Date.now() });
+                    }
+                }
+            }
+        } catch (dbErr) {
+            Logger.system(`Error en consulta por lote de ranked_beatmaps: ${dbErr.message}`);
+        }
+    }
+
+    // Retornar los mapas que ya están en caché (que ahora incluye los recién consultados de la DB)
+    const results = [];
+    for (const id of cleanIds) {
+        const cached = beatmapCache.get(id);
+        if (cached) {
+            results.push(cached.data);
+        }
+    }
+    return results;
 }
 
 /**
@@ -333,6 +454,7 @@ const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
+    batchGetBeatmaps,
     lookupBeatmapByMD5,
     getOsuPpsData,
     getBeatmapsetTags,
