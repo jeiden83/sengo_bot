@@ -1580,6 +1580,171 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
     });
 }
 
+function calculateNoChokeRank(stats, mods, mode = 'osu') {
+    const hasHDorFL = mods && mods.some(m => {
+        const acronym = typeof m === 'object' ? m.acronym : m;
+        return acronym === 'HD' || acronym === 'FL';
+    });
+
+    const great = stats.great || 0;
+    const ok = stats.ok || 0;
+    const meh = stats.meh || 0;
+    const miss = stats.miss || 0;
+    const perfect = stats.perfect || 0;
+    const good = stats.good || 0;
+
+    if (mode === 'osu' || mode === 0) {
+        const total = great + ok + meh + miss;
+        if (total === 0) return "S";
+        
+        const ratio300 = great / total;
+        const ratio50 = meh / total;
+
+        if (ratio300 === 1.0) {
+            return hasHDorFL ? "XH" : "X";
+        }
+        if (ratio300 > 0.90 && ratio50 <= 0.01 && miss === 0) {
+            return hasHDorFL ? "SH" : "S";
+        }
+        if (ratio300 > 0.80) return "A";
+        if (ratio300 > 0.70) return "B";
+        if (ratio300 > 0.60) return "C";
+        return "D";
+    }
+
+    if (mode === 'taiko' || mode === 1) {
+        const total = great + ok + miss;
+        if (total === 0) return "S";
+
+        const ratioGreat = great / total;
+        if (ratioGreat === 1.0) {
+            return hasHDorFL ? "XH" : "X";
+        }
+        if (ratioGreat > 0.95 && miss === 0) {
+            return hasHDorFL ? "SH" : "S";
+        }
+        if (ratioGreat > 0.90) return "A";
+        if (ratioGreat > 0.80) return "B";
+        return "C";
+    }
+
+    if (mode === 'fruits' || mode === 2) {
+        return hasHDorFL ? "SH" : "S"; 
+    }
+
+    if (mode === 'mania' || mode === 3) {
+        const total = perfect + great + good + ok + meh + miss;
+        if (total === 0) return "S";
+
+        const scoreVal = (perfect * 305 + great * 300 + good * 200 + ok * 100 + meh * 50) / (total * 305);
+        if (scoreVal >= 1.0) {
+            return hasHDorFL ? "XH" : "X";
+        }
+        if (scoreVal > 0.95) {
+            return hasHDorFL ? "SH" : "S";
+        }
+        if (scoreVal > 0.90) return "A";
+        if (scoreVal > 0.80) return "B";
+        if (scoreVal > 0.70) return "C";
+        return "D";
+    }
+
+    return "S";
+}
+
+async function ensureNoChokeScores(scores, gamemode) {
+    const promises = scores.map(async (score) => {
+        if (score.noChoke) return;
+
+        const stats = score.statistics || {};
+        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+
+        let beatmap_id = score.beatmap?.id;
+        if (!beatmap_id) return;
+
+        try {
+            const beatmap = await BeatmapModel.getBeatmap(beatmap_id);
+            const maxCombo = beatmap.max_combo || 0;
+            const isFC = miss === 0 && score.max_combo >= (maxCombo - 2);
+
+            const ncStats = {
+                perfect: perfect,
+                great: great + miss,
+                good: good,
+                ok: ok,
+                meh: meh,
+                miss: 0
+            };
+
+            let ncAcc = score.accuracy;
+            const mode = score.beatmap?.mode || gamemode || 'osu';
+            const totalHits = great + ok + meh + miss;
+
+            if (mode === 'osu' || mode === 0) {
+                if (totalHits > 0) {
+                    ncAcc = (300 * (great + miss) + 100 * ok + 50 * meh) / (300 * totalHits);
+                }
+            } else if (mode === 'taiko' || mode === 1) {
+                const totalObjects = great + ok + miss;
+                if (totalObjects > 0) {
+                    ncAcc = (great + miss + 0.5 * ok) / totalObjects;
+                }
+            } else if (mode === 'fruits' || mode === 2) {
+                ncAcc = 1.0;
+            } else if (mode === 'mania' || mode === 3) {
+                if (totalHits > 0) {
+                    ncAcc = (305 * perfect + 300 * (great + miss) + 200 * good + 100 * ok + 50 * meh) / (305 * totalHits);
+                }
+            }
+
+            const ncRank = calculateNoChokeRank(ncStats, score.mods, mode);
+
+            const map = await BeatmapModel.getBeatmap_osu(score.beatmap.beatmapset_id || score.beatmap.set_id || beatmap.beatmapset_id, beatmap_id, beatmap);
+            const maxAttrs = calculatePP(score, map, "maximo_pp");
+            
+            const nc_score = {
+                ...score,
+                max_combo: maxCombo || score.max_combo,
+                statistics: ncStats,
+                mods: score.mods
+            };
+            const live_nc_pp = calculatePP(nc_score, map, null, maxAttrs).pp;
+            map.free();
+
+            let rework_nc_pp = live_nc_pp;
+            if (score.values && typeof score.values.local_pp === 'number' && typeof score.values.live_pp === 'number' && score.values.live_pp > 0) {
+                rework_nc_pp = live_nc_pp * (score.values.local_pp / score.values.live_pp);
+            }
+
+            score.noChoke = {
+                accuracy: ncAcc * 100,
+                pp: score.values ? rework_nc_pp : live_nc_pp,
+                live_pp: live_nc_pp,
+                rank: ncRank,
+                max_combo: maxCombo || score.max_combo,
+                statistics: ncStats
+            };
+        } catch (err) {
+            console.error(`Error calculating no-choke for score ${score.score_id || score.id}:`, err);
+            score.noChoke = {
+                accuracy: score.accuracy * 100,
+                pp: score.values ? score.values.local_pp : (score.pp || 0),
+                live_pp: score.values ? score.values.live_pp : (score.pp || 0),
+                rank: score.rank,
+                max_combo: score.max_combo,
+                statistics: score.statistics
+            };
+        }
+    });
+
+    await Promise.all(promises);
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
@@ -1597,7 +1762,8 @@ const OsuScoreModel = {
     triggerBackgroundGapCache,
     handlePredictivePreload,
     triggerBackgroundOsuPreload,
-    triggerBackgroundRecentPreload
+    triggerBackgroundRecentPreload,
+    ensureNoChokeScores
 };
 
 module.exports = OsuScoreModel;

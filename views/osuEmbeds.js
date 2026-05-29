@@ -306,6 +306,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
     if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
     if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
+    if (parsed_args.nochoke) active_filters.push(`no-choke: activo 🛡️`);
 
     if (active_filters.length > 0) {
         prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -313,9 +314,17 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
 
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
+    const authorName = parsed_args.nochoke
+        ? `Puntuación #${index} [${score.originalRank}] en el Top de PP (No Choke) de ${username}`
+        : `Puntuación #${score.originalRank || index} en el Top de PP de ${username}`;
+
+    const footerText = parsed_args.nochoke
+        ? `Sengo • Jugada #${index} de ${total_plays} del Top de PP (No Choke)`
+        : `Sengo • Jugada #${index} de ${total_plays} del Top de PP`;
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Puntuación #${score.originalRank || index} en el Top de PP de ${username}`,
+            name: authorName,
             url: user_url,
             iconURL: `${avatar_url}`,
         })
@@ -327,7 +336,7 @@ ${ansiBlock}
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Jugada #${index} de ${total_plays} del Top de PP`,
+            text: footerText,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -357,6 +366,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
     if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
     if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
+    if (parsed_args.nochoke) active_filters.push(`no-choke: activo 🛡️`);
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
@@ -389,8 +399,25 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
-        const score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
-            ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
+        let score_line = "";
+        if (parsed_args.nochoke) {
+            score_line += `**#${globalIndex} [${score.originalRank}]** ▸ ${map_link} +${mods_used} [${stars}]\n`;
+            if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
+                const old_grade = getGradeEmoji(score.originalRankGrade, score.passed);
+                const old_pp = `${score.originalPP.toFixed(2)}pp`;
+                const old_acc = `${(score.originalAccuracy * 100).toFixed(2)}%`;
+                const old_stats = `\`${getPlainStatsString(score.originalStats, score.beatmap.mode)}\``;
+                
+                score_line += ` ▸ ${old_grade} ➔ ${grade_emoji} ▸ \`${old_pp}\` ➔ **\`${pp}\`** ▸ \`${old_acc}\` ➔ **\`${accuracy}%\`**\n` +
+                    ` ▸ x${score.originalCombo} ➔ **x${max_combo}/${max_combo}** ▸ ${old_stats} ➔ ${stats_str}\n`;
+            } else {
+                score_line += ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str}\n`;
+            }
+            score_line += ` ▸ ${time_set}\n\n`;
+        } else {
+            score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
+                ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
+        }
 
         embed_description = embed_description.concat(score_line);
     }
@@ -399,9 +426,12 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     const avatar_url = top_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 
+    const authorSuffix = parsed_args.nochoke ? " (No Choke)" : "";
+    const footerSuffix = parsed_args.nochoke ? " (No Choke)" : "";
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Mejores puntuaciones de ${username} en osu!${parsed_args.gamemode || 'std'}`,
+            name: `Mejores puntuaciones de ${username} en osu!${parsed_args.gamemode || 'std'}${authorSuffix}`,
             url: user_url,
             iconURL: avatar_url
         })
@@ -409,7 +439,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         .setDescription(embed_description)
         .setColor(embedColor)
         .setFooter({
-            text: `Mostrando jugadas ${startIndex + 1}-${startIndex + top_scores_chunk.length} de ${total_plays} mejores`,
+            text: `Mostrando jugadas ${startIndex + 1}-${startIndex + top_scores_chunk.length} de ${total_plays} mejores${footerSuffix}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -1254,8 +1284,10 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, start
     const embedColor = getEmbedColor(message);
     const total_plays = sortedScores.length;
     const topScores = sortedScores.slice(startIndex, startIndex + 5);
+    const isNoChoke = sortedScores.some(s => s.noChoke);
 
-    let description = `Aquí tienes las mejores jugadas recalculadas para **${osuUser.username}** bajo el rework **${rework.name}** (\`${rework.code}\`).\n\n`;
+    const descSuffix = isNoChoke ? " (No Choke)" : "";
+    let description = `Aquí tienes las mejores jugadas recalculadas para **${osuUser.username}** bajo el rework **${rework.name}** (\`${rework.code}\`)${descSuffix}.\n\n`;
 
     topScores.forEach((score, index) => {
         const beatmap = score.beatmap || {};
@@ -1284,13 +1316,16 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, start
         description += ` ▸ **Acc:** \`${score.accuracy.toFixed(2)}%\` | **Rank:** \`#${oldRank}\` ➔ \`#${newRank}\`\n\n`;
     });
 
+    const titleSuffix = isNoChoke ? " (No Choke)" : "";
+    const footerSuffix = isNoChoke ? " (No Choke)" : "";
+
     const embed = new EmbedBuilder()
-        .setTitle(`Top Rework de PP - ${osuUser.username}`)
+        .setTitle(`Top Rework de PP - ${osuUser.username}${titleSuffix}`)
         .setColor(embedColor)
         .setThumbnail(osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`)
         .setDescription(description)
         .setFooter({
-            text: `Sengo • PP Rework Top Plays (${startIndex + 1}-${Math.min(total_plays, startIndex + 5)} de ${total_plays}) Birb`,
+            text: `Sengo • PP Rework Top Plays (${startIndex + 1}-${Math.min(total_plays, startIndex + 5)} de ${total_plays}) Birb${footerSuffix}`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -1337,9 +1372,20 @@ async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index,
     const readPP = `\\u001b[1;30mWeighted Reading:\\u001b[0m ${(values.reading_pp || 0).toFixed(2)}pp`;
     const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
 
+    const isNoChoke = !!score.noChoke;
+    const authorName = isNoChoke
+        ? `Puntuación #${index} en el Rework (No Choke) para ${osuUser.username}`
+        : `Puntuación #${index} en el Rework para ${osuUser.username}`;
+
+    const footerText = isNoChoke
+        ? `Sengo • PP Rework Top Play #${index} de ${total_plays} (No Choke)`
+        : `Sengo • PP Rework Top Play #${index} de ${total_plays}`;
+
+    const descSuffix = isNoChoke ? " (No Choke)" : "";
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Puntuación #${index} en el Rework para ${osuUser.username}`,
+            name: authorName,
             url: user_url,
             iconURL: avatar_url
         })
@@ -1349,7 +1395,7 @@ async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index,
         .setDescription(`
 **• Mods:** \`${modsStr || 'None'}\`
 **• Dificultad:** \`${srDisplay}\`
-**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})
+**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})${descSuffix}
 
 **Comparación de PP:**
 ▸ **PP Live:** \`${livePP.toFixed(2)} pp\`
@@ -1362,7 +1408,7 @@ async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index,
 ${statsBlock}
         `)
         .setFooter({
-            text: `Sengo • PP Rework Top Play #${index} de ${total_plays}`,
+            text: footerText,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

@@ -40,6 +40,11 @@ const data = new SlashCommandBuilder()
         option.setName("ordenar_reciente")
             .setDescription("¿Ordenar el top por jugadas más recientes en lugar de por PP?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("nochoke")
+            .setDescription("¿Mostrar el top de PP recalculado como si todas las jugadas fueran Full Combo?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -51,6 +56,7 @@ async function run(interaction, res) {
     const modsContiene = interaction.options.getString("mods_contiene");
     const umbralPp = interaction.options.getInteger("umbral_pp");
     const ordenarReciente = interaction.options.getBoolean("ordenar_reciente");
+    const nochoke = interaction.options.getBoolean("nochoke");
 
     if (index) {
         args.push(`-i${index}`);
@@ -69,6 +75,9 @@ async function run(interaction, res) {
     }
     if (ordenarReciente) {
         args.push("-r");
+    }
+    if (nochoke) {
+        args.push("-nc");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

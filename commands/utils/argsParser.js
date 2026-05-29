@@ -423,6 +423,7 @@ function argsParserNoCommand(args, options = {}) {
     let stableMode = false;
     let lazerMode = false;
     let regional = null;
+    let nochoke = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -741,6 +742,12 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
+        // Si es exactamente "-nc" o "-nochoke"
+        if (arg === "-nc" || arg === "-nochoke") {
+            nochoke = true;
+            continue;
+        }
+
         // Si es exactamente "-b"
         if (arg === "-b") {
             bestSort = true;
@@ -878,7 +885,7 @@ function argsParserNoCommand(args, options = {}) {
             const knownFlags = new Set([
                 'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region', 
                 'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina',
-                'wins', 'w', 'wr', 'winrate'
+                'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;
@@ -1100,7 +1107,8 @@ function argsParserNoCommand(args, options = {}) {
         'sortByPPChange': sortByPPChange,
         'invalidModsWarning': invalidModsWarning,
         'stableMode': stableMode,
-        'lazerMode': lazerMode
+        'lazerMode': lazerMode,
+        'nochoke': nochoke
     };
     return parsed_args;
 }

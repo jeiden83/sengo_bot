@@ -38,6 +38,11 @@ const data = new SlashCommandBuilder()
         option.setName("top")
             .setDescription("Ver el top de jugadas de PP recalculado para el rework")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("nochoke")
+            .setDescription("¿Mostrar el top de PP recalculado como si todas las jugadas fueran Full Combo?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -48,6 +53,7 @@ async function run(interaction, res) {
     const comparar = interaction.options.getBoolean("comparar");
     const lista = interaction.options.getBoolean("lista");
     const top = interaction.options.getBoolean("top");
+    const nochoke = interaction.options.getBoolean("nochoke");
 
     const args = [];
     if (lista) {
@@ -68,6 +74,9 @@ async function run(interaction, res) {
     }
     if (mods) {
         args.push(mods.startsWith("+") ? mods : `+${mods}`);
+    }
+    if (nochoke) {
+        args.push("-nc");
     }
 
     const messages = {

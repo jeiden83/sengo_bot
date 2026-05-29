@@ -43,5 +43,6 @@ module.exports = {
     normalizeStatistics: OsuScoreModel.normalizeStatistics,
     getBeatmapsetTags: BeatmapModel.getBeatmapsetTags,
     fetchRankingPage: OsuUserModel.fetchRankingPage,
-    fetchRankingAcc: OsuUserModel.fetchRankingAcc
+    fetchRankingAcc: OsuUserModel.fetchRankingAcc,
+    ensureNoChokeScores: OsuScoreModel.ensureNoChokeScores
 }
