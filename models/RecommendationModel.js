@@ -60,7 +60,7 @@ async function buildUserProfileAsync(topScores, supabase = null) {
     let nmCount = 0;
 
     top25.forEach(score => {
-        const mods = (score.mods || []).map(m => m.acronym);
+        const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasDT = mods.includes("DT") || mods.includes("NC");
         const hasHR = mods.includes("HR");
 
@@ -217,7 +217,7 @@ function buildUserProfile(topScores) {
     let nmCount = 0;
 
     top25.forEach(score => {
-        const mods = (score.mods || []).map(m => m.acronym);
+        const mods = (score.mods || []).map(m => m?.acronym || m);
         const hasDT = mods.includes("DT") || mods.includes("NC");
         const hasHR = mods.includes("HR");
 
@@ -314,18 +314,23 @@ async function getPersonalizedRecommendations({
 
     // Determinar rango de estrellas objetivo
     let targetStars = profile.avgStars;
-    if (customMinPP !== null) {
-        const targetPP = (customMinPP + (customMaxPP || customMinPP * 1.2)) / 2;
-        targetStars = ppToStars(targetPP);
-        if (activeMods.includes("DT") || activeMods.includes("NC")) {
-            targetStars /= 1.35;
-        } else if (activeMods.includes("HR")) {
-            targetStars /= 1.06;
-        }
-    }
+    let minStars = Math.max(1, targetStars - 0.85);
+    let maxStars = targetStars + 0.85;
 
-    const minStars = Math.max(1, targetStars - 0.85);
-    const maxStars = targetStars + 0.85;
+    if (customMinPP !== null) {
+        const minTargetStars = ppToStars(customMinPP);
+        const maxTargetStars = ppToStars(customMaxPP !== null ? customMaxPP : customMinPP * 1.3);
+        
+        let scale = 1.0;
+        if (activeMods.includes("DT") || activeMods.includes("NC")) {
+            scale = 1.35;
+        } else if (activeMods.includes("HR")) {
+            scale = 1.06;
+        }
+        
+        minStars = Math.max(1, (minTargetStars / scale) - 0.1);
+        maxStars = (maxTargetStars / scale) + 0.45;
+    }
 
     // 2. Query de candidatos en Supabase
     let query = supabase
@@ -342,13 +347,39 @@ async function getPersonalizedRecommendations({
         query = query.in('ranked_status', [1, 2]); // Ranked, Approved
     }
 
-    if (style === 'tags') {
+    const useTagsFilter = ['tags', 'aim', 'speed'].includes(style);
+    if (useTagsFilter) {
         query = query.not('user_tags', 'is', null);
     }
 
-    const { data: candidates, error } = await query;
+    query = query.order('playcount', { ascending: false }).limit(1000);
+
+    let { data: candidates, error } = await query;
     if (error) {
         throw error;
+    }
+
+    // Fallback: si intentamos filtrar por user_tags pero no encontramos suficientes candidatos,
+    // reintentamos sin el filtro de user_tags para aim/speed.
+    if (useTagsFilter && style !== 'tags' && (!candidates || candidates.length < 5)) {
+        let fallbackQuery = supabase
+            .from('ranked_beatmaps')
+            .select('*')
+            .gte('stars', minStars)
+            .lte('stars', maxStars)
+            .eq('mode', 0);
+
+        if (style === 'rarezas') {
+            fallbackQuery = fallbackQuery.in('ranked_status', [3, 4]);
+        } else {
+            fallbackQuery = fallbackQuery.in('ranked_status', [1, 2]);
+        }
+
+        fallbackQuery = fallbackQuery.order('playcount', { ascending: false }).limit(1000);
+        const fallbackRes = await fallbackQuery;
+        if (!fallbackRes.error && fallbackRes.data && fallbackRes.data.length > 0) {
+            candidates = fallbackRes.data;
+        }
     }
 
     if (!candidates || candidates.length === 0) {
