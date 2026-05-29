@@ -433,23 +433,22 @@ async function getPersonalizedRecommendations({
             let tagMatches = 0;
             let userTagMatches = 0;
             const matchedTagsList = [];
+            const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
 
-            if (Array.isArray(c.user_tags)) {
-                c.user_tags.forEach(t => {
-                    const cleanTag = t.toLowerCase().trim();
-                    if (profile.frequentTags.includes(cleanTag)) {
-                        tagMatches++;
-                        // Si es un user tag de estilo específico, darle doble peso
-                        if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
-                            userTagMatches++;
-                        }
-                        if (matchedTagsList.length < 2) {
-                            const displayName = cleanTag.includes('/') ? cleanTag.split('/')[1] : cleanTag;
-                            matchedTagsList.push(displayName);
-                        }
+            combinedTags.forEach(t => {
+                const cleanTag = t.toLowerCase().trim();
+                if (profile.frequentTags.includes(cleanTag)) {
+                    tagMatches++;
+                    // Si es un tag de estilo específico, darle doble peso
+                    if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
+                        userTagMatches++;
                     }
-                });
-            }
+                    if (matchedTagsList.length < 2) {
+                        const displayName = cleanTag.includes('/') ? cleanTag.split('/')[1] : cleanTag;
+                        matchedTagsList.push(displayName);
+                    }
+                }
+            });
             const tagScore = Math.min(30, (tagMatches * 3) + (userTagMatches * 4));
             score += tagScore;
             if (matchedTagsList.length > 0) {
@@ -472,13 +471,13 @@ async function getPersonalizedRecommendations({
 
             // Ajuste por estilo solicitado
             if (style === 'aim') {
-                const hasAimTag = Array.isArray(c.user_tags) && c.user_tags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
+                const hasAimTag = combinedTags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
                 if (hasAimTag) {
                     score += 25;
                     reasons.push("Enfoque: Aim");
                 }
             } else if (style === 'speed') {
-                const hasSpeedTag = Array.isArray(c.user_tags) && c.user_tags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
+                const hasSpeedTag = combinedTags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
                 if (hasSpeedTag) {
                     score += 25;
                     reasons.push("Enfoque: Speed");
