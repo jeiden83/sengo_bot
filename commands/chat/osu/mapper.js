@@ -7,6 +7,7 @@ const { EmbedBuilder } = require("discord.js");
 const fs = require("fs/promises");
 const path = require("path");
 const CONFIG = require("../../../config.js");
+const { getSupabaseClient } = require("../../../db/database.js");
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
@@ -35,19 +36,19 @@ async function run(messages, args) {
                 sortBy = 'kudosus';
             } else if (arg === '-gd' || arg === '-gds') {
                 sortBy = 'gd';
-            } else if (arg === '-rankeds' || arg === '-rankeados') {
+            } else if (arg === '-ranked' || arg === '-rankeds' || arg === '-rankeados') {
                 sortBy = 'ranked';
             } else if (arg === '-wip' || arg === '-pending') {
                 sortBy = 'wip';
             } else if (arg === '-loved' || arg === '-amados') {
                 sortBy = 'loved';
-            } else if (arg === '-seguidores' || arg === '-followers') {
+            } else if (arg === '-followers' || arg === '-seguidores') {
                 sortBy = 'followers';
-            } else if (arg === '-abandonados' || arg === '-graveyard') {
+            } else if (arg === '-graveyard' || arg === '-abandonados') {
                 sortBy = 'graveyard';
-            } else if (arg === '-reciente' || arg === '-recent') {
+            } else if (arg === '-recent' || arg === '-reciente') {
                 sortBy = 'recent';
-            } else if (arg === '-force' || arg === '-refresh') {
+            } else if (arg === '-refresh' || arg === '-force') {
                 forceUpdate = true;
             } else if (arg === '-server' || arg === '-sv' || arg === '-servidor') {
                 isServerMode = true;
@@ -66,26 +67,18 @@ async function run(messages, args) {
             return message.reply("❌ *El flag `-server` solo se puede usar dentro de un servidor de Discord.*");
         }
 
+        // Determinar el modo: 'national' (si hay filtro de país o no es global/server/sengo), 'global', 'server' o 'sengo'
         let mode = 'national';
-        if (isServerMode) {
+        if (isGlobalMode) {
+            mode = 'global';
+        } else if (isServerMode) {
             mode = 'server';
         } else if (isSengoMode) {
             mode = 'sengo';
-        } else if (isGlobalMode) {
-            mode = 'global';
-        }
-
-        if (mode === 'national' && !countryFilter) {
-            let dbCountry = null;
-            try {
-                const userToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
-                if (userToken && userToken.country_code) {
-                    dbCountry = userToken.country_code.toUpperCase();
-                }
-            } catch (err) {
-                console.error("Error al buscar país del usuario para mapper top:", err);
-            }
-            countryFilter = dbCountry || "VE";
+        } else if (!countryFilter) {
+            // Por defecto, si no hay filtro de país pero tampoco global/server/sengo, asumimos país del autor o VE
+            const userRecord = await OsuUserModel.getLinkedUser(message.author.id);
+            countryFilter = (userRecord && userRecord.country_code) ? userRecord.country_code.toUpperCase() : 'VE';
         }
 
         let statusMessage = null;
@@ -96,15 +89,32 @@ async function run(messages, args) {
             needsInitialMessage = true;
         } else {
             let cacheExists = false;
-            if (mode === 'national') {
-                const cPath = path.join(__dirname, `../../../data/mapper_national_${countryFilter.toLowerCase()}_cache.json`);
-                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
-            } else if (mode === 'global') {
-                const cPath = path.join(__dirname, "../../../data/mapper_global_kudosu_cache.json");
-                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
-            } else {
-                const cPath = path.join(__dirname, "../../../data/mapper_top_cache.json");
-                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                if (mode === 'national') {
+                    const { count } = await supabase
+                        .from('mapper_statistics')
+                        .select('*', { count: 'exact', head: true })
+                        .eq('country_code', countryFilter.toUpperCase());
+                    cacheExists = count && count > 0;
+                } else if (mode === 'global') {
+                    const { count } = await supabase
+                        .from('mapper_statistics')
+                        .select('*', { count: 'exact', head: true });
+                    cacheExists = count && count > 200;
+                } else {
+                    const linkedUsers = await OsuUserModel.getLinkedUsers(message.guild);
+                    const linkedOsuIds = linkedUsers.filter(u => u.osu_id).map(u => String(u.osu_id));
+                    if (linkedOsuIds.length > 0) {
+                        const { count } = await supabase
+                            .from('mapper_statistics')
+                            .select('*', { count: 'exact', head: true })
+                            .in('osu_id', linkedOsuIds);
+                        cacheExists = count && count > 0;
+                    } else {
+                        cacheExists = true;
+                    }
+                }
             }
             if (!cacheExists) {
                 needsInitialMessage = true;
@@ -286,10 +296,6 @@ async function run(messages, args) {
 
     const osuUser = osu_userdata.fn_response;
 
-    let currentType = type;
-    let currentPage = 1;
-    const cachedMaps = {};
-
     // Inicializar cliente osu! de forma diferida
     let client;
     async function getOsuClient() {
@@ -299,6 +305,17 @@ async function run(messages, args) {
         }
         return client;
     }
+
+    // Guardar/Actualizar en base de datos para autodescubrimiento (background)
+    getOsuClient().then(cli => {
+        OsuUserModel.upsertMapperFromProfile(osuUser, cli).catch(err => {
+            console.error("Error al actualizar mapper en segundo plano:", err);
+        });
+    }).catch(err => {});
+
+    let currentType = type;
+    let currentPage = 1;
+    const cachedMaps = {};
 
     async function fetchBeatmapsets(osuUserId, mapType) {
         if (cachedMaps[mapType]) {

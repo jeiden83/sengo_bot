@@ -1176,18 +1176,35 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
             .in('osu_id', linkedOsuIds);
 
         if (dbMappers && dbMappers.length > 0) {
-            return dbMappers.map(m => ({
-                ...m,
-                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
-            }));
+            return dbMappers
+                .map(m => ({
+                    ...m,
+                    kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+                }))
+                .filter(m => {
+                    const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+                    return total > 0;
+                });
         }
     }
 
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    const mappers = [];
+    let dbMappersMap = new Map();
+    if (linkedOsuIds.length > 0) {
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .in('osu_id', linkedOsuIds);
+        if (dbMappers) {
+            dbMappers.forEach(m => dbMappersMap.set(String(m.osu_id), m));
+        }
+    }
+
+    const mappersToUpsert = [];
     const totalUsers = users.length;
+    const now = Date.now();
     
     for (let idx = 0; idx < totalUsers; idx++) {
         const u = users[idx];
@@ -1197,9 +1214,31 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
             await onProgress(idx + 1, totalUsers, u.username || u.osu_id);
         }
         
+        const osuIdStr = String(u.osu_id);
+        const existing = dbMappersMap.get(osuIdStr);
+        
+        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+            mappersToUpsert.push({
+                osu_id: existing.osu_id,
+                username: existing.username,
+                country_code: existing.country_code,
+                kudosu_total: existing.kudosu_total,
+                kudosu_available: existing.kudosu_available,
+                ranked_count: existing.ranked_count,
+                loved_count: existing.loved_count,
+                pending_count: existing.pending_count,
+                graveyard_count: existing.graveyard_count,
+                guest_count: existing.guest_count,
+                followers: existing.followers,
+                last_updated: existing.last_updated
+            });
+            continue;
+        }
+        
         try {
             const profile = await client.users.getUser(u.osu_id, { urlParams: { mode: 'osu' } });
             
+            let last_updated = null;
             const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
                               (profile.loved_beatmapset_count || 0) +
                               (profile.pending_beatmapset_count || 0) +
@@ -1207,7 +1246,6 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                               (profile.guest_beatmapset_count || 0);
             
             if (totalMaps > 0) {
-                let last_updated = null;
                 const typesToCheck = [];
                 if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
                 if (profile.graveyard_beatmapset_count > 0) typesToCheck.push('graveyard');
@@ -1230,34 +1268,46 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 if (dates.length > 0) {
                     last_updated = new Date(Math.max(...dates)).toISOString();
                 }
-                
-                const mapperObj = {
-                    osu_id: String(profile.id),
-                    username: profile.username,
-                    country_code: profile.country_code,
-                    kudosu_total: profile.kudosu.total,
-                    kudosu_available: profile.kudosu.available,
-                    ranked_count: profile.ranked_and_approved_beatmapset_count,
-                    loved_count: profile.loved_beatmapset_count,
-                    pending_count: profile.pending_beatmapset_count,
-                    graveyard_count: profile.graveyard_beatmapset_count,
-                    guest_count: profile.guest_beatmapset_count,
-                    followers: profile.mapping_follower_count,
-                    last_updated
-                };
-                
-                mappers.push(mapperObj);
             }
+            
+            mappersToUpsert.push({
+                osu_id: String(profile.id),
+                username: profile.username,
+                country_code: profile.country_code,
+                kudosu_total: profile.kudosu.total,
+                kudosu_available: profile.kudosu.available,
+                ranked_count: profile.ranked_and_approved_beatmapset_count,
+                loved_count: profile.loved_beatmapset_count,
+                pending_count: profile.pending_beatmapset_count,
+                graveyard_count: profile.graveyard_beatmapset_count,
+                guest_count: profile.guest_beatmapset_count,
+                followers: profile.mapping_follower_count,
+                last_updated
+            });
         } catch (err) {
             console.error(`Error al consultar mapper ${u.osu_id}:`, err.message);
         }
+
+        // Upsert parcial cada 25 mappers para robustez
+        if (mappersToUpsert.length > 0 && mappersToUpsert.length % 25 === 0) {
+            try {
+                await supabase
+                    .from('mapper_statistics')
+                    .upsert(mappersToUpsert.map(m => ({
+                        ...m,
+                        updated_at: new Date().toISOString()
+                    })), { onConflict: 'osu_id' });
+            } catch (e) {
+                console.error("Error en upsert parcial:", e);
+            }
+        }
     }
 
-    if (mappers.length > 0) {
+    if (mappersToUpsert.length > 0) {
         try {
             await supabase
                 .from('mapper_statistics')
-                .upsert(mappers.map(m => ({
+                .upsert(mappersToUpsert.map(m => ({
                     ...m,
                     updated_at: new Date().toISOString()
                 })), { onConflict: 'osu_id' });
@@ -1266,7 +1316,15 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         }
     }
     
-    return mappers;
+    return mappersToUpsert
+        .map(m => ({
+            ...m,
+            kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+        }))
+        .filter(m => {
+            const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+            return total > 0;
+        });
 }
 
 async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgress = null) {
@@ -1280,10 +1338,15 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
             .eq('country_code', countryFilter.toUpperCase());
             
         if (dbMappers && dbMappers.length > 0) {
-            return dbMappers.map(m => ({
-                ...m,
-                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
-            }));
+            return dbMappers
+                .map(m => ({
+                    ...m,
+                    kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+                }))
+                .filter(m => {
+                    const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+                    return total > 0;
+                });
         }
     }
     
@@ -1325,8 +1388,21 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         }
     }
     
-    const mappers = [];
+    const playerIds = allPlayers.filter(p => p.user && p.user.id).map(p => String(p.user.id));
+    let dbMappersMap = new Map();
+    if (playerIds.length > 0) {
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .in('osu_id', playerIds);
+        if (dbMappers) {
+            dbMappers.forEach(m => dbMappersMap.set(String(m.osu_id), m));
+        }
+    }
+
+    const mappersToUpsert = [];
     const totalPlayers = allPlayers.length;
+    const now = Date.now();
     
     for (let idx = 0; idx < totalPlayers; idx++) {
         const player = allPlayers[idx];
@@ -1336,11 +1412,33 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
             await onProgress(totalPages + idx + 1, totalPages + totalPlayers, player.user.username);
         }
         
+        const playerOsuId = String(player.user.id);
+        const existing = dbMappersMap.get(playerOsuId);
+        
+        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+            mappersToUpsert.push({
+                osu_id: existing.osu_id,
+                username: existing.username,
+                country_code: existing.country_code,
+                kudosu_total: existing.kudosu_total,
+                kudosu_available: existing.kudosu_available,
+                ranked_count: existing.ranked_count,
+                loved_count: existing.loved_count,
+                pending_count: existing.pending_count,
+                graveyard_count: existing.graveyard_count,
+                guest_count: existing.guest_count,
+                followers: existing.followers,
+                last_updated: existing.last_updated
+            });
+            continue;
+        }
+        
         try {
             const profile = await osuApiQueue.add(async () => {
                 return client.users.getUser(player.user.id, { urlParams: { mode: 'osu' } });
             });
             
+            let last_updated = null;
             const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
                               (profile.loved_beatmapset_count || 0) +
                               (profile.pending_beatmapset_count || 0) +
@@ -1348,7 +1446,6 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                               (profile.guest_beatmapset_count || 0);
             
             if (totalMaps > 0) {
-                let last_updated = null;
                 const typesToCheck = [];
                 if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
                 if (profile.graveyard_beatmapset_count > 0) typesToCheck.push('graveyard');
@@ -1373,32 +1470,46 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 if (dates.length > 0) {
                     last_updated = new Date(Math.max(...dates)).toISOString();
                 }
-                
-                mappers.push({
-                    osu_id: String(profile.id),
-                    username: profile.username,
-                    country_code: profile.country_code,
-                    kudosu_total: profile.kudosu.total,
-                    kudosu_available: profile.kudosu.available,
-                    ranked_count: profile.ranked_and_approved_beatmapset_count,
-                    loved_count: profile.loved_beatmapset_count,
-                    pending_count: profile.pending_beatmapset_count,
-                    graveyard_count: profile.graveyard_beatmapset_count,
-                    guest_count: profile.guest_beatmapset_count,
-                    followers: profile.mapping_follower_count,
-                    last_updated
-                });
             }
+            
+            mappersToUpsert.push({
+                osu_id: String(profile.id),
+                username: profile.username,
+                country_code: profile.country_code,
+                kudosu_total: profile.kudosu.total,
+                kudosu_available: profile.kudosu.available,
+                ranked_count: profile.ranked_and_approved_beatmapset_count,
+                loved_count: profile.loved_beatmapset_count,
+                pending_count: profile.pending_beatmapset_count,
+                graveyard_count: profile.graveyard_beatmapset_count,
+                guest_count: profile.guest_beatmapset_count,
+                followers: profile.mapping_follower_count,
+                last_updated
+            });
         } catch (err) {
             console.error(`Error al consultar mapper nacional ${player.user.id}:`, err.message);
         }
+
+        // Upsert parcial cada 25 mappers para robustez
+        if (mappersToUpsert.length > 0 && mappersToUpsert.length % 25 === 0) {
+            try {
+                await supabase
+                    .from('mapper_statistics')
+                    .upsert(mappersToUpsert.map(m => ({
+                        ...m,
+                        updated_at: new Date().toISOString()
+                    })), { onConflict: 'osu_id' });
+            } catch (e) {
+                console.error("Error en upsert parcial nacional:", e);
+            }
+        }
     }
     
-    if (mappers.length > 0) {
+    if (mappersToUpsert.length > 0) {
         try {
             await supabase
                 .from('mapper_statistics')
-                .upsert(mappers.map(m => ({
+                .upsert(mappersToUpsert.map(m => ({
                     ...m,
                     updated_at: new Date().toISOString()
                 })), { onConflict: 'osu_id' });
@@ -1407,7 +1518,15 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         }
     }
     
-    return mappers;
+    return mappersToUpsert
+        .map(m => ({
+            ...m,
+            kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+        }))
+        .filter(m => {
+            const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+            return total > 0;
+        });
 }
 
 async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) {
@@ -1422,10 +1541,15 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
             .limit(250);
             
         if (dbMappers && dbMappers.length > 200) {
-            return dbMappers.map(m => ({
-                ...m,
-                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
-            }));
+            return dbMappers
+                .map(m => ({
+                    ...m,
+                    kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+                }))
+                .filter(m => {
+                    const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+                    return total > 0;
+                });
         }
     }
     
@@ -1467,8 +1591,21 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
         }
     }
     
-    const mappers = [];
+    const playerIds = allPlayers.filter(p => p && p.id).map(p => String(p.id));
+    let dbMappersMap = new Map();
+    if (playerIds.length > 0) {
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .in('osu_id', playerIds);
+        if (dbMappers) {
+            dbMappers.forEach(m => dbMappersMap.set(String(m.osu_id), m));
+        }
+    }
+
+    const mappersToUpsert = [];
     const totalPlayers = allPlayers.length;
+    const now = Date.now();
     
     for (let idx = 0; idx < totalPlayers; idx++) {
         const player = allPlayers[idx];
@@ -1478,11 +1615,33 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
             await onProgress(totalPages + idx + 1, totalPages + totalPlayers, player.username);
         }
         
+        const playerOsuId = String(player.id);
+        const existing = dbMappersMap.get(playerOsuId);
+        
+        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+            mappersToUpsert.push({
+                osu_id: existing.osu_id,
+                username: existing.username,
+                country_code: existing.country_code,
+                kudosu_total: existing.kudosu_total,
+                kudosu_available: existing.kudosu_available,
+                ranked_count: existing.ranked_count,
+                loved_count: existing.loved_count,
+                pending_count: existing.pending_count,
+                graveyard_count: existing.graveyard_count,
+                guest_count: existing.guest_count,
+                followers: existing.followers,
+                last_updated: existing.last_updated
+            });
+            continue;
+        }
+        
         try {
             const profile = await osuApiQueue.add(async () => {
                 return client.users.getUser(player.id, { urlParams: { mode: 'osu' } });
             });
             
+            let last_updated = null;
             const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
                               (profile.loved_beatmapset_count || 0) +
                               (profile.pending_beatmapset_count || 0) +
@@ -1490,7 +1649,6 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                               (profile.guest_beatmapset_count || 0);
             
             if (totalMaps > 0) {
-                let last_updated = null;
                 const typesToCheck = [];
                 if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
                 if (profile.graveyard_beatmapset_count > 0) typesToCheck.push('graveyard');
@@ -1515,32 +1673,46 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 if (dates.length > 0) {
                     last_updated = new Date(Math.max(...dates)).toISOString();
                 }
-                
-                mappers.push({
-                    osu_id: String(profile.id),
-                    username: profile.username,
-                    country_code: profile.country_code,
-                    kudosu_total: profile.kudosu.total,
-                    kudosu_available: profile.kudosu.available,
-                    ranked_count: profile.ranked_and_approved_beatmapset_count,
-                    loved_count: profile.loved_beatmapset_count,
-                    pending_count: profile.pending_beatmapset_count,
-                    graveyard_count: profile.graveyard_beatmapset_count,
-                    guest_count: profile.guest_beatmapset_count,
-                    followers: profile.mapping_follower_count,
-                    last_updated
-                });
             }
+            
+            mappersToUpsert.push({
+                osu_id: String(profile.id),
+                username: profile.username,
+                country_code: profile.country_code,
+                kudosu_total: profile.kudosu.total,
+                kudosu_available: profile.kudosu.available,
+                ranked_count: profile.ranked_and_approved_beatmapset_count,
+                loved_count: profile.loved_beatmapset_count,
+                pending_count: profile.pending_beatmapset_count,
+                graveyard_count: profile.graveyard_beatmapset_count,
+                guest_count: profile.guest_beatmapset_count,
+                followers: profile.mapping_follower_count,
+                last_updated
+            });
         } catch (err) {
             console.error(`Error al consultar mapper Kudosu global ${player.id}:`, err.message);
         }
+
+        // Upsert parcial cada 25 mappers para robustez
+        if (mappersToUpsert.length > 0 && mappersToUpsert.length % 25 === 0) {
+            try {
+                await supabase
+                    .from('mapper_statistics')
+                    .upsert(mappersToUpsert.map(m => ({
+                        ...m,
+                        updated_at: new Date().toISOString()
+                    })), { onConflict: 'osu_id' });
+            } catch (e) {
+                console.error("Error en upsert parcial global:", e);
+            }
+        }
     }
     
-    if (mappers.length > 0) {
+    if (mappersToUpsert.length > 0) {
         try {
             await supabase
                 .from('mapper_statistics')
-                .upsert(mappers.map(m => ({
+                .upsert(mappersToUpsert.map(m => ({
                     ...m,
                     updated_at: new Date().toISOString()
                 })), { onConflict: 'osu_id' });
@@ -1549,7 +1721,74 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
         }
     }
     
-    return mappers;
+    return mappersToUpsert
+        .map(m => ({
+            ...m,
+            kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+        }))
+        .filter(m => {
+            const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
+            return total > 0;
+        });
+}
+
+async function upsertMapperFromProfile(profile, client) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    
+    let last_updated = null;
+    const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
+                      (profile.loved_beatmapset_count || 0) +
+                      (profile.pending_beatmapset_count || 0) +
+                      (profile.graveyard_beatmapset_count || 0) +
+                      (profile.guest_beatmapset_count || 0);
+    
+    if (totalMaps > 0) {
+        const typesToCheck = [];
+        if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
+        if (profile.graveyard_beatmapset_count > 0) typesToCheck.push('graveyard');
+        if (profile.ranked_and_approved_beatmapset_count > 0) typesToCheck.push('ranked');
+        if (profile.loved_beatmapset_count > 0) typesToCheck.push('loved');
+        if (profile.guest_beatmapset_count > 0) typesToCheck.push('guest');
+        
+        const dates = [];
+        for (const t of typesToCheck) {
+            try {
+                const sets = await osuApiQueue.add(async () => {
+                    return client.users.getUserBeatmaps(profile.id, t, { query: { limit: 1 } });
+                });
+                if (sets && sets.length > 0) {
+                    dates.push(new Date(sets[0].last_updated || sets[0].submitted_date).getTime());
+                }
+            } catch (err) {
+                // ignorar
+            }
+        }
+        
+        if (dates.length > 0) {
+            last_updated = new Date(Math.max(...dates)).toISOString();
+        }
+    }
+    
+    const mapperData = {
+        osu_id: String(profile.id),
+        username: profile.username,
+        country_code: profile.country_code,
+        kudosu_total: profile.kudosu.total,
+        kudosu_available: profile.kudosu.available,
+        ranked_count: profile.ranked_and_approved_beatmapset_count,
+        loved_count: profile.loved_beatmapset_count,
+        pending_count: profile.pending_beatmapset_count,
+        graveyard_count: profile.graveyard_beatmapset_count,
+        guest_count: profile.guest_beatmapset_count,
+        followers: profile.mapping_follower_count,
+        last_updated,
+        updated_at: new Date().toISOString()
+    };
+    
+    await supabase
+        .from('mapper_statistics')
+        .upsert(mapperData, { onConflict: 'osu_id' });
 }
 
 const OsuUserModel = {
@@ -1578,7 +1817,8 @@ const OsuUserModel = {
     getOsuWorldUser,
     getMapperTop,
     getNationalMapperTop,
-    getGlobalKudosuMapperTop
+    getGlobalKudosuMapperTop,
+    upsertMapperFromProfile
 };
 
 module.exports = OsuUserModel;
