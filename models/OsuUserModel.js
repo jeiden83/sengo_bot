@@ -1154,27 +1154,8 @@ const mapperTopCacheFile = path.join(__dirname, "../data/mapper_top_cache.json")
 let mapperTopCache = null;
 
 async function getMapperTop(forceUpdate = false, onProgress = null) {
-    const now = Date.now();
-    const TTL = 43200000; // 12 horas en ms
-    
-    // Intentar leer la caché en memoria o del archivo
-    if (!mapperTopCache && !forceUpdate) {
-        try {
-            const data = await fs.readFile(mapperTopCacheFile, "utf-8");
-            mapperTopCache = JSON.parse(data);
-        } catch {}
-    }
-    
-    // Si la caché es válida, no ha expirado y no se fuerza la actualización, devolverla
-    if (mapperTopCache && !forceUpdate && (now - mapperTopCache.updated_at < TTL)) {
-        return mapperTopCache.mappers;
-    }
-    
-    // Si no, regenerar la caché.
     const supabase = getSupabaseClient();
-    if (!supabase) {
-        return mapperTopCache ? mapperTopCache.mappers : [];
-    }
+    if (!supabase) return [];
     
     // Obtener todos los usuarios vinculados
     const { data: users, error } = await supabase
@@ -1183,9 +1164,25 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         
     if (error) {
         console.error("Error al obtener usuarios para ranking de mappers:", error);
-        return mapperTopCache ? mapperTopCache.mappers : [];
+        return [];
     }
-    
+
+    const linkedOsuIds = users.filter(u => u.osu_id).map(u => String(u.osu_id));
+
+    if (!forceUpdate && linkedOsuIds.length > 0) {
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .in('osu_id', linkedOsuIds);
+
+        if (dbMappers && dbMappers.length > 0) {
+            return dbMappers.map(m => ({
+                ...m,
+                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+            }));
+        }
+    }
+
     const token = await loadToken();
     const client = new Client(token.access_token);
     
@@ -1201,7 +1198,6 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         }
         
         try {
-            // Obtener el perfil
             const profile = await client.users.getUser(u.osu_id, { urlParams: { mode: 'osu' } });
             
             const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
@@ -1211,7 +1207,6 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                               (profile.guest_beatmapset_count || 0);
             
             if (totalMaps > 0) {
-                // Obtener fecha del mapa más reciente si corresponde
                 let last_updated = null;
                 const typesToCheck = [];
                 if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
@@ -1236,8 +1231,8 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                     last_updated = new Date(Math.max(...dates)).toISOString();
                 }
                 
-                mappers.push({
-                    osu_id: profile.id,
+                const mapperObj = {
+                    osu_id: String(profile.id),
                     username: profile.username,
                     country_code: profile.country_code,
                     kudosu_total: profile.kudosu.total,
@@ -1249,49 +1244,52 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                     guest_count: profile.guest_beatmapset_count,
                     followers: profile.mapping_follower_count,
                     last_updated
-                });
+                };
+                
+                mappers.push(mapperObj);
             }
         } catch (err) {
             console.error(`Error al consultar mapper ${u.osu_id}:`, err.message);
         }
     }
-    
-    mapperTopCache = {
-        updated_at: now,
-        mappers: mappers
-    };
-    
-    try {
-        await fs.mkdir(path.dirname(mapperTopCacheFile), { recursive: true });
-        await fs.writeFile(mapperTopCacheFile, JSON.stringify(mapperTopCache, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error al escribir el archivo de caché de mappers:", e);
+
+    if (mappers.length > 0) {
+        try {
+            await supabase
+                .from('mapper_statistics')
+                .upsert(mappers.map(m => ({
+                    ...m,
+                    updated_at: new Date().toISOString()
+                })), { onConflict: 'osu_id' });
+        } catch (e) {
+            console.error("Error al guardar mappers vinculados en BD:", e);
+        }
     }
     
     return mappers;
 }
 
 async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgress = null) {
-    const now = Date.now();
-    const TTL = 43200000; // 12 horas en ms
-    const cacheFile = path.join(__dirname, `../data/mapper_national_${countryFilter.toLowerCase()}_cache.json`);
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
     
-    let cache = null;
     if (!forceUpdate) {
-        try {
-            const data = await fs.readFile(cacheFile, "utf-8");
-            cache = JSON.parse(data);
-        } catch {}
-    }
-    
-    if (cache && !forceUpdate && (now - cache.updated_at < TTL)) {
-        return cache.mappers;
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .eq('country_code', countryFilter.toUpperCase());
+            
+        if (dbMappers && dbMappers.length > 0) {
+            return dbMappers.map(m => ({
+                ...m,
+                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+            }));
+        }
     }
     
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    // Obtener top 500 jugadores del país (10 páginas)
     const totalPages = 10;
     let allPlayers = [];
     
@@ -1377,7 +1375,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 }
                 
                 mappers.push({
-                    osu_id: profile.id,
+                    osu_id: String(profile.id),
                     username: profile.username,
                     country_code: profile.country_code,
                     kudosu_total: profile.kudosu.total,
@@ -1396,42 +1394,44 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         }
     }
     
-    const resultCache = {
-        updated_at: now,
-        mappers
-    };
-    
-    try {
-        await fs.mkdir(path.dirname(cacheFile), { recursive: true });
-        await fs.writeFile(cacheFile, JSON.stringify(resultCache, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error al escribir el archivo de caché de mappers nacionales:", e);
+    if (mappers.length > 0) {
+        try {
+            await supabase
+                .from('mapper_statistics')
+                .upsert(mappers.map(m => ({
+                    ...m,
+                    updated_at: new Date().toISOString()
+                })), { onConflict: 'osu_id' });
+        } catch (e) {
+            console.error("Error al guardar mappers nacionales en BD:", e);
+        }
     }
     
     return mappers;
 }
 
 async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) {
-    const now = Date.now();
-    const TTL = 43200000; // 12 horas en ms
-    const cacheFile = path.join(__dirname, "../data/mapper_global_kudosu_cache.json");
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
     
-    let cache = null;
     if (!forceUpdate) {
-        try {
-            const data = await fs.readFile(cacheFile, "utf-8");
-            cache = JSON.parse(data);
-        } catch {}
-    }
-    
-    if (cache && !forceUpdate && (now - cache.updated_at < TTL)) {
-        return cache.mappers;
+        const { data: dbMappers } = await supabase
+            .from('mapper_statistics')
+            .select('*')
+            .order('kudosu_total', { ascending: false })
+            .limit(250);
+            
+        if (dbMappers && dbMappers.length > 200) {
+            return dbMappers.map(m => ({
+                ...m,
+                kudosu: { total: m.kudosu_total, available: m.kudosu_available }
+            }));
+        }
     }
     
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    // Obtener top 250 jugadores del ranking global de Kudosu (5 páginas de 50)
     const totalPages = 5;
     let allPlayers = [];
     
@@ -1517,7 +1517,7 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 }
                 
                 mappers.push({
-                    osu_id: profile.id,
+                    osu_id: String(profile.id),
                     username: profile.username,
                     country_code: profile.country_code,
                     kudosu_total: profile.kudosu.total,
@@ -1536,16 +1536,17 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
         }
     }
     
-    const resultCache = {
-        updated_at: now,
-        mappers
-    };
-    
-    try {
-        await fs.mkdir(path.dirname(cacheFile), { recursive: true });
-        await fs.writeFile(cacheFile, JSON.stringify(resultCache, null, 2), "utf-8");
-    } catch (e) {
-        console.error("Error al escribir el archivo de caché de mappers Kudosu global:", e);
+    if (mappers.length > 0) {
+        try {
+            await supabase
+                .from('mapper_statistics')
+                .upsert(mappers.map(m => ({
+                    ...m,
+                    updated_at: new Date().toISOString()
+                })), { onConflict: 'osu_id' });
+        } catch (e) {
+            console.error("Error al guardar mappers Kudosu en BD:", e);
+        }
     }
     
     return mappers;
