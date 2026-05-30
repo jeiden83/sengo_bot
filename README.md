@@ -121,7 +121,7 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `-regional [región]`: Muestra la tabla de clasificación de una subdivisión o estado del país.
         *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.regional [región]`**
-    Atajo directo para mostrar la clasificación regional (de osu!World) del jugador o de una subdivisión específica.
+    Atajo directo para mostrar la clasificación regional de [osu!World](https://osuworld.octo.moe/) del jugador o de una subdivisión específica.
     *   *Parámetros y filtros:*
         *   `lista`: Lista todas las regiones/subdivisiones disponibles del país.
         *   `-pais [código/nombre]`: Especifica el país del que se consultan las regiones.
@@ -173,7 +173,7 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100.
         *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego para la recomendación.
 *   **`s.rework`**
-    Estima el PP del último mapa o compara las estadísticas de un usuario frente a un Rework próximo de PP.
+    Estima el PP del último mapa o compara las estadísticas de un usuario frente a un Rework próximo de PP, consumiendo los datos desde [pp.huismetbenen.nl](https://pp.huismetbenen.nl/).
     *   *Uso común:*
         *   `s.rework -lista`: Muestra todos los reworks disponibles.
         *   `s.rework -top`: Muestra tu top 5 recalculado en el rework.
