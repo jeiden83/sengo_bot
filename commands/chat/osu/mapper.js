@@ -24,6 +24,7 @@ async function run(messages, args) {
         let isServerMode = false;
         let isSengoMode = false;
         let isGlobalMode = false;
+        let playmodeFilter = null;
 
         for (let idx = 0; idx < args.length; idx++) {
             const arg = args[idx].toLowerCase();
@@ -56,6 +57,28 @@ async function run(messages, args) {
                 isSengoMode = true;
             } else if (arg === '-global' || arg === '-g') {
                 isGlobalMode = true;
+            } else if (arg === '-m' || arg === '-mode' || arg === '-modo') {
+                if (idx + 1 < args.length) {
+                    const modeInput = args[idx + 1].toLowerCase();
+                    if (modeInput === 'std' || modeInput === 'standard' || modeInput === 'osu') {
+                        playmodeFilter = 'osu';
+                    } else if (modeInput === 'taiko' || modeInput === 'tko') {
+                        playmodeFilter = 'taiko';
+                    } else if (modeInput === 'fruits' || modeInput === 'ctb' || modeInput === 'catch') {
+                        playmodeFilter = 'fruits';
+                    } else if (modeInput === 'mania' || modeInput === 'mna') {
+                        playmodeFilter = 'mania';
+                    }
+                    idx++;
+                }
+            } else if (arg === '-std' || arg === '-standard' || arg === '-osu') {
+                playmodeFilter = 'osu';
+            } else if (arg === '-taiko') {
+                playmodeFilter = 'taiko';
+            } else if (arg === '-ctb' || arg === '-fruits' || arg === '-catch') {
+                playmodeFilter = 'fruits';
+            } else if (arg === '-mania') {
+                playmodeFilter = 'mania';
             }
         }
 
@@ -173,6 +196,9 @@ async function run(messages, args) {
         if (countryFilter && mode !== 'national') {
             filteredMappers = filteredMappers.filter(m => m.country_code && m.country_code.toUpperCase() === countryFilter);
         }
+        if (playmodeFilter) {
+            filteredMappers = filteredMappers.filter(m => m.playmode === playmodeFilter);
+        }
 
         // Ordenamiento
         if (sortBy === 'kudosus') {
@@ -201,7 +227,7 @@ async function run(messages, args) {
         const itemsPerPage = 10;
         const totalPages = Math.max(1, Math.ceil(filteredMappers.length / itemsPerPage));
 
-        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode);
+        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter);
         const customSuffixes = { first: 'first', prev: 'prev', next: 'next', last: 'last' };
         const components = totalPages > 1 ? [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })] : [];
 
@@ -239,7 +265,7 @@ async function run(messages, args) {
                         currentPage = Math.min(totalPages, currentPage + 1);
                     }
 
-                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode);
+                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter);
                     const nextComponents = [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })];
 
                     await i.editReply({
@@ -492,7 +518,8 @@ s.mapper -top : Muestra el top de mappers del país del usuario (VE por defecto)
 Flags para -top:
 • -pais <código> / -country <código> : Filtra el top de mappers por país (ej: MX, VE).
 • -server / -servidor : Filtra el top mostrando solo a los usuarios vinculados del servidor de Discord actual.
-• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).`
+• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).
+• -std / -taiko / -ctb / -mania / -mode <modo> : Filtra los mappers según su modo de juego principal.`
 };
 
 module.exports = { run };

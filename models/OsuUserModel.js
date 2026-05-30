@@ -1230,7 +1230,8 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
-                last_updated: existing.last_updated
+                last_updated: existing.last_updated,
+                playmode: existing.playmode
             });
             continue;
         }
@@ -1282,7 +1283,8 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
                 followers: profile.mapping_follower_count,
-                last_updated
+                last_updated,
+                playmode: profile.playmode
             });
         } catch (err) {
             console.error(`Error al consultar mapper ${u.osu_id}:`, err.message);
@@ -1428,7 +1430,8 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
-                last_updated: existing.last_updated
+                last_updated: existing.last_updated,
+                playmode: existing.playmode
             });
             continue;
         }
@@ -1484,7 +1487,8 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
                 followers: profile.mapping_follower_count,
-                last_updated
+                last_updated,
+                playmode: profile.playmode
             });
         } catch (err) {
             console.error(`Error al consultar mapper nacional ${player.user.id}:`, err.message);
@@ -1631,7 +1635,8 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
-                last_updated: existing.last_updated
+                last_updated: existing.last_updated,
+                playmode: existing.playmode
             });
             continue;
         }
@@ -1687,7 +1692,8 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
                 followers: profile.mapping_follower_count,
-                last_updated
+                last_updated,
+                playmode: profile.playmode
             });
         } catch (err) {
             console.error(`Error al consultar mapper Kudosu global ${player.id}:`, err.message);
@@ -1783,6 +1789,7 @@ async function upsertMapperFromProfile(profile, client) {
         guest_count: profile.guest_beatmapset_count,
         followers: profile.mapping_follower_count,
         last_updated,
+        playmode: profile.playmode,
         updated_at: new Date().toISOString()
     };
     

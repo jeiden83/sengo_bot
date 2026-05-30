@@ -397,7 +397,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     return embed;
 }
 
-function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo') {
+function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo', playmodeFilter = null) {
     const embedColor = getEmbedColor(message);
     const startIndex = (page - 1) * 10;
     const chunk = mappers.slice(startIndex, startIndex + 10);
@@ -434,6 +434,15 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
     if (countryFilter && mode !== 'national') {
         const flag = getFlagEmoji(countryFilter);
         description += `**Filtrado por país: ${flag} ${countryFilter}**\n`;
+    }
+    if (playmodeFilter) {
+        const modeLabels = {
+            'osu': 'Standard (osu!)',
+            'taiko': 'Taiko',
+            'fruits': 'Catch the Beat',
+            'mania': 'Mania'
+        };
+        description += `**Modo de juego:** \`${modeLabels[playmodeFilter] || playmodeFilter}\`\n`;
     }
     description += `**Ordenado por: \`${sortLabels[sortBy] || sortBy}\`**\n\n`;
     
