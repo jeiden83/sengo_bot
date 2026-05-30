@@ -25,29 +25,9 @@ async function run(messages, args) {
 
     let originalScores = parser_res.fn_response;
     if (parser_res.parsed_args.nochoke) {
-        await ensureNoChokeScores(originalScores, parser_res.parsed_args.gamemode);
-        originalScores = originalScores.map(score => {
-            if (score.noChoke) {
-                return {
-                    ...score,
-                    originalPP: score.pp,
-                    originalAccuracy: score.accuracy,
-                    originalRankGrade: score.rank,
-                    originalCombo: score.max_combo,
-                    originalStats: score.statistics,
-
-                    pp: score.noChoke.pp,
-                    accuracy: score.noChoke.accuracy / 100,
-                    rank: score.noChoke.rank,
-                    max_combo: score.noChoke.max_combo,
-                    statistics: score.noChoke.statistics
-                };
-            }
-            return score;
-        });
-        // Ordenar por el nuevo PP de forma descendente
-        originalScores.sort((a, b) => (b.pp || 0) - (a.pp || 0));
+        return "❌ El parámetro `-nc` (`-nochoke`) está temporalmente deshabilitado por optimización de API y prevención de errores 429.";
     }
+
 
     // APLICAR FILTROS SOLICITADOS
     let filtered_scores = originalScores;

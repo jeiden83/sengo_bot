@@ -213,37 +213,7 @@ async function run(messages, args) {
             });
 
         if (initial_parsed.nochoke) {
-            const { ensureNoChokeScores } = require("../../utils/osu.js");
-            await ensureNoChokeScores(sortedScores, requestedMode);
-            sortedScores = sortedScores.map(score => {
-                if (score.noChoke) {
-                    return {
-                        ...score,
-                        values: {
-                            ...score.values,
-                            original_local_pp: score.values.local_pp,
-                            original_live_pp: score.values.live_pp,
-                            local_pp: score.noChoke.pp,
-                            live_pp: score.noChoke.live_pp
-                        },
-                        original_accuracy: score.accuracy,
-                        accuracy: score.noChoke.accuracy,
-                        original_max_combo: score.max_combo,
-                        max_combo: score.noChoke.max_combo,
-                        original_statistics: score.statistics,
-                        statistics: score.noChoke.statistics,
-                        old_rank: score.old_rank,
-                        old_rank: score.noChoke.rank
-                    };
-                }
-                return score;
-            });
-            // Reordenar por el nuevo local_pp
-            sortedScores.sort((a, b) => (b.values.local_pp || 0) - (a.values.local_pp || 0));
-            // Actualizar new_rank
-            sortedScores.forEach((s, idx) => {
-                s.new_rank = idx + 1;
-            });
+            return "❌ El parámetro `-nc` (`-nochoke`) está temporalmente deshabilitado por optimización de API y prevención de errores 429.";
         }
 
         if (initial_parsed.sortByPPChange) {
