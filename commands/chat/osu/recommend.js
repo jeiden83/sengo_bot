@@ -285,6 +285,14 @@ async function run(messages, args) {
     const osuUserId = parser_res.parsed_args.username[0];
     const top100Ids = new Set(topScores.map(score => score.beatmap.id.toString()));
 
+    if (!customMods) {
+        if (parser_res.parsed_args.modFilter) {
+            customMods = parser_res.parsed_args.modFilter;
+        } else if (parser_res.parsed_args.modContainFilter) {
+            customMods = parser_res.parsed_args.modContainFilter;
+        }
+    }
+
     // Consultar si el usuario que invocó el comando tiene supporter activo
     const linkedUser = await OsuUserModel.getLinkedUser(res.User, message.author.id);
     let hasSupporter = linkedUser ? !!linkedUser.is_supporter : false;
