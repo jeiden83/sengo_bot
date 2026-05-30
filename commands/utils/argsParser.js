@@ -432,6 +432,7 @@ function argsParserNoCommand(args, options = {}) {
     let lazerMode = false;
     let regional = null;
     let nochoke = false;
+    let mapset = false;
 
     const extractId = str =>
         str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
@@ -753,6 +754,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-nc" o "-nochoke"
         if (arg === "-nc" || arg === "-nochoke") {
             nochoke = true;
+            continue;
+        }
+
+        // Si es exactamente "-mapset" o "--mapset"
+        if (arg === "-mapset" || arg === "--mapset") {
+            mapset = true;
             continue;
         }
 
@@ -1116,7 +1123,8 @@ function argsParserNoCommand(args, options = {}) {
         'invalidModsWarning': invalidModsWarning,
         'stableMode': stableMode,
         'lazerMode': lazerMode,
-        'nochoke': nochoke
+        'nochoke': nochoke,
+        'mapset': mapset
     };
     return parsed_args;
 }

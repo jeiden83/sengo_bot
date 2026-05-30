@@ -758,6 +758,84 @@ ${ppAnsiBlock}${userTagsStr}
 }
 
 /**
+ * Renderiza el embed para la lista de dificultades de un beatmapset (-mapset)
+ */
+function doOsuMapsetEmbed({
+    beatmapset,
+    statusName,
+    embedColor
+}) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+    const formatLength = (seconds) => {
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    };
+
+    const sortedBeatmaps = [...beatmapset.beatmaps].sort((a, b) => a.difficulty_rating - b.difficulty_rating);
+
+    let description = `▸ **Creador:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmapset.user_id}) ▸ **Estado:** \`${statusName}\` ▸ **BPM:** \`${beatmapset.bpm}\`\n\n`;
+
+    const modeEmojis = {
+        'osu': '⚪',
+        'taiko': '🥁',
+        'fruits': '🍎',
+        'mania': '🎹'
+    };
+
+    for (const map of sortedBeatmaps) {
+        const modeEmoji = modeEmojis[map.mode] || '❓';
+        const stars = map.difficulty_rating ? map.difficulty_rating.toFixed(2) : '0.00';
+        const maxCombo = map.max_combo ? `x${map.max_combo}` : '-';
+        description += `${modeEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ Duración: \`${formatLength(map.total_length)}\`\n`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: `Mapset creado por ${beatmapset.creator}`,
+            iconURL: `https://a.ppy.sh/${beatmapset.user_id}`,
+            url: `https://osu.ppy.sh/users/${beatmapset.user_id}`
+        })
+        .setTitle(`${beatmapset.artist} - ${beatmapset.title}`)
+        .setURL(`https://osu.ppy.sh/beatmapsets/${beatmapset.id}`)
+        .setDescription(description)
+        .setImage(beatmapset.covers["cover@2x"])
+        .setColor(embedColor)
+        .setFooter({
+            text: `Sengo • Beatmapset ID: ${beatmapset.id} • ${beatmapset.beatmaps.length} dificultades`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const osuDirectPCUrl = `${redirectBase}/osu/${beatmapset.id}`;
+
+    // Construir la fila de botones de descarga
+    const row = new ActionRowBuilder()
+        .addComponents(
+            new ButtonBuilder()
+                .setLabel('Lanzar osu!')
+                .setStyle(ButtonStyle.Link)
+                .setURL(osuDirectPCUrl),
+            new ButtonBuilder()
+                .setLabel('osu.direct (Web)')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://osu.direct/d/${beatmapset.id}`),
+            new ButtonBuilder()
+                .setLabel('Nerinyan')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://api.nerinyan.moe/d/${beatmapset.id}?novideo=1`),
+            new ButtonBuilder()
+                .setLabel('Sayobot')
+                .setStyle(ButtonStyle.Link)
+                .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmapset.id}`)
+        );
+
+    return { embed, components: [row] };
+}
+
+/**
  * Renderiza el embed para el comando s.snipes (tops nacionales / snipe.huismetbenen.nl)
  */
 function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata) {
@@ -1426,6 +1504,7 @@ module.exports = {
     getOsuCompareContent,
     doOsuSubirEmbed,
     doOsuMapEmbed,
+    doOsuMapsetEmbed,
     doOsuSnipesEmbed,
     doOsuProfileEmbed,
     doOsuReworkMapEmbed,

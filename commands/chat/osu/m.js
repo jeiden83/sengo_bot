@@ -38,6 +38,58 @@ async function run(messages, args) {
         return `❌ No se pudieron cargar los metadatos para el mapa con ID \`${beatmap_id}\`.`;
     }
 
+    if (parsed_args.mapset) {
+        let beatmapset;
+        try {
+            const { getBeatmapset } = require("../../utils/osu.js");
+            beatmapset = await getBeatmapset(beatmap.beatmapset_id);
+        } catch (e) {
+            return `❌ No se pudieron cargar los detalles del mapset para el ID \`${beatmap.beatmapset_id}\`.`;
+        }
+
+        if (!beatmapset) {
+            return `❌ No se pudieron cargar los detalles del mapset para el ID \`${beatmap.beatmapset_id}\`.`;
+        }
+
+        // Estilo de estados de mapa
+        const status_names = {
+            'ranked': 'Ranked 🟢',
+            'approved': 'Approved 🟡',
+            'loved': 'Loved 💞',
+            'qualified': 'Qualified 🔵',
+            'pending': 'Pending ⏳',
+            'wip': 'WIP 🛠️',
+            'graveyard': 'Graveyard ⚰️'
+        };
+        const status_colors = {
+            'ranked': '#4ade80',
+            'approved': '#facc15',
+            'loved': '#f472b6',
+            'qualified': '#38bdf8',
+            'pending': '#9ca3af',
+            'wip': '#9ca3af',
+            'graveyard': '#4b5563'
+        };
+
+        const statusName = status_names[beatmap.status] || beatmap.status.toUpperCase();
+        const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+        const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
+
+        const { doOsuMapsetEmbed } = require("../../../views/osuEmbeds.js");
+        const { embed, components } = doOsuMapsetEmbed({
+            beatmapset,
+            statusName,
+            embedColor
+        });
+
+        if (reply) {
+            reply.reply({ embeds: [embed], components });
+            return;
+        }
+
+        return { embeds: [embed], components };
+    }
+
     let map;
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
@@ -221,7 +273,7 @@ run.alias = {
 run.description = {
     'header': "Muestra detalles completos de un beatmap",
     'body': 'Obtiene y calcula estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap.',
-    'usage': `s.m : Muestra el último mapa enviado en el canal.\ns.m <id_mapa> : Muestra un mapa específico por su ID.\ns.m +HDHR : Muestra las estadísticas y PP ajustadas a los mods HDHR.`
+    'usage': `s.m : Muestra el último mapa enviado en el canal.\ns.m <id_mapa> : Muestra un mapa específico por su ID.\ns.m +HDHR : Muestra las estadísticas y PP ajustadas a los mods HDHR.\ns.m -mapset : Muestra la lista de dificultades de todo el mapset.`
 };
 
 module.exports = { run, "description": run.description };

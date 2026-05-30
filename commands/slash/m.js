@@ -13,11 +13,17 @@ const data = new SlashCommandBuilder()
         option.setName("mods")
             .setDescription("Mods a aplicar (ej: HDHR, DT, FL)")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("mapset")
+            .setDescription("¿Mostrar todo el mapset en una lista?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
     const mapa = interaction.options.getString("mapa");
     const mods = interaction.options.getString("mods");
+    const mapset = interaction.options.getBoolean("mapset");
 
     const args = [];
     if (mapa) args.push(mapa);
@@ -25,6 +31,9 @@ async function run(interaction, res) {
         // En los comandos de chat, los mods suelen pasarse con un "+" al principio (ej: +HDHR).
         // Agregamos "+" si no está presente para máxima compatibilidad con el parser.
         args.push(mods.startsWith("+") ? mods : `+${mods}`);
+    }
+    if (mapset) {
+        args.push("-mapset");
     }
 
     const messages = {

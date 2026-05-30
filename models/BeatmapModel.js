@@ -15,6 +15,7 @@ let lastOsuDirectCheck = 0;
 const OSU_DIRECT_COOLDOWN = 60000; // 1 minuto de cooldown si falla
 
 const beatmapCache = new Map();
+const beatmapsetCache = new Map();
 
 function setWithLimit(map, key, value, limit = 100) {
     if (map.size >= limit) {
@@ -288,6 +289,29 @@ async function getBeatmap(beatmap_id, priority = 2) {
 }
 
 /**
+ * Obtiene los detalles de un beatmapset (incluyendo todas sus dificultades).
+ */
+async function getBeatmapset(beatmapset_id, priority = 2) {
+    const cleanId = typeof beatmapset_id === 'string' ? parseInt(beatmapset_id) : beatmapset_id;
+    if (isNaN(cleanId)) return null;
+
+    const cached = beatmapsetCache.get(cleanId);
+    const now = Date.now();
+    if (cached && (now - cached.timestamp) < 3600000) {
+        return cached.data;
+    }
+
+    await OsuUserModel.NewloadToken();
+    const result = await osuApiQueue.add(() => v2.beatmaps.details({
+        type: 'set',
+        id: cleanId
+    }), priority);
+
+    setWithLimit(beatmapsetCache, cleanId, { data: result, timestamp: Date.now() });
+    return result;
+}
+
+/**
  * Obtiene los detalles de dificultad para múltiples beatmaps en lote consultando a la DB.
  * Esto evita consultas secuenciales individuales y peticiones HTTP.
  */
@@ -549,6 +573,7 @@ const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
     getBeatmap,
+    getBeatmapset,
     batchGetBeatmaps,
     lookupBeatmapByMD5,
     getOsuPpsData,
