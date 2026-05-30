@@ -480,8 +480,16 @@ run.alias = {
 
 run.description = {
     'header': 'Estadísticas de creador/mapper de un usuario',
-    'body': 'Muestra estadísticas detalladas del mapper en osu! (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones).',
-    'usage': `s.mapper : Muestra tus estadísticas como mapper.\ns.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.`
+    'body': 'Muestra estadísticas detalladas del mapper en osu! (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones). También permite mostrar tops y clasificaciones de mappers.',
+    'usage': `s.mapper : Muestra tus estadísticas como mapper.
+s.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.
+
+s.mapper -top : Muestra el top de mappers del país del usuario (VE por defecto).
+Flags para -top:
+• -pais <código> / -country <código> : Filtra el top de mappers por país (ej: MX, VE).
+• -server / -servidor : Filtra el top mostrando solo a los usuarios vinculados del servidor de Discord actual.
+• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).
+• -refresh / -force : Fuerza la recarga de datos consultando a la API de osu!.`
 };
 
 module.exports = { run };
