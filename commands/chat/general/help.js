@@ -1,4 +1,5 @@
 const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 function formatUsage(usageText, mainName, aliases = []) {
     if (!usageText) return `.${mainName}`;
@@ -61,7 +62,7 @@ function formatUsage(usageText, mainName, aliases = []) {
     return formatted.trimEnd();
 }
 
-function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
+function getCommandHelpData(cmdName, commandsMap, mainCommandsSet, locale = 'es') {
     const commandData = commandsMap.get(cmdName);
     if (!commandData) return null;
 
@@ -76,26 +77,38 @@ function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
         }
     }
 
-    const embedMsj_description = commandData.description || commandData.run?.description || {};
-    const headerText = embedMsj_description.header || (typeof embedMsj_description === 'string' ? embedMsj_description : "Auto explicable.");
-    const bodyText = embedMsj_description.body || "No hay detalles adicionales.";
+    let headerText = t(locale, `commands.${mainName}.header`);
+    if (headerText === `commands.${mainName}.header`) {
+        const embedMsj_description = commandData.description || commandData.run?.description || {};
+        headerText = embedMsj_description.header || (typeof embedMsj_description === 'string' ? embedMsj_description : "Auto explicable.");
+    }
+
+    let bodyText = t(locale, `commands.${mainName}.body`);
+    if (bodyText === `commands.${mainName}.body`) {
+        const embedMsj_description = commandData.description || commandData.run?.description || {};
+        bodyText = embedMsj_description.body || "No hay detalles adicionales.";
+    }
 
     const aliases = [];
     if (commandData.run?.alias) {
         aliases.push(...Object.keys(commandData.run.alias));
     }
 
-    const rawUsage = embedMsj_description.usage || `s.${mainName}`;
+    let rawUsage = t(locale, `commands.${mainName}.usage`);
+    if (rawUsage === `commands.${mainName}.usage`) {
+        const embedMsj_description = commandData.description || commandData.run?.description || {};
+        rawUsage = embedMsj_description.usage || `s.${mainName}`;
+    }
     const usageText = formatUsage(rawUsage, mainName, aliases);
 
     const fields = [
         {
-            name: "📝 Descripción",
+            name: t(locale, 'help.fields.description'),
             value: bodyText,
             inline: false
         },
         {
-            name: "❓ Cómo usarlo",
+            name: t(locale, 'help.fields.usage'),
             value: `\`\`\`\n${usageText}\n\`\`\``,
             inline: false
         }
@@ -103,7 +116,7 @@ function getCommandHelpData(cmdName, commandsMap, mainCommandsSet) {
 
     if (aliases.length > 0) {
         fields.push({
-            name: "🔗 Alias",
+            name: t(locale, 'help.fields.aliases'),
             value: aliases.map(a => `\`${a}\``).join(", "),
             inline: true
         });
@@ -132,17 +145,20 @@ function getCategoryCommands(category, commandsMap, mainCommandsSet) {
 
 async function run(messages, args, intialized_data) {
     const { message } = messages;
+    const locale = message.locale || 'es';
+    const prefix = message.content && message.content.startsWith("sd.") ? "sd." : "s.";
 
     // Orden y etiquetas de los tipos de comandos
     const type_order = ["osu", "utils", "meme", "general", "about", "moderation"];
     const categoryInfo = {
-        osu: { name: "osu! 🎮", emoji: "🎮" },
-        utils: { name: "Utilidades 🛠️", emoji: "🛠️" },
-        meme: { name: "Diversión 🌸", emoji: "🌸" },
-        general: { name: "General ℹ️", emoji: "ℹ️" },
-        about: { name: "Acerca de 🛡️", emoji: "🛡️" },
-        moderation: { name: "Moderación 👮", emoji: "👮" }
+        osu: { name: t(locale, 'help.categories.osu'), emoji: "🎮" },
+        utils: { name: t(locale, 'help.categories.utils'), emoji: "🛠️" },
+        meme: { name: t(locale, 'help.categories.meme'), emoji: "🌸" },
+        general: { name: t(locale, 'help.categories.general'), emoji: "ℹ️" },
+        about: { name: name => name, emoji: "🛡️" }, // Se resolverá dinámicamente o tendrá su emoji/traducción
+        moderation: { name: t(locale, 'help.categories.moderation'), emoji: "👮" }
     };
+    categoryInfo.about.name = t(locale, 'help.categories.about');
 
     const commandsMap = intialized_data.get('chat_commands_map');
     const mainCommandsSet = intialized_data.get('chat_main_commands_set');
@@ -178,8 +194,8 @@ async function run(messages, args, intialized_data) {
             }
         }
 
-        const description = "**¡Hola! Soy Sengo**, un bot de Discord especializado en osu! y utilidades locales.\n\n> Usa `s.help [comando]` para ver la descripción detallada y los parámetros de un comando específico.";
-        const embed = doHelpListEmbed(message, fields, description);
+        const description = t(locale, 'help.description', { prefix });
+        const embed = doHelpListEmbed(message, fields, description, locale);
         
         await message.channel.send({ embeds: [embed] });
         return;
@@ -189,13 +205,13 @@ async function run(messages, args, intialized_data) {
     const queryName = args[0].toLowerCase();
 
     if (commandsMap.has(queryName)) {
-        const helpData = getCommandHelpData(queryName, commandsMap, mainCommandsSet);
+        const helpData = getCommandHelpData(queryName, commandsMap, mainCommandsSet, locale);
         if (!helpData) return;
 
-        const embed = doHelpCommandEmbed(message, helpData.mainName, queryName, helpData);
+        const embed = doHelpCommandEmbed(message, helpData.mainName, queryName, helpData, locale, prefix);
 
         const categoryCmds = getCategoryCommands(helpData.category, commandsMap, mainCommandsSet);
-        const row = buildHelpNavigationRow(helpData.mainName, categoryCmds);
+        const row = buildHelpNavigationRow(helpData.mainName, categoryCmds, locale, prefix);
 
         const sentMessage = await message.channel.send({
             embeds: [embed],
@@ -217,11 +233,11 @@ async function run(messages, args, intialized_data) {
                 const parts = i.customId.split("_");
                 const targetCmd = parts[2];
 
-                const nextHelpData = getCommandHelpData(targetCmd, commandsMap, mainCommandsSet);
+                const nextHelpData = getCommandHelpData(targetCmd, commandsMap, mainCommandsSet, locale);
                 if (!nextHelpData) return;
 
-                const nextEmbed = doHelpCommandEmbed(message, nextHelpData.mainName, targetCmd, nextHelpData);
-                const nextRow = buildHelpNavigationRow(nextHelpData.mainName, categoryCmds);
+                const nextEmbed = doHelpCommandEmbed(message, nextHelpData.mainName, targetCmd, nextHelpData, locale, prefix);
+                const nextRow = buildHelpNavigationRow(nextHelpData.mainName, categoryCmds, locale, prefix);
 
                 await i.editReply({
                     embeds: [nextEmbed],
@@ -243,7 +259,8 @@ async function run(messages, args, intialized_data) {
         return;
     }
 
-    const errEmbed = doHelpListEmbed(message, [], `El comando \`${queryName}\` no existe. Usa \`s.help\` para ver la lista de comandos.`);
+    const notFoundText = t(locale, 'help.not_found', { queryName, prefix });
+    const errEmbed = doHelpListEmbed(message, [], notFoundText, locale);
     await message.channel.send({ embeds: [errEmbed] });
 }
 

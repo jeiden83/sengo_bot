@@ -61,6 +61,53 @@
       }
     }
   },
+  "help": {
+    "menu_title": "Menú de Ayuda • Sengo",
+    "footer": "Sengo • s.help [comando]",
+    "command_title": "Ayuda de Comando: {prefix}{mainName}{aliasInfo}",
+    "alias_info": " (Alias: {prefix}{queryName})",
+    "description": "**¡Hola! Soy Sengo**, un bot de Discord especializado en osu! y utilidades locales.\n\n> Usa `{prefix}help [comando]` para ver la descripción detallada y los parámetros de un comando específico.",
+    "not_found": "El comando `{queryName}` no existe. Usa `{prefix}help` para ver la lista de comandos.",
+    "fields": {
+      "description": "📝 Descripción",
+      "usage": "❓ Cómo usarlo",
+      "aliases": "🔗 Alias"
+    },
+    "buttons": {
+      "prev": "Anterior: {prefix}{cmd}",
+      "next": "Siguiente: {prefix}{cmd}"
+    },
+    "categories": {
+      "osu": "osu! 🎮",
+      "utils": "Utilidades 🛠️",
+      "meme": "Diversión 🌸",
+      "general": "General ℹ️",
+      "about": "Acerca de 🛡️",
+      "moderation": "Moderación 👮"
+    }
+  },
+  "commands": {
+    "help": {
+      "header": "Los comandos de Sengo, explicados paso a paso.",
+      "body": "Muestra la lista completa de comandos o el detalle y uso de un comando específico.",
+      "usage": "s.help           : Lista todos los comandos disponibles\ns.help [comando] : Muestra la ayuda detallada para un comando"
+    },
+    "language": {
+      "header": "Configurar idioma",
+      "body": "Permite configurar el idioma del bot para el servidor actual (español o inglés).",
+      "usage": "s.language    : Muestra el idioma actual y cómo cambiarlo\ns.language es : Cambia el idioma a español\ns.language en : Cambia el idioma a inglés"
+    },
+    "acerca": {
+      "header": "Acerca de Sengo",
+      "body": "Muestra información sobre Sengo y las características avanzadas que lo hacen único.",
+      "usage": "s.acerca"
+    },
+    "contribuidores": {
+      "header": "Lista de usuarios vinculados",
+      "body": "Muestra la comunidad vinculada por OAuth agrupada por país con su estado de supporter.",
+      "usage": "s.contribuidores\ns.contribuidores -force : Fuerza la sincronización del estado de supporter"
+    }
+  },
   "contributors": {
     "title": "🌐 Usuarios Vinculados por OAuth",
     "syncing": "⏳ *Iniciando chequeo forzoso de estatus de supporter para todos los vinculados...*",

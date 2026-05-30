@@ -5,19 +5,19 @@ const { t } = require("../utils/i18n.js");
 /**
  * Genera el embed del listado general de ayuda.
  */
-function doHelpListEmbed(message, fields, description) {
+function doHelpListEmbed(message, fields, description, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const icon_url = message.author.displayAvatarURL({ dynamic: true, size: 512 });
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: 'Menú de Ayuda • Sengo',
+            name: t(locale, 'help.menu_title'),
             iconURL: icon_url
         })
         .setDescription(description)
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo • s.help [comando]",
+            text: t(locale, 'help.footer'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -32,11 +32,14 @@ function doHelpListEmbed(message, fields, description) {
 /**
  * Genera el embed de ayuda para un comando específico.
  */
-function doHelpCommandEmbed(message, mainName, queryName, helpData) {
+function doHelpCommandEmbed(message, mainName, queryName, helpData, locale = 'es', prefix = 's.') {
     const embedColor = getEmbedColor(message);
     const icon_url = message.author.displayAvatarURL({ dynamic: true, size: 512 });
 
-    const title = `Ayuda de Comando: .${mainName}${mainName !== queryName ? ` (Alias: .${queryName})` : ''}`;
+    const aliasInfo = mainName !== queryName 
+        ? t(locale, 'help.alias_info', { prefix, queryName }) 
+        : '';
+    const title = t(locale, 'help.command_title', { prefix, mainName, aliasInfo });
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -46,7 +49,7 @@ function doHelpCommandEmbed(message, mainName, queryName, helpData) {
         .setDescription(`*${helpData.headerText}*`)
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo • s.help [comando]",
+            text: t(locale, 'help.footer'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -61,7 +64,7 @@ function doHelpCommandEmbed(message, mainName, queryName, helpData) {
 /**
  * Crea la fila de botones para navegar entre los comandos de una misma categoría.
  */
-function buildHelpNavigationRow(currentCmd, categoryCmds) {
+function buildHelpNavigationRow(currentCmd, categoryCmds, locale = 'es', prefix = 's.') {
     if (categoryCmds.length <= 1) return null;
 
     const currentIndex = categoryCmds.indexOf(currentCmd);
@@ -76,13 +79,13 @@ function buildHelpNavigationRow(currentCmd, categoryCmds) {
 
     const prevButton = new ButtonBuilder()
         .setCustomId(`help_prev_${prevCmd}`)
-        .setLabel(`Anterior: .${prevCmd}`)
+        .setLabel(t(locale, 'help.buttons.prev', { prefix, cmd: prevCmd }))
         .setEmoji("◀️")
         .setStyle(ButtonStyle.Primary);
 
     const nextButton = new ButtonBuilder()
         .setCustomId(`help_next_${nextCmd}`)
-        .setLabel(`Siguiente: .${nextCmd}`)
+        .setLabel(t(locale, 'help.buttons.next', { prefix, cmd: nextCmd }))
         .setEmoji("▶️")
         .setStyle(ButtonStyle.Primary);
 
