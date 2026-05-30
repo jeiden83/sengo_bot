@@ -1,19 +1,17 @@
 const CONFIG = require("../../../config.js");
 const { Tatsu } = require('tatsu');
-const { EmbedBuilder } = require("discord.js");
+const { doStarboardConfigEmbed, doStarboardMsjEmbed } = require("../../../views/starboardViews.js");
+const { t } = require("../../../utils/i18n.js");
 
-async function aumentarScore(guildId, userId, amount, result){
+async function aumentarScore(guildId, userId, amount, result, locale) {
   const client = new Tatsu(CONFIG.TATSU_API_KEY);
 
   try {
-
     const res = await client.addGuildMemberScore(guildId, userId, amount);
-    return `Por lo del **'starboard'**; La puntuacion de **\'${result.user.username}\'**, ha cambiado a **${res.score}**`;
-
+    return t(locale, 'starboard.score_changed', { username: result.user.username, score: res.score });
   } catch (err) {
-
     console.error(err);
-    return `No se pudo obtener la info info de Tatsu.`;
+    return t(locale, 'starboard.tatsu_error');
   }
 }
 
@@ -29,9 +27,9 @@ async function countUniqueReactions(message) {
   return unique.size;
 }
 
-async function dailyTopFromChannel(message, channelId, config) {
+async function dailyTopFromChannel(message, channelId, config, locale) {
   const channel = await message.client.channels.fetch(channelId);
-  if (!channel?.isTextBased()) throw new Error('Canal inválido');
+  if (!channel?.isTextBased()) throw new Error(t(locale, 'starboard.invalid_channel'));
 
   const since = new Date();
   since.setDate(since.getDate() - 1);
@@ -55,9 +53,7 @@ async function dailyTopFromChannel(message, channelId, config) {
   });
 
   const scored = await Promise.all(mediaMsgs.map(async m => {
-
     const fullMsg = await m.fetch();
-    
     const score = await countUniqueReactions(fullMsg);
     return { msg: fullMsg, score };
   }));
@@ -73,11 +69,11 @@ async function dailyTopFromChannel(message, channelId, config) {
   };
 }
 
-async function doSetConfig(message, mode, variable){
+async function doSetConfig(message, mode, variable, locale) {
   const guildId = message.guild.id;
   const { getSupabaseClient } = require("../../../db/database.js");
   const supabase = getSupabaseClient();
-  if (!supabase) return "⚠️ Supabase no está conectado.";
+  if (!supabase) return t(locale, 'starboard.supabase_disconnected');
 
   let msj = "Aqui no debe haber nada je.";
 
@@ -90,7 +86,7 @@ async function doSetConfig(message, mode, variable){
   };
 
   const columnName = columnMap[mode];
-  if (!columnName) return "Modo no soportado.";
+  if (!columnName) return t(locale, 'starboard.mode_not_supported');
 
   let dbValue = variable;
   if (columnName === 'msj_limit' || columnName === 'exp_value') {
@@ -98,15 +94,15 @@ async function doSetConfig(message, mode, variable){
   }
 
   if (mode === "fromChannel") {
-    msj = `**Se** ha actualizado el canal de **entrada** del server.`;
+    msj = t(locale, 'starboard.updated_from_channel');
   } else if (mode === "starChannel") {
-    msj = `**Se** ha actualizado el canal de **starboard** del server.`;
+    msj = t(locale, 'starboard.updated_star_channel');
   } else if (mode === "msjLimit") {
-    msj = `**Se** ha actualizado la cantidad de mensajes a obtener.`;
+    msj = t(locale, 'starboard.updated_msj_limit');
   } else if (mode === "expValue") {
-    msj = `**Se** ha actualizado el exp obtenido por mensaje.`;
+    msj = t(locale, 'starboard.updated_exp_value');
   } else if (mode === "logsChannel") {
-    msj = `**Se** ha actualizado el canal de logs.`;
+    msj = t(locale, 'starboard.updated_logs_channel');
   }
 
   const { error } = await supabase
@@ -118,85 +114,18 @@ async function doSetConfig(message, mode, variable){
 
   if (error) {
     console.error('Error actualizando config en Supabase:', error);
-    return `❌ Error al actualizar config en la base de datos: ${error.message}`;
+    return t(locale, 'starboard.db_update_error', { error: error.message });
   }
 
-  return msj + ` **Ahora es:** \`${variable}\``;
-}
-
-async function doConfigEmbed(message, config){
-  const entradaField = config?.from_channel ? `\`${config.from_channel}\` : <#${config.from_channel}>` : "**No** se ha configurado el canal de entrada"
-  const starField = config?.star_channel ? `\`${config.star_channel}\` : <#${config.star_channel}>` : "**No** se ha configurado el canal 'starboard'"
-  const logsField = config?.logs_channel ? `\`${config.logs_channel}\` : <#${config.logs_channel}>` : "**No** se ha configurado el canal de logs"
-
-  const embed = new EmbedBuilder()
-  .setAuthor({
-    name: `Configs del 'starboard' de ${message.guild.name}`,
-    iconURL: message.guild.iconURL({ dynamic: true, size: 1024 })
-  })
-  .addFields(
-    {
-        name: "Canal de entrada",
-        value: entradaField,
-        inline: false
-    },
-    {
-      name: "Canal de 'starboard'",
-      value: starField,
-      inline: false
-    },
-    {
-      name: "Canal de logs",
-      value: logsField,
-      inline: false
-    },
-    {
-      name: "Limite de mensajes",
-      value: `**\`${config?.msj_limit || "Pero si no lo has configurado"}\`**`,
-      inline: false
-    },
-    {
-      name: "Exp por msj",
-      value: `**\`${config?.exp_value || "Pero si no lo has configurado"}\`**`,
-      inline: true
-    })
-  .setFooter({
-      text: "SengoBot",
-      iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-  })
-
-  return { embeds: [embed] }
-}
-
-function doStaboardMsjEmbed(message, result, config){
-
-  const embed = new EmbedBuilder()
-  .setAuthor({
-    name: `El mensaje del día de ayer con más reacciones únicas (${result.reactions}) es de: ${result.user.username}`,
-    iconURL: message.guild.iconURL({ dynamic: true, size: 1024 }),
-    url: result.message.url
-  })
-  .setColor(message.member.roles.highest.color || '#ffffff')
-  .setFooter({
-    text: `${result.user.username} procede a llevarse ${config?.exp_value || 0} exp`,
-    iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
-  })
-  .setTimestamp(result.message.createdTimestamp)
-
-  embed.setImage(
-    result.message.attachments.first()?.url ||
-    result.message.embeds[0]?.image?.url ||
-    null
-  );
-
-  return { embeds: [embed] };
+  return msj + t(locale, 'starboard.now_is', { value: variable });
 }
 
 async function run(messages, args) {
   const { message, res } = messages;
+  const locale = message.locale || 'es';
 
   if (!message.guild) {
-    return "Este comando solo se puede usar en un servidor.";
+    return t(locale, 'starboard.only_guild');
   }
 
   // Revisa si es admin O tiene el rol 'Sengo'
@@ -204,13 +133,13 @@ async function run(messages, args) {
   const hasSengoRole = message.member.roles.cache.some(role => role.name === 'Sengo');
 
   if (!hasAdmin && !hasSengoRole) {
-    return '❌ No eres admin ni tienes el rol **Sengo**, no puedes usar este comando.';
+    return t(locale, 'starboard.no_permission');
   }
 
   const guildId = message.guild.id;
   const { getSupabaseClient } = require("../../../db/database.js");
   const supabase = getSupabaseClient();
-  if (!supabase) return "⚠️ Supabase no está conectado.";
+  if (!supabase) return t(locale, 'starboard.supabase_disconnected');
 
   // Fetch current config
   const { data: config, error: fetchError } = await supabase
@@ -221,83 +150,72 @@ async function run(messages, args) {
 
   if (fetchError) {
     console.error('Error al obtener config de starboard:', fetchError);
-    return `❌ Error al obtener la configuración de la base de datos: ${fetchError.message}`;
+    return t(locale, 'starboard.db_fetch_error', { error: fetchError.message });
   }
 
-  // iniciar daily
-  if(!args[0]){
+  // Iniciar daily
+  if (!args[0]) {
     // Primero a revisar el canal a buscar las imagenes
-    if(!config?.from_channel || config.from_channel == "null") return `No existe canal de donde se obtendran las fotos.`;
+    if (!config?.from_channel || config.from_channel == "null") return t(locale, 'starboard.err_no_from_channel');
 
     // Luego a ver si el canal del starboard esta tambien
-    if(!config?.star_channel || config.star_channel == "null") return `No existe el canal 'starboard'.`;
+    if (!config?.star_channel || config.star_channel == "null") return t(locale, 'starboard.err_no_star_channel');
 
     // Luego a ver si la cantidad de mensajes a obtener tambien esta configurado
-    if(!config?.msj_limit || config.msj_limit == "null") return `No se ha configurado cuantos mensajes se van a obtener del canal.`;
+    if (!config?.msj_limit || config.msj_limit == "null") return t(locale, 'starboard.err_no_msj_limit');
 
     // Luego a ver si la cantidad de exp por mensaje tambien esta configurado
-    if(!config?.exp_value || config.exp_value == "null") return `No se ha configurado cuanto exp vale cada mensaje del 'starboard'.`;
+    if (!config?.exp_value || config.exp_value == "null") return t(locale, 'starboard.err_no_exp_value');
 
     // Revisar si ya hubo un msj star en este mismo dia
     const starChannel = await message.client.channels.fetch(config.star_channel);
     const today = new Date();
-          today.setHours(0, 0, 0, 0);
+    today.setHours(0, 0, 0, 0);
     const messagesToday = await starChannel.messages.fetch({ limit: 2 });
     const alreadySent = messagesToday.some(m => m.createdAt >= today);
-    if (alreadySent && config.star_channel != config.from_channel){
-
-      const msj =` > En la guild '${message.guild.name} : ${message.guild.id}', ya fue mandado el msj 'starboard' en el canal: ${config.star_channel}`;
+    if (alreadySent && config.star_channel != config.from_channel) {
+      const msj = t(locale, 'starboard.already_sent', { guildName: message.guild.name, guildId: message.guild.id, channelId: config.star_channel });
       console.log(new Date().toLocaleString() + msj);
       return msj;
     } 
 
     // Obtener los mensajes con imagenes
-    const result = await dailyTopFromChannel(message, config.from_channel, config);
-    if (!result) return 'No se encontraron mensajes con media hoy.';
+    const result = await dailyTopFromChannel(message, config.from_channel, config, locale);
+    if (!result) return t(locale, 'starboard.no_messages_media');
     
     // Se manda el embed del dia
-    await starChannel.send(doStaboardMsjEmbed(message, result, config));
+    const msjEmbed = doStarboardMsjEmbed({ message, result, config, locale });
+    await starChannel.send({ embeds: [msjEmbed] });
     
     // Asi como el log de los puntos obtenidos del autor ganador
     const logsChannel = await message.client.channels.fetch(config.logs_channel);
-    await logsChannel.send(await aumentarScore(guildId, result.user.id, parseInt(config.exp_value), result));
+    const pointsLog = await aumentarScore(guildId, result.user.id, parseInt(config.exp_value), result, locale);
+    await logsChannel.send(pointsLog);
 
-    return "✅ Starboard del día procesado exitosamente.";
+    return t(locale, 'starboard.success_processed');
 
-  } else if(args[0] == "config"){
-
-    // Para colocar el canal de donde se obtendran las fotos
-    if(args[1] == "setFromChannel"){
-
-      return await doSetConfig(message, "fromChannel", args[2]);
-
-       // Para colocar el canal de donde sera el starboard
-    } else if(args[1] == "setStarChannel"){
-
-      return await doSetConfig(message, "starChannel", args[2]);
-    
-      // Para colocar la cantidad de mensajes a obtener del canal de inicio
-    } else if(args[1] == "setMsjLimit"){
-
-      return await doSetConfig(message, "msjLimit", args[2]);
-
-    // Para colocar el exp a dar con  el tatsumaki
-    }else if(args[1] == "setExpReward"){
-
-      return await doSetConfig(message, "expValue", args[2]);
-
-    }else if(args[1] == "setLogsChannel"){
-
-      return await doSetConfig(message, "logsChannel", args[2]);
+  } else if (args[0] == "config") {
+    if (args[1] == "setFromChannel") {
+      return await doSetConfig(message, "fromChannel", args[2], locale);
+    } else if (args[1] == "setStarChannel") {
+      return await doSetConfig(message, "starChannel", args[2], locale);
+    } else if (args[1] == "setMsjLimit") {
+      return await doSetConfig(message, "msjLimit", args[2], locale);
+    } else if (args[1] == "setExpReward") {
+      return await doSetConfig(message, "expValue", args[2], locale);
+    } else if (args[1] == "setLogsChannel") {
+      return await doSetConfig(message, "logsChannel", args[2], locale);
     }  
   }
 
-  return await doConfigEmbed(message, config);
+  const configEmbed = doStarboardConfigEmbed({ message, config, locale });
+  return { embeds: [configEmbed] };
 }
+
 run.description = {
   header: 'Funcion starboard',
   body: `Con la configuracion de un canal de entrada, de 'starboard', mensajes a obtener y a exp dar por tatsumaki, da exp al mensaje con mas reacciones unicas del dia pasado.`,
   usage: 'el diablo'
 };
 
-module.exports = { run }
+module.exports = { run };

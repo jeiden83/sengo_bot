@@ -1,83 +1,85 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
-function formatDurationText(ms) {
+function formatDurationText(ms, locale) {
     const seconds = Math.floor(ms / 1000);
     const minutes = Math.floor(seconds / 60);
     const hours = Math.floor(minutes / 60);
     const days = Math.floor(hours / 24);
 
-    if (days > 0) return `${days} día(s) ${hours % 24} hora(s)`;
-    if (hours > 0) return `${hours} hora(s) ${minutes % 60} minuto(s)`;
-    if (minutes > 0) return `${minutes} minuto(s) ${seconds % 60} segundo(s)`;
-    return `${seconds} segundo(s)`;
+    if (days > 0) return t(locale, 'giveaway.duration_days', { days, hours: hours % 24 });
+    if (hours > 0) return t(locale, 'giveaway.duration_hours', { hours, minutes: minutes % 60 });
+    if (minutes > 0) return t(locale, 'giveaway.duration_minutes', { minutes, seconds: seconds % 60 });
+    return t(locale, 'giveaway.duration_seconds', { seconds });
 }
 
 /**
  * Genera el embed de previsualización para el creador.
  */
-function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message) {
+function getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message, locale) {
     const embedColor = getEmbedColor(message);
-    const durationText = formatDurationText(durationMs);
+    const durationText = formatDurationText(durationMs, locale);
 
     let reqsText = "";
     if (requiredRoleId) {
-        reqsText += `\n▸ **Rol Requerido:** <@&${requiredRoleId}> ${allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+        const higherStr = allowHigherRoles ? t(locale, 'giveaway.allow_higher_yes') : t(locale, 'giveaway.allow_higher_no');
+        reqsText += `\n▸ **${t(locale, 'giveaway.role_required_label')}:** <@&${requiredRoleId}> ${higherStr}`;
     }
     if (blockOsuSupporters) {
-        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a Sengo)*`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_supp_label')}:** ${t(locale, 'giveaway.exclude_supp_yes')}`;
     }
     if (blockNitro) {
-        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_nitro_label')}:** ${t(locale, 'giveaway.exclude_nitro_yes')}`;
     }
     if (!reqsText) {
-        reqsText = "\n▸ **Requisitos:** Ninguno";
+        reqsText = `\n▸ **${t(locale, 'giveaway.reqs_header_label')}:** ${t(locale, 'giveaway.req_none')}`;
     }
 
     return new EmbedBuilder()
-        .setTitle("🛠️ Vista Previa del Sorteo")
+        .setTitle(t(locale, 'giveaway.preview_title'))
         .setDescription(
-            `Estás a punto de iniciar el siguiente sorteo:\n\n` +
-            `▸ **Premio:** \`${prize}\`\n` +
-            `▸ **Ganadores:** \`${winnersCount}\`\n` +
-            `▸ **Duración:** \`${durationText}\`\n` +
-            `▸ **Canal Destino:** <#${targetChannelId}>\n` +
+            t(locale, 'giveaway.preview_desc_intro') +
+            `▸ **${t(locale, 'giveaway.prize_label')}:** \`${prize}\`\n` +
+            `▸ **${t(locale, 'giveaway.winners_label')}:** \`${winnersCount}\`\n` +
+            `▸ **${t(locale, 'giveaway.duration_label')}:** \`${durationText}\`\n` +
+            `▸ **${t(locale, 'giveaway.channel_label')}:** <#${targetChannelId}>\n` +
             reqsText +
-            `\n\n*Usa los botones de abajo para editar los valores antes de confirmar o cancelar.*`
+            t(locale, 'giveaway.preview_footer_desc')
         )
         .setColor(embedColor)
-        .setFooter({ text: "Sengo Sorteos • Vista Previa" })
+        .setFooter({ text: t(locale, 'giveaway.preview_footer') })
         .setTimestamp();
 }
 
 /**
  * Crea la botonera para la vista previa del sorteo.
  */
-function getGiveawayPreviewButtons() {
+function getGiveawayPreviewButtons(locale) {
     return new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("gw_preview_confirm")
-            .setLabel("Confirmar")
+            .setLabel(t(locale, 'giveaway.btn_confirm'))
             .setEmoji("✅")
             .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_title")
-            .setLabel("Premio")
+            .setLabel(t(locale, 'giveaway.btn_prize'))
             .setEmoji("📝")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_time")
-            .setLabel("Tiempo")
+            .setLabel(t(locale, 'giveaway.btn_duration'))
             .setEmoji("⏳")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_winners")
-            .setLabel("Ganadores")
+            .setLabel(t(locale, 'giveaway.btn_winners'))
             .setEmoji("👥")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_cancel")
-            .setLabel("Cancelar")
+            .setLabel(t(locale, 'giveaway.btn_cancel'))
             .setEmoji("❌")
             .setStyle(ButtonStyle.Danger)
     );
@@ -86,16 +88,16 @@ function getGiveawayPreviewButtons() {
 /**
  * Crea ActionRows en doble fila para una vista de previsualización más completa (incluyendo requisitos).
  */
-function getGiveawayPreviewComponents() {
+function getGiveawayPreviewComponents(locale) {
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("gw_preview_confirm")
-            .setLabel("Confirmar")
+            .setLabel(t(locale, 'giveaway.btn_confirm'))
             .setEmoji("✅")
             .setStyle(ButtonStyle.Success),
         new ButtonBuilder()
             .setCustomId("gw_preview_cancel")
-            .setLabel("Cancelar")
+            .setLabel(t(locale, 'giveaway.btn_cancel'))
             .setEmoji("❌")
             .setStyle(ButtonStyle.Danger)
     );
@@ -103,22 +105,22 @@ function getGiveawayPreviewComponents() {
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_title")
-            .setLabel("Premio")
+            .setLabel(t(locale, 'giveaway.btn_prize'))
             .setEmoji("📝")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_time")
-            .setLabel("Tiempo")
+            .setLabel(t(locale, 'giveaway.btn_duration'))
             .setEmoji("⏳")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_winners")
-            .setLabel("Ganadores")
+            .setLabel(t(locale, 'giveaway.btn_winners'))
             .setEmoji("👥")
             .setStyle(ButtonStyle.Primary),
         new ButtonBuilder()
             .setCustomId("gw_preview_edit_reqs")
-            .setLabel("Requisitos")
+            .setLabel(t(locale, 'giveaway.btn_reqs'))
             .setEmoji("⚙️")
             .setStyle(ButtonStyle.Primary)
     );
@@ -129,42 +131,42 @@ function getGiveawayPreviewComponents() {
 /**
  * Genera el Modal para configurar requisitos del sorteo.
  */
-function getRequirementsModal(roleInput, higherInput, suppInput, nitroInput) {
+function getRequirementsModal(roleInput, higherInput, suppInput, nitroInput, locale) {
     const modal = new ModalBuilder()
         .setCustomId('gw_modal_reqs')
-        .setTitle('Configurar Requisitos');
+        .setTitle(t(locale, 'giveaway.modal_reqs_title'));
 
     const roleField = new TextInputBuilder()
         .setCustomId('req_role_input')
-        .setLabel('ID o Mención del Rol Requerido')
+        .setLabel(t(locale, 'giveaway.role_field_label'))
         .setStyle(TextInputStyle.Short)
         .setValue(roleInput || '')
         .setRequired(false)
-        .setPlaceholder('Dejar vacío si no requiere rol');
+        .setPlaceholder(t(locale, 'giveaway.role_field_placeholder'));
 
     const higherField = new TextInputBuilder()
         .setCustomId('req_higher_input')
-        .setLabel('¿Permitir Rango Superior? (SI / NO)')
+        .setLabel(t(locale, 'giveaway.higher_field_label'))
         .setStyle(TextInputStyle.Short)
         .setValue(higherInput || 'NO')
         .setRequired(false)
-        .setMaxLength(2);
+        .setMaxLength(3);
 
     const suppField = new TextInputBuilder()
         .setCustomId('req_supp_input')
-        .setLabel('¿Excluir si ya tiene Supporter? (SI/NO)')
+        .setLabel(t(locale, 'giveaway.supp_field_label'))
         .setStyle(TextInputStyle.Short)
         .setValue(suppInput || 'NO')
         .setRequired(false)
-        .setMaxLength(2);
+        .setMaxLength(3);
 
     const nitroField = new TextInputBuilder()
         .setCustomId('req_nitro_input')
-        .setLabel('¿Excluir si tiene Nitro/Booster? (SI/NO)')
+        .setLabel(t(locale, 'giveaway.nitro_field_label'))
         .setStyle(TextInputStyle.Short)
         .setValue(nitroInput || 'NO')
         .setRequired(false)
-        .setMaxLength(2);
+        .setMaxLength(3);
 
     const r1 = new ActionRowBuilder().addComponents(roleField);
     const r2 = new ActionRowBuilder().addComponents(higherField);
@@ -178,93 +180,97 @@ function getRequirementsModal(roleInput, higherInput, suppInput, nitroInput) {
 /**
  * Genera el embed del sorteo activo enviado al canal de destino.
  */
-function getGiveawayActiveEmbed(gw, creatorId, message) {
+function getGiveawayActiveEmbed(gw, creatorId, message, locale) {
     const embedColor = getEmbedColor(message);
     const endTimestamp = Math.floor(gw.endAt / 1000);
 
-    let desc = `Reacciona con 🎉 para participar en el sorteo.\n\n` +
-        `▸ **Creado por:** <@${creatorId}>\n` +
-        `▸ **Ganadores:** \`${gw.winnersCount}\`\n` +
-        `▸ **Finaliza:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)`;
+    let desc = t(locale, 'giveaway.active_desc_react') +
+        `▸ **${t(locale, 'giveaway.created_by_label')}:** <@${creatorId}>\n` +
+        `▸ **${t(locale, 'giveaway.winners_label')}:** \`${gw.winnersCount}\`\n` +
+        `▸ **${t(locale, 'giveaway.ends_label')}:** <t:${endTimestamp}:F> (<t:${endTimestamp}:R>)`;
 
     let reqsText = "";
     if (gw.requiredRoleId) {
-        reqsText += `\n▸ **Rol Requerido:** <@&${gw.requiredRoleId}> ${gw.allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+        const higherStr = gw.allowHigherRoles ? t(locale, 'giveaway.allow_higher_yes') : t(locale, 'giveaway.allow_higher_no');
+        reqsText += `\n▸ **${t(locale, 'giveaway.role_required_label')}:** <@&${gw.requiredRoleId}> ${higherStr}`;
     }
     if (gw.blockOsuSupporters) {
-        reqsText += `\n▸ **Excluir Supporter:** Sí *(Se requiere vinculación a Sengo y no tener supporter activo)*`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_supp_label')}:** ${t(locale, 'giveaway.exclude_supp_yes')}`;
     }
     if (gw.blockNitro) {
-        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí *(No tener Nitro activo o ser booster)*`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_nitro_label')}:** ${t(locale, 'giveaway.exclude_nitro_yes')}`;
     }
     if (reqsText) {
-        desc += `\n\n🛡️ **Requisitos de participación:**${reqsText}`;
+        desc += `${t(locale, 'giveaway.reqs_participation_title')}${reqsText}`;
     }
 
     if (gw.serverSeedHash) {
-        desc += `\n\n🛡️ **Hash de Validación (Fairness):**\n\`${gw.serverSeedHash}\`\n*Garantiza que el sorteo es inalterable y demostrablemente justo.*`;
+        desc += t(locale, 'giveaway.fairness_validation_title', { hash: gw.serverSeedHash });
     }
 
+    const titleText = t(locale, 'giveaway.active_title', { prize: gw.prize });
+    const footerText = t(locale, 'giveaway.active_footer', { messageId: gw.messageId || 'Nuevo' });
+
     return new EmbedBuilder()
-        .setTitle(`🎉 ¡SORTEO: ${gw.prize}! 🎉`)
+        .setTitle(titleText)
         .setDescription(desc)
         .setColor(embedColor)
-        .setFooter({ text: `Sengo Sorteos • ID: ${gw.messageId || 'Nuevo'}` })
+        .setFooter({ text: footerText })
         .setTimestamp();
 }
 
 /**
  * Genera el embed de sorteo finalizado.
  */
-function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
+function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false, locale) {
     const embedColor = message ? getEmbedColor(message) : 0xfe66aa;
-    let winnersText = winners.length > 0 ? winners.map(w => `<@${w}>`).join(", ") : "Ninguno (no hubo participantes)";
+    let winnersText = winners.length > 0 ? winners.map(w => `<@${w}>`).join(", ") : t(locale, 'giveaway.winners_none');
     if (wasOffline) {
-        winnersText = "Ninguno (el sorteo finalizó con el bot desconectado)";
+        winnersText = t(locale, 'giveaway.winners_none_offline');
     }
 
     const footerText = wasOffline 
-        ? `Sengo Sorteos • ID: ${gw.messageId} • Finalizado offline`
-        : `Sengo Sorteos • ID: ${gw.messageId}`;
+        ? t(locale, 'giveaway.ended_footer_offline', { messageId: gw.messageId })
+        : t(locale, 'giveaway.ended_footer', { messageId: gw.messageId });
 
-    let desc = `**Premio:** \`${gw.prize}\`\n` +
-        `**Ganadores:** ${winnersText}\n\n`;
+    let desc = `**${t(locale, 'giveaway.prize_label')}:** \`${gw.prize}\`\n` +
+        `**${t(locale, 'giveaway.winners_label')}:** ${winnersText}\n\n`;
 
     let reqsText = "";
     if (gw.requiredRoleId) {
-        reqsText += `\n▸ **Rol Requerido:** <@&${gw.requiredRoleId}> ${gw.allowHigherRoles ? '(o superior)' : '(solo este rol)'}`;
+        const higherStr = gw.allowHigherRoles ? t(locale, 'giveaway.allow_higher_yes') : t(locale, 'giveaway.allow_higher_no');
+        reqsText += `\n▸ **${t(locale, 'giveaway.role_required_label')}:** <@&${gw.requiredRoleId}> ${higherStr}`;
     }
     if (gw.blockOsuSupporters) {
-        reqsText += `\n▸ **Excluir Supporter:** Sí *(No tener supporter activo)*`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_supp_label')}:** ${t(locale, 'giveaway.exclude_supp_yes')}`;
     }
     if (gw.blockNitro) {
-        reqsText += `\n▸ **Excluir Nitro/Booster:** Sí *(No tener Nitro activo o ser booster)*`;
+        reqsText += `\n▸ **${t(locale, 'giveaway.exclude_nitro_label')}:** ${t(locale, 'giveaway.exclude_nitro_yes')}`;
     }
     if (reqsText) {
-        desc += `🛡️ **Requisitos:**${reqsText}\n\n`;
+        desc += `🛡️ **${t(locale, 'giveaway.reqs_header_label')}:**${reqsText}\n\n`;
     }
 
     if (gw.exclusions && gw.exclusions.length > 0) {
         if (gw.exclusions.length <= 5) {
             let exclusionsLines = gw.exclusions.map(ex => `• <@${ex.userId}>: *${ex.reason}*`).join("\n");
-            desc += `🚫 **Exclusiones por Requisitos (${gw.exclusions.length}):**\n${exclusionsLines}\n\n`;
+            desc += t(locale, 'giveaway.exclusions_title', { count: gw.exclusions.length }) + `${exclusionsLines}\n\n`;
         } else {
-            desc += `🚫 **Exclusiones por Requisitos:** Se excluyeron \`${gw.exclusions.length}\` participantes. *(Ver archivo de texto adjunto para más detalles)*\n\n`;
+            desc += t(locale, 'giveaway.exclusions_many', { count: gw.exclusions.length });
         }
     }
 
     if (gw.serverSeed) {
         const checkUrl = `https://codebeautify.org/sha256-hash-generator?input=${encodeURIComponent(gw.serverSeed)}`;
-        desc += `🔑 **Semilla Revelada (Server Seed):**\n\`${gw.serverSeed}\`\n` +
-            `🛡️ **Hash de Validación original:**\n\`${gw.serverSeedHash || ''}\` ([Comprobar Hash](${checkUrl}))\n\n`;
+        desc += t(locale, 'giveaway.server_seed_revelation', { seed: gw.serverSeed, hash: gw.serverSeedHash || '', url: checkUrl });
     }
 
     desc += wasOffline 
-        ? `*El sorteo ha finalizado mientras el bot estaba desconectado. El creador puede hacer re-roll para elegir ganadores.*`
-        : `*El sorteo ha finalizado.*`;
+        ? t(locale, 'giveaway.ended_offline_desc')
+        : t(locale, 'giveaway.ended_desc');
 
     return new EmbedBuilder()
-        .setTitle(`🎁 SORTEO FINALIZADO 🎁`)
+        .setTitle(t(locale, 'giveaway.ended_title'))
         .setDescription(desc)
         .setColor(embedColor)
         .setFooter({ text: footerText })
@@ -274,37 +280,39 @@ function getGiveawayEndedEmbed(gw, winners, message, wasOffline = false) {
 /**
  * Genera el texto para anunciar los ganadores del sorteo.
  */
-function getGiveawayEndedText(gw, winners) {
+function getGiveawayEndedText(gw, winners, locale) {
     if (winners.length > 0) {
-        return `🎉 ¡Felicidades a los ganadores de **${gw.prize}**: ${winners.map(w => `<@${w}>`).join(", ")}!`;
+        const winList = winners.map(w => `<@${w}>`).join(", ");
+        return t(locale, 'giveaway.ended_text_winners', { prize: gw.prize, winners: winList });
     } else {
-        return `😢 El sorteo por **${gw.prize}** finalizó pero nadie participó.`;
+        return t(locale, 'giveaway.ended_text_none', { prize: gw.prize });
     }
 }
 
 /**
  * Genera el texto para el reroll de ganadores.
  */
-function getGiveawayRerollText(gw, winners) {
+function getGiveawayRerollText(gw, winners, locale) {
     if (winners.length > 0) {
-        return `🎲 **Reroll:** ¡Felicidades a los nuevos ganadores de **${gw.prize}**: ${winners.map(w => `<@${w}>`).join(", ")}! (Re-roleado desde el sorteo ID: \`${gw.messageId}\`)`;
+        const winList = winners.map(w => `<@${w}>`).join(", ");
+        return t(locale, 'giveaway.reroll_text_winners', { prize: gw.prize, winners: winList, messageId: gw.messageId });
     } else {
-        return `🎲 **Reroll:** No se pudieron seleccionar ganadores para **${gw.prize}** porque nadie reaccionó.`;
+        return t(locale, 'giveaway.reroll_text_none', { prize: gw.prize });
     }
 }
 
 /**
  * Genera el Modal para editar el premio.
  */
-function getTitleModal(currentPrize) {
+function getTitleModal(currentPrize, locale) {
     return new ModalBuilder()
         .setCustomId("gw_modal_title")
-        .setTitle("Editar Premio del Sorteo")
+        .setTitle(t(locale, 'giveaway.modal_prize_title'))
         .addComponents(
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId("title_input")
-                    .setLabel("Nuevo Título / Premio")
+                    .setLabel(t(locale, 'giveaway.prize_field_label'))
                     .setStyle(TextInputStyle.Short)
                     .setValue(currentPrize)
                     .setRequired(true)
@@ -315,15 +323,15 @@ function getTitleModal(currentPrize) {
 /**
  * Genera el Modal para editar el tiempo.
  */
-function getTimeModal(currentTimeStr) {
+function getTimeModal(currentTimeStr, locale) {
     return new ModalBuilder()
         .setCustomId("gw_modal_time")
-        .setTitle("Editar Tiempo del Sorteo")
+        .setTitle(t(locale, 'giveaway.modal_time_title'))
         .addComponents(
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId("time_input")
-                    .setLabel("Duración (ej: 10s, 5m, 2h, 1d)")
+                    .setLabel(t(locale, 'giveaway.time_field_label'))
                     .setStyle(TextInputStyle.Short)
                     .setValue(currentTimeStr)
                     .setRequired(true)
@@ -334,15 +342,15 @@ function getTimeModal(currentTimeStr) {
 /**
  * Genera el Modal para editar ganadores.
  */
-function getWinnersModal(currentWinners) {
+function getWinnersModal(currentWinners, locale) {
     return new ModalBuilder()
         .setCustomId("gw_modal_winners")
-        .setTitle("Editar Cantidad de Ganadores")
+        .setTitle(t(locale, 'giveaway.modal_winners_title'))
         .addComponents(
             new ActionRowBuilder().addComponents(
                 new TextInputBuilder()
                     .setCustomId("winners_input")
-                    .setLabel("Número de Ganadores")
+                    .setLabel(t(locale, 'giveaway.winners_field_label'))
                     .setStyle(TextInputStyle.Short)
                     .setValue(currentWinners.toString())
                     .setRequired(true)

@@ -1,8 +1,6 @@
-const { PermissionsBitField, Collection } = require("discord.js");
-const { parseDuration } = require("../../../models/GiveawayModel.js");
+const { PermissionsBitField } = require("discord.js");
 const {
     getGiveawayPreviewEmbed,
-    getGiveawayPreviewButtons,
     getGiveawayPreviewComponents,
     getRequirementsModal,
     getGiveawayActiveEmbed,
@@ -10,6 +8,7 @@ const {
     getTimeModal,
     getWinnersModal
 } = require("../../../views/giveawayViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 function parseDurationLocal(str) {
     const match = str.match(/^(\d+)([smhd])$/i);
@@ -27,6 +26,7 @@ function parseDurationLocal(str) {
 
 async function run(messages, args) {
     const { message } = messages;
+    const locale = message.locale || 'es';
 
     // Limpiar el argumento de alias inyectado por el handler
     if (args.length > 0) {
@@ -37,14 +37,14 @@ async function run(messages, args) {
     }
 
     if (!message.guild) {
-        return "❌ Este comando solo se puede usar en un servidor.";
+        return t(locale, 'giveaway.only_guild');
     }
 
     // Verificar permisos de moderación
     if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages) && 
         !message.member.permissions.has(PermissionsBitField.Flags.ManageGuild) && 
         !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
-        return "❌ No tienes permisos para gestionar sorteos. Se requiere `Gestionar Mensajes`, `Gestionar Servidor` o `Administrador`.";
+        return t(locale, 'giveaway.no_permissions');
     }
 
     const sub = args[0]?.toLowerCase();
@@ -55,20 +55,20 @@ async function run(messages, args) {
         const { doHelpCommandEmbed } = require("../../../views/generalViews.js");
         
         const helpData = {
-            headerText: "Gestión de sorteos interactiva",
+            headerText: t(locale, 'giveaway.help_header'),
             fields: [
                 {
-                    name: "📝 Descripción",
-                    value: "Permite crear, terminar y re-rolear sorteos en el servidor.",
+                    name: `📝 ${t(locale, 'giveaway.help_desc_title')}`,
+                    value: t(locale, 'giveaway.help_desc_value'),
                     inline: false
                 },
                 {
-                    name: "❓ Cómo usarlo",
+                    name: `❓ ${t(locale, 'giveaway.help_usage_title')}`,
                     value: `\`\`\`\n${prefix}${trigger} crear <#canal> <ganadores> <tiempo> <premio>\n${prefix}${trigger} terminar <mensaje_id|enlace>\n${prefix}${trigger} reroll <mensaje_id|enlace>\n\`\`\``,
                     inline: false
                 },
                 {
-                    name: "🔗 Alias",
+                    name: `🔗 ${t(locale, 'giveaway.help_alias_title')}`,
                     value: "`sorteo`",
                     inline: true
                 }
@@ -90,13 +90,11 @@ async function run(messages, args) {
         if (winnersArg && parseDurationLocal(winnersArg)) {
             // El usuario puso el tiempo primero o no especificó los ganadores
             if (timeArg && /^\d+$/.test(timeArg)) {
-                // Caso: s.giveaway crear #canal 10m 2 Nitro (tiempo ganadores premio)
                 const temp = winnersArg;
                 winnersArg = timeArg;
                 timeArg = temp;
                 prize = args.slice(4).join(" ");
             } else {
-                // Caso: s.giveaway crear #canal 10m Nitro (tiempo premio, omitiendo ganadores que por defecto es 1)
                 timeArg = winnersArg;
                 winnersArg = "1";
                 prize = args.slice(3).join(" ");
@@ -106,34 +104,34 @@ async function run(messages, args) {
         }
 
         if (!channelArg || !winnersArg || !timeArg || !prize) {
-            return "❌ Parámetros insuficientes.\n> Uso: `s.giveaway crear <#canal> [ganadores] <tiempo> <premio>`\n> Ejemplo: `s.giveaway crear #sorteos 1 10m Nitro` o `s.giveaway crear #sorteos 10m Nitro`";
+            return t(locale, 'giveaway.err_params');
         }
 
         const channelIdMatch = channelArg.match(/<#?(\d+)>/) || channelArg.match(/^(\d+)$/);
         const targetChannelId = channelIdMatch ? channelIdMatch[1] : null;
         const targetChannel = targetChannelId ? message.guild.channels.cache.get(targetChannelId) : null;
         if (!targetChannel) {
-            return "❌ Canal inválido. Asegúrate de mencionar el canal o usar una ID válida.";
+            return t(locale, 'giveaway.err_invalid_channel');
         }
 
-function resolveRole(guild, input) {
-    if (!input) return null;
-    const cleanId = input.replace(/[<@&>]/g, "").trim();
-    if (/^\d+$/.test(cleanId)) {
-        const role = guild.roles.cache.get(cleanId);
-        if (role) return role;
-    }
-    return guild.roles.cache.find(r => r.name.toLowerCase() === input.trim().toLowerCase()) || null;
-}
+        function resolveRole(guild, input) {
+            if (!input) return null;
+            const cleanId = input.replace(/[<@&>]/g, "").trim();
+            if (/^\d+$/.test(cleanId)) {
+                const role = guild.roles.cache.get(cleanId);
+                if (role) return role;
+            }
+            return guild.roles.cache.find(r => r.name.toLowerCase() === input.trim().toLowerCase()) || null;
+        }
 
         let winnersCount = parseInt(winnersArg, 10);
         if (isNaN(winnersCount) || winnersCount <= 0) {
-            return "❌ La cantidad de ganadores debe ser un número entero positivo.";
+            return t(locale, 'giveaway.err_invalid_winners');
         }
 
         let durationMs = parseDurationLocal(timeArg);
         if (!durationMs) {
-            return "❌ Formato de tiempo inválido. Usa formatos como `30s`, `10m`, `2h`, `1d`.";
+            return t(locale, 'giveaway.err_invalid_duration');
         }
 
         let requiredRoleId = null;
@@ -142,8 +140,8 @@ function resolveRole(guild, input) {
         let blockNitro = false;
 
         // Enviar embed de prueba/vista previa con botones interactivos
-        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
-        const components = getGiveawayPreviewComponents();
+        const previewEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message, locale);
+        const components = getGiveawayPreviewComponents(locale);
 
         const previewMsg = await message.channel.send({
             embeds: [previewEmbed],
@@ -166,7 +164,7 @@ function resolveRole(guild, input) {
                     const serverSeed = crypto.randomBytes(16).toString('hex');
                     const serverSeedHash = crypto.createHash('sha256').update(serverSeed).digest('hex');
 
-                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message);
+                    const activeEmbed = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message, locale);
                     const activeMsg = await targetChannel.send({ embeds: [activeEmbed] });
                     await activeMsg.react("🎉");
 
@@ -188,11 +186,11 @@ function resolveRole(guild, input) {
                     });
 
                     // Editar el sorteo activo para mostrar la ID real en el footer
-                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message);
+                    const activeEmbedWithId = getGiveawayActiveEmbed({ prize, winnersCount, endAt: Date.now() + durationMs, messageId: activeMsg.id, serverSeedHash, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message.author.id, message, locale);
                     await activeMsg.edit({ embeds: [activeEmbedWithId] }).catch(() => {});
 
                     await previewMsg.edit({
-                        content: `✅ ¡Sorteo iniciado en <#${targetChannelId}>!`,
+                        content: t(locale, 'giveaway.started_in_channel', { channelId: targetChannelId }),
                         embeds: [],
                         components: []
                     });
@@ -200,12 +198,12 @@ function resolveRole(guild, input) {
                     collector.stop('cancelled');
                     await i.deferUpdate();
                     await previewMsg.edit({
-                        content: "❌ Sorteo cancelado.",
+                        content: t(locale, 'giveaway.cancelled'),
                         embeds: [],
                         components: []
                     });
                 } else if (i.customId === 'gw_preview_edit_title') {
-                    const modal = getTitleModal(prize);
+                    const modal = getTitleModal(prize, locale);
                     await i.showModal(modal);
 
                     try {
@@ -216,7 +214,7 @@ function resolveRole(guild, input) {
                         await modalSubmit.deferUpdate();
                         prize = modalSubmit.fields.getTextInputValue('title_input');
                         
-                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
+                        const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message, locale);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
                         if (err.code !== 'InteractionCollectorError') {
@@ -224,7 +222,7 @@ function resolveRole(guild, input) {
                         }
                     }
                 } else if (i.customId === 'gw_preview_edit_time') {
-                    const modal = getTimeModal(timeArg);
+                    const modal = getTimeModal(timeArg, locale);
                     await i.showModal(modal);
 
                     try {
@@ -238,10 +236,10 @@ function resolveRole(guild, input) {
                             await modalSubmit.deferUpdate();
                             durationMs = newDurationMs;
                             timeArg = newTimeArg;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message, locale);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
-                            await modalSubmit.reply({ content: "❌ Formato de tiempo inválido. Usa `10s`, `5m`, `2h`, `1d`.", ephemeral: true });
+                            await modalSubmit.reply({ content: t(locale, 'giveaway.err_modal_duration'), ephemeral: true });
                         }
                     } catch (err) {
                         if (err.code !== 'InteractionCollectorError') {
@@ -249,7 +247,7 @@ function resolveRole(guild, input) {
                         }
                     }
                 } else if (i.customId === 'gw_preview_edit_winners') {
-                    const modal = getWinnersModal(winnersCount);
+                    const modal = getWinnersModal(winnersCount, locale);
                     await i.showModal(modal);
 
                     try {
@@ -262,10 +260,10 @@ function resolveRole(guild, input) {
                         if (!isNaN(newWinnersCount) && newWinnersCount > 0) {
                             await modalSubmit.deferUpdate();
                             winnersCount = newWinnersCount;
-                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message);
+                            const updatedEmbed = getGiveawayPreviewEmbed({ prize, winnersCount, durationMs, targetChannelId, requiredRoleId, allowHigherRoles, blockOsuSupporters, blockNitro }, message, locale);
                             await previewMsg.edit({ embeds: [updatedEmbed] });
                         } else {
-                            await modalSubmit.reply({ content: "❌ La cantidad de ganadores debe ser un número entero positivo.", ephemeral: true });
+                            await modalSubmit.reply({ content: t(locale, 'giveaway.err_invalid_winners'), ephemeral: true });
                         }
                     } catch (err) {
                         if (err.code !== 'InteractionCollectorError') {
@@ -278,7 +276,7 @@ function resolveRole(guild, input) {
                     const currentSuppVal = blockOsuSupporters ? 'SI' : 'NO';
                     const currentNitroVal = blockNitro ? 'SI' : 'NO';
 
-                    const modal = getRequirementsModal(currentRoleVal, currentHigherVal, currentSuppVal, currentNitroVal);
+                    const modal = getRequirementsModal(currentRoleVal, currentHigherVal, currentSuppVal, currentNitroVal, locale);
                     await i.showModal(modal);
 
                     try {
@@ -296,17 +294,17 @@ function resolveRole(guild, input) {
                         if (roleInput) {
                             const role = resolveRole(message.guild, roleInput);
                             if (!role) {
-                                await modalSubmit.reply({ content: `❌ No se encontró ningún rol con la ID o nombre "${roleInput}" en este servidor.`, ephemeral: true });
-                                        return;
+                                await modalSubmit.reply({ content: t(locale, 'giveaway.err_role_not_found', { roleInput }), ephemeral: true });
+                                return;
                             }
                             newRoleId = role.id;
                         }
 
                         await modalSubmit.deferUpdate();
                         requiredRoleId = newRoleId;
-                        allowHigherRoles = (higherInput === 'SI' || higherInput === 'S');
-                        blockOsuSupporters = (suppInput === 'SI' || suppInput === 'S');
-                        blockNitro = (nitroInput === 'SI' || nitroInput === 'S');
+                        allowHigherRoles = (higherInput === 'SI' || higherInput === 'S' || higherInput === 'YES' || higherInput === 'Y');
+                        blockOsuSupporters = (suppInput === 'SI' || suppInput === 'S' || suppInput === 'YES' || suppInput === 'Y');
+                        blockNitro = (nitroInput === 'SI' || nitroInput === 'S' || nitroInput === 'YES' || nitroInput === 'Y');
 
                         const updatedEmbed = getGiveawayPreviewEmbed({
                             prize,
@@ -317,7 +315,7 @@ function resolveRole(guild, input) {
                             allowHigherRoles,
                             blockOsuSupporters,
                             blockNitro
-                        }, message);
+                        }, message, locale);
                         await previewMsg.edit({ embeds: [updatedEmbed] });
                     } catch (err) {
                         if (err.code !== 'InteractionCollectorError') {
@@ -334,7 +332,7 @@ function resolveRole(guild, input) {
             if (reason !== 'confirmed' && reason !== 'cancelled') {
                 try {
                     await previewMsg.edit({
-                        content: "⏳ Tiempo de configuración agotado.",
+                        content: t(locale, 'giveaway.timeout'),
                         embeds: [],
                         components: []
                     });
@@ -352,30 +350,30 @@ function resolveRole(guild, input) {
     if (sub === 'terminar' || sub === 'end') {
         const messageId = parsedArgs.discordMessageId;
         if (!messageId) {
-            return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
+            return t(locale, 'giveaway.err_provide_msg_id');
         }
 
         const { endGiveaway } = require("../../../models/GiveawayModel.js");
         const gw = await endGiveaway(message.client, messageId);
         if (!gw) {
-            return "❌ No se encontró ningún sorteo activo registrado con esa ID de mensaje.";
+            return t(locale, 'giveaway.err_no_active_found');
         }
-        return `🎁 ¡Sorteo terminado inmediatamente!`;
+        return t(locale, 'giveaway.ended_immediately');
     }
 
     // 3. SUBCOMANDO REROLL
     if (sub === 'reroll') {
         const messageId = parsedArgs.discordMessageId;
         if (!messageId) {
-            return "❌ Debes proporcionar una ID de mensaje o un enlace de mensaje de sorteo válido.";
+            return t(locale, 'giveaway.err_provide_msg_id');
         }
 
         const { rerollGiveaway } = require("../../../models/GiveawayModel.js");
         const result = await rerollGiveaway(message.client, messageId);
         if (result.error) {
-            return `❌ ${result.error}`;
+            return result.error;
         }
-        return `🎲 ¡Se ha realizado el re-roll del sorteo con éxito!`;
+        return t(locale, 'giveaway.reroll_success');
     }
 }
 

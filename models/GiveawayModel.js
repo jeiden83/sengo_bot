@@ -1,6 +1,8 @@
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const { getGuildLanguage } = require("./GuildConfigModel.js");
+const { t } = require("../utils/i18n.js");
 
 function drawProvablyFair(serverSeed, participants, winnersCount) {
     const pool = [...participants].sort(); // Orden alfabético determinista de los IDs
@@ -24,17 +26,17 @@ function drawProvablyFair(serverSeed, participants, winnersCount) {
     return winners;
 }
 
-async function filterParticipants(guild, participants, gw) {
+async function filterParticipants(guild, participants, gw, locale) {
     const filtered = [];
     const exclusions = [];
     for (const userId of participants) {
         const member = await guild.members.fetch(userId).catch(() => null);
         if (!member) {
-            exclusions.push({ userId, userTag: `Desconocido (ID: ${userId})`, reason: "No se encuentra en el servidor" });
+            exclusions.push({ userId, userTag: `Desconocido (ID: ${userId})`, reason: t(locale, 'giveaway.ex_no_guild') });
             continue;
         }
 
-        const tag = member.user ? (member.user.tag || member.user.username) : `Usuario (ID: ${userId})`;
+        const tag = member.user ? (member.user.tag || member.user.username) : `${t(locale, 'giveaway.ex_unknown')} (ID: ${userId})`;
 
         if (gw.requiredRoleId) {
             const hasRole = member.roles.cache.has(gw.requiredRoleId);
@@ -43,11 +45,11 @@ async function filterParticipants(guild, participants, gw) {
                     const reqRole = guild.roles.cache.get(gw.requiredRoleId);
                     const hasHigher = reqRole ? member.roles.cache.some(r => r.position >= reqRole.position) : false;
                     if (!hasHigher) {
-                        exclusions.push({ userId, userTag: tag, reason: "No posee el rol requerido ni uno superior" });
+                        exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_no_role_higher') });
                         continue;
                     }
                 } else {
-                    exclusions.push({ userId, userTag: tag, reason: "No posee el rol requerido" });
+                    exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_no_role') });
                     continue;
                 }
             }
@@ -60,17 +62,17 @@ async function filterParticipants(guild, participants, gw) {
             const osuId = linked?.osu_id || oauthRecord?.osu_id;
 
             if (!osuId) {
-                exclusions.push({ userId, userTag: tag, reason: "No está vinculado a SengoBot" });
+                exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_not_linked') });
                 continue;
             }
 
             const profile = await OsuUserModel.getOsuUser({ username: [osuId], server: 'bancho' }).catch(() => null);
             if (!profile || profile === "El usuario no se encuentra en osu!") {
-                exclusions.push({ userId, userTag: tag, reason: "No se pudo validar su cuenta de osu!" });
+                exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_cant_validate') });
                 continue;
             }
             if (profile.is_supporter) {
-                exclusions.push({ userId, userTag: tag, reason: "Ya posee osu! supporter activo" });
+                exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_has_supporter') });
                 continue;
             }
         }
@@ -78,7 +80,7 @@ async function filterParticipants(guild, participants, gw) {
         if (gw.blockNitro) {
             const hasNitro = !!(member.premiumSince || member.user?.avatar?.startsWith('a_'));
             if (hasNitro) {
-                exclusions.push({ userId, userTag: tag, reason: "Ya posee Nitro o es Booster" });
+                exclusions.push({ userId, userTag: tag, reason: t(locale, 'giveaway.ex_has_nitro') });
                 continue;
             }
         }
@@ -201,6 +203,8 @@ async function endGiveaway(client, messageId, wasOffline = false) {
     gw.ended = true;
     saveGiveaways();
 
+    const locale = await getGuildLanguage(gw.guildId);
+
     try {
         const channel = await client.channels.fetch(gw.channelId).catch(() => null);
         if (!channel) return gw;
@@ -222,7 +226,7 @@ async function endGiveaway(client, messageId, wasOffline = false) {
             }
 
             if (participants.length > 0) {
-                const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw);
+                const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw, locale);
                 gw.exclusions = exclusions;
                 if (filtered.length > 0) {
                     if (gw.serverSeed) {
@@ -245,17 +249,13 @@ async function endGiveaway(client, messageId, wasOffline = false) {
         saveGiveaways();
 
         const { getGiveawayEndedEmbed } = require('../views/giveawayViews.js');
-        const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, wasOffline);
+        const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, wasOffline, locale);
 
         let editOptions = { embeds: [endedEmbed], components: [] };
         if (gw.exclusions && gw.exclusions.length > 0) {
-            let fileContent = `REGISTRO DE EXCLUSIONES DE SORTEO (ID: ${gw.messageId})\n`;
-            fileContent += `Premio: ${gw.prize}\n`;
-            fileContent += `Ganadores planeados: ${gw.winnersCount}\n`;
-            fileContent += `Fecha finalizacion: ${new Date().toISOString()}\n`;
-            fileContent += `========================================================\n\n`;
+            let fileContent = t(locale, 'giveaway.ex_file_header', { messageId: gw.messageId, prize: gw.prize, winnersCount: gw.winnersCount, date: new Date().toISOString() });
             for (const ex of gw.exclusions) {
-                fileContent += `• @${ex.userTag} (ID: ${ex.userId}) -> Razon: ${ex.reason}\n`;
+                fileContent += t(locale, 'giveaway.ex_file_line', { tag: ex.userTag, userId: ex.userId, reason: ex.reason });
             }
 
             const { AttachmentBuilder } = require('discord.js');
@@ -265,13 +265,13 @@ async function endGiveaway(client, messageId, wasOffline = false) {
         await msg.edit(editOptions).catch(() => {});
 
         if (wasOffline) {
-            const offlineText = `⚠️ El sorteo por **${gw.prize}** finalizó mientras el bot estaba desconectado. <@${gw.creatorId || ''}> ha sido notificado para decidir si realizar un re-roll o iniciar un sorteo nuevo.`;
+            const offlineText = t(locale, 'giveaway.offline_announcement', { prize: gw.prize, creatorId: gw.creatorId || '' });
             await channel.send({ content: offlineText, reply: { messageReference: msg.id } }).catch(() => {
                 channel.send(offlineText).catch(() => {});
             });
         } else {
             const { getGiveawayEndedText } = require('../views/giveawayViews.js');
-            const winText = getGiveawayEndedText(gw, winners);
+            const winText = getGiveawayEndedText(gw, winners, locale);
             await channel.send({ content: winText, reply: { messageReference: msg.id } }).catch(() => {
                 channel.send(winText).catch(() => {});
             });
@@ -282,10 +282,7 @@ async function endGiveaway(client, messageId, wasOffline = false) {
             const creator = await client.users.fetch(gw.creatorId).catch(() => null);
             if (creator) {
                 const prefix = client.config?.BOT_PREFIX || "s.";
-                const dmMessage = `⚠️ **Notificación de Sorteo**: Tu sorteo por **${gw.prize}** (ID: \`${gw.messageId}\`) finalizó mientras yo estaba desconectado.\n` +
-                    `No he seleccionado ganadores de forma automática. Si deseas elegir los ganadores a partir de los participantes registrados o iniciar uno nuevo, puedes hacerlo con:\n` +
-                    `- Para realizar re-roll (elegir ganadores): \`${prefix}sorteo reroll ${gw.messageId}\`\n` +
-                    `- Para crear uno nuevo: \`${prefix}sorteo crear\``;
+                const dmMessage = t(locale, 'giveaway.dm_notification', { prize: gw.prize, messageId: gw.messageId, prefix });
                 await creator.send(dmMessage).catch(() => {});
             }
         }
@@ -302,8 +299,10 @@ async function endGiveaway(client, messageId, wasOffline = false) {
  */
 async function rerollGiveaway(client, messageId) {
     const gw = giveaways.find(g => g.messageId === messageId);
-    if (!gw) return { error: "No se encontró ningún sorteo registrado con esa ID de mensaje." };
-    if (!gw.ended) return { error: "El sorteo aún está en curso. Usa el subcomando `terminar` primero." };
+    const locale = gw ? await getGuildLanguage(gw.guildId) : 'es';
+
+    if (!gw) return { error: t(locale, 'giveaway.err_no_active_found') };
+    if (!gw.ended) return { error: t(locale, 'giveaway.err_not_ended') };
 
     try {
         const channel = await client.channels.fetch(gw.channelId).catch(() => null);
@@ -321,14 +320,14 @@ async function rerollGiveaway(client, messageId) {
         }
 
         if (participants.length === 0) {
-            return { error: "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll." };
+            return { error: t(locale, 'giveaway.err_no_participants') };
         }
 
-        const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw);
+        const { filtered, exclusions } = await filterParticipants(channel.guild, participants, gw, locale);
         gw.exclusions = exclusions;
         if (filtered.length === 0) {
             saveGiveaways();
-            return { error: "Ningún participante que reaccionó cumple con los requisitos del sorteo (rol o no poseer supporter de osu!)." };
+            return { error: t(locale, 'giveaway.err_no_eligible') };
         }
 
         // Generar una nueva semilla para el re-roll para asegurar transparencia fresquita
@@ -342,17 +341,13 @@ async function rerollGiveaway(client, messageId) {
         saveGiveaways();
 
         const { getGiveawayEndedEmbed, getGiveawayRerollText } = require('../views/giveawayViews.js');
-        const endedEmbed = getGiveawayEndedEmbed(gw, winners);
+        const endedEmbed = getGiveawayEndedEmbed(gw, winners, null, false, locale);
 
         let editOptions = { embeds: [endedEmbed] };
         if (gw.exclusions && gw.exclusions.length > 0) {
-            let fileContent = `REGISTRO DE EXCLUSIONES DE REROLL (ID: ${gw.messageId})\n`;
-            fileContent += `Premio: ${gw.prize}\n`;
-            fileContent += `Ganadores planeados: ${gw.winnersCount}\n`;
-            fileContent += `Fecha re-roll: ${new Date().toISOString()}\n`;
-            fileContent += `========================================================\n\n`;
+            let fileContent = t(locale, 'giveaway.ex_file_header_reroll', { messageId: gw.messageId, prize: gw.prize, winnersCount: gw.winnersCount, date: new Date().toISOString() });
             for (const ex of gw.exclusions) {
-                fileContent += `• @${ex.userTag} (ID: ${ex.userId}) -> Razon: ${ex.reason}\n`;
+                fileContent += t(locale, 'giveaway.ex_file_line', { tag: ex.userTag, userId: ex.userId, reason: ex.reason });
             }
 
             const { AttachmentBuilder } = require('discord.js');
@@ -361,7 +356,7 @@ async function rerollGiveaway(client, messageId) {
         }
         await msg.edit(editOptions).catch(() => {});
 
-        const rerollText = getGiveawayRerollText(gw, winners);
+        const rerollText = getGiveawayRerollText(gw, winners, locale);
         await channel.send({ content: rerollText, reply: { messageReference: msg.id } }).catch(() => {
             channel.send(rerollText).catch(() => {});
         });
@@ -369,7 +364,7 @@ async function rerollGiveaway(client, messageId) {
         return { success: true, winners };
     } catch (error) {
         console.error(`Error al realizar reroll del sorteo ${messageId}:`, error);
-        return { error: `Error al realizar re-roll: ${error.message}` };
+        return { error: t(locale, 'giveaway.err_reroll_failed', { message: error.message }) };
     }
 }
 

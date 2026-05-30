@@ -1,19 +1,31 @@
 const { EmbedBuilder } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
-const MONTHS_ES = [
-    "Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio",
-    "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"
-];
+const MONTHS = {
+    es: ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"],
+    en: ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]
+};
+
+function getFormattedDate(day, monthIndex, locale) {
+    const monthNames = MONTHS[locale] || MONTHS['es'];
+    const monthName = monthNames[monthIndex];
+    if (locale === 'en') {
+        return `${monthName} ${day}`;
+    }
+    return `${day} de ${monthName}`;
+}
 
 /**
  * Genera el embed con la lista de todos los cumpleaños del servidor agrupados por mes.
  */
-function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
+function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const isGlobal = !guild || guild.isGlobal;
     const guildIcon = (!isGlobal && typeof guild.iconURL === 'function') ? guild.iconURL({ dynamic: true }) : "";
-    const authorName = isGlobal ? "Todos los Cumpleaños Registrados" : `Cumpleaños en ${guild.name}`;
+    const authorName = isGlobal 
+        ? t(locale, 'cumple.list_title_global') 
+        : t(locale, 'cumple.list_title_guild', { guildName: guild.name });
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -24,7 +36,7 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
         .setTimestamp();
 
     if (bdayList.length === 0) {
-        embed.setDescription("✨ No hay cumpleaños registrados en este servidor. ¡Sé el primero usando `.cumple set`!");
+        embed.setDescription(t(locale, 'cumple.list_no_birthdays'));
         embed.setFooter({
             text: "Sengo • s.cumple",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
@@ -44,11 +56,12 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
 
     // Quedarse solo con los meses que tienen cumpleaños
     const monthsWithBdays = [];
+    const monthNames = MONTHS[locale] || MONTHS['es'];
     for (let i = 0; i < 12; i++) {
         if (grouped[i].length > 0) {
             monthsWithBdays.push({
                 monthIndex: i,
-                monthName: MONTHS_ES[i],
+                monthName: monthNames[i],
                 list: grouped[i]
             });
         }
@@ -76,22 +89,22 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
                 const ageThisYear = currentYear - item.year;
                 
                 if (bdayThisYear < todayMidnight) {
-                    const nextAge = ageThisYear + 1;
-                    ageStr = ` (cumplió ${ageThisYear} 🎉)`;
+                    ageStr = t(locale, 'cumple.list_age_past', { age: ageThisYear });
                 } else if (bdayThisYear.getTime() === todayMidnight.getTime()) {
-                    ageStr = ` (¡hoy cumple ${ageThisYear}! 🎉)`;
+                    ageStr = t(locale, 'cumple.list_age_today', { age: ageThisYear });
                 } else {
-                    ageStr = ` (cumple ${ageThisYear})`;
+                    ageStr = t(locale, 'cumple.list_age_future', { age: ageThisYear });
                 }
             }
-            return `• <@${item.userId}> - **${item.day} de ${m.monthName}**${ageStr}`;
+            const formattedDate = getFormattedDate(item.day, item.month - 1, locale);
+            return `• <@${item.userId}> - **${formattedDate}**${ageStr}`;
         }).join('\n');
 
         embed.addFields({ name: `📅 ${m.monthName}`, value: content, inline: false });
     });
 
     embed.setFooter({
-        text: `Página ${page}/${totalPages} • Sengo • s.cumple`,
+        text: t(locale, 'cumple.list_footer', { page, total: totalPages }),
         iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
     });
 
@@ -101,9 +114,8 @@ function doBirthdayListEmbed(message, guild, bdayList, pageArg = 1) {
 /**
  * Genera el embed para mostrar el siguiente cumpleaños.
  */
-function doBirthdayNextEmbed(message, guild, nextData) {
+function doBirthdayNextEmbed(message, guild, nextData, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const guildIcon = guild.iconURL({ dynamic: true }) || "";
 
     const embed = new EmbedBuilder()
         .setColor(embedColor)
@@ -114,29 +126,31 @@ function doBirthdayNextEmbed(message, guild, nextData) {
         .setTimestamp();
 
     if (!nextData || nextData.birthdays.length === 0) {
-        embed.setTitle("🎂 Próximo Cumpleaños")
-             .setDescription("No hay cumpleaños registrados en el servidor.");
+        embed.setTitle(t(locale, 'cumple.next_title'))
+             .setDescription(t(locale, 'cumple.next_none'));
         return embed;
     }
 
     const { daysLeft, birthdays } = nextData;
     const userMentions = birthdays.map(b => `<@${b.userId}>`).join(", ");
-    const dateStr = `${birthdays[0].day} de ${MONTHS_ES[birthdays[0].month - 1]}`;
+    const dateStr = getFormattedDate(birthdays[0].day, birthdays[0].month - 1, locale);
 
     if (daysLeft === 0) {
-        embed.setTitle("🎉 ¡HOY ES EL CUMPLEAÑOS! 🎉")
-             .setDescription(`🎂 ¡Hoy es el cumpleaños de **${userMentions}** (${dateStr})! Deseémosles un día fantástico. ✨🎁`)
-             .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd"); // Reemplazar con avatar si es solo uno
+        embed.setTitle(t(locale, 'cumple.next_today_title'))
+             .setDescription(t(locale, 'cumple.next_today_desc', { users: userMentions, date: dateStr }))
+             .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd");
         if (birthdays.length === 1 && birthdays[0].member) {
             const avatar = birthdays[0].member.user.displayAvatarURL({ dynamic: true, size: 256 });
             embed.setThumbnail(avatar);
         }
     } else {
-        const textPlural = birthdays.length === 1 ? "El próximo cumpleaños es de" : "Los próximos cumpleaños son de";
-        const daysStr = daysLeft === 1 ? "mañana" : `en **${daysLeft}** días`;
+        const textPluralKey = birthdays.length === 1 ? 'cumple.next_singular_desc' : 'cumple.next_plural_desc';
+        const daysStr = daysLeft === 1 
+            ? t(locale, 'cumple.days_tomorrow') 
+            : t(locale, 'cumple.days_future', { days: daysLeft });
         
-        embed.setTitle("🎂 Próximo Cumpleaños")
-             .setDescription(`✨ ${textPlural} **${userMentions}** ${daysStr} (**${dateStr}**).`);
+        embed.setTitle(t(locale, 'cumple.next_title'))
+             .setDescription(t(locale, textPluralKey, { users: userMentions, days: daysStr, date: dateStr }));
              
         if (birthdays.length === 1 && birthdays[0].member) {
             const avatar = birthdays[0].member.user.displayAvatarURL({ dynamic: true, size: 256 });
@@ -150,7 +164,7 @@ function doBirthdayNextEmbed(message, guild, nextData) {
 /**
  * Genera el embed para mostrar el cumpleaños anterior.
  */
-function doBirthdayPrevEmbed(message, guild, prevData) {
+function doBirthdayPrevEmbed(message, guild, prevData, locale = 'es') {
     const embedColor = getEmbedColor(message);
 
     const embed = new EmbedBuilder()
@@ -162,20 +176,24 @@ function doBirthdayPrevEmbed(message, guild, prevData) {
         .setTimestamp();
 
     if (!prevData || prevData.birthdays.length === 0) {
-        embed.setTitle("🎂 Cumpleaños Anterior")
-             .setDescription("No hay cumpleaños registrados en el servidor.");
+        embed.setTitle(t(locale, 'cumple.prev_title'))
+             .setDescription(t(locale, 'cumple.prev_none'));
         return embed;
     }
 
     const { daysAgo, birthdays } = prevData;
     const userMentions = birthdays.map(b => `<@${b.userId}>`).join(", ");
-    const dateStr = `${birthdays[0].day} de ${MONTHS_ES[birthdays[0].month - 1]}`;
+    const dateStr = getFormattedDate(birthdays[0].day, birthdays[0].month - 1, locale);
 
-    const textPlural = birthdays.length === 1 ? "El último cumpleaños fue de" : "Los últimos cumpleaños fueron de";
-    const daysStr = daysAgo === 0 ? "hoy" : daysAgo === 1 ? "ayer" : `hace **${daysAgo}** días`;
+    const textPluralKey = birthdays.length === 1 ? 'cumple.prev_singular_desc' : 'cumple.prev_plural_desc';
+    const daysStr = daysAgo === 0 
+        ? t(locale, 'cumple.days_today') 
+        : daysAgo === 1 
+            ? t(locale, 'cumple.days_yesterday') 
+            : t(locale, 'cumple.days_ago', { days: daysAgo });
 
-    embed.setTitle("🎂 Cumpleaños Anterior")
-         .setDescription(`✨ ${textPlural} **${userMentions}** ${daysStr} (**${dateStr}**).`);
+    embed.setTitle(t(locale, 'cumple.prev_title'))
+         .setDescription(t(locale, textPluralKey, { users: userMentions, days: daysStr, date: dateStr }));
 
     if (birthdays.length === 1 && birthdays[0].member) {
         const avatar = birthdays[0].member.user.displayAvatarURL({ dynamic: true, size: 256 });
@@ -188,28 +206,29 @@ function doBirthdayPrevEmbed(message, guild, prevData) {
 /**
  * Genera el embed para el anuncio automático diario.
  */
-function doBirthdayAnnounceEmbed(client, member, age = null, isLinked = true) {
-    // Usar el color rosa por defecto para celebraciones de cumpleaños
+function doBirthdayAnnounceEmbed(client, member, age = null, isLinked = true, locale = 'es') {
     const embedColor = "#FF69B4";
     const userAvatar = member.user.displayAvatarURL({ dynamic: true, size: 512 });
 
-    const titleText = age ? `🎉 ¡Felices ${age} años! 🎉` : "🎉 ¡Feliz Cumpleaños! 🎉";
+    const titleText = age 
+        ? t(locale, 'cumple.announce_title_age', { age }) 
+        : t(locale, 'cumple.announce_title');
 
     const embed = new EmbedBuilder()
         .setTitle(titleText)
-        .setDescription(`✨ Hoy es el cumpleaños de ${member}! Deseémosle un excelente día lleno de alegrías y regalos. 🎂🎁🎈`)
+        .setDescription(t(locale, 'cumple.announce_desc', { member: member.toString() }))
         .setColor(embedColor)
         .setThumbnail(userAvatar)
         .setTimestamp();
 
     if (!isLinked) {
         embed.setFooter({
-            text: "Sengo • Tip: ¡Vincula tu cuenta de osu! (.link o /vincular) para que te felicite exactamente a tu hora local! ⏰",
+            text: t(locale, 'cumple.announce_footer_unlinked'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         });
     } else {
         embed.setFooter({
-            text: "Sengo • Anuncios de Cumpleaños",
+            text: t(locale, 'cumple.announce_footer'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         });
     }

@@ -1,6 +1,7 @@
 const { PermissionFlagsBits } = require("discord.js");
 const BirthdayModel = require("../../../models/BirthdayModel.js");
 const { doBirthdayListEmbed, doBirthdayNextEmbed, doBirthdayPrevEmbed } = require("../../../views/birthdayViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 function parseBirthday(str) {
     if (!str) return null;
@@ -36,7 +37,7 @@ function parseBirthday(str) {
     return { day, month, year };
 }
 
-function formatAgeInfo(day, month, year, isSelf) {
+function formatAgeInfo(day, month, year, isSelf, locale) {
     if (year === null) return "";
     
     const now = new Date();
@@ -48,25 +49,26 @@ function formatAgeInfo(day, month, year, isSelf) {
     if (bdayThisYear < todayMidnight) {
         const ageNextYear = ageThisYear + 1;
         return isSelf 
-            ? ` (Este año cumpliste ${ageThisYear} años. ¡En tu próximo cumpleaños cumplirás ${ageNextYear}!)`
-            : ` (Este año cumplió ${ageThisYear} años. ¡En su próximo cumpleaños cumplirá ${ageNextYear}!)`;
+            ? t(locale, 'cumple.age_this_year_self', { age: ageThisYear, nextAge: ageNextYear })
+            : t(locale, 'cumple.age_this_year_other', { age: ageThisYear, nextAge: ageNextYear });
     } else if (bdayThisYear.getTime() === todayMidnight.getTime()) {
         return isSelf
-            ? ` (¡Hoy cumples ${ageThisYear} años! 🎉)`
-            : ` (¡Hoy cumple ${ageThisYear} años! 🎉)`;
+            ? t(locale, 'cumple.age_today_self', { age: ageThisYear })
+            : t(locale, 'cumple.age_today_other', { age: ageThisYear });
     } else {
         const currentAge = ageThisYear - 1;
         return isSelf
-            ? ` (Actualmente tienes ${currentAge} años. ¡En tu próximo cumpleaños cumplirás ${ageThisYear}!)`
-            : ` (Actualmente tiene ${currentAge} años. ¡En su próximo cumpleaños cumplirá ${ageThisYear}!)`;
+            ? t(locale, 'cumple.age_current_self', { age: currentAge, nextAge: ageThisYear })
+            : t(locale, 'cumple.age_current_other', { age: currentAge, nextAge: ageThisYear });
     }
 }
 
 async function run(messages, args) {
-    const { message, reply, logger } = messages;
+    const { message, reply } = messages;
+    const locale = message.locale || 'es';
     
     if (!BirthdayModel.getIsInitialized()) {
-        return "⏳ El sistema de cumpleaños se está inicializando. Por favor, intenta de nuevo en unos segundos.";
+        return t(locale, 'cumple.loading');
     }
 
     const authorId = message.author.id;
@@ -76,41 +78,41 @@ async function run(messages, args) {
     const cleanArgs = (args || []).filter(arg => arg !== null && arg !== undefined && arg !== '');
 
     if (cleanArgs.length === 0) {
-        return helpMessage();
+        return t(locale, 'cumple.help_msg');
     }
 
     const sub = cleanArgs[0].toLowerCase();
 
     // Error predictivo para cuando intentan usar comandos de ayuda
     if (sub === "ayuda" || sub === "help" || sub === "guia" || sub === "guía" || sub === "?") {
-        return "❌ Para ver la guía de ayuda, usa simplemente `s.cumple` (sin subcomandos).";
+        return t(locale, 'cumple.err_sub_help');
     }
 
     // 1. Caso de configurar canal
     if (sub === "canal" || sub === "channel") {
-        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        if (!guild) return t(locale, 'cumple.only_guild');
         
         const member = message.member || await guild.members.fetch(authorId).catch(() => null);
-        if (!member) return "❌ No se pudo validar tu membresía en el servidor.";
+        if (!member) return t(locale, 'cumple.err_validate_member');
         
         const hasPermission = member.permissions.has(PermissionFlagsBits.ManageGuild) || 
                               member.permissions.has(PermissionFlagsBits.Administrator);
         if (!hasPermission) {
-            return "❌ No tienes permisos para configurar el canal de cumpleaños (se requiere *Gestionar Servidor* o *Administrador*).";
+            return t(locale, 'cumple.err_no_permission');
         }
 
         if (!cleanArgs[1]) {
             const currentChannelId = BirthdayModel.getGuildChannel(guild.id);
             if (currentChannelId) {
-                return `📢 El canal de anuncios de cumpleaños actual es <#${currentChannelId}>. Puedes cambiarlo con \`s.cumple canal #canal\` o desactivarlo con \`s.cumple canal desactivar\`.`;
+                return t(locale, 'cumple.channel_current', { channelId: currentChannelId });
             }
-            return "📢 No hay ningún canal de cumpleaños configurado actualmente. Usa \`s.cumple canal #canal\` para establecer uno.";
+            return t(locale, 'cumple.channel_none');
         }
 
         const channelArg = cleanArgs[1].toLowerCase();
         if (channelArg === "quitar" || channelArg === "desactivar" || channelArg === "none") {
             BirthdayModel.setGuildChannel(guild.id, null);
-            return "✅ Se ha desactivado el canal de anuncios de cumpleaños. Sengo ya no anunciará los cumpleaños en este servidor.";
+            return t(locale, 'cumple.channel_disabled');
         }
 
         let channelId = null;
@@ -120,25 +122,25 @@ async function run(messages, args) {
         }
 
         if (!channelId) {
-            return "❌ Debes mencionar un canal válido (ej: `#cumpleaños`) o proveer su ID.";
+            return t(locale, 'cumple.channel_invalid');
         }
 
         const targetChannel = guild.channels.cache.get(channelId);
         if (!targetChannel) {
-            return "❌ No se encontró ese canal en este servidor. Asegúrate de que Sengo tenga acceso al mismo.";
+            return t(locale, 'cumple.channel_not_found');
         }
 
         BirthdayModel.setGuildChannel(guild.id, channelId);
-        return `✅ Se ha configurado el canal de anuncios de cumpleaños en <#${channelId}> de forma exitosa.`;
+        return t(locale, 'cumple.channel_success', { channelId });
     }
 
     // 2. Caso de eliminar cumpleaños
     if (sub === "quitar" || sub === "remove" || sub === "borrar" || sub === "delete") {
         const removed = BirthdayModel.removeUserBirthday(authorId);
         if (removed) {
-            return "✅ Tu cumpleaños ha sido eliminado de mi base de datos de forma exitosa.";
+            return t(locale, 'cumple.removed_success');
         }
-        return "❌ No tenías ningún cumpleaños registrado en mi sistema.";
+        return t(locale, 'cumple.removed_none');
     }
 
     // 3. Caso de ver lista de cumpleaños
@@ -151,7 +153,7 @@ async function run(messages, args) {
         if (hasTodosFlag) {
             const ownerId = process.env.OWNER_ID;
             if (authorId !== ownerId) {
-                return "❌ La flag `-todos` es exclusiva para el creador del bot.";
+                return t(locale, 'cumple.err_todos_owner');
             }
             isGlobalList = true;
             // Filtrar la flag de los argumentos para extraer la página si existe
@@ -159,7 +161,7 @@ async function run(messages, args) {
             pageArg = remainingArgs[0];
         }
 
-        if (!guild && !isGlobalList) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        if (!guild && !isGlobalList) return t(locale, 'cumple.only_guild');
 
         let bdayList = [];
         let listGuild = guild;
@@ -181,7 +183,7 @@ async function run(messages, args) {
         }
         
         if (bdayList.length === 0) {
-            const embed = doBirthdayListEmbed(message, listGuild, bdayList, 1);
+            const embed = doBirthdayListEmbed(message, listGuild, bdayList, 1, locale);
             return { embeds: [embed] };
         }
 
@@ -206,7 +208,7 @@ async function run(messages, args) {
         if (pageNum < 1) pageNum = 1;
         if (pageNum > totalPages) pageNum = totalPages;
 
-        const initialEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum);
+        const initialEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum, locale);
 
         const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
         const getButtonsRow = (current) => {
@@ -256,7 +258,7 @@ async function run(messages, args) {
                     pageNum = totalPages;
                 }
 
-                const updatedEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum);
+                const updatedEmbed = doBirthdayListEmbed(message, listGuild, bdayList, pageNum, locale);
 
                 await i.editReply({
                     embeds: [updatedEmbed],
@@ -278,45 +280,45 @@ async function run(messages, args) {
 
     // 3.5 Caso de actualizar/chequear cumpleaños (Moderación/Admin)
     if (sub === "actualizar" || sub === "update" || sub === "check" || sub === "revisar") {
-        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        if (!guild) return t(locale, 'cumple.only_guild');
 
         const member = message.member || await guild.members.fetch(authorId).catch(() => null);
-        if (!member) return "❌ No se pudo validar tu membresía en el servidor.";
+        if (!member) return t(locale, 'cumple.err_validate_member');
         
         const hasPermission = member.permissions.has(PermissionFlagsBits.ManageGuild) || 
                               member.permissions.has(PermissionFlagsBits.Administrator);
         if (!hasPermission) {
-            return "❌ No tienes permisos para forzar la revisión de cumpleaños (se requiere *Gestionar Servidor* o *Administrador*).";
+            return t(locale, 'cumple.err_force_permission');
         }
 
         const channelId = BirthdayModel.getGuildChannel(guild.id);
         if (!channelId) {
-            return "📢 No hay ningún canal de anuncios de cumpleaños configurado actualmente en este servidor. Configura uno con `s.cumple canal #canal` antes de actualizar.";
+            return t(locale, 'cumple.err_force_no_channel');
         }
 
         const { checkGuildBirthdays } = require("../../../services/birthdayAnnouncer.js");
         const announcedTags = await checkGuildBirthdays(guild, message.client);
 
         if (announcedTags.length > 0) {
-            return `✅ Se revisaron los cumpleaños del día. Se felicitó a: ${announcedTags.join(", ")}.`;
+            return t(locale, 'cumple.force_announced', { names: announcedTags.join(", ") });
         }
 
-        return "📢 Se revisaron los cumpleaños del día. No hay nuevos cumpleaños para anunciar hoy en este servidor.";
+        return t(locale, 'cumple.force_none');
     }
 
     // 4. Caso de ver siguiente cumpleaños
     if (sub === "siguiente" || sub === "next" || sub === "proximo" || sub === "próximo") {
-        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        if (!guild) return t(locale, 'cumple.only_guild');
         const nextData = await BirthdayModel.getNextBirthdays(guild, new Date());
-        const embed = doBirthdayNextEmbed(message, guild, nextData);
+        const embed = doBirthdayNextEmbed(message, guild, nextData, locale);
         return { embeds: [embed] };
     }
 
     // 5. Caso de ver cumpleaños anterior
     if (sub === "anterior" || sub === "prev" || sub === "pasado") {
-        if (!guild) return "❌ Este subcomando solo puede ejecutarse en un servidor.";
+        if (!guild) return t(locale, 'cumple.only_guild');
         const prevData = await BirthdayModel.getPrevBirthdays(guild, new Date());
-        const embed = doBirthdayPrevEmbed(message, guild, prevData);
+        const embed = doBirthdayPrevEmbed(message, guild, prevData, locale);
         return { embeds: [embed] };
     }
 
@@ -324,20 +326,20 @@ async function run(messages, args) {
     if (sub === "añadir" || sub === "add") {
         const ownerId = process.env.OWNER_ID;
         if (authorId !== ownerId) {
-            return "❌ Este subcomando es exclusivo para el creador del bot.";
+            return t(locale, 'cumple.err_owner_only');
         }
 
         const targetArg = cleanArgs[1];
         const dateArg = cleanArgs[2];
 
         if (!targetArg || !dateArg) {
-            return "❌ Uso correcto: `s.cumple añadir [@usuario/ID] [DD/MM]` o `s.cumple añadir [@usuario/ID] [DD/MM/YYYY]`.";
+            return t(locale, 'cumple.add_usage');
         }
 
         // Extraer ID de usuario (mención o ID numérica)
         const match = targetArg.match(/^<@!?(\d+)>$/) || targetArg.match(/^(\d+)$/);
         if (!match) {
-            return "❌ Debes mencionar a un usuario válido o ingresar su ID de Discord.";
+            return t(locale, 'cumple.add_invalid_user');
         }
         const targetUserId = match[1];
 
@@ -353,20 +355,20 @@ async function run(messages, args) {
             targetUser = await message.client.users.fetch(targetUserId).catch(() => null);
         }
         if (!targetUser) {
-            return "❌ No se pudo encontrar a ese usuario de Discord. Verifica el ID.";
+            return t(locale, 'cumple.add_user_not_found');
         }
 
         const parsedDate = parseBirthday(dateArg);
         if (!parsedDate) {
-            return "❌ Formato de fecha inválido. Por favor usa `DD/MM` o `DD/MM/YYYY`.";
+            return t(locale, 'cumple.add_invalid_date');
         }
 
         const { day, month, year } = parsedDate;
         BirthdayModel.setUserBirthday(targetUserId, day, month, year);
         const yearStr = year ? `/${year}` : '';
-        const ageInfo = formatAgeInfo(day, month, year, false);
+        const ageInfo = formatAgeInfo(day, month, year, false, locale);
         return {
-            content: `✅ Cumpleaños de <@${targetUserId}> guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**${ageInfo}.`,
+            content: t(locale, 'cumple.add_success', { userId: targetUserId, date: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}`, ageInfo }),
             allowedMentions: { users: [] }
         };
     }
@@ -385,34 +387,17 @@ async function run(messages, args) {
         const { day, month, year } = parsedDate;
         BirthdayModel.setUserBirthday(authorId, day, month, year);
         const yearStr = year ? `/${year}` : '';
-        const ageInfo = formatAgeInfo(day, month, year, true);
-        return `✅ Cumpleaños guardado con éxito: **${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}**${ageInfo}. Sengo te felicitará en tu día. 🎉`;
+        const ageInfo = formatAgeInfo(day, month, year, true, locale);
+        return t(locale, 'cumple.set_success', { date: `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}${yearStr}`, ageInfo });
     }
 
     // Si falló el parsing y usó el subcomando set
     if (isSetSubcommand) {
-        return "❌ Formato de fecha inválido. Por favor usa `DD/MM` (ej: `15/08`) o `DD/MM/YYYY` (ej: `15/08/2000`).";
+        return t(locale, 'cumple.set_invalid_date');
     }
 
     // Caso de comando no reconocido
-    return `❌ Subcomando o fecha no reconocido. Usa \`s.cumple\` para ver las opciones disponibles.`;
-}
-
-function helpMessage() {
-    return "🎂 **Guía del Comando de Cumpleaños (`s.cumple`)** 🎂\n\n" +
-           "**Comandos de Usuario:**\n" +
-           "• `s.cumple [DD/MM]` o `s.cumple [DD/MM/YYYY]` : Guarda o edita tu fecha de cumpleaños.\n" +
-           "• `s.cumple set [fecha]` : Alternativa para guardar tu cumpleaños.\n" +
-           "• `s.cumple quitar` : Elimina tu cumpleaños de mi base de datos.\n" +
-           "• `s.cumple lista` : Muestra todos los cumpleaños del servidor agrupados por mes.\n" +
-           "• `s.cumple proximo` (o `siguiente`) : Muestra el cumpleaños más cercano en el futuro.\n" +
-           "• `s.cumple anterior` (o `pasado`) : Muestra el cumpleaños más reciente en el pasado.\n\n" +
-           "**Comandos de Moderación (Admin/Gestionar Servidor):**\n" +
-           "• `s.cumple canal [#canal]` : Elige en qué canal se enviarán las felicitaciones diarias.\n" +
-           "• `s.cumple canal desactivar` : Desactiva los anuncios de cumpleaños en el servidor.\n" +
-           "• `s.cumple actualizar` : Fuerza la comprobación de cumpleaños del día y felicita a los que falten.\n\n" +
-           "**Comandos de Administrador del Bot (Owner):**\n" +
-           "• `s.cumple añadir [@usuario/ID] [fecha]` : Registra el cumpleaños de otro usuario.";
+    return t(locale, 'cumple.err_unrecognized');
 }
 
 run.description = {
@@ -421,4 +406,4 @@ run.description = {
     usage: 's.cumple [fecha/lista/proximo/anterior/quitar/canal]'
 };
 
-module.exports = { run };
+module.exports = { run, description: run.description };

@@ -2,6 +2,8 @@ const BirthdayModel = require("../models/BirthdayModel.js");
 const { doBirthdayAnnounceEmbed } = require("../views/birthdayViews.js");
 const Logger = require("../utils/logger.js");
 const { Events } = require('discord.js');
+const { getGuildLanguage } = require("../models/GuildConfigModel.js");
+const { t } = require("../utils/i18n.js");
 
 async function checkGuildBirthdays(guild, client) {
     const channelId = BirthdayModel.getGuildChannel(guild.id);
@@ -13,6 +15,7 @@ async function checkGuildBirthdays(guild, client) {
     const now = new Date();
     let channel = null;
     const announcedTags = [];
+    const guildLocale = await getGuildLanguage(guild.id);
 
     for (const bday of bdayList) {
         const userId = bday.userId;
@@ -40,10 +43,10 @@ async function checkGuildBirthdays(guild, client) {
             
             const age = bday.year ? localYear - bday.year : null;
             const isLinked = !!countryCode;
-            const embed = doBirthdayAnnounceEmbed(client, bday.member, age, isLinked);
+            const embed = doBirthdayAnnounceEmbed(client, bday.member, age, isLinked, guildLocale);
 
             await channel.send({
-                content: `🎉 ¡Feliz cumpleaños, <@${userId}>! 🎂`,
+                content: t(guildLocale, 'cumple.announce_ping', { userId }),
                 embeds: [embed]
             }).catch(err => {
                 console.error(`Error al enviar mensaje de cumpleaños a ${bday.member.user.tag}:`, err);
