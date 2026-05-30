@@ -65,14 +65,30 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
 
 *   **`s.osu` o `s.o [usuario]`**
     Muestra el perfil general de un jugador de osu!, incluyendo estadísticas de Ranked Play, PP, precisión, medallas, nivel y tiempo de juego.
+    *   *Parámetros y flags útiles:*
+        *   `-d` o `-detail`: Muestra el perfil completo junto a las estadísticas y grados detallados.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado (estándar, taiko, catch o mania).
+        *   `-bancho` / `-gatari`: Cambia el servidor consultado (por defecto Bancho).
 *   **`s.rs [usuario]` (Recent Score)**
     Muestra la jugada más reciente del usuario.
-    *   *Parámetros útiles:*
-        *   `-d` o `-detail`: Muestra detalles completos (aciertos, fallos, UR, etc.).
-        *   `-l` o `-list`: Muestra una lista de las últimas 5 jugadas del usuario.
+    *   *Parámetros y flags útiles:*
+        *   `-d` o `-detail`: Muestra detalles completos de la jugada (aciertos, fallos, UR, etc.).
+        *   `-l` o `-list` o `-lista`: Muestra una lista de las últimas 5 jugadas del usuario.
         *   `-b` o `-pp`: Ordena las jugadas recientes por cantidad de PP en lugar de fecha.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.top [usuario]`**
     Muestra los mejores registros (Top Plays) del usuario.
+    *   *Parámetros y filtros:*
+        *   `-i <índice>` o `-i<índice>`: Muestra una sola jugada específica del top (ej: `s.top -i 5`).
+        *   `+<mods>` o `-m <mods>`: Filtra jugadas hechas exactamente con esa combinación de mods (ej: `+HDHR`, `-m HDHR`, `+NM` para Nomod).
+        *   `-mx <mods>`: Filtra jugadas que contengan esos mods (ej: `-mx HR`).
+        *   `-? "<búsqueda>"`: Filtra mapas por título, artista o nombre de dificultad (ej: `-? "last goodbye"`).
+        *   `-g <pp>` o `-pp <pp>`: Filtra y cuenta jugadas con esa cantidad o más de PP (ej: `-g 300`).
+        *   `-r`: Ordena las jugadas por fecha (más recientes primero) en lugar de por PP.
+        *   `-c`: Ordena las jugadas por el combo máximo alcanzado.
+        *   `-acc`: Ordena las jugadas por la precisión más alta.
+        *   `-p <página>` o `-page <página>`: Navega a una página específica de la lista del top (ej: `s.top -p 2`).
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.ranked` o `s.rk [usuario]`**
     Muestra estadísticas de Ranked Play (matchmaking de lazer) de un usuario (ELO/rating, victorias, partidas jugadas, winrate, etc.).
     *   *Parámetros y filtros:*
@@ -81,25 +97,46 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `-wins` / `-winrate` / `-plays`: Cambia el criterio de ordenamiento de la clasificación (por defecto ordena por ELO/rating).
 *   **`s.c` o `s.compare`**
     Compara las puntuaciones locales del usuario en el último mapa mostrado en el canal de Discord.
+    *   *Parámetros y filtros:*
+        *   `-i <índice>`: Muestra un embed detallado de la puntuación en ese índice de la lista de comparación.
+        *   `+<mods>` o `-m <mods>`: Filtra por combinación de mods exacta.
+        *   `-mx <mods>`: Filtra por mods contenidos.
+        *   `-g <pp>` o `-pp <pp>`: Filtra puntuaciones con PP mayor o igual al valor.
+        *   `-ps`: Filtra mostrando únicamente jugadas completadas (pasadas).
+        *   `-p <página>`: Navega a una página específica de la lista de comparación.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.subir`**
-    Sube y calcula los datos detallados de una jugada.
+    Sube y calcula los datos detallados de una jugada a partir de un archivo `.osr` o un embed compatible.
+    *   *Parámetros y flags útiles:*
+        *   `-m <mods>` o `-mods <mods>`: Sobrescribe o fuerza los mods detectados (ej: `-m HDDT`). Usar `-m NM` para No Mod.
 *   **`s.lb` o `s.leaderboard`**
     Muestra la tabla de clasificación general.
-    *   *Parámetro útil:* `-pais [código/nombre]` (ej: `-pais VE` para mostrar solo Venezuela).
+    *   *Parámetros y flags útiles:*
+        *   `-pais [código/nombre]`: Filtra la tabla por país (ej: `-pais VE`).
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.nacional [código/nombre]`**
     Muestra la tabla de clasificación por Performance Points (pp) de un país específico.
     *   *Parámetros y filtros:*
         *   `-acc`: Ordena la tabla por precisión en lugar de PP.
         *   `-regional [región]`: Muestra la tabla de clasificación de una subdivisión o estado del país.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.regional [región]`**
     Atajo directo para mostrar la clasificación regional (de osu!World) del jugador o de una subdivisión específica.
-    *   *Subcomando:* `lista` para listar todas las regiones/subdivisiones disponibles del país.
+    *   *Parámetros y filtros:*
+        *   `lista`: Lista todas las regiones/subdivisiones disponibles del país.
+        *   `-pais [código/nombre]`: Especifica el país del que se consultan las regiones.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.pais`**
     Asigna de forma automática el rol correspondiente a tu país de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
 *   **`s.gap [jugador1] [jugador2]`**
     Muestra la brecha (gap) en rango y PP entre dos jugadores.
+    *   *Parámetros y flags útiles:*
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego para la comparación.
 *   **`s.amigos`**
     Compara y muestra el ranking entre tus amigos mutuals agregados al bot.
+    *   *Parámetros y flags útiles:*
+        *   `-p <página>`: Navega por la tabla de posiciones de tus amigos.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Filtra la tabla por ese modo de juego.
 *   **`s.mapper` o `s.creator`**
     Muestra estadísticas detalladas de creador/mapper de un usuario en osu! (seguidores, Kudosu, mapas por categoría, nominaciones, etc.).
     *   *Parámetros y filtros:*
@@ -121,14 +158,20 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
     Asigna de forma automática el rol correspondiente a la cantidad de dígitos de tu rango global de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
 *   **`s.daily`**
     Muestra la información y el mapa del Daily Challenge activo, el tiempo restante para completarlo y el top 3 de puntuaciones.
+    *   *Parámetros y flags útiles:*
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Filtra el Daily Challenge por ese modo de juego.
 *   **`s.m` o `s.map` o `s.mapa`**
     Calcula y muestra estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap. Si no se indica ID, busca en el historial del canal.
+    *   *Parámetros y flags útiles:*
+        *   `+<mods>` o `-m <mods>`: Simula y calcula la dificultad y el PP del mapa con esa combinación de mods (ej: `+HDDT`).
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia o fuerza el modo de juego para el mapa.
 *   **`s.recommend` o `s.rec` o `s.recomendar`**
     Recomienda mapas de rendimiento (farm/PP) personalizados basándose en tu nivel y estilo de juego.
     *   *Parámetros útiles:*
         *   `-pp <valor/rango>`: Filtra por un PP objetivo (ej: `-pp 300` o `-pp 250-300`).
         *   `-mods <mods>`: Filtra por mods específicos (ej: `-mods HDDT`).
         *   `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100.
+        *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego para la recomendación.
 *   **`s.rework`**
     Estima el PP del último mapa o compara las estadísticas de un usuario frente a un Rework próximo de PP.
     *   *Uso común:*
