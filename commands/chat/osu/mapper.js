@@ -109,7 +109,11 @@ async function run(messages, args) {
                 let newType = currentType;
                 let newPage = currentPage;
 
-                if (buttonId === 'mapper_prev') {
+                if (buttonId === 'mapper_first') {
+                    newPage = 1;
+                } else if (buttonId === 'mapper_last') {
+                    newPage = getTotalPagesForType(currentType);
+                } else if (buttonId === 'mapper_prev') {
                     newPage = Math.max(1, currentPage - 1);
                 } else if (buttonId === 'mapper_next') {
                     const totalPages = getTotalPagesForType(currentType);

@@ -143,41 +143,43 @@ function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1
 
     const row1 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
+            .setCustomId("mapper_first")
+            .setLabel("<<")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(!hasPagination || currentPage <= 1),
+        new ButtonBuilder()
             .setCustomId("mapper_prev")
-            .setLabel("Anterior")
-            .setEmoji("◀️")
+            .setLabel("<")
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(!hasPagination || currentPage <= 1),
         new ButtonBuilder()
             .setCustomId("mapper_next")
-            .setLabel("Siguiente")
-            .setEmoji("▶️")
+            .setLabel(">")
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(!hasPagination || currentPage >= totalPages),
         new ButtonBuilder()
+            .setCustomId("mapper_last")
+            .setLabel(">>")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(!hasPagination || currentPage >= totalPages)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
             .setCustomId("mapper_ranked")
-            .setLabel("Rankeados")
+            .setLabel("Rank.")
             .setEmoji("🟢")
             .setStyle(ButtonStyle.Success)
             .setDisabled(activeType === 'ranked' || rankedCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_loved")
-            .setLabel("Amados")
+            .setLabel("Loved")
             .setEmoji("🔮")
             .setStyle(ButtonStyle.Primary)
             .setDisabled(activeType === 'loved' || lovedCount === 0),
         new ButtonBuilder()
-            .setCustomId("mapper_pending")
-            .setLabel("WIP")
-            .setEmoji("⚫")
-            .setStyle(ButtonStyle.Secondary)
-            .setDisabled(activeType === 'pending' || pendingCount === 0)
-    );
-
-    const row2 = new ActionRowBuilder().addComponents(
-        new ButtonBuilder()
             .setCustomId("mapper_graveyard")
-            .setLabel("Abandonados")
+            .setLabel("Aband.")
             .setEmoji("🪦")
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(activeType === 'graveyard' || graveyardCount === 0),
