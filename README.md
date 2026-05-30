@@ -109,8 +109,8 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
     Muestra la imagen de fondo (background) del último mapa enviado en el chat.
 *   **`s.replay`**
     Analiza un archivo `.osr` adjunto de replay y muestra sus estadísticas.
-*   **`s.digitos`**
-    Muestra cuántos dígitos tiene el rango de los usuarios.
+*   **`s.digitos` o `s.digits`**
+    Asigna de forma automática el rol correspondiente a la cantidad de dígitos de tu rango global de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
 
 ### 🛠️ Utilidades
 
