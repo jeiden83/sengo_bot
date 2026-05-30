@@ -73,6 +73,12 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `-b` o `-pp`: Ordena las jugadas recientes por cantidad de PP en lugar de fecha.
 *   **`s.top [usuario]`**
     Muestra los mejores registros (Top Plays) del usuario.
+*   **`s.ranked` o `s.rk [usuario]`**
+    Muestra estadísticas de Ranked Play (matchmaking de lazer) de un usuario (ELO/rating, victorias, partidas jugadas, winrate, etc.).
+    *   *Parámetros y filtros:*
+        *   `-top`: Muestra la clasificación global de Ranked Play.
+        *   `-server` o `-srv`: Muestra la clasificación de los usuarios vinculados en el servidor actual.
+        *   `-wins` / `-winrate` / `-plays`: Cambia el criterio de ordenamiento de la clasificación (por defecto ordena por ELO/rating).
 *   **`s.c` o `s.compare`**
     Compara las puntuaciones locales del usuario en el último mapa mostrado en el canal de Discord.
 *   **`s.subir`**
