@@ -11,5 +11,11 @@
       "play_count": "Play Count",
       "not_found": "User {username} was not found on osu!"
     }
+  },
+  "language": {
+    "changed": "The language for this server has been set to **English**.",
+    "changed_title": "🌐 Language Changed",
+    "help_title": "🌐 Language Configuration",
+    "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`."
   }
 }

@@ -11,5 +11,11 @@
       "play_count": "Cantidad de partidas",
       "not_found": "El usuario {username} no se encuentra en osu!"
     }
+  },
+  "language": {
+    "changed": "El idioma para este servidor ha sido configurado en **Español**.",
+    "changed_title": "🌐 Idioma Cambiado",
+    "help_title": "🌐 Configuración de Idioma",
+    "help_description": "Uso correcto del comando:\n`{prefix}language [es|en]` o `{prefix}idioma [es|en]`\nO usa los comandos de barra `/language` o `/idioma`."
   }
 }
