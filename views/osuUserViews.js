@@ -210,6 +210,11 @@ function formatBeatmapset(set, index, type, userId) {
 
     const playcount = (set.play_count || 0).toLocaleString('es-ES');
     const favorites = (set.favourite_count || 0).toLocaleString('es-ES');
+    const diffsCount = diffs.length;
+    const diffsLabel = diffsCount === 1 ? '1 dificultad' : `${diffsCount} dificultades`;
+
+    const submittedUnix = set.submitted_date ? Math.floor(new Date(set.submitted_date).getTime() / 1000) : null;
+    const updatedUnix = set.last_updated ? Math.floor(new Date(set.last_updated).getTime() / 1000) : null;
     
     let line = `**${index}.** [${set.artist} - ${set.title}](https://osu.ppy.sh/s/${set.id})`;
     if (type === 'guest') {
@@ -220,8 +225,20 @@ function formatBeatmapset(set, index, type, userId) {
         } else {
             line += `\n   ↳ Host: [${set.creator}](https://osu.ppy.sh/users/${set.user_id}) | ⭐ ${starsStr}`;
         }
+        if (submittedUnix || updatedUnix) {
+            const parts = [];
+            if (submittedUnix) parts.push(`Creado: <t:${submittedUnix}:d>`);
+            if (updatedUnix) parts.push(`Act.: <t:${updatedUnix}:R>`);
+            line += `\n   ↳ ${parts.join(" | ")}`;
+        }
     } else {
-        line += `\n   ▸ ⭐ **${starsStr}** | 🎮 **${playcount}** plays | ❤️ **${favorites}**`;
+        line += `\n   ▸ ⭐ **${starsStr}** (${diffsLabel}) | 🎮 **${playcount}** plays | ❤️ **${favorites}**`;
+        if (submittedUnix || updatedUnix) {
+            const parts = [];
+            if (submittedUnix) parts.push(`Creado: <t:${submittedUnix}:d>`);
+            if (updatedUnix) parts.push(`Act.: <t:${updatedUnix}:R>`);
+            line += `\n   ▸ ${parts.join(" | ")}`;
+        }
     }
     return line;
 }
@@ -328,7 +345,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
             embed.setTitle(`${titleType} de ${flag} ${user.username}`);
             embed.setDescription(`*No se encontraron mapas en esta categoría.*`);
         } else {
-            const itemsPerPage = 10;
+            const itemsPerPage = 5;
             const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
             const currentPage = Math.min(Math.max(1, page), totalPages);
             

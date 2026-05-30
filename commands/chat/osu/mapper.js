@@ -92,7 +92,7 @@ async function run(messages, args) {
 
     function getTotalPagesForType(mapType) {
         const count = getItemsCountForType(mapType);
-        return Math.max(1, Math.ceil(count / 10));
+        return Math.max(1, Math.ceil(count / 5));
     }
 
     function setupCollector(sentMessage) {
