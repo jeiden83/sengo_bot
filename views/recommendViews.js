@@ -51,10 +51,13 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
             description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${c.matchScore}% de Afinidad**\n`;
             description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
 
-            const minutes = Math.floor(c.length / 60);
-            const seconds = c.length % 60;
+            const speedMultiplier = (c.mods.includes("DT") || c.mods.includes("NC")) ? 1.5 : (c.mods.includes("HT") ? 0.75 : 1.0);
+            const adjustedLength = Math.floor(c.length / speedMultiplier);
+            const minutes = Math.floor(adjustedLength / 60);
+            const seconds = adjustedLength % 60;
             const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
-            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | HP: \`${c.hp}\` | Pop: \`${(c.popularity || 0).toLocaleString()}\`\n`;
+            const displayBpm = c.bpm ? Math.round(c.bpm * speedMultiplier) : 0;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${(c.popularity || 0).toLocaleString()}\`\n`;
             if (c.matchReasons && c.matchReasons.length > 0) {
                 description += `   ▸ *Razones: ${c.matchReasons.join(" • ")}*\n`;
             }

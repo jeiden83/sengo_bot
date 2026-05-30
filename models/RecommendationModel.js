@@ -759,6 +759,7 @@ async function getPersonalizedRecommendations({
                 od: parseFloat(c.od),
                 hp: parseFloat(c.hp),
                 cs: parseFloat(c.cs),
+                bpm: parseFloat(c.bpm),
                 creator: c.creator,
                 matchScore: Math.min(100, Math.round(score)),
                 rawScore: score,
