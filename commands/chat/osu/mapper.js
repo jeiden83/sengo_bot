@@ -46,6 +46,10 @@ async function run(messages, args) {
 
     const osuUser = osu_userdata.fn_response;
 
+    let currentType = type;
+    let currentPage = 1;
+    const cachedMaps = {};
+
     // Inicializar cliente osu! de forma diferida
     let client;
     async function getOsuClient() {
@@ -57,7 +61,12 @@ async function run(messages, args) {
     }
 
     async function fetchBeatmapsets(osuUserId, mapType) {
+        if (cachedMaps[mapType]) {
+            return cachedMaps[mapType];
+        }
+
         const osuClient = await getOsuClient();
+        let data;
         if (mapType === 'all') {
             const [ranked, loved, pending, graveyard, guest] = await Promise.all([
                 osuClient.users.getUserBeatmaps(osuUserId, 'ranked', { limit: 5 }),
@@ -66,10 +75,24 @@ async function run(messages, args) {
                 osuClient.users.getUserBeatmaps(osuUserId, 'graveyard', { limit: 5 }),
                 osuClient.users.getUserBeatmaps(osuUserId, 'guest', { limit: 5 })
             ]);
-            return { ranked, loved, pending, graveyard, guest };
+            data = { ranked, loved, pending, graveyard, guest };
         } else {
-            return await osuClient.users.getUserBeatmaps(osuUserId, mapType, { limit: 100 });
+            data = await osuClient.users.getUserBeatmaps(osuUserId, mapType, { limit: 100 });
         }
+
+        cachedMaps[mapType] = data;
+        return data;
+    }
+
+    function getItemsCountForType(mapType) {
+        if (mapType === 'profile' || mapType === 'all') return 0;
+        const data = cachedMaps[mapType];
+        return data ? data.length : 0;
+    }
+
+    function getTotalPagesForType(mapType) {
+        const count = getItemsCountForType(mapType);
+        return Math.max(1, Math.ceil(count / 10));
     }
 
     function setupCollector(sentMessage) {
@@ -83,27 +106,45 @@ async function run(messages, args) {
                 await i.deferUpdate();
                 
                 const buttonId = i.customId;
-                const newType = buttonId.replace("mapper_", "");
-                
-                const loadingEmbed = new EmbedBuilder()
-                    .setColor(getEmbedColor(message))
-                    .setDescription(`⏳ *Buscando datos en la API de osu!...*`);
-                await i.editReply({ 
-                    embeds: [loadingEmbed], 
-                    components: buildMapperButtonsRow(osuUser, newType) 
-                });
+                let newType = currentType;
+                let newPage = currentPage;
+
+                if (buttonId === 'mapper_prev') {
+                    newPage = Math.max(1, currentPage - 1);
+                } else if (buttonId === 'mapper_next') {
+                    const totalPages = getTotalPagesForType(currentType);
+                    newPage = Math.min(totalPages, currentPage + 1);
+                } else if (buttonId.startsWith('mapper_')) {
+                    newType = buttonId.replace("mapper_", "");
+                    newPage = 1; // Reiniciar página al cambiar de categoría
+                }
+
+                // Mostrar embed de carga únicamente si cambiamos de pestaña y no tenemos caché
+                if (newType !== currentType && newType !== 'profile' && !cachedMaps[newType]) {
+                    const loadingEmbed = new EmbedBuilder()
+                        .setColor(getEmbedColor(message))
+                        .setDescription(`⏳ *Buscando datos en la API de osu!...*`);
+                    await i.editReply({ 
+                        embeds: [loadingEmbed], 
+                        components: buildMapperButtonsRow(osuUser, newType, newPage, 1) 
+                    });
+                }
                 
                 let nextEmbed;
                 if (newType === 'profile') {
                     nextEmbed = doOsuMapperEmbed(message, osuUser);
                 } else {
                     const mapData = await fetchBeatmapsets(osuUser.id, newType);
-                    nextEmbed = doOsuMapperListEmbed(message, osuUser, newType, mapData);
+                    nextEmbed = doOsuMapperListEmbed(message, osuUser, newType, mapData, newPage);
                 }
-                
+
+                currentType = newType;
+                currentPage = newPage;
+
+                const totalPages = getTotalPagesForType(currentType);
                 await i.editReply({
                     embeds: [nextEmbed],
-                    components: buildMapperButtonsRow(osuUser, newType)
+                    components: buildMapperButtonsRow(osuUser, currentType, currentPage, totalPages)
                 });
             } catch (err) {
                 console.error("Error al procesar interacción en mapper:", err);
@@ -118,16 +159,17 @@ async function run(messages, args) {
     }
 
     let initialEmbed;
-    const initialComponents = buildMapperButtonsRow(osuUser, type);
-
+    
     if (type === 'profile') {
         initialEmbed = doOsuMapperEmbed(message, osuUser);
+        const initialComponents = buildMapperButtonsRow(osuUser, 'profile', 1, 1);
         const sentMessage = await message.channel.send({
             embeds: [initialEmbed],
             components: initialComponents
         });
         setupCollector(sentMessage);
     } else {
+        const initialComponents = buildMapperButtonsRow(osuUser, type, 1, 1);
         const statusMessage = await message.channel.send({
             embeds: [
                 new EmbedBuilder()
@@ -139,11 +181,12 @@ async function run(messages, args) {
 
         try {
             const mapData = await fetchBeatmapsets(osuUser.id, type);
-            initialEmbed = doOsuMapperListEmbed(message, osuUser, type, mapData);
+            const totalPages = getTotalPagesForType(type);
+            initialEmbed = doOsuMapperListEmbed(message, osuUser, type, mapData, currentPage);
             
             await statusMessage.edit({
                 embeds: [initialEmbed],
-                components: initialComponents
+                components: buildMapperButtonsRow(osuUser, type, currentPage, totalPages)
             });
             
             setupCollector(statusMessage);
@@ -155,7 +198,7 @@ async function run(messages, args) {
                         .setColor("#ff3333")
                         .setDescription(`❌ *Error al cargar los mapas de la API de osu!.*`)
                 ],
-                components: buildMapperButtonsRow(osuUser, 'profile')
+                components: buildMapperButtonsRow(osuUser, 'profile', 1, 1)
             });
             setupCollector(statusMessage);
         }

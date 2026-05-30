@@ -131,7 +131,7 @@ function doOsuMapperEmbed(message, user) {
     return embed;
 }
 
-function buildMapperButtonsRow(user, activeType) {
+function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1) {
     const rankedCount = user.ranked_and_approved_beatmapset_count || 0;
     const lovedCount = user.loved_beatmapset_count || 0;
     const pendingCount = user.pending_beatmapset_count || 0;
@@ -139,7 +139,21 @@ function buildMapperButtonsRow(user, activeType) {
     const guestCount = user.guest_beatmapset_count || 0;
     const totalCount = rankedCount + lovedCount + pendingCount + graveyardCount + guestCount;
 
+    const hasPagination = ['ranked', 'loved', 'pending', 'graveyard', 'guest'].includes(activeType);
+
     const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("mapper_prev")
+            .setLabel("Anterior")
+            .setEmoji("◀️")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(!hasPagination || currentPage <= 1),
+        new ButtonBuilder()
+            .setCustomId("mapper_next")
+            .setLabel("Siguiente")
+            .setEmoji("▶️")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(!hasPagination || currentPage >= totalPages),
         new ButtonBuilder()
             .setCustomId("mapper_ranked")
             .setLabel("Rankeados")
@@ -148,43 +162,37 @@ function buildMapperButtonsRow(user, activeType) {
             .setDisabled(activeType === 'ranked' || rankedCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_loved")
-            .setLabel("Loved")
+            .setLabel("Amados")
             .setEmoji("🔮")
             .setStyle(ButtonStyle.Primary)
             .setDisabled(activeType === 'loved' || lovedCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_pending")
-            .setLabel("Pending")
+            .setLabel("WIP")
             .setEmoji("⚫")
             .setStyle(ButtonStyle.Secondary)
-            .setDisabled(activeType === 'pending' || pendingCount === 0),
+            .setDisabled(activeType === 'pending' || pendingCount === 0)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("mapper_graveyard")
-            .setLabel("Graveyard")
+            .setLabel("Abandonados")
             .setEmoji("🪦")
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(activeType === 'graveyard' || graveyardCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_guest")
-            .setLabel("Guest Diffs")
+            .setLabel("GDs")
             .setEmoji("🤝")
             .setStyle(ButtonStyle.Primary)
-            .setDisabled(activeType === 'guest' || guestCount === 0)
-    );
-
-    const row2 = new ActionRowBuilder().addComponents(
+            .setDisabled(activeType === 'guest' || guestCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_all")
-            .setLabel("Todos los Mapas")
+            .setLabel("Todos")
             .setEmoji("🗺️")
             .setStyle(ButtonStyle.Success)
-            .setDisabled(activeType === 'all' || totalCount === 0),
-        new ButtonBuilder()
-            .setCustomId("mapper_profile")
-            .setLabel("Volver al Perfil")
-            .setEmoji("🏠")
-            .setStyle(ButtonStyle.Danger)
-            .setDisabled(activeType === 'profile')
+            .setDisabled(activeType === 'all' || totalCount === 0)
     );
 
     return [row1, row2];
@@ -218,7 +226,7 @@ function formatBeatmapset(set, index, type, userId) {
     return line;
 }
 
-function doOsuMapperListEmbed(message, user, type, data) {
+function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     const embedColor = getEmbedColor(message);
     const flag = getFlagEmoji(user.country_code);
     const embed = new EmbedBuilder()
@@ -240,9 +248,8 @@ function doOsuMapperListEmbed(message, user, type, data) {
         'all': '🗺️ Todos los Mapas'
     }[type] || 'Mapas';
 
-    embed.setTitle(`${titleType} de ${flag} ${user.username}`);
-
     if (type === 'all') {
+        embed.setTitle(`${titleType} de ${flag} ${user.username}`);
         let desc = `Resumen completo de mapas creados por **${user.username}**:\n\n`;
         
         // Ranked
@@ -318,10 +325,18 @@ function doOsuMapperListEmbed(message, user, type, data) {
         embed.setDescription(desc);
     } else {
         if (!data || data.length === 0) {
+            embed.setTitle(`${titleType} de ${flag} ${user.username}`);
             embed.setDescription(`*No se encontraron mapas en esta categoría.*`);
         } else {
-            let desc = `Mostrando los últimos **${Math.min(data.length, 15)}** mapas de esta categoría:\n\n`;
-            desc += data.slice(0, 15).map((set, idx) => formatBeatmapset(set, idx + 1, type, user.id)).join("\n\n");
+            const itemsPerPage = 10;
+            const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
+            const currentPage = Math.min(Math.max(1, page), totalPages);
+            
+            embed.setTitle(`${titleType} de ${flag} ${user.username} (Pág. ${currentPage}/${totalPages})`);
+
+            const pageData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+            let desc = `Mostrando mapas **${(currentPage - 1) * itemsPerPage + 1}** a **${Math.min(currentPage * itemsPerPage, data.length)}** de **${data.length}**:\n\n`;
+            desc += pageData.map((set, idx) => formatBeatmapset(set, (currentPage - 1) * itemsPerPage + idx + 1, type, user.id)).join("\n\n");
             
             const totalCount = {
                 'ranked': user.ranked_and_approved_beatmapset_count,
@@ -331,8 +346,8 @@ function doOsuMapperListEmbed(message, user, type, data) {
                 'guest': user.guest_beatmapset_count
             }[type] || data.length;
 
-            if (totalCount > 15) {
-                desc += `\n\n*...y ${totalCount - 15} mapas más en la web de osu!.*`;
+            if (totalCount > data.length) {
+                desc += `\n\n*Nota: Mostrando hasta los primeros ${data.length} mapas más recientes. La lista completa está disponible en la web de osu!.*`;
             }
             embed.setDescription(desc);
         }
