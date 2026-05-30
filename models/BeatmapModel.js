@@ -237,6 +237,8 @@ async function getBeatmap(beatmap_id, priority = 2) {
                     mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
                     mode_int: dbMap.mode,
                     version: dbMap.version,
+                    total_length: dbMap.total_length || 0,
+                    hit_length: dbMap.hit_length || 0,
                     url: `https://osu.ppy.sh/beatmaps/${dbMap.beatmap_id}`,
                     beatmapset: {
                         id: dbMap.beatmapset_id,
@@ -344,6 +346,8 @@ async function batchGetBeatmaps(beatmapIds) {
                             mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
                             mode_int: dbMap.mode,
                             version: dbMap.version,
+                            total_length: dbMap.total_length || 0,
+                            hit_length: dbMap.hit_length || 0,
                             url: `https://osu.ppy.sh/beatmaps/${dbMap.beatmap_id}`,
                             beatmapset: {
                                 id: dbMap.beatmapset_id,
