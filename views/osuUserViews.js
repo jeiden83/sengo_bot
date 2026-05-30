@@ -111,12 +111,8 @@ function doOsuMapperEmbed(message, user) {
     
     // Crear embed
     const embed = new EmbedBuilder()
-        .setTitle(`🛠️ Estadísticas de Mapper: ${user.username}${isSupporter}`)
+        .setTitle(`🛠️ Estadísticas de Mapper: ${flag} ${user.username}${isSupporter}`)
         .setURL(`https://osu.ppy.sh/users/${user.id}`)
-        .setDescription(
-            `**${flag} [${user.username}](https://osu.ppy.sh/users/${user.id})** es un creador de contenido en la comunidad de \`osu!\`.\n` +
-            `Aquí tienes un resumen de su actividad de mapeo:`
-        )
         .setColor(embedColor)
         .setThumbnail(user.avatar_url)
         .addFields(
