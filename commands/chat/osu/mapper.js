@@ -6,6 +6,7 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { EmbedBuilder } = require("discord.js");
 const fs = require("fs/promises");
 const path = require("path");
+const CONFIG = require("../../../config.js");
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
@@ -14,11 +15,14 @@ async function run(messages, args) {
     const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
 
     if (isTopMode) {
-        if (logger) logger.process("Procesando clasificación global de mappers...");
+        if (logger) logger.process("Procesando clasificación de mappers...");
 
         let countryFilter = null;
         let sortBy = 'ranked';
         let forceUpdate = false;
+        let isServerMode = false;
+        let isSengoMode = false;
+        let isGlobalMode = false;
 
         for (let idx = 0; idx < args.length; idx++) {
             const arg = args[idx].toLowerCase();
@@ -45,74 +49,114 @@ async function run(messages, args) {
                 sortBy = 'recent';
             } else if (arg === '-force' || arg === '-refresh') {
                 forceUpdate = true;
+            } else if (arg === '-server' || arg === '-sv' || arg === '-servidor') {
+                isServerMode = true;
+            } else if (arg === '-sengo') {
+                isSengoMode = true;
+            } else if (arg === '-global' || arg === '-g') {
+                isGlobalMode = true;
             }
         }
 
-        let statusMessage = null;
-        let mappers;
+        if (isSengoMode && message.author.id !== CONFIG.OWNER_ID) {
+            return message.reply("❌ *El flag `-sengo` es exclusivo para el administrador del bot.*");
+        }
 
+        if (isServerMode && !message.guild) {
+            return message.reply("❌ *El flag `-server` solo se puede usar dentro de un servidor de Discord.*");
+        }
+
+        let mode = 'national';
+        if (isServerMode) {
+            mode = 'server';
+        } else if (isSengoMode) {
+            mode = 'sengo';
+        } else if (isGlobalMode) {
+            mode = 'global';
+        }
+
+        if (mode === 'national' && !countryFilter) {
+            let dbCountry = null;
+            try {
+                const userToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+                if (userToken && userToken.country_code) {
+                    dbCountry = userToken.country_code.toUpperCase();
+                }
+            } catch (err) {
+                console.error("Error al buscar país del usuario para mapper top:", err);
+            }
+            countryFilter = dbCountry || "VE";
+        }
+
+        let statusMessage = null;
+        let mappers = [];
+
+        let needsInitialMessage = false;
         if (forceUpdate) {
+            needsInitialMessage = true;
+        } else {
+            let cacheExists = false;
+            if (mode === 'national') {
+                const cPath = path.join(__dirname, `../../../data/mapper_national_${countryFilter.toLowerCase()}_cache.json`);
+                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
+            } else if (mode === 'global') {
+                const cPath = path.join(__dirname, "../../../data/mapper_global_kudosu_cache.json");
+                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
+            } else {
+                const cPath = path.join(__dirname, "../../../data/mapper_top_cache.json");
+                cacheExists = await fs.access(cPath).then(() => true).catch(() => false);
+            }
+            if (!cacheExists) {
+                needsInitialMessage = true;
+            }
+        }
+
+        if (needsInitialMessage) {
             statusMessage = await message.channel.send({
                 embeds: [
                     new EmbedBuilder()
                         .setColor(getEmbedColor(message))
-                        .setDescription(`⏳ *Actualizando la caché de mappers. Esto puede tardar unos minutos...*`)
+                        .setDescription(`⏳ *Generando/Actualizando la caché de mappers. Esto puede tardar unos minutos...*`)
                 ]
             });
-            
-            let lastEdit = 0;
-            const progressCallback = async (current, total, name) => {
-                const nowTime = Date.now();
-                if (nowTime - lastEdit > 3000 || current === total) {
-                    lastEdit = nowTime;
-                    try {
+        }
+
+        let lastEdit = 0;
+        const progressCallback = async (current, total, name) => {
+            const nowTime = Date.now();
+            if (nowTime - lastEdit > 3000 || current === total) {
+                lastEdit = nowTime;
+                try {
+                    let desc = `⏳ *Generando/Actualizando caché... Procesando: **${name}** (${current}/${total})*`;
+                    if (statusMessage) {
                         await statusMessage.edit({
                             embeds: [
                                 new EmbedBuilder()
                                     .setColor(getEmbedColor(message))
-                                    .setDescription(`⏳ *Actualizando mappers... Procesando: **${name}** (${current}/${total})*`)
+                                    .setDescription(desc)
                             ]
                         });
-                    } catch {}
-                }
-            };
-
-            mappers = await OsuUserModel.getMapperTop(true, progressCallback);
-        } else {
-            const cacheExists = await fs.access(path.join(__dirname, "../../../data/mapper_top_cache.json")).then(() => true).catch(() => false);
-            if (!cacheExists) {
-                statusMessage = await message.channel.send({
-                    embeds: [
-                        new EmbedBuilder()
-                            .setColor(getEmbedColor(message))
-                            .setDescription(`⏳ *Generando caché inicial de mappers. Esto tomará unos minutos...*`)
-                    ]
-                });
-                let lastEdit = 0;
-                const progressCallback = async (current, total, name) => {
-                    const nowTime = Date.now();
-                    if (nowTime - lastEdit > 3000 || current === total) {
-                        lastEdit = nowTime;
-                        try {
-                            await statusMessage.edit({
-                                embeds: [
-                                    new EmbedBuilder()
-                                        .setColor(getEmbedColor(message))
-                                        .setDescription(`⏳ *Generando caché mappers... Procesando: **${name}** (${current}/${total})*`)
-                                ]
-                            });
-                        } catch {}
                     }
-                };
-                mappers = await OsuUserModel.getMapperTop(false, progressCallback);
-            } else {
-                mappers = await OsuUserModel.getMapperTop(false);
+                } catch {}
+            }
+        };
+
+        if (mode === 'national') {
+            mappers = await OsuUserModel.getNationalMapperTop(countryFilter, forceUpdate, progressCallback);
+        } else if (mode === 'global') {
+            mappers = await OsuUserModel.getGlobalKudosuMapperTop(forceUpdate, progressCallback);
+        } else {
+            mappers = await OsuUserModel.getMapperTop(forceUpdate, progressCallback);
+            if (mode === 'server') {
+                const serverUsers = await OsuUserModel.getLinkedUsers(message.guild);
+                const serverOsuIds = new Set(serverUsers.map(u => String(u.osu_id)));
+                mappers = mappers.filter(m => serverOsuIds.has(String(m.osu_id)));
             }
         }
 
         // Aplicar filtros y ordenamientos
         let filteredMappers = [...mappers];
-        if (countryFilter) {
+        if (countryFilter && mode !== 'national') {
             filteredMappers = filteredMappers.filter(m => m.country_code && m.country_code.toUpperCase() === countryFilter);
         }
 
@@ -143,7 +187,7 @@ async function run(messages, args) {
         const itemsPerPage = 10;
         const totalPages = Math.max(1, Math.ceil(filteredMappers.length / itemsPerPage));
 
-        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter);
+        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode);
         const customSuffixes = { first: 'first', prev: 'prev', next: 'next', last: 'last' };
         const components = totalPages > 1 ? [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })] : [];
 
@@ -181,7 +225,7 @@ async function run(messages, args) {
                         currentPage = Math.min(totalPages, currentPage + 1);
                     }
 
-                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter);
+                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode);
                     const nextComponents = [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })];
 
                     await i.editReply({
@@ -200,7 +244,7 @@ async function run(messages, args) {
             });
         }
 
-        if (logger) logger.success("Clasificación global de mappers cargada con éxito.");
+        if (logger) logger.success("Clasificación de mappers cargada con éxito.");
         return;
     }
 

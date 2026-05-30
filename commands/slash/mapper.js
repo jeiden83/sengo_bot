@@ -10,17 +10,17 @@ const data = new SlashCommandBuilder()
     .addStringOption(addServidorOption)
     .addBooleanOption(option =>
         option.setName("top")
-            .setDescription("Muestra la tabla de clasificación global de mappers")
+            .setDescription("Muestra la tabla de clasificación de mappers")
             .setRequired(false)
     )
     .addStringOption(option =>
         option.setName("pais")
-            .setDescription("Filtra por país en la tabla global de mappers (ej: MX, VE, US)")
+            .setDescription("Filtra por país en la tabla de mappers (ej: MX, VE, US)")
             .setRequired(false)
     )
     .addStringOption(option =>
         option.setName("sort")
-            .setDescription("Criterio de ordenamiento para la tabla global de mappers")
+            .setDescription("Criterio de ordenamiento para la tabla de mappers")
             .setRequired(false)
             .addChoices(
                 { name: "Kudosu", value: "kudosus" },
@@ -37,6 +37,21 @@ const data = new SlashCommandBuilder()
         option.setName("refresh")
             .setDescription("Fuerza la actualización de la caché del top de mappers")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("server")
+            .setDescription("Muestra el top de mappers vinculados en el servidor actual")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("global")
+            .setDescription("Muestra el top global de Kudosu de mappers de osu!")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("sengo")
+            .setDescription("Muestra el top de todos los mappers vinculados a Sengo")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -47,6 +62,9 @@ async function run(interaction, res) {
     const pais = interaction.options.getString("pais");
     const sort = interaction.options.getString("sort");
     const refresh = interaction.options.getBoolean("refresh");
+    const server = interaction.options.getBoolean("server");
+    const globalOpt = interaction.options.getBoolean("global");
+    const sengo = interaction.options.getBoolean("sengo");
     
     if (top) args.push("-top");
     if (pais) {
@@ -57,6 +75,9 @@ async function run(interaction, res) {
         args.push(`-${sort}`);
     }
     if (refresh) args.push("-refresh");
+    if (server) args.push("-server");
+    if (globalOpt) args.push("-global");
+    if (sengo) args.push("-sengo");
 
     return await mapperChatCommand.run(messages, args);
 }

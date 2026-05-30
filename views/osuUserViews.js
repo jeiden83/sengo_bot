@@ -397,7 +397,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     return embed;
 }
 
-function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter) {
+function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo') {
     const embedColor = getEmbedColor(message);
     const startIndex = (page - 1) * 10;
     const chunk = mappers.slice(startIndex, startIndex + 10);
@@ -413,8 +413,25 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
         'recent': 'Última actualización'
     };
     
-    let description = `**Total de mappers registrados: \`${mappers.length}\`**\n`;
-    if (countryFilter) {
+    let totalLabel = `**Total de mappers registrados: \`${mappers.length}\`**\n`;
+    let title = "🛠️ Tabla de Clasificación de Mappers";
+    
+    if (mode === 'server') {
+        totalLabel = `**Total de mappers en el servidor: \`${mappers.length}\`**\n`;
+        title = "🛠️ Tabla de Clasificación de Mappers (Servidor)";
+    } else if (mode === 'sengo') {
+        totalLabel = `**Total de mappers registrados (Sengo Bot): \`${mappers.length}\`**\n`;
+        title = "🛠️ Tabla de Clasificación de Mappers (Sengo Bot)";
+    } else if (mode === 'national') {
+        totalLabel = `**Total de mappers en el top de ${countryFilter}: \`${mappers.length}\`**\n`;
+        title = `🛠️ Tabla de Clasificación de Mappers (${countryFilter})`;
+    } else if (mode === 'global') {
+        totalLabel = `**Total de mappers del top global de Kudosu: \`${mappers.length}\`**\n`;
+        title = "🛠️ Tabla de Clasificación de Mappers (Global Kudosu)";
+    }
+    
+    let description = totalLabel;
+    if (countryFilter && mode !== 'national') {
         const flag = getFlagEmoji(countryFilter);
         description += `**Filtrado por país: ${flag} ${countryFilter}**\n`;
     }
@@ -458,7 +475,7 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
     }
     
     const embed = new EmbedBuilder()
-        .setTitle("🛠️ Tabla de Clasificación de Mappers")
+        .setTitle(title)
         .setDescription(description)
         .setColor(embedColor)
         .setFooter({ text: `Sengo • Mostrando ${startIndex + 1}-${startIndex + chunk.length} de ${mappers.length} (Página ${page}/${maxPages})`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
