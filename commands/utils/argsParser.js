@@ -3,13 +3,21 @@ const OsuUserModel = require("../../models/OsuUserModel.js");
 const getGamemodeFromMessage = (msg) => {
     if (!msg) return null;
     
+    const clean = (text) => {
+        if (!text) return '';
+        return text
+            .replace(/https?:\/\/\S+/gi, '')
+            .replace(/\S*osu\.ppy\.sh\S*/gi, '')
+            .replace(/\S*osu\.direct\S*/gi, '');
+    };
+    
     // 1. Buscar en embeds
     const e = msg.embeds?.[0];
     if (e) {
-        const authorText = (e.author?.name || '').toLowerCase();
-        const footerText = (e.footer?.text || '').toLowerCase();
-        const titleText = (e.title || '').toLowerCase();
-        const descText = (e.description || '').toLowerCase();
+        const authorText = clean(e.author?.name || '').toLowerCase();
+        const footerText = clean(e.footer?.text || '').toLowerCase();
+        const titleText = clean(e.title || '').toLowerCase();
+        const descText = clean(e.description || '').toLowerCase();
 
         // Regex para buscar modos como palabras completas o con prefijo/sufijo común
         const maniaRegex = /\bmania\b/i;
@@ -33,7 +41,7 @@ const getGamemodeFromMessage = (msg) => {
     }
 
     // 2. Buscar en contenido de texto
-    const content = (msg.content || '').toLowerCase();
+    const content = clean(msg.content || '').toLowerCase();
     if (/\bmania\b/i.test(content) || content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
     if (/\btaiko\b/i.test(content) || content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
     if (/\b(fruits|ctb|catch)\b/i.test(content) || content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits')) return 'fruits';
