@@ -86,6 +86,17 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
     Muestra la brecha (gap) en rango y PP entre dos jugadores.
 *   **`s.amigos`**
     Compara y muestra el ranking entre tus amigos mutuals agregados al bot.
+*   **`s.mapper` o `s.creator`**
+    Muestra estadísticas detalladas de creador/mapper de un usuario en osu! (seguidores, Kudosu, mapas por categoría, nominaciones, etc.).
+    *   *Parámetros y filtros:*
+        *   `[usuario]`: Especifica el usuario de osu!. Si no se provee, muestra tu propio perfil.
+        *   `-rankeados` / `-pending` / `-loved` / `-graveyard` / `-gd`: Filtra y muestra la lista interactiva de mapas en esa categoría.
+        *   `-top`: Muestra la tabla de clasificación de mappers.
+            *   *Flags de `-top`:*
+                *   `-pais [código]` o `-country [código]`: Filtra la tabla por país (ej: `MX`, `VE`).
+                *   `-server` o `-servidor`: Muestra solo los mappers del servidor de Discord actual.
+                *   `-std` / `-taiko` / `-ctb` / `-mania` o `-mode <modo>`: Filtra por su modo de juego principal.
+                *   `-kudosus` / `-gd` / `-ranked` / `-wip` / `-loved` / `-followers` / `-graveyard` / `-recent`: Cambia el criterio de ordenamiento de la tabla.
 *   **`s.link [-oauth]`**
     Vincula tu cuenta de osu! a tu Discord. El uso de `-oauth` te enviará un mensaje privado con un enlace web seguro de autorización oficial.
 *   **`s.bg`**
