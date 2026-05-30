@@ -33,7 +33,7 @@ function doOsuMissingFriendsEmbed(message, missingFriends) {
         .setTimestamp();
 
     if (missingFriends.length === 0) {
-        missingEmbed.setDescription("✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados al Sengo Bot en tu cuenta de osu!.");
+        missingEmbed.setDescription("✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados a Sengo en tu cuenta de osu!.");
     } else {
         let desc = `Los siguientes **${missingFriends.length}** usuarios vinculados al Sengo aún **no** están en tu lista de amigos de osu!:\n\n`;
         let addedCount = 0;
@@ -76,7 +76,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
     desc += `\n**Leyenda:**\n` +
             `• **Supporter**: Si el usuario tiene supporter en osu! activo.\n` +
             `• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope \`friends.read\` (se requiere \`s.link -oauth\`).\n` +
-            `• **Sengo**: Cuenta vinculada al Sengo Bot.`;
+            `• **Sengo**: Cuenta vinculada a Sengo.`;
 
     return new EmbedBuilder()
         .setTitle("👥 Lista de Amigos en osu!")
@@ -420,8 +420,8 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
         totalLabel = `**Total de mappers en el servidor: \`${mappers.length}\`**\n`;
         title = "🛠️ Tabla de Clasificación de Mappers (Servidor)";
     } else if (mode === 'sengo') {
-        totalLabel = `**Total de mappers registrados (Sengo Bot): \`${mappers.length}\`**\n`;
-        title = "🛠️ Tabla de Clasificación de Mappers (Sengo Bot)";
+        totalLabel = `**Total de mappers registrados (Sengo): \`${mappers.length}\`**\n`;
+        title = "🛠️ Tabla de Clasificación de Mappers (Sengo)";
     } else if (mode === 'national') {
         totalLabel = `**Total de mappers en el top de ${countryFilter}: \`${mappers.length}\`**\n`;
         title = `🛠️ Tabla de Clasificación de Mappers (${countryFilter})`;

@@ -6,7 +6,8 @@ const {
     formatMods,
     getStatsString,
     getPlainStatsString,
-    buildAnsiBlock
+    buildAnsiBlock,
+    getDifficultyEmoji
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -785,10 +786,14 @@ function doOsuMapsetEmbed({
     };
 
     for (const map of sortedBeatmaps) {
+        const starsVal = map.difficulty_rating || 0;
+        const diffEmoji = getDifficultyEmoji(starsVal);
         const modeEmoji = modeEmojis[map.mode] || '❓';
+        const displayEmoji = map.mode === 'osu' ? diffEmoji : `${diffEmoji}${modeEmoji}`;
+
         const stars = map.difficulty_rating ? map.difficulty_rating.toFixed(2) : '0.00';
         const maxCombo = map.max_combo ? `x${map.max_combo}` : '-';
-        description += `${modeEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ Duración: \`${formatLength(map.total_length)}\`\n`;
+        description += `${displayEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ Duración: \`${formatLength(map.total_length)}\`\n`;
     }
 
     const embed = new EmbedBuilder()

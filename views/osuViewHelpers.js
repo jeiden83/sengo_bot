@@ -156,6 +156,16 @@ function buildPaginationRow({ prefix, current, total, pageSize = 10, oneIndexed 
     );
 }
 
+function getDifficultyEmoji(stars) {
+    if (!stars || typeof stars !== 'number') return '⚪';
+    if (stars < 2.0) return '🟢'; // Easy
+    if (stars < 2.7) return '🔵'; // Normal
+    if (stars < 4.0) return '🟡'; // Hard
+    if (stars < 5.3) return '🔴'; // Insane
+    if (stars < 6.5) return '🟣'; // Expert
+    return '⚫'; // Expert+
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -165,5 +175,6 @@ module.exports = {
     getPlainStatsString,
     buildAnsiBlock,
     getFlagEmoji,
-    buildPaginationRow
+    buildPaginationRow,
+    getDifficultyEmoji
 };
