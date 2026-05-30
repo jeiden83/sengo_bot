@@ -87,8 +87,57 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         .setTimestamp();
 }
 
+/**
+ * Renderiza el embed para las estadísticas de creador/mapper (.mapper)
+ */
+function doOsuMapperEmbed(message, user) {
+    const embedColor = getEmbedColor(message);
+    const flag = getFlagEmoji(user.country_code);
+    
+    // Kudosu y seguidores de mapeo
+    const mappingFollowers = user.mapping_follower_count?.toLocaleString('es-ES') || '0';
+    const kudosuTotal = user.kudosu?.total?.toLocaleString('es-ES') || '0';
+    const kudosuAvailable = user.kudosu?.available?.toLocaleString('es-ES') || '0';
+    
+    // Conteo de sets de beatmaps
+    const rankedCount = user.ranked_and_approved_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const lovedCount = user.loved_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const pendingCount = user.pending_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const graveyardCount = user.graveyard_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const guestCount = user.guest_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const nominatedCount = user.nominated_beatmapset_count?.toLocaleString('es-ES') || '0';
+    
+    const isSupporter = user.is_supporter ? " 💖" : "";
+    
+    // Crear embed
+    const embed = new EmbedBuilder()
+        .setTitle(`🛠️ Estadísticas de Mapper: ${user.username}${isSupporter}`)
+        .setURL(`https://osu.ppy.sh/users/${user.id}`)
+        .setDescription(
+            `**${flag} [${user.username}](https://osu.ppy.sh/users/${user.id})** es un creador de contenido en la comunidad de \`osu!\`.\n` +
+            `Aquí tienes un resumen de su actividad de mapeo:`
+        )
+        .setColor(embedColor)
+        .setThumbnail(user.avatar_url)
+        .addFields(
+            { name: "👥 Comunidad", value: `• **Notificado / Seguidores**: \`${mappingFollowers}\`\n• **Kudosu Total**: \`${kudosuTotal}\` (Disponible: \`${kudosuAvailable}\`)`, inline: false },
+            { name: "🟢 Mapas Oficiales", value: `• **Rankeados / Aprobados**: \`${rankedCount}\`\n• **Loved (Amados)**: \`${lovedCount}\``, inline: true },
+            { name: "⚫ Otros Mapas", value: `• **Pending / WIP**: \`${pendingCount}\`\n• **Graveyard (Cementerio)**: \`${graveyardCount}\``, inline: true },
+            { name: "🤝 Colaboraciones y Nominaciones", value: `• **Dificultades Invitadas (GDs)**: \`${guestCount}\`\n• **Beatmapsets Nominados**: \`${nominatedCount}\``, inline: false }
+        )
+        .setFooter({ text: "Sengo Mapper Stats", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+        
+    if (user.cover_url || (user.cover && user.cover.url)) {
+        embed.setImage(user.cover_url || user.cover.url);
+    }
+    
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
-    doOsuFriendsListEmbed
+    doOsuFriendsListEmbed,
+    doOsuMapperEmbed
 };
