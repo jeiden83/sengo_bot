@@ -916,8 +916,44 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                     const rowEndedAtTime = new Date(row.ended_at).getTime();
                     const existing = cachedData.scores[uId];
                     const cachedEndedAtTime = existing ? new Date(existing.ended_at || 0).getTime() : 0;
-                    // Solo reemplazar si no hay cached, o si el cached es noScore, o si la DB tiene una play mejor/más reciente
-                    const shouldReplace = !existing || existing.noScore === true || rowEndedAtTime > cachedEndedAtTime;
+                    
+                    let shouldReplace = false;
+                    if (!existing || existing.noScore === true) {
+                        shouldReplace = true;
+                    } else {
+                        const rowPassed = row.passed !== false;
+                        const existingPassed = existing.passed !== false;
+
+                        if (rowPassed && !existingPassed) {
+                            shouldReplace = true;
+                        } else if (!rowPassed && existingPassed) {
+                            shouldReplace = false;
+                        } else {
+                            // Ambos pasaron o ambos fallaron
+                            if (rowPassed) {
+                                // Ambos pasaron: comparar por pp o score según el estado del mapa
+                                const isLoved = metadata && metadata.status === 'loved';
+                                if (isLoved) {
+                                    const rowScore = Number(row.legacy_total_score || row.total_score || 0);
+                                    const existingScore = Number(existing.legacy_total_score || existing.total_score || 0);
+                                    shouldReplace = rowScore > existingScore;
+                                } else {
+                                    const rowPP = Number(row.pp || 0);
+                                    const existingPP = Number(existing.pp || 0);
+                                    shouldReplace = rowPP > existingPP;
+                                }
+                            } else {
+                                // Ambos fallaron: comparar por map_completion o combo
+                                const rowCompletion = Number(row.map_completion || 0);
+                                const existingCompletion = Number(existing.map_completion || 0);
+                                if (rowCompletion !== existingCompletion) {
+                                    shouldReplace = rowCompletion > existingCompletion;
+                                } else {
+                                    shouldReplace = rowEndedAtTime > cachedEndedAtTime;
+                                }
+                            }
+                        }
+                    }
                     
                     if (shouldReplace) {
                         const mappedScore = {
