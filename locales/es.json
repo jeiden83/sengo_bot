@@ -1,0 +1,15 @@
+{
+  "general": {
+    "loading": "Consultando base de datos y API de osu!...",
+    "error_unexpected": "Ocurrió un error inesperado al procesar el comando."
+  },
+  "osu": {
+    "profile": {
+      "title": "Perfil de osu! de {username}",
+      "global_rank": "Ranking global",
+      "country_rank": "Ranking por país",
+      "play_count": "Cantidad de partidas",
+      "not_found": "El usuario {username} no se encuentra en osu!"
+    }
+  }
+}
