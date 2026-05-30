@@ -63,6 +63,10 @@ async function run(messages, args) {
             return message.reply("❌ *El flag `-sengo` es exclusivo para el administrador del bot.*");
         }
 
+        if (forceUpdate && message.author.id !== CONFIG.OWNER_ID) {
+            return message.reply("❌ *El flag `-refresh` / `-force` es exclusivo para el administrador del bot.*");
+        }
+
         if (isServerMode && !message.guild) {
             return message.reply("❌ *El flag `-server` solo se puede usar dentro de un servidor de Discord.*");
         }
@@ -488,8 +492,7 @@ s.mapper -top : Muestra el top de mappers del país del usuario (VE por defecto)
 Flags para -top:
 • -pais <código> / -country <código> : Filtra el top de mappers por país (ej: MX, VE).
 • -server / -servidor : Filtra el top mostrando solo a los usuarios vinculados del servidor de Discord actual.
-• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).
-• -refresh / -force : Fuerza la recarga de datos consultando a la API de osu!.`
+• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).`
 };
 
 module.exports = { run };
