@@ -157,6 +157,15 @@
   "globo": {
     "attach_image": "Ok pero adjunta una imagen"
   },
+  "utils": {
+    "ping_loading": "🏓 Calculando latencia...",
+    "ping_response": "🏓 ¡Pong! Latencia de la API: **{latency}ms**",
+    "roll_err_max_num": "❌ El valor máximo no es un número válido.",
+    "roll_err_min_num": "❌ El valor mínimo no es un número válido.",
+    "roll_err_min_greater": "❌ El valor mínimo ({bottom}) no puede ser mayor que el valor máximo ({top}).",
+    "roll_result": "🎲 Ha salido: **{roll}** (rango: {bottom} a {top})",
+    "say_err_empty": "❌ Debes proporcionar el texto que deseas que diga."
+  },
   "rol": {
     "only_guild": "❌ Este comando solo se puede usar en un servidor.",
     "no_admin": "❌ No tienes permisos para gestionar roles. Se requiere ser `Administrador`.",

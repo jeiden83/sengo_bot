@@ -157,6 +157,15 @@
   "globo": {
     "attach_image": "Ok but attach an image"
   },
+  "utils": {
+    "ping_loading": "🏓 Calculating latency...",
+    "ping_response": "🏓 Pong! API Latency: **{latency}ms**",
+    "roll_err_max_num": "❌ The maximum value is not a valid number.",
+    "roll_err_min_num": "❌ The minimum value is not a valid number.",
+    "roll_err_min_greater": "❌ The minimum value ({bottom}) cannot be greater than the maximum value ({top}).",
+    "roll_result": "🎲 Rolled: **{roll}** (range: {bottom} to {top})",
+    "say_err_empty": "❌ You must provide the text you want me to say."
+  },
   "rol": {
     "only_guild": "❌ This command can only be used in a server.",
     "no_admin": "❌ You do not have permissions to manage roles. You must be an `Administrator`.",

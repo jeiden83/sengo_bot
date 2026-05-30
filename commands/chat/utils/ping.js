@@ -1,15 +1,19 @@
+const { t } = require("../../../utils/i18n.js");
 
-async function run(message, args) {
+async function run(messages, args) {
+    const { message } = messages;
+    const locale = message.locale || 'es';
+
     const startTime = Date.now();
-    const sentMessage = await message.message.channel.send("Ping!");
+    const sentMessage = await message.channel.send(t(locale, 'utils.ping_loading'));
     const latency = Date.now() - startTime;
-    
-    await sentMessage.edit(`Ping! en ${latency} ms`);
+
+    await sentMessage.edit(t(locale, 'utils.ping_response', { latency }));
 }
 
 run.description = {
-    'header': 'Muestra la latencia del bot',
-    'body': 'Calcula el tiempo de respuesta en milisegundos desde Discord.',
+    'header': 'Muestra la latencia del bot / Shows the bot\'s latency',
+    'body': 'Calcula el tiempo de respuesta en milisegundos desde Discord. / Calculates response time in milliseconds from Discord.',
     'usage': 's.ping'
 };
 
