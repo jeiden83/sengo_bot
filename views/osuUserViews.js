@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
 
 /**
@@ -131,9 +131,221 @@ function doOsuMapperEmbed(message, user) {
     return embed;
 }
 
+function buildMapperButtonsRow(user, activeType) {
+    const rankedCount = user.ranked_and_approved_beatmapset_count || 0;
+    const lovedCount = user.loved_beatmapset_count || 0;
+    const pendingCount = user.pending_beatmapset_count || 0;
+    const graveyardCount = user.graveyard_beatmapset_count || 0;
+    const guestCount = user.guest_beatmapset_count || 0;
+    const totalCount = rankedCount + lovedCount + pendingCount + graveyardCount + guestCount;
+
+    const row1 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("mapper_ranked")
+            .setLabel("Rankeados")
+            .setEmoji("🟢")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(activeType === 'ranked' || rankedCount === 0),
+        new ButtonBuilder()
+            .setCustomId("mapper_loved")
+            .setLabel("Loved")
+            .setEmoji("🔮")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(activeType === 'loved' || lovedCount === 0),
+        new ButtonBuilder()
+            .setCustomId("mapper_pending")
+            .setLabel("Pending")
+            .setEmoji("⚫")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(activeType === 'pending' || pendingCount === 0),
+        new ButtonBuilder()
+            .setCustomId("mapper_graveyard")
+            .setLabel("Graveyard")
+            .setEmoji("🪦")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(activeType === 'graveyard' || graveyardCount === 0),
+        new ButtonBuilder()
+            .setCustomId("mapper_guest")
+            .setLabel("Guest Diffs")
+            .setEmoji("🤝")
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(activeType === 'guest' || guestCount === 0)
+    );
+
+    const row2 = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("mapper_all")
+            .setLabel("Todos los Mapas")
+            .setEmoji("🗺️")
+            .setStyle(ButtonStyle.Success)
+            .setDisabled(activeType === 'all' || totalCount === 0),
+        new ButtonBuilder()
+            .setCustomId("mapper_profile")
+            .setLabel("Volver al Perfil")
+            .setEmoji("🏠")
+            .setStyle(ButtonStyle.Danger)
+            .setDisabled(activeType === 'profile')
+    );
+
+    return [row1, row2];
+}
+
+function formatBeatmapset(set, index, type, userId) {
+    const diffs = set.beatmaps || [];
+    let starsStr = "N/A";
+    if (diffs.length > 0) {
+        const ratings = diffs.map(b => b.difficulty_rating || 0);
+        const minS = Math.min(...ratings).toFixed(2);
+        const maxS = Math.max(...ratings).toFixed(2);
+        starsStr = minS === maxS ? `${maxS}★` : `${minS}★ - ${maxS}★`;
+    }
+
+    const playcount = (set.play_count || 0).toLocaleString('es-ES');
+    const favorites = (set.favourite_count || 0).toLocaleString('es-ES');
+    
+    let line = `**${index}.** [${set.artist} - ${set.title}](https://osu.ppy.sh/s/${set.id})`;
+    if (type === 'guest') {
+        const guestDiffs = diffs.filter(b => b.user_id === userId);
+        if (guestDiffs.length > 0) {
+            const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${(b.difficulty_rating || 0).toFixed(2)}★)`).join(", ");
+            line += `\n   ↳ Host: [${set.creator}](https://osu.ppy.sh/users/${set.user_id}) | GDs: ${diffsNames}`;
+        } else {
+            line += `\n   ↳ Host: [${set.creator}](https://osu.ppy.sh/users/${set.user_id}) | ⭐ ${starsStr}`;
+        }
+    } else {
+        line += `\n   ▸ ⭐ **${starsStr}** | 🎮 **${playcount}** plays | ❤️ **${favorites}**`;
+    }
+    return line;
+}
+
+function doOsuMapperListEmbed(message, user, type, data) {
+    const embedColor = getEmbedColor(message);
+    const flag = getFlagEmoji(user.country_code);
+    const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setThumbnail(user.avatar_url)
+        .setFooter({ text: "Sengo Mapper Stats", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+
+    if (user.cover_url || (user.cover && user.cover.url)) {
+        embed.setImage(user.cover_url || user.cover.url);
+    }
+
+    const titleType = {
+        'ranked': '🟢 Mapas Rankeados',
+        'loved': '🔮 Mapas Loved',
+        'pending': '⚫ Mapas Pending / WIP',
+        'graveyard': '🪦 Mapas Graveyard',
+        'guest': '🤝 Dificultades Invitadas (GDs)',
+        'all': '🗺️ Todos los Mapas'
+    }[type] || 'Mapas';
+
+    embed.setTitle(`${titleType} de ${flag} ${user.username}`);
+
+    if (type === 'all') {
+        let desc = `Resumen completo de mapas creados por **${user.username}**:\n\n`;
+        
+        // Ranked
+        const rankedList = data.ranked || [];
+        const rankedCount = user.ranked_and_approved_beatmapset_count || 0;
+        desc += `🟢 **Rankeados (${rankedCount})**\n`;
+        if (rankedList.length === 0) {
+            desc += `*Ninguno*\n\n`;
+        } else {
+            desc += rankedList.slice(0, 3).map((set, idx) => {
+                const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
+                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
+            }).join("\n") + (rankedList.length > 3 ? `\n*...y ${rankedCount - 3} más.*` : "") + `\n\n`;
+        }
+
+        // Loved
+        const lovedList = data.loved || [];
+        const lovedCount = user.loved_beatmapset_count || 0;
+        desc += `🔮 **Loved (${lovedCount})**\n`;
+        if (lovedList.length === 0) {
+            desc += `*Ninguno*\n\n`;
+        } else {
+            desc += lovedList.slice(0, 3).map((set, idx) => {
+                const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
+                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
+            }).join("\n") + (lovedList.length > 3 ? `\n*...y ${lovedCount - 3} más.*` : "") + `\n\n`;
+        }
+
+        // Pending
+        const pendingList = data.pending || [];
+        const pendingCount = user.pending_beatmapset_count || 0;
+        desc += `⚫ **Pending / WIP (${pendingCount})**\n`;
+        if (pendingList.length === 0) {
+            desc += `*Ninguno*\n\n`;
+        } else {
+            desc += pendingList.slice(0, 3).map((set, idx) => {
+                const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
+                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
+            }).join("\n") + (pendingList.length > 3 ? `\n*...y ${pendingCount - 3} más.*` : "") + `\n\n`;
+        }
+
+        // Graveyard
+        const graveyardList = data.graveyard || [];
+        const graveyardCount = user.graveyard_beatmapset_count || 0;
+        desc += `🪦 **Graveyard (${graveyardCount})**\n`;
+        if (graveyardList.length === 0) {
+            desc += `*Ninguno*\n\n`;
+        } else {
+            desc += graveyardList.slice(0, 3).map((set, idx) => {
+                const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
+                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
+            }).join("\n") + (graveyardList.length > 3 ? `\n*...y ${graveyardCount - 3} más.*` : "") + `\n\n`;
+        }
+
+        // Guest
+        const guestList = data.guest || [];
+        const guestCount = user.guest_beatmapset_count || 0;
+        desc += `🤝 **Guest Diffs (${guestCount})**\n`;
+        if (guestList.length === 0) {
+            desc += `*Ninguno*\n\n`;
+        } else {
+            desc += guestList.slice(0, 3).map((set, idx) => {
+                const guestDiffs = (set.beatmaps || []).filter(b => b.user_id === user.id);
+                const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${(b.difficulty_rating || 0).toFixed(2)}★)`).join(", ");
+                return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) - GDs: ${diffsNames}`;
+            }).join("\n") + (guestList.length > 3 ? `\n*...y ${guestCount - 3} más.*` : "") + `\n\n`;
+        }
+
+        embed.setDescription(desc);
+    } else {
+        if (!data || data.length === 0) {
+            embed.setDescription(`*No se encontraron mapas en esta categoría.*`);
+        } else {
+            let desc = `Mostrando los últimos **${Math.min(data.length, 15)}** mapas de esta categoría:\n\n`;
+            desc += data.slice(0, 15).map((set, idx) => formatBeatmapset(set, idx + 1, type, user.id)).join("\n\n");
+            
+            const totalCount = {
+                'ranked': user.ranked_and_approved_beatmapset_count,
+                'loved': user.loved_beatmapset_count,
+                'pending': user.pending_beatmapset_count,
+                'graveyard': user.graveyard_beatmapset_count,
+                'guest': user.guest_beatmapset_count
+            }[type] || data.length;
+
+            if (totalCount > 15) {
+                desc += `\n\n*...y ${totalCount - 15} mapas más en la web de osu!.*`;
+            }
+            embed.setDescription(desc);
+        }
+    }
+
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
     doOsuFriendsListEmbed,
-    doOsuMapperEmbed
+    doOsuMapperEmbed,
+    buildMapperButtonsRow,
+    doOsuMapperListEmbed
 };
