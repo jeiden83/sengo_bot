@@ -338,8 +338,20 @@ async function getLinkedUsers({ guildId = null, guild = null, bypass = false } =
 
         const discordIds = allLinkedUsers.map(u => u.discord_id);
         
-        // Obtener miembros del servidor de Discord de forma masiva
-        const presentMembers = await guild.members.fetch({ user: discordIds }).catch(() => new Map());
+        // Obtener miembros del servidor de Discord de forma masiva en lotes de 100 para respetar el límite de la API de Discord
+        const presentMembers = new Map();
+        const chunkSize = 100;
+        for (let i = 0; i < discordIds.length; i += chunkSize) {
+            const chunk = discordIds.slice(i, i + chunkSize);
+            try {
+                const fetched = await guild.members.fetch({ user: chunk });
+                for (const [id, member] of fetched) {
+                    presentMembers.set(id, member);
+                }
+            } catch (err) {
+                console.error(`[OsuUserModel] Error al obtener lote de miembros (${i} a ${i + chunk.length}):`, err);
+            }
+        }
         
         const linkedUsers = allLinkedUsers.filter(u => presentMembers.has(u.discord_id));
 
