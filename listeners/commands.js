@@ -1,6 +1,7 @@
 const { chatCommand, slashCommand, loadCommands, loadSlashCommands } = require("../commands/handler.js");
 const { PermissionsBitField } = require('discord.js');
 const { reportErrorToWebhook } = require("../services/errorNotifier.js");
+const { getGuildLanguage } = require("../models/GuildConfigModel.js");
 
 const Logger = require("../utils/logger.js");
 
@@ -177,6 +178,12 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
+        let resolvedLocale = 'es';
+        if (message.guild) {
+            resolvedLocale = await getGuildLanguage(message.guild.id);
+        }
+        message.locale = resolvedLocale;
+
         await message.channel.sendTyping();
 
         const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
@@ -340,9 +347,25 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             }
         });
 
+        let resolvedLocale = interaction.locale;
+        if (resolvedLocale) {
+            resolvedLocale = resolvedLocale.split('-')[0].toLowerCase();
+        }
+        if (resolvedLocale !== 'es' && resolvedLocale !== 'en') {
+            resolvedLocale = null;
+        }
+        if (!resolvedLocale && interaction.guild) {
+            resolvedLocale = await getGuildLanguage(interaction.guild.id);
+        }
+        if (!resolvedLocale) {
+            resolvedLocale = 'es';
+        }
+        interaction.resolvedLocale = resolvedLocale;
+
         const simulatedMessage = {
             author: interaction.user,
-            guild: interaction.guild
+            guild: interaction.guild,
+            locale: resolvedLocale
         };
 
         if (interaction.guild) {
