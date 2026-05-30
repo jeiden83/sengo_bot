@@ -17,5 +17,59 @@
     "changed_title": "🌐 Language Changed",
     "help_title": "🌐 Language Configuration",
     "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`."
+  },
+  "about": {
+    "only_author": "❌ Only the person who ran the command can use this navigation.",
+    "footer": "Sengo • s.about • Page {page} of {total}",
+    "buttons": {
+      "home": "Home",
+      "oauth": "OAuth",
+      "cache": "Cache",
+      "country_lb": "Country LB",
+      "gap": "Gap",
+      "recommender": "Recommender",
+      "other_commands": "Other Commands"
+    },
+    "pages": {
+      "0": {
+        "title": "🌸 About Sengo",
+        "description": "Sengo is a high-performance Discord bot specialized for the **osu!** community, designed with an extreme focus on speed, automation, and social integration.\n\nBelow are the advanced features that make it stand out from traditional alternatives. Use the buttons below to explore each section with details and examples of use:"
+      },
+      "1": {
+        "title": "🔒 Secure OAuth 2.0",
+        "description": "**Secure Linking with OAuth 2.0**\n\nForget about changing your profile page or using tedious methods. Link your account officially in seconds with `{prefix}link -oauth`.\n\n**Details and Usage:**\n• **Auto-detection**: Upon authorizing via OAuth, Sengo automatically detects your avatar, country flag, and your **osu! Supporter** status 💖.\n• **Security**: We do not need your password or sensitive data. Everything is managed through official osu! servers.\n• **Support Pool**: If you have supporter, your account will safely help retrieve national rankings for the whole server."
+      },
+      "2": {
+        "title": "⚡ Latency & Cache",
+        "description": "**Sub-Millisecond Response Times (Cache)**\n\nSengo is optimized to respond instantly. When you query your recent play with `.r`, the bot initiates a background predictive process.\n\n**Details and Usage:**\n• **Smart Preload**: Preloads local cache with compare (`.c`), profile, and beatmap metadata.\n• **Extreme Speed**: When running `.c` immediately after, the bot responds in **under 1ms**, avoiding redundant requests to the osu! API and eliminating wait latency."
+      },
+      "3": {
+        "title": "🗺️ National Leaderboards",
+        "description": "**Smart National Leaderboards**\n\nCheck who has the best score from your country on any map quickly and easily.\n\n**Details and Usage:**\n• **Command**: Use `.lb -pais` to view the national leaderboard for the map.\n• **Auto-detection**: If linked via OAuth, Sengo will automatically detect your flag and nationality without needing to specify the country code (e.g. `MX`, `ES`, `VE`, `AR`).\n• **Flexibility**: You can also search manually by specifying the code (e.g. `.lb -pais cl`)."
+      },
+      "4": {
+        "title": "👥 Score Gap (.gap)",
+        "description": "**Score Gap (.gap / -friends)**\n\nCompare and analyze how you stand against your friends and server members in the blink of an eye.\n\n**Details and Usage:**\n• **Command `.gap`**: Shows the gap and exact difference in score, accuracy, and PP of server users on the queried map.\n• **Filter `-friends`**: Add the `-friends` flag to your commands (such as `.lb -friends`) to isolate the leaderboard and compete only against your osu! friends."
+      },
+      "5": {
+        "title": "🎯 Farm Recommender (.rec)",
+        "description": "**Smart and Personalized Recommendations (.recommend / .rec)**\n\nLooking for maps to farm PP? Sengo analyzes your Top 100 and creates customized recommendations in real time.\n\n**Details and Usage:**\n• **Dynamic Profiling**: The bot studies your accuracy, preferred BPM, favorite mods, and mappers in your top plays.\n• **Button Filters**: Instantly switch between playstyles like **Jumps**, **Streams**, **Marathons**, **Loved** maps, or **Tag Affinity**.\n• **Advanced Search**: Customize your target range with flags (e.g. `s.rec -pp 250-300 -mods HDDT`).\n• **User Tags**: The bot connects with osu! community tags to recommend maps with the exact patterns of your current skillset."
+      },
+      "6": {
+        "title": "🛠️ Command List",
+        "description": "**Other Sengo Commands**\n\nHere is a quick guide to other essential bot commands:\n\n• **osu! Commands**:\n  ▸ `s.r` / `s.rs`: Shows your most recent play. Supports `-l` to list the last 10 and `-b` to sort by PP.\n  ▸ `s.c`: Compares your score on the channel's last beatmap.\n  ▸ `s.lb`: Shows the beatmap's global leaderboard.\n  ▸ `s.osu`: Shows your osu! profile or another player's (supports detailed mode).\n  ▸ `s.top`: Shows your top PP scores.\n  ▸ `s.daily`: Shows details and ranking of the current osu! Daily Challenge.\n  ▸ `s.subir`: Manually saves/uploads a score to the bot's system.\n• **Utility & Community Commands**:\n  ▸ `s.link`: Links your Discord account with osu!.\n  ▸ `s.amigos`: Manages and audits your osu! friends list within the bot.\n  ▸ `s.contribuidores`: Meet the developers and contributors behind Sengo.\n  ▸ `s.sorteo`: Creates and manages advanced giveaways with role, booster, and nitro filters.\n• **Fun**:\n  ▸ `s.fumo`: Entertainment command with Fumo images."
+      }
+    }
+  },
+  "contributors": {
+    "title": "🌐 Users Linked via OAuth",
+    "syncing": "⏳ *Starting forced supporter status check for all linked users...*",
+    "sync_success": "🔄 **Forced synchronization:** {success} successful, {fail} failed.",
+    "sync_changes": "\n ▸ *Changes:* {changes}",
+    "sync_error": "❌ **Error forcing synchronization: {error}**",
+    "total_linked": "Total linked users: **{total}**",
+    "empty": "*There are no users linked via the secure OAuth system yet.*",
+    "error": "*An unexpected error occurred while processing the command.*",
+    "footer": "Sengo • Page {page}/{total}"
   }
 }

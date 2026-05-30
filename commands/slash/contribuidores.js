@@ -28,6 +28,7 @@ async function run(interaction, res) {
             author: interaction.user,
             member: interaction.member || (interaction.guild ? interaction.guild.members.cache.get(interaction.user.id) : null),
             guild: interaction.guild,
+            locale: interaction.resolvedLocale,
             channel: {
                 send: async (options) => {
                     interactionUsed = true;

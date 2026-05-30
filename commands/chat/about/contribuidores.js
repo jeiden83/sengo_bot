@@ -1,9 +1,11 @@
-const { EmbedBuilder } = require('discord.js');
 const OsuUserModel = require('../../../models/OsuUserModel.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
+const { doContributorsEmbed, doContributorsEmptyEmbed, doContributorsErrorEmbed } = require('../../../views/contributorsViews.js');
+const { t } = require('../../../utils/i18n.js');
 
 async function run(messages, args) {
     const { message, res, reply } = messages;
+    const locale = message.locale || 'es';
 
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#378a91';
@@ -13,7 +15,7 @@ async function run(messages, args) {
 
     if (isForce) {
         let tempMsg;
-        const msgText = `⏳ *Iniciando chequeo forzoso de estatus de supporter para todos los vinculados...*`;
+        const msgText = t(locale, 'contributors.syncing');
         if (reply) {
             tempMsg = await reply.reply({ content: msgText });
         } else {
@@ -22,14 +24,18 @@ async function run(messages, args) {
 
         try {
             const syncResult = await OsuUserModel.syncAllSupporterStatuses();
-            syncSummary = `🔄 **Sincronización forzada:** ${syncResult.successCount} exitosos, ${syncResult.failCount} fallidos.`;
+            let syncSummaryStr = t(locale, 'contributors.sync_success', {
+                success: syncResult.successCount,
+                fail: syncResult.failCount
+            });
             if (syncResult.changes.length > 0) {
                 const changesStr = syncResult.changes.map(c => `${c.username}: ${c.oldStatus ? '💖' : '❌'}→${c.newStatus ? '💖' : '❌'}`).join(', ');
-                syncSummary += `\n ▸ *Cambios:* ${changesStr}`;
+                syncSummaryStr += t(locale, 'contributors.sync_changes', { changes: changesStr });
             }
+            syncSummary = syncSummaryStr;
         } catch (err) {
             console.error("Error en s.con -force:", err);
-            syncSummary = `❌ **Error al forzar la sincronización:** ${err.message}`;
+            syncSummary = t(locale, 'contributors.sync_error', { error: err.message });
         }
 
         if (tempMsg && !reply) {
@@ -62,49 +68,20 @@ async function run(messages, args) {
             let pageNum = 1;
             let startIndex = 0;
 
-            const generateEmbed = (start, page, maxP) => {
-                const chunk = data.slice(start, start + 10);
-                let description = "";
-                if (syncSummary) {
-                    description += `${syncSummary}\n\n`;
-                }
-                description += `Total de usuarios vinculados: **${totalUsers}**\n`;
-
-                // Agrupar el chunk por pais
-                const groups = {};
-                chunk.forEach(user => {
-                    const code = (user.country_code || 'UN').toUpperCase();
-                    if (!groups[code]) groups[code] = [];
-                    groups[code].push(user);
-                });
-
-                // Mantener el orden alfabético de países en este chunk
-                const countriesInChunk = Object.keys(groups).sort();
-                for (const country of countriesInChunk) {
-                    const flagEmoji = country !== 'UN' ? `:flag_${country.toLowerCase()}:` : '🏳️';
-                    const totalInCountry = countryCounts[country] || 0;
-                    description += `\n${flagEmoji} **${country}** (${totalInCountry})\n`;
-
-                    groups[country].forEach(user => {
-                        const suppIcon = user.is_supporter ? ' 💖' : '';
-                        description += `  • **${user.username}**${suppIcon}\n`;
-                    });
-                }
-
-                return new EmbedBuilder()
-                    .setTitle('🌐 Usuarios Vinculados por oAuth')
-                    .setDescription(description)
-                    .setColor(embedColor)
-                    .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-                    .setFooter({ text: `SengoBot • Página ${page}/${maxP}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-                    .setTimestamp();
-            };
-
             const getButtonsRow = (start, total) => {
                 return buildPaginationRow({ prefix: 'con', current: start, total, pageSize: 10 });
             };
 
-            const initialEmbed = generateEmbed(startIndex, pageNum, maxPages);
+            const initialEmbed = doContributorsEmbed({
+                chunk: data.slice(startIndex, startIndex + 10),
+                totalUsers,
+                countryCounts,
+                page: pageNum,
+                maxPages,
+                embedColor,
+                syncSummary,
+                locale
+            });
 
             let sent_message;
             const sendOptions = {
@@ -141,7 +118,16 @@ async function run(messages, args) {
                     }
 
                     pageNum = Math.floor(startIndex / 10) + 1;
-                    const updatedEmbed = generateEmbed(startIndex, pageNum, maxPages);
+                    const updatedEmbed = doContributorsEmbed({
+                        chunk: data.slice(startIndex, startIndex + 10),
+                        totalUsers,
+                        countryCounts,
+                        page: pageNum,
+                        maxPages,
+                        embedColor,
+                        syncSummary,
+                        locale
+                    });
 
                     await i.editReply({
                         embeds: [updatedEmbed],
@@ -158,24 +144,12 @@ async function run(messages, args) {
                 } catch { }
             });
         } else {
-            const embed = new EmbedBuilder()
-                .setTitle('🌐 Usuarios Vinculados por oAuth')
-                .setColor(embedColor)
-                .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-                .setDescription(`*Aún no hay usuarios vinculados a través del sistema seguro de oAuth.*`)
-                .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-                .setTimestamp();
+            const embed = doContributorsEmptyEmbed(embedColor, locale);
             return { embeds: [embed] };
         }
     } catch (err) {
         console.error("Error inesperado en contribuidores:", err);
-        const embed = new EmbedBuilder()
-            .setTitle('🌐 Usuarios Vinculados por oAuth')
-            .setColor(embedColor)
-            .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-            .setDescription(`*Ocurrió un error inesperado al procesar el comando.*`)
-            .setFooter({ text: "SengoBot", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-            .setTimestamp();
+        const embed = doContributorsErrorEmbed(embedColor, locale);
         return { embeds: [embed] };
     }
 }
@@ -192,4 +166,4 @@ run.description = {
     'usage': undefined
 }
 
-module.exports = { run }
+module.exports = { run };

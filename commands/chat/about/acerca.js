@@ -1,10 +1,13 @@
 const { doAboutEmbed, buildAboutNavigationRows } = require("../../../views/generalViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, reply } = messages;
+    const locale = message.locale || 'es';
+    const prefix = message.content && message.content.startsWith("sd.") ? "sd." : "s.";
 
-    const initialEmbed = doAboutEmbed(message, 0);
-    const initialRows = buildAboutNavigationRows(0);
+    const initialEmbed = doAboutEmbed(message, 0, locale, prefix);
+    const initialRows = buildAboutNavigationRows(0, locale);
 
     const sendOptions = {
         embeds: [initialEmbed],
@@ -27,7 +30,7 @@ async function run(messages, args) {
     collector.on('collect', async i => {
         if (i.user.id !== message.author.id) {
             return i.reply({
-                content: "❌ Solo la persona que ejecutó el comando puede usar esta navegación.",
+                content: t(locale, 'about.only_author'),
                 ephemeral: true
             }).catch(() => {});
         }
@@ -38,8 +41,8 @@ async function run(messages, args) {
             const pageIndex = parseInt(i.customId.replace("about_page_", ""), 10);
             if (isNaN(pageIndex)) return;
 
-            const nextEmbed = doAboutEmbed(message, pageIndex);
-            const nextRows = buildAboutNavigationRows(pageIndex);
+            const nextEmbed = doAboutEmbed(message, pageIndex, locale, prefix);
+            const nextRows = buildAboutNavigationRows(pageIndex, locale);
 
             await i.editReply({
                 embeds: [nextEmbed],
