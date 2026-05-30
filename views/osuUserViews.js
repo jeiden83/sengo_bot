@@ -211,7 +211,7 @@ function formatBeatmapset(set, index, type, userId) {
     const playcount = (set.play_count || 0).toLocaleString('es-ES');
     const favorites = (set.favourite_count || 0).toLocaleString('es-ES');
     const diffsCount = diffs.length;
-    const diffsLabel = diffsCount === 1 ? '1 dificultad' : `${diffsCount} dificultades`;
+    const diffsLabel = diffsCount === 1 ? '1 diff' : `${diffsCount} diffs`;
 
     const submittedUnix = set.submitted_date ? Math.floor(new Date(set.submitted_date).getTime() / 1000) : null;
     const updatedUnix = set.last_updated ? Math.floor(new Date(set.last_updated).getTime() / 1000) : null;

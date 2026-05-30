@@ -19,13 +19,13 @@ async function run(messages, args) {
             type = 'ranked';
         } else if (lowerArg === '-pending' || lowerArg === '-wip') {
             type = 'pending';
-        } else if (lowerArg === '-loved') {
+        } else if (lowerArg === '-loved' || lowerArg === '-amados') {
             type = 'loved';
-        } else if (lowerArg === '-graveyard') {
+        } else if (lowerArg === '-graveyard' || lowerArg === '-abandonados') {
             type = 'graveyard';
-        } else if (lowerArg === '-mapas') {
+        } else if (lowerArg === '-mapas' || lowerArg === '-todos') {
             type = 'all';
-        } else if (lowerArg === '-gd') {
+        } else if (lowerArg === '-gd' || lowerArg === '-gds') {
             type = 'guest';
         } else {
             cleanArgs.push(arg);
