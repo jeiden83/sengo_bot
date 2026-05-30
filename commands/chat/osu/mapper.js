@@ -16,6 +16,10 @@ async function run(messages, args) {
     const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
 
     if (isTopMode) {
+        if (message.author.id !== CONFIG.OWNER_ID) {
+            return message.reply("❌ *La tabla de clasificación de mappers (`-top`) está temporalmente deshabilitada por mantenimiento.*");
+        }
+
         if (logger) logger.process("Procesando clasificación de mappers...");
 
         let countryFilter = null;
