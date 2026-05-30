@@ -179,7 +179,24 @@ async function getBeatmap(beatmap_id, priority = 2) {
                     difficulty_rating: dbMap.stars,
                     mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
                     mode_int: dbMap.mode,
-                    version: dbMap.version
+                    version: dbMap.version,
+                    url: `https://osu.ppy.sh/beatmaps/${dbMap.beatmap_id}`,
+                    beatmapset: {
+                        id: dbMap.beatmapset_id,
+                        title: dbMap.title,
+                        artist: dbMap.artist,
+                        creator: dbMap.creator,
+                        covers: {
+                            cover: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/cover.jpg`,
+                            "cover@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/cover@2x.jpg`,
+                            list: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/list.jpg`,
+                            "list@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/list@2x.jpg`,
+                            card: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/card.jpg`,
+                            "card@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/card@2x.jpg`,
+                            slimcover: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/slimcover.jpg`,
+                            "slimcover@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/slimcover@2x.jpg`
+                        }
+                    }
                 };
                 setWithLimit(beatmapCache, cleanId, { data: result, timestamp: Date.now() });
                 return result;
@@ -269,7 +286,24 @@ async function batchGetBeatmaps(beatmapIds) {
                             difficulty_rating: dbMap.stars,
                             mode: dbMap.mode === 0 ? 'osu' : dbMap.mode === 1 ? 'taiko' : dbMap.mode === 2 ? 'fruits' : 'mania',
                             mode_int: dbMap.mode,
-                            version: dbMap.version
+                            version: dbMap.version,
+                            url: `https://osu.ppy.sh/beatmaps/${dbMap.beatmap_id}`,
+                            beatmapset: {
+                                id: dbMap.beatmapset_id,
+                                title: dbMap.title,
+                                artist: dbMap.artist,
+                                creator: dbMap.creator,
+                                covers: {
+                                    cover: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/cover.jpg`,
+                                    "cover@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/cover@2x.jpg`,
+                                    list: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/list.jpg`,
+                                    "list@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/list@2x.jpg`,
+                                    card: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/card.jpg`,
+                                    "card@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/card@2x.jpg`,
+                                    slimcover: `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/slimcover.jpg`,
+                                    "slimcover@2x": `https://assets.ppy.sh/beatmaps/${dbMap.beatmapset_id}/covers/slimcover@2x.jpg`
+                                }
+                            }
                         };
                         setWithLimit(beatmapCache, dbMap.beatmap_id, { data: result, timestamp: Date.now() });
                     }
