@@ -1353,7 +1353,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    const totalPages = 10;
+    const totalPages = 20;
     let allPlayers = [];
     
     const fetchPage = async (page) => {
