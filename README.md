@@ -86,8 +86,16 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
 *   **`s.lb` o `s.leaderboard`**
     Muestra la tabla de clasificación general.
     *   *Parámetro útil:* `-pais [código/nombre]` (ej: `-pais VE` para mostrar solo Venezuela).
-*   **`s.pais [código/nombre]`**
-    Muestra el ranking local del país especificado.
+*   **`s.nacional [código/nombre]`**
+    Muestra la tabla de clasificación por Performance Points (pp) de un país específico.
+    *   *Parámetros y filtros:*
+        *   `-acc`: Ordena la tabla por precisión en lugar de PP.
+        *   `-regional [región]`: Muestra la tabla de clasificación de una subdivisión o estado del país.
+*   **`s.regional [región]`**
+    Atajo directo para mostrar la clasificación regional (de osu!World) del jugador o de una subdivisión específica.
+    *   *Subcomando:* `lista` para listar todas las regiones/subdivisiones disponibles del país.
+*   **`s.pais`**
+    Asigna de forma automática el rol correspondiente a tu país de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
 *   **`s.gap [jugador1] [jugador2]`**
     Muestra la brecha (gap) en rango y PP entre dos jugadores.
 *   **`s.amigos`**
@@ -111,6 +119,24 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
     Analiza un archivo `.osr` adjunto de replay y muestra sus estadísticas.
 *   **`s.digitos` o `s.digits`**
     Asigna de forma automática el rol correspondiente a la cantidad de dígitos de tu rango global de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
+*   **`s.daily`**
+    Muestra la información y el mapa del Daily Challenge activo, el tiempo restante para completarlo y el top 3 de puntuaciones.
+*   **`s.m` o `s.map` o `s.mapa`**
+    Calcula y muestra estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap. Si no se indica ID, busca en el historial del canal.
+*   **`s.recommend` o `s.rec` o `s.recomendar`**
+    Recomienda mapas de rendimiento (farm/PP) personalizados basándose en tu nivel y estilo de juego.
+    *   *Parámetros útiles:*
+        *   `-pp <valor/rango>`: Filtra por un PP objetivo (ej: `-pp 300` o `-pp 250-300`).
+        *   `-mods <mods>`: Filtra por mods específicos (ej: `-mods HDDT`).
+        *   `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100.
+*   **`s.rework`**
+    Estima el PP del último mapa o compara las estadísticas de un usuario frente a un Rework próximo de PP.
+    *   *Uso común:*
+        *   `s.rework -lista`: Muestra todos los reworks disponibles.
+        *   `s.rework -top`: Muestra tu top 5 recalculado en el rework.
+        *   `s.rework [mapa] +mods`: Estima el PP que dará el mapa bajo el rework.
+*   **`s.snipes [usuario]`**
+    Muestra estadísticas nacionales del usuario (tops nacionales, mods más usados, etc.) desde la web `snipe.huismetbenen.nl`.
 
 ### 🛠️ Utilidades
 
@@ -118,6 +144,8 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
     Muestra la tasa oficial de cambio del Banco Central de Venezuela (soporta dolar, euro, yuan, etc.).
 *   **`s.binance [par]`**
     Muestra el precio en tiempo real de criptomonedas o el P2P de Binance.
+*   **`s.brecha`**
+    Calcula la diferencia cambiaria (brecha) en bolívares entre la tasa oficial del BCV y el promedio del mercado de Binance P2P.
 *   **`s.ping`**
     Muestra la latencia actual del bot.
 *   **`s.roll [rango]`**
@@ -135,6 +163,27 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `crear <#canal> <ganadores> <tiempo> <premio>`: Inicia el proceso de creación interactiva.
         *   `terminar <mensaje_id|enlace>`: Termina inmediatamente un sorteo activo y selecciona los ganadores.
         *   `reroll <mensaje_id|enlace>`: Vuelve a seleccionar ganadores de un sorteo ya finalizado a partir de las reacciones 🎉 existentes.
+*   **`s.cumple`**
+    Sistema interactivo de cumpleaños para el servidor. Permite registrar fechas, ver listas, el próximo cumpleaños, y configurar anuncios automáticos.
+    *   *Uso común:*
+        *   `s.cumple [DD/MM]`: Registra tu cumpleaños.
+        *   `s.cumple lista`: Lista los cumpleaños del servidor agrupados por mes.
+        *   `s.cumple proximo` / `anterior`: Muestra el cumpleaños más cercano en el futuro o pasado.
+        *   `s.cumple canal #canal`: (Admin) Configura el canal de felicitaciones diarias.
+        *   `s.cumple actualizar`: (Admin) Fuerza la comprobación y anuncio de cumpleaños del día.
+*   **`s.rol`**
+    Comando administrativo para la gestión rápida de roles del servidor.
+    *   *Uso común:*
+        *   `s.rol color <rol_id> <hex>`: Cambia el color de un rol específico.
+        *   `s.rol otorgar <rol_id> <user_id>`: Otorga o remueve el rol a un usuario.
+        *   `s.rol otorgarTodos <rol_id> [otorgar|remover|ambos]`: Otorga o remueve el rol a todos los miembros.
+*   **`s.star`**
+    Configura y procesa manualmente la función de *Starboard* (mensaje más votado del día anterior) para otorgar experiencia de Tatsu.
+    *   *Uso común:*
+        *   `s.star`: Procesa el mensaje destacado del día de ayer.
+        *   `s.star config setFromChannel <canal_id>`: Establece el canal de origen de las imágenes.
+        *   `s.star config setStarChannel <canal_id>`: Establece el canal del Starboard.
+        *   `s.star config setLogsChannel <canal_id>`: Establece el canal para logs de experiencia.
 
 ### 🌸 Memes y Diversión
 
@@ -151,6 +200,9 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
 
 *   **`s.help` o `s.h`**
     Despliega el menú de ayuda interactivo.
+*   **`s.acerca` o `s.about`**
+    Muestra una presentación interactiva del bot Sengo y sus características.
 *   **`s.contribuidores` o `s.con`**
     Lista los desarrolladores y usuarios vinculados a la comunidad por oAuth, agrupados por país y mostrando su estado de osu! supporter.
-
+*   **`s.donadores`**
+    Lista a los usuarios que apoyan económicamente el desarrollo de Sengo.
