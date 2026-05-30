@@ -303,24 +303,68 @@ async function unlinkUser(User, discordId) {
 /**
  * Consulta el listado de usuarios vinculados de Supabase bajo ciertos criterios (guild, bypass).
  */
-async function getLinkedUsers({ guildId = null, bypass = false } = {}) {
+async function getLinkedUsers({ guildId = null, guild = null, bypass = false } = {}) {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
 
     try {
-        let query = supabase
-            .from('users')
-            .select('discord_id, osu_id, main_gamemode')
-            .not('osu_id', 'is', null);
+        // Si no se pide un servidor específico o si no tenemos el objeto de guild para sincronizar
+        if (!guild) {
+            let query = supabase
+                .from('users')
+                .select('discord_id, osu_id, main_gamemode')
+                .not('osu_id', 'is', null);
 
-        if (guildId) {
-            query = query.contains('guilds', [guildId]);
+            if (guildId && !bypass) {
+                query = query.contains('guilds', [guildId]);
+            }
+
+            const { data: linkedUsers, error } = await query;
+            if (error) throw error;
+
+            return linkedUsers || [];
         }
 
-        const { data: linkedUsers, error } = await query;
+        // Si tenemos el objeto de guild, recuperamos todos los vinculados globalmente para verificar y autocurar
+        let query = supabase
+            .from('users')
+            .select('discord_id, osu_id, main_gamemode, guilds')
+            .not('osu_id', 'is', null);
+
+        const { data: allLinkedUsers, error } = await query;
         if (error) throw error;
 
-        return linkedUsers || [];
+        if (!allLinkedUsers || allLinkedUsers.length === 0) return [];
+
+        const discordIds = allLinkedUsers.map(u => u.discord_id);
+        
+        // Obtener miembros del servidor de Discord de forma masiva
+        const presentMembers = await guild.members.fetch({ user: discordIds }).catch(() => new Map());
+        
+        const linkedUsers = allLinkedUsers.filter(u => presentMembers.has(u.discord_id));
+
+        // Registrar en segundo plano aquellos que estén en el servidor pero falten en su columna 'guilds'
+        const missingSync = allLinkedUsers.filter(u => presentMembers.has(u.discord_id) && (!u.guilds || !u.guilds.includes(guild.id)));
+        if (missingSync.length > 0) {
+            (async () => {
+                for (const u of missingSync) {
+                    try {
+                        let currentGuilds = u.guilds || [];
+                        if (!currentGuilds.includes(guild.id)) {
+                            currentGuilds.push(guild.id);
+                            await supabase
+                                .from('users')
+                                .update({ guilds: currentGuilds })
+                                .eq('discord_id', u.discord_id);
+                        }
+                    } catch (e) {
+                        console.error(`[OsuUserModel] Error al sincronizar guild para el usuario ${u.discord_id}:`, e);
+                    }
+                }
+            })().catch(() => {});
+        }
+
+        return linkedUsers;
     } catch (err) {
         console.error('Error al obtener usuarios vinculados en OsuUserModel:', err);
         return [];

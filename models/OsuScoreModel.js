@@ -1361,17 +1361,7 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
         const guildId = message.guild ? message.guild.id : null;
         if (!guildId) return;
 
-        let { data: linkedUsers, error } = await supabase
-            .from('users')
-            .select('discord_id, osu_id, main_gamemode')
-            .not('osu_id', 'is', null)
-            .contains('guilds', [guildId]);
-
-        if (error) {
-            console.error(`[BG-GAP] Error al consultar usuarios vinculados:`, error);
-            return;
-        }
-
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, guild: message.guild });
         if (!linkedUsers || linkedUsers.length === 0) return;
 
         const targetMode = gamemode || 'osu';

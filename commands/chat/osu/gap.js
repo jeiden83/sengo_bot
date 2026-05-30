@@ -6,7 +6,17 @@ const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
         const guildId = targetGuildId || (!bypass && message.guild ? message.guild.id : null);
-        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, bypass });
+        
+        let guild = null;
+        if (!bypass) {
+            if (targetGuildId) {
+                guild = await message.client.guilds.fetch(targetGuildId).catch(() => null);
+            } else {
+                guild = message.guild;
+            }
+        }
+        
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, guild, bypass });
 
         if (!linkedUsers || linkedUsers.length === 0) {
             return [];

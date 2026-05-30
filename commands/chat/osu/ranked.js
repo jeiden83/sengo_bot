@@ -205,7 +205,12 @@ async function run(messages, args) {
 
         if (logger) logger.process(isAllServers ? "Obteniendo usuarios vinculados de todos los servidores desde la base de datos..." : "Obteniendo usuarios vinculados del servidor desde la base de datos...");
         
-        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId });
+        let guild = null;
+        if (!isAllServers && guildFilterId) {
+            guild = await message.client.guilds.fetch(guildFilterId).catch(() => null);
+        }
+
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId, guild, bypass: isAllServers });
 
         if (!linkedUsers || linkedUsers.length === 0) {
             return isAllServers ? "❌ No hay usuarios vinculados en el bot." : "❌ No hay usuarios vinculados en este servidor.";
