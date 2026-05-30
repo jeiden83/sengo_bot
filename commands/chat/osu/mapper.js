@@ -69,15 +69,15 @@ async function run(messages, args) {
         let data;
         if (mapType === 'all') {
             const [ranked, loved, pending, graveyard, guest] = await Promise.all([
-                osuClient.users.getUserBeatmaps(osuUserId, 'ranked', { limit: 5 }),
-                osuClient.users.getUserBeatmaps(osuUserId, 'loved', { limit: 5 }),
-                osuClient.users.getUserBeatmaps(osuUserId, 'pending', { limit: 5 }),
-                osuClient.users.getUserBeatmaps(osuUserId, 'graveyard', { limit: 5 }),
-                osuClient.users.getUserBeatmaps(osuUserId, 'guest', { limit: 5 })
+                osuClient.users.getUserBeatmaps(osuUserId, 'ranked', { query: { limit: 5 } }),
+                osuClient.users.getUserBeatmaps(osuUserId, 'loved', { query: { limit: 5 } }),
+                osuClient.users.getUserBeatmaps(osuUserId, 'pending', { query: { limit: 5 } }),
+                osuClient.users.getUserBeatmaps(osuUserId, 'graveyard', { query: { limit: 5 } }),
+                osuClient.users.getUserBeatmaps(osuUserId, 'guest', { query: { limit: 5 } })
             ]);
             data = { ranked, loved, pending, graveyard, guest };
         } else {
-            data = await osuClient.users.getUserBeatmaps(osuUserId, mapType, { limit: 100 });
+            data = await osuClient.users.getUserBeatmaps(osuUserId, mapType, { query: { limit: 100 } });
         }
 
         cachedMaps[mapType] = data;
