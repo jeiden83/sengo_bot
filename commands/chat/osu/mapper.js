@@ -25,6 +25,7 @@ async function run(messages, args) {
         let isSengoMode = false;
         let isGlobalMode = false;
         let playmodeFilter = null;
+        let playmodeSpecified = false;
 
         for (let idx = 0; idx < args.length; idx++) {
             const arg = args[idx].toLowerCase();
@@ -57,28 +58,53 @@ async function run(messages, args) {
                 isSengoMode = true;
             } else if (arg === '-global' || arg === '-g') {
                 isGlobalMode = true;
+            } else if (arg === '-all' || arg === '-todos') {
+                playmodeFilter = 'all';
+                playmodeSpecified = true;
             } else if (arg === '-m' || arg === '-mode' || arg === '-modo') {
                 if (idx + 1 < args.length) {
                     const modeInput = args[idx + 1].toLowerCase();
                     if (modeInput === 'std' || modeInput === 'standard' || modeInput === 'osu') {
                         playmodeFilter = 'osu';
+                        playmodeSpecified = true;
                     } else if (modeInput === 'taiko' || modeInput === 'tko') {
                         playmodeFilter = 'taiko';
+                        playmodeSpecified = true;
                     } else if (modeInput === 'fruits' || modeInput === 'ctb' || modeInput === 'catch') {
                         playmodeFilter = 'fruits';
+                        playmodeSpecified = true;
                     } else if (modeInput === 'mania' || modeInput === 'mna') {
                         playmodeFilter = 'mania';
+                        playmodeSpecified = true;
+                    } else if (modeInput === 'all' || modeInput === 'todos') {
+                        playmodeFilter = 'all';
+                        playmodeSpecified = true;
                     }
                     idx++;
                 }
             } else if (arg === '-std' || arg === '-standard' || arg === '-osu') {
                 playmodeFilter = 'osu';
+                playmodeSpecified = true;
             } else if (arg === '-taiko') {
                 playmodeFilter = 'taiko';
+                playmodeSpecified = true;
             } else if (arg === '-ctb' || arg === '-fruits' || arg === '-catch') {
                 playmodeFilter = 'fruits';
+                playmodeSpecified = true;
             } else if (arg === '-mania') {
                 playmodeFilter = 'mania';
+                playmodeSpecified = true;
+            }
+        }
+
+        // Si no se especificó un modo de juego, usar por defecto el modo principal del usuario (o estándar)
+        if (!playmodeSpecified) {
+            try {
+                const userRecord = await OsuUserModel.getLinkedUser(message.author.id);
+                playmodeFilter = (userRecord && userRecord.main_gamemode) ? userRecord.main_gamemode : 'osu';
+            } catch (e) {
+                console.error("Error al obtener main_gamemode del usuario para mapper -top:", e);
+                playmodeFilter = 'osu';
             }
         }
 
@@ -196,7 +222,7 @@ async function run(messages, args) {
         if (countryFilter && mode !== 'national') {
             filteredMappers = filteredMappers.filter(m => m.country_code && m.country_code.toUpperCase() === countryFilter);
         }
-        if (playmodeFilter) {
+        if (playmodeFilter && playmodeFilter !== 'all') {
             filteredMappers = filteredMappers.filter(m => m.playmode === playmodeFilter);
         }
 

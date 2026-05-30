@@ -440,7 +440,8 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
             'osu': 'Standard (osu!)',
             'taiko': 'Taiko',
             'fruits': 'Catch the Beat',
-            'mania': 'Mania'
+            'mania': 'Mania',
+            'all': 'Todos'
         };
         description += `**Modo de juego:** \`${modeLabels[playmodeFilter] || playmodeFilter}\`\n`;
     }
