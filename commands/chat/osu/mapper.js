@@ -16,10 +16,6 @@ async function run(messages, args) {
     const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
 
     if (isTopMode) {
-        if (message.author.id !== CONFIG.OWNER_ID) {
-            return message.reply("❌ *La tabla de clasificación de mappers (`-top`) está temporalmente deshabilitada por mantenimiento.*");
-        }
-
         if (logger) logger.process("Procesando clasificación de mappers...");
 
         let countryFilter = null;
@@ -136,6 +132,26 @@ async function run(messages, args) {
             // Por defecto, si no hay filtro de país pero tampoco global/server/sengo, asumimos país del autor o VE
             const userRecord = await OsuUserModel.getLinkedUser(message.author.id);
             countryFilter = (userRecord && userRecord.country_code) ? userRecord.country_code.toUpperCase() : 'VE';
+        }
+
+        // Verificación de habilitación dinámica para usuarios comunes
+        if (message.author.id !== CONFIG.OWNER_ID) {
+            if (mode === 'national') {
+                const scraped = await OsuUserModel.isCountryScraped(countryFilter);
+                if (!scraped) {
+                    return message.reply(`❌ *La tabla de clasificación de mappers de **${countryFilter}** está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                }
+            } else if (mode === 'global') {
+                const scraped = await OsuUserModel.isCountryScraped('GLOBAL');
+                if (!scraped) {
+                    return message.reply(`❌ *La tabla de clasificación global de mappers está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                }
+            } else if (mode === 'sengo' || mode === 'server') {
+                const scraped = await OsuUserModel.isCountryScraped('SENGO');
+                if (!scraped) {
+                    return message.reply(`❌ *La tabla de clasificación de mappers vinculados está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                }
+            }
         }
 
         let statusMessage = null;

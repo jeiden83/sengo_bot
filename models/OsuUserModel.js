@@ -1826,6 +1826,38 @@ async function backgroundUpdateMappers(mappersList) {
     })();
 }
 
+async function isCountryScraped(countryCode) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return false;
+    try {
+        const { data } = await supabase
+            .from('scraped_countries')
+            .select('is_scraped')
+            .eq('country_code', countryCode.toUpperCase())
+            .maybeSingle();
+        return data ? data.is_scraped : false;
+    } catch (err) {
+        console.error(`Error al verificar estado de scrapeo para ${countryCode}:`, err);
+        return false;
+    }
+}
+
+async function setCountryScraped(countryCode, isScraped = true) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    try {
+        await supabase
+            .from('scraped_countries')
+            .upsert({
+                country_code: countryCode.toUpperCase(),
+                is_scraped: isScraped,
+                last_scraped_at: new Date().toISOString()
+            }, { onConflict: 'country_code' });
+    } catch (err) {
+        console.error(`Error al establecer estado de scrapeo para ${countryCode}:`, err);
+    }
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -1854,7 +1886,9 @@ const OsuUserModel = {
     getNationalMapperTop,
     getGlobalKudosuMapperTop,
     upsertMapperFromProfile,
-    backgroundUpdateMappers
+    backgroundUpdateMappers,
+    isCountryScraped,
+    setCountryScraped
 };
 
 module.exports = OsuUserModel;
