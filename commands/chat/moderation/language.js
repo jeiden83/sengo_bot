@@ -14,11 +14,14 @@ async function run(messages, args) {
         return "No tienes permisos de Administrador para cambiar el idioma del servidor.";
     }
 
-    if (!args[0]) {
+    // Aplanar y filtrar argumentos para evitar arreglos anidados (ej. por alias)
+    const flatArgs = args.flat(Infinity).filter(arg => arg !== undefined && arg !== null);
+
+    if (!flatArgs[0]) {
         return { embeds: [doLanguageHelpEmbed()] };
     }
 
-    const inputLang = args[0].toLowerCase().trim();
+    const inputLang = String(flatArgs[0]).toLowerCase().trim();
     if (inputLang !== 'es' && inputLang !== 'en') {
         return { embeds: [doLanguageHelpEmbed()] };
     }
@@ -33,7 +36,7 @@ async function run(messages, args) {
 }
 
 run.alias = {
-    'idioma': { args: [] }
+    'idioma': { args: null }
 };
 
 run.description = {
