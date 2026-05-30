@@ -207,9 +207,17 @@ async function _getOsuUser(parsed_args) {
 
     try {
         res = await osuApiQueue.add(() => new Client(osu_token.access_token).users.getUser(parsed_args.username[0], { urlParams: { mode: look_gamemode } }));
-        if (res.username === "undefined") throw ("error");
+        if (!res || res.username === "undefined") throw new Error("Usuario indefinido");
     } catch (error) {
-        res = `El usuario no se encuentra en osu!`;
+        // En caso de error, verificamos si es un 404 real (usuario inexistente).
+        // Si no lo es (p. ej., error de conexión 5xx, timeout, Cloudflare 403/522), propagamos el error.
+        const status = error.status || error.statusCode || error.response?.status || error.response?.statusCode || (error.message && error.message.includes("404") ? 404 : null);
+        if (status === 404 || (error.message && error.message.includes("404"))) {
+            res = `El usuario no se encuentra en osu!`;
+        } else {
+            console.error("Error en getOsuUser (no-404):", error);
+            throw error;
+        }
     }
     
     return returnAndCache(res);

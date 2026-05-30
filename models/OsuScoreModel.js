@@ -307,6 +307,7 @@ async function getUserRecentScores(parsed_args) {
                 });
             } catch (err) {
                 console.error("Error in v2.scores.list user_recent fallback:", err);
+                throw err;
             }
         }
     }
@@ -506,7 +507,7 @@ async function _getUserTopScores(parsed_args) {
             return returnAndCache(res);
         } catch (err) {
             console.error("Error al obtener mejores jugadas de Bancho en fallback:", err);
-            return [];
+            throw err;
         }
     }
 }

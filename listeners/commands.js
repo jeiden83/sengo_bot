@@ -11,6 +11,7 @@ function getFriendlyErrorMessage(error) {
     const status = error.status || error.statusCode || error.response?.status || error.response?.statusCode;
 
     const is522 = status === 522 || errorStr.includes('522') || errorStr.includes('cloudflare');
+    const is5xx = (status >= 500 && status < 600) || errorStr.includes('502') || errorStr.includes('503') || errorStr.includes('504') || errorStr.includes('500') || errorStr.includes('bad gateway') || errorStr.includes('service unavailable') || errorStr.includes('gateway timeout');
     const isTimeoutOrConn = errorStr.includes('timeout') || 
                             errorStr.includes('etimedout') || 
                             errorStr.includes('econnreset') || 
@@ -21,6 +22,10 @@ function getFriendlyErrorMessage(error) {
 
     if (is522) {
         return `⚠️ **Error de Conexión (Cloudflare/API de osu!)**: Parece que los servidores de osu! o los servicios de Cloudflare están experimentando problemas (Error 522 - Conexión agotada). Por favor, intenta de nuevo en unos minutos.`;
+    }
+    if (is5xx) {
+        const errorDetail = status ? ` (Error ${status})` : '';
+        return `⚠️ **Servidores de osu! caídos o inestables**: Los servidores de la API de osu! o Bancho no están respondiendo correctamente${errorDetail}. Por favor, intenta de nuevo en unos minutos.`;
     }
     if (isTimeoutOrConn) {
         return `⚠️ **Tiempo de espera agotado**: Hubo problemas de conexión al intentar comunicarse con la API de osu! o los servidores del mirror. Intenta de nuevo más tarde.`;
