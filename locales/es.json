@@ -119,6 +119,21 @@
       "header": "Yuri",
       "body": "Al creador del bot le gusta leer mangas yuri.",
       "usage": "s.yuri\ns.yuri -details\ns.yuri -stats"
+    },
+    "ping": {
+      "header": "Muestra la latencia del bot",
+      "body": "Calcula el tiempo de respuesta en milisegundos desde Discord.",
+      "usage": "s.ping"
+    },
+    "roll": {
+      "header": "Lanza un número aleatorio",
+      "body": "Genera un número entero pseudoaleatorio entre un rango mínimo y máximo.",
+      "usage": "s.roll [max] [min] : Por defecto entre 1 y 100."
+    },
+    "say": {
+      "header": "Di algo como si fuera el Sengo",
+      "body": "Envía un mensaje idéntico al texto proporcionado.",
+      "usage": "s.say 'texto' : Sengo envia un mensaje igual al texto"
     }
   },
   "contributors": {
@@ -389,22 +404,5 @@
     "err_no_participants": "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll.",
     "err_no_eligible": "Ningún participante que reaccionó cumple con los requisitos del sorteo (rol o no poseer supporter de osu!).",
     "err_reroll_failed": "Error al realizar re-roll: {message}"
-  },
-  "commands": {
-    "ping": {
-      "header": "Muestra la latencia del bot",
-      "body": "Calcula el tiempo de respuesta en milisegundos desde Discord.",
-      "usage": "s.ping"
-    },
-    "roll": {
-      "header": "Lanza un número aleatorio",
-      "body": "Genera un número entero pseudoaleatorio entre un rango mínimo y máximo.",
-      "usage": "s.roll [max] [min] : Por defecto entre 1 y 100."
-    },
-    "say": {
-      "header": "Di algo como si fuera el Sengo",
-      "body": "Envía un mensaje idéntico al texto proporcionado.",
-      "usage": "s.say 'texto' : Sengo envia un mensaje igual al texto"
-    }
   }
 }

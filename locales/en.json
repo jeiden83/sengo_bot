@@ -119,6 +119,21 @@
       "header": "Yuri",
       "body": "The creator of the bot likes reading yuri manga.",
       "usage": "s.yuri\ns.yuri -details\ns.yuri -stats"
+    },
+    "ping": {
+      "header": "Shows the bot's latency",
+      "body": "Calculates the response time in milliseconds from Discord.",
+      "usage": "s.ping"
+    },
+    "roll": {
+      "header": "Rolls a random number",
+      "body": "Generates a pseudo-random integer between a minimum and maximum range.",
+      "usage": "s.roll [max] [min] : Default between 1 and 100."
+    },
+    "say": {
+      "header": "Say something as Sengo",
+      "body": "Sends a message identical to the provided text.",
+      "usage": "s.say 'text' : Sengo sends a message equal to the text"
     }
   },
   "contributors": {
@@ -389,22 +404,5 @@
     "err_no_participants": "There are not enough participants who reacted with 🎉 to reroll.",
     "err_no_eligible": "No participant who reacted meets the giveaway requirements (role or not having osu! supporter).",
     "err_reroll_failed": "Error during reroll: {message}"
-  },
-  "commands": {
-    "ping": {
-      "header": "Shows the bot's latency",
-      "body": "Calculates the response time in milliseconds from Discord.",
-      "usage": "s.ping"
-    },
-    "roll": {
-      "header": "Rolls a random number",
-      "body": "Generates a pseudo-random integer between a minimum and maximum range.",
-      "usage": "s.roll [max] [min] : Default between 1 and 100."
-    },
-    "say": {
-      "header": "Say something as Sengo",
-      "body": "Sends a message identical to the provided text.",
-      "usage": "s.say 'text' : Sengo sends a message equal to the text"
-    }
   }
 }
