@@ -43,26 +43,62 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     const beatmapsetPath = path.join(__dirname, '../db/local/beatmap.osu');
     const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
     const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
+    const storagePath = `${beatmapset_id}/${beatmap_osu_id}.osu`;
 
-    // Verificar si el archivo ya existe en caché local
+    let beatmap_index = null;
+    let localFileIsValid = false;
+
+    // 1. Verificar si el archivo ya existe en caché local y es válido
     if (fs.existsSync(filePath)) {
         if (!unranked_statuses.has(beatmap_metadata.status)) {
-            return filePath;
-        }
-
-        const beatmap_index = await localBeatmapStatus(beatmap_osu_id);
-
-        if (!unranked_statuses.has(beatmap_metadata.status)) {
-            if (!beatmap_index) await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
-            return filePath;
-        }
-
-        if (beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated) {
-            return filePath;
+            localFileIsValid = true;
+        } else {
+            beatmap_index = await localBeatmapStatus(beatmap_osu_id);
+            if (beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated) {
+                localFileIsValid = true;
+            }
         }
     }
 
-    // Realizar la solicitud HTTP si el archivo no está en caché
+    if (localFileIsValid) {
+        return filePath;
+    }
+
+    // 2. Si no es válido o no está localmente, verificar si podemos recuperarlo desde Supabase Storage
+    let trySupabase = false;
+    if (!beatmap_index) {
+        beatmap_index = await localBeatmapStatus(beatmap_osu_id);
+    }
+
+    if (beatmap_index) {
+        if (!unranked_statuses.has(beatmap_metadata.status) || 
+            (beatmap_index.last_updated == beatmap_metadata.last_updated)) {
+            trySupabase = true;
+        }
+    }
+
+    if (trySupabase) {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            try {
+                const { data: downloadData, error: downloadError } = await supabase.storage
+                    .from('osu_beatmaps')
+                    .download(storagePath);
+                
+                if (!downloadError && downloadData) {
+                    const fileText = await downloadData.text();
+                    fs.mkdirSync(folderPath, { recursive: true });
+                    fs.writeFileSync(filePath, fileText);
+                    console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} recuperado desde Supabase Storage.`);
+                    return filePath;
+                }
+            } catch (err) {
+                console.warn(`[BeatmapModel] Error al descargar ${beatmap_osu_id} de Supabase Storage:`, err.message);
+            }
+        }
+    }
+
+    // 3. Realizar la solicitud HTTP si el archivo no está en caché local ni en Supabase Storage
     let data;
     let downloadSuccess = false;
     const nowTime = Date.now();
@@ -117,6 +153,27 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
 
         // Actualizar el index de beatmaps locales
         await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+
+        // Subir a Supabase Storage en segundo plano
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            supabase.storage
+                .from('osu_beatmaps')
+                .upload(storagePath, data, {
+                    contentType: 'text/plain',
+                    upsert: true
+                })
+                .then(({ error }) => {
+                    if (error) {
+                        console.error(`[BeatmapModel] Error al subir beatmap ${beatmap_osu_id} a Supabase Storage:`, error.message);
+                    } else {
+                        console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} subido exitosamente a Supabase Storage.`);
+                    }
+                })
+                .catch(err => {
+                    console.error(`[BeatmapModel] Excepción al subir beatmap ${beatmap_osu_id} a Supabase Storage:`, err.message);
+                });
+        }
 
         return filePath;
     } catch (error) {
