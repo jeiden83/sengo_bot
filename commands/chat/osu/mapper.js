@@ -1,12 +1,208 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
-const { doOsuMapperEmbed, buildMapperButtonsRow, doOsuMapperListEmbed } = require("../../../views/osuUserViews.js");
-const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
+const { doOsuMapperEmbed, buildMapperButtonsRow, doOsuMapperListEmbed, doOsuMapperTopEmbed } = require("../../../views/osuUserViews.js");
+const { getEmbedColor, buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { Client } = require("osu-web.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { EmbedBuilder } = require("discord.js");
+const fs = require("fs/promises");
+const path = require("path");
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
+
+    // Detectar si estamos en modo top
+    const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
+
+    if (isTopMode) {
+        if (logger) logger.process("Procesando clasificación global de mappers...");
+
+        let countryFilter = null;
+        let sortBy = 'ranked';
+        let forceUpdate = false;
+
+        for (let idx = 0; idx < args.length; idx++) {
+            const arg = args[idx].toLowerCase();
+            if (arg === '-pais' || arg === '-country') {
+                if (idx + 1 < args.length) {
+                    countryFilter = args[idx + 1].toUpperCase();
+                    idx++;
+                }
+            } else if (arg === '-kudosus' || arg === '-kudos') {
+                sortBy = 'kudosus';
+            } else if (arg === '-gd' || arg === '-gds') {
+                sortBy = 'gd';
+            } else if (arg === '-rankeds' || arg === '-rankeados') {
+                sortBy = 'ranked';
+            } else if (arg === '-wip' || arg === '-pending') {
+                sortBy = 'wip';
+            } else if (arg === '-loved' || arg === '-amados') {
+                sortBy = 'loved';
+            } else if (arg === '-seguidores' || arg === '-followers') {
+                sortBy = 'followers';
+            } else if (arg === '-abandonados' || arg === '-graveyard') {
+                sortBy = 'graveyard';
+            } else if (arg === '-reciente' || arg === '-recent') {
+                sortBy = 'recent';
+            } else if (arg === '-force' || arg === '-refresh') {
+                forceUpdate = true;
+            }
+        }
+
+        let statusMessage = null;
+        let mappers;
+
+        if (forceUpdate) {
+            statusMessage = await message.channel.send({
+                embeds: [
+                    new EmbedBuilder()
+                        .setColor(getEmbedColor(message))
+                        .setDescription(`⏳ *Actualizando la caché de mappers. Esto puede tardar unos minutos...*`)
+                ]
+            });
+            
+            let lastEdit = 0;
+            const progressCallback = async (current, total, name) => {
+                const nowTime = Date.now();
+                if (nowTime - lastEdit > 3000 || current === total) {
+                    lastEdit = nowTime;
+                    try {
+                        await statusMessage.edit({
+                            embeds: [
+                                new EmbedBuilder()
+                                    .setColor(getEmbedColor(message))
+                                    .setDescription(`⏳ *Actualizando mappers... Procesando: **${name}** (${current}/${total})*`)
+                            ]
+                        });
+                    } catch {}
+                }
+            };
+
+            mappers = await OsuUserModel.getMapperTop(true, progressCallback);
+        } else {
+            const cacheExists = await fs.access(path.join(__dirname, "../../../data/mapper_top_cache.json")).then(() => true).catch(() => false);
+            if (!cacheExists) {
+                statusMessage = await message.channel.send({
+                    embeds: [
+                        new EmbedBuilder()
+                            .setColor(getEmbedColor(message))
+                            .setDescription(`⏳ *Generando caché inicial de mappers. Esto tomará unos minutos...*`)
+                    ]
+                });
+                let lastEdit = 0;
+                const progressCallback = async (current, total, name) => {
+                    const nowTime = Date.now();
+                    if (nowTime - lastEdit > 3000 || current === total) {
+                        lastEdit = nowTime;
+                        try {
+                            await statusMessage.edit({
+                                embeds: [
+                                    new EmbedBuilder()
+                                        .setColor(getEmbedColor(message))
+                                        .setDescription(`⏳ *Generando caché mappers... Procesando: **${name}** (${current}/${total})*`)
+                                ]
+                            });
+                        } catch {}
+                    }
+                };
+                mappers = await OsuUserModel.getMapperTop(false, progressCallback);
+            } else {
+                mappers = await OsuUserModel.getMapperTop(false);
+            }
+        }
+
+        // Aplicar filtros y ordenamientos
+        let filteredMappers = [...mappers];
+        if (countryFilter) {
+            filteredMappers = filteredMappers.filter(m => m.country_code && m.country_code.toUpperCase() === countryFilter);
+        }
+
+        // Ordenamiento
+        if (sortBy === 'kudosus') {
+            filteredMappers.sort((a, b) => (b.kudosu_total || 0) - (a.kudosu_total || 0));
+        } else if (sortBy === 'gd') {
+            filteredMappers.sort((a, b) => (b.guest_count || 0) - (a.guest_count || 0));
+        } else if (sortBy === 'ranked') {
+            filteredMappers.sort((a, b) => (b.ranked_count || 0) - (a.ranked_count || 0));
+        } else if (sortBy === 'wip') {
+            filteredMappers.sort((a, b) => (b.pending_count || 0) - (a.pending_count || 0));
+        } else if (sortBy === 'loved') {
+            filteredMappers.sort((a, b) => (b.loved_count || 0) - (a.loved_count || 0));
+        } else if (sortBy === 'followers') {
+            filteredMappers.sort((a, b) => (b.followers || 0) - (a.followers || 0));
+        } else if (sortBy === 'graveyard') {
+            filteredMappers.sort((a, b) => (b.graveyard_count || 0) - (a.graveyard_count || 0));
+        } else if (sortBy === 'recent') {
+            filteredMappers.sort((a, b) => {
+                const dateA = a.last_updated ? new Date(a.last_updated).getTime() : 0;
+                const dateB = b.last_updated ? new Date(b.last_updated).getTime() : 0;
+                return dateB - dateA;
+            });
+        }
+
+        let currentPage = 1;
+        const itemsPerPage = 10;
+        const totalPages = Math.max(1, Math.ceil(filteredMappers.length / itemsPerPage));
+
+        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter);
+        const customSuffixes = { first: 'first', prev: 'prev', next: 'next', last: 'last' };
+        const components = totalPages > 1 ? [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })] : [];
+
+        let mainMessage;
+        if (statusMessage) {
+            mainMessage = await statusMessage.edit({
+                embeds: [embed],
+                components: components
+            });
+        } else {
+            mainMessage = await message.channel.send({
+                embeds: [embed],
+                components: components
+            });
+        }
+
+        if (totalPages > 1) {
+            const collector = mainMessage.createMessageComponentCollector({
+                filter: btnInt => btnInt.user.id === message.author.id,
+                idle: 120000
+            });
+
+            collector.on('collect', async i => {
+                try {
+                    await i.deferUpdate();
+                    const buttonId = i.customId;
+
+                    if (buttonId === 'mtop_first') {
+                        currentPage = 1;
+                    } else if (buttonId === 'mtop_last') {
+                        currentPage = totalPages;
+                    } else if (buttonId === 'mtop_prev') {
+                        currentPage = Math.max(1, currentPage - 1);
+                    } else if (buttonId === 'mtop_next') {
+                        currentPage = Math.min(totalPages, currentPage + 1);
+                    }
+
+                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter);
+                    const nextComponents = [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })];
+
+                    await i.editReply({
+                        embeds: [nextEmbed],
+                        components: nextComponents
+                    });
+                } catch (err) {
+                    console.error("Error al procesar interacción de mtop:", err);
+                }
+            });
+
+            collector.on('end', async () => {
+                try {
+                    await mainMessage.edit({ components: [] });
+                } catch {}
+            });
+        }
+
+        if (logger) logger.success("Clasificación global de mappers cargada con éxito.");
+        return;
+    }
 
     if (logger) logger.process("Consultando perfil de osu! y estadísticas de creador...");
 

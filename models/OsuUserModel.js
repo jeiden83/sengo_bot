@@ -1150,6 +1150,127 @@ async function fetchRegionalRankingPage(countryFilter, regionFilter, gamemode, p
     }
 }
 
+const mapperTopCacheFile = path.join(__dirname, "../data/mapper_top_cache.json");
+let mapperTopCache = null;
+
+async function getMapperTop(forceUpdate = false, onProgress = null) {
+    const now = Date.now();
+    const TTL = 43200000; // 12 horas en ms
+    
+    // Intentar leer la caché en memoria o del archivo
+    if (!mapperTopCache && !forceUpdate) {
+        try {
+            const data = await fs.readFile(mapperTopCacheFile, "utf-8");
+            mapperTopCache = JSON.parse(data);
+        } catch {}
+    }
+    
+    // Si la caché es válida, no ha expirado y no se fuerza la actualización, devolverla
+    if (mapperTopCache && !forceUpdate && (now - mapperTopCache.updated_at < TTL)) {
+        return mapperTopCache.mappers;
+    }
+    
+    // Si no, regenerar la caché.
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+        return mapperTopCache ? mapperTopCache.mappers : [];
+    }
+    
+    // Obtener todos los usuarios vinculados
+    const { data: users, error } = await supabase
+        .from('users')
+        .select('*');
+        
+    if (error) {
+        console.error("Error al obtener usuarios para ranking de mappers:", error);
+        return mapperTopCache ? mapperTopCache.mappers : [];
+    }
+    
+    const token = await loadToken();
+    const client = new Client(token.access_token);
+    
+    const mappers = [];
+    const totalUsers = users.length;
+    
+    for (let idx = 0; idx < totalUsers; idx++) {
+        const u = users[idx];
+        if (!u.osu_id) continue;
+        
+        if (onProgress && typeof onProgress === 'function') {
+            await onProgress(idx + 1, totalUsers, u.username || u.osu_id);
+        }
+        
+        try {
+            // Obtener el perfil
+            const profile = await client.users.getUser(u.osu_id, { urlParams: { mode: 'osu' } });
+            
+            const totalMaps = (profile.ranked_and_approved_beatmapset_count || 0) +
+                              (profile.loved_beatmapset_count || 0) +
+                              (profile.pending_beatmapset_count || 0) +
+                              (profile.graveyard_beatmapset_count || 0) +
+                              (profile.guest_beatmapset_count || 0);
+            
+            if (totalMaps > 0) {
+                // Obtener fecha del mapa más reciente si corresponde
+                let last_updated = null;
+                const typesToCheck = [];
+                if (profile.pending_beatmapset_count > 0) typesToCheck.push('pending');
+                if (profile.graveyard_beatmapset_count > 0) typesToCheck.push('graveyard');
+                if (profile.ranked_and_approved_beatmapset_count > 0) typesToCheck.push('ranked');
+                if (profile.loved_beatmapset_count > 0) typesToCheck.push('loved');
+                if (profile.guest_beatmapset_count > 0) typesToCheck.push('guest');
+                
+                const dates = [];
+                for (const t of typesToCheck) {
+                    try {
+                        const sets = await client.users.getUserBeatmaps(profile.id, t, { query: { limit: 1 } });
+                        if (sets && sets.length > 0) {
+                            dates.push(new Date(sets[0].last_updated || sets[0].submitted_date).getTime());
+                        }
+                    } catch (err) {
+                        console.error(`Error al obtener beatmaps tipo ${t} de ${profile.username}:`, err.message);
+                    }
+                }
+                
+                if (dates.length > 0) {
+                    last_updated = new Date(Math.max(...dates)).toISOString();
+                }
+                
+                mappers.push({
+                    osu_id: profile.id,
+                    username: profile.username,
+                    country_code: profile.country_code,
+                    kudosu_total: profile.kudosu.total,
+                    kudosu_available: profile.kudosu.available,
+                    ranked_count: profile.ranked_and_approved_beatmapset_count,
+                    loved_count: profile.loved_beatmapset_count,
+                    pending_count: profile.pending_beatmapset_count,
+                    graveyard_count: profile.graveyard_beatmapset_count,
+                    guest_count: profile.guest_beatmapset_count,
+                    followers: profile.mapping_follower_count,
+                    last_updated
+                });
+            }
+        } catch (err) {
+            console.error(`Error al consultar mapper ${u.osu_id}:`, err.message);
+        }
+    }
+    
+    mapperTopCache = {
+        updated_at: now,
+        mappers: mappers
+    };
+    
+    try {
+        await fs.mkdir(path.dirname(mapperTopCacheFile), { recursive: true });
+        await fs.writeFile(mapperTopCacheFile, JSON.stringify(mapperTopCache, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error al escribir el archivo de caché de mappers:", e);
+    }
+    
+    return mappers;
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -1173,7 +1294,8 @@ const OsuUserModel = {
     fetchRankingPage,
     fetchRankingAcc,
     fetchRegionalRankingPage,
-    getOsuWorldUser
+    getOsuWorldUser,
+    getMapperTop
 };
 
 module.exports = OsuUserModel;

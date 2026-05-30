@@ -397,11 +397,82 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     return embed;
 }
 
+function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter) {
+    const embedColor = getEmbedColor(message);
+    const startIndex = (page - 1) * 10;
+    const chunk = mappers.slice(startIndex, startIndex + 10);
+    
+    const sortLabels = {
+        'ranked': 'Mapas Rankeados',
+        'loved': 'Mapas Loved',
+        'wip': 'Mapas WIP / Pending',
+        'graveyard': 'Mapas Graveyard (Abandonados)',
+        'gd': 'Dificultades Invitadas (GDs)',
+        'followers': 'Seguidores',
+        'kudosus': 'Kudosu Total',
+        'recent': 'Última actualización'
+    };
+    
+    let description = `**Total de mappers registrados: \`${mappers.length}\`**\n`;
+    if (countryFilter) {
+        const flag = getFlagEmoji(countryFilter);
+        description += `**Filtrado por país: ${flag} ${countryFilter}**\n`;
+    }
+    description += `**Ordenado por: \`${sortLabels[sortBy] || sortBy}\`**\n\n`;
+    
+    if (mappers.length === 0) {
+        description += `*No se encontraron creadores de mapas con los filtros aplicados.*`;
+    } else {
+        chunk.forEach((mapper, idx) => {
+            const globalIndex = startIndex + idx + 1;
+            const flag = getFlagEmoji(mapper.country_code || 'XX');
+            
+            let highlightStat = '';
+            if (sortBy === 'kudosus') {
+                highlightStat = `(Kudosu: **${mapper.kudosu_total}**)`;
+            } else if (sortBy === 'followers') {
+                highlightStat = `(Seguidores: **${mapper.followers}**)`;
+            } else if (sortBy === 'recent') {
+                highlightStat = mapper.last_updated 
+                    ? `(Último mapa: <t:${Math.floor(new Date(mapper.last_updated).getTime() / 1000)}:R>)`
+                    : `(Último mapa: **Nunca**)`;
+            }
+            
+            const usernameLink = `[**${mapper.username}**](https://osu.ppy.sh/users/${mapper.osu_id})`;
+            description += `**#${globalIndex}** ▸ ${flag} ${usernameLink} ${highlightStat}\n`;
+            
+            // Fila de estadísticas
+            description += ` ▸ **Rankeados**: \`${mapper.ranked_count}\` • **Loved**: \`${mapper.loved_count}\` • **WIP**: \`${mapper.pending_count}\` • **GDs**: \`${mapper.guest_count}\` • **Graveyard**: \`${mapper.graveyard_count}\` • **Seguidores**: \`${mapper.followers}\` • **Kudosu**: \`${mapper.kudosu_total}\`\n`;
+            
+            // Fila de actualización
+            if (sortBy !== 'recent') {
+                if (mapper.last_updated) {
+                    const ts = Math.floor(new Date(mapper.last_updated).getTime() / 1000);
+                    description += ` ▸ *Último mapa:* <t:${ts}:R>\n`;
+                } else {
+                    description += ` ▸ *Último mapa:* nunca\n`;
+                }
+            }
+            description += `\n`;
+        });
+    }
+    
+    const embed = new EmbedBuilder()
+        .setTitle("🛠️ Tabla de Clasificación de Mappers")
+        .setDescription(description)
+        .setColor(embedColor)
+        .setFooter({ text: `Sengo • Mostrando ${startIndex + 1}-${startIndex + chunk.length} de ${mappers.length} (Página ${page}/${maxPages})`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+        
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
     doOsuFriendsListEmbed,
     doOsuMapperEmbed,
     buildMapperButtonsRow,
-    doOsuMapperListEmbed
+    doOsuMapperListEmbed,
+    doOsuMapperTopEmbed
 };
