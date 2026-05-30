@@ -3,14 +3,16 @@ const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const GIFEncoder = require('gifencoder');
+const { t } = require('../../../utils/i18n.js');
 
 const globoPath = path.join(__dirname, '../../../src/globo.png');
 
 async function run(messages, args) {
   const { message } = messages;
+  const locale = message.locale || 'es';
   const attachment = message.attachments.first();
 
-  if (!attachment) return `Ok pero adjunta una imagen`;
+  if (!attachment) return t(locale, 'globo.attach_image');
 
   const imageUrl = attachment.url;
   const baseImgBuffer = await (await fetch(imageUrl)).buffer();

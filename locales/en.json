@@ -59,64 +59,99 @@
         "title": "🛠️ Command List",
         "description": "**Other Sengo Commands**\n\nHere is a quick guide to other essential bot commands:\n\n• **osu! Commands**:\n  ▸ `s.r` / `s.rs`: Shows your most recent play. Supports `-l` to list the last 10 and `-b` to sort by PP.\n  ▸ `s.c`: Compares your score on the channel's last beatmap.\n  ▸ `s.lb`: Shows the beatmap's global leaderboard.\n  ▸ `s.osu`: Shows your osu! profile or another player's (supports detailed mode).\n  ▸ `s.top`: Shows your top PP scores.\n  ▸ `s.daily`: Shows details and ranking of the current osu! Daily Challenge.\n  ▸ `s.subir`: Manually saves/uploads a score to the bot's system.\n• **Utility & Community Commands**:\n  ▸ `s.link`: Links your Discord account with osu!.\n  ▸ `s.amigos`: Manages and audits your osu! friends list within the bot.\n  ▸ `s.contribuidores`: Meet the developers and contributors behind Sengo.\n  ▸ `s.sorteo`: Creates and manages advanced giveaways with role, booster, and nitro filters.\n• **Fun**:\n  ▸ `s.fumo`: Entertainment command with Fumo images."
       }
-     }
-   },
-   "help": {
-     "menu_title": "Help Menu • Sengo",
-     "footer": "Sengo • s.help [command]",
-     "command_title": "Command Help: {prefix}{mainName}{aliasInfo}",
-     "alias_info": " (Alias: {prefix}{queryName})",
-     "description": "**Hello! I'm Sengo**, a high-performance Discord bot specialized in osu! and local utilities.\n\n> Use `{prefix}help [command]` to view detailed description and usage of a specific command.",
-     "not_found": "The command `{queryName}` does not exist. Use `{prefix}help` to view the commands list.",
-     "fields": {
-       "description": "📝 Description",
-       "usage": "❓ How to use it",
-       "aliases": "🔗 Aliases"
-     },
-     "buttons": {
-       "prev": "Previous: {prefix}{cmd}",
-       "next": "Next: {prefix}{cmd}"
-     },
-     "categories": {
-       "osu": "osu! 🎮",
-       "utils": "Utilities 🛠️",
-       "meme": "Fun 🌸",
-       "general": "General ℹ️",
-       "about": "About 🛡️",
-       "moderation": "Moderation 👮"
-     }
-   },
-   "commands": {
-     "help": {
-       "header": "Sengo commands, explained step by step.",
-       "body": "Shows the complete list of commands or the details and usage of a specific command.",
-       "usage": "s.help          : Lists all available commands\ns.help [command]: Shows detailed help for a command"
-     },
-     "language": {
-       "header": "Set language",
-       "body": "Allows configuring the bot's language for the current server (Spanish or English).",
-       "usage": "s.language    : Shows the current language and how to change it\ns.language es : Changes language to Spanish\ns.language en : Changes language to English"
-     },
-     "acerca": {
-       "header": "About Sengo",
-       "body": "Shows detailed information about Sengo and the advanced features that make it unique.",
-       "usage": "s.acerca"
-     },
-     "contribuidores": {
-       "header": "Linked users list",
-       "body": "Shows the community linked via OAuth grouped by country with their supporter status.",
-       "usage": "s.contribuidores\ns.contribuidores -force : Forces synchronization of supporter status"
-     }
-   },
-   "contributors": {
-     "title": "🌐 Users Linked via OAuth",
-     "syncing": "⏳ *Starting forced supporter status check for all linked users...*",
-     "sync_success": "🔄 **Forced synchronization:** {success} successful, {fail} failed.",
-     "sync_changes": "\n ▸ *Changes:* {changes}",
-     "sync_error": "❌ **Error forcing synchronization: {error}**",
-     "total_linked": "Total linked users: **{total}**",
-     "empty": "*There are no users linked via the secure OAuth system yet.*",
-     "error": "*An unexpected error occurred while processing the command.*",
-     "footer": "Sengo • Page {page}/{total}"
-   }
+    }
+  },
+  "help": {
+    "menu_title": "Help Menu • Sengo",
+    "footer": "Sengo • s.help [command]",
+    "command_title": "Command Help: {prefix}{mainName}{aliasInfo}",
+    "alias_info": " (Alias: {prefix}{queryName})",
+    "description": "**Hello! I'm Sengo**, a high-performance Discord bot specialized in osu! and local utilities.\n\n> Use `{prefix}help [command]` to view detailed description and usage of a specific command.",
+    "not_found": "The command `{queryName}` does not exist. Use `{prefix}help` to view the commands list.",
+    "fields": {
+      "description": "📝 Description",
+      "usage": "❓ How to use it",
+      "aliases": "🔗 Aliases"
+    },
+    "buttons": {
+      "prev": "Previous: {prefix}{cmd}",
+      "next": "Next: {prefix}{cmd}"
+    },
+    "categories": {
+      "osu": "osu! 🎮",
+      "utils": "Utilities 🛠️",
+      "meme": "Fun 🌸",
+      "general": "General ℹ️",
+      "about": "About 🛡️",
+      "moderation": "Moderation 👮"
+    }
+  },
+  "commands": {
+    "help": {
+      "header": "Sengo commands, explained step by step.",
+      "body": "Shows the complete list of commands or the details and usage of a specific command.",
+      "usage": "s.help          : Lists all available commands\ns.help [command]: Shows detailed help for a command"
+    },
+    "language": {
+      "header": "Set language",
+      "body": "Allows configuring the bot's language for the current server (Spanish or English).",
+      "usage": "s.language    : Shows the current language and how to change it\ns.language es : Changes language to Spanish\ns.language en : Changes language to English"
+    },
+    "acerca": {
+      "header": "About Sengo",
+      "body": "Shows detailed information about Sengo and the advanced features that make it unique.",
+      "usage": "s.acerca"
+    },
+    "contribuidores": {
+      "header": "Linked users list",
+      "body": "Shows the community linked via OAuth grouped by country with their supporter status.",
+      "usage": "s.contribuidores\ns.contribuidores -force : Forces synchronization of supporter status"
+    },
+    "globo": {
+      "header": "Generates image with a speech bubble",
+      "body": "Adds a comic speech bubble on top of the attached image.",
+      "usage": "s.globo (attaching an image)"
+    },
+    "yuri": {
+      "header": "Yuri",
+      "body": "The creator of the bot likes reading yuri manga.",
+      "usage": "s.yuri\ns.yuri -details\ns.yuri -stats"
+    }
+  },
+  "contributors": {
+    "title": "🌐 Users Linked via OAuth",
+    "syncing": "⏳ *Starting forced supporter status check for all linked users...*",
+    "sync_success": "🔄 **Forced synchronization:** {success} successful, {fail} failed.",
+    "sync_changes": "\n ▸ *Changes:* {changes}",
+    "sync_error": "❌ **Error forcing synchronization: {error}**",
+    "total_linked": "Total linked users: **{total}**",
+    "empty": "*There are no users linked via the secure OAuth system yet.*",
+    "error": "*An unexpected error occurred while processing the command.*",
+    "footer": "Sengo • Page {page}/{total}"
+  },
+  "yuri": {
+    "stats_title": "📊 Yuri Collection Statistics",
+    "stats_title_local": "📊 Yuri Collection Statistics (Local Mode)",
+    "stats_description": "There are currently a total of **{total}** images registered by Sengo.",
+    "stats_medium_dist": "📺 Distribution by Medium",
+    "stats_medium_values": "📖 **Manga:** {manga} ({mangaPct}%)\n📕 **Light Novel:** {novel} ({novelPct}%)\n🎬 **Anime:** {anime} ({animePct}%)",
+    "stats_uploaders": "👤 Contributors (Uploaders)",
+    "stats_top_series": "⭐ Top 5 Series with Most Captures",
+    "stats_last_upload": "✨ Last Uploaded Image",
+    "stats_footer": "Sengo Yuri Analytics",
+    "stats_no_data": "Not enough data to generate statistics.",
+    "none": "None",
+    "no_images_dir": "No images available (local directory not found).",
+    "no_images": "No images available.",
+    "embed_medium": "📺 Medium",
+    "embed_chapter": "📖 Chapter",
+    "embed_page": "📄 Page",
+    "embed_footer_db": "Uploaded by: {uploader} | Image {current} of {total}",
+    "embed_footer_simple": "Image {current} of {total}",
+    "one_shot": "One Shot / N/A",
+    "not_available": "N/A"
+  },
+  "globo": {
+    "attach_image": "Ok but attach an image"
+  }
 }

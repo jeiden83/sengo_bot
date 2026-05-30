@@ -47,7 +47,8 @@ async function run(interaction, res, chat_commands) {
         message: {
             author: interaction.user,
             member: interaction.member,
-            guild: interaction.guild
+            guild: interaction.guild,
+            locale: interaction.resolvedLocale
         },
         res: res,
         reply: null,

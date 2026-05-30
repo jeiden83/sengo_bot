@@ -1,12 +1,15 @@
 const fs = require("fs");
 const path = require("path");
-const { AttachmentBuilder, EmbedBuilder } = require("discord.js");
+const { AttachmentBuilder } = require("discord.js");
 const { parseYuriFilename, sanitizeStorageKey } = require("../../../services/yuriSync.js");
+const { doYuriStatsEmbed, doYuriImageEmbed } = require("../../../views/yuriViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 let list_order = [];
 
 async function run(messages, args) {
     const { message, reply, res, logger } = messages;
+    const locale = message.locale || 'es';
     const { getSupabaseClient } = require("../../../db/database.js");
     const supabase = getSupabaseClient();
 
@@ -44,7 +47,7 @@ async function run(messages, args) {
                         lastUpload = [...statsData].sort((a, b) => b.id - a.id)[0];
                     }
 
-                    let lastUploadText = 'Ninguna';
+                    let lastUploadText = t(locale, 'yuri.none');
                     if (lastUpload) {
                         const detail = [lastUpload.capitulo, lastUpload.pagina].filter(Boolean).join(' - ');
                         
@@ -58,36 +61,16 @@ async function run(messages, args) {
                         lastUploadText = `[ID: ${lastUpload.id}] **${lastUpload.nombre_serie}**${detail ? ` — *${detail}*` : ''} (por **${lastUpload.subida_por}**)${relativeTimeStr}`;
                     }
 
-                    const embed = new EmbedBuilder()
-                        .setTitle("📊 Estadísticas de la Colección Yuri")
-                        .setColor("#378a91")
-                        .setDescription(`Actualmente hay un total de **${total}** imágenes registradas por Sengo.`)
-                        .addFields(
-                            { 
-                                name: '📺 Distribución por Medio', 
-                                value: `📖 **Manga:** ${mediosCount.manga} (${((mediosCount.manga / total) * 100).toFixed(1)}%)\n` +
-                                       `📕 **Novela Ligera:** ${mediosCount['novela ligera']} (${((mediosCount['novela ligera'] / total) * 100).toFixed(1)}%)\n` +
-                                       `🎬 **Anime:** ${mediosCount.anime} (${((mediosCount.anime / total) * 100).toFixed(1)}%)`,
-                                inline: false 
-                            },
-                            {
-                                name: '👤 Contribuidores (Uploaders)',
-                                value: sortedUploaders.map(([user, count]) => `• **${user}**: ${count} (${((count / total) * 100).toFixed(1)}%)`).join('\n'),
-                                inline: false
-                            },
-                            {
-                                name: '⭐ Top 5 Series con Más Capturas',
-                                value: sortedSeries.map(([serie, count], idx) => `**${idx + 1}.** ${serie} — **${count}** capturas`).join('\n'),
-                                inline: false
-                            },
-                            {
-                                name: '✨ Última Imagen Subida',
-                                value: lastUploadText,
-                                inline: false
-                            }
-                        )
-                        .setFooter({ text: "Sengo Bot Yuri Analytics" })
-                        .setTimestamp();
+                    const embed = doYuriStatsEmbed({
+                        message,
+                        total,
+                        mediosCount,
+                        sortedUploaders,
+                        sortedSeries,
+                        lastUploadText,
+                        isLocal: false,
+                        locale
+                    });
 
                     return {
                         embeds: [embed]
@@ -131,7 +114,7 @@ async function run(messages, args) {
                     lastUpload = [...statsData].sort((a, b) => b.id - a.id)[0];
                 }
 
-                let lastUploadText = 'Ninguna';
+                let lastUploadText = t(locale, 'yuri.none');
                 if (lastUpload) {
                     const detail = [lastUpload.capitulo, lastUpload.pagina].filter(Boolean).join(' - ');
                     
@@ -151,43 +134,23 @@ async function run(messages, args) {
                     lastUploadText = `[ID: ${lastUpload.id}] **${lastUpload.nombre_serie}**${detail ? ` — *${detail}*` : ''} (por **${lastUpload.subida_por}**)${relativeTimeStr}`;
                 }
 
-                const embed = new EmbedBuilder()
-                    .setTitle("📊 Estadísticas de la Colección Yuri (Modo Local)")
-                    .setColor("#378a91")
-                    .setDescription(`Actualmente hay un total de **${total}** imágenes registradas por Sengo.`)
-                    .addFields(
-                        { 
-                            name: '📺 Distribución por Medio', 
-                            value: `📖 **Manga:** ${mediosCount.manga} (${((mediosCount.manga / total) * 100).toFixed(1)}%)\n` +
-                                   `📕 **Novela Ligera:** ${mediosCount['novela ligera']} (${((mediosCount['novela ligera'] / total) * 100).toFixed(1)}%)\n` +
-                                   `🎬 **Anime:** ${mediosCount.anime} (${((mediosCount.anime / total) * 100).toFixed(1)}%)`,
-                            inline: false 
-                        },
-                        {
-                            name: '👤 Contribuidores (Uploaders)',
-                            value: sortedUploaders.map(([user, count]) => `• **${user}**: ${count} (${((count / total) * 100).toFixed(1)}%)`).join('\n'),
-                            inline: false
-                        },
-                        {
-                            name: '⭐ Top 5 Series con Más Capturas',
-                            value: sortedSeries.map(([serie, count], idx) => `**${idx + 1}.** ${serie} — **${count}** capturas`).join('\n'),
-                            inline: false
-                        },
-                        {
-                            name: '✨ Última Imagen Subida',
-                            value: lastUploadText,
-                            inline: false
-                        }
-                    )
-                    .setFooter({ text: "Sengo Bot Yuri Analytics" })
-                    .setTimestamp();
+                const embed = doYuriStatsEmbed({
+                    message,
+                    total,
+                    mediosCount,
+                    sortedUploaders,
+                    sortedSeries,
+                    lastUploadText,
+                    isLocal: true,
+                    locale
+                });
 
                 return {
                     embeds: [embed]
                 };
             }
         }
-        return "No hay suficientes datos para generar estadísticas.";
+        return t(locale, 'yuri.stats_no_data');
     }
 
     if (supabase) {
@@ -269,22 +232,14 @@ async function run(messages, args) {
                     dbData = parseYuriFilename(currentFile.name);
                 }
 
-                const embed = new EmbedBuilder()
-                    .setImage(publicUrl)
-                    .setColor("#378a91");
-
-                if (dbData) {
-                    embed.setTitle(dbData.nombre_serie)
-                        .addFields(
-                            { name: '📺 Medio', value: dbData.medio.charAt(0).toUpperCase() + dbData.medio.slice(1), inline: true },
-                            { name: '📖 Capítulo', value: dbData.capitulo || 'One Shot / N/A', inline: true },
-                            { name: '📄 Página', value: dbData.pagina || 'N/A', inline: true }
-                        )
-                        .setFooter({ text: `Subido por: ${dbData.subida_por} | Imagen ${currentIndex} de ${totalImages}` });
-                } else {
-                    embed.setTitle(path.parse(currentFile.name).name)
-                        .setFooter({ text: `Imagen ${currentIndex} de ${totalImages}` });
-                }
+                const embed = doYuriImageEmbed({
+                    message,
+                    imageUrl: publicUrl,
+                    dbData,
+                    currentIndex,
+                    totalImages,
+                    locale
+                });
 
                 return {
                     embeds: [embed]
@@ -298,7 +253,7 @@ async function run(messages, args) {
     // --- MODO LOCAL ---
     const folderPath = path.join(__dirname, "../../../src/yuri");
     if (!fs.existsSync(folderPath)) {
-        const errorMsg = "No hay imágenes disponibles (directorio local no encontrado).";
+        const errorMsg = t(locale, 'yuri.no_images_dir');
         if (message && typeof message.reply === 'function') {
             return message.reply(errorMsg);
         }
@@ -314,7 +269,7 @@ async function run(messages, args) {
         });
 
     if (files.length === 0) {
-        const errorMsg = "No hay imágenes disponibles.";
+        const errorMsg = t(locale, 'yuri.no_images');
         if (message && typeof message.reply === 'function') {
             return message.reply(errorMsg);
         }
@@ -352,22 +307,14 @@ async function run(messages, args) {
 
     const dbData = parseYuriFilename(currentFile);
 
-    const embed = new EmbedBuilder()
-        .setImage(`attachment://${cleanFileName}`)
-        .setColor("#378a91");
-
-    if (dbData) {
-        embed.setTitle(dbData.nombre_serie)
-            .addFields(
-                { name: '📺 Medio', value: dbData.medio.charAt(0).toUpperCase() + dbData.medio.slice(1), inline: true },
-                { name: '📖 Capítulo', value: dbData.capitulo || 'One Shot / N/A', inline: true },
-                { name: '📄 Página', value: dbData.pagina || 'N/A', inline: true }
-            )
-            .setFooter({ text: `Subido por: ${dbData.subida_por} | Imagen ${currentIndex} de ${totalImages}` });
-    } else {
-        embed.setTitle(path.parse(currentFile).name)
-            .setFooter({ text: `Imagen ${currentIndex} de ${totalImages}` });
-    }
+    const embed = doYuriImageEmbed({
+        message,
+        imageUrl: `attachment://${cleanFileName}`,
+        dbData,
+        currentIndex,
+        totalImages,
+        locale
+    });
 
     return {
         embeds: [embed],

@@ -106,6 +106,16 @@
       "header": "Lista de usuarios vinculados",
       "body": "Muestra la comunidad vinculada por OAuth agrupada por país con su estado de supporter.",
       "usage": "s.contribuidores\ns.contribuidores -force : Fuerza la sincronización del estado de supporter"
+    },
+    "globo": {
+      "header": "Genera imagen con globo",
+      "body": "Añade un globo de texto tipo cómic en la parte superior de la imagen adjunta.",
+      "usage": "s.globo (adjuntando una imagen)"
+    },
+    "yuri": {
+      "header": "Yuri",
+      "body": "Al creador del bot le gusta leer mangas yuri.",
+      "usage": "s.yuri\ns.yuri -details\ns.yuri -stats"
     }
   },
   "contributors": {
@@ -118,5 +128,30 @@
     "empty": "*Aún no hay usuarios vinculados a través del sistema seguro de OAuth.*",
     "error": "*Ocurrió un error inesperado al procesar el comando.*",
     "footer": "Sengo • Página {page}/{total}"
+  },
+  "yuri": {
+    "stats_title": "📊 Estadísticas de la Colección Yuri",
+    "stats_title_local": "📊 Estadísticas de la Colección Yuri (Modo Local)",
+    "stats_description": "Actualmente hay un total de **{total}** imágenes registradas por Sengo.",
+    "stats_medium_dist": "📺 Distribución por Medio",
+    "stats_medium_values": "📖 **Manga:** {manga} ({mangaPct}%)\n📕 **Novela Ligera:** {novel} ({novelPct}%)\n🎬 **Anime:** {anime} ({animePct}%)",
+    "stats_uploaders": "👤 Contribuidores (Uploaders)",
+    "stats_top_series": "⭐ Top 5 Series con Más Capturas",
+    "stats_last_upload": "✨ Última Imagen Subida",
+    "stats_footer": "Sengo Yuri Analytics",
+    "stats_no_data": "No hay suficientes datos para generar estadísticas.",
+    "none": "Ninguna",
+    "no_images_dir": "No hay imágenes disponibles (directorio local no encontrado).",
+    "no_images": "No hay imágenes disponibles.",
+    "embed_medium": "📺 Medio",
+    "embed_chapter": "📖 Capítulo",
+    "embed_page": "📄 Página",
+    "embed_footer_db": "Subido por: {uploader} | Imagen {current} de {total}",
+    "embed_footer_simple": "Imagen {current} de {total}",
+    "one_shot": "One Shot / N/A",
+    "not_available": "N/A"
+  },
+  "globo": {
+    "attach_image": "Ok pero adjunta una imagen"
   }
 }
