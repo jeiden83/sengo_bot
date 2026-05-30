@@ -554,8 +554,8 @@ async function getPersonalizedRecommendations({
             const idStr = c.beatmap_id.toString();
             // Filtrar jugados si no se solicita mostrarlos explicitamente con flag -jugados
             if (!showPlayed && top100MapIds.has(idStr)) return false;
-            // Filtrar mostrados en esta sesión
-            if (skipSet.has(idStr)) return false;
+            // Filtrar mostrados en esta sesión (por beatmapId o beatmapsetId)
+            if (skipSet.has(idStr) || (c.beatmapset_id && skipSet.has(c.beatmapset_id.toString()))) return false;
 
             // 1. Filtrar estrictamente por el rango de PP estimado al 100% de acc
             if (customMinPP !== null) {

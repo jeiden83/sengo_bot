@@ -498,7 +498,12 @@ async function run(messages, args) {
     }
 
     const skipSet = new Set();
-    currentRecs.forEach(c => skipSet.add(c.beatmapId));
+    currentRecs.forEach(c => {
+        skipSet.add(c.beatmapId);
+        if (c.beatmapsetId) {
+            skipSet.add(c.beatmapsetId.toString());
+        }
+    });
 
     let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
@@ -670,7 +675,12 @@ async function run(messages, args) {
             }
 
             currentRecs = await getRecommendationsForButtons();
-            currentRecs.forEach(c => skipSet.add(c.beatmapId));
+            currentRecs.forEach(c => {
+                skipSet.add(c.beatmapId);
+                if (c.beatmapsetId) {
+                    skipSet.add(c.beatmapsetId.toString());
+                }
+            });
 
             params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
             embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
