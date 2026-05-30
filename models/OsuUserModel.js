@@ -1217,7 +1217,7 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         const osuIdStr = String(u.osu_id);
         const existing = dbMappersMap.get(osuIdStr);
         
-        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+        if (existing && existing.playmode) {
             mappersToUpsert.push({
                 osu_id: existing.osu_id,
                 username: existing.username,
@@ -1417,7 +1417,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         const playerOsuId = String(player.user.id);
         const existing = dbMappersMap.get(playerOsuId);
         
-        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+        if (existing && existing.playmode) {
             mappersToUpsert.push({
                 osu_id: existing.osu_id,
                 username: existing.username,
@@ -1622,7 +1622,7 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
         const playerOsuId = String(player.id);
         const existing = dbMappersMap.get(playerOsuId);
         
-        if (existing && (now - new Date(existing.updated_at).getTime() < 24 * 60 * 60 * 1000)) {
+        if (existing && existing.playmode) {
             mappersToUpsert.push({
                 osu_id: existing.osu_id,
                 username: existing.username,
@@ -1798,6 +1798,34 @@ async function upsertMapperFromProfile(profile, client) {
         .upsert(mapperData, { onConflict: 'osu_id' });
 }
 
+async function backgroundUpdateMappers(mappersList) {
+    if (!mappersList || mappersList.length === 0) return;
+    
+    // Ejecutar de forma totalmente asíncrona (en segundo plano)
+    (async () => {
+        try {
+            const token = await loadToken();
+            const client = new Client(token.access_token);
+            for (const mapper of mappersList) {
+                if (!mapper.osu_id) continue;
+                try {
+                    // Esperar 2 segundos entre consultas para respetar límites de la API
+                    await new Promise(resolve => setTimeout(resolve, 2000));
+                    
+                    const profile = await osuApiQueue.add(() => client.users.getUser(mapper.osu_id, { urlParams: { mode: 'osu' } }));
+                    if (profile) {
+                        await upsertMapperFromProfile(profile, client);
+                    }
+                } catch (e) {
+                    // Fallo silencioso en segundo plano
+                }
+            }
+        } catch (err) {
+            console.error("Error en backgroundUpdateMappers:", err);
+        }
+    })();
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
@@ -1825,7 +1853,8 @@ const OsuUserModel = {
     getMapperTop,
     getNationalMapperTop,
     getGlobalKudosuMapperTop,
-    upsertMapperFromProfile
+    upsertMapperFromProfile,
+    backgroundUpdateMappers
 };
 
 module.exports = OsuUserModel;

@@ -244,6 +244,11 @@ async function run(messages, args) {
             });
         }
 
+        // Ejecutar actualización de estadísticas en segundo plano para los 20 más activos del ranking mostrado
+        if (filteredMappers.length > 0) {
+            OsuUserModel.backgroundUpdateMappers(filteredMappers.slice(0, 20));
+        }
+
         if (totalPages > 1) {
             const collector = mainMessage.createMessageComponentCollector({
                 filter: btnInt => btnInt.user.id === message.author.id,
