@@ -216,7 +216,29 @@ function formatBeatmapset(set, index, type, userId) {
     const submittedUnix = set.submitted_date ? Math.floor(new Date(set.submitted_date).getTime() / 1000) : null;
     const updatedUnix = set.last_updated ? Math.floor(new Date(set.last_updated).getTime() / 1000) : null;
     
-    let line = `**${index}.** [${set.artist} - ${set.title}](https://osu.ppy.sh/s/${set.id})`;
+    let targetBeatmapId = null;
+    if (type === 'guest') {
+        const guestDiffs = diffs.filter(b => b.user_id === userId);
+        if (guestDiffs.length > 0) {
+            const sortedGuest = [...guestDiffs].sort((a, b) => (b.difficulty_rating || 0) - (a.difficulty_rating || 0));
+            if (sortedGuest[0] && sortedGuest[0].id) {
+                targetBeatmapId = sortedGuest[0].id;
+            }
+        }
+    }
+    
+    if (!targetBeatmapId && diffs.length > 0) {
+        const sortedDiffs = [...diffs].sort((a, b) => (b.difficulty_rating || 0) - (a.difficulty_rating || 0));
+        if (sortedDiffs[0] && sortedDiffs[0].id) {
+            targetBeatmapId = sortedDiffs[0].id;
+        }
+    }
+
+    const mapUrl = targetBeatmapId 
+        ? `https://osu.ppy.sh/beatmaps/${targetBeatmapId}` 
+        : `https://osu.ppy.sh/s/${set.id}`;
+
+    let line = `**${index}.** [${set.artist} - ${set.title}](${mapUrl})`;
     if (type === 'guest') {
         const guestDiffs = diffs.filter(b => b.user_id === userId);
         if (guestDiffs.length > 0) {
