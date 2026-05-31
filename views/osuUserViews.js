@@ -89,38 +89,55 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
 /**
  * Renderiza el embed para las estadísticas de creador/mapper (.mapper)
  */
-function doOsuMapperEmbed(message, user) {
+function doOsuMapperEmbed(message, user, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const flag = getFlagEmoji(user.country_code);
+    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
     
     // Kudosu y seguidores de mapeo
-    const mappingFollowers = user.mapping_follower_count?.toLocaleString('es-ES') || '0';
-    const kudosuTotal = user.kudosu?.total?.toLocaleString('es-ES') || '0';
-    const kudosuAvailable = user.kudosu?.available?.toLocaleString('es-ES') || '0';
+    const mappingFollowers = user.mapping_follower_count?.toLocaleString(locTag) || '0';
+    const kudosuTotal = user.kudosu?.total?.toLocaleString(locTag) || '0';
+    const kudosuAvailable = user.kudosu?.available?.toLocaleString(locTag) || '0';
     
     // Conteo de sets de beatmaps
-    const rankedCount = user.ranked_and_approved_beatmapset_count?.toLocaleString('es-ES') || '0';
-    const lovedCount = user.loved_beatmapset_count?.toLocaleString('es-ES') || '0';
-    const pendingCount = user.pending_beatmapset_count?.toLocaleString('es-ES') || '0';
-    const graveyardCount = user.graveyard_beatmapset_count?.toLocaleString('es-ES') || '0';
-    const guestCount = user.guest_beatmapset_count?.toLocaleString('es-ES') || '0';
-    const nominatedCount = user.nominated_beatmapset_count?.toLocaleString('es-ES') || '0';
+    const rankedCount = user.ranked_and_approved_beatmapset_count?.toLocaleString(locTag) || '0';
+    const lovedCount = user.loved_beatmapset_count?.toLocaleString(locTag) || '0';
+    const pendingCount = user.pending_beatmapset_count?.toLocaleString(locTag) || '0';
+    const graveyardCount = user.graveyard_beatmapset_count?.toLocaleString(locTag) || '0';
+    const guestCount = user.guest_beatmapset_count?.toLocaleString(locTag) || '0';
+    const nominatedCount = user.nominated_beatmapset_count?.toLocaleString(locTag) || '0';
     
     const isSupporter = user.is_supporter ? " 💖" : "";
     
     // Crear embed
     const embed = new EmbedBuilder()
-        .setTitle(`🛠️ Estadísticas de Mapper: ${flag} ${user.username}${isSupporter}`)
+        .setTitle(t(locale, 'mapper.embed_title', { flag, username: user.username, supporter: isSupporter }))
         .setURL(`https://osu.ppy.sh/users/${user.id}`)
         .setColor(embedColor)
         .setThumbnail(user.avatar_url)
         .addFields(
-            { name: "👥 Comunidad", value: `• **Notificado / Seguidores**: \`${mappingFollowers}\`\n• **Kudosu Total**: \`${kudosuTotal}\` (Disponible: \`${kudosuAvailable}\`)`, inline: false },
-            { name: "🟢 Mapas Oficiales", value: `• **Rankeados / Aprobados**: \`${rankedCount}\`\n• **Loved (Amados)**: \`${lovedCount}\``, inline: true },
-            { name: "⚫ Otros Mapas", value: `• **Pending / WIP**: \`${pendingCount}\`\n• **Graveyard (Cementerio)**: \`${graveyardCount}\``, inline: true },
-            { name: "🤝 Colaboraciones y Nominaciones", value: `• **Dificultades Invitadas (GDs)**: \`${guestCount}\`\n• **Beatmapsets Nominados**: \`${nominatedCount}\``, inline: false }
+            { 
+                name: t(locale, 'mapper.field_community'), 
+                value: t(locale, 'mapper.field_community_val', { followers: mappingFollowers, kudosu: kudosuTotal, available: kudosuAvailable }), 
+                inline: false 
+            },
+            { 
+                name: t(locale, 'mapper.field_official_maps'), 
+                value: t(locale, 'mapper.field_official_maps_val', { ranked: rankedCount, loved: lovedCount }), 
+                inline: true 
+            },
+            { 
+                name: t(locale, 'mapper.field_other_maps'), 
+                value: t(locale, 'mapper.field_other_maps_val', { pending: pendingCount, graveyard: graveyardCount }), 
+                inline: true 
+            },
+            { 
+                name: t(locale, 'mapper.field_collabs'), 
+                value: t(locale, 'mapper.field_collabs_val', { guest: guestCount, nominated: nominatedCount }), 
+                inline: false 
+            }
         )
-        .setFooter({ text: "Sengo Mapper Stats", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: t(locale, 'mapper.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
         
     if (user.cover_url || (user.cover && user.cover.url)) {
@@ -130,7 +147,7 @@ function doOsuMapperEmbed(message, user) {
     return embed;
 }
 
-function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1) {
+function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1, locale = 'es') {
     const rankedCount = user.ranked_and_approved_beatmapset_count || 0;
     const lovedCount = user.loved_beatmapset_count || 0;
     const pendingCount = user.pending_beatmapset_count || 0;
@@ -166,31 +183,31 @@ function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("mapper_ranked")
-            .setLabel("Rank.")
+            .setLabel(t(locale, 'mapper.btn_ranked'))
             .setEmoji("🟢")
             .setStyle(ButtonStyle.Success)
             .setDisabled(activeType === 'ranked' || rankedCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_loved")
-            .setLabel("Loved")
+            .setLabel(t(locale, 'mapper.btn_loved'))
             .setEmoji("🔮")
             .setStyle(ButtonStyle.Primary)
             .setDisabled(activeType === 'loved' || lovedCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_graveyard")
-            .setLabel("Aband.")
+            .setLabel(t(locale, 'mapper.btn_graveyard'))
             .setEmoji("🪦")
             .setStyle(ButtonStyle.Secondary)
             .setDisabled(activeType === 'graveyard' || graveyardCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_guest")
-            .setLabel("GDs")
+            .setLabel(t(locale, 'mapper.btn_guest'))
             .setEmoji("🤝")
             .setStyle(ButtonStyle.Primary)
             .setDisabled(activeType === 'guest' || guestCount === 0),
         new ButtonBuilder()
             .setCustomId("mapper_all")
-            .setLabel("Todos")
+            .setLabel(t(locale, 'mapper.btn_all'))
             .setEmoji("🗺️")
             .setStyle(ButtonStyle.Success)
             .setDisabled(activeType === 'all' || totalCount === 0)
@@ -199,7 +216,7 @@ function buildMapperButtonsRow(user, activeType, currentPage = 1, totalPages = 1
     return [row1, row2];
 }
 
-function formatBeatmapset(set, index, type, userId) {
+function formatBeatmapset(set, index, type, userId, locale = 'es') {
     const diffs = set.beatmaps || [];
     let starsStr = "N/A";
     if (diffs.length > 0) {
@@ -209,10 +226,11 @@ function formatBeatmapset(set, index, type, userId) {
         starsStr = minS === maxS ? `${maxS}★` : `${minS}★ - ${maxS}★`;
     }
 
-    const playcount = (set.play_count || 0).toLocaleString('es-ES');
-    const favorites = (set.favourite_count || 0).toLocaleString('es-ES');
+    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
+    const playcount = (set.play_count || 0).toLocaleString(locTag);
+    const favorites = (set.favourite_count || 0).toLocaleString(locTag);
     const diffsCount = diffs.length;
-    const diffsLabel = diffsCount === 1 ? '1 diff' : `${diffsCount} diffs`;
+    const diffsLabel = diffsCount === 1 ? t(locale, 'mapper.one_diff') : t(locale, 'mapper.diffs_count', { count: diffsCount });
 
     const submittedUnix = set.submitted_date ? Math.floor(new Date(set.submitted_date).getTime() / 1000) : null;
     const updatedUnix = set.last_updated ? Math.floor(new Date(set.last_updated).getTime() / 1000) : null;
@@ -244,35 +262,35 @@ function formatBeatmapset(set, index, type, userId) {
         const guestDiffs = diffs.filter(b => b.user_id === userId);
         if (guestDiffs.length > 0) {
             const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${(b.difficulty_rating || 0).toFixed(2)}★)`).join(", ");
-            line += `\n   ↳ Host: [${set.creator}](https://osu.ppy.sh/users/${set.user_id}) | GDs: ${diffsNames}`;
+            line += t(locale, 'mapper.host_gds', { creator: set.creator, userId: set.user_id, diffs: diffsNames });
         } else {
-            line += `\n   ↳ Host: [${set.creator}](https://osu.ppy.sh/users/${set.user_id}) | ⭐ ${starsStr}`;
+            line += t(locale, 'mapper.host_stars', { creator: set.creator, userId: set.user_id, stars: starsStr });
         }
         if (submittedUnix || updatedUnix) {
             const parts = [];
-            if (submittedUnix) parts.push(`Creado: <t:${submittedUnix}:d>`);
-            if (updatedUnix) parts.push(`Act.: <t:${updatedUnix}:R>`);
+            if (submittedUnix) parts.push(t(locale, 'mapper.created', { unix: submittedUnix }));
+            if (updatedUnix) parts.push(t(locale, 'mapper.updated', { unix: updatedUnix }));
             line += `\n   ↳ ${parts.join(" | ")}`;
         }
     } else {
-        line += `\n   ▸ ⭐ **${starsStr}** (${diffsLabel}) | 🎮 **${playcount}** plays | ❤️ **${favorites}**`;
+        line += t(locale, 'mapper.plays_favs', { stars: starsStr, diffsLabel, plays: playcount, favs: favorites });
         if (submittedUnix || updatedUnix) {
             const parts = [];
-            if (submittedUnix) parts.push(`Creado: <t:${submittedUnix}:d>`);
-            if (updatedUnix) parts.push(`Act.: <t:${updatedUnix}:R>`);
+            if (submittedUnix) parts.push(t(locale, 'mapper.created', { unix: submittedUnix }));
+            if (updatedUnix) parts.push(t(locale, 'mapper.updated', { unix: updatedUnix }));
             line += `\n   ▸ ${parts.join(" | ")}`;
         }
     }
     return line;
 }
 
-function doOsuMapperListEmbed(message, user, type, data, page = 1) {
+function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const flag = getFlagEmoji(user.country_code);
     const embed = new EmbedBuilder()
         .setColor(embedColor)
         .setThumbnail(user.avatar_url)
-        .setFooter({ text: "Sengo Mapper Stats", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: t(locale, 'mapper.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
     if (user.cover_url || (user.cover && user.cover.url)) {
@@ -280,103 +298,107 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     }
 
     const titleType = {
-        'ranked': '🟢 Mapas Rankeados',
-        'loved': '🔮 Mapas Loved',
-        'pending': '⚫ Mapas Pending / WIP',
-        'graveyard': '🪦 Mapas Graveyard',
-        'guest': '🤝 Dificultades Invitadas (GDs)',
-        'all': '🗺️ Todos los Mapas'
-    }[type] || 'Mapas';
+        'ranked': t(locale, 'mapper.list_ranked'),
+        'loved': t(locale, 'mapper.list_loved'),
+        'pending': t(locale, 'mapper.list_pending'),
+        'graveyard': t(locale, 'mapper.list_graveyard'),
+        'guest': t(locale, 'mapper.list_guest'),
+        'all': t(locale, 'mapper.list_all')
+    }[type] || 'Maps';
 
     if (type === 'all') {
         embed.setTitle(`${titleType} de ${flag} ${user.username}`);
-        let desc = `Resumen completo de mapas creados por **${user.username}**:\n\n`;
+        let desc = t(locale, 'mapper.summary', { username: user.username });
         
         // Ranked
         const rankedList = data.ranked || [];
         const rankedCount = user.ranked_and_approved_beatmapset_count || 0;
-        desc += `🟢 **Rankeados (${rankedCount})**\n`;
+        desc += `🟢 **${t(locale, 'mapper.btn_ranked')} (${rankedCount})**\n`;
         if (rankedList.length === 0) {
-            desc += `*Ninguno*\n\n`;
+            desc += t(locale, 'mapper.none');
         } else {
             desc += rankedList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
                 const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
-            }).join("\n") + (rankedList.length > 3 ? `\n*...y ${rankedCount - 3} más.*` : "") + `\n\n`;
+            }).join("\n") + (rankedList.length > 3 ? t(locale, 'mapper.and_more', { count: rankedCount - 3 }) : "") + `\n\n`;
         }
 
         // Loved
         const lovedList = data.loved || [];
         const lovedCount = user.loved_beatmapset_count || 0;
-        desc += `🔮 **Loved (${lovedCount})**\n`;
+        desc += `🔮 **${t(locale, 'mapper.btn_loved')} (${lovedCount})**\n`;
         if (lovedList.length === 0) {
-            desc += `*Ninguno*\n\n`;
+            desc += t(locale, 'mapper.none');
         } else {
             desc += lovedList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
                 const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
-            }).join("\n") + (lovedList.length > 3 ? `\n*...y ${lovedCount - 3} más.*` : "") + `\n\n`;
+            }).join("\n") + (lovedList.length > 3 ? t(locale, 'mapper.and_more', { count: lovedCount - 3 }) : "") + `\n\n`;
         }
 
         // Pending
         const pendingList = data.pending || [];
         const pendingCount = user.pending_beatmapset_count || 0;
-        desc += `⚫ **Pending / WIP (${pendingCount})**\n`;
+        desc += `⚫ **WIP (${pendingCount})**\n`;
         if (pendingList.length === 0) {
-            desc += `*Ninguno*\n\n`;
+            desc += t(locale, 'mapper.none');
         } else {
             desc += pendingList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
                 const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
-            }).join("\n") + (pendingList.length > 3 ? `\n*...y ${pendingCount - 3} más.*` : "") + `\n\n`;
+            }).join("\n") + (pendingList.length > 3 ? t(locale, 'mapper.and_more', { count: pendingCount - 3 }) : "") + `\n\n`;
         }
 
         // Graveyard
         const graveyardList = data.graveyard || [];
         const graveyardCount = user.graveyard_beatmapset_count || 0;
-        desc += `🪦 **Graveyard (${graveyardCount})**\n`;
+        desc += `🪦 **${t(locale, 'mapper.btn_graveyard')} (${graveyardCount})**\n`;
         if (graveyardList.length === 0) {
-            desc += `*Ninguno*\n\n`;
+            desc += t(locale, 'mapper.none');
         } else {
             desc += graveyardList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
                 const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
-            }).join("\n") + (graveyardList.length > 3 ? `\n*...y ${graveyardCount - 3} más.*` : "") + `\n\n`;
+            }).join("\n") + (graveyardList.length > 3 ? t(locale, 'mapper.and_more', { count: graveyardCount - 3 }) : "") + `\n\n`;
         }
 
         // Guest
         const guestList = data.guest || [];
         const guestCount = user.guest_beatmapset_count || 0;
-        desc += `🤝 **Guest Diffs (${guestCount})**\n`;
+        desc += `🤝 **GDs (${guestCount})**\n`;
         if (guestList.length === 0) {
-            desc += `*Ninguno*\n\n`;
+            desc += t(locale, 'mapper.none');
         } else {
             desc += guestList.slice(0, 3).map((set, idx) => {
                 const guestDiffs = (set.beatmaps || []).filter(b => b.user_id === user.id);
                 const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${(b.difficulty_rating || 0).toFixed(2)}★)`).join(", ");
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) - GDs: ${diffsNames}`;
-            }).join("\n") + (guestList.length > 3 ? `\n*...y ${guestCount - 3} más.*` : "") + `\n\n`;
+            }).join("\n") + (guestList.length > 3 ? t(locale, 'mapper.and_more', { count: guestCount - 3 }) : "") + `\n\n`;
         }
 
         embed.setDescription(desc);
     } else {
         if (!data || data.length === 0) {
             embed.setTitle(`${titleType} de ${flag} ${user.username}`);
-            embed.setDescription(`*No se encontraron mapas en esta categoría.*`);
+            embed.setDescription(t(locale, 'mapper.no_maps'));
         } else {
             const itemsPerPage = 5;
             const totalPages = Math.max(1, Math.ceil(data.length / itemsPerPage));
             const currentPage = Math.min(Math.max(1, page), totalPages);
             
-            embed.setTitle(`${titleType} de ${flag} ${user.username} (Pág. ${currentPage}/${totalPages})`);
+            embed.setTitle(t(locale, 'mapper.list_title_page', { title: titleType, flag, username: user.username, current: currentPage, total: totalPages }));
 
             const pageData = data.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-            let desc = `Mostrando mapas **${(currentPage - 1) * itemsPerPage + 1}** a **${Math.min(currentPage * itemsPerPage, data.length)}** de **${data.length}**:\n\n`;
-            desc += pageData.map((set, idx) => formatBeatmapset(set, (currentPage - 1) * itemsPerPage + idx + 1, type, user.id)).join("\n\n");
+            let desc = t(locale, 'mapper.showing_maps', {
+                start: (currentPage - 1) * itemsPerPage + 1,
+                end: Math.min(currentPage * itemsPerPage, data.length),
+                total: data.length
+            });
+            desc += pageData.map((set, idx) => formatBeatmapset(set, (currentPage - 1) * itemsPerPage + idx + 1, type, user.id, locale)).join("\n\n");
             
             const totalCount = {
                 'ranked': user.ranked_and_approved_beatmapset_count,
@@ -387,7 +409,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
             }[type] || data.length;
 
             if (totalCount > data.length) {
-                desc += `\n\n*Nota: Mostrando hasta los primeros ${data.length} mapas más recientes. La lista completa está disponible en la web de osu!.*`;
+                desc += t(locale, 'mapper.note_limit', { limit: data.length });
             }
             embed.setDescription(desc);
         }
@@ -396,58 +418,58 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1) {
     return embed;
 }
 
-function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo', playmodeFilter = null) {
+function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo', playmodeFilter = null, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const startIndex = (page - 1) * 10;
     const chunk = mappers.slice(startIndex, startIndex + 10);
     
     const sortLabels = {
-        'ranked': 'Mapas Rankeados',
-        'loved': 'Mapas Loved',
-        'wip': 'Mapas WIP / Pending',
-        'graveyard': 'Mapas Graveyard (Abandonados)',
-        'gd': 'Dificultades Invitadas (GDs)',
-        'followers': 'Seguidores',
-        'kudosus': 'Kudosu Total',
-        'recent': 'Última actualización'
+        'ranked': t(locale, 'mapper.sort_ranked'),
+        'loved': t(locale, 'mapper.sort_loved'),
+        'wip': t(locale, 'mapper.sort_wip'),
+        'graveyard': t(locale, 'mapper.sort_graveyard'),
+        'gd': t(locale, 'mapper.sort_gd'),
+        'followers': t(locale, 'mapper.sort_followers'),
+        'kudosus': t(locale, 'mapper.sort_kudosus'),
+        'recent': t(locale, 'mapper.sort_recent')
     };
     
-    let totalLabel = `**Total de mappers registrados: \`${mappers.length}\`**\n`;
-    let title = "🛠️ Tabla de Clasificación de Mappers";
+    let totalLabel = t(locale, 'mapper.total_registered', { count: mappers.length });
+    let title = t(locale, 'mapper.top_title');
     
     if (mode === 'server') {
-        totalLabel = `**Total de mappers en el servidor: \`${mappers.length}\`**\n`;
-        title = "🛠️ Tabla de Clasificación de Mappers (Servidor)";
+        totalLabel = t(locale, 'mapper.total_server', { count: mappers.length });
+        title = t(locale, 'mapper.top_title_server');
     } else if (mode === 'sengo') {
-        totalLabel = `**Total de mappers registrados (Sengo): \`${mappers.length}\`**\n`;
-        title = "🛠️ Tabla de Clasificación de Mappers (Sengo)";
+        totalLabel = t(locale, 'mapper.total_sengo', { count: mappers.length });
+        title = t(locale, 'mapper.top_title_sengo');
     } else if (mode === 'national') {
-        totalLabel = `**Total de mappers en el top de ${countryFilter}: \`${mappers.length}\`**\n`;
-        title = `🛠️ Tabla de Clasificación de Mappers (${countryFilter})`;
+        totalLabel = t(locale, 'mapper.total_national', { country: countryFilter, count: mappers.length });
+        title = t(locale, 'mapper.top_title_national', { country: countryFilter });
     } else if (mode === 'global') {
-        totalLabel = `**Total de mappers del top global de Kudosu: \`${mappers.length}\`**\n`;
-        title = "🛠️ Tabla de Clasificación de Mappers (Global Kudosu)";
+        totalLabel = t(locale, 'mapper.total_global', { count: mappers.length });
+        title = t(locale, 'mapper.top_title_global');
     }
     
     let description = totalLabel;
     if (countryFilter && mode !== 'national') {
         const flag = getFlagEmoji(countryFilter);
-        description += `**Filtrado por país: ${flag} ${countryFilter}**\n`;
+        description += t(locale, 'mapper.filtered_by_country', { flag, country: countryFilter });
     }
     if (playmodeFilter) {
         const modeLabels = {
-            'osu': 'Standard (osu!)',
-            'taiko': 'Taiko',
-            'fruits': 'Catch the Beat',
-            'mania': 'Mania',
-            'all': 'Todos'
+            'osu': t(locale, 'mapper.mode_std'),
+            'taiko': t(locale, 'mapper.mode_taiko'),
+            'fruits': t(locale, 'mapper.mode_fruits'),
+            'mania': t(locale, 'mapper.mode_mania'),
+            'all': t(locale, 'mapper.mode_all')
         };
-        description += `**Modo de juego:** \`${modeLabels[playmodeFilter] || playmodeFilter}\`\n`;
+        description += t(locale, 'mapper.gamemode', { mode: modeLabels[playmodeFilter] || playmodeFilter });
     }
-    description += `**Ordenado por: \`${sortLabels[sortBy] || sortBy}\`**\n\n`;
+    description += t(locale, 'mapper.ordered_by', { sort: sortLabels[sortBy] || sortBy });
     
     if (mappers.length === 0) {
-        description += `*No se encontraron creadores de mapas con los filtros aplicados.*`;
+        description += t(locale, 'mapper.no_mappers');
     } else {
         chunk.forEach((mapper, idx) => {
             const globalIndex = startIndex + idx + 1;
@@ -455,28 +477,36 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
             
             let highlightStat = '';
             if (sortBy === 'kudosus') {
-                highlightStat = `(Kudosu: **${mapper.kudosu_total}**)`;
+                highlightStat = t(locale, 'mapper.stat_kudosu', { count: mapper.kudosu_total });
             } else if (sortBy === 'followers') {
-                highlightStat = `(Seguidores: **${mapper.followers}**)`;
+                highlightStat = t(locale, 'mapper.stat_followers', { count: mapper.followers });
             } else if (sortBy === 'recent') {
                 highlightStat = mapper.last_updated 
-                    ? `(Último mapa: <t:${Math.floor(new Date(mapper.last_updated).getTime() / 1000)}:R>)`
-                    : `(Último mapa: **Nunca**)`;
+                    ? t(locale, 'mapper.stat_last_map', { unix: Math.floor(new Date(mapper.last_updated).getTime() / 1000) })
+                    : t(locale, 'mapper.stat_never');
             }
             
             const usernameLink = `[**${mapper.username}**](https://osu.ppy.sh/users/${mapper.osu_id})`;
             description += `**#${globalIndex}** ▸ ${flag} ${usernameLink} ${highlightStat}\n`;
             
             // Fila de estadísticas
-            description += ` ▸ **Rankeados**: \`${mapper.ranked_count}\` • **Loved**: \`${mapper.loved_count}\` • **WIP**: \`${mapper.pending_count}\` • **GDs**: \`${mapper.guest_count}\` • **Graveyard**: \`${mapper.graveyard_count}\` • **Seguidores**: \`${mapper.followers}\` • **Kudosu**: \`${mapper.kudosu_total}\`\n`;
+            description += t(locale, 'mapper.row_stats', {
+                ranked: mapper.ranked_count,
+                loved: mapper.loved_count,
+                wip: mapper.pending_count,
+                gds: mapper.guest_count,
+                graveyard: mapper.graveyard_count,
+                followers: mapper.followers,
+                kudosu: mapper.kudosu_total
+            });
             
             // Fila de actualización
             if (sortBy !== 'recent') {
                 if (mapper.last_updated) {
                     const ts = Math.floor(new Date(mapper.last_updated).getTime() / 1000);
-                    description += ` ▸ *Último mapa:* <t:${ts}:R>\n`;
+                    description += t(locale, 'mapper.row_last_map', { unix: ts });
                 } else {
-                    description += ` ▸ *Último mapa:* nunca\n`;
+                    description += t(locale, 'mapper.row_last_never');
                 }
             }
             description += `\n`;
@@ -487,7 +517,7 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
         .setTitle(title)
         .setDescription(description)
         .setColor(embedColor)
-        .setFooter({ text: `Sengo • Mostrando ${startIndex + 1}-${startIndex + chunk.length} de ${mappers.length} (Página ${page}/${maxPages})`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: t(locale, 'mapper.top_footer', { start: startIndex + 1, end: startIndex + chunk.length, total: mappers.length, current: page, max: maxPages }), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
         
     return embed;

@@ -8,9 +8,11 @@ const fs = require("fs/promises");
 const path = require("path");
 const CONFIG = require("../../../config.js");
 const { getSupabaseClient } = require("../../../db/database.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
+    const locale = message.locale || 'es';
 
     // Detectar si estamos en modo top
     const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
@@ -109,15 +111,15 @@ async function run(messages, args) {
         }
 
         if (isSengoMode && message.author.id !== CONFIG.OWNER_ID) {
-            return message.reply("❌ *El flag `-sengo` es exclusivo para el administrador del bot.*");
+            return message.reply(t(locale, 'mapper.err_sengo_only'));
         }
 
         if (forceUpdate && message.author.id !== CONFIG.OWNER_ID) {
-            return message.reply("❌ *El flag `-refresh` / `-force` es exclusivo para el administrador del bot.*");
+            return message.reply(t(locale, 'mapper.err_refresh_only'));
         }
 
         if (isServerMode && !message.guild) {
-            return message.reply("❌ *El flag `-server` solo se puede usar dentro de un servidor de Discord.*");
+            return message.reply(t(locale, 'mapper.err_server_only'));
         }
 
         // Determinar el modo: 'national' (si hay filtro de país o no es global/server/sengo), 'global', 'server' o 'sengo'
@@ -139,17 +141,17 @@ async function run(messages, args) {
             if (mode === 'national') {
                 const scraped = await OsuUserModel.isCountryScraped(countryFilter);
                 if (!scraped) {
-                    return message.reply(`❌ *La tabla de clasificación de mappers de **${countryFilter}** está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                    return message.reply(t(locale, 'mapper.err_country_disabled', { country: countryFilter }));
                 }
             } else if (mode === 'global') {
                 const scraped = await OsuUserModel.isCountryScraped('GLOBAL');
                 if (!scraped) {
-                    return message.reply(`❌ *La tabla de clasificación global de mappers está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                    return message.reply(t(locale, 'mapper.err_global_disabled'));
                 }
             } else if (mode === 'sengo' || mode === 'server') {
                 const scraped = await OsuUserModel.isCountryScraped('SENGO');
                 if (!scraped) {
-                    return message.reply(`❌ *La tabla de clasificación de mappers vinculados está temporalmente deshabilitada hasta que termine el scraping inicial por parte del administrador.*`);
+                    return message.reply(t(locale, 'mapper.err_sengo_disabled'));
                 }
             }
         }
@@ -199,7 +201,7 @@ async function run(messages, args) {
                 embeds: [
                     new EmbedBuilder()
                         .setColor(getEmbedColor(message))
-                        .setDescription(`⏳ *Generando/Actualizando la caché de mappers. Esto puede tardar unos minutos...*`)
+                        .setDescription(t(locale, 'mapper.loading_cache'))
                 ]
             });
         }
@@ -210,7 +212,7 @@ async function run(messages, args) {
             if (nowTime - lastEdit > 3000 || current === total) {
                 lastEdit = nowTime;
                 try {
-                    let desc = `⏳ *Generando/Actualizando caché... Procesando: **${name}** (${current}/${total})*`;
+                    let desc = t(locale, 'mapper.updating_cache_progress', { name, current, total });
                     if (statusMessage) {
                         await statusMessage.edit({
                             embeds: [
@@ -273,7 +275,7 @@ async function run(messages, args) {
         const itemsPerPage = 10;
         const totalPages = Math.max(1, Math.ceil(filteredMappers.length / itemsPerPage));
 
-        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter);
+        const embed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter, locale);
         const customSuffixes = { first: 'first', prev: 'prev', next: 'next', last: 'last' };
         const components = totalPages > 1 ? [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })] : [];
 
@@ -316,7 +318,7 @@ async function run(messages, args) {
                         currentPage = Math.min(totalPages, currentPage + 1);
                     }
 
-                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter);
+                    const nextEmbed = doOsuMapperTopEmbed(message, filteredMappers, currentPage, totalPages, sortBy, countryFilter, mode, playmodeFilter, locale);
                     const nextComponents = [buildPaginationRow({ prefix: 'mtop', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })];
 
                     await i.editReply({
@@ -465,19 +467,19 @@ async function run(messages, args) {
                 if (newType !== currentType && newType !== 'profile' && !cachedMaps[newType]) {
                     const loadingEmbed = new EmbedBuilder()
                         .setColor(getEmbedColor(message))
-                        .setDescription(`⏳ *Buscando datos en la API de osu!...*`);
+                        .setDescription(t(locale, 'mapper.loading_api'));
                     await i.editReply({ 
                         embeds: [loadingEmbed], 
-                        components: buildMapperButtonsRow(osuUser, newType, newPage, 1) 
+                        components: buildMapperButtonsRow(osuUser, newType, newPage, 1, locale) 
                     });
                 }
                 
                 let nextEmbed;
                 if (newType === 'profile') {
-                    nextEmbed = doOsuMapperEmbed(message, osuUser);
+                    nextEmbed = doOsuMapperEmbed(message, osuUser, locale);
                 } else {
                     const mapData = await fetchBeatmapsets(osuUser.id, newType);
-                    nextEmbed = doOsuMapperListEmbed(message, osuUser, newType, mapData, newPage);
+                    nextEmbed = doOsuMapperListEmbed(message, osuUser, newType, mapData, newPage, locale);
                 }
 
                 currentType = newType;
@@ -486,7 +488,7 @@ async function run(messages, args) {
                 const totalPages = getTotalPagesForType(currentType);
                 await i.editReply({
                     embeds: [nextEmbed],
-                    components: buildMapperButtonsRow(osuUser, currentType, currentPage, totalPages)
+                    components: buildMapperButtonsRow(osuUser, currentType, currentPage, totalPages, locale)
                 });
             } catch (err) {
                 console.error("Error al procesar interacción en mapper:", err);
@@ -503,20 +505,20 @@ async function run(messages, args) {
     let initialEmbed;
     
     if (type === 'profile') {
-        initialEmbed = doOsuMapperEmbed(message, osuUser);
-        const initialComponents = buildMapperButtonsRow(osuUser, 'profile', 1, 1);
+        initialEmbed = doOsuMapperEmbed(message, osuUser, locale);
+        const initialComponents = buildMapperButtonsRow(osuUser, 'profile', 1, 1, locale);
         const sentMessage = await message.channel.send({
             embeds: [initialEmbed],
             components: initialComponents
         });
         setupCollector(sentMessage);
     } else {
-        const initialComponents = buildMapperButtonsRow(osuUser, type, 1, 1);
+        const initialComponents = buildMapperButtonsRow(osuUser, type, 1, 1, locale);
         const statusMessage = await message.channel.send({
             embeds: [
                 new EmbedBuilder()
                     .setColor(getEmbedColor(message))
-                    .setDescription(`⏳ *Buscando mapas de ${osuUser.username}...*`)
+                    .setDescription(t(locale, 'mapper.searching_maps', { username: osuUser.username }))
             ],
             components: initialComponents
         });
@@ -524,11 +526,11 @@ async function run(messages, args) {
         try {
             const mapData = await fetchBeatmapsets(osuUser.id, type);
             const totalPages = getTotalPagesForType(type);
-            initialEmbed = doOsuMapperListEmbed(message, osuUser, type, mapData, currentPage);
+            initialEmbed = doOsuMapperListEmbed(message, osuUser, type, mapData, currentPage, locale);
             
             await statusMessage.edit({
                 embeds: [initialEmbed],
-                components: buildMapperButtonsRow(osuUser, type, currentPage, totalPages)
+                components: buildMapperButtonsRow(osuUser, type, currentPage, totalPages, locale)
             });
             
             setupCollector(statusMessage);
@@ -538,9 +540,9 @@ async function run(messages, args) {
                 embeds: [
                     new EmbedBuilder()
                         .setColor("#ff3333")
-                        .setDescription(`❌ *Error al cargar los mapas de la API de osu!.*`)
+                        .setDescription(t(locale, 'mapper.err_api_fetch'))
                 ],
-                components: buildMapperButtonsRow(osuUser, 'profile', 1, 1)
+                components: buildMapperButtonsRow(osuUser, 'profile', 1, 1, locale)
             });
             setupCollector(statusMessage);
         }
@@ -560,17 +562,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': 'Estadísticas de creador/mapper de un usuario',
-    'body': 'Muestra estadísticas detalladas del mapper en osu! (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones). También permite mostrar tops y clasificaciones de mappers.',
-    'usage': `s.mapper : Muestra tus estadísticas como mapper.
-s.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.
-
-s.mapper -top : Muestra el top de mappers del país del usuario (VE por defecto).
-Flags para -top:
-• -pais <código> / -country <código> : Filtra el top de mappers por país (ej: MX, VE).
-• -server / -servidor : Filtra el top mostrando solo a los usuarios vinculados del servidor de Discord actual.
-• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).
-• -std / -taiko / -ctb / -mania / -mode <modo> : Filtra los mappers según su modo de juego principal.`
+    'header': t('es', 'commands.mapper.header'),
+    'body': t('es', 'commands.mapper.body'),
+    'usage': t('es', 'commands.mapper.usage')
 };
 
 module.exports = { run };
