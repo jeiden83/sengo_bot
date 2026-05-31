@@ -195,6 +195,16 @@
       "header": "Replay analyzer (.osr)",
       "body": "Upload an `.osr` file to the chat along with the `s.replay` command, or reply to a message containing the file to see its technical details.",
       "usage": "s.replay [attaching .osr file]"
+    },
+    "nacional": {
+      "header": "National performance ranking",
+      "body": "Shows the leaderboard by Performance Points (pp) for a specific country in osu!.",
+      "usage": "s.nacional -pais MX : Shows the national ranking of Mexico.\ns.nacional : Autodetects your country and shows its ranking.\ns.nacional CL -p2 : Shows page 2 of Chile's ranking.\ns.nacional -taiko : Shows the national ranking in Taiko mode.\ns.nacional -acc MX : Shows Mexico's ranking sorted by accuracy (Acc).\ns.nacional -regional : Shows the regional ranking for your region.\ns.nacional -regional list : Shows the regions/subdivisions of your country.\ns.nacional -regional Anzoategui : Shows the ranking of the Anzoátegui region."
+    },
+    "regional": {
+      "header": "Regional performance ranking",
+      "body": "Shows the leaderboard by Performance Points (pp) for a specific region in osu!.",
+      "usage": "s.regional : Shows your regional ranking (autodetected from osu!World).\ns.regional list : Shows all the regions of your country.\ns.regional Anzoategui : Shows the ranking of Anzoátegui.\ns.regional -pais MX list : Shows the regions of Mexico."
     }
   },
   "contributors": {
@@ -574,5 +584,28 @@
     "no": "No",
     "stats_value": "300s: **{count300}**\n100s: **{count100}**\n50s: **{count50}**\nMisses: **{countMiss}**\nGekis: **{countGeki}**\nKatus: **{countKatu}**",
     "footer": "Sengo • Replay Parser"
+  },
+  "nacional": {
+    "err_no_subdivisions": "❌ No subdivisions/regions found for country **{country}** in the ISO 3166-2 database.",
+    "err_not_linked": "❌ No linked osu! account found for your Discord.\nUse `s.link -oauth` to link it first.",
+    "err_no_osuworld_region": "❌ Your osu! account does not have a region configured in osu!World.\nConfigure it by logging in at https://osuworld.octo.moe/ with your osu! account and try again.",
+    "err_region_not_found": "❌ No region matching \"{query}\" was found in **{country}**. Use `.regional list` to see available options.",
+    "err_fetch_regional": "❌ There was an error fetching the regional ranking for **{region}** from osu!World.",
+    "fetching_acc": "⏳ Fetching top 1000 players to sort by accuracy (Acc)... **{current}/{total}**",
+    "err_fetch_acc": "❌ There was an error fetching the Accuracy ranking for **{country}** from the osu! API.",
+    "err_fetch_national": "❌ There was an error fetching the national ranking for **{country}** from the osu! API.",
+    "err_no_regional_players": "❌ No players found in the regional ranking of **{region}** (Mode: `{mode}`).",
+    "err_no_national_players": "❌ No players found in the national ranking of **{country}** (Mode: `{mode}`).",
+    "embed_title_national": "National Ranking",
+    "embed_title_regional": "Regional Ranking",
+    "embed_title_acc": "National Ranking by Accuracy (Acc)",
+    "no_players": "*No players registered in this region.*",
+    "footer_page_info": "Page {page} of {pages} • Rank #{from} - #{to} • Total: {total} players",
+    "subdivisions_title": "Available Regions - :flag_{code}: {country}",
+    "subdivisions_desc": "To check a region's ranking, use:\n`.regional [name or code]`\n\n**Regions List:**\n{lines}",
+    "subdivisions_footer": "Page {page} of {pages} • Total: {total} regions",
+    "subdivision_type_state": "State",
+    "global_rank_label": "Global",
+    "national_rank_label": "National"
   }
 }

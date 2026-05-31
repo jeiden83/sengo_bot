@@ -3,6 +3,7 @@ const { doOsuRankingEmbed, doSubdivisionsEmbed } = require("../../../views/osuRa
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { argsParserNoCommand } = require("../../utils/argsParser.js");
 const regionsData = require("../../../src/regions.json");
+const { t } = require("../../../utils/i18n.js");
 
 /**
  * Obtiene todas las subdivisiones disponibles para un país específico.
@@ -43,6 +44,7 @@ function findSubdivision(countryCode, searchStr) {
  */
 async function run(messages, args) {
     const { message } = messages;
+    const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
     let countryFilter = parsed_args.country;
@@ -115,7 +117,7 @@ async function run(messages, args) {
             viewMode = 'subdivisions';
             subdivisions = getCountrySubdivisions(countryFilter);
             if (subdivisions.length === 0) {
-                return `❌ No se encontraron subdivisiones/regiones para el país **${countryFilter}** en la base de datos ISO 3166-2.`;
+                return t(locale, 'nacional.err_no_subdivisions', { country: countryFilter });
             }
         } else if (regionalArg === 'self') {
             // Resolver región del usuario desde osu!World
@@ -128,12 +130,12 @@ async function run(messages, args) {
             } catch {}
 
             if (!osuId) {
-                return `❌ No se encontró una cuenta de osu! vinculada a tu Discord.\nUsa \`s.link -oauth\` para vincularla primero.`;
+                return t(locale, 'nacional.err_not_linked');
             }
 
             const worldUser = await OsuUserModel.getOsuWorldUser(osuId);
             if (!worldUser || !worldUser.region_id) {
-                return `❌ Tu cuenta de osu! no tiene una región configurada en osu!World.\nConfigúrala entrando a https://osuworld.octo.moe/ con tu cuenta de osu! y luego reintenta.`;
+                return t(locale, 'nacional.err_no_osuworld_region');
             }
 
             selectedRegion = worldUser.region_id;
@@ -148,7 +150,7 @@ async function run(messages, args) {
             // Buscar por nombre/código de región provisto
             const match = findSubdivision(countryFilter, parsed_args.regional);
             if (!match) {
-                return `❌ No se encontró ninguna región que coincida con "${parsed_args.regional}" en **${countryFilter}**. Usa \`.regional lista\` para ver las opciones disponibles.`;
+                return t(locale, 'nacional.err_region_not_found', { query: parsed_args.regional, country: countryFilter });
             }
             selectedRegion = match.code;
             selectedRegionName = match.name;
@@ -173,7 +175,7 @@ async function run(messages, args) {
             total = currentData.total;
         } catch (err) {
             console.error("Error al obtener ranking regional:", err);
-            return `❌ Hubo un error al consultar el ranking regional de **${selectedRegionName}** en osu!World.`;
+            return t(locale, 'nacional.err_fetch_regional', { region: selectedRegionName });
         }
     } else {
         if (isAccSort) {
@@ -181,11 +183,11 @@ async function run(messages, args) {
             const onProgress = async (current, totalVal) => {
                 const now = Date.now();
                 if (!progressMessage) {
-                    progressMessage = await message.channel.send(`⏳ Obteniendo top 1000 jugadores para ordenar por precisión (Acc)... **${current}/${totalVal}**`);
+                    progressMessage = await message.channel.send(t(locale, 'nacional.fetching_acc', { current, total: totalVal }));
                     lastUpdate = now;
                 } else if (now - lastUpdate > 1500 || current === totalVal) {
                     try {
-                        await progressMessage.edit(`⏳ Obteniendo top 1000 jugadores para ordenar por precisión (Acc)... **${current}/${totalVal}**`);
+                        await progressMessage.edit(t(locale, 'nacional.fetching_acc', { current, total: totalVal }));
                         lastUpdate = now;
                     } catch {}
                 }
@@ -196,7 +198,7 @@ async function run(messages, args) {
                 total = playersList.length;
             } catch (err) {
                 console.error("Error al obtener ranking por Acc:", err);
-                const errMsg = `❌ Hubo un error al consultar el ranking por Acc de **${countryFilter}** en la API de osu!.`;
+                const errMsg = t(locale, 'nacional.err_fetch_acc', { country: countryFilter });
                 if (progressMessage) {
                     await progressMessage.edit(errMsg);
                     return;
@@ -211,15 +213,15 @@ async function run(messages, args) {
                 total = initialData.total;
             } catch (err) {
                 console.error("Error al obtener ranking nacional:", err);
-                return `❌ Hubo un error al consultar el ranking nacional de **${countryFilter}** en la API de osu!.`;
+                return t(locale, 'nacional.err_fetch_national', { country: countryFilter });
             }
         }
     }
 
     if (viewMode !== 'subdivisions' && (!playersList || playersList.length === 0)) {
         const noPlayersMsg = viewMode === 'regional'
-            ? `❌ No se encontraron jugadores en el ranking regional de **${selectedRegionName}** (Modo: \`${gamemodeName}\`).`
-            : `❌ No se encontraron jugadores en el ranking nacional de **${countryFilter}** (Modo: \`${gamemodeName}\`).`;
+            ? t(locale, 'nacional.err_no_regional_players', { region: selectedRegionName, mode: gamemodeName })
+            : t(locale, 'nacional.err_no_national_players', { country: countryFilter, mode: gamemodeName });
         if (progressMessage) {
             await progressMessage.edit(noPlayersMsg);
             return;
@@ -233,7 +235,8 @@ async function run(messages, args) {
             subdivisions,
             countryFilter,
             page: embedPage,
-            total
+            total,
+            message
         });
     } else if (viewMode === 'regional') {
         embed = doOsuRankingEmbed({
@@ -245,7 +248,8 @@ async function run(messages, args) {
             targetGamemode,
             isAccSort: false,
             isRegional: true,
-            regionName: selectedRegionName
+            regionName: selectedRegionName,
+            message
         });
     } else {
         const chunk = isAccSort ? playersList.slice(startIndex, startIndex + 10) : playersList;
@@ -256,7 +260,8 @@ async function run(messages, args) {
             countryFilter,
             gamemodeName,
             targetGamemode,
-            isAccSort
+            isAccSort,
+            message
         });
     }
 
@@ -311,7 +316,8 @@ async function run(messages, args) {
                     subdivisions,
                     countryFilter,
                     page: currentPage,
-                    total
+                    total,
+                    message
                 });
             } else if (viewMode === 'regional') {
                 const currentData = await OsuUserModel.fetchRegionalRankingPage(countryFilter, selectedRegion, targetGamemode, currentPage);
@@ -324,7 +330,8 @@ async function run(messages, args) {
                     targetGamemode,
                     isAccSort: false,
                     isRegional: true,
-                    regionName: selectedRegionName
+                    regionName: selectedRegionName,
+                    message
                 });
             } else {
                 let currentChunk;
@@ -342,7 +349,8 @@ async function run(messages, args) {
                     countryFilter,
                     gamemodeName,
                     targetGamemode,
-                    isAccSort
+                    isAccSort,
+                    message
                 });
             }
 
@@ -367,9 +375,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': 'Ranking nacional de rendimiento',
-    'body': 'Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!.',
-    'usage': 's.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).\ns.nacional -regional : Muestra el ranking regional para tu región.\ns.nacional -regional lista : Muestra las regiones/subdivisiones de tu país.\ns.nacional -regional Anzoategui : Muestra el ranking de la región Anzoátegui.'
-}
+    'header': t('es', 'commands.nacional.header'),
+    'body': t('es', 'commands.nacional.body'),
+    'usage': t('es', 'commands.nacional.usage')
+};
 
 module.exports = { run, description: run.description };

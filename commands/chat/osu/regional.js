@@ -1,4 +1,5 @@
 const nacional = require("./nacional.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     let modifiedArgs = args ? String(args).trim() : "";
@@ -43,12 +44,12 @@ async function run(messages, args) {
 
 run.alias = {
     "regiones": { "args": "lista" }
-}
+};
 
 run.description = {
-    'header': 'Ranking regional de rendimiento',
-    'body': 'Muestra la tabla de clasificación por Performance Points (pp) para una región específica en osu!.',
-    'usage': 's.regional : Muestra tu ranking regional (autodetectado de osu!World).\ns.regional lista : Muestra todas las regiones de tu país.\ns.regional Anzoategui : Muestra el ranking de Anzoátegui.\ns.regional -pais MX lista : Muestra las regiones de México.'
+    'header': t('es', 'commands.regional.header'),
+    'body': t('es', 'commands.regional.body'),
+    'usage': t('es', 'commands.regional.usage')
 };
 
 module.exports = { run, description: run.description };

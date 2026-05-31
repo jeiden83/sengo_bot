@@ -1,20 +1,22 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
 const { getEmbedColor } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
 /**
  * Genera el embed con la tabla del ranking nacional o regional comprimido.
  */
-function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isRegional, regionName }) {
+function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isRegional, regionName, message }) {
+    const locale = message.locale || 'es';
     const countryInfo = country_codes[countryFilter];
     const countryName = countryInfo ? countryInfo.country : (chunk[0]?.user?.country?.name || countryFilter);
-    const embedColor = countryInfo && countryInfo.color ? (countryInfo.color.startsWith('#') ? countryInfo.color : `#${countryInfo.color}`) : "#00ffcc";
+    const embedColor = getEmbedColor(message);
 
     const lines = chunk.map((item, index) => {
         const flag = `:flag_${item.user.country_code.toLowerCase()}:`;
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
-        const ppStr = `**${Math.round(item.pp).toLocaleString()} pp**`;
+        const ppStr = `**${Math.round(item.pp).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} pp**`;
         
         let accStr = "";
         if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
@@ -24,11 +26,11 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr}${accStr}`;
         let secondLine;
         if (isRegional) {
-            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString()}** Global`;
+            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         } else if (isAccSort) {
-            secondLine = `  ↳ Rango: **#${item.country_rank}** Nacional • **#${item.global_rank.toLocaleString()}** Global`;
+            secondLine = `  ↳ Rango: **#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         } else {
-            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString()}** Global`;
+            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         }
         return `${firstLine}\n${secondLine}`;
     });
@@ -38,22 +40,28 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
     const fromRank = startIndex + 1;
     const toRank = startIndex + chunk.length;
 
-    let titlePrefix = "Ranking Nacional";
+    let titlePrefix = t(locale, 'nacional.embed_title_national');
     if (isRegional) {
-        titlePrefix = "Ranking Regional";
+        titlePrefix = t(locale, 'nacional.embed_title_regional');
     } else if (isAccSort) {
-        titlePrefix = "Ranking Nacional por Precisión (Acc)";
+        titlePrefix = t(locale, 'nacional.embed_title_acc');
     }
 
     const locationStr = isRegional && regionName ? `${countryName} (${regionName})` : countryName;
 
     const embed = new EmbedBuilder()
         .setTitle(`${titlePrefix} (${gamemodeName}) - ${locationStr}`)
-        .setDescription(lines.length > 0 ? lines.join('\n\n') : "*No hay jugadores registrados en esta región.*")
+        .setDescription(lines.length > 0 ? lines.join('\n\n') : t(locale, 'nacional.no_players'))
         .setColor(embedColor)
         .setThumbnail(`https://flagcdn.com/w160/${countryFilter.toLowerCase()}.png`)
         .setFooter({
-            text: `Página ${currentPage} de ${maxPages} • Rango #${fromRank} - #${toRank} • Total: ${total.toLocaleString()} jugadores`
+            text: t(locale, 'nacional.footer_page_info', {
+                page: currentPage,
+                pages: maxPages,
+                from: fromRank,
+                to: toRank,
+                total: total.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')
+            })
         });
 
     return embed;
@@ -62,26 +70,38 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
 /**
  * Genera el embed con el listado de regiones/subdivisiones de un país.
  */
-function doSubdivisionsEmbed({ subdivisions, countryFilter, page, total }) {
-    const embedColor = "#00ffcc";
+function doSubdivisionsEmbed({ subdivisions, countryFilter, page, total, message }) {
+    const locale = message.locale || 'es';
+    const embedColor = getEmbedColor(message);
     const pageSize = 20;
     const startIndex = (page - 1) * pageSize;
     const chunk = subdivisions.slice(startIndex, startIndex + pageSize);
     
     const lines = chunk.map((sub, index) => {
         const itemNumber = startIndex + index + 1;
-        return `${itemNumber}. **${sub.name}** (\`${sub.code}\`) - *${sub.type}*`;
+        const subType = sub.type === 'State' ? t(locale, 'nacional.subdivision_type_state') : sub.type;
+        return `${itemNumber}. **${sub.name}** (\`${sub.code}\`) - *${subType}*`;
     });
     
     const maxPages = Math.ceil(subdivisions.length / pageSize) || 1;
+    const countryInfo = country_codes[countryFilter];
+    const countryName = countryInfo ? countryInfo.country : countryFilter;
     
+    const desc = t(locale, 'nacional.subdivisions_desc', {
+        lines: lines.join('\n')
+    });
+
     const embed = new EmbedBuilder()
-        .setTitle(`Regiones Disponibles - :flag_${countryFilter.toLowerCase()}: ${countryFilter}`)
-        .setDescription(`Para consultar el ranking de una región, usa:\n\`.regional [nombre o código]\`\n\n**Lista de regiones:**\n${lines.join('\n')}`)
+        .setTitle(t(locale, 'nacional.subdivisions_title', { code: countryFilter.toLowerCase(), country: countryName }))
+        .setDescription(desc)
         .setColor(embedColor)
         .setThumbnail(`https://flagcdn.com/w160/${countryFilter.toLowerCase()}.png`)
         .setFooter({
-            text: `Página ${page} de ${maxPages} • Total: ${subdivisions.length} regiones`
+            text: t(locale, 'nacional.subdivisions_footer', {
+                page,
+                pages: maxPages,
+                total: subdivisions.length
+            })
         });
         
     return embed;
