@@ -160,6 +160,11 @@
       "header": "Gestión de sorteos interactiva",
       "body": "Permite crear, terminar y re-rolear sorteos en el servidor.\n\n🛡️ **Demostrablemente Justo (Provably Fair):**\nCada sorteo genera un Hash SHA-256 de una semilla secreta al iniciar. Al finalizar, la semilla es revelada. Puedes comprobar que el sorteo no fue manipulado:\n1. Aplica SHA-256 a la semilla revelada (Server Seed) y comprueba que coincide con el Hash de Validación del inicio.\n2. Los ganadores se escogen ordenando a los participantes alfabéticamente por su ID y aplicando HMAC-SHA256 con la semilla.",
       "usage": "s.giveaway crear <#canal> <ganadores> <tiempo> <premio>\ns.giveaway terminar <mensaje_id|enlace>\ns.giveaway reroll <mensaje_id|enlace>"
+    },
+    "github": {
+      "header": "Configura las notificaciones de GitHub mediante webhooks",
+      "body": "Permite a los administradores registrar, borrar y listar canales para recibir las notificaciones de commits en GitHub.",
+      "usage": "s.github colocar [canal] : Registra un canal para recibir actualizaciones (por defecto el actual).\ns.github borrar [canal] : Deja de escuchar commits en el canal especificado."
     }
   },
   "contributors": {
@@ -430,5 +435,28 @@
     "err_no_participants": "No hay participantes suficientes que hayan reaccionado con 🎉 para realizar el re-roll.",
     "err_no_eligible": "Ningún participante que reaccionó cumple con los requisitos del sorteo (rol o no poseer supporter de osu!).",
     "err_reroll_failed": "Error al realizar re-roll: {message}"
+  },
+  "github": {
+    "err_owner_only": "❌ No tienes permisos para usar este flag secreto.",
+    "logging_list": "Listando canales de webhook registrados en la BD",
+    "err_no_webhooks": "ℹ️ Sengo no está escuchando webhooks en ningún canal actualmente.",
+    "embed_title": "📋 Canales Activos de GitHub Webhook",
+    "embed_footer": "Sengo Admin",
+    "unknown_guild": "Desconocido",
+    "err_fetch_list": "❌ Hubo un error al obtener la lista de webhooks: {error}",
+    "only_guild": "❌ Este comando solo se puede usar dentro de un servidor.",
+    "no_admin": "❌ Solo los usuarios con permisos de **Administrador** pueden usar este comando.",
+    "invalid_action": "❌ Acción inválida. Uso correcto:\n> `s.github colocar [canal]` (registra el canal para recibir commits)\n> `s.github borrar [canal]` (elimina el canal de la lista)",
+    "channel_not_found": "❌ No se pudo encontrar el canal especificado en este servidor.",
+    "not_text_channel": "❌ El canal seleccionado debe ser un canal de texto.",
+    "logging_register": "Registrando canal {channelId} para GitHub Webhook",
+    "register_success": "✅ **¡Éxito!** Sengo ahora mandará las actualizaciones de commits de GitHub al canal <#{channelId}>.",
+    "err_db_register": "❌ Hubo un error al registrar el canal en la base de datos.",
+    "err_register": "❌ Error al colocar el webhook: {error}",
+    "logging_delete": "Eliminando canal {channelId} de GitHub Webhook",
+    "delete_success": "✅ **¡Éxito!** Sengo ha dejado de escuchar actualizaciones de GitHub en el canal <#{channelId}>.",
+    "delete_not_registered": "ℹ️ El canal <#{channelId}> no estaba registrado para actualizaciones de GitHub.",
+    "err_db_delete": "❌ Hubo un error al eliminar el canal de la base de datos.",
+    "err_delete": "❌ Error al borrar el webhook: {error}"
   }
 }

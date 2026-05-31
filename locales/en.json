@@ -160,6 +160,11 @@
       "header": "Interactive Giveaway Management",
       "body": "Allows creating, ending, and rerolling giveaways on the server.\n\n🛡️ **Provably Fair:**\nEach giveaway generates a SHA-256 hash of a secret seed when starting. When it ends, the seed is revealed. You can verify that the giveaway was not manipulated:\n1. Apply SHA-256 to the revealed seed (Server Seed) and check that it matches the Validation Hash from the start.\n2. Winners are chosen by sorting participants alphabetically by their ID and applying HMAC-SHA256 with the seed.",
       "usage": "s.giveaway create <#channel> <winners> <time> <prize>\ns.giveaway end <message_id|link>\ns.giveaway reroll <message_id|link>"
+    },
+    "github": {
+      "header": "Configure GitHub notifications via webhooks",
+      "body": "Allows administrators to register, delete, and list channels to receive GitHub commit notifications.",
+      "usage": "s.github colocar [canal] : Registers a channel to receive updates (default is current channel).\ns.github borrar [canal] : Stops listening to commits in the specified channel."
     }
   },
   "contributors": {
@@ -430,5 +435,28 @@
     "err_no_participants": "There are not enough participants who reacted with 🎉 to reroll.",
     "err_no_eligible": "No participant who reacted meets the giveaway requirements (role or not having osu! supporter).",
     "err_reroll_failed": "Error during reroll: {message}"
+  },
+  "github": {
+    "err_owner_only": "❌ You do not have permissions to use this secret flag.",
+    "logging_list": "Listing webhook channels registered in the DB",
+    "err_no_webhooks": "ℹ️ Sengo is not currently listening to webhooks on any channel.",
+    "embed_title": "📋 Active GitHub Webhook Channels",
+    "embed_footer": "Sengo Admin",
+    "unknown_guild": "Unknown",
+    "err_fetch_list": "❌ There was an error getting the webhooks list: {error}",
+    "only_guild": "❌ This command can only be used within a server.",
+    "no_admin": "❌ Only users with **Administrator** permissions can use this command.",
+    "invalid_action": "❌ Invalid action. Correct usage:\n> `s.github colocar [canal]` (registers the channel to receive commits)\n> `s.github borrar [canal]` (removes the channel from the list)",
+    "channel_not_found": "❌ Could not find the specified channel on this server.",
+    "not_text_channel": "❌ The selected channel must be a text channel.",
+    "logging_register": "Registering channel {channelId} for GitHub Webhook",
+    "register_success": "✅ **Success!** Sengo will now send GitHub commit updates to <#{channelId}>.",
+    "err_db_register": "❌ There was an error registering the channel in the database.",
+    "err_register": "❌ Error setting up the webhook: {error}",
+    "logging_delete": "Deleting channel {channelId} from GitHub Webhook",
+    "delete_success": "✅ **Success!** Sengo has stopped listening to GitHub updates on <#{channelId}>.",
+    "delete_not_registered": "ℹ️ The channel <#{channelId}> was not registered for GitHub updates.",
+    "err_db_delete": "❌ There was an error removing the channel from the database.",
+    "err_delete": "❌ Error deleting the webhook: {error}"
   }
 }
