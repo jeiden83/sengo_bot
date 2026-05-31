@@ -206,6 +206,11 @@
       "header": "Regional performance ranking",
       "body": "Shows the leaderboard by Performance Points (pp) for a specific region in osu!.",
       "usage": "s.regional : Shows your regional ranking (autodetected from osu!World).\ns.regional list : Shows all the regions of your country.\ns.regional Anzoategui : Shows the ranking of Anzoátegui.\ns.regional -pais MX list : Shows the regions of Mexico."
+    },
+    "link": {
+      "header": "Link your osu! account with the bot",
+      "body": "Link your Discord user with your osu! account.\nBy default, it uses traditional (public) linking.\nUse the `-oauth` flag to link securely and privately via DMs.",
+      "usage": "s.link [osu_user] : Link your account traditionally.\ns.link -oauth : Sends the secure linking link privately.\ns.link unlink : Completely unlink your account."
     }
   },
   "contributors": {
@@ -609,5 +614,24 @@
     "global_rank_label": "Global",
     "national_rank_label": "National",
     "rank_label": "Rank"
+  },
+  "link": {
+    "generating_url": "Generating OAuth authorization URL...",
+    "sending_dm": "Sending private message with instructions...",
+    "check_dm": "Check your DM, I sent you the verification there. 🔒",
+    "err_dm": "⚠️ **Error:** I couldn't send you a private message. Please make sure you have direct messages from server members enabled and try again.",
+    "unlinking": "Removing link from database...",
+    "unlink_success": "Your osu! account has been successfully **unlinked** from the bot.",
+    "unlink_success_legacy": "The user `{username}` has been successfully **unlinked** from the bot.",
+    "unlinking_legacy": "Removing link from database (no arguments)...",
+    "fetching_user": "Looking for user '{username}' on the osu! API...",
+    "user_not_exist": "The osu! user {username} does not exist.",
+    "saving_link": "Saving link for '{username}' in the database...",
+    "link_success": "The osu! user `{username}` has been successfully **linked**.",
+    "link_error": "Error linking the user.",
+    "err_unexpected": "An error occurred while trying to link your account.",
+    "oauth_title": "Secure Account Linking - Sengo",
+    "oauth_desc": "To link your osu! account completely securely and privately via the official API (OAuth), click the button below:\n\n👉 **[Authorize osu! Account]({url})**\n\n**Why use OAuth?**\n• **Security**: We do not need your password.\n• **Supporter Pool**: Your account will help fetch national leaderboards if you have supporter.\n• **Private**: This process is completely confidential.",
+    "oauth_footer": "Sengo OAuth System v2"
   }
 }

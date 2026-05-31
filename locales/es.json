@@ -206,6 +206,11 @@
       "header": "Ranking regional de rendimiento",
       "body": "Muestra la tabla de clasificación por Performance Points (pp) para una región específica en osu!.",
       "usage": "s.regional : Muestra tu ranking regional (autodetectado de osu!World).\ns.regional lista : Muestra todas las regiones de tu país.\ns.regional Anzoategui : Muestra el ranking de Anzoátegui.\ns.regional -pais MX lista : Muestra las regiones de México."
+    },
+    "link": {
+      "header": "Vincula tu cuenta de osu! con el bot",
+      "body": "Vincula tu usuario de Discord con tu cuenta de osu!.\nPor defecto usa la vinculación tradicional (pública).\nUsa el flag `-oauth` para vincularte de forma segura y privada por DMs.",
+      "usage": "s.link [usuario_osu] : Vincula tu cuenta de forma tradicional.\ns.link -oauth : Envía el enlace de vinculación seguro por privado.\ns.link unlink : Desvincula completamente tu cuenta."
     }
   },
   "contributors": {
@@ -609,5 +614,24 @@
     "global_rank_label": "Global",
     "national_rank_label": "Nacional",
     "rank_label": "Rango"
+  },
+  "link": {
+    "generating_url": "Generando URL de autorización OAuth...",
+    "sending_dm": "Enviando mensaje privado con instrucciones...",
+    "check_dm": "Revisa tu dm, que te mandé la verificación por ahí. 🔒",
+    "err_dm": "⚠️ **Error:** No pude enviarte un mensaje privado. Por favor, asegúrate de tener activada la opción de recibir mensajes directos de miembros del servidor y vuelve a intentarlo.",
+    "unlinking": "Eliminando vinculación de la base de datos...",
+    "unlink_success": "Se ha **desvinculado** tu cuenta de osu! correctamente del bot.",
+    "unlink_success_legacy": "Se ha **desvinculado** el usuario `{username}` del **bot** correctamente.",
+    "unlinking_legacy": "Eliminando vinculación de la base de datos (sin argumentos)...",
+    "fetching_user": "Buscando usuario '{username}' en la API de osu!...",
+    "user_not_exist": "El usuario de osu! {username} no existe.",
+    "saving_link": "Guardando vinculación para '{username}' en la base de datos...",
+    "link_success": "Se ha **vinculado** al usuario de osu! `{username}` correctamente.",
+    "link_error": "Error al vincular el usuario.",
+    "err_unexpected": "Ocurrió un error al intentar vincular tu cuenta.",
+    "oauth_title": "Vinculación de Cuenta Segura - Sengo",
+    "oauth_desc": "Para vincular tu cuenta de osu! de forma completamente segura y privada mediante la API oficial (OAuth), haz clic en el siguiente botón:\n\n👉 **[Autorizar Cuenta de osu!]({url})**\n\n**¿Por qué usar OAuth?**\n• **Seguridad**: No necesitamos tu contraseña.\n• **Pool de Soporte**: Tu cuenta ayudará a consultar rankings nacionales si tienes supporter.\n• **Privado**: Este proceso es completamente confidencial.",
+    "oauth_footer": "Sistema OAuth de Sengo v2"
   }
 }

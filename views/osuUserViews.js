@@ -5,19 +5,13 @@ const { t } = require("../utils/i18n.js");
 /**
  * Renderiza el embed para el enlace seguro de OAuth (link.js)
  */
-function doOsuOAuthEmbed(authUrl) {
+function doOsuOAuthEmbed(authUrl, message) {
+    const locale = message.locale || 'es';
     return new EmbedBuilder()
-        .setTitle("Vinculación de Cuenta Segura - Sengo")
-        .setDescription(
-            "Para vincular tu cuenta de osu! de forma completamente segura y privada mediante la API oficial (OAuth), haz clic en el siguiente botón:\n\n" +
-            `👉 **[Autorizar Cuenta de osu!](${authUrl})**\n\n` +
-            "**¿Por qué usar OAuth?**\n" +
-            "• **Seguridad**: No necesitamos tu contraseña.\n" +
-            "• **Pool de Soporte**: Tu cuenta ayudará a consultar rankings nacionales si tienes supporter.\n" +
-            "• **Privado**: Este proceso es completamente confidencial."
-        )
+        .setTitle(t(locale, 'link.oauth_title'))
+        .setDescription(t(locale, 'link.oauth_desc', { url: authUrl }))
         .setColor("#ff66aa")
-        .setFooter({ text: "Sengo OAuth System v2" })
+        .setFooter({ text: t(locale, 'link.oauth_footer') })
         .setTimestamp();
 }
 
