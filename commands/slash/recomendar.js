@@ -22,6 +22,11 @@ const data = new SlashCommandBuilder()
         option.setName("jugados")
             .setDescription("¿Recomendar mapas que ya has jugado en este rango?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("force")
+            .setDescription("Forzar nuevas recomendaciones ignorando la caché")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -30,6 +35,7 @@ async function run(interaction, res) {
     const pp = interaction.options.getString("pp");
     const mods = interaction.options.getString("mods");
     const jugados = interaction.options.getBoolean("jugados");
+    const force = interaction.options.getBoolean("force");
 
     if (pp) {
         args.push("-pp", pp);
@@ -39,6 +45,9 @@ async function run(interaction, res) {
     }
     if (jugados) {
         args.push("-jugados");
+    }
+    if (force) {
+        args.push("-force");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

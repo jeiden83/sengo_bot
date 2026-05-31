@@ -234,6 +234,7 @@ async function run(messages, args) {
     let customMinPP = null;
     let customMaxPP = null;
     let customMods = null;
+    let forceRefresh = false;
 
     const cleanArgs = [];
     let skipNext = false;
@@ -248,6 +249,10 @@ async function run(messages, args) {
         const arg = args[i].trim().toLowerCase();
         if (arg === "-jugados" || arg === "-played") {
             showPlayed = true;
+            continue;
+        }
+        if (arg === "-force" || arg === "-forzar") {
+            forceRefresh = true;
             continue;
         }
         if (arg === "-pp" || arg === "-g") {
@@ -328,6 +333,12 @@ async function run(messages, args) {
 
     // Verificar si es una consulta por defecto (sin filtros custom)
     const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false);
+
+    // Si se usa -force, borrar la caché del usuario antes de continuar
+    if (forceRefresh) {
+        const forceCacheKey = `${osuUserId}:${parser_res.parsed_args.gamemode || 'osu'}`;
+        recommendCache.delete(forceCacheKey);
+    }
 
     let currentRecs = [];
     let minPP;
