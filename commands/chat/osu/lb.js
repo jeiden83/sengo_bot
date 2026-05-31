@@ -31,9 +31,11 @@ async function fetchLeaderboardCached(url, headers, logger = null) {
 }
 
 const { doOsuLbEmbed, doOsuLbContent } = require("../../../views/osuLeaderboardViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, reply, logger } = messages;
+    const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
     let beatmap_url = parsed_args.beatmap_url;
@@ -63,22 +65,22 @@ async function run(messages, args) {
                 const embed = doOsuOAuthEmbed(authUrl);
                 
                 const button = new ButtonBuilder()
-                    .setLabel("Vincular Cuenta (OAuth)")
+                    .setLabel(t(locale, 'leaderboard.oauth_button_label'))
                     .setStyle(ButtonStyle.Link)
                     .setURL(authUrl);
                 const row = new ActionRowBuilder().addComponents(button);
                 
                 await message.author.send({ embeds: [embed], components: [row] });
-                return `❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒`;
+                return t(locale, 'leaderboard.err_oauth_required');
             } catch (dmError) {
                 console.error("Error al enviar DM de vinculación segura:", dmError);
-                return `❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link -oauth\`.`;
+                return t(locale, 'leaderboard.err_oauth_required_dm_failed');
             }
         }
         
         const token = await OsuUserModel.getValidTokenForUser(message.author.id);
         if (!token) {
-            return `❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.`;
+            return t(locale, 'leaderboard.err_session_validation');
         }
     }
 
@@ -113,7 +115,7 @@ async function run(messages, args) {
 
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
     if (unranked_statuses.has(beatmap_metadata.status)) {
-        return `❌ Este mapa no tiene tabla de clasificación (leaderboard) online porque está en estado **${beatmap_metadata.status}**.`;
+        return t(locale, 'leaderboard.err_no_leaderboard_online', { status: beatmap_metadata.status });
     }
 
     // Resolver país si es "SELF"
@@ -185,11 +187,12 @@ async function run(messages, args) {
         const searchFilter = friendsFilter === "SELF" ? message.author.id : friendsFilter;
         const userToken = await OsuUserModel.getOAuthTokenRecordByUsernameOrId(searchFilter);
         if (!userToken) {
-            return `❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **${friendsFilter === "SELF" ? message.author.username : friendsFilter}** en la base de datos.`;
+            const filterName = friendsFilter === "SELF" ? message.author.username : friendsFilter;
+            return t(locale, 'leaderboard.err_user_not_found', { filter: filterName });
         }
 
         if (!userToken.is_supporter) {
-            return `❌ El usuario **${userToken.username}** no tiene osu! supporter activo en su cuenta vinculada, lo cual es requerido por la API de osu! para consultar el ranking de amigos.`;
+            return t(locale, 'leaderboard.err_no_supporter', { username: userToken.username });
         }
 
         friendsUsername = userToken.username;
@@ -217,9 +220,9 @@ async function run(messages, args) {
             console.error("Error al obtener friends ranking:", e);
             const is403 = e.message && e.message.includes('403');
             if (is403) {
-                return `❌ **Error de autorización (403):** La vinculación de osu! de **${friendsUsername}** no tiene el permiso necesario (\`friends.read\`) para consultar el ranking de amigos.\n\n💡 **Solución:** Vuelve a vincular tu cuenta con \`s.link -oauth\` asegurándote de autorizar todos los permisos solicitados.`;
+                return t(locale, 'leaderboard.err_auth_403', { username: friendsUsername });
             }
-            return `❌ Error al consultar la API de osu! usando el token de amigos de **${friendsUsername}**.`;
+            return t(locale, 'leaderboard.err_friends_api', { username: friendsUsername });
         }
     }
     // 1. Caso leaderboard nacional
@@ -227,7 +230,7 @@ async function run(messages, args) {
         if (logger) logger.process(`Buscando supporter de ${countryFilter} en la pool`);
         const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
         if (!supporterRes) {
-            return `❌ No hay ningún usuario de **${countryFilter}** con osu! supporter vinculado al bot en la base de datos por oAuth para poder realizar esta consulta.`;
+            return t(locale, 'leaderboard.err_no_supporter_pool', { country: countryFilter });
         }
         usedSupporter = supporterRes;
         
@@ -250,7 +253,7 @@ async function run(messages, args) {
             }, logger);
         } catch (e) {
             console.error("Error al obtener country ranking:", e);
-            return `❌ Error al consultar la API de osu! usando las credenciales del supporter de la pool.`;
+            return t(locale, 'leaderboard.err_country_api');
         }
     }
     // 2. Caso leaderboard con mods exactos (Dedicated mods)
@@ -309,12 +312,12 @@ async function run(messages, args) {
             }, logger);
         } catch (e) {
             console.error("Error al obtener leaderboard:", e);
-            return `❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.`;
+            return t(locale, 'leaderboard.err_fetch_api');
         }
     }
 
     if (!scores || !Array.isArray(scores) || scores.length === 0) {
-        return `No se encontraron puntuaciones en la tabla de clasificación de este mapa.`;
+        return t(locale, 'leaderboard.err_no_scores');
     }
 
     // Ordenar puntuaciones por score clásico/legacy o score de Lazer descendente para evitar inconsistencias visuales
@@ -400,9 +403,13 @@ async function run(messages, args) {
     }
 
     if (filtered_scores.length === 0) {
-        let errorMsg = `No se encontraron puntuaciones en la tabla de clasificación con los filtros aplicados:`;
-        if (parsed_args.modFilter !== null) errorMsg += `\n ▸ Mods exactos: \`${parsed_args.modFilter}\``;
-        if (parsed_args.modContainFilter !== null) errorMsg += `\n ▸ Contiene mods: \`${parsed_args.modContainFilter}\``;
+        let errorMsg = t(locale, 'leaderboard.err_no_filtered_scores');
+        if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) {
+            errorMsg += t(locale, 'leaderboard.filter_exact_mods', { val: parsed_args.modFilter });
+        }
+        if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) {
+            errorMsg += t(locale, 'leaderboard.filter_contain_mods', { val: parsed_args.modContainFilter });
+        }
         return errorMsg;
     }
 
@@ -436,7 +443,12 @@ async function run(messages, args) {
     const requestedPage = parsed_args.page || 1;
 
     if (parsed_args.page && (requestedPage > max_pages || requestedPage < 1)) {
-        const warningMsg = `⚠️ La página **${requestedPage}** no existe. La lista tiene **${max_pages}** ${max_pages === 1 ? 'página' : 'páginas'} de puntuaciones.`;
+        const pagesText = max_pages === 1 ? t(locale, 'leaderboard.pages_singular') : t(locale, 'leaderboard.pages_plural');
+        const warningMsg = t(locale, 'leaderboard.err_page_not_found', {
+            requested: requestedPage,
+            total: max_pages,
+            pagesText
+        });
         if (reply) {
             reply.reply({ content: warningMsg });
             return;
@@ -447,8 +459,8 @@ async function run(messages, args) {
     let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
-    const content = await doOsuLbContent(beatmap_metadata, targetGamemode, countryFilter, friendsUsername);
-    const initialEmbed = await doOsuLbEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter);
+    const content = await doOsuLbContent(beatmap_metadata, targetGamemode, countryFilter, friendsUsername, isLazerMode, locale);
+    const initialEmbed = await doOsuLbEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter, locale);
 
     const getLbButtonsRow = (start, total) => {
         return buildPaginationRow({ prefix: 'lb', current: start, total, pageSize: 5 });
@@ -493,7 +505,7 @@ async function run(messages, args) {
 
             const currentPage = Math.floor(startIndex / 5) + 1;
             const chunk = filtered_scores.slice(startIndex, startIndex + 5);
-            const embed = await doOsuLbEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, currentPage, max_pages, parsed_args, usedSupporter);
+            const embed = await doOsuLbEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, currentPage, max_pages, parsed_args, usedSupporter, locale);
 
             await i.editReply({
                 embeds: [embed],
@@ -532,9 +544,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Tabla de clasificación global y nacional',
-    'body': 'Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales, filtro de mods dedicados a través de la pool de supporter, y los flags `-stable` / `-lazer` para alternar la versión de las puntuaciones (por defecto es predictivo según la jugada reciente).',
-    'usage': `s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.\ns.lb -stable : Fuerza el leaderboard al estilo classic/stable.\ns.lb -lazer : Fuerza el leaderboard al estilo lazer (scoring normalizado).`
+    'header': t('es', 'commands.lb.header'),
+    'body': t('es', 'commands.lb.body'),
+    'usage': t('es', 'commands.lb.usage')
 }
 
 async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer = null) {

@@ -226,6 +226,11 @@
       "header": "Obtén el top 200 de jugadas de PP",
       "body": "Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.",
       "usage": "s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta."
+    },
+    "lb": {
+      "header": "Tabla de clasificación global y nacional",
+      "body": "Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales, filtro de mods dedicados a través de la pool de supporter, y los flags `-stable` / `-lazer` para alternar la versión de las puntuaciones (por defecto es predictivo según la jugada reciente).",
+      "usage": "s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.\ns.lb -stable : Fuerza el leaderboard al estilo classic/stable.\ns.lb -lazer : Fuerza el leaderboard al estilo lazer (scoring normalizado)."
     }
   },
   "contributors": {
@@ -718,5 +723,32 @@
     "pp_threshold_filter_contain": " con {mod}",
     "pp_threshold_filter_search": " que coinciden con \"{search}\"",
     "calc_pp_footer": "⏳ Calculando pp de la play #{index} de {total}..."
+  },
+  "leaderboard": {
+    "err_oauth_required": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒",
+    "err_oauth_required_dm_failed": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con `s.link -oauth`.",
+    "err_session_validation": "❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.",
+    "err_no_leaderboard_online": "❌ Este mapa no tiene tabla de clasificación (leaderboard) online porque está en estado **{status}**.",
+    "err_user_not_found": "❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **{filter}** en la base de datos.",
+    "err_no_supporter": "❌ El usuario **{username}** no tiene osu! supporter activo en su cuenta vinculada, lo cual es requerido por la API de osu! para consultar el ranking de amigos.",
+    "err_auth_403": "❌ **Error de autorización (403):** La vinculación de osu! de **{username}** no tiene el permiso necesario (`friends.read`) para consultar el ranking de amigos.\n\n💡 **Solución:** Vuelve a vincular tu cuenta con `s.link -oauth` asegurándote de autorizar todos los permisos solicitados.",
+    "err_friends_api": "❌ Error al consultar la API de osu! usando el token de amigos de **{username}**.",
+    "err_no_supporter_pool": "❌ No hay ningún usuario de **{country}** con osu! supporter vinculado al bot en la base de datos por oAuth para poder realizar esta consulta.",
+    "err_country_api": "❌ Error al consultar la API de osu! usando las credenciales del supporter de la pool.",
+    "err_fetch_api": "❌ Ocurrió un error al obtener la tabla de clasificación desde la API de osu!.",
+    "err_no_scores": "No se encontraron puntuaciones en la tabla de clasificación de este mapa.",
+    "err_no_filtered_scores": "No se encontraron puntuaciones en la tabla de clasificación con los filtros aplicados:",
+    "filter_exact_mods": "\n ▸ Mods exactos: `{val}`",
+    "filter_contain_mods": "\n ▸ Contiene mods: `{val}`",
+    "err_page_not_found": "⚠️ La página **{requested}** no existe. La lista tiene **{total}** {pagesText} de puntuaciones.",
+    "pages_singular": "página",
+    "pages_plural": "páginas",
+    "embed_footer": "Sengo • Mostrando posiciones {start}-{end} de {total} (Página {page}/{max_pages})",
+    "embed_footer_pool": " • Pool: {username}{fallbackText}",
+    "pool_fallback": " (global)",
+    "content_standard": "**Tabla de clasificación (leaderboard) en osu!{mode}{suffix} para:**",
+    "content_country": "**Tabla de clasificación nacional ({country}){suffix} en osu!{mode} para:**",
+    "content_friends": "**Tabla de clasificación de amigos de {username}{suffix} en osu!{mode} para:**",
+    "oauth_button_label": "Vincular Cuenta (OAuth)"
   }
 }

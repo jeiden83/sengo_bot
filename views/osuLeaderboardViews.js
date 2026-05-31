@@ -93,7 +93,7 @@ function doOsuGapContent(beatmap_metadata, user_scores, sorted_user_scores, page
 /**
  * Renderiza el embed para el comando lb (tabla de clasificación de beatmap)
  */
-function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, total_plays = 0, page = 1, max_pages = 1, parsed_args = {}, usedSupporter = null) {
+function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, total_plays = 0, page = 1, max_pages = 1, parsed_args = {}, usedSupporter = null, locale = "es") {
     let embed_description = '';
 
     const isFiltered = (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
@@ -154,9 +154,19 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 
     const beatmap_cover = beatmap_metadata.beatmapset.covers["list@2x"] || beatmap_metadata.beatmapset.covers.cover;
 
-    let footerText = `Sengo • Mostrando posiciones ${startIndex + 1}-${startIndex + scores_chunk.length} de ${total_plays} (Página ${page}/${max_pages})`;
+    let footerText = t(locale, 'leaderboard.embed_footer', {
+        start: startIndex + 1,
+        end: startIndex + scores_chunk.length,
+        total: total_plays,
+        page,
+        max_pages
+    });
     if (usedSupporter) {
-        footerText += ` • Pool: ${usedSupporter.username}${usedSupporter.fallback ? ' (global)' : ''}`;
+        const fallbackText = usedSupporter.fallback ? t(locale, 'leaderboard.pool_fallback') : '';
+        footerText += t(locale, 'leaderboard.embed_footer_pool', {
+            username: usedSupporter.username,
+            fallbackText
+        });
     }
 
     const embed = new EmbedBuilder()
@@ -175,18 +185,31 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 /**
  * Genera el string de contenido de encabezado para el comando lb
  */
-function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false) {
+function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false, locale = "es") {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
     const displayMode = targetGamemode === 'osu' ? 'std' : (targetGamemode === 'fruits' ? 'ctb' : targetGamemode);
     const suffix = isLazerMode ? " (lazer)" : " (stable)";
 
     const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    let titleText = `**Tabla de clasificación (leaderboard) en osu!${displayMode}${suffix} para:**`;
+    let titleText = "";
     if (countryCode) {
-        titleText = `**Tabla de clasificación nacional (${countryCode.toUpperCase()})${suffix} en osu!${displayMode} para:**`;
+        titleText = t(locale, 'leaderboard.content_country', {
+            country: countryCode.toUpperCase(),
+            suffix,
+            mode: displayMode
+        });
     } else if (friendsUsername) {
-        titleText = `**Tabla de clasificación de amigos de ${friendsUsername}${suffix} en osu!${displayMode} para:**`;
+        titleText = t(locale, 'leaderboard.content_friends', {
+            username: friendsUsername,
+            suffix,
+            mode: displayMode
+        });
+    } else {
+        titleText = t(locale, 'leaderboard.content_standard', {
+            suffix,
+            mode: displayMode
+        });
     }
     return `${titleText}\n${mapa}`;
 }

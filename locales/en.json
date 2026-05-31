@@ -226,6 +226,11 @@
       "header": "Get your top 200 PP plays",
       "body": "Shows a paginated list of a player's best plays (top) in osu! with advanced filtering.",
       "usage": "s.top : Shows your best plays.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy."
+    },
+    "lb": {
+      "header": "Global and national leaderboard",
+      "body": "Shows the best scores on the last map in the channel. Supports the `-pais [code]` flag for national rankings, dedicated mod filtering via the supporter pool, and the `-stable` / `-lazer` flags to toggle the scores version (defaults to predictive based on recent play).",
+      "usage": "s.lb : Shows the global leaderboard.\ns.lb -pais CL : Shows the national leaderboard of Chile.\ns.lb -pais : Autodetects your country and shows its leaderboard.\ns.lb -m HDHR : Shows leaderboard filtered by exact mods (HDHR).\ns.lb -pais VE -m HD : Shows leaderboard of Venezuela with mod HD.\ns.lb -stable : Forces the leaderboard to classic/stable style.\ns.lb -lazer : Forces the leaderboard to lazer style (normalized scoring)."
     }
   },
   "contributors": {
@@ -718,5 +723,32 @@
     "pp_threshold_filter_contain": " with {mod}",
     "pp_threshold_filter_search": " matching \"{search}\"",
     "calc_pp_footer": "⏳ Calculating pp of play #{index} of {total}..."
+  },
+  "leaderboard": {
+    "err_oauth_required": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth. **I have sent you a private message with the linking link.** 🔒",
+    "err_oauth_required_dm_failed": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth.\n**I could not send you a private message.** Please enable the option to receive direct messages in this server and try again with `s.link -oauth`.",
+    "err_session_validation": "❌ There was an error validating your osu! session due to a temporary connection issue. Please try running the command again in a few moments.",
+    "err_no_leaderboard_online": "❌ This map does not have an online leaderboard because it is in status **{status}**.",
+    "err_user_not_found": "❌ No linked user found with the name or Discord ID **{filter}** in the database.",
+    "err_no_supporter": "❌ User **{username}** does not have active osu! supporter on their linked account, which is required by the osu! API to query the friends ranking.",
+    "err_auth_403": "❌ **Authorization Error (403):** **{username}**'s osu! link does not have the necessary permission (`friends.read`) to query the friends ranking.\n\n💡 **Solution:** Re-link your account with `s.link -oauth` making sure to authorize all requested permissions.",
+    "err_friends_api": "❌ Error querying the osu! API using **{username}**'s friends token.",
+    "err_no_supporter_pool": "❌ There is no user from **{country}** with osu! supporter linked to the bot in the database via OAuth to perform this query.",
+    "err_country_api": "❌ Error querying the osu! API using the supporter credentials from the pool.",
+    "err_fetch_api": "❌ An error occurred while fetching the leaderboard from the osu! API.",
+    "err_no_scores": "No scores were found on the leaderboard of this map.",
+    "err_no_filtered_scores": "No scores were found on the leaderboard with the applied filters:",
+    "filter_exact_mods": "\n ▸ Exact mods: `{val}`",
+    "filter_contain_mods": "\n ▸ Contains mods: `{val}`",
+    "err_page_not_found": "⚠️ Page **{requested}** does not exist. The list has **{total}** {pagesText} of scores.",
+    "pages_singular": "page",
+    "pages_plural": "pages",
+    "embed_footer": "Sengo • Showing positions {start}-{end} of {total} (Page {page}/{max_pages})",
+    "embed_footer_pool": " • Pool: {username}{fallbackText}",
+    "pool_fallback": " (global)",
+    "content_standard": "**Leaderboard in osu!{mode}{suffix} for:**",
+    "content_country": "**National leaderboard ({country}){suffix} in osu!{mode} for:**",
+    "content_friends": "**Friends leaderboard of {username}{suffix} in osu!{mode} for:**",
+    "oauth_button_label": "Link Account (OAuth)"
   }
 }
