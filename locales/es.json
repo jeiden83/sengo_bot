@@ -271,6 +271,11 @@
       "header": "Detalles de Ranked Play de un usuario",
       "body": "Muestra el rango global, rating (ELO), victorias, partidas jugadas y tasa de victoria de Ranked Play (lazer) del usuario.",
       "usage": "s.ranked : Muestra tus estadísticas.\ns.ranked 'usuario_osu' : Muestra las estadísticas del usuario especificado.\ns.ranked -top : Muestra la clasificación global de Ranked Play.\ns.ranked -top -wins : Muestra la clasificación global ordenada por victorias.\ns.ranked -server : Muestra la clasificación de todos los usuarios vinculados en el bot.\ns.ranked -server 'id_servidor' : Muestra la clasificación de un servidor específico."
+    },
+    "recommend": {
+      "header": "Recomienda mapas de farm (PP) personalizados",
+      "body": "Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.\n\n**Parámetros:**\n• `-pp <valor o rango>`: Filtra por un PP objetivo (ej. `-pp 300` o `-pp 250-300`). Si indicas un valor único, buscará dentro de un rango de +-10%.\n• `-mods <mods>`: Filtra recomendaciones para mods específicos (ej. `-mods HDDT`, `-mods HR`, `-mods NM`).\n• `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100 de osu! (por defecto los excluye).\n\n**Estilos de Juego (Botones interactivos):**\n• **🎯 Saltos**: Filtra mapas con enfoque en patrones de saltos y aim.\n• **⚡ Streams**: Filtra mapas con enfoque en velocidad, stamina y streams.\n• **⏳ Maratones**: Recomienda mapas largos (+5 minutos).\n• **🔮 Loved**: Busca mapas en estado Loved/Qualified en lugar de Ranked/Approved.\n• **🏷️ User Tags**: Filtra exclusivamente mapas que tengan tags de la comunidad cargados en la BD y que tengan afinidad directa con tus patrones más jugados.",
+      "usage": "s.recommend [-pp rango] [-mods mod] [-jugados]\nEjemplos:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -jugados"
     }
   },
   "contributors": {
@@ -1059,6 +1064,47 @@
     "sort_plays": "por Partidas Jugadas",
     "leaderboard_no_players": "*No hay jugadores en esta página.*",
     "leaderboard_footer": "Sengo • Página {page} de {pages} • Mostrando #{from} - #{to} de {total}"
+  },
+  "recommend": {
+    "msg_thinking": "⏳ **Sengo está pensando...**\n> {step}",
+    "step_profile": "🔍 Obteniendo datos del perfil de osu!...",
+    "step_profile_log": "Obteniendo datos del perfil de osu!",
+    "err_no_plays_or_profile": "No se encontraron jugadas recientes o el perfil no existe.",
+    "err_only_std": "❌ El comando de recomendaciones (`sd.rec`) solo está disponible para el modo de juego **osu! standard**. Los demás modos (Taiko, Mania, Catch) no están soportados actualmente.",
+    "step_profile_analyze": "📊 Analizando el top 100 de jugadas para perfilar el estilo...",
+    "step_profile_analyze_log": "Analizando el top 100 de jugadas para perfilar el estilo",
+    "step_query_db": "🗄️ Consultando y puntuando mapas candidatos en la base de datos...",
+    "step_query_db_log": "Consultando y puntuando mapas candidatos en la base de datos",
+    "step_filter_plays": "⚔️ Filtrando mapas jugados y preparando recomendaciones...",
+    "step_filter_plays_log": "Filtrando mapas jugados y preparando recomendaciones",
+    "msg_searching_custom": "⏳ *Buscando recomendaciones personalizadas...*",
+    "embed_no_recs": "*No se encontraron mapas recomendados en el rango de **{min} - {max} pp** con los filtros seleccionados.*\n\n*Prueba usando los botones de abajo para probar alguna otra configuración (Más PP, otros mods, o incluyendo mapas ya jugados).*",
+    "embed_author": "Recomendaciones de Farm para {username}",
+    "embed_title": "Mapas Sugeridos (~{pp}pp)",
+    "embed_field_filters": "🔍 Filtros Activos",
+    "embed_field_filters_value": "`PP: {min}-{max}pp` | `Mods: {mods}` | `Jugados: {played}` | `Estilo: {style}`",
+    "embed_footer": "Sengo • Recomendaciones personalizadas por contenido",
+    "btn_refresh": "🔄 Otra",
+    "btn_more_pp": "➕ Más PP",
+    "btn_less_pp": "➖ Menos PP",
+    "btn_toggle_mods": "🕶️ Probar {mod}",
+    "btn_exclude_played": "🚫 Excluir Jugados",
+    "btn_include_played": "🎮 Incluir Jugados",
+    "btn_aim": "🎯 Saltos",
+    "btn_speed": "⚡ Streams",
+    "btn_length": "⏳ Maratones",
+    "btn_loved": "🔮 Loved",
+    "btn_tags": "🏷️ User Tags",
+    "btn_reset": "🏠 Reset Filtros",
+    "label_style_standard": "Estándar",
+    "label_style_aim": "🎯 Saltos / Aim",
+    "label_style_speed": "⚡ Streams / Speed",
+    "label_style_length": "⏳ Maratones / Largo",
+    "label_style_rarezas": "🔮 Loved / Raros",
+    "label_style_tags": "🏷️ Afinidad por Tags",
+    "label_mods_any": "Cualquiera",
+    "label_yes": "Sí",
+    "label_no": "No"
   }
 }
 

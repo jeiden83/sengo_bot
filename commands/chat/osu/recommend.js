@@ -3,6 +3,7 @@ const { doOsuRecommendEmbed, buildRecommendButtonsRow } = require("../../../view
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const RecommendationModel = require("../../../models/RecommendationModel.js");
 const { EmbedBuilder } = require("discord.js");
+const { t } = require("../../../utils/i18n.js");
 
 const recommendCache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 minutos
@@ -177,6 +178,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
 
 async function run(messages, args) {
     const { message, res, logger, interaction } = messages;
+    const locale = message.locale || 'es';
     const isSlash = !!interaction;
     let statusMessage = null;
     let isInitialRun = true;
@@ -186,13 +188,14 @@ async function run(messages, args) {
             logger.process(consoleText || stepText);
         }
         try {
+            const displayMsg = t(locale, 'recommend.msg_thinking', { step: stepText });
             if (isSlash) {
-                await interaction.editReply({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+                await interaction.editReply({ content: displayMsg });
             } else {
                 if (!statusMessage) {
-                    statusMessage = await message.channel.send({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+                    statusMessage = await message.channel.send({ content: displayMsg });
                 } else {
-                    await statusMessage.edit({ content: `⏳ **Sengo está pensando...**\n> ${stepText}` });
+                    await statusMessage.edit({ content: displayMsg });
                 }
             }
         } catch (err) {
@@ -250,7 +253,7 @@ async function run(messages, args) {
     }
 
     // 2. Parseamos argumentos con argsParser de Sengo
-    await updateStatus("🔍 Obteniendo datos del perfil de osu!...", "Obteniendo datos del perfil de osu!");
+    await updateStatus(t(locale, 'recommend.step_profile'), t(locale, 'recommend.step_profile_log'));
     const parser_res = await argsParser(cleanArgs, {
         "message": message,
         "res": res,
@@ -270,7 +273,7 @@ async function run(messages, args) {
         return;
     }
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
-        const errorMsg = "No se encontraron jugadas recientes o el perfil no existe.";
+        const errorMsg = t(locale, 'recommend.err_no_plays_or_profile');
         if (isSlash) {
             await interaction.editReply({ content: errorMsg });
         } else if (statusMessage) {
@@ -311,7 +314,7 @@ async function run(messages, args) {
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     if (activeGamemode !== "osu") {
-        const errorMsg = "❌ El comando de recomendaciones (`sd.rec`) solo está disponible para el modo de juego **osu! standard**. Los demás modos (Taiko, Mania, Catch) no están soportados actualmente.";
+        const errorMsg = t(locale, 'recommend.err_only_std');
         if (isSlash) {
             await interaction.editReply({ content: errorMsg });
         } else if (statusMessage) {
@@ -336,7 +339,7 @@ async function run(messages, args) {
     } else {
         // Obtener perfil del usuario para mostrar información correcta en el embed
         try {
-            await updateStatus("📊 Analizando el top 100 de jugadas para perfilar el estilo...", "Analizando el top 100 de jugadas para perfilar el estilo");
+            await updateStatus(t(locale, 'recommend.step_profile_analyze'), t(locale, 'recommend.step_profile_analyze_log'));
             const { Client } = require('osu-web.js');
             const token = await OsuUserModel.loadToken();
             const client = new Client(token.access_token);
@@ -370,7 +373,7 @@ async function run(messages, args) {
         async function getRecommendations() {
             try {
                 if (isInitialRun) {
-                    await updateStatus("🗄️ Consultando y puntuando mapas candidatos en la base de datos...", "Consultando y puntuando mapas candidatos en la base de datos");
+                    await updateStatus(t(locale, 'recommend.step_query_db'), t(locale, 'recommend.step_query_db_log'));
                 }
                 const candidates = await RecommendationModel.getPersonalizedRecommendations({
                     topScores,
@@ -383,7 +386,7 @@ async function run(messages, args) {
                 });
 
                 if (isInitialRun) {
-                    await updateStatus("⚔️ Filtrando mapas jugados y preparando recomendaciones...", "Filtrando mapas jugados y preparando recomendaciones");
+                    await updateStatus(t(locale, 'recommend.step_filter_plays'), t(locale, 'recommend.step_filter_plays_log'));
                 }
 
                 const acceptedHigh = [];
@@ -506,8 +509,8 @@ async function run(messages, args) {
     });
 
     let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
-    let embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
-    let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
+    let embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
+    let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 
     let sentMessage;
     if (isSlash) {
@@ -634,7 +637,7 @@ async function run(messages, args) {
             await i.deferUpdate();
 
             const loadingEmbed = EmbedBuilder.from(embed)
-                .setDescription(`⏳ *Buscando recomendaciones personalizadas...*`);
+                .setDescription(t(locale, 'recommend.msg_searching_custom'));
             await i.editReply({ embeds: [loadingEmbed] });
 
             if (i.customId === 'rec_refresh') {
@@ -683,8 +686,8 @@ async function run(messages, args) {
             });
 
             params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
-            embed = doOsuRecommendEmbed(message, profile, currentRecs, params);
-            rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter);
+            embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
+            rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 
             await i.editReply({
                 embeds: [embed],
@@ -714,19 +717,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Recomienda mapas de farm (PP) personalizados",
-    'body': 'Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.\n\n' +
-            '**Parámetros:**\n' +
-            '• `-pp <valor o rango>`: Filtra por un PP objetivo (ej. `-pp 300` o `-pp 250-300`). Si indicas un valor único, buscará dentro de un rango de +-10%.\n' +
-            '• `-mods <mods>`: Filtra recomendaciones para mods específicos (ej. `-mods HDDT`, `-mods HR`, `-mods NM`).\n' +
-            '• `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100 de osu! (por defecto los excluye).\n\n' +
-            '**Estilos de Juego (Botones interactivos):**\n' +
-            '• **🎯 Saltos**: Filtra mapas con enfoque en patrones de saltos y aim.\n' +
-            '• **⚡ Streams**: Filtra mapas con enfoque en velocidad, stamina y streams.\n' +
-            '• **⏳ Maratones**: Recomienda mapas largos (+5 minutos).\n' +
-            '• **🔮 Loved**: Busca mapas en estado Loved/Qualified en lugar de Ranked/Approved.\n' +
-            '• **🏷️ User Tags**: Filtra exclusivamente mapas que tengan tags de la comunidad cargados en la BD y que tengan afinidad directa con tus patrones más jugados.',
-    'usage': 's.recommend [-pp rango] [-mods mod] [-jugados]\nEjemplos:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -jugados'
+    'header': t('es', 'commands.recommend.header'),
+    'body': t('es', 'commands.recommend.body'),
+    'usage': t('es', 'commands.recommend.usage')
 };
 
 module.exports = { run, description: run.description, preloadDefaultRecommendation };

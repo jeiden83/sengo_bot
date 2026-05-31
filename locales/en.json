@@ -271,6 +271,11 @@
       "header": "Ranked Play details of a user",
       "body": "Shows global rank, rating (ELO), wins, played matches, and win rate of the user's Ranked Play (lazer).",
       "usage": "s.ranked : Shows your statistics.\ns.ranked 'osu_user' : Shows the statistics of the specified user.\ns.ranked -top : Shows the global Ranked Play leaderboard.\ns.ranked -top -wins : Shows the global leaderboard sorted by wins.\ns.ranked -server : Shows the leaderboard of all linked users in the bot.\ns.ranked -server 'server_id' : Shows the leaderboard of a specific server."
+    },
+    "recommend": {
+      "header": "Recommends personalized farm maps (PP)",
+      "body": "Suggests beatmaps matching your skill and playstyle based on Sengo's local database of ranked beatmaps.\n\n**Parameters:**\n• `-pp <value or range>`: Filter by a target PP (e.g. `-pp 300` or `-pp 250-300`). Single values search within a +-10% range.\n• `-mods <mods>`: Filter recommendations for specific mods (e.g. `-mods HDDT`, `-mods HR`, `-mods NM`).\n• `-jugados` or `-played`: Include beatmaps you have already played in your top 100 plays (default excludes them).\n\n**Playstyles (Interactive buttons):**\n• **🎯 Jumps**: Filter maps focusing on jump patterns and aim.\n• **⚡ Streams**: Filter maps focusing on speed, stamina, and streams.\n• **⏳ Marathons**: Recommend long maps (+5 minutes).\n• **🔮 Loved**: Look for Loved/Qualified maps instead of Ranked/Approved.\n• **🏷️ User Tags**: Exclusively filter maps with community tags matching your most played patterns.",
+      "usage": "s.recommend [-pp range] [-mods mod] [-played]\nExamples:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -played"
     }
   },
   "contributors": {
@@ -1059,6 +1064,47 @@
     "sort_plays": "by Played Matches",
     "leaderboard_no_players": "*No players on this page.*",
     "leaderboard_footer": "Sengo • Page {page} of {pages} • Showing #{from} - #{to} of {total}"
+  },
+  "recommend": {
+    "msg_thinking": "⏳ **Sengo is thinking...**\n> {step}",
+    "step_profile": "🔍 Fetching osu! profile data...",
+    "step_profile_log": "Fetching osu! profile data",
+    "err_no_plays_or_profile": "No recent plays found or profile does not exist.",
+    "err_only_std": "❌ The recommendation command (`sd.rec`) is only available for the **osu! standard** gamemode. Other modes (Taiko, Mania, Catch) are not currently supported.",
+    "step_profile_analyze": "📊 Analyzing top 100 plays to profile playstyle...",
+    "step_profile_analyze_log": "Analyzing top 100 plays to profile playstyle",
+    "step_query_db": "🗄️ Querying and scoring candidate maps in the database...",
+    "step_query_db_log": "Querying and scoring candidate maps in the database",
+    "step_filter_plays": "⚔️ Filtering played maps and preparing recommendations...",
+    "step_filter_plays_log": "Filtering played maps and preparing recommendations",
+    "msg_searching_custom": "⏳ *Searching for personalized recommendations...*",
+    "embed_no_recs": "*No recommended maps found in the **{min} - {max} pp** range with the selected filters.*\n\n*Try using the buttons below to attempt another configuration (More PP, other mods, or including already played maps).*",
+    "embed_author": "Farm Recommendations for {username}",
+    "embed_title": "Suggested Maps (~{pp}pp)",
+    "embed_field_filters": "🔍 Active Filters",
+    "embed_field_filters_value": "`PP: {min}-{max}pp` | `Mods: {mods}` | `Played: {played}` | `Style: {style}`",
+    "embed_footer": "Sengo • Personalized recommendations by content",
+    "btn_refresh": "🔄 Another",
+    "btn_more_pp": "➕ More PP",
+    "btn_less_pp": "➖ Less PP",
+    "btn_toggle_mods": "🕶️ Try {mod}",
+    "btn_exclude_played": "🚫 Exclude Played",
+    "btn_include_played": "🎮 Include Played",
+    "btn_aim": "🎯 Jumps",
+    "btn_speed": "⚡ Streams",
+    "btn_length": "⏳ Marathons",
+    "btn_loved": "🔮 Loved",
+    "btn_tags": "🏷️ User Tags",
+    "btn_reset": "🏠 Reset Filters",
+    "label_style_standard": "Standard",
+    "label_style_aim": "🎯 Jumps / Aim",
+    "label_style_speed": "⚡ Streams / Speed",
+    "label_style_length": "⏳ Marathons / Long",
+    "label_style_rarezas": "🔮 Loved / Rare",
+    "label_style_tags": "🏷️ Affinity by Tags",
+    "label_mods_any": "Any",
+    "label_yes": "Yes",
+    "label_no": "No"
   }
 }
 

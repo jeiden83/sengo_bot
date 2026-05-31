@@ -1,6 +1,8 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
 const emoji_mods = require("../src/emoji_mods.json");
+const { t } = require("../utils/i18n.js");
+
 
 function formatRecommendMods(modsStr) {
     if (!modsStr || modsStr === "NoMod") {
@@ -22,25 +24,29 @@ function formatRecommendMods(modsStr) {
  * @param {object} params Parámetros de la búsqueda (minPP, maxPP, mods, showPlayed, style)
  * @returns {EmbedBuilder} EmbedBuilder configurado para Discord
  */
-function doOsuRecommendEmbed(message, profile, recommendations, params) {
+function doOsuRecommendEmbed(message, profile, recommendations, params, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const { minPP, maxPP, mods, showPlayed, hasSupporter, style } = params;
     const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const numLocale = locale === 'es' ? 'es-ES' : 'en-US';
 
     let description = "";
 
     const styleLabels = {
-        'standard': 'Estándar',
-        'aim': '🎯 Saltos / Aim',
-        'speed': '⚡ Streams / Speed',
-        'length': '⏳ Maratones / Largo',
-        'rarezas': '🔮 Loved / Raros',
-        'tags': '🏷️ Afinidad por Tags'
+        'standard': t(locale, 'recommend.label_style_standard'),
+        'aim': t(locale, 'recommend.label_style_aim'),
+        'speed': t(locale, 'recommend.label_style_speed'),
+        'length': t(locale, 'recommend.label_style_length'),
+        'rarezas': t(locale, 'recommend.label_style_rarezas'),
+        'tags': t(locale, 'recommend.label_style_tags')
     };
-    const currentStyleLabel = styleLabels[style] || 'Estándar';
+    const currentStyleLabel = styleLabels[style] || t(locale, 'recommend.label_style_standard');
 
     if (recommendations.length === 0) {
-        description = `*No se encontraron mapas recomendados en el rango de **${minPP.toFixed(0)} - ${maxPP.toFixed(0)} pp** con los filtros seleccionados.*\n\n*Prueba usando los botones de abajo para probar alguna otra configuración (Más PP, otros mods, o incluyendo mapas ya jugados).*`;
+        description = t(locale, 'recommend.embed_no_recs', {
+            min: minPP.toFixed(0),
+            max: maxPP.toFixed(0)
+        });
     } else {
         recommendations.forEach((c, index) => {
             let map_link = `[${c.artist} - ${c.title} [${c.version}]](https://osu.ppy.sh/b/${c.beatmapId})`;
@@ -48,7 +54,9 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
                 map_link += ` [ [📥 osu!direct](${redirectBase}/osu/${c.beatmapsetId}) ]`;
             }
             description += `**${index + 1}.** ${map_link}\n`;
-            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${c.matchScore}% de Afinidad**\n`;
+            
+            const affinityStr = locale === 'es' ? `${c.matchScore}% de Afinidad` : `${c.matchScore}% Affinity`;
+            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**\n`;
             description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
 
             const speedMultiplier = (c.mods.includes("DT") || c.mods.includes("NC")) ? 1.5 : (c.mods.includes("HT") ? 0.75 : 1.0);
@@ -57,9 +65,10 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
             const seconds = adjustedLength % 60;
             const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
             const displayBpm = c.bpm ? Math.round(c.bpm * speedMultiplier) : 0;
-            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${(c.popularity || 0).toLocaleString()}\`\n`;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${(c.popularity || 0).toLocaleString(numLocale)}\`\n`;
             if (c.matchReasons && c.matchReasons.length > 0) {
-                description += `   ▸ *Razones: ${c.matchReasons.join(" • ")}*\n`;
+                const reasonsPrefix = locale === 'es' ? 'Razones' : 'Reasons';
+                description += `   ▸ *${reasonsPrefix}: ${c.matchReasons.join(" • ")}*\n`;
             }
             description += `\n`;
         });
@@ -67,21 +76,27 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Recomendaciones de Farm para ${profile.username}`,
+            name: t(locale, 'recommend.embed_author', { username: profile.username }),
             url: `https://osu.ppy.sh/users/${profile.id}`,
             iconURL: profile.avatar_url
         })
-        .setTitle(`Mapas Sugeridos (~${((minPP + maxPP) / 2).toFixed(0)}pp)`)
+        .setTitle(t(locale, 'recommend.embed_title', { pp: ((minPP + maxPP) / 2).toFixed(0) }))
         .setDescription(description)
         .addFields(
             {
-                name: "🔍 Filtros Activos",
-                value: `\`PP: ${minPP.toFixed(0)}-${maxPP.toFixed(0)}pp\` | \`Mods: ${mods || "Cualquiera"}\` | \`Jugados: ${showPlayed ? "Sí" : "No"}\` | \`Estilo: ${currentStyleLabel}\``
+                name: t(locale, 'recommend.embed_field_filters'),
+                value: t(locale, 'recommend.embed_field_filters_value', {
+                    min: minPP.toFixed(0),
+                    max: maxPP.toFixed(0),
+                    mods: mods || t(locale, 'recommend.label_mods_any'),
+                    played: showPlayed ? t(locale, 'recommend.label_yes') : t(locale, 'recommend.label_no'),
+                    style: currentStyleLabel
+                })
             }
         )
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo • Recomendaciones personalizadas por contenido",
+            text: t(locale, 'recommend.embed_footer'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
@@ -96,30 +111,31 @@ function doOsuRecommendEmbed(message, profile, recommendations, params) {
  * @param {boolean} hasRecs Si hay recomendaciones disponibles
  * @param {Array} recommendations Lista de mapas recomendados
  * @param {boolean} hasSupporter Si el usuario que ejecuta el comando tiene supporter activo
+ * @param {string} locale Código de idioma local
  * @returns {Array} Array de ActionRowBuilder
  */
-function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = [], hasSupporter = false) {
+function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = [], hasSupporter = false, locale = 'es') {
     const { showPlayed, style } = params;
     const rows = [];
 
     // Fila 1: Controles Básicos de Rango y Estado
     const btnRefresh = new ButtonBuilder()
         .setCustomId("rec_refresh")
-        .setLabel("🔄 Otra")
+        .setLabel(t(locale, 'recommend.btn_refresh'))
         .setStyle(ButtonStyle.Secondary)
         .setDisabled(!hasRecs);
 
     const btnMorePP = new ButtonBuilder()
         .setCustomId("rec_more_pp")
-        .setLabel("➕ Más PP")
+        .setLabel(t(locale, 'recommend.btn_more_pp'))
         .setStyle(ButtonStyle.Success);
 
     const btnLessPP = new ButtonBuilder()
         .setCustomId("rec_less_pp")
-        .setLabel("➖ Menos PP")
+        .setLabel(t(locale, 'recommend.btn_less_pp'))
         .setStyle(ButtonStyle.Success);
 
-    const toggleLabel = `🕶️ Probar ${suggestedMod || "Mods"}`;
+    const toggleLabel = t(locale, 'recommend.btn_toggle_mods', { mod: suggestedMod || "Mods" });
     const btnToggleMods = new ButtonBuilder()
         .setCustomId("rec_toggle_mods")
         .setLabel(toggleLabel)
@@ -127,7 +143,7 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
 
     const btnTogglePlayed = new ButtonBuilder()
         .setCustomId("rec_toggle_played")
-        .setLabel(showPlayed ? "🚫 Excluir Jugados" : "🎮 Incluir Jugados")
+        .setLabel(showPlayed ? t(locale, 'recommend.btn_exclude_played') : t(locale, 'recommend.btn_include_played'))
         .setStyle(showPlayed ? ButtonStyle.Danger : ButtonStyle.Primary);
 
     const controlRow = new ActionRowBuilder().addComponents(
@@ -142,27 +158,27 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
     // Fila 2: Estilos de Juego y Especialidad (Filtros principales)
     const btnAim = new ButtonBuilder()
         .setCustomId("rec_style_aim")
-        .setLabel("🎯 Saltos")
+        .setLabel(t(locale, 'recommend.btn_aim'))
         .setStyle(style === 'aim' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const btnSpeed = new ButtonBuilder()
         .setCustomId("rec_style_speed")
-        .setLabel("⚡ Streams")
+        .setLabel(t(locale, 'recommend.btn_speed'))
         .setStyle(style === 'speed' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const btnLength = new ButtonBuilder()
         .setCustomId("rec_style_length")
-        .setLabel("⏳ Maratones")
+        .setLabel(t(locale, 'recommend.btn_length'))
         .setStyle(style === 'length' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const btnRarezas = new ButtonBuilder()
         .setCustomId("rec_style_rarezas")
-        .setLabel("🔮 Loved")
+        .setLabel(t(locale, 'recommend.btn_loved'))
         .setStyle(style === 'rarezas' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const btnTags = new ButtonBuilder()
         .setCustomId("rec_style_tags")
-        .setLabel("🏷️ User Tags")
+        .setLabel(t(locale, 'recommend.btn_tags'))
         .setStyle(style === 'tags' ? ButtonStyle.Success : ButtonStyle.Secondary);
 
     const styleRow = new ActionRowBuilder().addComponents(
@@ -177,7 +193,7 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
     // Fila 3: Acciones especiales (Reset)
     const btnReset = new ButtonBuilder()
         .setCustomId("rec_style_reset")
-        .setLabel("🏠 Reset Filtros")
+        .setLabel(t(locale, 'recommend.btn_reset'))
         .setStyle(ButtonStyle.Danger)
         .setDisabled(style === 'standard' || !style);
 
