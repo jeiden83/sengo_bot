@@ -1,6 +1,7 @@
 const { SlashCommandBuilder, REST, Routes, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fs = require('fs');
 const path = require('path');
+const { t } = require("../utils/i18n.js");
 
 // Maneja el fallo de verificación de OAuth enviando un DM instructivo con un botón de enlace directo
 async function handleOAuthFailure(author, logger) {
@@ -611,12 +612,41 @@ async function loadSlashCommands(chat_commands, config) {
 		}
 	}
 
+	// Generar localizaciones de descripción para un comando usando las claves de i18n
+	function getDescriptionLocalizations(commandName) {
+		const key = `commands.${commandName}.header`;
+		const esDesc = t('es', key);
+		const enDesc = t('en', key);
+
+		// Si la clave no existe (t() devuelve la clave tal cual), no inyectar localizaciones
+		if (esDesc === key && enDesc === key) return null;
+
+		const localizations = {};
+		if (esDesc !== key) {
+			const esDescTrunc = esDesc.length > 100 ? esDesc.slice(0, 97) + '...' : esDesc;
+			localizations['es-ES'] = esDescTrunc;
+			localizations['es-419'] = esDescTrunc;
+		}
+		if (enDesc !== key) {
+			const enDescTrunc = enDesc.length > 100 ? enDesc.slice(0, 97) + '...' : enDesc;
+			localizations['en-US'] = enDescTrunc;
+			localizations['en-GB'] = enDescTrunc;
+		}
+
+		return Object.keys(localizations).length > 0 ? localizations : null;
+	}
+
 	// Listar los slashs
 	const commands = Array.from(chat_main_commands_set).map(command_name => {
+		const descLocalizations = getDescriptionLocalizations(command_name);
+
 		if (slash_commands_map.has(command_name)) {
 			const custom_command = slash_commands_map.get(command_name);
 			if (custom_command.data) {
 				const data = custom_command.data.setName(command_name);
+				if (descLocalizations && typeof data.setDescriptionLocalizations === 'function') {
+					data.setDescriptionLocalizations(descLocalizations);
+				}
 				if (typeof data.setIntegrationTypes === 'function') {
 					data.setIntegrationTypes([0, 1]);
 				}
@@ -650,6 +680,9 @@ async function loadSlashCommands(chat_commands, config) {
 			.setName(command_name)
 			.setDescription(commandDescription);
 
+		if (descLocalizations && typeof default_command.setDescriptionLocalizations === 'function') {
+			default_command.setDescriptionLocalizations(descLocalizations);
+		}
 		if (typeof default_command.setIntegrationTypes === 'function') {
 			default_command.setIntegrationTypes([0, 1]);
 		}
