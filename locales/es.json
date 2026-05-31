@@ -211,6 +211,11 @@
       "header": "Vincula tu cuenta de osu! con el bot",
       "body": "Vincula tu usuario de Discord con tu cuenta de osu!.\nPor defecto usa la vinculación tradicional (pública).\nUsa el flag `-oauth` para vincularte de forma segura y privada por DMs.",
       "usage": "s.link [usuario_osu] : Vincula tu cuenta de forma tradicional.\ns.link -oauth : Envía el enlace de vinculación seguro por privado.\ns.link unlink : Desvincula completamente tu cuenta."
+    },
+    "c": {
+      "header": "El >c de toda la vida",
+      "body": "Compara una score en el último mapa que consigue el bot Sengo. La score puede ser del usuario del comando u otro jugador.",
+      "usage": "s.c : Compara la score del usuario linkeado al bot.\ns.c 'usuario' : Compara la score del usuario en el argumento.\ns.c -p 2 : Muestra la página 2 de la lista de puntuaciones.\ns.c -m HD : Filtra por mods exactos.\ns.c -g 200 : Filtra por jugadas de 200 pp o más.\ns.c -i 1 : Muestra un embed detallado de la mejor score (similar a .rs)."
     }
   },
   "contributors": {
@@ -633,5 +638,24 @@
     "oauth_title": "Vinculación de Cuenta Segura - Sengo",
     "oauth_desc": "Para vincular tu cuenta de osu! de forma completamente segura y privada mediante la API oficial (OAuth), haz clic en el siguiente botón:\n\n👉 **[Autorizar Cuenta de osu!]({url})**\n\n**¿Por qué usar OAuth?**\n• **Seguridad**: No necesitamos tu contraseña.\n• **Pool de Soporte**: Tu cuenta ayudará a consultar rankings nacionales si tienes supporter.\n• **Privado**: Este proceso es completamente confidencial.",
     "oauth_footer": "Sistema OAuth de Sengo v2"
+  },
+  "compare": {
+    "searching_recent": "Buscando beatmap reciente en el canal...",
+    "fetching_metadata": "Obteniendo metadatos del beatmap...",
+    "fetching_scores": "Consultando puntuaciones en el beatmap...",
+    "simulating_pp": "Simulando PP en el beatmap...",
+    "err_no_scores_passed": "El usuario no tiene scores que no sean fallidas en el mapa.",
+    "err_no_scores": "El usuario no tiene scores en el mapa.",
+    "err_no_filtered_scores": "No se encontraron puntuaciones de **{username}** con los filtros aplicados:",
+    "filter_exact_mods": "Mods exactos",
+    "filter_contain_mods": "Contiene mods",
+    "warn_max_index": "⚠️ Solo se encontraron **{count}** puntuaciones con los filtros activos. Mostrando la última (#{count}):",
+    "warn_invalid_index": "⚠️ Índice inválido. Mostrando la mejor (#1):",
+    "showing_score_index": "Mostrando la puntuación **#{index}** de **{total}** comparadas:",
+    "active_filters": "Filtros activos",
+    "single_embed_author": "Comparación de score #{rank} para {username}",
+    "single_embed_footer": "Sengo • Jugada #{index} de {total} comparadas",
+    "list_embed_footer": "Mostrando puntuaciones {start}-{end} de {total} totales",
+    "list_embed_content": "Puntuaciones de `{username}` en `osu!{mode}`:\n{mapa}"
   }
 }

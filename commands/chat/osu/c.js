@@ -1,10 +1,11 @@
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
-
 const { doOsuCompareSingleEmbed, doOsuCompareListEmbed, getOsuCompareContent } = require("../../../views/osuEmbeds.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
+    const locale = message.locale || 'es';
 
     const initial_parsed = argsParserNoCommand(args);
     let beatmap_url = initial_parsed.beatmap_url;
@@ -12,7 +13,7 @@ async function run(messages, args) {
 
     let channel_result = null;
     if (!beatmap_url) {
-        if (logger) logger.process("Buscando beatmap reciente en el canal");
+        if (logger) logger.process(t(locale, 'compare.searching_recent'));
         channel_result = reply ? await findBeatmapInChannel(reply, true, initial_parsed.index) : await findBeatmapInChannel(message, false, initial_parsed.index);
         beatmap_url = channel_result.beatmap_url;
         detected_gamemode = channel_result.gamemode;
@@ -20,14 +21,14 @@ async function run(messages, args) {
     }
 
     // Para revisar si es graveyard o no
-    if (logger) logger.process("Obteniendo metadatos del beatmap");
+    if (logger) logger.process(t(locale, 'compare.fetching_metadata'));
     const beatmap_metadata = await getBeatmap(beatmap_url);
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
 
     // Si detectamos el modo de juego de la última play mostrada en el canal, lo priorizamos frente al nativo del beatmap
     const targetGamemode = detected_gamemode || beatmap_metadata.mode;
 
-    if (logger) logger.process("Consultando puntuaciones en el beatmap");
+    if (logger) logger.process(t(locale, 'compare.fetching_scores'));
     const { fn_response, parsed_args } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados
         { 
             "message": message, 
@@ -48,9 +49,9 @@ async function run(messages, args) {
     const filterPass = parsed_args.filterPass;
     if (filterPass) {
         scores = scores.filter(score => score.passed);
-        if (scores.length == 0) return `El usuario no tiene scores que no sean fallidas en el mapa.`;
-    } else if (scores.length == 0) {
-        return `El usuario no tiene scores en el mapa.`;
+        if (scores.length === 0) return t(locale, 'compare.err_no_scores_passed');
+    } else if (scores.length === 0) {
+        return t(locale, 'compare.err_no_scores');
     }
 
     // Asignamos el índice original
@@ -60,8 +61,6 @@ async function run(messages, args) {
 
     // APLICAR FILTROS SOLICITADOS
     let filtered_scores = scores;
-
-
 
     if (parsed_args.modFilter !== null) {
         const filterStr = parsed_args.modFilter;
@@ -118,9 +117,9 @@ async function run(messages, args) {
 
     if (filtered_scores.length === 0) {
         const username = scores[0]?.user?.username || parsed_args.username[0] || 'Usuario';
-        let errorMsg = `No se encontraron puntuaciones de **${username}** con los filtros aplicados:`;
-        if (parsed_args.modFilter !== null) errorMsg += `\n ▸ Mods exactos: \`${parsed_args.modFilter}\``;
-        if (parsed_args.modContainFilter !== null) errorMsg += `\n ▸ Contiene mods: \`${parsed_args.modContainFilter}\``;
+        let errorMsg = t(locale, 'compare.err_no_filtered_scores', { username });
+        if (parsed_args.modFilter !== null) errorMsg += `\n ▸ ${t(locale, 'compare.filter_exact_mods')}: \`${parsed_args.modFilter}\``;
+        if (parsed_args.modContainFilter !== null) errorMsg += `\n ▸ ${t(locale, 'compare.filter_contain_mods')}: \`${parsed_args.modContainFilter}\``;
         if (parsed_args.ppThreshold !== null) errorMsg += `\n ▸ PP >= \`${parsed_args.ppThreshold}\``;
         return errorMsg;
     }
@@ -128,7 +127,7 @@ async function run(messages, args) {
     // Calcular PP para los scores filtrados si no tienen
     let needsPP = filtered_scores.some(s => !s.pp);
     if (needsPP || beatmap_metadata.status === 'loved') {
-        if (logger) logger.process("Simulando PP en el beatmap");
+        if (logger) logger.process(t(locale, 'compare.simulating_pp'));
         const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
         let map;
         try {
@@ -157,13 +156,13 @@ async function run(messages, args) {
         let content_msg = '';
 
         if (index > filtered_scores.length) {
-            content_msg = `⚠️ Solo se encontraron **${filtered_scores.length}** puntuaciones con los filtros activos. Mostrando la última (#${filtered_scores.length}):`;
+            content_msg = t(locale, 'compare.warn_max_index', { count: filtered_scores.length });
             index = filtered_scores.length;
         } else if (index < 1) {
-            content_msg = `⚠️ Índice inválido. Mostrando la mejor (#1):`;
+            content_msg = t(locale, 'compare.warn_invalid_index');
             index = 1;
         } else {
-            content_msg = `Mostrando la puntuación **#${index}** de **${filtered_scores.length}** comparadas:`;
+            content_msg = t(locale, 'compare.showing_score_index', { index, total: filtered_scores.length });
         }
 
         async function processScore(scoreIndex) {
@@ -249,7 +248,7 @@ async function run(messages, args) {
                     index = filtered_scores.length;
                 }
 
-                content_msg = `Mostrando la puntuación **#${index}** de **${filtered_scores.length}** comparadas:`;
+                content_msg = t(locale, 'compare.showing_score_index', { index, total: filtered_scores.length });
                 const embed = await processScore(index);
 
                 await i.editReply({
@@ -283,7 +282,7 @@ async function run(messages, args) {
 
     const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, filtered_scores.slice(startIndex, startIndex + 10), startIndex, filtered_scores.length, beatmap_metadata);
     const username = scores[0]?.user?.username || (await getOsuUser(parsed_args)).username || 'Usuario';
-    const content = getOsuCompareContent(parsed_args, username, beatmap_metadata);
+    const content = getOsuCompareContent(parsed_args, username, beatmap_metadata, locale);
 
     const getListButtonsRow = (start, total) => {
         return buildPaginationRow({ prefix: 'c', current: start, total, pageSize: 10 });
@@ -358,9 +357,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': "El >c de toda la vida",
-    'body': 'Compara una score en el ultimo mapa que consigue el Sengo. La score puede ser del usuario del comando u otro jugador',
-    'usage': `s.c : Compara la score del usuario linkeado al bot \ns.c 'usuario' : Compara la score del usuario en el argumento. \ns.c -p 2 : Muestra la página 2 de la lista de puntuaciones. \ns.c -m HD : Filtra por mods exactos. \ns.c -g 200 : Filtra por jugadas de 200 pp o más. \ns.c -i 1 : Muestra un embed detallado de la mejor score (similar a .rs).`
+    'header': t('es', 'commands.c.header'),
+    'body': t('es', 'commands.c.body'),
+    'usage': t('es', 'commands.c.usage')
 }
 
-module.exports = { run, "description": run.description }
+module.exports = { run, description: run.description }

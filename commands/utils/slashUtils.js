@@ -64,6 +64,7 @@ function parseOsuSlashArgs(interaction, res) {
             author: interaction.user,
             member: interaction.member,
             guild: interaction.guild,
+            locale: interaction.resolvedLocale || interaction.locale || 'es'
         },
         res: res,
         reply: null,

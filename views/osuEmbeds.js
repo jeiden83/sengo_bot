@@ -1,4 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
+const { t } = require("../utils/i18n.js");
 const {
     getEmbedColor,
     getFormattedScore,
@@ -452,6 +453,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
  * Renderiza el embed para comparar una única score en un mapa específico (c.js)
  */
 async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, beatmap_metadata) {
+    const locale = message.locale || 'es';
     const username = score.user?.username || parsed_args.username[0] || 'Usuario';
     const user_url = score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user?.id || score.user_id}`;
     const avatar_url = score.user?.avatar_url || `https://a.ppy.sh/${score.user_id || score.user?.id}`;
@@ -490,20 +492,20 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     }
 
     let active_filters = [];
-    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
-    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
+    if (parsed_args.modFilter !== null) active_filters.push(`${t(locale, 'compare.filter_exact_mods')}: ${parsed_args.modFilter}`);
+    if (parsed_args.modContainFilter !== null) active_filters.push(`${t(locale, 'compare.filter_contain_mods')}: ${parsed_args.modContainFilter}`);
     if (parsed_args.ppThreshold !== null) active_filters.push(`PP >= ${parsed_args.ppThreshold}`);
 
     let prefix_desc = '';
     if (active_filters.length > 0) {
-        prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+        prefix_desc += `🔍 *${t(locale, 'compare.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Comparación de score #${score.originalRank || index} para ${username}`,
+            name: t(locale, 'compare.single_embed_author', { rank: score.originalRank || index, username }),
             url: user_url,
             iconURL: `${avatar_url}`,
         })
@@ -515,7 +517,7 @@ ${ansiBlock}
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Jugada #${index} de ${total_plays} comparadas`,
+            text: t(locale, 'compare.single_embed_footer', { index, total: total_plays }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp(new Date(score.ended_at || score.created_at));
@@ -527,15 +529,16 @@ ${ansiBlock}
  * Renderiza el embed para la lista de puntuaciones comparadas (c.js)
  */
 async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, startIndex, total_plays, beatmap_metadata) {
+    const locale = message.locale || 'es';
     let embed_description = '';
 
     let active_filters = [];
-    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
-    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
+    if (parsed_args.modFilter !== null) active_filters.push(`${t(locale, 'compare.filter_exact_mods')}: ${parsed_args.modFilter}`);
+    if (parsed_args.modContainFilter !== null) active_filters.push(`${t(locale, 'compare.filter_contain_mods')}: ${parsed_args.modContainFilter}`);
     if (parsed_args.ppThreshold !== null) active_filters.push(`PP >= ${parsed_args.ppThreshold}`);
 
     if (active_filters.length > 0) {
-        embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+        embed_description += `🔍 *${t(locale, 'compare.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
     for (let i = 0; i < user_scores_chunk.length; i++) {
@@ -591,7 +594,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         .setColor(embedColor)
         .setThumbnail(avatar_url)
         .setFooter({
-            text: `Mostrando puntuaciones ${startIndex + 1}-${startIndex + user_scores_chunk.length} de ${total_plays} totales`,
+            text: t(locale, 'compare.list_embed_footer', { start: startIndex + 1, end: startIndex + user_scores_chunk.length, total: total_plays }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -1102,13 +1105,13 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     return { embeds: [embed, embed2] };
 }
 
-function getOsuCompareContent(parsed_args, username, beatmap_metadata) {
+function getOsuCompareContent(parsed_args, username, beatmap_metadata, locale = 'es') {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
 
     let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
     const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
-    return `**Puntuaciones de \`${username}\` en \`osu!${displayMode}\`: \n${mapa}**`;
+    return t(locale, 'compare.list_embed_content', { username, mode: displayMode, mapa });
 }
 
 

@@ -211,6 +211,11 @@
       "header": "Link your osu! account with the bot",
       "body": "Link your Discord user with your osu! account.\nBy default, it uses traditional (public) linking.\nUse the `-oauth` flag to link securely and privately via DMs.",
       "usage": "s.link [osu_user] : Link your account traditionally.\ns.link -oauth : Sends the secure linking link privately.\ns.link unlink : Completely unlink your account."
+    },
+    "c": {
+      "header": "The classic compare command (>c)",
+      "body": "Compares a score on the last map fetched by Sengo. The score can belong to the command user or another player.",
+      "usage": "s.c : Compares the score of the user linked to the bot.\ns.c 'user' : Compares the score of the user in the argument.\ns.c -p 2 : Shows page 2 of the scores list.\ns.c -m HD : Filters by exact mods.\ns.c -g 200 : Filters by scores of 200 pp or more.\ns.c -i 1 : Shows a detailed embed of the best score (similar to .rs)."
     }
   },
   "contributors": {
@@ -633,5 +638,24 @@
     "oauth_title": "Secure Account Linking - Sengo",
     "oauth_desc": "To link your osu! account completely securely and privately via the official API (OAuth), click the button below:\n\n👉 **[Authorize osu! Account]({url})**\n\n**Why use OAuth?**\n• **Security**: We do not need your password.\n• **Supporter Pool**: Your account will help fetch national leaderboards if you have supporter.\n• **Private**: This process is completely confidential.",
     "oauth_footer": "Sengo OAuth System v2"
+  },
+  "compare": {
+    "searching_recent": "Searching for recent beatmap in the channel...",
+    "fetching_metadata": "Fetching beatmap metadata...",
+    "fetching_scores": "Fetching scores on the beatmap...",
+    "simulating_pp": "Simulating PP on the beatmap...",
+    "err_no_scores_passed": "The user has no passed scores on the map.",
+    "err_no_scores": "The user has no scores on the map.",
+    "err_no_filtered_scores": "No scores found for **{username}** with the applied filters:",
+    "filter_exact_mods": "Exact mods",
+    "filter_contain_mods": "Contains mods",
+    "warn_max_index": "⚠️ Only **{count}** scores were found with the active filters. Showing the last one (#{count}):",
+    "warn_invalid_index": "⚠️ Invalid index. Showing the best one (#1):",
+    "showing_score_index": "Showing score **#{index}** of **{total}** compared:",
+    "active_filters": "Active filters",
+    "single_embed_author": "Score comparison #{rank} for {username}",
+    "single_embed_footer": "Sengo • Score #{index} of {total} compared",
+    "list_embed_footer": "Showing scores {start}-{end} of {total} total",
+    "list_embed_content": "Scores for `{username}` on `osu!{mode}`:\n{mapa}"
   }
 }
