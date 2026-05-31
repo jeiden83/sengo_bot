@@ -18,7 +18,7 @@
     "help_title": "🌐 Language Configuration",
     "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`.\n\nTo see available languages, use `{prefix}language list` or `{prefix}language -list`.",
     "list_title": "🌐 Available Languages",
-    "list_description": "Sengo currently supports the following languages:\n\n• 🇪🇸 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\nTo change the language of this server, an administrator must run:\n`{prefix}language [es|en]`",
+    "list_description": "Sengo currently supports the following languages:\n\n• 🇻🇪 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\nTo change the language of this server, an administrator must run:\n`{prefix}language [es|en]`",
     "only_guild": "This command can only be used in a server.",
     "no_admin": "You do not have Administrator permissions to change the server language.",
     "db_error": "There was an error trying to update the language in the database."
