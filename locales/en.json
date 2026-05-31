@@ -175,6 +175,11 @@
       "header": "Displays the high-resolution background of a beatmap",
       "body": "Gets and sends the high-resolution background image of the last beatmap sent in the channel or the specified beatmap.",
       "usage": "s.bg : Sends the background of the last beatmap in the channel.\ns.bg <beatmap_id> : Sends the background of a beatmap by its ID."
+    },
+    "daily": {
+      "header": "Stats of the current Daily Challenge",
+      "body": "Shows the active Daily Challenge map, its stars, creator, the time remaining to complete it, and the current top 3 scores.",
+      "usage": "s.daily"
     }
   },
   "contributors": {
@@ -501,5 +506,21 @@
     "err_fetch_failed": "❌ Could not load metadata for the beatmap with ID `{id}`.",
     "embed_author": "Background of: {artist} - {title} [{version}]",
     "embed_footer": "Sengo • Beatmapset ID: {id}"
+  },
+  "daily": {
+    "err_token_load": "❌ Could not load osu! authentication token. Try again later.",
+    "err_no_daily": "⚠️ No active Daily Challenge was found at the moment.",
+    "err_no_beatmap": "⚠️ Could not retrieve beatmap information for the current Daily Challenge.",
+    "no_scores": "*No scores registered yet.*",
+    "attempts": " ({count} attempts)",
+    "one_attempt": " (1 attempt)",
+    "err_unexpected": "❌ An unexpected error occurred while processing the Daily Challenge command.",
+    "embed_author": "🏆 osu! Daily Challenge: {name}",
+    "embed_desc": "**Difficulty:** [{version}](https://osu.ppy.sh/beatmaps/{id})\n**Creator:** [{creator}](https://osu.ppy.sh/users/{userId})\n\n• **Stars:** ⭐ `{stars}`\n• **Length:** ⏱️ `{duration}`\n• **Current Participants:** 👥 `{participants}`",
+    "embed_field_leaderboard": "⚡ Top 3 Leaderboard",
+    "embed_field_time_remaining": "⏳ Time Remaining",
+    "embed_time_value": "Ends <t:{timestamp}:R> (<t:{timestamp}:F>)",
+    "embed_field_update": "🔄 Update Info",
+    "embed_update_value": "Resets automatically every day at **14:00 UTC**."
   }
 }

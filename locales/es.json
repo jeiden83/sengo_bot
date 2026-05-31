@@ -175,6 +175,11 @@
       "header": "Muestra el fondo en alta resolución de un beatmap",
       "body": "Obtiene y envía la imagen de fondo (Background) en alta resolución del último mapa enviado en el canal o del mapa especificado.",
       "usage": "s.bg : Envía el fondo del último mapa del canal.\ns.bg <id_mapa> : Envía el fondo de un mapa por su ID."
+    },
+    "daily": {
+      "header": "Estadísticas del Daily Challenge actual",
+      "body": "Muestra el mapa del Daily Challenge activo, sus estrellas, autor, el tiempo restante para completarlo y el top 3 de puntuaciones actuales.",
+      "usage": "s.daily"
     }
   },
   "contributors": {
@@ -501,5 +506,21 @@
     "err_fetch_failed": "❌ No se pudieron cargar los metadatos del mapa con ID `{id}`.",
     "embed_author": "Fondo de: {artist} - {title} [{version}]",
     "embed_footer": "Sengo • Beatmapset ID: {id}"
+  },
+  "daily": {
+    "err_token_load": "❌ No se pudo cargar el token de autenticación de osu!. Inténtalo más tarde.",
+    "err_no_daily": "⚠️ No se encontró ningún Daily Challenge activo en este momento.",
+    "err_no_beatmap": "⚠️ No se pudo obtener la información del mapa del Daily Challenge actual.",
+    "no_scores": "*No hay puntuaciones registradas aún.*",
+    "attempts": " ({count} intentos)",
+    "one_attempt": " (1 intento)",
+    "err_unexpected": "❌ Ocurrió un error inesperado al procesar el comando del Daily Challenge.",
+    "embed_author": "🏆 Osu! Daily Challenge: {name}",
+    "embed_desc": "**Dificultad:** [{version}](https://osu.ppy.sh/beatmaps/{id})\n**Creador:** [{creator}](https://osu.ppy.sh/users/{userId})\n\n• **Estrellas:** ⭐ `{stars}`\n• **Duración:** ⏱️ `{duration}`\n• **Participantes actuales:** 👥 `{participants}`",
+    "embed_field_leaderboard": "⚡ Top 3 Clasificación",
+    "embed_field_time_remaining": "⏳ Tiempo Restante",
+    "embed_time_value": "Termina <t:{timestamp}:R> (<t:{timestamp}:F>)",
+    "embed_field_update": "🔄 Actualización",
+    "embed_update_value": "Se actualiza automáticamente todos los días a las **14:00 UTC**."
   }
 }

@@ -1,14 +1,16 @@
 const { loadToken } = require("../../utils/osu.js");
 const { doOsuDailyEmbed } = require("../../../views/osuDailyViews.js");
 const axios = require('axios');
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message } = messages;
+    const locale = message.locale || 'es';
 
     try {
         const token = await loadToken();
         if (!token) {
-            return "❌ No se pudo cargar el token de autenticación de osu!. Inténtalo más tarde.";
+            return t(locale, 'daily.err_token_load');
         }
 
         const roomsUrl = 'https://osu.ppy.sh/api/v2/rooms';
@@ -28,18 +30,16 @@ async function run(messages, args) {
         const dailyRoom = rooms.find(room => room.category === 'daily_challenge');
 
         if (!dailyRoom) {
-            return "⚠️ No se encontró ningún Daily Challenge activo en este momento.";
+            return t(locale, 'daily.err_no_daily');
         }
 
         const beatmap = dailyRoom.current_playlist_item?.beatmap;
         if (!beatmap) {
-            return "⚠️ No se pudo obtener la información del mapa del Daily Challenge actual.";
+            return t(locale, 'daily.err_no_beatmap');
         }
 
-        const beatmapset = beatmap.beatmapset;
-
         // Fetch leaderboard for top 3
-        let topScoresText = "*No hay puntuaciones registradas aún.*";
+        let topScoresText = t(locale, 'daily.no_scores');
         try {
             const lbUrl = `https://osu.ppy.sh/api/v2/rooms/${dailyRoom.id}/leaderboard`;
             const lbResponse = await axios.get(lbUrl, {
@@ -56,7 +56,9 @@ async function run(messages, args) {
                     const accuracy = (score.accuracy * 100).toFixed(2);
                     const formattedScore = score.total_score.toLocaleString();
                     const username = score.user?.username || "Unknown";
-                    const attempts = score.attempts > 1 ? ` (${score.attempts} intentos)` : ` (1 intento)`;
+                    const attempts = score.attempts > 1 
+                        ? t(locale, 'daily.attempts', { count: score.attempts }) 
+                        : t(locale, 'daily.one_attempt');
                     return `**${medals[index]} #${index + 1} [${username}](https://osu.ppy.sh/users/${score.user_id})** - \`${formattedScore}\` • **${accuracy}%**${attempts}`;
                 }).join("\n");
             }
@@ -71,7 +73,7 @@ async function run(messages, args) {
 
     } catch (error) {
         console.error("Error en s.daily:", error);
-        return "❌ Ocurrió un error inesperado al procesar el comando del Daily Challenge.";
+        return t(locale, 'daily.err_unexpected');
     }
 }
 
@@ -82,9 +84,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': 'Estadísticas del Daily Challenge actual',
-    'body': 'Muestra el mapa del Daily Challenge activo, sus estrellas, autor, el tiempo restante para completarlo y el top 3 de puntuaciones actuales.',
-    'usage': 's.daily'
+    'header': t('es', 'commands.daily.header'),
+    'body': t('es', 'commands.daily.body'),
+    'usage': t('es', 'commands.daily.usage')
 };
 
-module.exports = { run };
+module.exports = { run, description: run.description };

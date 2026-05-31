@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
 /**
  * Renderiza el embed para el comando s.daily
@@ -8,6 +9,7 @@ function doOsuDailyEmbed(message, dailyRoom, beatmap, topScoresText) {
     const beatmapset = beatmap.beatmapset;
     const embedColor = getEmbedColor(message);
     const endsAtTimestamp = Math.floor(Date.parse(dailyRoom.ends_at) / 1000);
+    const locale = message.locale || 'es';
 
     // Convertir duración a MM:SS
     const minutes = Math.floor(beatmap.total_length / 60);
@@ -16,21 +18,24 @@ function doOsuDailyEmbed(message, dailyRoom, beatmap, topScoresText) {
 
     return new EmbedBuilder()
         .setAuthor({
-            name: `🏆 Osu! Daily Challenge: ${dailyRoom.name.replace("Daily Challenge: ", "")}`,
+            name: t(locale, 'daily.embed_author', { name: dailyRoom.name.replace("Daily Challenge: ", "") }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTitle(`${beatmapset.artist} - ${beatmapset.title}`)
         .setURL(`https://osu.ppy.sh/beatmapsets/${beatmapset.id}#osu/${beatmap.id}`)
-        .setDescription(`**Dificultad:** [\`${beatmap.version}\`](https://osu.ppy.sh/beatmaps/${beatmap.id})
-**Creador:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmap.user_id})
-
-• **Estrellas:** ⭐ \`${beatmap.difficulty_rating.toFixed(2)}\`
-• **Duración:** ⏱️ \`${formattedLength}\`
-• **Participantes actuales:** 👥 \`${dailyRoom.participant_count.toLocaleString()}\``)
+        .setDescription(t(locale, 'daily.embed_desc', {
+            version: beatmap.version,
+            id: beatmap.id,
+            creator: beatmapset.creator,
+            userId: beatmap.user_id,
+            stars: beatmap.difficulty_rating.toFixed(2),
+            duration: formattedLength,
+            participants: dailyRoom.participant_count.toLocaleString()
+        }))
         .addFields(
-            { name: "⚡ Top 3 Clasificación", value: topScoresText, inline: false },
-            { name: "⏳ Tiempo Restante", value: `Termina <t:${endsAtTimestamp}:R> (<t:${endsAtTimestamp}:F>)`, inline: false },
-            { name: "🔄 Actualización", value: "Se actualiza automáticamente todos los días a las **14:00 UTC**.", inline: false }
+            { name: t(locale, 'daily.embed_field_leaderboard'), value: topScoresText, inline: false },
+            { name: t(locale, 'daily.embed_field_time_remaining'), value: t(locale, 'daily.embed_time_value', { timestamp: endsAtTimestamp }), inline: false },
+            { name: t(locale, 'daily.embed_field_update'), value: t(locale, 'daily.embed_update_value'), inline: false }
         )
         .setImage(beatmapset.covers["cover@2x"] || beatmapset.covers.cover)
         .setColor(embedColor)
