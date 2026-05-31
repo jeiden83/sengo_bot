@@ -170,6 +170,11 @@
       "header": "osu! Friends List",
       "body": "Displays the player's friends list by pages, detailing their supporter status, Sengo linking, and mutual state.",
       "usage": "s.amigos : Displays your friends by pages.\ns.amigos -sengo : Compares your friends against the users linked to the bot (OWNER only)."
+    },
+    "bg": {
+      "header": "Displays the high-resolution background of a beatmap",
+      "body": "Gets and sends the high-resolution background image of the last beatmap sent in the channel or the specified beatmap.",
+      "usage": "s.bg : Sends the background of the last beatmap in the channel.\ns.bg <beatmap_id> : Sends the background of a beatmap by its ID."
     }
   },
   "contributors": {
@@ -490,5 +495,11 @@
     "log_get_friends": "Getting friends from osu! API...",
     "log_check_bot_linked": "Querying users linked to the bot...",
     "log_check_mutuals_page": "Checking mutual states for page {page}..."
+  },
+  "bg": {
+    "err_no_map_found": "❌ No beatmap was found in the channel history to retrieve the background.",
+    "err_fetch_failed": "❌ Could not load metadata for the beatmap with ID `{id}`.",
+    "embed_author": "Background of: {artist} - {title} [{version}]",
+    "embed_footer": "Sengo • Beatmapset ID: {id}"
   }
 }

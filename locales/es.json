@@ -170,6 +170,11 @@
       "header": "Lista de amigos en osu!",
       "body": "Muestra la lista de amigos del jugador por páginas, detallando su supporter, vinculación a Sengo y estado de mutual.",
       "usage": "s.amigos : Muestra tus amigos por páginas.\ns.amigos -sengo : Compara tus amigos contra los vinculados al bot (solo OWNER)."
+    },
+    "bg": {
+      "header": "Muestra el fondo en alta resolución de un beatmap",
+      "body": "Obtiene y envía la imagen de fondo (Background) en alta resolución del último mapa enviado en el canal o del mapa especificado.",
+      "usage": "s.bg : Envía el fondo del último mapa del canal.\ns.bg <id_mapa> : Envía el fondo de un mapa por su ID."
     }
   },
   "contributors": {
@@ -490,5 +495,11 @@
     "log_get_friends": "Obteniendo amigos desde la API de osu!...",
     "log_check_bot_linked": "Consultando usuarios vinculados al bot...",
     "log_check_mutuals_page": "Comprobando mutualidades para la página {page}..."
+  },
+  "bg": {
+    "err_no_map_found": "❌ No se encontró ningún mapa en el historial del canal para obtener el fondo.",
+    "err_fetch_failed": "❌ No se pudieron cargar los metadatos del mapa con ID `{id}`.",
+    "embed_author": "Fondo de: {artist} - {title} [{version}]",
+    "embed_footer": "Sengo • Beatmapset ID: {id}"
   }
 }

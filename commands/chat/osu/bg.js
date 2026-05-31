@@ -1,9 +1,11 @@
 const { getBeatmap, findBeatmapInChannel, argsParserNoCommand } = require("../../utils/osu.js");
 const { doOsuBgEmbed } = require("../../../views/osuBeatmapViews.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, reply } = messages;
     const parsed_args = argsParserNoCommand(args);
+    const locale = message.locale || 'es';
 
     // 1. Extraer ID de beatmap o link explícito si existe
     let beatmap_id = parsed_args.beatmap_url;
@@ -18,7 +20,7 @@ async function run(messages, args) {
     if (!beatmap_id) {
         const channel_result = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         if (!channel_result.beatmap_url) {
-            return channel_result.bad_response || `❌ No se encontró ningún mapa en el historial del canal para obtener el fondo.`;
+            return channel_result.bad_response || t(locale, 'bg.err_no_map_found');
         }
         beatmap_id = channel_result.beatmap_url;
     }
@@ -27,8 +29,8 @@ async function run(messages, args) {
     let beatmap;
     try {
         beatmap = await getBeatmap(beatmap_id);
-    } catch (e) {
-        return `❌ No se pudieron cargar los metadatos del mapa con ID \`${beatmap_id}\`.`;
+    } catch {
+        return t(locale, 'bg.err_fetch_failed', { id: beatmap_id });
     }
 
     // 4. Construir Embed utilizando la capa de visualización (View)
@@ -43,9 +45,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': 'Muestra el fondo en alta resolución de un beatmap',
-    'body': 'Obtiene y envía la imagen de fondo (Background) en alta resolución del último mapa enviado en el canal o del mapa especificado.',
-    'usage': 's.bg : Envía el fondo del último mapa del canal.\ns.bg <id_mapa> : Envía el fondo de un mapa por su ID.'
+    'header': t('es', 'commands.bg.header'),
+    'body': t('es', 'commands.bg.body'),
+    'usage': t('es', 'commands.bg.usage')
 };
 
-module.exports = { run, "description": run.description };
+module.exports = { run, description: run.description };
