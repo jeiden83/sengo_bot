@@ -216,6 +216,16 @@
       "header": "The classic compare command (>c)",
       "body": "Compares a score on the last map fetched by Sengo. The score can belong to the command user or another player.",
       "usage": "s.c : Compares the score of the user linked to the bot.\ns.c 'user' : Compares the score of the user in the argument.\ns.c -p 2 : Shows page 2 of the scores list.\ns.c -m HD : Filters by exact mods.\ns.c -g 200 : Filters by scores of 200 pp or more.\ns.c -i 1 : Shows a detailed embed of the best score (similar to .rs)."
+    },
+    "gap": {
+      "header": "Server-wide >c leaderboard",
+      "body": "Performs a >c across all linked users in the server, showing a paginated list sorted by score or pp.",
+      "usage": "s.gap : Shows the server scores list on the last map.\ns.gap -p 2 : Shows page 2 of the scores list.\ns.gap -force : Forces a refresh of scores from the osu! API without using cache.\ns.gap -bypass : Bypasses the server restriction and shows scores from all users linked to the bot (OWNER only).\ns.gap -server <guild_id> : Shows scores from users in the specified server (OWNER only).\ns.gap $reply : Does s.gap on the map from the replied message."
+    },
+    "top": {
+      "header": "Get your top 200 PP plays",
+      "body": "Shows a paginated list of a player's best plays (top) in osu! with advanced filtering.",
+      "usage": "s.top : Shows your best plays.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy."
     }
   },
   "contributors": {

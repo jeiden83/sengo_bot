@@ -2,9 +2,11 @@ const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP, e
 
 const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
+    const locale = message.locale || 'es';
 
     // Parseamos args
     const parser_res = await argsParser(args, {
@@ -16,7 +18,7 @@ async function run(messages, args) {
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
-        return `Pero si no tienes puntuaciones registradas`;
+        return t(locale, 'top.err_no_scores');
     }
     // Asignar el top PP original a cada score (1-indexed)
     parser_res.fn_response.forEach((score, idx) => {
@@ -25,7 +27,7 @@ async function run(messages, args) {
 
     let originalScores = parser_res.fn_response;
     if (parser_res.parsed_args.nochoke) {
-        return "❌ El parámetro `-nc` (`-nochoke`) está temporalmente deshabilitado por optimización de API y prevención de errores 429.";
+        return t(locale, 'top.err_nc_disabled');
     }
 
 
@@ -118,11 +120,11 @@ async function run(messages, args) {
     // Si no quedan jugadas tras aplicar los filtros
     if (filtered_scores.length === 0) {
         const username = parser_res.fn_response[0].user.username;
-        let errorMsg = `No se encontraron jugadas en el top de **${username}** con los filtros aplicados:`;
-        if (parser_res.parsed_args.modFilter !== null) errorMsg += `\n ▸ Mods exactos: \`${parser_res.parsed_args.modFilter}\``;
-        if (parser_res.parsed_args.modContainFilter !== null) errorMsg += `\n ▸ Contiene mods: \`${parser_res.parsed_args.modContainFilter}\``;
-        if (parser_res.parsed_args.searchFilter !== null) errorMsg += `\n ▸ Búsqueda: \`${parser_res.parsed_args.searchFilter}\``;
-        if (parser_res.parsed_args.ppThreshold !== null) errorMsg += `\n ▸ PP >= \`${parser_res.parsed_args.ppThreshold}\``;
+        let errorMsg = t(locale, 'top.err_no_filtered_scores', { username });
+        if (parser_res.parsed_args.modFilter !== null) errorMsg += t(locale, 'top.filter_exact_mods', { val: parser_res.parsed_args.modFilter });
+        if (parser_res.parsed_args.modContainFilter !== null) errorMsg += t(locale, 'top.filter_contain_mods', { val: parser_res.parsed_args.modContainFilter });
+        if (parser_res.parsed_args.searchFilter !== null) errorMsg += t(locale, 'top.filter_search', { val: parser_res.parsed_args.searchFilter });
+        if (parser_res.parsed_args.ppThreshold !== null) errorMsg += t(locale, 'top.filter_pp', { val: parser_res.parsed_args.ppThreshold });
         return errorMsg;
     }
 
@@ -136,13 +138,13 @@ async function run(messages, args) {
         let content_msg = '';
 
         if (index > total_plays) {
-            content_msg = `⚠️ Solo se encontraron **${total_plays}** mejores jugadas con los filtros activos. Mostrando la última (#${total_plays}):`;
+            content_msg = t(locale, 'top.warn_max_index', { total: total_plays });
             index = total_plays;
         } else if (index < 1) {
-            content_msg = `⚠️ Índice inválido. Mostrando la mejor (#1):`;
+            content_msg = t(locale, 'top.warn_invalid_index');
             index = 1;
         } else {
-            content_msg = `Mostrando la mejor jugada **#${index}** de **${total_plays}** del Top de PP:`;
+            content_msg = t(locale, 'top.showing_score_index', { index, total: total_plays });
         }
 
         // Función auxiliar para procesar y construir el embed de un score determinado
@@ -190,7 +192,7 @@ async function run(messages, args) {
                 "pp_fc": pp_fc
             };
 
-            const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount);
+            const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount, locale);
             map.free();
             return embed;
         }
@@ -233,7 +235,7 @@ async function run(messages, args) {
                     index = total_plays;
                 }
 
-                content_msg = `Mostrando la mejor jugada **#${index}** de **${total_plays}** del Top de PP:`;
+                content_msg = t(locale, 'top.showing_score_index', { index, total: total_plays });
                 const embed = await processScore(index);
 
                 await i.editReply({
@@ -285,7 +287,7 @@ async function run(messages, args) {
 
     const initialChunk = filtered_scores.slice(startIndex, startIndex + 5);
     const initialStars = await getListStars(initialChunk);
-    const initialListEmbed = await doOsuTopListEmbed(message, parser_res.parsed_args, initialChunk, startIndex, total_plays, ppThresholdCount, initialStars);
+    const initialListEmbed = await doOsuTopListEmbed(message, parser_res.parsed_args, initialChunk, startIndex, total_plays, ppThresholdCount, initialStars, locale);
 
     const getListButtonsRow = (start, total) => {
         return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
@@ -318,7 +320,7 @@ async function run(messages, args) {
 
             const chunk = filtered_scores.slice(startIndex, startIndex + 5);
             const stars = await getListStars(chunk);
-            const embed = await doOsuTopListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, ppThresholdCount, stars);
+            const embed = await doOsuTopListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, ppThresholdCount, stars, locale);
 
             await i.editReply({
                 embeds: [embed],
@@ -354,9 +356,9 @@ run.alias = {
 }
 
 run.description = {
-    'header' : 'Obtén el top 200 de jugadas de PP',
-    'body' : `Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.`,
-    'usage' : `s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? "last goodbye" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta.`
+    'header' : t('es', 'commands.top.header'),
+    'body' : t('es', 'commands.top.body'),
+    'usage' : t('es', 'commands.top.usage')
 }
 
 module.exports = { run, "description": run.description }

@@ -267,9 +267,9 @@ run.alias = {
 
 run.description = 
 {
-    'header' : '>c Global entre el server',
-    'body' : 'Hace un >c con respecto a los usuarios linkeados en el servidor, mostrando la lista paginada y ordenada por score o pp.',
-    'usage' : `s.gap : Muestra la lista de scores del server en el último mapa.\ns.gap -p 2 : Muestra la página 2 de la lista de scores.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap -bypass : Bypassea la restricción del servidor y muestra las puntuaciones de todos los usuarios vinculados al bot (solo OWNER).\ns.gap -server <guild_id> : Muestra las puntuaciones de los usuarios del servidor especificado (solo OWNER).\ns.gap $reply : Hace el s.gap del mapa al que se le hace el reply.`
+    'header' : t('es', 'commands.gap.header'),
+    'body' : t('es', 'commands.gap.body'),
+    'usage' : t('es', 'commands.gap.usage')
 }
 
 module.exports = { run, "description": run.description}

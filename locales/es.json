@@ -216,6 +216,16 @@
       "header": "El >c de toda la vida",
       "body": "Compara una score en el último mapa que consigue el bot Sengo. La score puede ser del usuario del comando u otro jugador.",
       "usage": "s.c : Compara la score del usuario linkeado al bot.\ns.c 'usuario' : Compara la score del usuario en el argumento.\ns.c -p 2 : Muestra la página 2 de la lista de puntuaciones.\ns.c -m HD : Filtra por mods exactos.\ns.c -g 200 : Filtra por jugadas de 200 pp o más.\ns.c -i 1 : Muestra un embed detallado de la mejor score (similar a .rs)."
+    },
+    "gap": {
+      "header": ">c Global entre el server",
+      "body": "Hace un >c con respecto a los usuarios linkeados en el servidor, mostrando la lista paginada y ordenada por score o pp.",
+      "usage": "s.gap : Muestra la lista de scores del server en el último mapa.\ns.gap -p 2 : Muestra la página 2 de la lista de scores.\ns.gap -force : Fuerza a actualizar las puntuaciones desde la API de osu! sin usar la caché.\ns.gap -bypass : Bypassea la restricción del servidor y muestra las puntuaciones de todos los usuarios vinculados al bot (solo OWNER).\ns.gap -server <guild_id> : Muestra las puntuaciones de los usuarios del servidor especificado (solo OWNER).\ns.gap $reply : Hace el s.gap del mapa al que se le hace el reply."
+    },
+    "top": {
+      "header": "Obtén el top 200 de jugadas de PP",
+      "body": "Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.",
+      "usage": "s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta."
     }
   },
   "contributors": {
