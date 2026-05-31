@@ -66,9 +66,9 @@ run.alias = {
 };
 
 run.description = {
-  header: 'Genera imagen con globo',
-  body: undefined,
-  usage: undefined
+  header: 'Genera imagen con globo / Generates image with a speech bubble',
+  body: 'Añade un globo de texto tipo cómic en la parte superior de la imagen adjunta. / Adds a comic speech bubble on top of the attached image.',
+  usage: 's.globo'
 };
 
 module.exports = { run };

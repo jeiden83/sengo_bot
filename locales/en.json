@@ -134,6 +134,16 @@
       "header": "Say something as Sengo",
       "body": "Sends a message identical to the provided text.",
       "usage": "s.say 'text' : Sengo sends a message equal to the text"
+    },
+    "rol": {
+      "header": "Server roles and colors management",
+      "body": "Allows changing role colors, and granting or removing roles individually or in bulk.",
+      "usage": "s.rol color <role_id> <hex> : Changes role color.\ns.rol otorgar <role_id> <user_id> : Grants/removes the role to a user.\ns.rol otorgarTodos <role_id> [otorgar|remover|ambos] : Grants or removes the role to the entire server."
+    },
+    "star": {
+      "header": "Starboard function",
+      "body": "Processes and highlights the message with the most unique reactions from the previous day in the configured channel, rewarding experience.",
+      "usage": "s.star\ns.star config setFromChannel <id> : Source channel\ns.star config setStarChannel <id> : Destination channel\ns.star config setMsjLimit <num> : Message limit\ns.star config setExpReward <num> : Experience points\ns.star config setLogsChannel <id> : Logs channel"
     }
   },
   "contributors": {

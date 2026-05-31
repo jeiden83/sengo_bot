@@ -842,6 +842,16 @@ function argsParserNoCommand(args, options = {}) {
             }
         }
 
+        // Si empieza con "#" seguido de un número (ej: "#2")
+        if (arg.startsWith("#")) {
+            let num = parseInt(arg.slice(1));
+            if (!isNaN(num)) {
+                index = num;
+                explicitIndex = true;
+                continue;
+            }
+        }
+
         // Si es exactamente "-p", "-pagina" o "-page"
         if (arg === "-p" || arg === "-pagina" || arg === "-page") {
             if (i + 1 < args_list.length) {

@@ -134,6 +134,16 @@
       "header": "Di algo como si fuera el Sengo",
       "body": "Envía un mensaje idéntico al texto proporcionado.",
       "usage": "s.say 'texto' : Sengo envia un mensaje igual al texto"
+    },
+    "rol": {
+      "header": "Gestión de roles y colores en el servidor",
+      "body": "Permite cambiar colores de roles, otorgar/remover roles de forma individual o masiva.",
+      "usage": "s.rol color <rol_id> <hex> : Cambia color del rol.\ns.rol otorgar <rol_id> <user_id> : Otorga/remueve el rol a un usuario.\ns.rol otorgarTodos <rol_id> [otorgar|remover|ambos] : Otorga o remueve el rol a todo el servidor."
+    },
+    "star": {
+      "header": "Función starboard",
+      "body": "Procesa y destaca el mensaje con más reacciones únicas del día anterior en el canal configurado, asignando experiencia.",
+      "usage": "s.star\ns.star config setFromChannel <id> : Canal origen\ns.star config setStarChannel <id> : Canal destino\ns.star config setMsjLimit <num> : Límite de mensajes\ns.star config setExpReward <num> : Puntos de experiencia\ns.star config setLogsChannel <id> : Canal de logs"
     }
   },
   "contributors": {

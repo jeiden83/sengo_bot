@@ -213,9 +213,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-  header: 'Funcion starboard',
-  body: `Con la configuracion de un canal de entrada, de 'starboard', mensajes a obtener y a exp dar por tatsumaki, da exp al mensaje con mas reacciones unicas del dia pasado.`,
-  usage: 'el diablo'
+  header: 'Función starboard / Starboard function',
+  body: 'Procesa y destaca el mensaje con más reacciones únicas del día anterior en el canal configurado, asignando experiencia. / Processes and highlights the message with the most unique reactions from the previous day in the configured channel, rewarding experience.',
+  usage: 's.star'
 };
 
 module.exports = { run };

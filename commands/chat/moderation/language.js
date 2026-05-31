@@ -44,7 +44,7 @@ run.alias = {
 
 run.description = {
     'header': "Configuración de idioma del servidor / Server language configuration",
-    'body': 'Permite cambiar el idioma preferido del servidor para las respuestas de Sengo.',
+    'body': 'Permite cambiar el idioma preferido del servidor para las respuestas de Sengo. / Allows changing the server\'s preferred language for Sengo\'s responses.',
     'usage': 's.language [es|en] / s.idioma [es|en]'
 };
 
