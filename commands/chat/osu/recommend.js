@@ -176,6 +176,32 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
     }
 }
 
+/**
+ * Invalida el caché de recomendaciones si el usuario jugó un mapa que está en su caché.
+ * Se ejecuta en segundo plano sin bloquear el flujo del bot.
+ * @param {string} osuUserId - ID numérico del usuario de osu!
+ * @param {number|string} beatmapId - ID del beatmap jugado recientemente
+ * @param {string} [gamemode='osu'] - Modo de juego activo
+ */
+function invalidateRecCacheIfPlayed(osuUserId, beatmapId, gamemode = 'osu') {
+    try {
+        const cacheKey = `${osuUserId}:${gamemode}`;
+        const cached = recommendCache.get(cacheKey);
+        if (!cached || !cached.recommendations) return;
+
+        const playedId = beatmapId.toString();
+        const isInCache = cached.recommendations.some(
+            rec => rec.beatmapId.toString() === playedId
+        );
+
+        if (isInCache) {
+            recommendCache.delete(cacheKey);
+        }
+    } catch {
+        // Silenciar errores: esta función es de segundo plano
+    }
+}
+
 async function run(messages, args) {
     const { message, res, logger, interaction } = messages;
     const locale = message.locale || 'es';
@@ -722,4 +748,4 @@ run.description = {
     'usage': t('es', 'commands.recommend.usage')
 };
 
-module.exports = { run, description: run.description, preloadDefaultRecommendation };
+module.exports = { run, description: run.description, preloadDefaultRecommendation, invalidateRecCacheIfPlayed };

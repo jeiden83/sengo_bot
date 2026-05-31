@@ -217,6 +217,18 @@ async function run(messages, args) {
                 const isLazer = targetScore.build_id !== null && targetScore.build_id !== undefined;
                 setChannelRecentPlayType(message.channel.id, targetScore.beatmap.id, isLazer);
                 triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
+
+                // Invalidar caché de .rec si el mapa jugado coincide con una recomendación cacheada
+                try {
+                    const osuUserId = targetScore.user?.id?.toString();
+                    if (osuUserId) {
+                        const { invalidateRecCacheIfPlayed } = require("./recommend.js");
+                        const gamemode = parser_res.parsed_args.gamemode || 'osu';
+                        invalidateRecCacheIfPlayed(osuUserId, targetScore.beatmap.id, gamemode);
+                    }
+                } catch {
+                    // Silenciar: no debe afectar el flujo principal
+                }
             }
         } catch (err) {
             console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano (lista):", err);
@@ -351,6 +363,17 @@ async function run(messages, args) {
         const targetScore = parser_res.fn_response[index - 1] || parser_res.fn_response[0];
         if (targetScore && targetScore.beatmap) {
             triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
+        }
+
+        // Invalidar caché de .rec si el mapa más reciente coincide con una recomendación cacheada
+        const mostRecentScore = parser_res.fn_response[0];
+        if (mostRecentScore && mostRecentScore.beatmap) {
+            const osuUserId = mostRecentScore.user?.id?.toString();
+            if (osuUserId) {
+                const { invalidateRecCacheIfPlayed } = require("./recommend.js");
+                const gamemode = parser_res.parsed_args.gamemode || 'osu';
+                invalidateRecCacheIfPlayed(osuUserId, mostRecentScore.beatmap.id, gamemode);
+            }
         }
     } catch (err) {
         console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano:", err);
