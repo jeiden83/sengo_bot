@@ -4,15 +4,15 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 async function run(messages, args) {
     const { message, res } = messages;
 
-	// selfexplainable
-	// todo later
+    // selfexplainable
+    // todo later
     if (!message.guild) {
         return "Este comando solo se puede usar en un servidor.";
     }
 
-	if(message.guild.id !== "1422374224403890268"){
-		return `Esto no es Osu! latam. Preguntele a Jeiden primero.`
-	}
+    if (message.guild.id !== "1422374224403890268") {
+        return `Esto no es Osu! latam. Preguntele a Jeiden primero.`
+    }
 
     // Obtenemos el discord id del usuario que dio el comando
     const discord_id = message.author.id;
@@ -30,14 +30,14 @@ async function run(messages, args) {
     const rankDigits = String(osu_user.statistics.global_rank).length;
     const digitsString = `${rankDigits} Digitos`;
 
-	// Si el usuario ya tiene un rol de esos digitos, evitar asignar otro
-	if (message.member.roles.cache.find(r => r.name.includes(digitsString))) {
-		return `Ya tienes un rol de ${rankDigits} digitos asignado.`;
-	}
+    // Si el usuario ya tiene un rol de esos digitos, evitar asignar otro
+    if (message.member.roles.cache.find(r => r.name.includes(digitsString))) {
+        return `Ya tienes un rol de ${rankDigits} digitos asignado.`;
+    }
 
     // Si el usuario es 7 digitos.
     if (rankDigits === 7) {
-    
+
         return `Bro. Sube un poco mas en el ranking y te asigno el rol de 6 digitos.`;
     }
     if (rankDigits === 1) {
@@ -45,30 +45,30 @@ async function run(messages, args) {
         return `Verdaderamente increible para ser Top global.`;
     }
 
-	// Si no tiene el rol, asignar el rol al usuario
-	try {
-		
-		await message.member.roles.add(message.guild.roles.cache.find(r => r.name.includes(digitsString)));
-		return `Rol de ${rankDigits} digitos asignado exitosamente.`;
+    // Si no tiene el rol, asignar el rol al usuario
+    try {
 
-	} catch (error) {
+        await message.member.roles.add(message.guild.roles.cache.find(r => r.name.includes(digitsString)));
+        return `Rol de ${rankDigits} digitos asignado exitosamente.`;
 
-		console.error(error);
-		return `Hubo un error al asignar el rol.`;
-	}
+    } catch (error) {
+
+        console.error(error);
+        return `Hubo un error al asignar el rol.`;
+    }
 }
 
 run.alias = {
-    "digits" : {
-        "args" : ""
+    "digits": {
+        "args": ""
     },
 }
 
-run.description = 
+run.description =
 {
-    'header' : 'Autorol de digitos',
-    'body' : 'Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/4GHYpRn).\n Otorga un rol de digitos con respecto al usuario linkeado al bot, y con respecto al modo de juego principal',
-    'usage' : undefined
+    'header': 'Autorol de digitos',
+    'body': 'Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/4GHYpRn).\n Otorga un rol de digitos con respecto al usuario linkeado al bot, y con respecto al modo de juego principal',
+    'usage': undefined
 }
 
 module.exports = { run }

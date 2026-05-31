@@ -180,6 +180,16 @@
       "header": "Estadísticas del Daily Challenge actual",
       "body": "Muestra el mapa del Daily Challenge activo, sus estrellas, autor, el tiempo restante para completarlo y el top 3 de puntuaciones actuales.",
       "usage": "s.daily"
+    },
+    "digitos": {
+      "header": "Autorol de dígitos",
+      "body": "Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/4GHYpRn).\nOtorga un rol de dígitos con respecto al usuario linkeado al bot, y con respecto al modo de juego principal.",
+      "usage": "s.digitos"
+    },
+    "pais": {
+      "header": "Autorol de país",
+      "body": "Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nOtorga un rol del país con respecto al usuario linkeado al bot.",
+      "usage": "s.pais"
     }
   },
   "contributors": {
@@ -522,5 +532,26 @@
     "embed_time_value": "Termina <t:{timestamp}:R> (<t:{timestamp}:F>)",
     "embed_field_update": "🔄 Actualización",
     "embed_update_value": "Se actualiza automáticamente todos los días a las **14:00 UTC**."
+  },
+  "digitos": {
+    "err_guild_only": "Este comando solo se puede usar en un servidor.",
+    "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
+    "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
+    "err_already_has_role": "Ya tienes un rol de {digits} dígitos asignado.",
+    "err_seven_digits": "Bro. Sube un poco más en el ranking y te asigno el rol de 6 dígitos.",
+    "one_digit": "Verdaderamente increíble para ser Top global.",
+    "success": "Rol de {digits} dígitos asignado exitosamente.",
+    "err_assign": "Hubo un error al asignar el rol."
+  },
+  "pais": {
+    "err_guild_only": "Este comando solo se puede usar en un servidor.",
+    "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
+    "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
+    "err_already_has_role": "Ya tienes un rol de país asignado.",
+    "success_assign": "Rol de país asignado exitosamente.",
+    "err_assign": "Hubo un error al asignar el rol.",
+    "reason_create": "Rol de país para {code}",
+    "success_create_assign": "Rol de país creado, posicionado y asignado exitosamente.",
+    "err_create_assign": "Hubo un error al crear o asignar el rol de país."
   }
 }

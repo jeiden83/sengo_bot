@@ -180,6 +180,16 @@
       "header": "Stats of the current Daily Challenge",
       "body": "Shows the active Daily Challenge map, its stars, creator, the time remaining to complete it, and the current top 3 scores.",
       "usage": "s.daily"
+    },
+    "digitos": {
+      "header": "Digit self-role",
+      "body": "Applicable for [**Osu! Latinoamerica**](https://discord.gg/4GHYpRn).\nGrants a digit role based on the user linked to the bot and their main gamemode.",
+      "usage": "s.digitos"
+    },
+    "pais": {
+      "header": "Country self-role",
+      "body": "Applicable for [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nGrants a country role based on the user linked to the bot.",
+      "usage": "s.pais"
     }
   },
   "contributors": {
@@ -522,5 +532,26 @@
     "embed_time_value": "Ends <t:{timestamp}:R> (<t:{timestamp}:F>)",
     "embed_field_update": "🔄 Update Info",
     "embed_update_value": "Resets automatically every day at **14:00 UTC**."
+  },
+  "digitos": {
+    "err_guild_only": "This command can only be used in a server.",
+    "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
+    "err_not_linked": "To use this command, you must first link your account to the bot.",
+    "err_already_has_role": "You already have a {digits}-digit role assigned.",
+    "err_seven_digits": "Bro. Climb a bit more in the ranking and I will assign you the 6-digit role.",
+    "one_digit": "Truly incredible to be global Top rank.",
+    "success": "Successfully assigned the {digits}-digit role.",
+    "err_assign": "There was an error assigning the role."
+  },
+  "pais": {
+    "err_guild_only": "This command can only be used in a server.",
+    "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
+    "err_not_linked": "To use this command, you must first link your account to the bot.",
+    "err_already_has_role": "You already have a country role assigned.",
+    "success_assign": "Country role successfully assigned.",
+    "err_assign": "There was an error assigning the role.",
+    "reason_create": "Country role for {code}",
+    "success_create_assign": "Country role successfully created, positioned, and assigned.",
+    "err_create_assign": "There was an error creating or assigning the country role."
   }
 }
