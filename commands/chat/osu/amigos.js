@@ -2,6 +2,7 @@ const { EmbedBuilder } = require('discord.js');
 const OsuUserModel = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
+const { t } = require('../../../utils/i18n.js');
 
 // Función para comprobar mutualidad de los amigos vinculados en la página actual
 async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
@@ -26,7 +27,7 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
 
                 const isMutual = friendFriendsList.some(f => f.id.toString() === myOsuId.toString());
                 friend.mutual = isMutual ? 'yes' : 'no';
-            } catch (err) {
+            } catch {
                 // Si da 403 u otro error de red, marcamos como desconocido/falta-scope
                 friend.mutual = 'unknown';
             }
@@ -37,35 +38,36 @@ async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
 async function run(messages, args) {
     const { message, reply, logger } = messages;
     const authorId = message.author.id;
+    const locale = message.locale || 'es';
 
     // 1. Verificar si está solicitando el flag secreto -sengo
     const isSengoFlag = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase() === '-sengo');
     if (isSengoFlag) {
-        if (logger) logger.process("Procesando flag secreto -sengo...");
+        if (logger) logger.process(t(locale, 'amigos.log_flag_sengo'));
         const ownerId = process.env.OWNER_ID;
         if (authorId !== ownerId) {
-            return `❌ Este flag es de uso exclusivo para el creador del Sengo Bot.`;
+            return t(locale, 'amigos.err_owner_only');
         }
 
-        if (logger) logger.process("Obteniendo amigos del creador desde la API de osu!...");
+        if (logger) logger.process(t(locale, 'amigos.log_get_creator_friends'));
         let friendsList = null;
         try {
             friendsList = await OsuUserModel.getFriendsList(authorId);
         } catch (err) {
             if (err.response && err.response.status === 403) {
-                return `❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (\`friends.read\`) o no cuentas con **osu!supporter** activo (requerido por la API de osu! para consultar la lista de amigos).\n\n💡 **Solución:** Asegúrate de tener **osu!supporter** activo en tu cuenta de osu! y luego vincula tu cuenta con \`s.link -oauth\` autorizando todos los permisos solicitados.`;
+                return t(locale, 'amigos.err_auth_403');
             }
             throw err;
         }
         if (!friendsList) {
-            return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.`;
+            return t(locale, 'amigos.err_need_oauth');
         }
 
-        if (logger) logger.process("Obteniendo usuarios vinculados de la base de datos...");
+        if (logger) logger.process(t(locale, 'amigos.log_get_db_users'));
         const dbUsers = await OsuUserModel.getLinkedUsers({ bypass: true });
 
         if (!dbUsers || dbUsers.length === 0) {
-            return `❌ No se encontraron usuarios vinculados de la base de datos.`;
+            return t(locale, 'amigos.err_no_linked_users');
         }
 
         // Encontrar cuáles de los usuarios vinculados NO están en la lista de amigos del owner
@@ -73,7 +75,7 @@ async function run(messages, args) {
         const missingFriends = dbUsers.filter(u => !friendIds.has(u.osu_id.toString()));
 
         // Obtener los nombres de usuario de osu! para los usuarios faltantes
-        if (logger) logger.process("Obteniendo nombres de los usuarios faltantes...");
+        if (logger) logger.process(t(locale, 'amigos.log_get_missing_names'));
         const oauthUsernames = await OsuUserModel.getOAuthUsernamesMap();
 
         await Promise.all(
@@ -85,7 +87,7 @@ async function run(messages, args) {
                     try {
                         const osuUser = await OsuUserModel.getOsuUser({ username: [osuIdStr], gamemode: 'osu' });
                         user.username = osuUser?.username || `User ${osuIdStr}`;
-                    } catch (e) {
+                    } catch {
                         user.username = `User ${osuIdStr}`;
                     }
                 }
@@ -99,24 +101,24 @@ async function run(messages, args) {
     }
 
     // 2. Flujo normal: Listar amigos del autor
-    if (logger) logger.process("Verificando token de OAuth...");
+    if (logger) logger.process(t(locale, 'amigos.log_check_oauth'));
     const meDetails = await OsuUserModel.fetchMeDetails(authorId);
     if (!meDetails) {
-        return `❌ Debes vincular tu cuenta con OAuth primero usando \`s.link -oauth\` para poder utilizar este comando.`;
+        return t(locale, 'amigos.err_need_oauth_general');
     }
 
-    if (logger) logger.process("Obteniendo amigos desde la API de osu!...");
+    if (logger) logger.process(t(locale, 'amigos.log_get_friends'));
     let friends = null;
     try {
         friends = await OsuUserModel.getFriendsList(authorId);
     } catch (err) {
         if (err.response && err.response.status === 403) {
-            return `❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (\`friends.read\`) o no cuentas con **osu!supporter** activo (requerido por la API de osu! para consultar la lista de amigos).\n\n💡 **Solución:** Asegúrate de tener **osu!supporter** activo en tu cuenta de osu! y luego vincula tu cuenta con \`s.link -oauth\` autorizando todos los permisos solicitados.`;
+            return t(locale, 'amigos.err_auth_403');
         }
         throw err;
     }
     if (!friends) {
-        return `❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.`;
+        return t(locale, 'amigos.err_fetch_failed');
     }
 
     const myOsuId = meDetails.id;
@@ -124,15 +126,15 @@ async function run(messages, args) {
     if (friends.length === 0) {
         const embedColor = message.member?.roles?.highest?.color || '#ff66aa';
         const emptyEmbed = new EmbedBuilder()
-            .setTitle("👥 Lista de Amigos en osu!")
+            .setTitle(t(locale, 'amigos.empty_title'))
             .setColor(embedColor)
-            .setDescription("Aún no tienes amigos agregados en tu cuenta de osu!.")
+            .setDescription(t(locale, 'amigos.empty_desc'))
             .setTimestamp();
         return { embeds: [emptyEmbed] };
     }
 
     // Obtener usuarios vinculados en la BD
-    if (logger) logger.process("Consultando usuarios vinculados al bot...");
+    if (logger) logger.process(t(locale, 'amigos.log_check_bot_linked'));
     const linkedMap = await OsuUserModel.getLinkedUsersMap();
 
     // Ordenar amigos alfabéticamente por username
@@ -153,7 +155,7 @@ async function run(messages, args) {
     };
 
     // Procesar la página inicial
-    if (logger) logger.process(`Comprobando mutualidades para la página 1...`);
+    if (logger) logger.process(t(locale, 'amigos.log_check_mutuals_page', { page: 1 }));
     const initialChunk = friends.slice(startIndex, startIndex + 10);
     await checkMutualsForChunk(initialChunk, myOsuId, linkedMap);
 
@@ -199,7 +201,7 @@ async function run(messages, args) {
             // Verificar si este chunk ya tiene los datos de mutualidad cargados, si no, los cargamos
             const needsCheck = currentChunk.some(friend => friend.mutual === undefined);
             if (needsCheck) {
-                if (logger) logger.process(`Comprobando mutualidades para la página ${pageNum}...`);
+                if (logger) logger.process(t(locale, 'amigos.log_check_mutuals_page', { page: pageNum }));
                 await checkMutualsForChunk(currentChunk, myOsuId, linkedMap);
             }
 
@@ -222,11 +224,11 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': 'Lista de amigos en osu!',
-    'body': 'Muestra la lista de amigos del jugador por páginas, detallando su supporter, vinculación al Sengo y estado de mutual.',
-    'usage': `s.amigos : Muestra tus amigos por páginas.\ns.amigos -sengo : Compara tus amigos contra los vinculados al bot (solo OWNER).`
+    'header': t('es', 'commands.amigos.header'),
+    'body': t('es', 'commands.amigos.body'),
+    'usage': t('es', 'commands.amigos.usage')
 };
 
 run.requireOAuth = true;
 
-module.exports = { run };
+module.exports = { run, description: run.description };

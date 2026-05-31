@@ -1,5 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
 /**
  * Renderiza el embed para el enlace seguro de OAuth (link.js)
@@ -25,23 +26,29 @@ function doOsuOAuthEmbed(authUrl) {
  */
 function doOsuMissingFriendsEmbed(message, missingFriends) {
     const embedColor = getEmbedColor(message);
+    const locale = message.locale || 'es';
 
     const missingEmbed = new EmbedBuilder()
-        .setTitle("🕵️ Usuarios Vinculados al Sengo Faltantes")
+        .setTitle(t(locale, 'amigos.missing_title'))
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
         .setTimestamp();
 
     if (missingFriends.length === 0) {
-        missingEmbed.setDescription("✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados a Sengo en tu cuenta de osu!.");
+        missingEmbed.setDescription(t(locale, 'amigos.missing_empty'));
     } else {
-        let desc = `Los siguientes **${missingFriends.length}** usuarios vinculados al Sengo aún **no** están en tu lista de amigos de osu!:\n\n`;
+        let desc = t(locale, 'amigos.missing_desc_header', { count: missingFriends.length });
         let addedCount = 0;
         for (let idx = 0; idx < missingFriends.length; idx++) {
             const user = missingFriends[idx];
-            const line = `${idx + 1}. **${user.username}** (osu!: [perfil](https://osu.ppy.sh/users/${user.osu_id})) ▸ Discord: <@${user.discord_id}>\n`;
+            const line = t(locale, 'amigos.missing_line', {
+                index: idx + 1,
+                username: user.username,
+                osuId: user.osu_id,
+                discordId: user.discord_id
+            });
             if (desc.length + line.length > 3900) {
-                desc += `\n*...y **${missingFriends.length - addedCount}** usuarios vinculados más.*`;
+                desc += t(locale, 'amigos.missing_more', { count: missingFriends.length - addedCount });
                 break;
             }
             desc += line;
@@ -58,7 +65,8 @@ function doOsuMissingFriendsEmbed(message, missingFriends) {
  */
 function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends) {
     const embedColor = getEmbedColor(message);
-    let desc = `Total de amigos en osu!: **${totalFriends}**\n\n`;
+    const locale = message.locale || 'es';
+    let desc = t(locale, 'amigos.list_header', { total: totalFriends });
 
     chunk.forEach((friend, idx) => {
         const globalIndex = startIndex + idx + 1;
@@ -73,17 +81,14 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         desc += `\`#${globalIndex.toString().padEnd(2, ' ')}\` ▸ ${flag} [**${friend.username}**](https://osu.ppy.sh/users/${friend.id}) ▸ Supporter: ${SuppIcon} ▸ Mutual: ${mutualIcon} ▸ Sengo: ${SengoIcon}\n`;
     });
 
-    desc += `\n**Leyenda:**\n` +
-            `• **Supporter**: Si el usuario tiene supporter en osu! activo.\n` +
-            `• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope \`friends.read\` (se requiere \`s.link -oauth\`).\n` +
-            `• **Sengo**: Cuenta vinculada a Sengo.`;
+    desc += t(locale, 'amigos.list_legend');
 
     return new EmbedBuilder()
-        .setTitle("👥 Lista de Amigos en osu!")
+        .setTitle(t(locale, 'amigos.list_title'))
         .setDescription(desc)
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
-        .setFooter({ text: `Sengo • Página ${page}/${maxPages}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: t(locale, 'amigos.list_footer', { page, maxPages }), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 }
 

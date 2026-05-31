@@ -165,6 +165,11 @@
       "header": "Configura las notificaciones de GitHub mediante webhooks",
       "body": "Permite a los administradores registrar, borrar y listar canales para recibir las notificaciones de commits en GitHub.",
       "usage": "s.github colocar [canal] : Registra un canal para recibir actualizaciones (por defecto el actual).\ns.github borrar [canal] : Deja de escuchar commits en el canal especificado."
+    },
+    "amigos": {
+      "header": "Lista de amigos en osu!",
+      "body": "Muestra la lista de amigos del jugador por páginas, detallando su supporter, vinculación a Sengo y estado de mutual.",
+      "usage": "s.amigos : Muestra tus amigos por páginas.\ns.amigos -sengo : Compara tus amigos contra los vinculados al bot (solo OWNER)."
     }
   },
   "contributors": {
@@ -458,5 +463,32 @@
     "delete_not_registered": "ℹ️ El canal <#{channelId}> no estaba registrado para actualizaciones de GitHub.",
     "err_db_delete": "❌ Hubo un error al eliminar el canal de la base de datos.",
     "err_delete": "❌ Error al borrar el webhook: {error}"
+  },
+  "amigos": {
+    "err_owner_only": "❌ Este flag es de uso exclusivo para el creador del Sengo.",
+    "err_auth_403": "❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (`friends.read`) o no cuentas con **osu!supporter** activo (requerido por la API de osu! para consultar la lista de amigos).\n\n💡 **Solución:** Asegúrate de tener **osu!supporter** activo en tu cuenta de osu! y luego vincula tu cuenta con `s.link -oauth` autorizando todos los permisos solicitados.",
+    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link -oauth` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.",
+    "err_no_linked_users": "❌ No se encontraron usuarios vinculados de la base de datos.",
+    "err_need_oauth_general": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link -oauth` para poder utilizar este comando.",
+    "err_fetch_failed": "❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.",
+    "empty_title": "👥 Lista de Amigos en osu!",
+    "empty_desc": "Aún no tienes amigos agregados en tu cuenta de osu!.",
+    "missing_title": "🕵️ Usuarios Vinculados al Sengo Faltantes",
+    "missing_empty": "✨ **¡Increíble!** Tienes agregado a todos los usuarios vinculados a Sengo en tu cuenta de osu!.",
+    "missing_desc_header": "Los siguientes **{count}** usuarios vinculados al Sengo aún **no** están en tu lista de amigos de osu!:\n\n",
+    "missing_line": "{index}. **{username}** (osu!: [perfil](https://osu.ppy.sh/users/{osuId})) ▸ Discord: <@{discordId}>\n",
+    "missing_more": "\n*...y **{count}** usuarios vinculados más.*",
+    "list_header": "Total de amigos en osu!: **{total}**\n\n",
+    "list_legend": "\n**Leyenda:**\n• **Supporter**: Si el usuario tiene supporter en osu! activo.\n• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope `friends.read` (se requiere `s.link -oauth`).\n• **Sengo**: Cuenta vinculada a Sengo.",
+    "list_title": "👥 Lista de Amigos en osu!",
+    "list_footer": "Sengo • Página {page}/{maxPages}",
+    "log_flag_sengo": "Procesando flag secreto -sengo...",
+    "log_get_creator_friends": "Obteniendo amigos del creador desde la API de osu!...",
+    "log_get_db_users": "Obteniendo usuarios vinculados de la base de datos...",
+    "log_get_missing_names": "Obteniendo nombres de los usuarios faltantes...",
+    "log_check_oauth": "Verificando token de OAuth...",
+    "log_get_friends": "Obteniendo amigos desde la API de osu!...",
+    "log_check_bot_linked": "Consultando usuarios vinculados al bot...",
+    "log_check_mutuals_page": "Comprobando mutualidades para la página {page}..."
   }
 }
