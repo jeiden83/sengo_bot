@@ -307,7 +307,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
     }[type] || 'Maps';
 
     if (type === 'all') {
-        embed.setTitle(`${titleType} de ${flag} ${user.username}`);
+        embed.setTitle(t(locale, 'mapper.list_title', { title: titleType, flag, username: user.username }));
         let desc = t(locale, 'mapper.summary', { username: user.username });
         
         // Ranked
@@ -383,7 +383,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         embed.setDescription(desc);
     } else {
         if (!data || data.length === 0) {
-            embed.setTitle(`${titleType} de ${flag} ${user.username}`);
+            embed.setTitle(t(locale, 'mapper.list_title', { title: titleType, flag, username: user.username }));
             embed.setDescription(t(locale, 'mapper.no_maps'));
         } else {
             const itemsPerPage = 5;

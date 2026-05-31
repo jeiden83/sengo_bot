@@ -1,6 +1,6 @@
 const { PermissionsBitField } = require('discord.js');
 const { updateGuildConfig } = require('../../../models/GuildConfigModel.js');
-const { doLanguageChangedEmbed, doLanguageHelpEmbed } = require('../../../views/languageViews.js');
+const { doLanguageChangedEmbed, doLanguageHelpEmbed, doLanguageListEmbed } = require('../../../views/languageViews.js');
 const { t } = require('../../../utils/i18n.js');
 
 async function run(messages, args) {
@@ -25,6 +25,11 @@ async function run(messages, args) {
     }
 
     const inputLang = String(flatArgs[0]).toLowerCase().trim();
+    
+    if (inputLang === 'list' || inputLang === '-list') {
+        return { embeds: [doLanguageListEmbed(locale, prefix)] };
+    }
+
     if (inputLang !== 'es' && inputLang !== 'en') {
         return { embeds: [doLanguageHelpEmbed(locale, prefix)] };
     }

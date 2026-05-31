@@ -29,10 +29,14 @@ async function run(messages, args) {
 
     // String a comparar de los digitos
     const rankDigits = String(osu_user.statistics.global_rank).length;
-    const digitsString = `${rankDigits} Digitos`;
+    const digitsNormalized = `${rankDigits} digito`;
 
     // Si el usuario ya tiene un rol de esos digitos, evitar asignar otro
-    if (message.member.roles.cache.find(r => r.name.includes(digitsString))) {
+    const hasRole = message.member.roles.cache.some(r => {
+        const nameNorm = r.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return nameNorm.includes(digitsNormalized);
+    });
+    if (hasRole) {
         return t(locale, 'digitos.err_already_has_role', { digits: rankDigits });
     }
 
@@ -44,9 +48,19 @@ async function run(messages, args) {
         return t(locale, 'digitos.one_digit');
     }
 
+    // Buscar el rol en el servidor ignorando tildes y mayúsculas
+    const roleToAssign = message.guild.roles.cache.find(r => {
+        const nameNorm = r.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        return nameNorm.includes(digitsNormalized);
+    });
+
+    if (!roleToAssign) {
+        return t(locale, 'digitos.err_role_not_found', { digits: rankDigits });
+    }
+
     // Si no tiene el rol, asignar el rol al usuario
     try {
-        await message.member.roles.add(message.guild.roles.cache.find(r => r.name.includes(digitsString)));
+        await message.member.roles.add(roleToAssign);
         return t(locale, 'digitos.success', { digits: rankDigits });
     } catch (error) {
         console.error(error);

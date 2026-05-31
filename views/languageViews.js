@@ -33,7 +33,26 @@ function doLanguageHelpEmbed(locale, prefix = 's.') {
         .setTimestamp();
 }
 
+/**
+ * Crea un embed para listar los idiomas soportados e indicar cuál es el actual.
+ * @param {string} locale Idioma actual del servidor/contexto
+ * @param {string} prefix Prefijo de comandos del bot (por defecto 's.')
+ * @returns {EmbedBuilder} Embed instructivo
+ */
+function doLanguageListEmbed(locale, prefix = 's.') {
+    const currentES = locale === 'es' ? `👈 (${t(locale, 'about.home_page') || 'Actual'})` : '';
+    const currentEN = locale === 'en' ? `👈 (Current)` : '';
+
+    return new EmbedBuilder()
+        .setColor('#5865F2')
+        .setTitle(t(locale, 'language.list_title'))
+        .setDescription(t(locale, 'language.list_description', { prefix, currentES, currentEN }))
+        .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+}
+
 module.exports = {
     doLanguageChangedEmbed,
-    doLanguageHelpEmbed
+    doLanguageHelpEmbed,
+    doLanguageListEmbed
 };

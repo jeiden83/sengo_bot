@@ -16,7 +16,9 @@
     "changed": "The language for this server has been set to **English**.",
     "changed_title": "🌐 Language Changed",
     "help_title": "🌐 Language Configuration",
-    "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`.",
+    "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`.\n\nTo see available languages, use `{prefix}language list` or `{prefix}language -list`.",
+    "list_title": "🌐 Available Languages",
+    "list_description": "Sengo currently supports the following languages:\n\n• 🇪🇸 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\nTo change the language of this server, an administrator must run:\n`{prefix}language [es|en]`",
     "only_guild": "This command can only be used in a server.",
     "no_admin": "You do not have Administrator permissions to change the server language.",
     "db_error": "There was an error trying to update the language in the database."
@@ -627,6 +629,7 @@
     "err_seven_digits": "Bro. Climb a bit more in the ranking and I will assign you the 6-digit role.",
     "one_digit": "Truly incredible to be global Top rank.",
     "success": "Successfully assigned the {digits}-digit role.",
+    "err_role_not_found": "A {digits}-digit role was not found configured in this server.",
     "err_assign": "There was an error assigning the role."
   },
   "pais": {
@@ -813,6 +816,7 @@
   "profile": {
     "top_ranking": "**• Top ranking:** `{rank}` {peak}\n",
     "ranked_play": "**• Ranked Play:** `#{rank}` (Rating: {rating})\n",
+    "regional_placement": " / **[#{placement}](https://osuworld.octo.moe/#{url})**",
     "author_title": "osu!{mode} profile of {teamPrefix}{username}",
     "description": "**• Global Rank:** `#{globalRank}`\n{topRankingStr}**• Country Rank:** :flag_{countryCode}: {supporterEmoji}`#{countryRank}`{regionalRankStr}\n{rankedPlayStr}{teamStr}**• Join Date: **{joinDate}",
     "medals": "Medals",
@@ -939,6 +943,7 @@
     "none": "*None*\n\n",
     "and_more": "\n*...and {count} more.*",
     "no_maps": "*No maps found in this category.*",
+    "list_title": "{title} of {flag} {username}",
     "list_title_page": "{title} of {flag} {username} (Page {current}/{total})",
     "showing_maps": "Showing maps **{start}** to **{end}** of **{total}**:\n\n",
     "note_limit": "\n\n*Note: Showing up to the first {limit} most recent maps. The full list is available on the osu! website.*",
