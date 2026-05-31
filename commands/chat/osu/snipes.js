@@ -1,4 +1,5 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
+const { t } = require("../../../utils/i18n.js");
 const axios = require('axios');
 const { doOsuSnipesEmbed } = require("../../../views/osuEmbeds.js");
 
@@ -10,12 +11,13 @@ async function fetchSnipedPlayerData(country_code, user_id) {
         return response;   
     } catch (error) {
         console.error('Error al obtener los datos:', error.response ? error.response.data : error.message);
-        return "Error de peticion";
+        return null;
     }
 }
 
 async function run(messages, args){
     const { message, res } = messages;
+    const locale = message.locale || 'es';
 
     // Parseamos args
     const osu_userdata = await argsParser(args,
@@ -25,14 +27,17 @@ async function run(messages, args){
     const { country_code, id } = osu_userdata.fn_response;
     const sniped_userdata = await fetchSnipedPlayerData(country_code, id);
 
-    return doOsuSnipesEmbed(message, sniped_userdata.data, osu_userdata.fn_response);
+    if (!sniped_userdata) {
+        return t(locale, 'snipes.err_fetch');
+    }
+
+    return doOsuSnipesEmbed(message, sniped_userdata.data, osu_userdata.fn_response, locale);
 }
 
-run.description = 
-{
-    'header' : 'Numero de tops nacionales',
-    'body' : 'Toma en cuenta la pagina \`https://snipe.huismetbenen.nl/\` para esto. \nTe dice cuantos tops nacionales tienes, el promedio de pp por top, los mods mas usados y el año en el que snipeaste mas gente.',
-    'usage' : `s.snipes : Obtiene los snipes del usuario linkeado al bot \ns.snipes 'usuario' : Los snipes del usuario en el argumento.`
-}
+run.description = {
+    'header': t('es', 'commands.snipes.header'),
+    'body': t('es', 'commands.snipes.body'),
+    'usage': t('es', 'commands.snipes.usage')
+};
 
-module.exports = { run }
+module.exports = { run, "description": run.description };

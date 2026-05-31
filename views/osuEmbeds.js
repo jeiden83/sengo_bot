@@ -860,12 +860,12 @@ function doOsuMapsetEmbed({
 /**
  * Renderiza el embed para el comando s.snipes (tops nacionales / snipe.huismetbenen.nl)
  */
-function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata) {
+function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es') {
     if (osu_userdata.playmode != 'osu') {
-        return `> El servicio de snipes solo funciona para **osu!std**`;
+        return t(locale, 'snipes.err_std_only');
     }
     if (!sniped_userdata) {
-        return `**El usuario \`${osu_userdata.username}\` **no tiene tops nacionales.**`;
+        return t(locale, 'snipes.err_no_tops', { username: osu_userdata.username });
     }
 
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
@@ -884,10 +884,10 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata) {
             url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
-        .setDescription(`**• Total de #1:** \`#${sniped_userdata.count_total}\`
-**• PP promedio :** \`${Math.round(sniped_userdata.average_pp * 100) / 100}\`
-**• Mod mas usado:** \`[${mod_mas_usado[0]}] = ${mod_mas_usado[1]}\`
-**• Año con mas snipes:** \`[${mostSnipes_year[0]}] = ${mostSnipes_year[1]}\`
+        .setDescription(`${t(locale, 'snipes.total', { count: sniped_userdata.count_total })}
+${t(locale, 'snipes.avg_pp', { pp: Math.round(sniped_userdata.average_pp * 100) / 100 })}
+${t(locale, 'snipes.most_used_mod', { mod: mod_mas_usado[0], count: mod_mas_usado[1] })}
+${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSnipes_year[1] })}
 `)
         .setColor(embedColor)
         .setFooter({

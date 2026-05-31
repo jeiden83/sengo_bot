@@ -246,6 +246,11 @@
       "header": "Shows complete details of a beatmap",
       "body": "Fetches and calculates detailed statistics and PP values adjusted for mods for any beatmap.",
       "usage": "s.m : Shows the last map sent in the channel.\ns.m <map_id> : Shows a specific map by its ID.\ns.m +HDHR : Shows stats and PP adjusted for HDHR mods.\ns.m -mapset : Shows the list of difficulties for the entire mapset."
+    },
+    "snipes": {
+      "header": "Number of national #1s",
+      "body": "Uses the page `https://snipe.huismetbenen.nl/` for this. \nTells you how many national #1s you have, the average pp per top, most used mods, and the year you sniped the most people.",
+      "usage": "s.snipes : Gets the snipes of the user linked to the bot.\ns.snipes 'user' : The snipes of the user in the argument."
     }
   },
   "contributors": {
@@ -855,5 +860,14 @@
     "duration": "Length",
     "author_mapset": "Mapset created by {creator}",
     "footer_mapset": "Sengo • Beatmapset ID: {id} • {count} difficulties"
+  },
+  "snipes": {
+    "err_std_only": "> The snipes service only works for **osu!std**",
+    "err_no_tops": "**The user `{username}` has no national #1s.**",
+    "err_fetch": "❌ Error fetching snipes data.",
+    "total": "**• Total #1s:** `#{count}`",
+    "avg_pp": "**• Average PP:** `{pp}`",
+    "most_used_mod": "**• Most used mod:** `[{mod}] = {count}`",
+    "most_snipes_year": "**• Year with most snipes:** `[{year}] = {count}`"
   }
 }
