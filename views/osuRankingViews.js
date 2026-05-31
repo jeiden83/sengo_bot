@@ -23,14 +23,15 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
             accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
         }
 
+        const rankLabel = t(locale, 'nacional.rank_label');
         const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr}${accStr}`;
         let secondLine;
         if (isRegional) {
-            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         } else if (isAccSort) {
-            secondLine = `  ↳ Rango: **#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            secondLine = `  ↳ ${rankLabel}: **#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         } else {
-            secondLine = `  ↳ Rango: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
         }
         return `${firstLine}\n${secondLine}`;
     });

@@ -606,6 +606,7 @@
     "subdivisions_footer": "Página {page} de {pages} • Total: {total} regiones",
     "subdivision_type_state": "Estado",
     "global_rank_label": "Global",
-    "national_rank_label": "Nacional"
+    "national_rank_label": "Nacional",
+    "rank_label": "Rango"
   }
 }

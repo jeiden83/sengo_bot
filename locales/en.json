@@ -606,6 +606,7 @@
     "subdivisions_footer": "Page {page} of {pages} • Total: {total} regions",
     "subdivision_type_state": "State",
     "global_rank_label": "Global",
-    "national_rank_label": "National"
+    "national_rank_label": "National",
+    "rank_label": "Rank"
   }
 }
