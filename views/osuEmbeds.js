@@ -681,7 +681,8 @@ function doOsuMapEmbed({
     ppValues,
     attributes,
     objectsValue,
-    userTags
+    userTags,
+    locale = 'es'
 }) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -711,7 +712,7 @@ function doOsuMapEmbed({
         }
     }
     const userTagsStr = tagsToDisplay && tagsToDisplay.length > 0
-        ? `\n▸ **Etiquetas:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}`
+        ? `\n▸ **${t(locale, 'map.tags')}:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}`
         : '';
 
     const ppSSColor = `\u001b[1;32m${ppValues.ppSS}pp\u001b[0m`;
@@ -721,27 +722,27 @@ function doOsuMapEmbed({
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Creado por ${beatmap.beatmapset.creator}`,
+            name: t(locale, 'map.author_created_by', { creator: beatmap.beatmapset.creator }),
             iconURL: `https://a.ppy.sh/${beatmap.beatmapset.user_id}`,
             url: `https://osu.ppy.sh/users/${beatmap.beatmapset.user_id}`
         })
         .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
         .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
         .setDescription(`
-▸ **Modo:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? ' *(Convertido)*' : ''} ▸ **Dificultad:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? `*(Base: ${baseStars.toFixed(2)}★)*` : ''} ▸ **Estado:** \`${statusName}\`
+▸ **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''} ▸ **${t(locale, 'map.difficulty')}:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? t(locale, 'map.base', { base: baseStars.toFixed(2) }) : ''} ▸ **${t(locale, 'map.status')}:** \`${statusName}\`
 
-▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? `*(Base: ${attributes.baseBpm})*` : ''} ▸ **Duración:** \`${formatLength(attributes.totalLength)}\` *(Drain: ${formatLength(attributes.hitLength)})* ▸ **Combo:** \`x${attributes.maxCombo}\`
+▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? t(locale, 'map.bpm_base', { base: attributes.baseBpm }) : ''} ▸ **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\` ${t(locale, 'map.drain', { drain: formatLength(attributes.hitLength) })} ▸ **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\`
 ▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? `*(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''} ▸ **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? `*(${attributes.baseAr.toFixed(1)})*` : ''} ▸ **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? `*(${attributes.baseOd.toFixed(1)})*` : ''} ▸ **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? `*(${attributes.baseHp.toFixed(1)})*` : ''}
 
-▸ **Objetos:** ${objectsValue}
+▸ **${t(locale, 'map.objects')}:** ${objectsValue}
 
-▸ **Valores de PP recomendados:**
+▸ **${t(locale, 'map.recommended_pp')}:**
 ${ppAnsiBlock}${userTagsStr}
         `)
         .setImage(beatmap.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Beatmap ID: ${beatmap.id}`,
+            text: t(locale, 'map.footer_map', { id: beatmap.id }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -753,7 +754,7 @@ ${ppAnsiBlock}${userTagsStr}
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setLabel('Lanzar osu!')
+                .setLabel(t(locale, 'map.btn_launch'))
                 .setStyle(ButtonStyle.Link)
                 .setURL(osuDirectPCUrl),
             new ButtonBuilder()
@@ -779,7 +780,8 @@ ${ppAnsiBlock}${userTagsStr}
 function doOsuMapsetEmbed({
     beatmapset,
     statusName,
-    embedColor
+    embedColor,
+    locale = 'es'
 }) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -791,7 +793,7 @@ function doOsuMapsetEmbed({
 
     const sortedBeatmaps = [...beatmapset.beatmaps].sort((a, b) => a.difficulty_rating - b.difficulty_rating);
 
-    let description = `▸ **Creador:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmapset.user_id}) ▸ **Estado:** \`${statusName}\` ▸ **BPM:** \`${beatmapset.bpm}\`\n\n`;
+    let description = `▸ **${t(locale, 'map.creator')}:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmapset.user_id}) ▸ **${t(locale, 'map.status')}:** \`${statusName}\` ▸ **BPM:** \`${beatmapset.bpm}\`\n\n`;
 
     const modeEmojis = {
         'osu': '⚪',
@@ -808,12 +810,12 @@ function doOsuMapsetEmbed({
 
         const stars = map.difficulty_rating ? map.difficulty_rating.toFixed(2) : '0.00';
         const maxCombo = map.max_combo ? `x${map.max_combo}` : '-';
-        description += `${displayEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ Duración: \`${formatLength(map.total_length)}\`\n`;
+        description += `${displayEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ ${t(locale, 'map.duration')}: \`${formatLength(map.total_length)}\`\n`;
     }
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Mapset creado por ${beatmapset.creator}`,
+            name: t(locale, 'map.author_mapset', { creator: beatmapset.creator }),
             iconURL: `https://a.ppy.sh/${beatmapset.user_id}`,
             url: `https://osu.ppy.sh/users/${beatmapset.user_id}`
         })
@@ -823,7 +825,7 @@ function doOsuMapsetEmbed({
         .setImage(beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Beatmapset ID: ${beatmapset.id} • ${beatmapset.beatmaps.length} dificultades`,
+            text: t(locale, 'map.footer_mapset', { id: beatmapset.id, count: beatmapset.beatmaps.length }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -835,7 +837,7 @@ function doOsuMapsetEmbed({
     const row = new ActionRowBuilder()
         .addComponents(
             new ButtonBuilder()
-                .setLabel('Lanzar osu!')
+                .setLabel(t(locale, 'map.btn_launch'))
                 .setStyle(ButtonStyle.Link)
                 .setURL(osuDirectPCUrl),
             new ButtonBuilder()

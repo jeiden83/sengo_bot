@@ -1,4 +1,5 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand, getBeatmapsetTags } = require("../../utils/osu.js");
+const { t } = require("../../../utils/i18n.js");
 const rosu = require("rosu-pp-js");
 
 function formatLength(seconds) {
@@ -9,6 +10,7 @@ function formatLength(seconds) {
 
 async function run(messages, args) {
     const { message, reply } = messages;
+    const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
 
@@ -25,7 +27,7 @@ async function run(messages, args) {
     if (!beatmap_id) {
         const channel_result = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
         if (!channel_result.beatmap_url) {
-            return channel_result.bad_response || `❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.`;
+            return channel_result.bad_response || t(locale, 'map.err_no_map');
         }
         beatmap_id = channel_result.beatmap_url;
     }
@@ -35,7 +37,7 @@ async function run(messages, args) {
     try {
         beatmap = await getBeatmap(beatmap_id);
     } catch (e) {
-        return `❌ No se pudieron cargar los metadatos para el mapa con ID \`${beatmap_id}\`.`;
+        return t(locale, 'map.err_metadata', { id: beatmap_id });
     }
 
     if (parsed_args.mapset) {
@@ -44,22 +46,22 @@ async function run(messages, args) {
             const { getBeatmapset } = require("../../utils/osu.js");
             beatmapset = await getBeatmapset(beatmap.beatmapset_id);
         } catch (e) {
-            return `❌ No se pudieron cargar los detalles del mapset para el ID \`${beatmap.beatmapset_id}\`.`;
+            return t(locale, 'map.err_mapset', { id: beatmap.beatmapset_id });
         }
 
         if (!beatmapset) {
-            return `❌ No se pudieron cargar los detalles del mapset para el ID \`${beatmap.beatmapset_id}\`.`;
+            return t(locale, 'map.err_mapset', { id: beatmap.beatmapset_id });
         }
 
-        // Estilo de estados de mapa
+        // Estilo de estados de mapa con traducciones
         const status_names = {
-            'ranked': 'Ranked 🟢',
-            'approved': 'Approved 🟡',
-            'loved': 'Loved 💞',
-            'qualified': 'Qualified 🔵',
-            'pending': 'Pending ⏳',
-            'wip': 'WIP 🛠️',
-            'graveyard': 'Graveyard ⚰️'
+            'ranked': t(locale, 'map.status_ranked'),
+            'approved': t(locale, 'map.status_approved'),
+            'loved': t(locale, 'map.status_loved'),
+            'qualified': t(locale, 'map.status_qualified'),
+            'pending': t(locale, 'map.status_pending'),
+            'wip': t(locale, 'map.status_wip'),
+            'graveyard': t(locale, 'map.status_graveyard')
         };
         const status_colors = {
             'ranked': '#4ade80',
@@ -79,7 +81,8 @@ async function run(messages, args) {
         const { embed, components } = doOsuMapsetEmbed({
             beatmapset,
             statusName,
-            embedColor
+            embedColor,
+            locale
         });
 
         if (reply) {
@@ -94,7 +97,7 @@ async function run(messages, args) {
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
     } catch (e) {
-        return `❌ No se pudo descargar ni analizar el archivo del mapa \`${beatmap_id}\`.`;
+        return t(locale, 'map.err_parse', { id: beatmap_id });
     }
 
     // 4. Parsear los mods del mensaje
@@ -166,17 +169,15 @@ async function run(messages, args) {
     const pp98 = new rosu.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp.toFixed(2);
     const pp95 = new rosu.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp.toFixed(2);
 
-
-
-    // Estilo de estados de mapa
+    // Estilo de estados de mapa con traducciones
     const status_names = {
-        'ranked': 'Ranked 🟢',
-        'approved': 'Approved 🟡',
-        'loved': 'Loved 💞',
-        'qualified': 'Qualified 🔵',
-        'pending': 'Pending ⏳',
-        'wip': 'WIP 🛠️',
-        'graveyard': 'Graveyard ⚰️'
+        'ranked': t(locale, 'map.status_ranked'),
+        'approved': t(locale, 'map.status_approved'),
+        'loved': t(locale, 'map.status_loved'),
+        'qualified': t(locale, 'map.status_qualified'),
+        'pending': t(locale, 'map.status_pending'),
+        'wip': t(locale, 'map.status_wip'),
+        'graveyard': t(locale, 'map.status_graveyard')
     };
     const status_colors = {
         'ranked': '#4ade80',
@@ -192,22 +193,20 @@ async function run(messages, args) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
 
-
-
     const csLabel = activeMode === 'mania' ? 'Keys' : 'CS';
 
     let objectsValue = '';
     if (activeMode === 'osu') {
-        objectsValue = `Círculos: \`${map.nCircles}\` | Sliders: \`${map.nSliders}\` | Spinners: \`${map.nSpinners}\``;
+        objectsValue = t(locale, 'map.objects_osu', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
     } else if (activeMode === 'taiko') {
-        objectsValue = `Notas: \`${map.nCircles}\` | Drumrolls: \`${map.nSliders}\` | Dendens: \`${map.nSpinners}\``;
+        objectsValue = t(locale, 'map.objects_taiko', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
     } else if (activeMode === 'fruits') {
         const nFruits = difficulty.nFruits !== undefined ? difficulty.nFruits : map.nCircles;
         const nDroplets = difficulty.nDroplets !== undefined ? difficulty.nDroplets : map.nSliders;
         const nTinyDroplets = difficulty.nTinyDroplets !== undefined ? difficulty.nTinyDroplets : 0;
-        objectsValue = `Frutas: \`${nFruits}\` | Droplets: \`${nDroplets}\` | Tiny: \`${nTinyDroplets}\``;
+        objectsValue = t(locale, 'map.objects_fruits', { fruits: nFruits, droplets: nDroplets, tiny: nTinyDroplets });
     } else if (activeMode === 'mania') {
-        objectsValue = `Notas: \`${map.nCircles}\` | Hold: \`${map.nHolds}\``;
+        objectsValue = t(locale, 'map.objects_mania', { circles: map.nCircles, holds: map.nHolds });
     }
 
     // Liberar memoria del mapa
@@ -250,7 +249,8 @@ async function run(messages, args) {
             modsStr
         },
         objectsValue,
-        userTags
+        userTags,
+        locale
     });
 
     if (reply) {
@@ -271,9 +271,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Muestra detalles completos de un beatmap",
-    'body': 'Obtiene y calcula estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap.',
-    'usage': `s.m : Muestra el último mapa enviado en el canal.\ns.m <id_mapa> : Muestra un mapa específico por su ID.\ns.m +HDHR : Muestra las estadísticas y PP ajustadas a los mods HDHR.\ns.m -mapset : Muestra la lista de dificultades de todo el mapset.`
+    'header': t('es', 'commands.map.header'),
+    'body': t('es', 'commands.map.body'),
+    'usage': t('es', 'commands.map.usage')
 };
 
 module.exports = { run, "description": run.description };

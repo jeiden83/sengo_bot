@@ -241,6 +241,11 @@
       "header": "Para obtener el perfil de osu!",
       "body": "Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o según el argumento, con su banner bien hermoso y opción de ver detalles adicionales.",
       "usage": "s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.scores : Muestra tus estadísticas y grados detallados directos."
+    },
+    "map": {
+      "header": "Muestra detalles completos de un beatmap",
+      "body": "Obtiene y calcula estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap.",
+      "usage": "s.m : Muestra el último mapa enviado en el canal.\ns.m <id_mapa> : Muestra un mapa específico por su ID.\ns.m +HDHR : Muestra las estadísticas y PP ajustadas a los mods HDHR.\ns.m -mapset : Muestra la lista de dificultades de todo el mapset."
     }
   },
   "contributors": {
@@ -814,5 +819,41 @@
     "field_total_hits": "Hits Totales",
     "field_replays_watched": "Replays Vistas por Otros",
     "field_hits_per_minute": "Hits por Minuto"
+  },
+  "map": {
+    "err_no_map": "❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.",
+    "err_metadata": "❌ No se pudieron cargar los metadatos para el mapa con ID `{id}`.",
+    "err_mapset": "❌ No se pudieron cargar los detalles del mapset para el ID `{id}`.",
+    "err_parse": "❌ No se pudo descargar ni analizar el archivo del mapa `{id}`.",
+    "status_ranked": "Ranked 🟢",
+    "status_approved": "Approved 🟡",
+    "status_loved": "Loved 💞",
+    "status_qualified": "Qualified 🔵",
+    "status_pending": "Pending ⏳",
+    "status_wip": "WIP 🛠️",
+    "status_graveyard": "Graveyard ⚰️",
+    "objects_osu": "Círculos: `{circles}` | Sliders: `{sliders}` | Spinners: `{spinners}`",
+    "objects_taiko": "Notas: `{circles}` | Drumrolls: `{sliders}` | Dendens: `{spinners}`",
+    "objects_fruits": "Frutas: `{fruits}` | Droplets: `{droplets}` | Tiny: `{tiny}`",
+    "objects_mania": "Notas: `{circles}` | Hold: `{holds}`",
+    "author_created_by": "Creado por {creator}",
+    "mode": "Modo",
+    "converted": " *(Convertido)*",
+    "difficulty": "Dificultad",
+    "base": " *(Base: {base}★)*",
+    "status": "Estado",
+    "bpm_base": " *(Base: {base})*",
+    "length": "Duración",
+    "drain": " *(Drain: {drain})*",
+    "combo": "Combo",
+    "objects": "Objetos",
+    "recommended_pp": "Valores de PP recomendados",
+    "footer_map": "Sengo • Beatmap ID: {id}",
+    "btn_launch": "Lanzar osu!",
+    "tags": "Etiquetas",
+    "creator": "Creador",
+    "duration": "Duración",
+    "author_mapset": "Mapset creado por {creator}",
+    "footer_mapset": "Sengo • Beatmapset ID: {id} • {count} dificultades"
   }
 }
