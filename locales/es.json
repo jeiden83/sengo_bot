@@ -231,6 +231,11 @@
       "header": "Tabla de clasificación global y nacional",
       "body": "Muestra las mejores puntuaciones del último mapa en el canal. Soporta el flag `-pais [código]` para rankings nacionales, filtro de mods dedicados a través de la pool de supporter, y los flags `-stable` / `-lazer` para alternar la versión de las puntuaciones (por defecto es predictivo según la jugada reciente).",
       "usage": "s.lb : Muestra el leaderboard global.\ns.lb -pais CL : Muestra el leaderboard nacional de Chile.\ns.lb -pais : Autodetecta tu país y muestra su leaderboard.\ns.lb -m HDHR : Muestra leaderboard filtrado por mods exactos (HDHR).\ns.lb -pais VE -m HD : Muestra leaderboard de Venezuela con mod HD.\ns.lb -stable : Fuerza el leaderboard al estilo classic/stable.\ns.lb -lazer : Fuerza el leaderboard al estilo lazer (scoring normalizado)."
+    },
+    "rs": {
+      "header": "Obtén la play reciente",
+      "body": "Al hacer .rs en un mapa fallido o unranked, accedes a que se guarde en una db local para que luego se pueda usar con el .c y el .gap",
+      "usage": "s.rs : Obtén la play reciente del usuario linkeado al bot.\ns.rs -b : Ordena los recientes por PP y muestra la mejor play.\ns.rs 'usuario' : Obtiene la play reciente del usuario en el argumento.\ns.rs 'usuario' 'modo': Obtiene la play del usuario en el argumento con respecto al modo de juego."
     }
   },
   "contributors": {
@@ -750,5 +755,19 @@
     "content_country": "**Tabla de clasificación nacional ({country}){suffix} en osu!{mode} para:**",
     "content_friends": "**Tabla de clasificación de amigos de {username}{suffix} en osu!{mode} para:**",
     "oauth_button_label": "Vincular Cuenta (OAuth)"
+  },
+  "recent": {
+    "err_no_scores_pass": "No tienes scores recientes que no sean fallidas.",
+    "err_no_scores": "Pero si no has jugado nada",
+    "sorting_loading": "⏳ Obteniendo mapas y calculando PP de las jugadas recientes para ordenar...",
+    "index_warning_max": "⚠️ Solo se encontraron **{total}** jugadas recientes. Mostrando la última (#{total}):",
+    "index_warning_invalid": "⚠️ Índice inválido. Mostrando la más reciente (#1):",
+    "showing_index": "Mostrando la jugada **#{index}** de **{total}** recientes:",
+    "embed_author": "Puntuación Reciente de {username} en {mode}!",
+    "embed_footer_virgo": "ratio de virgo",
+    "embed_footer_default": "Sengo",
+    "list_author": "Puntuaciones recientes de {username} en osu!{mode}",
+    "list_footer": "Mostrando jugadas {start}-{end} de {total} recientes",
+    "list_footer_loading": "⏳ Calculando pp de la play #{index} de {total}..."
   }
 }

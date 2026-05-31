@@ -1,15 +1,12 @@
 const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundRecentPreload } = require("../../utils/osu.js");
-
-
-
-
-
+const { t } = require("../../../utils/i18n.js");
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
+    const locale = message.locale || 'es';
 
     // Parseamos args
     const parser_res = await argsParser(args, {
@@ -27,13 +24,13 @@ async function run(messages, args) {
     }
     
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
-        return filterPass ? `No tienes scores recientes que no sean fallidas.` : `Pero si no has jugado nada`;
+        return filterPass ? t(locale, 'recent.err_no_scores_pass') : t(locale, 'recent.err_no_scores');
     }
 
     if (parser_res.parsed_args.bestSort && Array.isArray(parser_res.fn_response) && parser_res.fn_response.length > 0) {
         let loading_msg;
         try {
-            loading_msg = await message.channel.send("⏳ Obteniendo mapas y calculando PP de las jugadas recientes para ordenar...");
+            loading_msg = await message.channel.send(t(locale, 'recent.sorting_loading'));
         } catch (e) {
             console.error("Error al enviar mensaje temporal en rs -b:", e);
         }
@@ -79,7 +76,7 @@ async function run(messages, args) {
     // Interceptamos si se activa el modo de lista (-l)
     if (parser_res.parsed_args.listMode) {
         let startIndex = 0;
-        const initialListEmbed = await doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays);
+        const initialListEmbed = await doOsuListEmbed(message, parser_res.parsed_args, parser_res.fn_response.slice(startIndex, startIndex + 5), startIndex, total_plays, null, locale);
 
         const getListButtonsRow = (start, total) => {
             return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
@@ -102,7 +99,7 @@ async function run(messages, args) {
 
                 // Actualizar footer para la play actual si seguimos en la misma página
                 if (start === startIndex) {
-                    const tempEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, globalIndex);
+                    const tempEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, globalIndex, locale);
                     try {
                         await msg_obj.edit({ embeds: [tempEmbed] });
                     } catch {}
@@ -161,7 +158,7 @@ async function run(messages, args) {
 
             // Renderizado final
             if (start === startIndex) {
-                const finalEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, null);
+                const finalEmbed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, start, total_plays, null, locale);
                 try {
                     await msg_obj.edit({ embeds: [finalEmbed] });
                 } catch {}
@@ -192,7 +189,7 @@ async function run(messages, args) {
                 }
 
                 const chunk = parser_res.fn_response.slice(startIndex, startIndex + 5);
-                const embed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays);
+                const embed = await doOsuListEmbed(message, parser_res.parsed_args, chunk, startIndex, total_plays, null, locale);
 
                 await i.editReply({
                     embeds: [embed],
@@ -231,13 +228,13 @@ async function run(messages, args) {
     let content_msg = '';
 
     if (index > total_plays) {
-        content_msg = `⚠️ Solo se encontraron **${total_plays}** jugadas recientes. Mostrando la última (#${total_plays}):`;
+        content_msg = t(locale, 'recent.index_warning_max', { total: total_plays });
         index = total_plays;
     } else if (index < 1) {
-        content_msg = `⚠️ Índice inválido. Mostrando la más reciente (#1):`;
+        content_msg = t(locale, 'recent.index_warning_invalid');
         index = 1;
     } else {
-        content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** recientes:`;
+        content_msg = t(locale, 'recent.showing_index', { index, total: total_plays });
     }
 
     // Función auxiliar para procesar y construir el embed de un score determinado
@@ -290,7 +287,7 @@ async function run(messages, args) {
         };
 
         saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
-        const embed = await doOsuEmbed(message, recent_scores, pre_calculated);
+        const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale);
         map.free();
         return embed;
     }
@@ -329,7 +326,7 @@ async function run(messages, args) {
             }
 
             const embed = await processScore(index);
-            const content = `Mostrando la jugada **#${index}** de **${total_plays}** recientes:`;
+            const content = t(locale, 'recent.showing_index', { index, total: total_plays });
 
             await i.editReply({
                 content: content,
@@ -380,11 +377,10 @@ run.alias = {
 	}
 }
 
-run.description = 
-{
-    'header' : 'Obten la play reciente',
-    'body' : `Al hacer .rs en un mapa fallido o unranked, accedes a que se guarde en una db local para que luego se pueda usar con el .c y el .gap`,
-    'usage' : `s.rs : Obten la play reciente del usuario linkeado al bot.\ns.rs -b : Ordena los recientes por PP y muestra la mejor play.\ns.rs 'usuario' : Obtiene del usuario en el argumento\ns.rs 'usuario' 'modo': Obtiene del usuario en el argumento con respecto al modo de juego.`
+run.description = {
+    'header': t('es', 'commands.rs.header'),
+    'body': t('es', 'commands.rs.body'),
+    'usage': t('es', 'commands.rs.usage')
 }
 
 module.exports = { run, "description": run.description}

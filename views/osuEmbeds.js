@@ -20,7 +20,7 @@ const emoji_mods = require("../src/emoji_mods.json");
  * @param {object} pre_calculated Atributos calculados previamente (PP, combo, estrellas)
  * @returns {Promise<EmbedBuilder>} EmbedBuilder configurado para Discord
  */
-async function doOsuEmbed(message, recent_scores, pre_calculated) {
+async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es') {
     const username = recent_scores.user.username;
     const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
     const avatar_url = recent_scores.user.avatar_url;
@@ -127,11 +127,11 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
         }
     }
 
-    let footerText = "Sengo";
+    let footerText = t(locale, 'recent.embed_footer_default');
     if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null && ratioVal < 10) {
-            footerText = "ratio de virgo";
+            footerText = t(locale, 'recent.embed_footer_virgo');
         }
     }
 
@@ -139,7 +139,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated) {
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Puntuación Reciente de ${username} en ${recent_scores.beatmap.mode}!`,
+            name: t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode }),
             url: user_url,
             iconURL: `${avatar_url}`,
         })
@@ -169,7 +169,7 @@ ${ansiBlock}
  * @param {number|null} loadingIndex Índice de la jugada que se está calculando
  * @returns {Promise<EmbedBuilder>} EmbedBuilder configurado para Discord
  */
-async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIndex, total_plays, loadingIndex = null) {
+async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIndex, total_plays, loadingIndex = null, locale = 'es') {
     let embed_description = '';
 
     for (let i = 0; i < recent_scores_chunk.length; i++) {
@@ -233,14 +233,24 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
     const avatar_url = recent_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 
-    let footerText = `Mostrando jugadas ${startIndex + 1}-${startIndex + recent_scores_chunk.length} de ${total_plays} recientes`;
+    let footerText = t(locale, 'recent.list_footer', {
+        start: startIndex + 1,
+        end: startIndex + recent_scores_chunk.length,
+        total: total_plays
+    });
     if (loadingIndex !== null) {
-        footerText = `⏳ Calculando pp de la play #${loadingIndex} de ${total_plays}...`;
+        footerText = t(locale, 'recent.list_footer_loading', {
+            index: loadingIndex,
+            total: total_plays
+        });
     }
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Puntuaciones recientes de ${username} en osu!${parsed_args.gamemode || 'std'}`,
+            name: t(locale, 'recent.list_author', {
+                username,
+                mode: parsed_args.gamemode || 'std'
+            }),
             url: user_url,
             iconURL: avatar_url
         })

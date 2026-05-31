@@ -231,6 +231,11 @@
       "header": "Global and national leaderboard",
       "body": "Shows the best scores on the last map in the channel. Supports the `-pais [code]` flag for national rankings, dedicated mod filtering via the supporter pool, and the `-stable` / `-lazer` flags to toggle the scores version (defaults to predictive based on recent play).",
       "usage": "s.lb : Shows the global leaderboard.\ns.lb -pais CL : Shows the national leaderboard of Chile.\ns.lb -pais : Autodetects your country and shows its leaderboard.\ns.lb -m HDHR : Shows leaderboard filtered by exact mods (HDHR).\ns.lb -pais VE -m HD : Shows leaderboard of Venezuela with mod HD.\ns.lb -stable : Forces the leaderboard to classic/stable style.\ns.lb -lazer : Forces the leaderboard to lazer style (normalized scoring)."
+    },
+    "rs": {
+      "header": "Get your recent play",
+      "body": "Running .rs on a failed or unranked map allows it to be saved to a local database for subsequent use with .c and .gap",
+      "usage": "s.rs : Get the recent play of the user linked to the bot.\ns.rs -b : Sorts recent plays by PP and shows the best play.\ns.rs 'user' : Get the recent play of the user in the argument.\ns.rs 'user' 'mode': Get the play of the user in the argument with respect to the game mode."
     }
   },
   "contributors": {
@@ -750,5 +755,19 @@
     "content_country": "**National leaderboard ({country}){suffix} in osu!{mode} for:**",
     "content_friends": "**Friends leaderboard of {username}{suffix} in osu!{mode} for:**",
     "oauth_button_label": "Link Account (OAuth)"
+  },
+  "recent": {
+    "err_no_scores_pass": "You don't have any recent scores that are not failed.",
+    "err_no_scores": "But you haven't played anything",
+    "sorting_loading": "⏳ Fetching maps and calculating PP of recent plays to sort...",
+    "index_warning_max": "⚠️ Only **{total}** recent plays were found. Showing the last one (#{total}):",
+    "index_warning_invalid": "⚠️ Invalid index. Showing the most recent one (#1):",
+    "showing_index": "Showing recent play **#{index}** of **{total}**:",
+    "embed_author": "Recent Score of {username} in {mode}!",
+    "embed_footer_virgo": "virgo ratio",
+    "embed_footer_default": "Sengo",
+    "list_author": "Recent scores of {username} in osu!{mode}",
+    "list_footer": "Showing recent plays {start}-{end} of {total}",
+    "list_footer_loading": "⏳ Calculating pp of play #{index} of {total}..."
   }
 }
