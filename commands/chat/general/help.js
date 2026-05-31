@@ -271,9 +271,9 @@ run.alias = {
 }
 
 run.description = {
-    'header' : 'Los comandos de Sengo, explicados paso a paso.',
-    'body' : 'Muestra la lista completa de comandos o el detalle y uso de un comando específico.',
-    'usage' : `s.help           : Lista todos los comandos disponibles\ns.help [comando] : Muestra la ayuda detallada para un comando`
+    'header': t('es', 'commands.help.header'),
+    'body': t('es', 'commands.help.body'),
+    'usage': t('es', 'commands.help.usage')
 }
 
 module.exports = { run }
