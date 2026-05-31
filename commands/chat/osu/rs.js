@@ -220,7 +220,7 @@ async function run(messages, args) {
 
                 // Invalidar caché de .rec si el mapa jugado coincide con una recomendación cacheada
                 try {
-                    const osuUserId = targetScore.user?.id?.toString();
+                    const osuUserId = parser_res.parsed_args.username?.[0]?.toString();
                     if (osuUserId) {
                         const { invalidateRecCacheIfPlayed } = require("./recommend.js");
                         const gamemode = parser_res.parsed_args.gamemode || 'osu';
@@ -368,7 +368,7 @@ async function run(messages, args) {
         // Invalidar caché de .rec si el mapa más reciente coincide con una recomendación cacheada
         const mostRecentScore = parser_res.fn_response[0];
         if (mostRecentScore && mostRecentScore.beatmap) {
-            const osuUserId = mostRecentScore.user?.id?.toString();
+            const osuUserId = parser_res.parsed_args.username?.[0]?.toString();
             if (osuUserId) {
                 const { invalidateRecCacheIfPlayed } = require("./recommend.js");
                 const gamemode = parser_res.parsed_args.gamemode || 'osu';
