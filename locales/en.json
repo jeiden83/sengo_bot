@@ -266,6 +266,11 @@
       "header": "Upcoming PP Reworks Command",
       "body": "Calculates how much PP a map with mods will give under the upcoming rework, shows the recalculated user profile under a rework, or their top best plays.",
       "usage": "s.rework : Compares your stats and current PP against the rework (default).\ns.rework 'username' : Compares another player against the rework.\ns.rework -m +HDDT : Estimates the PP of the last map with HDDT mods (or replying to a map).\ns.rework -rework 198 : Calculates under a specific rework by name or ID.\ns.rework -lista : Shows the reworks list.\ns.rework -top : Shows your recalculated top 5.\ns.rework -top 'username' : Shows another player's recalculated top 5."
+    },
+    "ranked": {
+      "header": "Ranked Play details of a user",
+      "body": "Shows global rank, rating (ELO), wins, played matches, and win rate of the user's Ranked Play (lazer).",
+      "usage": "s.ranked : Shows your statistics.\ns.ranked 'osu_user' : Shows the statistics of the specified user.\ns.ranked -top : Shows the global Ranked Play leaderboard.\ns.ranked -top -wins : Shows the global leaderboard sorted by wins.\ns.ranked -server : Shows the leaderboard of all linked users in the bot.\ns.ranked -server 'server_id' : Shows the leaderboard of a specific server."
     }
   },
   "contributors": {
@@ -1025,6 +1030,35 @@
     "msg_single_play": "Showing play **#{index}** of **{total}** in Rework:",
     "msg_single_play_invalid": "⚠️ Invalid index. Showing best (#1):",
     "msg_single_play_last": "⚠️ Only **{total}** plays found in the rework. Showing the last one (#{total}):"
+  },
+  "ranked": {
+    "msg_loading_global": "⏳ Fetching global leaderboard...",
+    "err_no_players_global": "❌ No players found in the global leaderboard.",
+    "err_global_api": "❌ There was an error querying the global Ranked Play leaderboard.",
+    "err_not_in_guild": "❌ Please execute this command in a server or use `-server ALL` to view all servers.",
+    "err_no_linked_bot": "❌ There are no linked users in the bot.",
+    "err_no_linked_guild": "❌ There are no linked users in this server.",
+    "err_db_stats": "❌ There was an error querying statistics in the database.",
+    "err_no_plays_bot": "❌ No linked user in the bot has played Ranked Play matches this season.",
+    "err_no_plays_guild": "❌ No linked user in this server has played Ranked Play matches this season.",
+    "label_all_servers": "All Servers",
+    "err_no_stats": "❌ The user **{username}** has no Ranked Play statistics.",
+    "profile_author": "Ranked Play Statistics for {username}",
+    "profile_season": "Season",
+    "profile_global_rank": "Global Rank",
+    "profile_rating": "Rating (ELO)",
+    "profile_provisional": "Provisional",
+    "profile_played": "Played Matches",
+    "profile_wins": "Wins",
+    "profile_winrate": "Win Rate",
+    "leaderboard_title_server": "Server Leaderboard ({serverName})",
+    "leaderboard_title_global": "Global Leaderboard",
+    "sort_rating": "by Rating (ELO)",
+    "sort_wins": "by Wins",
+    "sort_winrate": "by Win Rate",
+    "sort_plays": "by Played Matches",
+    "leaderboard_no_players": "*No players on this page.*",
+    "leaderboard_footer": "Sengo • Page {page} of {pages} • Showing #{from} - #{to} of {total}"
   }
 }
 

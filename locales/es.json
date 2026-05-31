@@ -266,6 +266,11 @@
       "header": "Comando de Reworks Próximos de PP",
       "body": "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
       "usage": "s.rework : Compara tus estadísticas y PP actual frente al rework (por defecto).\ns.rework 'usuario' : Compara a otro jugador frente al rework.\ns.rework -m +HDDT : Estima el PP del último mapa con mods HDDT (o respondiendo a un mapa).\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador."
+    },
+    "ranked": {
+      "header": "Detalles de Ranked Play de un usuario",
+      "body": "Muestra el rango global, rating (ELO), victorias, partidas jugadas y tasa de victoria de Ranked Play (lazer) del usuario.",
+      "usage": "s.ranked : Muestra tus estadísticas.\ns.ranked 'usuario_osu' : Muestra las estadísticas del usuario especificado.\ns.ranked -top : Muestra la clasificación global de Ranked Play.\ns.ranked -top -wins : Muestra la clasificación global ordenada por victorias.\ns.ranked -server : Muestra la clasificación de todos los usuarios vinculados en el bot.\ns.ranked -server 'id_servidor' : Muestra la clasificación de un servidor específico."
     }
   },
   "contributors": {
@@ -1025,6 +1030,35 @@
     "msg_single_play": "Mostrando la jugada **#{index}** de **{total}** en el Rework:",
     "msg_single_play_invalid": "⚠️ Índice inválido. Mostrando la mejor (#1):",
     "msg_single_play_last": "⚠️ Solo se encontraron **{total}** jugadas en el rework. Mostrando la última (#{total}):"
+  },
+  "ranked": {
+    "msg_loading_global": "⏳ Obteniendo tabla de clasificación global...",
+    "err_no_players_global": "❌ No se encontraron jugadores en el ranking global.",
+    "err_global_api": "❌ Hubo un error al consultar el ranking global de Ranked Play.",
+    "err_not_in_guild": "❌ Por favor ejecuta este comando en un servidor o usa `-server ALL` para ver todos los servidores.",
+    "err_no_linked_bot": "❌ No hay usuarios vinculados en el bot.",
+    "err_no_linked_guild": "❌ No hay usuarios vinculados en este servidor.",
+    "err_db_stats": "❌ Hubo un error al consultar las estadísticas en la base de datos.",
+    "err_no_plays_bot": "❌ Ningún usuario vinculado en el bot ha jugado partidas de Ranked Play esta temporada.",
+    "err_no_plays_guild": "❌ Ningún usuario vinculado en este servidor ha jugado partidas de Ranked Play esta temporada.",
+    "label_all_servers": "Todos los Servidores",
+    "err_no_stats": "❌ El usuario **{username}** no tiene estadísticas de Ranked Play.",
+    "profile_author": "Estadísticas de Ranked Play para {username}",
+    "profile_season": "Temporada",
+    "profile_global_rank": "Rango Global",
+    "profile_rating": "Rating (ELO)",
+    "profile_provisional": "Provisional",
+    "profile_played": "Partidas Jugadas",
+    "profile_wins": "Victorias",
+    "profile_winrate": "Tasa de Victoria",
+    "leaderboard_title_server": "Tabla de Clasificación del Servidor ({serverName})",
+    "leaderboard_title_global": "Tabla de Clasificación Global",
+    "sort_rating": "por Rating (ELO)",
+    "sort_wins": "por Victorias",
+    "sort_winrate": "por Win Rate",
+    "sort_plays": "por Partidas Jugadas",
+    "leaderboard_no_players": "*No hay jugadores en esta página.*",
+    "leaderboard_footer": "Sengo • Página {page} de {pages} • Mostrando #{from} - #{to} de {total}"
   }
 }
 

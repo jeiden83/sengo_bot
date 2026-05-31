@@ -3,12 +3,14 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 const OsuMatchmakingModel = require("../../../models/OsuMatchmakingModel.js");
 const { doOsuRankedProfileEmbed, doOsuRankedLeaderboardEmbed } = require("../../../views/osuRankingViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { t } = require("../../../utils/i18n.js");
 
 const serverLeaderboardCache = new Map();
 const SERVER_CACHE_TTL = 300000; // 5 minutos en milisegundos
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
+    const locale = message.locale || 'es';
 
     const hasTop = args.some(arg => typeof arg === 'string' && ['-top', '-t'].includes(arg.toLowerCase().trim()));
     const hasServer = args.some(arg => typeof arg === 'string' && ['-server', '-srv'].includes(arg.toLowerCase().trim()));
@@ -44,7 +46,7 @@ async function run(messages, args) {
         if (logger) logger.process("Obteniendo ranking global de Ranked Play...");
         let loadingMsg;
         try {
-            loadingMsg = await message.channel.send("⏳ Obteniendo tabla de clasificación global...");
+            loadingMsg = await message.channel.send(t(locale, 'ranked.msg_loading_global'));
         } catch (e) {
             console.error("Error al enviar mensaje temporal en ranked -top:", e);
         }
@@ -55,7 +57,7 @@ async function run(messages, args) {
             const totalPlayers = maxOsuPages * 50;
 
             if (players.length === 0) {
-                if (loadingMsg) await loadingMsg.edit("❌ No se encontraron jugadores en el ranking global.");
+                if (loadingMsg) await loadingMsg.edit(t(locale, 'ranked.err_no_players_global'));
                 return;
             }
 
@@ -90,7 +92,8 @@ async function run(messages, args) {
                 startIndex: (currentPage - 1) * 10,
                 isServer: false,
                 sortType,
-                message
+                message,
+                locale
             });
 
             const getButtons = (pageVal) => {
@@ -154,7 +157,8 @@ async function run(messages, args) {
                         startIndex: (currentPage - 1) * 10,
                         isServer: false,
                         sortType,
-                        message
+                        message,
+                        locale
                     });
 
                     await i.editReply({
@@ -174,7 +178,7 @@ async function run(messages, args) {
 
         } catch (err) {
             console.error("Error en ranked -top:", err);
-            if (loadingMsg) await loadingMsg.edit("❌ Hubo un error al consultar el ranking global de Ranked Play.");
+            if (loadingMsg) await loadingMsg.edit(t(locale, 'ranked.err_global_api'));
         }
         return;
     }
@@ -197,7 +201,7 @@ async function run(messages, args) {
             if (message.guild) {
                 guildFilterId = message.guild.id;
             } else {
-                return "❌ Por favor ejecuta este comando en un servidor o usa `-server ALL` para ver todos los servidores.";
+                return t(locale, 'ranked.err_not_in_guild');
             }
         }
 
@@ -213,7 +217,7 @@ async function run(messages, args) {
         const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: guildFilterId, guild, bypass: isAllServers });
 
         if (!linkedUsers || linkedUsers.length === 0) {
-            return isAllServers ? "❌ No hay usuarios vinculados en el bot." : "❌ No hay usuarios vinculados en este servidor.";
+            return isAllServers ? t(locale, 'ranked.err_no_linked_bot') : t(locale, 'ranked.err_no_linked_guild');
         }
 
         const linkedOsuIds = linkedUsers.map(u => u.osu_id.toString());
@@ -259,13 +263,13 @@ async function run(messages, args) {
             }
         } catch (err) {
             console.error("Error al obtener ranking del servidor desde la base de datos:", err);
-            return "❌ Hubo un error al consultar las estadísticas en la base de datos.";
+            return t(locale, 'ranked.err_db_stats');
         }
 
         if (playersData.length === 0) {
             return isAllServers 
-                ? "❌ Ningún usuario vinculado en el bot ha jugado partidas de Ranked Play esta temporada." 
-                : "❌ Ningún usuario vinculado en este servidor ha jugado partidas de Ranked Play esta temporada.";
+                ? t(locale, 'ranked.err_no_plays_bot') 
+                : t(locale, 'ranked.err_no_plays_guild');
         }
 
         // Ordenar lista
@@ -301,7 +305,7 @@ async function run(messages, args) {
         if (currentPage > maxDiscordPages) currentPage = maxDiscordPages;
         if (currentPage < 1) currentPage = 1;
 
-        let guildName = "Todos los Servidores";
+        let guildName = t(locale, 'ranked.label_all_servers');
         if (guildFilterId) {
             try {
                 const guild = await message.client.guilds.fetch(guildFilterId);
@@ -321,7 +325,8 @@ async function run(messages, args) {
                 isServer: true,
                 serverName: guildName,
                 sortType,
-                message
+                message,
+                locale
             });
         };
 
@@ -396,18 +401,18 @@ async function run(messages, args) {
 
     const osuUser = osu_userdata.fn_response;
     if (!osuUser.matchmaking_stats || osuUser.matchmaking_stats.length === 0) {
-        return `❌ El usuario **${osuUser.username}** no tiene estadísticas de Ranked Play.`;
+        return t(locale, 'ranked.err_no_stats', { username: osuUser.username });
     }
 
     const matchmaking = osuUser.matchmaking_stats.find(m => m.pool && m.pool.type === 'ranked_play') || osuUser.matchmaking_stats[0];
     if (!matchmaking) {
-        return `❌ El usuario **${osuUser.username}** no tiene estadísticas de Ranked Play.`;
+        return t(locale, 'ranked.err_no_stats', { username: osuUser.username });
     }
 
     // Actualizar estadísticas de Ranked Play en segundo plano en la base de datos
     OsuMatchmakingModel.updateUserRankedStatsInBackground(osuUser);
 
-    const embed = doOsuRankedProfileEmbed(message, osuUser, matchmaking);
+    const embed = doOsuRankedProfileEmbed(message, osuUser, matchmaking, locale);
     return { embeds: [embed] };
 }
 
@@ -424,9 +429,10 @@ run.alias = {
 };
 
 run.description = {
-    'header': 'Detalles de Ranked Play de un usuario',
-    'body': 'Muestra el rango global, rating (ELO), victorias, partidas jugadas y tasa de victoria de Ranked Play (lazer) del usuario.',
-    'usage': `s.ranked : Muestra tus estadísticas.\ns.ranked 'usuario_osu' : Muestra las estadísticas del usuario especificado.\ns.ranked -top : Muestra la clasificación global de Ranked Play.\ns.ranked -top -wins : Muestra la clasificación global ordenada por victorias.\ns.ranked -server : Muestra la clasificación de todos los usuarios vinculados en el bot.\ns.ranked -server 'id_servidor' : Muestra la clasificación de un servidor específico.`
+    'header': t('es', 'commands.ranked.header'),
+    'body': t('es', 'commands.ranked.body'),
+    'usage': t('es', 'commands.ranked.usage')
 };
 
 module.exports = { run };
+

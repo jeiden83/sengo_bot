@@ -111,27 +111,33 @@ function doSubdivisionsEmbed({ subdivisions, countryFilter, page, total, message
 /**
  * Genera el embed con los detalles de Ranked Play de un único usuario.
  */
-function doOsuRankedProfileEmbed(message, osuUser, matchmaking) {
+function doOsuRankedProfileEmbed(message, osuUser, matchmaking, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const winRate = matchmaking.plays > 0 ? ((matchmaking.first_placements / matchmaking.plays) * 100).toFixed(1) : "0.0";
+    const formattedRank = matchmaking.rank ? matchmaking.rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US') : t(locale, 'nacional.no_players'); // o similar
+    const formattedRating = (matchmaking.rating || 0).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US');
+    const isProvisionalStr = matchmaking.is_rating_provisional ? ` *(${t(locale, 'ranked.profile_provisional')})*` : '';
+
+    const descLines = [
+        `🏆 **Ranked Play (lazer)**`,
+        ` ▸ **${t(locale, 'ranked.profile_season')}:** \`${matchmaking.pool?.name || 'N/A'}\``,
+        ` ▸ **${t(locale, 'ranked.profile_global_rank')}:** \`#${matchmaking.rank ? formattedRank : 'N/A'}\``,
+        ` ▸ **${t(locale, 'ranked.profile_rating')}:** \`${formattedRating}\` rating${isProvisionalStr}`,
+        ` ▸ **${t(locale, 'ranked.profile_played')}:** \`${matchmaking.plays || 0}\``,
+        ` ▸ **${t(locale, 'ranked.profile_wins')}:** \`${matchmaking.first_placements || 0}\``,
+        ` ▸ **${t(locale, 'ranked.profile_winrate')}:** \`${winRate}%\``
+    ];
     
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Estadísticas de Ranked Play para ${osuUser.username}`,
+            name: t(locale, 'ranked.profile_author', { username: osuUser.username }),
             url: `https://osu.ppy.sh/users/${osuUser.id}`,
             iconURL: osuUser.avatar_url
         })
         .setThumbnail(osuUser.avatar_url)
         .setImage(osuUser.cover_url)
         .setColor(embedColor)
-        .setDescription(`🏆 **Ranked Play (lazer)**
- ▸ **Temporada:** \`${matchmaking.pool?.name || 'N/A'}\`
- ▸ **Rango Global:** \`#${matchmaking.rank ? matchmaking.rank.toLocaleString('es-ES') : 'Sin clasificar'}\`
- ▸ **Rating (ELO):** \`${(matchmaking.rating || 0).toLocaleString('es-ES')}\` rating ${matchmaking.is_rating_provisional ? '*(Provisional)*' : ''}
- ▸ **Partidas Jugadas:** \`${matchmaking.plays || 0}\`
- ▸ **Victorias:** \`${matchmaking.first_placements || 0}\`
- ▸ **Tasa de Victoria:** \`${winRate}%\`
-        `)
+        .setDescription(descLines.join('\n'))
         .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
@@ -141,17 +147,25 @@ function doOsuRankedProfileEmbed(message, osuUser, matchmaking) {
 /**
  * Genera el embed con la tabla de clasificación de Ranked Play (Global o Servidor).
  */
-function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serverName, isWinsSort, sortType, message }) {
+function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serverName, isWinsSort, sortType, message, locale }) {
+    const activeLocale = locale || message.locale || 'es';
     const embedColor = getEmbedColor(message);
     const effectiveSortType = sortType || (isWinsSort ? 'wins' : 'rating');
+    const numLocale = activeLocale === 'es' ? 'es-ES' : 'en-US';
     
     const lines = chunk.map((player, index) => {
         const flag = player.countryCode ? `:flag_${player.countryCode.toLowerCase()}:` : "🏳️";
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
-        const ratingStr = `**${player.rating.toLocaleString('es-ES')}** rating${player.isProvisional ? '*' : ''}`;
+        const ratingStr = `**${player.rating.toLocaleString(numLocale)}** rating${player.isProvisional ? '*' : ''}`;
         const winRate = player.plays > 0 ? ((player.wins / player.plays) * 100).toFixed(1) : "0.0";
-        const statsStr = `**${player.wins}** wins / **${player.plays}** plays (${winRate}% WR)`;
+        
+        let statsStr = "";
+        if (activeLocale === 'es') {
+            statsStr = `**${player.wins}** victorias / **${player.plays}** partidas (${winRate}% WR)`;
+        } else {
+            statsStr = `**${player.wins}** wins / **${player.plays}** matches (${winRate}% WR)`;
+        }
         
         let displayStr = "";
         if (effectiveSortType === 'wins' || effectiveSortType === 'winrate' || effectiveSortType === 'plays') {
@@ -163,26 +177,35 @@ function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serve
         return `${localRank} ${flag} [**${player.username}**](https://osu.ppy.sh/users/${player.userId}) ▸ ${displayStr}`;
     });
 
-    const titlePrefix = isServer ? `Tabla de Clasificación del Servidor (${serverName})` : "Tabla de Clasificación Global";
+    const titlePrefix = isServer 
+        ? t(activeLocale, 'ranked.leaderboard_title_server', { serverName }) 
+        : t(activeLocale, 'ranked.leaderboard_title_global');
     
-    let sortPrefix = "por Rating (ELO)";
+    let sortKey = "sort_rating";
     if (effectiveSortType === 'wins') {
-        sortPrefix = "por Victorias";
+        sortKey = "sort_wins";
     } else if (effectiveSortType === 'winrate') {
-        sortPrefix = "por Win Rate";
+        sortKey = "sort_winrate";
     } else if (effectiveSortType === 'plays') {
-        sortPrefix = "por Partidas Jugadas";
+        sortKey = "sort_plays";
     }
+    const sortPrefix = t(activeLocale, `ranked.${sortKey}`);
     
     const currentPage = Math.floor(startIndex / 10) + 1;
     const maxPages = Math.ceil(total / 10) || 1;
     
     const embed = new EmbedBuilder()
         .setTitle(`${titlePrefix} - Ranked Play ${sortPrefix}`)
-        .setDescription(lines.length > 0 ? lines.join('\n') : "*No hay jugadores en esta página.*")
+        .setDescription(lines.length > 0 ? lines.join('\n') : t(activeLocale, 'ranked.leaderboard_no_players'))
         .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Página ${currentPage} de ${maxPages} • Mostrando #${startIndex + 1} - #${startIndex + chunk.length} de ${total.toLocaleString()}`,
+            text: t(activeLocale, 'ranked.leaderboard_footer', {
+                page: currentPage,
+                pages: maxPages,
+                from: startIndex + 1,
+                to: startIndex + chunk.length,
+                total: total.toLocaleString(numLocale)
+            }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
