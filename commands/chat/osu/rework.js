@@ -2,9 +2,11 @@ const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParser, argsParser
 const ReworkModel = require("../../../models/ReworkModel.js");
 const rosu = require("rosu-pp-js");
 const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed } = require("../../../views/osuEmbeds.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
+    const locale = message.locale || 'es';
 
     // 1. Parsear argumentos usando argsParserNoCommand
     const isUserCompareQuery = args.some(arg => typeof arg === 'string' && (arg.toLowerCase().trim() === '-o' || arg.toLowerCase().trim() === '-osu' || arg.toLowerCase().trim() === '-top'));
@@ -51,10 +53,10 @@ async function run(messages, args) {
             reworksList = await ReworkModel.getReworksList();
         } catch (e) {
             console.error("Error al obtener lista de reworks:", e);
-            return "❌ Hubo un error al intentar obtener la lista de reworks desde la API.";
+            return t(locale, 'rework.err_api');
         }
 
-        const embed = await doOsuReworkListEmbed(message, reworksList);
+        const embed = await doOsuReworkListEmbed(message, reworksList, locale);
         if (reply) {
             reply.reply({ embeds: [embed] });
             return;
@@ -75,7 +77,7 @@ async function run(messages, args) {
         });
 
         if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
-            return osu_userdata.fn_response || "❌ No se pudo resolver el usuario de osu!.";
+            return osu_userdata.fn_response || t(locale, 'rework.err_user_not_found');
         }
 
         const player = osu_userdata.fn_response;
@@ -85,7 +87,7 @@ async function run(messages, args) {
         // Obtener el rework correspondiente
         const rework = await ReworkModel.getReworkByQuery(finalReworkQuery, requestedMode);
         if (!rework) {
-            return `❌ No se encontró ningún rework que coincida con "${finalReworkQuery}" para el modo de juego especificado.`;
+            return t(locale, 'rework.err_rework_not_found', { query: finalReworkQuery });
         }
 
         if (logger) logger.process(`Obteniendo datos de perfil para el rework: ${rework.name}`);
@@ -94,14 +96,14 @@ async function run(messages, args) {
             reworkUser = await ReworkModel.getUserReworkData(player.id, rework.id);
         } catch (e) {
             console.error("Error al obtener datos del jugador en Rework:", e);
-            return `❌ Hubo un error al conectar con la API de Reworks.`;
+            return t(locale, 'rework.err_rework_api');
         }
 
         if (!reworkUser) {
             const queueStatus = ReworkModel.getQueueStatus(player.id, rework.id);
             if (queueStatus) {
                 const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
-                return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
+                return t(locale, 'rework.queue_status_wait', { username: player.username, reworkName: rework.name, elapsed });
             } else {
                 const channelId = message.channel ? message.channel.id : null;
                 const messageId = message.id || null;
@@ -115,13 +117,13 @@ async function run(messages, args) {
                 } else {
                     console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 }
-                return `⏳ **${player.username}** no ha sido recalculado aún en **${rework.name}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.`;
+                return t(locale, 'rework.queue_added_wait', { username: player.username, reworkName: rework.name });
             }
         }
 
         await ReworkModel.removeFromQueue(player.id, rework.id);
 
-        const initialEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, [], true);
+        const initialEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, [], true, locale);
         let sentMessage;
         if (reply) {
             sentMessage = await reply.reply({ embeds: [initialEmbed] });
@@ -137,7 +139,7 @@ async function run(messages, args) {
             console.error("Error al obtener las jugadas del jugador en Rework:", e);
         }
 
-        const finalEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, scores, false);
+        const finalEmbed = await doOsuReworkUserEmbed(message, player, reworkUser, rework, scores, false, locale);
         if (sentMessage && typeof sentMessage.edit === 'function') {
             await sentMessage.edit({ embeds: [finalEmbed] });
         }
@@ -157,7 +159,7 @@ async function run(messages, args) {
         });
 
         if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
-            return osu_userdata.fn_response || "❌ No se pudo resolver el usuario de osu!.";
+            return osu_userdata.fn_response || t(locale, 'rework.err_user_not_found');
         }
 
         const player = osu_userdata.fn_response;
@@ -167,7 +169,7 @@ async function run(messages, args) {
         // Obtener el rework correspondiente
         const rework = await ReworkModel.getReworkByQuery(finalReworkQuery, requestedMode);
         if (!rework) {
-            return `❌ No se encontró ningún rework que coincida con "${finalReworkQuery}" para el modo de juego especificado.`;
+            return t(locale, 'rework.err_rework_not_found', { query: finalReworkQuery });
         }
 
         if (logger) logger.process(`Obteniendo top scores para el rework: ${rework.name}`);
@@ -176,14 +178,14 @@ async function run(messages, args) {
             scores = await ReworkModel.getUserReworkScores(player.id, rework.id, requestedMode);
         } catch (e) {
             console.error("Error al obtener top scores del jugador en Rework:", e);
-            return `❌ Hubo un error al conectar con la API de Reworks.`;
+            return t(locale, 'rework.err_rework_api');
         }
 
         if (!scores || scores.length === 0) {
             const queueStatus = ReworkModel.getQueueStatus(player.id, rework.id);
             if (queueStatus) {
                 const elapsed = Math.round((Date.now() - queueStatus.addedAt) / 1000);
-                return `⏳ **${player.username}** ya está en la cola de recalculación para **${rework.name}** (hace ${elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.`;
+                return t(locale, 'rework.queue_status_wait', { username: player.username, reworkName: rework.name, elapsed });
             } else {
                 const channelId = message.channel ? message.channel.id : null;
                 const messageId = message.id || null;
@@ -197,7 +199,7 @@ async function run(messages, args) {
                 } else {
                     console.error(`[Rework] No se pudo agregar automáticamente a la cola externa: ${reqResult.error}`);
                 }
-                return `⏳ **${player.username}** no ha sido recalculado aún en **${rework.name}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.`;
+                return t(locale, 'rework.queue_added_wait', { username: player.username, reworkName: rework.name });
             }
         }
 
@@ -213,7 +215,7 @@ async function run(messages, args) {
             });
 
         if (initial_parsed.nochoke) {
-            return "❌ El parámetro `-nc` (`-nochoke`) está temporalmente deshabilitado por optimización de API y prevención de errores 429.";
+            return t(locale, 'rework.err_nochoke_disabled');
         }
 
         if (initial_parsed.sortByPPChange) {
@@ -289,7 +291,7 @@ async function run(messages, args) {
 
         const total_plays = sortedScores.length;
         if (total_plays === 0) {
-            return `❌ No se encontraron jugadas en el top del rework que coincidan con los filtros (ej: -pp, mods).`;
+            return t(locale, 'rework.err_no_plays_found');
         }
 
         const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
@@ -303,16 +305,16 @@ async function run(messages, args) {
             let content_msg = '';
 
             if (index > total_plays) {
-                content_msg = `⚠️ Solo se encontraron **${total_plays}** jugadas en el rework. Mostrando la última (#${total_plays}):`;
+                content_msg = t(locale, 'rework.msg_single_play_last', { total: total_plays });
                 index = total_plays;
             } else if (index < 1) {
-                content_msg = `⚠️ Índice inválido. Mostrando la mejor (#1):`;
+                content_msg = t(locale, 'rework.msg_single_play_invalid');
                 index = 1;
             } else {
-                content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** en el Rework:`;
+                content_msg = t(locale, 'rework.msg_single_play', { index, total: total_plays });
             }
 
-            const initialEmbed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays);
+            const initialEmbed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays, locale);
 
             const getSingleButtonsRow = (curr, max) => {
                 return buildPaginationRow({
@@ -361,8 +363,8 @@ async function run(messages, args) {
                         index = total_plays;
                     }
 
-                    const content_msg = `Mostrando la jugada **#${index}** de **${total_plays}** en el Rework:`;
-                    const embed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays);
+                    const content_msg = t(locale, 'rework.msg_single_play', { index, total: total_plays });
+                    const embed = await doOsuReworkTopSingleEmbed(message, player, sortedScores[index - 1], rework, index, total_plays, locale);
 
                     await i.editReply({
                         content: content_msg,
@@ -393,7 +395,7 @@ async function run(messages, args) {
 
         let startIndex = (page - 1) * 5;
 
-        const initialEmbed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex);
+        const initialEmbed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex, locale);
 
         const getListButtonsRow = (start, total) => {
             return buildPaginationRow({ prefix: 'rew_top_list', current: start, total, pageSize: 5 });
@@ -434,7 +436,7 @@ async function run(messages, args) {
                     startIndex = Math.floor((total_plays - 1) / 5) * 5;
                 }
 
-                const embed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex);
+                const embed = await doOsuReworkTopEmbed(message, player, sortedScores, rework, startIndex, locale);
 
                 await i.editReply({
                     embeds: [embed],
@@ -470,7 +472,7 @@ async function run(messages, args) {
     if (!beatmap_id) {
         const channel_result = reply ? await findBeatmapInChannel(reply, true, initial_parsed.index) : await findBeatmapInChannel(message, false, initial_parsed.index);
         if (!channel_result.beatmap_url) {
-            return channel_result.bad_response || `❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.`;
+            return channel_result.bad_response || t(locale, 'rework.err_no_map_history');
         }
         beatmap_id = channel_result.beatmap_url;
     }
@@ -479,14 +481,14 @@ async function run(messages, args) {
     try {
         beatmap = await getBeatmap(beatmap_id);
     } catch (e) {
-        return `❌ No se pudieron cargar los metadatos para el mapa con ID \`${beatmap_id}\`.`;
+        return t(locale, 'rework.err_map_metadata', { mapId: beatmap_id });
     }
 
     let map;
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
     } catch (e) {
-        return `❌ No se pudo descargar ni analizar el archivo del mapa \`${beatmap_id}\`.`;
+        return t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
     }
 
     let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || "";
@@ -532,7 +534,7 @@ async function run(messages, args) {
     // Obtener Rework
     const rework = await ReworkModel.getReworkByQuery(reworkQuery, activeMode);
     if (!rework) {
-        return `❌ No se encontró ningún rework que coincida con "${reworkQuery}" para el modo de juego ${activeMode}.`;
+        return t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
     }
 
     if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id}`);
@@ -541,12 +543,12 @@ async function run(messages, args) {
         beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
     } catch (e) {
         console.error("Error al obtener scores de beatmap en Rework:", e);
-        return `❌ Hubo un error al obtener datos del beatmap desde la API de Reworks.`;
+        return t(locale, 'rework.err_rework_map_api');
     }
 
     const reworkResult = ReworkModel.calculateReworkPPForMap(beatmapScores, modsStr, livePPValues);
 
-    const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr);
+    const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale);
     
     if (reply) {
         reply.reply({ embeds: [embed] });
@@ -556,9 +558,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': "Comando de Reworks Próximos de PP",
-    'body': "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
-    'usage': `s.rework : Compara tus estadísticas y PP actual frente al rework (por defecto).\ns.rework 'usuario' : Compara a otro jugador frente al rework.\ns.rework -m +HDDT : Estima el PP del último mapa con mods HDDT (o respondiendo a un mapa).\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador.`
+    'header': t('es', 'commands.rework.header'),
+    'body': t('es', 'commands.rework.body'),
+    'usage': t('es', 'commands.rework.usage')
 };
 
 module.exports = { run, "description": run.description };

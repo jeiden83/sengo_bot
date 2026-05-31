@@ -261,6 +261,11 @@
       "header": "Upload a score to Sengo's database.",
       "body": "Attach a `.osr` replay file or reply to a `.osr` replay or a compatible score embed (from OwO bot or Sengo) with the details of a score and it will save it to the local database.\n\n**Options:**\n`-m <mods>` or `-mods <mods>`: Overwrites the detected mods (e.g. `-m HDDT`). Use `-m NM` for No Mod.",
       "usage": "s.subir [attaching .osr file or replying to a message] [-m MODS]"
+    },
+    "rework": {
+      "header": "Upcoming PP Reworks Command",
+      "body": "Calculates how much PP a map with mods will give under the upcoming rework, shows the recalculated user profile under a rework, or their top best plays.",
+      "usage": "s.rework : Compares your stats and current PP against the rework (default).\ns.rework 'username' : Compares another player against the rework.\ns.rework -m +HDDT : Estimates the PP of the last map with HDDT mods (or replying to a map).\ns.rework -rework 198 : Calculates under a specific rework by name or ID.\ns.rework -lista : Shows the reworks list.\ns.rework -top : Shows your recalculated top 5.\ns.rework -top 'username' : Shows another player's recalculated top 5."
     }
   },
   "contributors": {
@@ -971,6 +976,55 @@
     "err_md5_failed": "Could not find the original beatmap using the internal MD5 of the replay (`{md5}`). This usually happens with some replays exported from osu!lazer or modified maps. \n**Solution:** Send the replay again by replying to a message containing the link to the original beatmap.",
     "err_map_not_found": "Could not find the beatmap `{mapName}` in the osu! database.",
     "err_user_not_found": "Could not resolve the ID for user `{username}` and you are not linked to a profile."
+  },
+  "rework": {
+    "calc_author": "PP Estimation in Rework: {reworkName}",
+    "calc_mods": "Mods",
+    "calc_diff": "Difficulty",
+    "calc_rework": "Rework",
+    "calc_values_header": "Recalculated PP Values (Estimation):",
+    "calc_status_no_scores": "💡 *Note: This map has no scores in this rework. Estimated values equal to Live are shown.*",
+    "calc_status_exact": "✅ *Exact mods match in rework plays. (Ratio: {ratio}%)*",
+    "calc_status_estimate": "⚠️ *No plays with this mods combination in the rework. Estimation based on map average. (Ratio: {ratio}%)*",
+    "user_author": "Rework PP Details for {username}!",
+    "user_rework": "Rework",
+    "user_accuracy": "Average Accuracy",
+    "user_comp_header": "PP Comparison",
+    "user_comp_live": "Live PP",
+    "user_comp_rework": "Rework PP",
+    "user_comp_change": "Change",
+    "user_breakdown_weighted": "Weighted PP Breakdown in Rework:",
+    "user_breakdown_mods": "PP Mod Impact (Rework Top):",
+    "user_loading_mods": "⏳ Calculating mod impact...",
+    "user_mods_gain": "▲ Gain most",
+    "user_mods_loss": "▼ Loss most",
+    "user_mods_none": "None",
+    "list_title": "List of Upcoming and Proposed Reworks",
+    "list_desc": "Here you can see the list of available reworks on pp.huismetbenen.nl.\nUse `.rework -rework <name/id>` to calculate under a specific rework.",
+    "list_confirmed": "Confirmed for next deploy",
+    "list_proposed": "Proposed",
+    "list_wip": "In Progress (WIP)",
+    "top_desc": "Here are the recalculated best plays for **{username}** under the rework **{reworkName}** ({reworkCode}){chokeSuffix}.",
+    "top_title": "PP Rework Top - {username}{chokeSuffix}",
+    "top_single_author": "Score #{index} in Rework{chokeSuffix} for {username}",
+    "top_single_precision": "Accuracy",
+    "top_single_rank": "Top Rank",
+    "err_api": "❌ There was an error trying to get the reworks list from the API.",
+    "err_user_not_found": "❌ Could not resolve the osu! user.",
+    "err_rework_not_found": "❌ No rework found matching \"{query}\" for the specified playmode.",
+    "err_rework_not_found_mode": "❌ No rework found matching \"{query}\" for playmode {mode}.",
+    "err_rework_api": "❌ There was an error connecting to the Reworks API.",
+    "err_rework_map_api": "❌ There was an error fetching beatmap data from the Reworks API.",
+    "err_nochoke_disabled": "❌ The `-nc` (`-nochoke`) parameter is temporarily disabled for API optimization and rate-limit prevention.",
+    "err_no_plays_found": "❌ No plays found in the rework top matching the filters (e.g. -pp, mods).",
+    "err_map_metadata": "❌ Could not load metadata for beatmap ID `{mapId}`.",
+    "err_map_parse": "❌ Could not download or parse beatmap file `{mapId}`.",
+    "err_no_map_history": "❌ No beatmap found in the channel history and no valid ID was specified.",
+    "queue_status_wait": "⏳ **{username}** is already in the recalculation queue for **{reworkName}** ({elapsed}s ago).\nPlease be patient, it will update soon on pp.huismetbenen.nl.",
+    "queue_added_wait": "⏳ **{username}** has not been recalculated yet in **{reworkName}**.\nWe have added them to the recalculation queue. Try again in a few minutes.",
+    "msg_single_play": "Showing play **#{index}** of **{total}** in Rework:",
+    "msg_single_play_invalid": "⚠️ Invalid index. Showing best (#1):",
+    "msg_single_play_last": "⚠️ Only **{total}** plays found in the rework. Showing the last one (#{total}):"
   }
 }
 

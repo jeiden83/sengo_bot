@@ -261,6 +261,11 @@
       "header": "Sube una score a la base de datos de Sengo.",
       "body": "Adjunta un archivo `.osr` o haz reply a una replay `.osr` o a un embed de score compatible (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.",
       "usage": "s.subir [adjuntando archivo .osr o respondiendo a un mensaje] [-m MODS]"
+    },
+    "rework": {
+      "header": "Comando de Reworks Próximos de PP",
+      "body": "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
+      "usage": "s.rework : Compara tus estadísticas y PP actual frente al rework (por defecto).\ns.rework 'usuario' : Compara a otro jugador frente al rework.\ns.rework -m +HDDT : Estima el PP del último mapa con mods HDDT (o respondiendo a un mapa).\ns.rework -rework 198 : Calcula respecto a un rework específico por nombre o ID.\ns.rework -lista : Muestra la lista de reworks.\ns.rework -top : Muestra tu top 5 recalculado.\ns.rework -top 'usuario' : Muestra el top 5 recalculado de otro jugador."
     }
   },
   "contributors": {
@@ -971,6 +976,55 @@
     "err_md5_failed": "No pude encontrar el mapa original usando el MD5 interno de la replay (`{md5}`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.",
     "err_map_not_found": "No pude encontrar el mapa `{mapName}` en la base de datos de osu!.",
     "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil."
+  },
+  "rework": {
+    "calc_author": "Estimación de PP en Rework: {reworkName}",
+    "calc_mods": "Mods",
+    "calc_diff": "Dificultad",
+    "calc_rework": "Rework",
+    "calc_values_header": "Valores de PP recalculados (Estimación):",
+    "calc_status_no_scores": "💡 *Nota: Este mapa no tiene puntuaciones en este rework. Se muestran valores estimativos iguales a Live.*",
+    "calc_status_exact": "✅ *Coincidencia exacta de mods en las jugadas del rework. (Ratio: {ratio}%)*",
+    "calc_status_estimate": "⚠️ *No hay jugadas con esta combinación de mods en el rework. Estimación basada en el promedio del mapa. (Ratio: {ratio}%)*",
+    "user_author": "Detalles de PP en Rework para {username}!",
+    "user_rework": "Rework",
+    "user_accuracy": "Precisión Promedio",
+    "user_comp_header": "Comparación de PP",
+    "user_comp_live": "PP Live",
+    "user_comp_rework": "PP Rework",
+    "user_comp_change": "Cambio",
+    "user_breakdown_weighted": "Desglose de PP ponderado en Rework:",
+    "user_breakdown_mods": "Impacto de PP por Mods (Top Rework):",
+    "user_loading_mods": "⏳ Calculando impacto de mods...",
+    "user_mods_gain": "▲ Aportan más",
+    "user_mods_loss": "▼ Quitan más",
+    "user_mods_none": "Ninguno",
+    "list_title": "Lista de Reworks Próximos y Propuestos",
+    "list_desc": "Aquí puedes ver la lista de reworks disponibles en pp.huismetbenen.nl.\nUsa `.rework -rework <nombre/id>` para calcular con respecto a un rework específico.",
+    "list_confirmed": "Confirmados para el próximo deploy",
+    "list_proposed": "Propuestos",
+    "list_wip": "En Progreso (WIP)",
+    "top_desc": "Aquí tienes las mejores jugadas recalculadas para **{username}** bajo el rework **{reworkName}** ({reworkCode}){chokeSuffix}.",
+    "top_title": "Top Rework de PP - {username}{chokeSuffix}",
+    "top_single_author": "Puntuación #{index} en el Rework{chokeSuffix} para {username}",
+    "top_single_precision": "Precisión",
+    "top_single_rank": "Rango en Top",
+    "err_api": "❌ Hubo un error al intentar obtener la lista de reworks desde la API.",
+    "err_user_not_found": "❌ No se pudo resolver el usuario de osu!.",
+    "err_rework_not_found": "❌ No se encontró ningún rework que coincida con \"{query}\" para el modo de juego especificado.",
+    "err_rework_not_found_mode": "❌ No se encontró ningún rework que coincida con \"{query}\" para el modo de juego {mode}.",
+    "err_rework_api": "❌ Hubo un error al conectar con la API de Reworks.",
+    "err_rework_map_api": "❌ Hubo un error al obtener datos del beatmap desde la API de Reworks.",
+    "err_nochoke_disabled": "❌ El parámetro `-nc` (`-nochoke`) está temporalmente deshabilitado por optimización de API y prevención de errores 429.",
+    "err_no_plays_found": "❌ No se encontraron jugadas en el top del rework que coincidan con los filtros (ej: -pp, mods).",
+    "err_map_metadata": "❌ No se pudieron cargar los metadatos para el mapa con ID `{mapId}`.",
+    "err_map_parse": "❌ No se pudo descargar ni analizar el archivo del mapa `{mapId}`.",
+    "err_no_map_history": "❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.",
+    "queue_status_wait": "⏳ **{username}** ya está en la cola de recalculación para **{reworkName}** (hace {elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.",
+    "queue_added_wait": "⏳ **{username}** no ha sido recalculado aún en **{reworkName}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.",
+    "msg_single_play": "Mostrando la jugada **#{index}** de **{total}** en el Rework:",
+    "msg_single_play_invalid": "⚠️ Índice inválido. Mostrando la mejor (#1):",
+    "msg_single_play_last": "⚠️ Solo se encontraron **{total}** jugadas en el rework. Mostrando la última (#{total}):"
   }
 }
 

@@ -1158,7 +1158,7 @@ function diffString(diff) {
     return `0.00`;
 }
 
-async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr) {
+async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const beatmap_url = `https://osu.ppy.sh/b/${beatmap.id}`;
     const beatmap_cover = beatmap.beatmapset.covers["cover@2x"];
@@ -1178,11 +1178,11 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
     let modsDisplay = modsStr ? `+${modsStr.toUpperCase()}` : "Nomod";
     let statusText = "";
     if (!reworkResult.hasScores) {
-        statusText = "💡 *Nota: Este mapa no tiene puntuaciones en este rework. Se muestran valores estimativos iguales a Live.*";
+        statusText = t(locale, 'rework.calc_status_no_scores');
     } else if (reworkResult.hasExactMatch) {
-        statusText = `✅ *Coincidencia exacta de mods en las jugadas del rework. (Ratio: ${(reworkResult.ratio * 100).toFixed(1)}%)*`;
+        statusText = t(locale, 'rework.calc_status_exact', { ratio: (reworkResult.ratio * 100).toFixed(1) });
     } else {
-        statusText = `⚠️ *No hay jugadas con esta combinación de mods en el rework. Estimación basada en el promedio del mapa. (Ratio: ${(reworkResult.ratio * 100).toFixed(1)}%)*`;
+        statusText = t(locale, 'rework.calc_status_estimate', { ratio: (reworkResult.ratio * 100).toFixed(1) });
     }
 
     const diffSR = reworkResult.stars - livePPValues.baseStars;
@@ -1191,7 +1191,7 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Estimación de PP en Rework: ${rework.name}`,
+            name: t(locale, 'rework.calc_author', { reworkName: rework.name }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]`)
@@ -1199,11 +1199,11 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setDescription(`
-**• Mods:** \`${modsDisplay}\`
-**• Dificultad:** \`${srDisplay}\`
-**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
+**• ${t(locale, 'rework.calc_mods')}:** \`${modsDisplay}\`
+**• ${t(locale, 'rework.calc_diff')}:** \`${srDisplay}\`
+**• ${t(locale, 'rework.calc_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
 
-**Valores de PP recalculados (Estimación):**
+**${t(locale, 'rework.calc_values_header')}**
 ${ppAnsiBlock}
 ${statusText}
         `)
@@ -1216,7 +1216,7 @@ ${statusText}
     return embed;
 }
 
-async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores = [], isLoading = false) {
+async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores = [], isLoading = false, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
 
@@ -1231,13 +1231,13 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
     };
 
     let statsBlock = "";
-    let breakdownTitle = "Desglose de PP ponderado en Rework:";
+    let breakdownTitle = t(locale, 'rework.user_breakdown_weighted');
 
     if (isLoading) {
-        breakdownTitle = "Impacto de PP por Mods (Top Rework):";
-        statsBlock = `\`\`\`ansi\n⏳ Calculando impacto de mods...\n\`\`\``;
+        breakdownTitle = t(locale, 'rework.user_breakdown_mods');
+        statsBlock = `\`\`\`ansi\n${t(locale, 'rework.user_loading_mods')}\n\`\`\``;
     } else if (scores && scores.length > 0) {
-        breakdownTitle = "Impacto de PP por Mods (Top Rework):";
+        breakdownTitle = t(locale, 'rework.user_breakdown_mods');
         const modChangesMap = {};
         const modOrder = ["NF", "EZ", "TD", "HD", "HR", "DT", "NC", "HT", "FL", "SO", "SD", "PF"];
 
@@ -1309,7 +1309,7 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
         };
 
         const formatModList = (list) => {
-            if (list.length === 0) return " \u001b[1;30mNinguno\u001b[0m\n";
+            if (list.length === 0) return ` \u001b[1;30m${t(locale, 'rework.user_mods_none')}\u001b[0m\n`;
             return list.map(item => {
                 const labelText = item.mods === "NM" ? "NM" : `+${item.mods}`;
                 const label = ` \u001b[1;37m${labelText.padEnd(12)}\u001b[1;30m:\u001b[0m`;
@@ -1318,9 +1318,9 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
         };
 
         let blockText = "";
-        blockText += `\u001b[1;32m▲ Aportan más:\u001b[0m\n`;
+        blockText += `\u001b[1;32m${t(locale, 'rework.user_mods_gain')}:\u001b[0m\n`;
         blockText += formatModList(positives);
-        blockText += `\n\u001b[1;31m▼ Quitan más:\u001b[0m\n`;
+        blockText += `\n\u001b[1;31m${t(locale, 'rework.user_mods_loss')}:\u001b[0m\n`;
         blockText += formatModList(negatives);
 
         statsBlock = `\`\`\`ansi\n${blockText}\`\`\``;
@@ -1334,20 +1334,20 @@ async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Detalles de PP en Rework para ${osuUser.username}!`,
+            name: t(locale, 'rework.user_author', { username: osuUser.username }),
             url: user_url,
             iconURL: osuUser.avatar_url,
         })
         .setThumbnail(osuUser.avatar_url)
         .setColor(embedColor)
         .setDescription(`
-**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
-**• Precisión Promedio:** \`${(reworkUser.overall_accuracy || 0).toFixed(2)}%\`
+**• ${t(locale, 'rework.user_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
+**• ${t(locale, 'rework.user_accuracy')}:** \`${(reworkUser.overall_accuracy || 0).toFixed(2)}%\`
 
-**Comparación de PP:**
-▸ **PP Live:** \`${reworkUser.old_pp.toFixed(2)} pp\`
-▸ **PP Rework:** \`${reworkUser.new_pp_incl_bonus.toFixed(2)} pp\`
-▸ **Cambio:** \`${diffString(reworkUser.pp_change)} pp (${pctSign}${pctChange}%)\`
+**${t(locale, 'rework.user_comp_header')}:**
+▸ **${t(locale, 'rework.user_comp_live')}:** \`${reworkUser.old_pp.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_rework')}:** \`${reworkUser.new_pp_incl_bonus.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_change')}:** \`${diffString(reworkUser.pp_change)} pp (${pctSign}${pctChange}%)\`
 
 **${breakdownTitle}**
 ${statsBlock}
@@ -1361,7 +1361,7 @@ ${statsBlock}
     return embed;
 }
 
-async function doOsuReworkListEmbed(message, reworks) {
+async function doOsuReworkListEmbed(message, reworks, locale = 'es') {
     const embedColor = getEmbedColor(message);
 
     // Agrupar por categoría
@@ -1379,19 +1379,18 @@ async function doOsuReworkListEmbed(message, reworks) {
     };
 
     const embed = new EmbedBuilder()
-        .setTitle("Lista de Reworks Próximos y Propuestos")
+        .setTitle(t(locale, 'rework.list_title'))
         .setColor(embedColor)
         .setDescription(`
-Aquí puedes ver la lista de reworks disponibles en pp.huismetbenen.nl.
-Usa \`.rework -rework <nombre/id>\` para calcular con respecto a un rework específico.
+${t(locale, 'rework.list_desc')}
 
-### 🔴 Confirmados para el próximo deploy (${confirmed.length})
+### 🔴 ${t(locale, 'rework.list_confirmed')} (${confirmed.length})
 ${formatCategory(confirmed)}
 
-### 🟡 Propuestos (${proposed.length})
+### 🟡 ${t(locale, 'rework.list_proposed')} (${proposed.length})
 ${formatCategory(proposed)}
 
-### 🔵 En Progreso (WIP) (${wip.length})
+### 🔵 ${t(locale, 'rework.list_wip')} (${wip.length})
 ${formatCategory(wip)}
         `)
         .setFooter({
@@ -1403,14 +1402,14 @@ ${formatCategory(wip)}
     return embed;
 }
 
-async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, startIndex = 0) {
+async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, startIndex = 0, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const total_plays = sortedScores.length;
     const topScores = sortedScores.slice(startIndex, startIndex + 5);
     const isNoChoke = sortedScores.some(s => s.noChoke);
 
     const descSuffix = isNoChoke ? " (No Choke)" : "";
-    let description = `Aquí tienes las mejores jugadas recalculadas para **${osuUser.username}** bajo el rework **${rework.name}** (\`${rework.code}\`)${descSuffix}.\n\n`;
+    let description = t(locale, 'rework.top_desc', { username: osuUser.username, reworkName: rework.name, reworkCode: rework.code, chokeSuffix: descSuffix }) + "\n\n";
 
     topScores.forEach((score, index) => {
         const beatmap = score.beatmap || {};
@@ -1443,7 +1442,7 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, start
     const footerSuffix = isNoChoke ? " (No Choke)" : "";
 
     const embed = new EmbedBuilder()
-        .setTitle(`Top Rework de PP - ${osuUser.username}${titleSuffix}`)
+        .setTitle(t(locale, 'rework.top_title', { username: osuUser.username, chokeSuffix: titleSuffix }))
         .setColor(embedColor)
         .setThumbnail(osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`)
         .setDescription(description)
@@ -1456,7 +1455,7 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, start
     return embed;
 }
 
-async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index, total_plays) {
+async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index, total_plays, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
     const avatar_url = osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`;
@@ -1489,16 +1488,15 @@ async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index,
     const srDisplay = `${liveSR.toFixed(2)}★ -> ${reworkSR.toFixed(2)}★ (${srDiffSign}${srDiff.toFixed(2)})`;
 
     // Desglose de PP en Rework
-    const aimPP = `\\u001b[1;30mWeighted Aim:\\u001b[0m     ${(values.aim_pp || 0).toFixed(2)}pp`;
-    const tapPP = `\\u001b[1;30mWeighted Tap:\\u001b[0m     ${(values.tap_pp || 0).toFixed(2)}pp`;
-    const accPP = `\\u001b[1;30mWeighted Acc:\\u001b[0m     ${(values.acc_pp || 0).toFixed(2)}pp`;
-    const readPP = `\\u001b[1;30mWeighted Reading:\\u001b[0m ${(values.reading_pp || 0).toFixed(2)}pp`;
+    const aimPP = `\u001b[1;30mWeighted Aim:\u001b[0m     ${(values.aim_pp || 0).toFixed(2)}pp`;
+    const tapPP = `\u001b[1;30mWeighted Tap:\u001b[0m     ${(values.tap_pp || 0).toFixed(2)}pp`;
+    const accPP = `\u001b[1;30mWeighted Acc:\u001b[0m     ${(values.acc_pp || 0).toFixed(2)}pp`;
+    const readPP = `\u001b[1;30mWeighted Reading:\u001b[0m ${(values.reading_pp || 0).toFixed(2)}pp`;
     const statsBlock = `\`\`\`ansi\n${aimPP}\n${tapPP}\n${accPP}\n${readPP}\n\`\`\``;
 
     const isNoChoke = !!score.noChoke;
-    const authorName = isNoChoke
-        ? `Puntuación #${index} en el Rework (No Choke) para ${osuUser.username}`
-        : `Puntuación #${index} en el Rework para ${osuUser.username}`;
+    const chokeSuffix = isNoChoke ? " (No Choke)" : "";
+    const authorName = t(locale, 'rework.top_single_author', { index, username: osuUser.username, chokeSuffix });
 
     const footerText = isNoChoke
         ? `Sengo • PP Rework Top Play #${index} de ${total_plays} (No Choke)`
@@ -1516,18 +1514,18 @@ async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index,
         .setURL(mapUrl)
         .setColor(embedColor)
         .setDescription(`
-**• Mods:** \`${modsStr || 'None'}\`
-**• Dificultad:** \`${srDisplay}\`
-**• Rework:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})${descSuffix}
+**• ${t(locale, 'rework.calc_mods')}:** \`${modsStr || 'None'}\`
+**• ${t(locale, 'rework.calc_diff')}:** \`${srDisplay}\`
+**• ${t(locale, 'rework.calc_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})${descSuffix}
 
-**Comparación de PP:**
-▸ **PP Live:** \`${livePP.toFixed(2)} pp\`
-▸ **PP Rework:** \`${localPP.toFixed(2)} pp\`
-▸ **Cambio:** \`${diffString}\`
-▸ **Precisión:** \`${score.accuracy ? score.accuracy.toFixed(2) : '0.00'}%\`
-▸ **Rango en Top:** \`#${oldRank}\` ➔ \`#${newRank}\`
+**${t(locale, 'rework.user_comp_header')}:**
+▸ **${t(locale, 'rework.user_comp_live')}:** \`${livePP.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_rework')}:** \`${localPP.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_change')}:** \`${diffString}\`
+▸ **${t(locale, 'rework.top_single_precision')}:** \`${score.accuracy ? score.accuracy.toFixed(2) : '0.00'}%\`
+▸ **${t(locale, 'rework.top_single_rank')}:** \`#${oldRank}\` ➔ \`#${newRank}\`
 
-**Desglose de PP ponderado en Rework:**
+**${t(locale, 'rework.user_breakdown_weighted')}**
 ${statsBlock}
         `)
         .setFooter({
