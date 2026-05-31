@@ -1,9 +1,11 @@
 const { doOsuReplayEmbed } = require("../../../views/osuReplayViews.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
 const fetch = require('node-fetch');
+const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args, initialized_data) {
     const { message, reply } = messages;
+    const locale = message.locale || 'es';
 
     // Buscar el archivo adjunto en el mensaje o en el mensaje al que se responde
     let attachment = message.attachments.find(a => a.name.endsWith('.osr'));
@@ -12,7 +14,7 @@ async function run(messages, args, initialized_data) {
     }
 
     if (!attachment) {
-        return "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.";
+        return t(locale, 'replay.err_no_attachment');
     }
 
     try {
@@ -23,7 +25,7 @@ async function run(messages, args, initialized_data) {
 
         const replayData = parseOSR(buffer);
         if (!replayData) {
-            return "No se pudo parsear el archivo. Asegúrate de que sea un archivo de replay válido de osu!";
+            return t(locale, 'replay.err_invalid_replay');
         }
 
         const gameModes = ['osu!standard', 'osu!taiko', 'osu!catch', 'osu!mania'];
@@ -58,7 +60,6 @@ async function run(messages, args, initialized_data) {
         }
 
         // Calcular la fecha (Windows Ticks a JS Date)
-        // 621355968000000000 es la diferencia en ticks entre el 1 de enero de 1601 y el 1 de enero de 1970
         let dateObj = null;
         try {
             const unixTime = Number((replayData.timestamp - 621355968000000000n) / 10000n);
@@ -84,24 +85,24 @@ async function run(messages, args, initialized_data) {
         });
 
         // Construir Embed utilizando la capa de visualización (View)
-        const embed = doOsuReplayEmbed(replayData, modeStr, displayMods, dateObj);
+        const embed = doOsuReplayEmbed(message, replayData, modeStr, displayMods, dateObj);
 
         return { embeds: [embed] };
 
     } catch (e) {
         console.error("Error downloading or parsing osr:", e);
-        return "Ocurrió un error al intentar leer la replay.";
+        return t(locale, 'replay.err_unexpected');
     }
 }
 
 run.alias = {
     "osr": { "args": "" }
-}
+};
 
 run.description = {
-    'header': 'Lee un archivo de replay (.osr) y muestra sus datos.',
-    'body': 'Sube un archivo `.osr` al chat junto con el comando `s.replay`, o responde al mensaje que tenga el archivo.',
-    'usage': `s.replay [adjuntando archivo .osr]`
-}
+    'header': t('es', 'commands.replay.header'),
+    'body': t('es', 'commands.replay.body'),
+    'usage': t('es', 'commands.replay.usage')
+};
 
-module.exports = { run, "description": run.description }
+module.exports = { run, description: run.description };

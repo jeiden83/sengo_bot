@@ -190,6 +190,11 @@
       "header": "Country self-role",
       "body": "Applicable for [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nGrants a country role based on the user linked to the bot.",
       "usage": "s.pais"
+    },
+    "replay": {
+      "header": "Replay analyzer (.osr)",
+      "body": "Upload an `.osr` file to the chat along with the `s.replay` command, or reply to a message containing the file to see its technical details.",
+      "usage": "s.replay [attaching .osr file]"
     }
   },
   "contributors": {
@@ -553,5 +558,21 @@
     "reason_create": "Country role for {code}",
     "success_create_assign": "Country role successfully created, positioned, and assigned.",
     "err_create_assign": "There was an error creating or assigning the country role."
+  },
+  "replay": {
+    "err_no_attachment": "Please attach an `.osr` replay file or reply to a message that has one.",
+    "err_invalid_replay": "Could not parse the file. Make sure it is a valid osu! replay file.",
+    "err_unexpected": "An error occurred while trying to read the replay.",
+    "embed_title": "Replay Parser: {name}",
+    "embed_desc": "**Game Mode:** {mode}\n**Game Version:** {version}\n**Mods:** {mods}",
+    "field_score": "Total Score",
+    "field_max_combo": "Max Combo",
+    "field_perfect_combo": "Perfect Combo",
+    "field_stats": "Statistics",
+    "field_beatmap_md5": "Beatmap MD5",
+    "yes": "Yes",
+    "no": "No",
+    "stats_value": "300s: **{count300}**\n100s: **{count100}**\n50s: **{count50}**\nMisses: **{countMiss}**\nGekis: **{countGeki}**\nKatus: **{countKatu}**",
+    "footer": "Sengo • Replay Parser"
   }
 }

@@ -3,6 +3,8 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 const country_codes = require("../../../src/country_codes.json");
 const { t } = require("../../../utils/i18n.js");
 
+const CONFIG = require("../../../config.js");
+
 async function run(messages, args) {
     const { message, res } = messages;
     const locale = message.locale || 'es';
@@ -11,7 +13,7 @@ async function run(messages, args) {
         return t(locale, 'pais.err_guild_only');
     }
 
-    if (message.guild.id !== "1422374224403890268") {
+    if (message.guild.id !== "1422374224403890268" && message.author.id !== CONFIG.OWNER_ID) {
         return t(locale, 'pais.err_wrong_guild');
     }
 

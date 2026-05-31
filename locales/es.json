@@ -190,6 +190,11 @@
       "header": "Autorol de país",
       "body": "Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nOtorga un rol del país con respecto al usuario linkeado al bot.",
       "usage": "s.pais"
+    },
+    "replay": {
+      "header": "Analizador de replay (.osr)",
+      "body": "Sube un archivo `.osr` al chat junto con el comando `s.replay`, o responde al mensaje que tenga el archivo para ver sus datos técnicos.",
+      "usage": "s.replay [adjuntando archivo .osr]"
     }
   },
   "contributors": {
@@ -553,5 +558,21 @@
     "reason_create": "Rol de país para {code}",
     "success_create_assign": "Rol de país creado, posicionado y asignado exitosamente.",
     "err_create_assign": "Hubo un error al crear o asignar el rol de país."
+  },
+  "replay": {
+    "err_no_attachment": "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.",
+    "err_invalid_replay": "No se pudo parsear el archivo. Asegúrate de que sea un archivo de replay válido de osu!",
+    "err_unexpected": "Ocurrió un error al intentar leer la replay.",
+    "embed_title": "Analizador de Replay: {name}",
+    "embed_desc": "**Modo de juego:** {mode}\n**Versión del juego:** {version}\n**Mods:** {mods}",
+    "field_score": "Puntuación Total",
+    "field_max_combo": "Combo Máximo",
+    "field_perfect_combo": "Combo Perfecto",
+    "field_stats": "Estadísticas",
+    "field_beatmap_md5": "Beatmap MD5",
+    "yes": "Sí",
+    "no": "No",
+    "stats_value": "300s: **{count300}**\n100s: **{count100}**\n50s: **{count50}**\nMisses: **{countMiss}**\nGekis: **{countGeki}**\nKatus: **{countKatu}**",
+    "footer": "Sengo • Analizador de Replay"
   }
 }
