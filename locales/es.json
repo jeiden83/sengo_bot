@@ -76,6 +76,7 @@
       "usage": "❓ Cómo usarlo",
       "aliases": "🔗 Alias"
     },
+    "no_arguments": "(sin argumentos)",
     "buttons": {
       "prev": "Anterior: {prefix}{cmd}",
       "next": "Siguiente: {prefix}{cmd}"

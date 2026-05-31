@@ -1,7 +1,7 @@
 const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
 const { t } = require("../../../utils/i18n.js");
 
-function formatUsage(usageText, mainName, aliases = []) {
+function formatUsage(usageText, mainName, aliases = [], locale = 'es') {
     if (!usageText) return `.${mainName}`;
     
     // Normalizar a usar prefijo de punto "."
@@ -32,7 +32,7 @@ function formatUsage(usageText, mainName, aliases = []) {
         let desc = "";
         
         if (remaining.startsWith(':')) {
-            args = "(sin argumentos)";
+            args = t(locale, 'help.no_arguments');
             desc = remaining.slice(1).trim();
         } else {
             const colonIdx = remaining.indexOf(':');
@@ -99,7 +99,7 @@ function getCommandHelpData(cmdName, commandsMap, mainCommandsSet, locale = 'es'
         const embedMsj_description = commandData.description || commandData.run?.description || {};
         rawUsage = embedMsj_description.usage || `s.${mainName}`;
     }
-    const usageText = formatUsage(rawUsage, mainName, aliases);
+    const usageText = formatUsage(rawUsage, mainName, aliases, locale);
 
     const fields = [
         {
