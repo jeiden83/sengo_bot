@@ -12,9 +12,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': 'Muestra la latencia del bot / Shows the bot\'s latency',
-    'body': 'Calcula el tiempo de respuesta en milisegundos desde Discord. / Calculates response time in milliseconds from Discord.',
-    'usage': 's.ping'
+    'header': t('es', 'commands.ping.header'),
+    'body': t('es', 'commands.ping.body'),
+    'usage': t('es', 'commands.ping.usage')
 };
 
 module.exports = { run, description: run.description }

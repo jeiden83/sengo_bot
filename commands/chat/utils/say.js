@@ -39,9 +39,9 @@ run.alias = {
 };
 
 run.description = {
-    'header' : "Di algo como si fuera el Sengo / Say something as Sengo",
-    'body' : 'Envía un mensaje idéntico al texto proporcionado. / Sends a message identical to the provided text.',
-    'usage' : `s.say 'texto'`
+    'header': t('es', 'commands.say.header'),
+    'body': t('es', 'commands.say.body'),
+    'usage': t('es', 'commands.say.usage')
 };
 
 module.exports = { run }

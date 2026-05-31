@@ -35,9 +35,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': "Lanza un número aleatorio / Rolls a random number",
-    'body': 'Genera un número entero pseudoaleatorio entre un rango mínimo y máximo. / Generates a pseudo-random integer between a minimum and maximum range.',
-    'usage': 's.roll [max] [min] : Por defecto entre 1 y 100.'
+    'header': t('es', 'commands.roll.header'),
+    'body': t('es', 'commands.roll.body'),
+    'usage': t('es', 'commands.roll.usage')
 };
 
 module.exports = { run, description: run.description }
