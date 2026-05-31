@@ -7,11 +7,12 @@ const {
     getPlainStatsString,
     getFlagEmoji
 } = require("./osuViewHelpers.js");
+const { t } = require("../utils/i18n.js");
 
 /**
  * Renderiza el embed para el comando gap (usuarios vinculados en el beatmap)
  */
-function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0) {
+function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0, locale = "es") {
     let embed_description = '';
     let position = startIndex + 1;
 
@@ -58,10 +59,13 @@ function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
         );
     });
     
+    const embedColor = getEmbedColor(message);
+
     const embed = new EmbedBuilder()
         .setDescription(embed_description)
+        .setColor(embedColor)
         .setFooter({
-            text: `Sengo • Mostrando posiciones ${startIndex + 1}-${startIndex + user_scores.length} de ${total_plays}`,
+            text: t(locale, 'gap.embed_footer', { start: startIndex + 1, end: startIndex + user_scores.length, total: total_plays }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -72,15 +76,15 @@ function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
 /**
  * Genera el string de contenido de encabezado para el comando gap
  */
-function doOsuGapContent(beatmap_metadata, user_scores, sorted_user_scores, page = 1, max_pages = 1) {
+function doOsuGapContent(beatmap_metadata, user_scores, sorted_user_scores, page = 1, max_pages = 1, locale = "es") {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url} = beatmap_metadata;
 
     const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
-    let content = `**De \`${user_scores.length}\` usuarios, \`${sorted_user_scores.length}\` tienen una score en: \n${mapa}**`;
+    let content = t(locale, 'gap.content_title', { totalUsers: user_scores.length, scoreUsers: sorted_user_scores.length, mapa });
 
     if (sorted_user_scores.length > 5) {
-        content = content.concat(`\n**Página \`${page}/${max_pages}\`**`);
+        content = content.concat(t(locale, 'gap.content_page', { page, max_pages }));
     }
 
     return content;

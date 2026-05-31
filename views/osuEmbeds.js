@@ -258,7 +258,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 /**
  * Renderiza el embed para una única jugada del Top de PP de osu!
  */
-async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount) {
+async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount, locale = message.locale || 'es') {
     const username = score.user.username;
     const user_url = score.user.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user.id}`;
     const avatar_url = score.user.avatar_url;
@@ -295,34 +295,35 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     let prefix_desc = '';
     if (parsed_args.ppThreshold !== null) {
         let filterText = '';
-        if (parsed_args.modFilter) filterText += ` con mods exactos ${parsed_args.modFilter}`;
-        if (parsed_args.modContainFilter) filterText += ` con ${parsed_args.modContainFilter}`;
-        if (parsed_args.searchFilter) filterText += ` que coinciden con "${parsed_args.searchFilter}"`;
-        prefix_desc += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más${filterText} en su top.\n\n`;
+        if (parsed_args.modFilter) filterText += t(locale, 'top.pp_threshold_filter_exact', { mod: parsed_args.modFilter });
+        if (parsed_args.modContainFilter) filterText += t(locale, 'top.pp_threshold_filter_contain', { mod: parsed_args.modContainFilter });
+        if (parsed_args.searchFilter) filterText += t(locale, 'top.pp_threshold_filter_search', { search: parsed_args.searchFilter });
+        const playsText = ppThresholdCount === 1 ? t(locale, 'top.plays_singular') : t(locale, 'top.plays_plural');
+        prefix_desc += t(locale, 'top.pp_threshold_desc', { username, count: ppThresholdCount, threshold: parsed_args.ppThreshold, filterText, playsText });
     }
 
     let active_filters = [];
-    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
-    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
-    if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
-    if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
-    if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
-    if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
-    if (parsed_args.nochoke) active_filters.push(`no-choke: activo 🛡️`);
+    if (parsed_args.modFilter !== null) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
+    if (parsed_args.modContainFilter !== null) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
+    if (parsed_args.searchFilter !== null) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
+    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
+    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
+    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
+    if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
 
     if (active_filters.length > 0) {
-        prefix_desc += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+        prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
 
     const authorName = parsed_args.nochoke
-        ? `Puntuación #${index} [${score.originalRank}] en el Top de PP (No Choke) de ${username}`
-        : `Puntuación #${score.originalRank || index} en el Top de PP de ${username}`;
+        ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
+        : t(locale, 'top.single_embed_author', { rank: score.originalRank || index, username });
 
     const footerText = parsed_args.nochoke
-        ? `Sengo • Jugada #${index} de ${total_plays} del Top de PP (No Choke)`
-        : `Sengo • Jugada #${index} de ${total_plays} del Top de PP`;
+        ? t(locale, 'top.single_embed_footer_nc', { index, total: total_plays })
+        : t(locale, 'top.single_embed_footer', { index, total: total_plays });
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -349,29 +350,30 @@ ${ansiBlock}
 /**
  * Renderiza el embed para la lista de jugadas del Top de PP de osu!
  */
-async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays, ppThresholdCount, calculated_stars) {
+async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIndex, total_plays, ppThresholdCount, calculated_stars, locale = message.locale || 'es') {
     let embed_description = '';
     const username = top_scores_chunk[0].user.username;
 
     if (parsed_args.ppThreshold !== null) {
         let filterText = '';
-        if (parsed_args.modFilter) filterText += ` con mods exactos ${parsed_args.modFilter}`;
-        if (parsed_args.modContainFilter) filterText += ` con ${parsed_args.modContainFilter}`;
-        if (parsed_args.searchFilter) filterText += ` que coinciden con "${parsed_args.searchFilter}"`;
-        embed_description += `📈 **${username}** tiene **${ppThresholdCount}** ${ppThresholdCount === 1 ? 'jugada' : 'jugadas'} de **${parsed_args.ppThreshold} pp** o más${filterText} en su top.\n\n`;
+        if (parsed_args.modFilter) filterText += t(locale, 'top.pp_threshold_filter_exact', { mod: parsed_args.modFilter });
+        if (parsed_args.modContainFilter) filterText += t(locale, 'top.pp_threshold_filter_contain', { mod: parsed_args.modContainFilter });
+        if (parsed_args.searchFilter) filterText += t(locale, 'top.pp_threshold_filter_search', { search: parsed_args.searchFilter });
+        const playsText = ppThresholdCount === 1 ? t(locale, 'top.plays_singular') : t(locale, 'top.plays_plural');
+        embed_description += t(locale, 'top.pp_threshold_desc', { username, count: ppThresholdCount, threshold: parsed_args.ppThreshold, filterText, playsText });
     }
 
     let active_filters = [];
-    if (parsed_args.modFilter !== null) active_filters.push(`mods exactos: ${parsed_args.modFilter}`);
-    if (parsed_args.modContainFilter !== null) active_filters.push(`contiene mods: ${parsed_args.modContainFilter}`);
-    if (parsed_args.searchFilter !== null) active_filters.push(`búsqueda: "${parsed_args.searchFilter}"`);
-    if (parsed_args.recentSort) active_filters.push(`orden: más recientes ⏱️`);
-    if (parsed_args.comboSort) active_filters.push(`orden: combo 📏`);
-    if (parsed_args.accSort) active_filters.push(`orden: precisión 🎯`);
-    if (parsed_args.nochoke) active_filters.push(`no-choke: activo 🛡️`);
+    if (parsed_args.modFilter !== null) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
+    if (parsed_args.modContainFilter !== null) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
+    if (parsed_args.searchFilter !== null) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
+    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
+    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
+    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
+    if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
 
     if (active_filters.length > 0) {
-        embed_description += `🔍 *Filtros activos: ${active_filters.join(" | ")}*\n\n`;
+        embed_description += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
     for (let i = 0; i < top_scores_chunk.length; i++) {
@@ -433,7 +435,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Mejores puntuaciones de ${username} en osu!${parsed_args.gamemode || 'std'}${authorSuffix}`,
+            name: t(locale, 'top.list_embed_author', { username, mode: parsed_args.gamemode || 'std', suffix: authorSuffix }),
             url: user_url,
             iconURL: avatar_url
         })
@@ -441,7 +443,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         .setDescription(embed_description)
         .setColor(embedColor)
         .setFooter({
-            text: `Mostrando jugadas ${startIndex + 1}-${startIndex + top_scores_chunk.length} de ${total_plays} mejores${footerSuffix}`,
+            text: t(locale, 'top.list_embed_footer', { start: startIndex + 1, end: startIndex + top_scores_chunk.length, total: total_plays, suffix: footerSuffix }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

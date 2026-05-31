@@ -2,6 +2,7 @@ const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUs
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = false, targetGuildId = null, extraDiscordIds = [], extraOsuIds = []) {
     try {
@@ -60,6 +61,7 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
 
 async function run(messages, args){
     const { message, res, reply, logger } = messages;
+    const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
     const {beatmap_url, bad_response} = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
@@ -78,7 +80,7 @@ async function run(messages, args){
     if (targetGuildId) {
         const ownerId = process.env.OWNER_ID;
         if (message.author.id !== ownerId) {
-            return "❌ Solo el creador del bot puede usar el flag `-server`.";
+            return t(locale, 'gap.err_creator_only_server');
         }
     }
 
@@ -86,7 +88,7 @@ async function run(messages, args){
     if (hasBypassFlag) {
         const ownerId = process.env.OWNER_ID;
         if (message.author.id !== ownerId) {
-            return "❌ Solo el creador del bot puede usar el flag `-bypass`.";
+            return t(locale, 'gap.err_creator_only_bypass');
         }
     }
 
@@ -94,7 +96,7 @@ async function run(messages, args){
     const bypass = hasBypassFlag || isSengoGuild;
 
     if (!message.guild && !bypass && !targetGuildId) {
-        return { content: "❌ Este comando solo se puede usar dentro de un servidor o usando los flags `-bypass` o `-server`." };
+        return { content: t(locale, 'gap.err_server_only') };
     }
 
     const extraDiscordIds = [];
@@ -119,8 +121,9 @@ async function run(messages, args){
 
     if (usersArray.length === 0) {
         const modeName = beatmap_metadata.mode === 'osu' ? 'standard' : beatmap_metadata.mode;
-        const contextStr = targetGuildId ? `en el servidor con ID \`${targetGuildId}\`` : (bypass ? 'vinculados globalmente' : 'en este servidor');
-        return { content: `**No hay usuarios ${contextStr}** que jueguen principalmente el modo \`${modeName}\`.` };
+        const contextKey = targetGuildId ? 'gap.context_server_id' : (bypass ? 'gap.context_globally' : 'gap.context_server');
+        const context = t(locale, contextKey, { targetGuildId });
+        return { content: t(locale, 'gap.no_users', { context, mode: modeName }) };
     }
 
     const forceUpdate = args && args.some(arg => typeof arg === 'string' && arg.toLowerCase().trim() === '-force');
@@ -134,9 +137,11 @@ async function run(messages, args){
         user_scores = user_scores.filter(score => score.passed);
     }
 
-    if(user_scores.size === 0) {
-        const contextStr = targetGuildId ? `en el servidor con ID \`${targetGuildId}\`` : (bypass ? 'vinculados globalmente' : 'en el servidor');
-        return {content: `**De los \`${usersArray.length}\` usuarios ${contextStr} (modo ${beatmap_metadata.mode})** pues ninguno tiene una score en el mapa${filterPass ? ' (que no sea fallida)' : ''}.`};
+    if (user_scores.size === 0 || (user_scores.length !== undefined && user_scores.length === 0)) {
+        const contextKey = targetGuildId ? 'gap.context_server_id' : (bypass ? 'gap.context_globally' : 'gap.context_server_short');
+        const context = t(locale, contextKey, { targetGuildId });
+        const filterPassSuffix = filterPass ? t(locale, 'gap.filter_pass_suffix') : '';
+        return { content: t(locale, 'gap.no_scores', { count: usersArray.length, context, mode: beatmap_metadata.mode, filterPass: filterPassSuffix }) };
     }
 
     if (beatmap_metadata.status === 'loved' || beatmap_metadata.status === 'qualified') {
@@ -174,7 +179,8 @@ async function run(messages, args){
     const max_pages = Math.ceil(total_plays / 5);
     const requestedPage = parsed_args.page || 1;
     if (parsed_args.page && (requestedPage > max_pages || requestedPage < 1)) {
-        const warningMsg = `⚠️ La página **${requestedPage}** no existe. Este mapa solo tiene **${max_pages}** ${max_pages === 1 ? 'página' : 'páginas'} de puntuaciones.`;
+        const pagesText = max_pages === 1 ? t(locale, 'gap.pages_singular') : t(locale, 'gap.pages_plural');
+        const warningMsg = t(locale, 'gap.err_page_not_found', { requestedPage, max_pages, pagesText });
         if (reply) {
             reply.reply({ content: warningMsg });
             return;
@@ -185,8 +191,8 @@ async function run(messages, args){
     let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
-    const content = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, page, max_pages);
-    const initialEmbed = await doOsuGapEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays);
+    const content = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, page, max_pages, locale);
+    const initialEmbed = await doOsuGapEmbed(message, scoresArray.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, locale);
 
     const getGapButtonsRow = (start, total) => {
         return buildPaginationRow({ prefix: 'gap', current: start, total, pageSize: 5 });
@@ -230,9 +236,9 @@ async function run(messages, args){
             }
 
             const currentPage = Math.floor(startIndex / 5) + 1;
-            const updatedContent = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, currentPage, max_pages);
+            const updatedContent = await doOsuGapContent(beatmap_metadata, usersArray, scoresArray, currentPage, max_pages, locale);
             const chunk = scoresArray.slice(startIndex, startIndex + 5);
-            const embed = await doOsuGapEmbed(message, chunk, beatmap_metadata, startIndex, total_plays);
+            const embed = await doOsuGapEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, locale);
 
             await i.editReply({
                 content: updatedContent,
