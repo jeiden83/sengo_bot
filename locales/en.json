@@ -150,6 +150,16 @@
       "header": "Starboard function",
       "body": "Processes and highlights the message with the most unique reactions from the previous day in the configured channel, rewarding experience.",
       "usage": "s.star\ns.star config setFromChannel <id> : Source channel\ns.star config setStarChannel <id> : Destination channel\ns.star config setMsjLimit <num> : Message limit\ns.star config setExpReward <num> : Experience points\ns.star config setLogsChannel <id> : Logs channel"
+    },
+    "cumple": {
+      "header": "Server Birthday Management",
+      "body": "Allows users to register birthdays and admins to configure automatic greetings in a dedicated channel.",
+      "usage": "s.cumple [date/list/next/prev/remove/channel]"
+    },
+    "giveaway": {
+      "header": "Interactive Giveaway Management",
+      "body": "Allows creating, ending, and rerolling giveaways on the server.\n\n🛡️ **Provably Fair:**\nEach giveaway generates a SHA-256 hash of a secret seed when starting. When it ends, the seed is revealed. You can verify that the giveaway was not manipulated:\n1. Apply SHA-256 to the revealed seed (Server Seed) and check that it matches the Validation Hash from the start.\n2. Winners are chosen by sorting participants alphabetically by their ID and applying HMAC-SHA256 with the seed.",
+      "usage": "s.giveaway create <#channel> <winners> <time> <prize>\ns.giveaway end <message_id|link>\ns.giveaway reroll <message_id|link>"
     }
   },
   "contributors": {

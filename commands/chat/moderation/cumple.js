@@ -401,9 +401,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    header: 'Gestión de cumpleaños del servidor',
-    body: 'Permite registrar cumpleaños y programar felicitaciones automáticas en un canal configurado por administradores.',
-    usage: 's.cumple [fecha/lista/proximo/anterior/quitar/canal]'
+    header: t('es', 'commands.cumple.header'),
+    body: t('es', 'commands.cumple.body'),
+    usage: t('es', 'commands.cumple.usage')
 };
 
 module.exports = { run, description: run.description };

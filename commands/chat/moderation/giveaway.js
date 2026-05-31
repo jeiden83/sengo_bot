@@ -384,9 +384,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Gestión de sorteos interactiva",
-    'body': 'Permite crear, terminar y re-rolear sorteos en el servidor.\n\n🛡️ **Demostrablemente Justo (Provably Fair):**\nCada sorteo genera un Hash SHA-256 de una semilla secreta al iniciar. Al finalizar, la semilla es revelada. Puedes comprobar que el sorteo no fue manipulado:\n1. Aplica SHA-256 a la semilla revelada (Server Seed) y comprueba que coincide con el Hash de Validación del inicio.\n2. Los ganadores se escogen ordenando a los participantes alfabéticamente por su ID y aplicando HMAC-SHA256 con la semilla.',
-    'usage': 's.giveaway crear <#canal> <ganadores> <tiempo> <premio>\ns.giveaway terminar <mensaje_id|enlace>\ns.giveaway reroll <mensaje_id|enlace>'
+    'header': t('es', 'commands.giveaway.header'),
+    'body': t('es', 'commands.giveaway.body'),
+    'usage': t('es', 'commands.giveaway.usage')
 };
 
 module.exports = { run, description: run.description };

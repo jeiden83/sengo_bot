@@ -331,9 +331,9 @@ function shuffleArray(array) {
 }
 
 run.description = {
-    header: "Yuri",
-    body: "Al creador del bot le gusta leer mangas yuri. / The creator of the bot likes reading yuri manga.",
-    usage: 's.yuri\ns.yuri -details\ns.yuri -stats'
+    header: t('es', 'commands.yuri.header'),
+    body: t('es', 'commands.yuri.body'),
+    usage: t('es', 'commands.yuri.usage')
 };
 
 module.exports = { run };

@@ -43,9 +43,9 @@ run.alias = {
 };
 
 run.description = {
-    'header': "Configuración de idioma del servidor / Server language configuration",
-    'body': 'Permite cambiar el idioma preferido del servidor para las respuestas de Sengo. / Allows changing the server\'s preferred language for Sengo\'s responses.',
-    'usage': 's.language [es|en] / s.idioma [es|en]'
+    'header': t('es', 'commands.language.header'),
+    'body': t('es', 'commands.language.body'),
+    'usage': t('es', 'commands.language.usage')
 };
 
 module.exports = { run, description: run.description };
