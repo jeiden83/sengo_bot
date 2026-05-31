@@ -911,22 +911,29 @@ function checkOsuData(osu_userdata) {
 /**
  * Renderiza el embed para el perfil de osu! (s.osu)
  */
-function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false, osuworld_data = null) {
+function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false, osuworld_data = null, locale = 'es') {
     const { global_ranking, discord_last_peak, peak_ranking, country_rank } = checkOsuData(osu_userdata);
 
+    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
     const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
 
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;
 
-    let top_ranking_str = osu_userdata.server === 'gatari' ? "" : `**• Top ranking:** \`#${peak_ranking}\`  ${discord_last_peak}\n`;
+    let top_ranking_str = osu_userdata.server === 'gatari' ? "" : t(locale, 'profile.top_ranking', {
+        rank: peak_ranking,
+        peak: discord_last_peak
+    });
 
     let rankedPlayStr = "";
     if (osu_userdata.server !== 'gatari') {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking && matchmaking.rank) {
-            rankedPlayStr = `**• Ranked Play:** \`#${matchmaking.rank.toLocaleString('es-ES')}\` (Rating: ${(matchmaking.rating || 0).toLocaleString('es-ES')})\n`;
+            rankedPlayStr = t(locale, 'profile.ranked_play', {
+                rank: matchmaking.rank.toLocaleString(locTag),
+                rating: (matchmaking.rating || 0).toLocaleString(locTag)
+            });
         }
     }
 
@@ -951,32 +958,48 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             const countryCode = regionId.split("-")[0];
             const regionName = (regionsData[countryCode] && regionsData[countryCode][regionId]) || regionId;
             const urlRegionName = regionName.replace(/[\s,]+/g, "_");
-            regionalRankStr = ` / **[#${osuworld_data.placement}](https://osuworld.octo.moe/#${urlRegionName})**`;
+            regionalRankStr = t(locale, 'profile.regional_placement', {
+                placement: osuworld_data.placement,
+                url: urlRegionName
+            });
         } catch (e) {
             // Silencioso
         }
     }
 
+    const teamPrefix = osu_userdata.team ? `[${osu_userdata.team.short_name}] ` : "";
+    const teamStr = osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : "";
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Perfil osu!${osu_mode} de ${osu_userdata.team ? `[${osu_userdata.team.short_name}]` : ""} ${osu_userdata.username}`,
+            name: t(locale, 'profile.author_title', { mode: osu_mode, teamPrefix, username: osu_userdata.username }),
             url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
-        .setDescription(`**• Ranking global:** \`#${global_ranking}\`\n${top_ranking_str}**• Ranking por pais:** :flag_${osu_userdata.country_code.toLowerCase()}: ${supporterEmoji}\`#${country_rank}\`${regionalRankStr}\n${rankedPlayStr}${osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : ``}**• Fecha de inicio: **${join_date}`)
+        .setDescription(t(locale, 'profile.description', {
+            globalRank: global_ranking,
+            topRankingStr: top_ranking_str,
+            countryCode: osu_userdata.country_code.toLowerCase(),
+            supporterEmoji,
+            countryRank: country_rank,
+            regionalRankStr,
+            rankedPlayStr,
+            teamStr,
+            joinDate: join_date
+        }))
         .addFields(
             {
-                name: "Medallas",
+                name: t(locale, 'profile.medals'),
                 value: `\`${osu_userdata.user_achievements.length}\``,
                 inline: true
             },
             {
-                name: "Tiempo de juego",
+                name: t(locale, 'profile.play_time'),
                 value: `\`${Math.floor(osu_userdata.statistics.play_time / 3600)} h\``,
                 inline: true
             },
             {
-                name: "Nivel",
+                name: t(locale, 'profile.level'),
                 value: `\`${osu_userdata.statistics.level.current}.${osu_userdata.statistics.level.progress}\``,
                 inline: true
             },
@@ -986,12 +1009,12 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
                 inline: true
             },
             {
-                name: "Precision",
+                name: t(locale, 'profile.accuracy'),
                 value: `\`${osu_userdata.statistics.hit_accuracy.toFixed(2)}%\``,
                 inline: true
             },
             {
-                name: "Jugadas totales",
+                name: t(locale, 'profile.play_count'),
                 value: `\`${osu_userdata.statistics.play_count}\``,
                 inline: true
             }
@@ -1000,7 +1023,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         .setThumbnail(osu_userdata.avatar_url)
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo",
+            text: t(locale, 'profile.footer_page1'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
@@ -1019,11 +1042,11 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const grades = osu_userdata.statistics.grade_counts;
     const grades_str =
-        `${getGradeEmoji("XH")} \`${(grades.ssh || 0).toLocaleString('es-ES')}\`   ` +
-        `${getGradeEmoji("X")} \`${(grades.ss || 0).toLocaleString('es-ES')}\`   ` +
-        `${getGradeEmoji("SH")} \`${(grades.sh || 0).toLocaleString('es-ES')}\`   ` +
-        `${getGradeEmoji("S")} \`${(grades.s || 0).toLocaleString('es-ES')}\`   ` +
-        `${getGradeEmoji("A")} \`${(grades.a || 0).toLocaleString('es-ES')}\``;
+        `${getGradeEmoji("XH")} \`${(grades.ssh || 0).toLocaleString(locTag)}\`   ` +
+        `${getGradeEmoji("X")} \`${(grades.ss || 0).toLocaleString(locTag)}\`   ` +
+        `${getGradeEmoji("SH")} \`${(grades.sh || 0).toLocaleString(locTag)}\`   ` +
+        `${getGradeEmoji("S")} \`${(grades.s || 0).toLocaleString(locTag)}\`   ` +
+        `${getGradeEmoji("A")} \`${(grades.a || 0).toLocaleString(locTag)}\``;
 
     // --- CÁLCULOS PARA EL ANÁLISIS RÁPIDO ---
     const total_grades = (grades.ssh || 0) + (grades.ss || 0) + (grades.sh || 0) + (grades.s || 0) + (grades.a || 0);
@@ -1044,72 +1067,72 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     if (osu_userdata.server !== 'gatari') {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking) {
-            matchmakingSection = `🏆 **Ranked Play Detallado (lazer):**\n` +
-                ` ▸ **Temporada:** \`${matchmaking.pool?.name || 'N/A'}\`\n` +
-                ` ▸ **Rango:** \`#${matchmaking.rank ? matchmaking.rank.toLocaleString('es-ES') : 'Sin clasificar'}\`\n` +
-                ` ▸ **Rating:** \`${matchmaking.rating ? matchmaking.rating.toLocaleString('es-ES') : 0}\` rating\n` +
-                ` ▸ **Victorias:** \`${matchmaking.first_placements || 0}\` wins\n` +
-                ` ▸ **Partidas:** \`${matchmaking.plays || 0}\` plays\n` +
-                ` ▸ **Provisional:** \`${matchmaking.is_rating_provisional ? 'Sí' : 'No'}\`\n\n`;
+            matchmakingSection = t(locale, 'profile.matchmaking_detailed_title') + "\n" +
+                t(locale, 'profile.matchmaking_season', { season: matchmaking.pool?.name || 'N/A' }) + "\n" +
+                t(locale, 'profile.matchmaking_rank', { rank: matchmaking.rank ? matchmaking.rank.toLocaleString(locTag) : (locale === 'es' ? 'Sin clasificar' : 'Unranked') }) + "\n" +
+                t(locale, 'profile.matchmaking_rating', { rating: matchmaking.rating ? matchmaking.rating.toLocaleString(locTag) : 0 }) + "\n" +
+                t(locale, 'profile.matchmaking_wins', { wins: matchmaking.first_placements || 0 }) + "\n" +
+                t(locale, 'profile.matchmaking_plays', { plays: matchmaking.plays || 0 }) + "\n" +
+                t(locale, 'profile.matchmaking_provisional', { provisional: matchmaking.is_rating_provisional ? t(locale, 'profile.matchmaking_provisional_yes') : t(locale, 'profile.matchmaking_provisional_no') }) + "\n\n";
         }
     }
 
     const analysis_desc =
-        `**Grados Obtenidos:**\n${grades_str}\n\n` +
-        `📊 **Perfil de Precisión (Ratios):**\n` +
-        ` ▸ **SS Ranks (FC Perfecto):** \`${ss_percent}%\` del total\n` +
-        ` ▸ **S Ranks (FC/Buen Acc):** \`${s_percent}%\` del total\n` +
-        ` ▸ **A Ranks (Pass/Bajo Acc):** \`${a_percent}%\` del total\n\n` +
-        `⚡ **Análisis Rápido de Rendimiento:**\n` +
-        ` ▸ **Antigüedad de la cuenta:** \`${diffDays.toLocaleString('es-ES')}\` días\n` +
-        ` ▸ **Ritmo de Juego:** \`${avg_playcount_day}\` playcount/día\n` +
-        ` ▸ **Eficiencia de PP:** \`${pp_per_1k}\` PP por cada 1,000 plays\n` +
-        ` ▸ **Consistencia de Hits:** \`${hits_per_play}\` hits promedio por jugada\n\n` +
+        t(locale, 'profile.grades_title') + `\n${grades_str}\n\n` +
+        t(locale, 'profile.accuracy_profile') + "\n" +
+        t(locale, 'profile.ss_ranks', { percent: ss_percent }) + "\n" +
+        t(locale, 'profile.s_ranks', { percent: s_percent }) + "\n" +
+        t(locale, 'profile.a_ranks', { percent: a_percent }) + "\n\n" +
+        t(locale, 'profile.quick_analysis') + "\n" +
+        t(locale, 'profile.account_age', { days: diffDays.toLocaleString(locTag) }) + "\n" +
+        t(locale, 'profile.play_pace', { pace: avg_playcount_day }) + "\n" +
+        t(locale, 'profile.pp_efficiency', { eff: pp_per_1k }) + "\n" +
+        t(locale, 'profile.hit_consistency', { consistency: hits_per_play }) + "\n\n" +
         matchmakingSection +
-        `**Estadísticas de Puntuación:**`;
+        t(locale, 'profile.score_stats_header');
 
     const embed2 = new EmbedBuilder()
         .setAuthor({
-            name: `Rendimiento Detallado de ${osu_userdata.username}`,
+            name: t(locale, 'profile.author_detailed_title', { username: osu_userdata.username }),
             url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
         .setDescription(analysis_desc)
         .addFields(
             {
-                name: "Puntuación Clasificada",
-                value: `\`${(osu_userdata.statistics.ranked_score || 0).toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_ranked_score'),
+                value: `\`${(osu_userdata.statistics.ranked_score || 0).toLocaleString(locTag)}\``,
                 inline: true
             },
             {
-                name: "Puntuación Total",
-                value: `\`${(osu_userdata.statistics.total_score || 0).toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_total_score'),
+                value: `\`${(osu_userdata.statistics.total_score || 0).toLocaleString(locTag)}\``,
                 inline: true
             },
             {
-                name: "Combo Máximo",
-                value: `\`x${(osu_userdata.statistics.maximum_combo || 0).toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_max_combo'),
+                value: `\`x${(osu_userdata.statistics.maximum_combo || 0).toLocaleString(locTag)}\``,
                 inline: true
             },
             {
-                name: "Hits Totales",
-                value: `\`${(osu_userdata.statistics.total_hits || 0).toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_total_hits'),
+                value: `\`${(osu_userdata.statistics.total_hits || 0).toLocaleString(locTag)}\``,
                 inline: true
             },
             {
-                name: "Replays Vistas por Otros",
-                value: `\`${(osu_userdata.statistics.replays_watched_by_others || 0).toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_replays_watched'),
+                value: `\`${(osu_userdata.statistics.replays_watched_by_others || 0).toLocaleString(locTag)}\``,
                 inline: true
             },
             {
-                name: "Hits por Minuto",
-                value: `\`${hits_per_min.toLocaleString('es-ES')}\``,
+                name: t(locale, 'profile.field_hits_per_minute'),
+                value: `\`${hits_per_min.toLocaleString(locTag)}\``,
                 inline: true
             }
         )
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo • Página 2 de 2 • Estadísticas Detalladas",
+            text: t(locale, 'profile.footer_page2'),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

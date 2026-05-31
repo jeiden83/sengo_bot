@@ -236,6 +236,11 @@
       "header": "Obtén la play reciente",
       "body": "Al hacer .rs en un mapa fallido o unranked, accedes a que se guarde en una db local para que luego se pueda usar con el .c y el .gap",
       "usage": "s.rs : Obtén la play reciente del usuario linkeado al bot.\ns.rs -b : Ordena los recientes por PP y muestra la mejor play.\ns.rs 'usuario' : Obtiene la play reciente del usuario en el argumento.\ns.rs 'usuario' 'modo': Obtiene la play del usuario en el argumento con respecto al modo de juego."
+    },
+    "osu": {
+      "header": "Para obtener el perfil de osu!",
+      "body": "Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o según el argumento, con su banner bien hermoso y opción de ver detalles adicionales.",
+      "usage": "s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.scores : Muestra tus estadísticas y grados detallados directos."
     }
   },
   "contributors": {
@@ -769,5 +774,45 @@
     "list_author": "Puntuaciones recientes de {username} en osu!{mode}",
     "list_footer": "Mostrando jugadas {start}-{end} de {total} recientes",
     "list_footer_loading": "⏳ Calculando pp de la play #{index} de {total}..."
+  },
+  "profile": {
+    "top_ranking": "**• Top ranking:** `{rank}` {peak}\n",
+    "ranked_play": "**• Ranked Play:** `#{rank}` (Rating: {rating})\n",
+    "author_title": "Perfil osu!{mode} de {teamPrefix}{username}",
+    "description": "**• Ranking global:** `#{globalRank}`\n{topRankingStr}**• Ranking por pais:** :flag_{countryCode}: {supporterEmoji}`#{countryRank}`{regionalRankStr}\n{rankedPlayStr}{teamStr}**• Fecha de inicio: **{joinDate}",
+    "medals": "Medallas",
+    "play_time": "Tiempo de juego",
+    "level": "Nivel",
+    "accuracy": "Precision",
+    "play_count": "Jugadas totales",
+    "footer_page1": "Sengo",
+    "footer_page2": "Sengo • Página 2 de 2 • Estadísticas Detalladas",
+    "grades_title": "**Grados Obtenidos:**",
+    "accuracy_profile": "📊 **Perfil de Precisión (Ratios):**",
+    "ss_ranks": " ▸ **SS Ranks (FC Perfecto):** `{percent}%` del total",
+    "s_ranks": " ▸ **S Ranks (FC/Buen Acc):** `{percent}%` del total",
+    "a_ranks": " ▸ **A Ranks (Pass/Bajo Acc):** `{percent}%` del total",
+    "quick_analysis": "⚡ **Análisis Rápido de Rendimiento:**",
+    "account_age": " ▸ **Antigüedad de la cuenta:** `{days}` días",
+    "play_pace": " ▸ **Ritmo de Juego:** `{pace}` playcount/día",
+    "pp_efficiency": " ▸ **Eficiencia de PP:** `{eff}` PP por cada 1,000 plays",
+    "hit_consistency": " ▸ **Consistencia de Hits:** `{consistency}` hits promedio por jugada",
+    "matchmaking_detailed_title": "🏆 **Ranked Play Detallado (lazer):**",
+    "matchmaking_season": " ▸ **Temporada:** `{season}`",
+    "matchmaking_rank": " ▸ **Rango:** `{rank}`",
+    "matchmaking_rating": " ▸ **Rating:** `{rating}` rating",
+    "matchmaking_wins": " ▸ **Victorias:** `{wins}` wins",
+    "matchmaking_plays": " ▸ **Partidas:** `{plays}` plays",
+    "matchmaking_provisional": " ▸ **Provisional:** `{provisional}`",
+    "matchmaking_provisional_yes": "Sí",
+    "matchmaking_provisional_no": "No",
+    "score_stats_header": "**Estadísticas de Puntuación:**",
+    "author_detailed_title": "Rendimiento Detallado de {username}",
+    "field_ranked_score": "Puntuación Clasificada",
+    "field_total_score": "Puntuación Total",
+    "field_max_combo": "Combo Máximo",
+    "field_total_hits": "Hits Totales",
+    "field_replays_watched": "Replays Vistas por Otros",
+    "field_hits_per_minute": "Hits por Minuto"
   }
 }

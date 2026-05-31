@@ -1,5 +1,6 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { doOsuProfileEmbed } = require("../../../views/osuEmbeds.js");
+const { t } = require("../../../utils/i18n.js");
 
 async function getOsuWorldUser(userId) {
     const controller = new AbortController();
@@ -21,6 +22,7 @@ async function getOsuWorldUser(userId) {
 
 async function run(messages, args) {
     const { message, res, logger } = messages;
+    const locale = message.locale || 'es';
 
     if (logger) logger.process("Consultando base de datos y API de osu!");
     const osu_userdata = await argsParser(args,
@@ -65,7 +67,7 @@ async function run(messages, args) {
         osuworld_data = await getOsuWorldUser(osu_userdata.fn_response.id);
     }
 
-    return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data);
+    return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data, locale);
 }
 
 run.alias = {
@@ -92,11 +94,10 @@ run.alias = {
     },
 }
 
-run.description =
-{
-    'header': 'Para obtener el perfil de osu!',
-    'body': 'Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o segun el argumento, con su banner bien hermoso y opción de ver detalles adicionales.',
-    'usage': `s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.scores : Muestra tus estadísticas y grados detallados directos.`
+run.description = {
+    'header': t('es', 'commands.osu.header'),
+    'body': t('es', 'commands.osu.body'),
+    'usage': t('es', 'commands.osu.usage')
 }
 
-module.exports = { run }
+module.exports = { run, "description": run.description }

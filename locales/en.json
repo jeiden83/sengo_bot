@@ -236,6 +236,11 @@
       "header": "Get your recent play",
       "body": "Running .rs on a failed or unranked map allows it to be saved to a local database for subsequent use with .c and .gap",
       "usage": "s.rs : Get the recent play of the user linked to the bot.\ns.rs -b : Sorts recent plays by PP and shows the best play.\ns.rs 'user' : Get the recent play of the user in the argument.\ns.rs 'user' 'mode': Get the play of the user in the argument with respect to the game mode."
+    },
+    "osu": {
+      "header": "Get your osu! profile",
+      "body": "Shows the profile of a given osu! user, whether linked to the bot or specified in the argument, with a beautiful banner and option to view additional details.",
+      "usage": "s.osu : Shows the profile linked to the bot.\ns.osu 'osu_username' : Shows the std profile of the user in the argument.\ns.osu 'osu_username' -d : Shows the complete profile with detailed stats and grades.\ns.scores : Shows your detailed stats and grades directly."
     }
   },
   "contributors": {
@@ -769,5 +774,45 @@
     "list_author": "Recent scores of {username} in osu!{mode}",
     "list_footer": "Showing recent plays {start}-{end} of {total}",
     "list_footer_loading": "⏳ Calculating pp of play #{index} of {total}..."
+  },
+  "profile": {
+    "top_ranking": "**• Top ranking:** `{rank}` {peak}\n",
+    "ranked_play": "**• Ranked Play:** `#{rank}` (Rating: {rating})\n",
+    "author_title": "osu!{mode} profile of {teamPrefix}{username}",
+    "description": "**• Global Rank:** `#{globalRank}`\n{topRankingStr}**• Country Rank:** :flag_{countryCode}: {supporterEmoji}`#{countryRank}`{regionalRankStr}\n{rankedPlayStr}{teamStr}**• Join Date: **{joinDate}",
+    "medals": "Medals",
+    "play_time": "Play time",
+    "level": "Level",
+    "accuracy": "Accuracy",
+    "play_count": "Total plays",
+    "footer_page1": "Sengo",
+    "footer_page2": "Sengo • Page 2 of 2 • Detailed Statistics",
+    "grades_title": "**Grades Achieved:**",
+    "accuracy_profile": "📊 **Accuracy Profile (Ratios):**",
+    "ss_ranks": " ▸ **SS Ranks (Perfect FC):** `{percent}%` of total",
+    "s_ranks": " ▸ **S Ranks (FC/Good Acc):** `{percent}%` of total",
+    "a_ranks": " ▸ **A Ranks (Pass/Low Acc):** `{percent}%` of total",
+    "quick_analysis": "⚡ **Quick Performance Analysis:**",
+    "account_age": " ▸ **Account age:** `{days}` days",
+    "play_pace": " ▸ **Play Pace:** `{pace}` playcount/day",
+    "pp_efficiency": " ▸ **PP Efficiency:** `{eff}` PP per 1,000 plays",
+    "hit_consistency": " ▸ **Hit Consistency:** `{consistency}` average hits per play",
+    "matchmaking_detailed_title": "🏆 **Detailed Ranked Play (lazer):**",
+    "matchmaking_season": " ▸ **Season:** `{season}`",
+    "matchmaking_rank": " ▸ **Rank:** `{rank}`",
+    "matchmaking_rating": " ▸ **Rating:** `{rating}` rating",
+    "matchmaking_wins": " ▸ **Wins:** `{wins}` wins",
+    "matchmaking_plays": " ▸ **Plays:** `{plays}` plays",
+    "matchmaking_provisional": " ▸ **Provisional:** `{provisional}`",
+    "matchmaking_provisional_yes": "Yes",
+    "matchmaking_provisional_no": "No",
+    "score_stats_header": "**Score Statistics:**",
+    "author_detailed_title": "Detailed Performance of {username}",
+    "field_ranked_score": "Ranked Score",
+    "field_total_score": "Total Score",
+    "field_max_combo": "Maximum Combo",
+    "field_total_hits": "Total Hits",
+    "field_replays_watched": "Replays Watched by Others",
+    "field_hits_per_minute": "Hits per Minute"
   }
 }
