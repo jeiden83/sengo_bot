@@ -617,7 +617,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 /**
  * Renderiza el embed para la confirmación de subida manual de score
  */
-function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id) {
+function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
@@ -650,13 +650,13 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: `Score manual guardada para ${parsedData.player_name}`,
+            name: t(locale, 'subir.embed_author', { username: parsedData.player_name }),
             url: `https://osu.ppy.sh/users/${user_id}`,
             iconURL: recent_scores.user.avatar_url
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
-        .setDescription(`**Puntuación**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`**${t(locale, 'subir.score_label')}**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 ${ansiBlock}
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])

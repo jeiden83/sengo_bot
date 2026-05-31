@@ -256,6 +256,11 @@
       "header": "Estadísticas de creador/mapper de un usuario",
       "body": "Muestra estadísticas detalladas del mapper en osu! (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones). También permite mostrar tops y clasificaciones de mappers.",
       "usage": "s.mapper : Muestra tus estadísticas como mapper.\ns.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.\n\ns.mapper -top : Muestra el top de mappers del país del usuario (VE por defecto).\nFlags para -top:\n• -pais <código> / -country <código> : Filtra el top de mappers por país (ej: MX, VE).\n• -server / -servidor : Filtra el top mostrando solo a los usuarios vinculados del servidor de Discord actual.\n• -kudosus / -gd / -ranked / -wip / -loved / -followers / -graveyard / -recent : Cambia el criterio de ordenamiento del top (por defecto ordena por mapas rankeados).\n• -std / -taiko / -ctb / -mania / -mode <modo> : Filtra los mappers según su modo de juego principal."
+    },
+    "subir": {
+      "header": "Sube una score a la base de datos de Sengo.",
+      "body": "Adjunta un archivo `.osr` o haz reply a una replay `.osr` o a un embed de score compatible (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.",
+      "usage": "s.subir [adjuntando archivo .osr o respondiendo a un mensaje] [-m MODS]"
     }
   },
   "contributors": {
@@ -957,6 +962,15 @@
     "sort_followers": "Seguidores",
     "sort_kudosus": "Kudosu Total",
     "sort_recent": "Última actualización"
+  },
+  "subir": {
+    "embed_author": "Score manual guardada para {username}",
+    "score_label": "Puntuación",
+    "err_no_source": "Debes adjuntar un archivo de repetición `.osr` o responder (reply) a un mensaje que contenga una replay `.osr` o un embed de score compatible.",
+    "err_no_score_info": "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.",
+    "err_md5_failed": "No pude encontrar el mapa original usando el MD5 interno de la replay (`{md5}`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.",
+    "err_map_not_found": "No pude encontrar el mapa `{mapName}` en la base de datos de osu!.",
+    "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil."
   }
 }
 

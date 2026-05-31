@@ -7,6 +7,7 @@ const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
 const axios = require('axios');
 const rosu = require("rosu-pp-js");
 const fetch = require('node-fetch');
+const { t } = require("../../../utils/i18n.js");
 
 /**
  * Calcula el grade de osu!standard usando la fórmula oficial.
@@ -340,6 +341,7 @@ function parseBotEmbed(reply) {
 async function run(messages, args, initialized_data) {
     const { message, res, reply } = messages;
     const parsed_args = argsParserNoCommand(args);
+    const locale = message.locale || 'es';
 
     console.log(`\n--- [S.SUBIR] Nueva solicitud de subida ---`);
     console.log(`[S.SUBIR] Usuario solicitante: ${message.author.tag} (${message.author.id})`);
@@ -349,7 +351,7 @@ async function run(messages, args, initialized_data) {
 
     if (!sourceMessage) {
         console.log(`[S.SUBIR] Error: No se encontró fuente (adjunto o reply).`);
-        return "Debes adjuntar un archivo de repetición `.osr` o responder (reply) a un mensaje que contenga una replay `.osr` o un embed de score compatible.";
+        return t(locale, 'subir.err_no_source');
     }
 
     let parsedData = null;
@@ -470,7 +472,7 @@ async function run(messages, args, initialized_data) {
 
     if (!parsedData) {
         console.log(`[S.SUBIR] Error: No se pudo extraer información de la score (no se detectó archivo .osr ni un embed de bot soportado).`);
-        return "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.";
+        return t(locale, 'subir.err_no_score_info');
     }
 
     // --- Validación y recálculo del rango (rank) ---
@@ -532,10 +534,10 @@ async function run(messages, args, initialized_data) {
 
     if (!beatmap_id) {
         if (parsedData.is_osr) {
-            return `No pude encontrar el mapa original usando el MD5 interno de la replay (\`${parsedData.beatmapMD5}\`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.`;
+            return t(locale, 'subir.err_md5_failed', { md5: parsedData.beatmapMD5 });
         }
         console.log(`[S.SUBIR] Error: No se pudo encontrar el mapa en la API de osu!`);
-        return `No pude encontrar el mapa \`${parsedData.beatmap_name}\` en la base de datos de osu!.`;
+        return t(locale, 'subir.err_map_not_found', { mapName: parsedData.beatmap_name });
     }
 
     console.log(`[S.SUBIR] Mapa resuelto correctamente. Beatmap ID: ${beatmap_id}`);
@@ -552,7 +554,7 @@ async function run(messages, args, initialized_data) {
     }
 
     if (!user_id) {
-        return `No pude resolver la ID del usuario \`${parsedData.player_name}\` y no estás vinculado a un perfil.`;
+        return t(locale, 'subir.err_user_not_found', { username: parsedData.player_name });
     }
 
     // Obtener el perfil real del usuario para corregir posibles fallos del OCR en el nombre
@@ -632,7 +634,7 @@ async function run(messages, args, initialized_data) {
     await saveUserscore(recent_scores, pre_calculated, true);
     console.log(`[S.SUBIR] ¡Score guardada exitosamente para ${parsedData.player_name}!`);
 
-    const embed = doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id);
+    const embed = doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale);
     map.free();
     return { content: '', embeds: [embed] };
 }
@@ -642,9 +644,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Sube una score a la base de datos de Sengo.',
-    'body': 'Adjunta un archivo `.osr` o haz reply a una replay `.osr` o a un embed de score compatible (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.',
-    'usage': `s.subir [adjuntando archivo .osr o respondiendo a un mensaje] [-m MODS]`
+    'header': t('es', 'commands.subir.header'),
+    'body': t('es', 'commands.subir.body'),
+    'usage': t('es', 'commands.subir.usage')
 }
 
 module.exports = { run, "description": run.description }
