@@ -108,7 +108,13 @@
     "contribuidores": {
       "header": "Lista de usuarios vinculados",
       "body": "Muestra la comunidad vinculada por OAuth agrupada por país con su estado de supporter.",
-      "usage": "s.contribuidores\ns.contribuidores -force : Fuerza la sincronización del estado de supporter"
+      "usage": "s.contribuidores\ns.contribuidores -force : Fuerza la sincronización del estado de supporter",
+      "option_force_desc": "Fuerza la sincronización en tiempo real del estado de supporter de todos los usuarios."
+    },
+    "donadores": {
+      "header": "Donadores a los que quiero mucho",
+      "body": "Quienes contactaron a Jeiden para hablarle en privado y así darle una forma de apoyo económico por su trabajo con el Sengo.",
+      "usage": "s.donadores"
     },
     "globo": {
       "header": "Genera imagen con globo",

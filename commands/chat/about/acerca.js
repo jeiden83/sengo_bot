@@ -69,9 +69,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Acerca de Sengo',
-    'body': 'Muestra información sobre Sengo y las características que lo hacen único frente a otros bots.',
-    'usage': undefined
+    'header': t('es', 'commands.acerca.header'),
+    'body': t('es', 'commands.acerca.body'),
+    'usage': t('es', 'commands.acerca.usage')
 }
 
 module.exports = { run };

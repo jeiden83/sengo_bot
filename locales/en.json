@@ -108,7 +108,13 @@
     "contribuidores": {
       "header": "Linked users list",
       "body": "Shows the community linked via OAuth grouped by country with their supporter status.",
-      "usage": "s.contribuidores\ns.contribuidores -force : Forces synchronization of supporter status"
+      "usage": "s.contribuidores\ns.contribuidores -force : Forces synchronization of supporter status",
+      "option_force_desc": "Forces real-time supporter status sync for all users."
+    },
+    "donadores": {
+      "header": "Donators I love very much",
+      "body": "Those who contacted Jeiden privately to support him financially for his work on Sengo.",
+      "usage": "s.donadores"
     },
     "globo": {
       "header": "Generates image with a speech bubble",

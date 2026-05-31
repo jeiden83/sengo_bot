@@ -161,9 +161,9 @@ run.alias = {
 }
 
 run.description = {
-    'header': 'Lista de usuarios vinculados',
-    'body': 'Muestra la comunidad vinculada por oAuth agrupada por país con su estado de supporter.',
-    'usage': undefined
+    'header': t('es', 'commands.contribuidores.header'),
+    'body': t('es', 'commands.contribuidores.body'),
+    'usage': t('es', 'commands.contribuidores.usage')
 }
 
 module.exports = { run };
