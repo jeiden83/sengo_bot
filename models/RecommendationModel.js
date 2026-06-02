@@ -416,6 +416,26 @@ function buildUserProfile(topScores) {
     };
 }
 
+let cachedMaxBeatmapsetId = null;
+let lastMaxQueryTime = 0;
+
+function getDifferentMod(mainMod) {
+    const main = (mainMod || "NM").toUpperCase();
+    let diffs = ['NM', 'HD', 'HR', 'DT'];
+    if (main === 'NM') {
+        diffs = ['HD', 'HR', 'DT', 'EZ'];
+    } else if (main === 'HD') {
+        diffs = ['NM', 'HR', 'DT'];
+    } else if (main === 'HR') {
+        diffs = ['NM', 'HD', 'DT'];
+    } else if (main === 'DT') {
+        diffs = ['NM', 'HD', 'HR'];
+    } else {
+        diffs = diffs.filter(m => m !== main);
+    }
+    return diffs[Math.floor(Math.random() * diffs.length)];
+}
+
 /**
  * Obtiene recomendaciones de mapas para un usuario.
  */
@@ -463,6 +483,28 @@ async function getPersonalizedRecommendations({
         maxStars = (maxTargetStars / scale) + 0.45;
     }
 
+    // Calcular el ID de beatmapset del corte de hace 6 meses
+    let recentThreshold = 2436149;
+    try {
+        const now = Date.now();
+        if (cachedMaxBeatmapsetId && (now - lastMaxQueryTime < 12 * 60 * 60 * 1000)) {
+            recentThreshold = cachedMaxBeatmapsetId - 120000;
+        } else {
+            const { data: maxSetData } = await supabase
+                .from('ranked_beatmaps')
+                .select('beatmapset_id')
+                .order('beatmapset_id', { ascending: false })
+                .limit(1);
+            if (maxSetData && maxSetData.length > 0) {
+                cachedMaxBeatmapsetId = maxSetData[0].beatmapset_id;
+                lastMaxQueryTime = now;
+                recentThreshold = cachedMaxBeatmapsetId - 120000;
+            }
+        }
+    } catch (e) {
+        // Silenciar
+    }
+
     // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho)
     const useTagsFilter = ['tags', 'aim', 'speed'].includes(style);
     
@@ -489,7 +531,7 @@ async function getPersonalizedRecommendations({
     const [highRes, midRes, lowRes] = await Promise.all([
         buildBaseQuery().gte('playcount', 1000000).order('playcount', { ascending: false }).limit(400),
         buildBaseQuery().lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(300),
-        buildBaseQuery().lt('playcount', 150000).gte('playcount', 5000).order('playcount', { ascending: false }).limit(300)
+        buildBaseQuery().lt('playcount', 150000).or(`playcount.gte.1000,beatmapset_id.gte.${recentThreshold}`).order('playcount', { ascending: false }).limit(300)
     ]);
 
     let candidates = [];
@@ -531,7 +573,7 @@ async function getPersonalizedRecommendations({
         const [fbHigh, fbMid, fbLow] = await Promise.all([
             buildFallbackQuery().gte('playcount', 1000000).order('playcount', { ascending: false }).limit(400),
             buildFallbackQuery().lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(300),
-            buildFallbackQuery().lt('playcount', 150000).gte('playcount', 5000).order('playcount', { ascending: false }).limit(300)
+            buildFallbackQuery().lt('playcount', 150000).or(`playcount.gte.1000,beatmapset_id.gte.${recentThreshold}`).order('playcount', { ascending: false }).limit(300)
         ]);
 
         candidates = [];
@@ -557,9 +599,18 @@ async function getPersonalizedRecommendations({
             // Filtrar mostrados en esta sesión (por beatmapId o beatmapsetId)
             if (skipSet.has(idStr) || (c.beatmapset_id && skipSet.has(c.beatmapset_id.toString()))) return false;
 
+            // Determinar mod para este candidato (si no hay customMods)
+            let candidateMod = customMods || profile.preferredMod;
+            if (!customMods) {
+                if (Math.random() < 0.20) {
+                    candidateMod = getDifferentMod(profile.preferredMod);
+                }
+            }
+            c._assignedMod = candidateMod;
+
             // 1. Filtrar estrictamente por el rango de PP estimado al 100% de acc
             if (customMinPP !== null) {
-                const est100 = estimatePP(c.stars, 1.0, activeMods);
+                const est100 = estimatePP(c.stars, 1.0, candidateMod);
                 const limitMaxPP = customMaxPP !== null ? customMaxPP : customMinPP * 1.3;
                 if (est100 < customMinPP || est100 > limitMaxPP) {
                     return false;
@@ -589,13 +640,19 @@ async function getPersonalizedRecommendations({
                 // Filtrar estrictamente: mínimo 5 minutos (300 segundos) para maratones
                 if (c.total_length < 300) return false;
             } else if (style === 'tags') {
-                // Filtrar estrictamente: solo mapas que contengan user_tags y que coincidan con al menos un tag frecuente del jugador
+                // Filtrar estrictamente: solo mapas que contengan user_tags
                 if (!c.user_tags || c.user_tags.length === 0) return false;
-                const hasMatchingTag = c.user_tags.some(t => {
+                const isMatchingTag = c.user_tags.some(t => {
                     const cleanTag = t.toLowerCase().trim();
                     return profile.frequentTags.includes(cleanTag);
                 });
-                if (!hasMatchingTag) return false;
+                // 80% alineado con top tags, 20% diferente al top tags del usuario
+                const wantMatching = Math.random() < 0.80;
+                if (wantMatching) {
+                    if (!isMatchingTag) return false;
+                } else {
+                    if (isMatchingTag) return false;
+                }
             }
 
             return true;
@@ -603,9 +660,10 @@ async function getPersonalizedRecommendations({
         .map(c => {
             let score = 0;
             const reasons = [];
+            const candidateMod = c._assignedMod || customMods || profile.preferredMod;
 
             // BPM similarity (Max 25 pts)
-            const mapBpm = (activeMods.includes("DT") || activeMods.includes("NC")) ? c.bpm * 1.5 : c.bpm;
+            const mapBpm = (candidateMod.includes("DT") || candidateMod.includes("NC")) ? c.bpm * 1.5 : c.bpm;
             const bpmDiff = Math.abs(mapBpm - profile.avgBpm);
             const bpmScore = Math.max(0, 25 * (1 - bpmDiff / 50));
             score += bpmScore;
@@ -614,7 +672,7 @@ async function getPersonalizedRecommendations({
             }
 
             // Length similarity (Max 15 pts)
-            const mapLength = (activeMods.includes("DT") || activeMods.includes("NC")) ? c.total_length / 1.5 : c.total_length;
+            const mapLength = (candidateMod.includes("DT") || candidateMod.includes("NC")) ? c.total_length / 1.5 : c.total_length;
             const lengthDiff = Math.abs(mapLength - profile.avgLength);
             const lengthScore = Math.max(0, 15 * (1 - lengthDiff / 120));
             score += lengthScore;
@@ -691,7 +749,7 @@ async function getPersonalizedRecommendations({
             // Niche / Rarezas player boosts
             // A) EZ Player Boost
             if (profile.isEZPlayer) {
-                if (activeMods.includes("EZ")) {
+                if (candidateMod.includes("EZ")) {
                     score += 25;
                 }
                 const hasEZTag = combinedTags.some(t => t === 'ez' || t === 'reading' || t === 'technical' || t === 'low ar' || t.includes('reading') || t.includes('gimmick'));
@@ -703,7 +761,7 @@ async function getPersonalizedRecommendations({
 
             // B) FL Player Boost
             if (profile.isFLPlayer) {
-                if (activeMods.includes("FL")) {
+                if (candidateMod.includes("FL")) {
                     score += 25;
                 }
                 const hasFLTag = combinedTags.some(t => t === 'fl' || t === 'flashlight' || t.includes('flashlight') || t === 'memory');
@@ -713,7 +771,7 @@ async function getPersonalizedRecommendations({
                 }
                 
                 // Si el jugador tiene jugadas de FL en su top, recomendar mapas de esa duración o mayor
-                if (activeMods.includes("FL") && profile.avgFlDuration !== undefined && profile.avgFlDuration !== null) {
+                if (candidateMod.includes("FL") && profile.avgFlDuration !== undefined && profile.avgFlDuration !== null) {
                     if (c.total_length >= profile.avgFlDuration) {
                         score += 25;
                         reasons.push(`Duración adecuada para FL (≥ ${Math.round(profile.avgFlDuration)}s)`);
@@ -740,8 +798,8 @@ async function getPersonalizedRecommendations({
             }
 
             // Estimar PP
-            const est100 = estimatePP(c.stars, 1.0, activeMods);
-            const est99 = estimatePP(c.stars, 0.99, activeMods);
+            const est100 = estimatePP(c.stars, 1.0, candidateMod);
+            const est99 = estimatePP(c.stars, 0.99, candidateMod);
 
             return {
                 beatmapId: c.beatmap_id.toString(),
@@ -752,7 +810,7 @@ async function getPersonalizedRecommendations({
                 stars: parseFloat(c.stars),
                 maxPP: est100,
                 pp99: est99,
-                mods: activeMods,
+                mods: candidateMod,
                 popularity: c.playcount,
                 length: c.total_length,
                 ar: parseFloat(c.ar),
@@ -801,10 +859,11 @@ async function recalculateExactPP(recs, activeMods) {
     try {
         const rosu = require("rosu-pp-js");
         const BeatmapModel = require("./BeatmapModel.js");
-        const activeModsStr = activeMods.replace(/CL/g, "");
 
         for (const rec of recs) {
             try {
+                const recMods = activeMods || rec.mods || "NM";
+                const activeModsStr = recMods.replace(/CL/g, "").replace(/NM/g, "");
                 const meta = {
                     status: 'ranked',
                     last_updated: new Date().toISOString(),

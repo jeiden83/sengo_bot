@@ -69,6 +69,25 @@ async function checkHasScore(beatmapId, userId, gamemode = 'osu', top100Ids = nu
     }
 }
 
+function selectRecommendedFromTier(tier) {
+    if (!tier || tier.length === 0) return null;
+    
+    // Encontrar el elemento con la afinidad máxima
+    const best = tier.reduce((max, current) => current.matchScore > max.matchScore ? current : max, tier[0]);
+    const maxScore = best.matchScore;
+
+    // 30% de probabilidad de tomar uno con 10% a 50% menos de afinidad
+    if (Math.random() < 0.30) {
+        const minTarget = maxScore * 0.50;
+        const maxTarget = maxScore * 0.90;
+        const choices = tier.filter(x => x.matchScore >= minTarget && x.matchScore <= maxTarget);
+        if (choices.length > 0) {
+            return choices[Math.floor(Math.random() * choices.length)];
+        }
+    }
+    return best;
+}
+
 async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res, gamemode = 'osu') {
     try {
         const gamemodeKey = gamemode || 'osu';
@@ -103,14 +122,21 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
         });
         const averagePP = totalPP / top15.length;
 
-        const minPP = averagePP * 0.90;
-        const maxPP = averagePP * 1.10;
+        // 30% de probabilidad de recomendar en rango de -5% a +20%
+        let minPP, maxPP;
+        if (Math.random() < 0.30) {
+            minPP = averagePP * 0.95;
+            maxPP = averagePP * 1.20;
+        } else {
+            minPP = averagePP * 0.90;
+            maxPP = averagePP * 1.10;
+        }
 
         const candidates = await RecommendationModel.getPersonalizedRecommendations({
             topScores,
             customMinPP: minPP,
             customMaxPP: maxPP,
-            customMods: userProfile.preferredMod,
+            customMods: null, // Permitir 80/20 mod selection
             style: 'standard',
             showPlayed: false
         });
@@ -134,14 +160,9 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             const midTier = pool.slice(tierSize, 2 * tierSize);
             const lowTier = pool.slice(2 * tierSize);
             
-            const selectBestByScore = (tier) => {
-                if (tier.length === 0) return null;
-                return tier.reduce((best, current) => current.matchScore > best.matchScore ? current : best, tier[0]);
-            };
-            
-            const rec1 = selectBestByScore(highTier);
-            const rec2 = selectBestByScore(midTier);
-            const rec3 = selectBestByScore(lowTier);
+            const rec1 = selectRecommendedFromTier(highTier);
+            const rec2 = selectRecommendedFromTier(midTier);
+            const rec3 = selectRecommendedFromTier(lowTier);
             
             if (rec1) finalRecs.push(rec1);
             if (rec2) finalRecs.push(rec2);
@@ -158,7 +179,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             finalRecs = filteredCandidates;
         }
 
-        await RecommendationModel.recalculateExactPP(finalRecs, userProfile.preferredMod);
+        await RecommendationModel.recalculateExactPP(finalRecs);
 
         if (finalRecs.length > 0) {
             recommendCache.set(cacheKey, {
@@ -402,8 +423,19 @@ async function run(messages, args) {
         });
         const averagePP = totalPP / top15.length;
 
-        minPP = customMinPP || (averagePP * 0.90);
-        maxPP = customMaxPP || (averagePP * 1.10);
+        // 30% de probabilidad de recomendar en rango de -5% a +20%
+        if (customMinPP === null) {
+            if (Math.random() < 0.30) {
+                minPP = averagePP * 0.95;
+                maxPP = averagePP * 1.20;
+            } else {
+                minPP = averagePP * 0.90;
+                maxPP = averagePP * 1.10;
+            }
+        } else {
+            minPP = customMinPP;
+            maxPP = customMaxPP;
+        }
 
         const skipSetLocal = new Set();
 
@@ -416,7 +448,7 @@ async function run(messages, args) {
                     topScores,
                     customMinPP: minPP,
                     customMaxPP: maxPP,
-                    customMods: activeMods,
+                    customMods: customMods,
                     style: currentStyle,
                     showPlayed,
                     skipSet: skipSetLocal
@@ -468,19 +500,23 @@ async function run(messages, args) {
                 acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
 
                 let finalRecs = [];
-                // Intentar tomar la mejor de cada categoría
-                if (acceptedHigh.length > 0) finalRecs.push(acceptedHigh[0]);
-                if (acceptedMid.length > 0) finalRecs.push(acceptedMid[0]);
-                if (acceptedLow.length > 0) finalRecs.push(acceptedLow[0]);
+                // Intentar tomar la mejor de cada categoría usando selectRecommendedFromTier
+                const rec1 = selectRecommendedFromTier(acceptedHigh);
+                const rec2 = selectRecommendedFromTier(acceptedMid);
+                const rec3 = selectRecommendedFromTier(acceptedLow);
+                
+                if (rec1) finalRecs.push(rec1);
+                if (rec2) finalRecs.push(rec2);
+                if (rec3) finalRecs.push(rec3);
 
                 // Si no llegamos a 3, rellenamos con el resto
                 if (finalRecs.length < 3) {
                     const remaining = [];
                     const usedIds = new Set(finalRecs.map(r => r.beatmapId));
                     const allRemaining = [
-                        ...acceptedHigh.slice(1),
-                        ...acceptedMid.slice(1),
-                        ...acceptedLow.slice(1)
+                        ...acceptedHigh,
+                        ...acceptedMid,
+                        ...acceptedLow
                     ];
                     allRemaining.forEach(c => {
                         if (!usedIds.has(c.beatmapId)) {
@@ -497,7 +533,7 @@ async function run(messages, args) {
                 // Ordenar por popularidad descendente para presentación
                 finalRecs.sort((a, b) => b.popularity - a.popularity);
 
-                await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
+                await RecommendationModel.recalculateExactPP(finalRecs, customMods);
                 return finalRecs;
             } catch (err) {
                 console.error("Error al obtener recomendaciones de base de datos:", err);
@@ -584,7 +620,7 @@ async function run(messages, args) {
                 topScores,
                 customMinPP: minPP,
                 customMaxPP: maxPP,
-                customMods: activeMods,
+                customMods: customMods,
                 style: currentStyle,
                 showPlayed,
                 skipSet: skipSet
@@ -633,18 +669,22 @@ async function run(messages, args) {
 
             let finalRecs = [];
             // Intentar tomar la mejor de cada categoría
-            if (acceptedHigh.length > 0) finalRecs.push(acceptedHigh[0]);
-            if (acceptedMid.length > 0) finalRecs.push(acceptedMid[0]);
-            if (acceptedLow.length > 0) finalRecs.push(acceptedLow[0]);
+            const rec1 = selectRecommendedFromTier(acceptedHigh);
+            const rec2 = selectRecommendedFromTier(acceptedMid);
+            const rec3 = selectRecommendedFromTier(acceptedLow);
+            
+            if (rec1) finalRecs.push(rec1);
+            if (rec2) finalRecs.push(rec2);
+            if (rec3) finalRecs.push(rec3);
 
             // Si no llegamos a 3, rellenamos con el resto
             if (finalRecs.length < 3) {
                 const remaining = [];
                 const usedIds = new Set(finalRecs.map(r => r.beatmapId));
                 const allRemaining = [
-                    ...acceptedHigh.slice(1),
-                    ...acceptedMid.slice(1),
-                    ...acceptedLow.slice(1)
+                    ...acceptedHigh,
+                    ...acceptedMid,
+                    ...acceptedLow
                 ];
                 allRemaining.forEach(c => {
                     if (!usedIds.has(c.beatmapId)) {
@@ -661,7 +701,7 @@ async function run(messages, args) {
             // Ordenar por popularidad descendente para presentación
             finalRecs.sort((a, b) => b.popularity - a.popularity);
 
-            await RecommendationModel.recalculateExactPP(finalRecs, activeMods);
+            await RecommendationModel.recalculateExactPP(finalRecs, customMods);
             return finalRecs;
         } catch (err) {
             console.error("Error al obtener recomendaciones de botones:", err);
@@ -690,6 +730,7 @@ async function run(messages, args) {
             } else if (i.customId === 'rec_toggle_mods') {
                 activeMods = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
                 suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
+                customMods = activeMods;
                 skipSet.clear();
             } else if (i.customId === 'rec_toggle_played') {
                 showPlayed = !showPlayed;
