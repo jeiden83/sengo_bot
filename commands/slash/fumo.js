@@ -114,12 +114,12 @@ async function run(interaction, res, chat_commands) {
 
     if (sub === "listar") {
         const page = interaction.options.getInteger("pagina");
-        return await fumoChatCommand.handleList(supabase, interaction.user, interaction.member, page);
+        return await fumoChatCommand.handleList(supabase, interaction.user, interaction.member, page, interaction);
     }
 
     if (sub === "borrar") {
         const id = interaction.options.getInteger("id");
-        return await fumoChatCommand.handleDelete(supabase, interaction.user, interaction.member, id);
+        return await fumoChatCommand.handleDelete(supabase, interaction.user, interaction.member, id, interaction);
     }
 
     if (sub === "editar") {
@@ -132,7 +132,7 @@ async function run(interaction, res, chat_commands) {
         const action = interaction.options.getString("accion");
         const userOpt = interaction.options.getUser("usuario");
         const targetUserId = userOpt ? userOpt.id : null;
-        return await fumoChatCommand.handleBlacklist(supabase, interaction.user, interaction.member, action, targetUserId);
+        return await fumoChatCommand.handleBlacklist(supabase, interaction.user, interaction.member, action, targetUserId, interaction);
     }
 
     return "❌ Subcomando desconocido.";

@@ -1,7 +1,8 @@
-const { EmbedBuilder, PermissionsBitField, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { EmbedBuilder, PermissionsBitField, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const axios = require("axios");
 const path = require("path");
 const sharp = require("sharp");
+const { t } = require("../../../utils/i18n.js");
 
 let list_order = [];
 
@@ -13,7 +14,7 @@ async function runQueuedCompression(fn) {
     const current = (async () => {
         try {
             await previous;
-        } catch (_) {}
+        } catch {}
         return await fn();
     })();
     globalCompressionQueue = current.catch(() => {});
@@ -147,27 +148,40 @@ function isAdmin(author, member) {
     return false;
 }
 
-function validateAttachment(attachment) {
+function getLocale(messageOrInteraction) {
+    if (!messageOrInteraction) return 'es';
+    if (messageOrInteraction.resolvedLocale) return messageOrInteraction.resolvedLocale;
+    if (messageOrInteraction.locale) {
+        if (typeof messageOrInteraction.locale === 'string') {
+            const code = messageOrInteraction.locale.split('-')[0].toLowerCase();
+            if (code === 'es' || code === 'en') return code;
+        }
+    }
+    return messageOrInteraction.locale || 'es';
+}
+
+function validateAttachment(attachment, locale) {
     const name = attachment.name || "";
     const ext = path.extname(name).toLowerCase();
     const allowedExts = ['.png', '.jpg', '.jpeg', '.gif', '.webp'];
     if (!allowedExts.includes(ext)) {
-        return { valid: false, reason: "Solo se permiten imágenes (.png, .jpg, .jpeg, .gif, .webp)" };
+        return { valid: false, reason: t(locale, "fumo.val_err_ext") };
     }
     const contentType = attachment.contentType || "";
     if (contentType && !contentType.startsWith("image/")) {
-        return { valid: false, reason: "El archivo no tiene un tipo MIME de imagen válido." };
+        return { valid: false, reason: t(locale, "fumo.val_err_mime") };
     }
     if (contentType.toLowerCase().includes("svg") || ext === ".svg") {
-        return { valid: false, reason: "No se permiten archivos SVG por razones de seguridad." };
+        return { valid: false, reason: t(locale, "fumo.val_err_svg") };
     }
     if (attachment.size > 10 * 1024 * 1024) {
-        return { valid: false, reason: "La imagen supera el límite de 10 MB." };
+        return { valid: false, reason: t(locale, "fumo.val_err_size") };
     }
     return { valid: true, ext };
 }
 
 async function handleUpload(supabase, author, guild, attachments, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     const isInteraction = messageOrInteraction && typeof messageOrInteraction.editReply === 'function';
     const updateStatus = async (text) => {
         const mem = process.memoryUsage();
@@ -196,15 +210,15 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
     if (blacklistRecord) {
         const errEmbed = new EmbedBuilder()
             .setColor("#ff3333")
-            .setDescription("❌ No tienes permitido subir imágenes de fumo porque estás en la blacklist.");
+            .setDescription(t(locale, "fumo.upload_err_blacklist"));
         return { content: "", embeds: [errEmbed] };
     }
 
     if (!attachments || attachments.length === 0) {
-        return "❌ Debes adjuntar al menos una imagen.";
+        return t(locale, "fumo.upload_err_no_attachments");
     }
 
-    await updateStatus(`⏳ Iniciando procesamiento de **${attachments.length}** imágenes...`);
+    await updateStatus(t(locale, "fumo.upload_processing", { count: attachments.length }));
 
     const successes = [];
     const failures = [];
@@ -212,7 +226,7 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
     // Obtener el ID máximo actual del bucket
     const { data: files, error: listError } = await supabase.storage.from('fumo').list('', { limit: 10000 });
     if (listError) {
-        return `❌ Error al listar archivos del storage: ${listError.message}`;
+        return t(locale, "fumo.upload_err_storage", { error: listError.message });
     }
 
     let maxId = 0;
@@ -230,18 +244,18 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
 
     for (let index = 0; index < attachments.length; index++) {
         const attachment = attachments[index];
-        const val = validateAttachment(attachment);
+        const val = validateAttachment(attachment, locale);
         if (!val.valid) {
             failures.push({ name: attachment.name, reason: val.reason });
             continue;
         }
 
         try {
-            await updateStatus(`📥 Descargando imagen **${index + 1}/${attachments.length}**...`);
+            await updateStatus(t(locale, "fumo.upload_downloading", { current: index + 1, total: attachments.length }));
             const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
             const fileBuffer = Buffer.from(response.data);
 
-            await updateStatus(`⚡ Comprimiendo imagen **${index + 1}/${attachments.length}**...`);
+            await updateStatus(t(locale, "fumo.upload_compressing", { current: index + 1, total: attachments.length }));
             const compressedResult = await compressImage(fileBuffer, val.ext);
 
             const crypto = require("crypto");
@@ -254,11 +268,11 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
 
             if (existingDuplicate) {
                 const parsed = parseFumoFilename(existingDuplicate.name);
-                failures.push({ name: attachment.name, reason: `Esta imagen ya existe con el ID **${parsed.id}**` });
+                failures.push({ name: attachment.name, reason: t(locale, "fumo.upload_err_duplicate", { id: parsed.id }) });
                 continue;
             }
 
-            await updateStatus(`📤 Subiendo imagen **${index + 1}/${attachments.length}** a la base de datos...`);
+            await updateStatus(t(locale, "fumo.upload_uploading", { current: index + 1, total: attachments.length }));
             maxId++;
             const newFilename = `${maxId} - fumo - ${cleanUsername} - ${author.id} - ${guildId} - ${hash}${compressedResult.ext}`;
 
@@ -268,14 +282,14 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
             });
 
             if (uploadError) {
-                failures.push({ name: attachment.name, reason: `Error al subir: ${uploadError.message}` });
+                failures.push({ name: attachment.name, reason: t(locale, "fumo.upload_err_upload", { error: uploadError.message }) });
                 maxId--;
             } else {
                 const { data } = supabase.storage.from('fumo').getPublicUrl(newFilename);
                 successes.push({ id: maxId, url: data.publicUrl, filename: newFilename });
             }
         } catch (err) {
-            failures.push({ name: attachment.name, reason: `Error en descarga/compresión: ${err.message}` });
+            failures.push({ name: attachment.name, reason: t(locale, "fumo.upload_err_generic", { error: err.message }) });
             maxId--;
         }
     }
@@ -284,19 +298,19 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
     list_order = [];
 
     const embed = new EmbedBuilder()
-        .setTitle("🧸 Registro de Fumos")
+        .setTitle(t(locale, "fumo.upload_embed_title"))
         .setColor(successes.length > 0 ? "#00ff88" : "#ff3333")
         .setTimestamp();
 
     if (successes.length > 0) {
         const successList = successes.map(s => `• **ID ${s.id}**`).join('\n');
-        embed.addFields({ name: "✅ Fotos Subidas Correctamente", value: successList });
+        embed.addFields({ name: t(locale, "fumo.upload_success_title"), value: successList });
         embed.setImage(successes[0].url);
     }
 
     if (failures.length > 0) {
         const failureList = failures.map(f => `• **${f.name}**: ${f.reason}`).join('\n');
-        embed.addFields({ name: "❌ Errores de Subida", value: failureList });
+        embed.addFields({ name: t(locale, "fumo.upload_errors_title"), value: failureList });
     }
 
     if (isInteraction) {
@@ -306,9 +320,10 @@ async function handleUpload(supabase, author, guild, attachments, messageOrInter
     return { content: "", embeds: [embed] };
 }
 
-async function handleList(supabase, author, member, pageArg) {
+async function handleList(supabase, author, member, pageArg, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     if (!isAdmin(author, member)) {
-        return "❌ Este comando está reservado para los administradores.";
+        return t(locale, "fumo.err_only_admin");
     }
 
     const { data: files, error } = await supabase.storage.from('fumo').list('', {
@@ -317,7 +332,7 @@ async function handleList(supabase, author, member, pageArg) {
     });
 
     if (error) {
-        return `❌ Error al listar archivos: ${error.message}`;
+        return t(locale, "fumo.upload_err_storage", { error: error.message });
     }
 
     const fumos = (files || [])
@@ -326,7 +341,7 @@ async function handleList(supabase, author, member, pageArg) {
         .sort((a, b) => a.parsed.id - b.parsed.id);
 
     if (fumos.length === 0) {
-        return "🧸 No hay fotos de fumo registradas en la base de datos.";
+        return t(locale, "fumo.no_registered");
     }
 
     let page = parseInt(pageArg) || 1;
@@ -338,34 +353,36 @@ async function handleList(supabase, author, member, pageArg) {
     const pageFumos = fumos.slice((page - 1) * pageSize, page * pageSize);
 
     const embed = new EmbedBuilder()
-        .setTitle("🧸 Lista de Fumos Registrados")
+        .setTitle(t(locale, "fumo.list_title"))
         .setColor("#bf4080")
-        .setDescription(`Total registrados: **${fumos.length}** • Página **${page}** de **${totalPages}**`)
+        .setDescription(t(locale, "fumo.list_desc", { total: fumos.length, page, pages: totalPages }))
         .setTimestamp();
 
     const fields = [];
     for (const item of pageFumos) {
         const { id, username, userId, guildId } = item.parsed;
-        fields.push(`**ID ${id}**\n👤 **Subido por:** ${username} (\`${userId}\`)\n🏰 **Servidor:** ${guildId === 'DM' ? 'Mensaje Privado' : `\`${guildId}\``}`);
+        const guildStr = guildId === 'DM' ? t(locale, "fumo.list_guild_dm") : `\`${guildId}\``;
+        fields.push(t(locale, "fumo.list_row", { id, username, userId, guild: guildStr }));
     }
 
-    embed.addFields({ name: "Resultados", value: fields.join('\n\n') });
+    embed.addFields({ name: t(locale, "fumo.list_results_field"), value: fields.join('\n\n') });
     return { embeds: [embed] };
 }
 
-async function handleDelete(supabase, author, member, targetId) {
+async function handleDelete(supabase, author, member, targetId, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     if (!isAdmin(author, member)) {
-        return "❌ Este comando está reservado para los administradores.";
+        return t(locale, "fumo.err_only_admin");
     }
 
     if (!targetId || isNaN(parseInt(targetId))) {
-        return "❌ Especifica un ID numérico de fumo válido para eliminar. Ejemplo: `.fumo delete 5`";
+        return t(locale, "fumo.err_invalid_id_delete");
     }
 
     const id = parseInt(targetId);
 
     const { data: files, error } = await supabase.storage.from('fumo').list('', { limit: 10000 });
-    if (error) return `❌ Error al listar archivos: ${error.message}`;
+    if (error) return t(locale, "fumo.upload_err_storage", { error: error.message });
 
     const target = files?.find(f => {
         const parsed = parseFumoFilename(f.name);
@@ -373,30 +390,31 @@ async function handleDelete(supabase, author, member, targetId) {
     });
 
     if (!target) {
-        return `❌ No se encontró ningún fumo con el ID ${id}.`;
+        return t(locale, "fumo.err_not_found", { id });
     }
 
     const { error: removeError } = await supabase.storage.from('fumo').remove([target.name]);
     if (removeError) {
-        return `❌ Error al eliminar el archivo: ${removeError.message}`;
+        return t(locale, "fumo.err_delete_failed", { error: removeError.message });
     }
 
     list_order = []; // limpiar caché para reflejar cambios
 
-    return `✅ El fumo con ID **${id}** ha sido eliminado correctamente del storage.`;
+    return t(locale, "fumo.delete_success", { id });
 }
 
 async function handleEdit(supabase, author, member, targetId, attachments, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     if (!isAdmin(author, member)) {
-        return "❌ Este comando está reservado para los administradores.";
+        return t(locale, "fumo.err_only_admin");
     }
 
     if (!targetId || isNaN(parseInt(targetId))) {
-        return "❌ Especifica un ID numérico de fumo válido para editar. Ejemplo: `.fumo edit 5` (y adjunta una imagen)";
+        return t(locale, "fumo.err_invalid_id_edit");
     }
 
     if (!attachments || attachments.length === 0) {
-        return "❌ Adjunta la nueva imagen para reemplazar la anterior.";
+        return t(locale, "fumo.err_no_image_edit");
     }
 
     const id = parseInt(targetId);
@@ -419,10 +437,10 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
         }
     };
 
-    await updateStatus("🔍 Buscando fumo en la base de datos...");
+    await updateStatus(t(locale, "fumo.edit_searching"));
 
     const { data: files, error } = await supabase.storage.from('fumo').list('', { limit: 10000 });
-    if (error) return `❌ Error al listar archivos: ${error.message}`;
+    if (error) return t(locale, "fumo.upload_err_storage", { error: error.message });
 
     const target = files?.find(f => {
         const parsed = parseFumoFilename(f.name);
@@ -430,21 +448,21 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
     });
 
     if (!target) {
-        return `❌ No se encontró ningún fumo con el ID ${id}.`;
+        return t(locale, "fumo.err_not_found", { id });
     }
 
     const attachment = attachments[0];
-    const val = validateAttachment(attachment);
+    const val = validateAttachment(attachment, locale);
     if (!val.valid) {
-        return `❌ Archivo inválido: ${val.reason}`;
+        return t(locale, "fumo.edit_err_generic", { error: val.reason });
     }
 
     try {
-        await updateStatus("📥 Descargando la nueva imagen...");
+        await updateStatus(t(locale, "fumo.upload_downloading", { current: 1, total: 1 }));
         const response = await axios.get(attachment.url, { responseType: 'arraybuffer' });
         const fileBuffer = Buffer.from(response.data);
 
-        await updateStatus("⚡ Comprimiendo la nueva imagen...");
+        await updateStatus(t(locale, "fumo.upload_compressing", { current: 1, total: 1 }));
         const compressedResult = await compressImage(fileBuffer, val.ext);
 
         const crypto = require("crypto");
@@ -457,10 +475,10 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
 
         if (existingDuplicate) {
             const parsed = parseFumoFilename(existingDuplicate.name);
-            return `❌ Esta imagen ya existe registrada con el ID **${parsed.id}**.`;
+            return t(locale, "fumo.edit_err_duplicate", { id: parsed.id });
         }
 
-        await updateStatus("📤 Subiendo y reemplazando la imagen...");
+        await updateStatus(t(locale, "fumo.edit_uploading"));
         const parsedOld = parseFumoFilename(target.name);
         const newTargetName = `${parsedOld.id} - fumo - ${parsedOld.username} - ${parsedOld.userId} - ${parsedOld.guildId} - ${hash}${compressedResult.ext}`;
 
@@ -474,15 +492,15 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
         });
 
         if (uploadError) {
-            return `❌ Error al subir la nueva imagen: ${uploadError.message}`;
+            return t(locale, "fumo.edit_err_upload", { error: uploadError.message });
         }
 
         const { data } = supabase.storage.from('fumo').getPublicUrl(newTargetName);
 
         const embed = new EmbedBuilder()
-            .setTitle(`✅ Fumo #${id} Reemplazado`)
+            .setTitle(t(locale, "fumo.edit_success_title", { id }))
             .setColor("#00ff88")
-            .setDescription(`Se ha reemplazado la imagen del fumo ID **${id}** con éxito.`)
+            .setDescription(t(locale, "fumo.edit_success_desc", { id }))
             .setImage(data.publicUrl)
             .setTimestamp();
 
@@ -492,13 +510,14 @@ async function handleEdit(supabase, author, member, targetId, attachments, messa
 
         return { content: "", embeds: [embed] };
     } catch (err) {
-        return `❌ Error al descargar/subir: ${err.message}`;
+        return t(locale, "fumo.edit_err_generic", { error: err.message });
     }
 }
 
-async function handleBlacklist(supabase, author, member, action, targetUser) {
+async function handleBlacklist(supabase, author, member, action, targetUser, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     if (!isAdmin(author, member)) {
-        return "❌ Este comando está reservado para los administradores.";
+        return t(locale, "fumo.err_only_admin");
     }
 
     if (action === 'list' || action === 'listar' || !action) {
@@ -507,17 +526,17 @@ async function handleBlacklist(supabase, author, member, action, targetUser) {
             .select('*');
 
         if (error) {
-            return `❌ Error al consultar la blacklist: ${error.message}`;
+            return t(locale, "fumo.blacklist_err_add", { error: error.message });
         }
 
         if (!data || data.length === 0) {
-            return "🖤 La blacklist de fumos está vacía.";
+            return t(locale, "fumo.blacklist_empty");
         }
 
         const listText = data.map((row, idx) => `${idx + 1}. <@${row.discord_id}> (\`${row.discord_id}\`) - Por: <@${row.added_by || 'Desconocido'}> el ${new Date(row.created_at).toLocaleDateString()}`).join('\n');
         
         const embed = new EmbedBuilder()
-            .setTitle("🖤 Lista Negra de Fumos")
+            .setTitle(t(locale, "fumo.blacklist_title"))
             .setColor("#2f3136")
             .setDescription(listText)
             .setTimestamp();
@@ -526,12 +545,12 @@ async function handleBlacklist(supabase, author, member, action, targetUser) {
     }
 
     if (!targetUser) {
-        return "❌ Especifica el ID o mención del usuario. Ejemplo: `.fumo blacklist add <ID>`";
+        return t(locale, "fumo.blacklist_err_no_user");
     }
 
     const targetUserId = targetUser.replace(/[^0-9]/g, '');
     if (!targetUserId || targetUserId.length < 17) {
-        return "❌ ID de usuario inválido.";
+        return t(locale, "fumo.blacklist_err_invalid_user");
     }
 
     if (action === 'add' || action === 'agregar') {
@@ -540,10 +559,10 @@ async function handleBlacklist(supabase, author, member, action, targetUser) {
             .upsert({ discord_id: targetUserId, added_by: author.id });
 
         if (error) {
-            return `❌ Error al agregar a la blacklist: ${error.message}`;
+            return t(locale, "fumo.blacklist_err_add", { error: error.message });
         }
 
-        return `✅ El usuario <@${targetUserId}> (\`${targetUserId}\`) ha sido agregado a la blacklist de fumos.`;
+        return t(locale, "fumo.blacklist_add_success", { userId: targetUserId });
     }
 
     if (action === 'remove' || action === 'quitar' || action === 'delete') {
@@ -553,13 +572,13 @@ async function handleBlacklist(supabase, author, member, action, targetUser) {
             .eq('discord_id', targetUserId);
 
         if (error) {
-            return `❌ Error al remover de la blacklist: ${error.message}`;
+            return t(locale, "fumo.blacklist_err_remove", { error: error.message });
         }
 
-        return `✅ El usuario <@${targetUserId}> (\`${targetUserId}\`) ha sido removido de la blacklist de fumos.`;
+        return t(locale, "fumo.blacklist_remove_success", { userId: targetUserId });
     }
 
-    return "❌ Acción inválida. Usa: `add`, `remove` o `list`";
+    return t(locale, "fumo.blacklist_invalid_action");
 }
 
 function getFumoButtonsRow(currentIndex, totalFumos) {
@@ -592,13 +611,14 @@ function getFumoButtonsRow(currentIndex, totalFumos) {
 }
 
 async function handleShow(supabase, author, targetId, messageOrInteraction) {
+    const locale = getLocale(messageOrInteraction);
     const { data: files, error } = await supabase.storage.from('fumo').list('', {
         limit: 10000,
         sortBy: { column: 'name', order: 'asc' }
     });
 
     if (error) {
-        return `❌ Error al obtener los fumos de Supabase Storage: ${error.message}`;
+        return t(locale, "fumo.show_err_storage", { error: error.message });
     }
 
     const fumos = (files || [])
@@ -607,7 +627,7 @@ async function handleShow(supabase, author, targetId, messageOrInteraction) {
         .sort((a, b) => a.parsed.id - b.parsed.id);
 
     if (fumos.length === 0) {
-        return "🧸 No hay fotos de fumo registradas. ¡Adjunta una imagen para subir la primera!";
+        return t(locale, "fumo.show_no_registered");
     }
 
     let currentIndex = -1;
@@ -616,7 +636,7 @@ async function handleShow(supabase, author, targetId, messageOrInteraction) {
         const id = parseInt(targetId);
         currentIndex = fumos.findIndex(f => f.parsed.id === id);
         if (currentIndex === -1) {
-            return `❌ No se encontró ningún fumo con el ID **${id}**.`;
+            return t(locale, "fumo.err_not_found", { id });
         }
     } else {
         if (list_order.length === 0) {
@@ -638,7 +658,7 @@ async function handleShow(supabase, author, targetId, messageOrInteraction) {
             .setTitle(`🧸 Fumo #${currentFumo.parsed.id}`)
             .setColor("#bf4080")
             .setImage(data.publicUrl)
-            .setFooter({ text: `Subido por: ${currentFumo.parsed.username} | Total Fumos: ${fumos.length}` });
+            .setFooter({ text: t(locale, "fumo.show_footer", { username: currentFumo.parsed.username, total: fumos.length }) });
     };
 
     const isInteraction = !!(messageOrInteraction && messageOrInteraction.editReply);
@@ -741,11 +761,11 @@ async function run(messages, args) {
     }
 
     if (sub === 'list' || sub === 'listar') {
-        return await handleList(supabase, author, member, args[1]);
+        return await handleList(supabase, author, member, args[1], message);
     }
 
     if (sub === 'delete' || sub === 'borrar') {
-        return await handleDelete(supabase, author, member, args[1]);
+        return await handleDelete(supabase, author, member, args[1], message);
     }
 
     if (sub === 'edit' || sub === 'editar') {
@@ -756,7 +776,7 @@ async function run(messages, args) {
     if (sub === 'blacklist') {
         const action = args[1] ? args[1].toLowerCase() : "";
         const targetUser = args[2];
-        return await handleBlacklist(supabase, author, member, action, targetUser);
+        return await handleBlacklist(supabase, author, member, action, targetUser, message);
     }
 
     // Mostrar fumo específico o aleatorio
