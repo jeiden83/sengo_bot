@@ -590,6 +590,11 @@ async function getPersonalizedRecommendations({
     // Listado de IDs jugados en el Top 100
     const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
 
+    const getCleanTags = (c) => {
+        const rawTags = (c.user_tags && c.user_tags.length > 0) ? c.user_tags : (c.tags || []);
+        return rawTags.map(t => t.toLowerCase().trim());
+    };
+
     // 3. Scoring
     const scoredCandidates = candidates
         .filter(c => {
@@ -622,21 +627,19 @@ async function getPersonalizedRecommendations({
 
             // 2. Filtrar estrictamente por estilo para Aim/Streams (usando user_tags y tags de creador como fallback)
             if (style === 'aim') {
-                const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
-                const hasAimTag = combinedTags.some(t => {
-                    const tag = t.toLowerCase().trim();
-                    if (tag === 'aim' || tag === 'jump' || tag === 'jumps') return true;
-                    if (tag.includes('/') && (tag.includes('aim') || tag.includes('jump'))) return true;
-                    return AIM_TAGS.some(at => tag === at);
+                const tags = getCleanTags(c);
+                const hasAimTag = tags.some(t => {
+                    if (t === 'aim' || t === 'jump' || t === 'jumps') return true;
+                    if (t.includes('/') && (t.includes('aim') || t.includes('jump'))) return true;
+                    return AIM_TAGS.some(at => t === at);
                 });
                 if (!hasAimTag) return false;
             } else if (style === 'speed') {
-                const combinedTags = [...(c.user_tags || []), ...(c.tags || [])];
-                const hasSpeedTag = combinedTags.some(t => {
-                    const tag = t.toLowerCase().trim();
-                    if (tag === 'stream' || tag === 'streams' || tag === 'speed' || tag === 'burst' || tag === 'bursts' || tag === 'alt' || tag === 'alternate' || tag === 'stamina') return true;
-                    if (tag.includes('/') && (tag.includes('stream') || tag.includes('speed') || tag.includes('burst') || tag.includes('alt') || tag.includes('stamina'))) return true;
-                    return SPEED_TAGS.some(st => tag === st);
+                const tags = getCleanTags(c);
+                const hasSpeedTag = tags.some(t => {
+                    if (t === 'stream' || t === 'streams' || t === 'speed' || t === 'burst' || t === 'bursts' || t === 'alt' || t === 'alternate' || t === 'stamina') return true;
+                    if (t.includes('/') && (t.includes('stream') || t.includes('speed') || t.includes('burst') || t.includes('alt') || t.includes('stamina'))) return true;
+                    return SPEED_TAGS.some(st => t === st);
                 });
                 if (!hasSpeedTag) return false;
             } else if (style === 'length') {
@@ -699,10 +702,19 @@ async function getPersonalizedRecommendations({
             let tagMatches = 0;
             let userTagMatches = 0;
             const matchedTagsList = [];
-            const combinedTags = (c.user_tags || []).concat(c.tags || []).map(t => t.toLowerCase().trim());
+            const combinedTags = getCleanTags(c);
 
             profile.frequentTags.forEach(cleanTag => {
                 if (combinedTags.includes(cleanTag)) {
+                    // Si el estilo es speed, no coincidir con tags de aim/jumps del usuario
+                    if (style === 'speed' && (cleanTag === 'aim' || cleanTag === 'jump' || cleanTag === 'jumps' || cleanTag.includes('aim') || cleanTag.includes('jump') || AIM_TAGS.some(at => cleanTag.includes(at)))) {
+                        return;
+                    }
+                    // Si el estilo es aim, no coincidir con tags de speed/streams del usuario
+                    if (style === 'aim' && (cleanTag === 'stream' || cleanTag === 'streams' || cleanTag === 'speed' || cleanTag === 'burst' || cleanTag === 'bursts' || cleanTag === 'alt' || cleanTag === 'alternate' || cleanTag === 'stamina' || cleanTag.includes('stream') || cleanTag.includes('speed') || cleanTag.includes('burst') || cleanTag.includes('alt') || SPEED_TAGS.some(st => cleanTag.includes(st)))) {
+                        return;
+                    }
+
                     tagMatches++;
                     // Si es un tag de estilo específico, darle doble peso
                     if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
@@ -741,11 +753,19 @@ async function getPersonalizedRecommendations({
                     score += 25;
                     reasons.push("Enfoque: Aim");
                 }
+                const hasSpeedTag = combinedTags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
+                if (hasSpeedTag) {
+                    score -= 35; // Penalizar mapas de Speed cuando se pide Aim
+                }
             } else if (style === 'speed') {
                 const hasSpeedTag = combinedTags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
                 if (hasSpeedTag) {
                     score += 25;
                     reasons.push("Enfoque: Speed");
+                }
+                const hasAimTag = combinedTags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
+                if (hasAimTag) {
+                    score -= 35; // Penalizar mapas de Aim cuando se pide Speed
                 }
             } else if (style === 'tags') {
                 score += 25;
