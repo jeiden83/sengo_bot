@@ -1183,7 +1183,7 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 }))
                 .filter(m => {
                     const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-                    return total > 0;
+                    return total > 0 || (m.kudosu_total || 0) > 0;
                 });
         }
     }
@@ -1325,7 +1325,7 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         }))
         .filter(m => {
             const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-            return total > 0;
+            return total > 0 || (m.kudosu_total || 0) > 0;
         });
 }
 
@@ -1347,7 +1347,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 }))
                 .filter(m => {
                     const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-                    return total > 0;
+                    return total > 0 || (m.kudosu_total || 0) > 0;
                 });
         }
     }
@@ -1529,7 +1529,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         }))
         .filter(m => {
             const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-            return total > 0;
+            return total > 0 || (m.kudosu_total || 0) > 0;
         });
 }
 
@@ -1552,7 +1552,7 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 }))
                 .filter(m => {
                     const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-                    return total > 0;
+                    return total > 0 || (m.kudosu_total || 0) > 0;
                 });
         }
     }
@@ -1734,7 +1734,7 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
         }))
         .filter(m => {
             const total = (m.ranked_count || 0) + (m.loved_count || 0) + (m.pending_count || 0) + (m.graveyard_count || 0) + (m.guest_count || 0);
-            return total > 0;
+            return total > 0 || (m.kudosu_total || 0) > 0;
         });
 }
 
