@@ -26,7 +26,7 @@ function formatRecommendMods(modsStr) {
  */
 function doOsuRecommendEmbed(message, profile, recommendations, params, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const { minPP, maxPP, mods, showPlayed, hasSupporter, style } = params;
+    const { minPP, maxPP, mods, showPlayed, hasSupporter, style, customUserTag } = params;
     const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
     const numLocale = locale === 'es' ? 'es-ES' : 'en-US';
 
@@ -40,7 +40,10 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
         'rarezas': t(locale, 'recommend.label_style_rarezas'),
         'tags': t(locale, 'recommend.label_style_tags')
     };
-    const currentStyleLabel = styleLabels[style] || t(locale, 'recommend.label_style_standard');
+    let currentStyleLabel = styleLabels[style] || t(locale, 'recommend.label_style_standard');
+    if (customUserTag) {
+        currentStyleLabel = t(locale, 'recommend.label_style_custom_tag', { tag: customUserTag });
+    }
 
     if (recommendations.length === 0) {
         description = t(locale, 'recommend.embed_no_recs', {

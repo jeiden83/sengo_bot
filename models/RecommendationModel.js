@@ -445,6 +445,7 @@ async function getPersonalizedRecommendations({
     customMaxPP = null,
     customMods = null,
     style = 'standard', // standard, aim, speed, length, rarezas
+    customUserTag = null,
     showPlayed = false,
     skipSet = new Set()
 }) {
@@ -506,7 +507,7 @@ async function getPersonalizedRecommendations({
     }
 
     // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho)
-    const useTagsFilter = ['tags', 'aim', 'speed'].includes(style);
+    const useTagsFilter = ['tags', 'aim', 'speed'].includes(style) || !!customUserTag;
     
     const buildBaseQuery = () => {
         let q = supabase
@@ -623,6 +624,14 @@ async function getPersonalizedRecommendations({
                 if (est100 < customMinPP || est100 > limitMaxPP) {
                     return false;
                 }
+            }
+
+            // Filtro por usertag específico
+            if (customUserTag) {
+                const tags = getCleanTags(c);
+                const cleanTarget = customUserTag.toLowerCase().trim();
+                const hasTargetTag = tags.some(t => t === cleanTarget || t.includes(cleanTarget));
+                if (!hasTargetTag) return false;
             }
 
             // 2. Filtrar estrictamente por estilo para Aim/Streams (usando user_tags y tags de creador como fallback)
@@ -746,7 +755,15 @@ async function getPersonalizedRecommendations({
                 reasons.push("Mapa popular");
             }
 
-            // Ajuste por estilo solicitado
+            // Ajuste por estilo solicitado o tag personalizado
+            if (customUserTag) {
+                const cleanTarget = customUserTag.toLowerCase().trim();
+                if (combinedTags.some(t => t === cleanTarget || t.includes(cleanTarget))) {
+                    score += 40;
+                    reasons.push(`Tag: ${customUserTag}`);
+                }
+            }
+
             if (style === 'aim') {
                 const hasAimTag = combinedTags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
                 if (hasAimTag) {

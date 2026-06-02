@@ -274,6 +274,8 @@ async function run(messages, args) {
     let forceRefresh = false;
     let currentStyle = 'standard';
     let isPPExpanded = false;
+    let customUserTag = null;
+    let showUserTagsList = false;
 
     const cleanArgs = [];
     let skipNext = false;
@@ -319,6 +321,19 @@ async function run(messages, args) {
             }
             continue;
         }
+        if (arg === "-usertag" || arg === "-usertags" || arg === "-ut") {
+            if (i + 1 < args.length && typeof args[i + 1] === 'string' && !args[i + 1].startsWith('-')) {
+                let val = args[i + 1].trim();
+                if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+                    val = val.slice(1, -1);
+                }
+                customUserTag = val;
+                skipNext = true;
+            } else {
+                showUserTagsList = true;
+            }
+            continue;
+        }
         if (arg === "-tags" || arg === "-t") {
             currentStyle = 'tags';
             continue;
@@ -340,6 +355,80 @@ async function run(messages, args) {
             continue;
         }
         cleanArgs.push(args[i]);
+    }
+
+    if (showUserTagsList) {
+        try {
+            const { getSupabaseClient } = require("../../../db/database.js");
+            const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
+            const dbClient = getSupabaseClient();
+            
+            const { data: tags, error } = await dbClient
+                .from('user_tags_counts')
+                .select('*')
+                .order('count', { ascending: false });
+
+            if (error || !tags || tags.length === 0) {
+                const errorMsg = "No se encontraron user tags en la base de datos.";
+                if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
+                return message.channel.send(errorMsg);
+            }
+
+            const categories = {};
+            tags.forEach(row => {
+                const parts = row.tag.split('/');
+                const catName = parts.length > 1 ? parts[0] : 'otros';
+                
+                if (!categories[catName]) categories[catName] = [];
+                categories[catName].push({ count: row.count, full: row.tag });
+            });
+
+            const categoryEmojis = {
+                'skillset': '⚡ skillset',
+                'streams': '🌊 streams',
+                'jumps': '🎯 jumps',
+                'tech': '🛠️ tech',
+                'style': '🎨 style',
+                'reading': '👁️ reading',
+                'sliders': '🔄 sliders',
+                'meta': '📊 meta',
+                'additions': '🎵 additions',
+                'context': '🌐 context',
+                'gimmick': '🧠 gimmick',
+                'expression': '💬 expression',
+                'otros': '📁 otros'
+            };
+
+            const embed = new EmbedBuilder()
+                .setTitle("🏷️ Lista de User Tags Disponibles")
+                .setColor(getEmbedColor(message))
+                .setDescription("Aquí tienes todos los `user_tags` registrados en Sengo. Puedes recomendarlos usando `s.rec -usertag \"nombre_tag\"`:\n\u200b")
+                .setFooter({
+                    text: "Sengo Bot",
+                    iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+                })
+                .setTimestamp();
+
+            for (const [cat, items] of Object.entries(categories)) {
+                const displayName = categoryEmojis[cat] ? categoryEmojis[cat].toUpperCase() : cat.toUpperCase();
+                items.sort((a, b) => b.count - a.count);
+                const itemsStr = items.map(item => `\`${item.full}\` (${item.count.toLocaleString()})`).join(" • ");
+                const truncatedStr = itemsStr.length > 1020 ? itemsStr.substring(0, 1017) + "..." : itemsStr;
+                embed.addFields({ name: displayName, value: truncatedStr || 'Ninguno' });
+            }
+
+            if (isSlash) {
+                await interaction.reply({ embeds: [embed] });
+            } else {
+                await message.channel.send({ embeds: [embed] });
+            }
+            return;
+        } catch (err) {
+            console.error("Error al listar user tags:", err);
+            const errorMsg = "Ocurrió un error al cargar la lista de user tags.";
+            if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
+            return message.channel.send(errorMsg);
+        }
     }
 
     // 2. Parseamos argumentos con argsParser de Sengo
@@ -391,7 +480,7 @@ async function run(messages, args) {
     let hasSupporter = linkedUser ? !!linkedUser.is_supporter : false;
 
     // Verificar si es una consulta por defecto (sin filtros custom y estilo standard)
-    const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false && currentStyle === 'standard');
+    const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false && currentStyle === 'standard' && customUserTag === null);
 
     // Si se usa -force, borrar la caché del usuario antes de continuar
     if (forceRefresh) {
@@ -490,6 +579,7 @@ async function run(messages, args) {
                     customMaxPP: maxPP,
                     customMods: customMods,
                     style: currentStyle,
+                    customUserTag: customUserTag,
                     showPlayed,
                     skipSet: skipSetLocal
                 });
@@ -633,7 +723,7 @@ async function run(messages, args) {
         }
     });
 
-    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
+    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag };
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
     let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 
@@ -674,6 +764,7 @@ async function run(messages, args) {
                 customMaxPP: maxPP,
                 customMods: customMods,
                 style: currentStyle,
+                customUserTag: customUserTag,
                 showPlayed,
                 skipSet: skipSet
             });
@@ -800,21 +891,27 @@ async function run(messages, args) {
                 skipSet.clear();
             } else if (i.customId === 'rec_style_aim') {
                 currentStyle = 'aim';
+                customUserTag = null;
                 skipSet.clear();
             } else if (i.customId === 'rec_style_speed') {
                 currentStyle = 'speed';
+                customUserTag = null;
                 skipSet.clear();
             } else if (i.customId === 'rec_style_length') {
                 currentStyle = 'length';
+                customUserTag = null;
                 skipSet.clear();
             } else if (i.customId === 'rec_style_rarezas') {
                 currentStyle = 'rarezas';
+                customUserTag = null;
                 skipSet.clear();
             } else if (i.customId === 'rec_style_tags') {
                 currentStyle = 'tags';
+                customUserTag = null;
                 skipSet.clear();
             } else if (i.customId === 'rec_style_reset') {
                 currentStyle = 'standard';
+                customUserTag = null;
                 skipSet.clear();
             }
 
@@ -826,7 +923,7 @@ async function run(messages, args) {
                 }
             });
 
-            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle };
+            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag };
             embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
             rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 

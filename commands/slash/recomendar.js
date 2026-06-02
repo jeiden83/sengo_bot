@@ -27,6 +27,16 @@ const data = new SlashCommandBuilder()
         option.setName("force")
             .setDescription("Forzar nuevas recomendaciones ignorando la caché")
             .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("usertag")
+            .setDescription("Filtrar por etiqueta de usuario de la comunidad (ej: skillset/jumps)")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("list_tags")
+            .setDescription("¿Mostrar la lista de etiquetas de usuario disponibles?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -36,6 +46,8 @@ async function run(interaction, res) {
     const mods = interaction.options.getString("mods");
     const jugados = interaction.options.getBoolean("jugados");
     const force = interaction.options.getBoolean("force");
+    const usertag = interaction.options.getString("usertag");
+    const listTags = interaction.options.getBoolean("list_tags");
 
     if (pp) {
         args.push("-pp", pp);
@@ -48,6 +60,12 @@ async function run(interaction, res) {
     }
     if (force) {
         args.push("-force");
+    }
+    if (usertag) {
+        args.push("-usertag", usertag);
+    }
+    if (listTags) {
+        args.push("-usertag");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

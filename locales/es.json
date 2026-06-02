@@ -1107,6 +1107,7 @@
     "label_style_length": "⏳ Maratones / Largo",
     "label_style_rarezas": "🔮 Loved / Raros",
     "label_style_tags": "🏷️ Afinidad por Tags",
+    "label_style_custom_tag": "Etiqueta: {tag}",
     "label_mods_any": "Cualquiera",
     "label_yes": "Sí",
     "label_no": "No"

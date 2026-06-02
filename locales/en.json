@@ -1107,6 +1107,7 @@
     "label_style_length": "⏳ Marathons / Long",
     "label_style_rarezas": "🔮 Loved / Rare",
     "label_style_tags": "🏷️ Affinity by Tags",
+    "label_style_custom_tag": "Tag: {tag}",
     "label_mods_any": "Any",
     "label_yes": "Yes",
     "label_no": "No"
