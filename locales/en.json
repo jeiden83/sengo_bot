@@ -21,7 +21,8 @@
     "list_description": "Sengo currently supports the following languages:\n\n• 🇻🇪 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\nTo change the language of this server, an administrator must run:\n`{prefix}language [es|en]`",
     "only_guild": "This command can only be used in a server.",
     "no_admin": "You do not have Administrator permissions to change the server language.",
-    "db_error": "There was an error trying to update the language in the database."
+    "db_error": "There was an error trying to update the language in the database.",
+    "current": "Current"
   },
   "about": {
     "only_author": "❌ Only the person who ran the command can use this navigation.",

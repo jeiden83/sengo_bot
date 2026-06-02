@@ -40,8 +40,8 @@ function doLanguageHelpEmbed(locale, prefix = 's.') {
  * @returns {EmbedBuilder} Embed instructivo
  */
 function doLanguageListEmbed(locale, prefix = 's.') {
-    const currentES = locale === 'es' ? `👈 (${t(locale, 'about.home_page') || 'Actual'})` : '';
-    const currentEN = locale === 'en' ? `👈 (Current)` : '';
+    const currentES = locale === 'es' ? `👈 (${t(locale, 'language.current')})` : '';
+    const currentEN = locale === 'en' ? `👈 (${t(locale, 'language.current')})` : '';
 
     return new EmbedBuilder()
         .setColor('#5865F2')

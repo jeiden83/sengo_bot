@@ -21,7 +21,8 @@
     "list_description": "Actualmente Sengo soporta los siguientes idiomas:\n\n• 🇻🇪 **Español (`es`)** {currentES}\n• 🇺🇸 **Inglés (`en`)** {currentEN}\n\nPara cambiar el idioma de este servidor, un administrador debe ejecutar:\n`{prefix}language [es|en]`",
     "only_guild": "Este comando solo se puede usar en un servidor.",
     "no_admin": "No tienes permisos de Administrador para cambiar el idioma del servidor.",
-    "db_error": "Hubo un error al intentar actualizar el idioma en la base de datos."
+    "db_error": "Hubo un error al intentar actualizar el idioma en la base de datos.",
+    "current": "Actual"
   },
   "about": {
     "only_author": "❌ Solo la persona que ejecutó el comando puede usar esta navegación.",
