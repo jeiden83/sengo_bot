@@ -611,12 +611,17 @@ async function run(messages, args) {
                     
                     let tagIsValid = true;
                     if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
-                        tagIsValid = await RecommendationModel.validateCandidateTags(
-                            candidate.beatmapId, 
-                            candidate.beatmapsetId, 
-                            customUserTag, 
-                            currentStyle
-                        );
+                        const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
+                        if (memValid !== null) {
+                            tagIsValid = memValid;
+                        } else {
+                            tagIsValid = await RecommendationModel.validateCandidateTags(
+                                candidate.beatmapId, 
+                                candidate.beatmapsetId, 
+                                customUserTag, 
+                                currentStyle
+                            );
+                        }
                     }
                     if (!tagIsValid) continue;
 
@@ -804,12 +809,17 @@ async function run(messages, args) {
                 
                 let tagIsValid = true;
                 if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
-                    tagIsValid = await RecommendationModel.validateCandidateTags(
-                        candidate.beatmapId, 
-                        candidate.beatmapsetId, 
-                        customUserTag, 
-                        currentStyle
-                    );
+                    const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
+                    if (memValid !== null) {
+                        tagIsValid = memValid;
+                    } else {
+                        tagIsValid = await RecommendationModel.validateCandidateTags(
+                            candidate.beatmapId, 
+                            candidate.beatmapsetId, 
+                            customUserTag, 
+                            currentStyle
+                        );
+                    }
                 }
                 if (!tagIsValid) continue;
 

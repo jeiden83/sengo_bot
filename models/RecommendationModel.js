@@ -863,7 +863,8 @@ async function getPersonalizedRecommendations({
                 rawScore: score,
                 matchReasons: reasons,
                 isRandomMod: c._isRandomMod || false,
-                isRandomTag: c._isRandomTag || false
+                isRandomTag: c._isRandomTag || false,
+                userTags: c.user_tags || []
             };
         });
 
@@ -935,6 +936,39 @@ async function recalculateExactPP(recs, activeMods) {
     return recs;
 }
 
+function isCandidateTagValidInMemory(candidate, customUserTag, style) {
+    const userTags = candidate.userTags || [];
+    if (!userTags.includes("meta/validated")) {
+        return null; // Requiere validación externa por HTTP
+    }
+    
+    const actualTags = userTags.map(t => t.toLowerCase().trim());
+    
+    if (customUserTag) {
+        const cleanTarget = customUserTag.toLowerCase().trim();
+        const hasTargetTag = actualTags.some(t => t === cleanTarget || t.includes(cleanTarget));
+        if (!hasTargetTag) return false;
+    }
+    
+    if (style === 'aim') {
+        const hasAimTag = actualTags.some(t => {
+            if (t === 'aim' || t === 'jump' || t === 'jumps') return true;
+            if (t.includes('/') && (t.includes('aim') || t.includes('jump'))) return true;
+            return AIM_TAGS.some(at => t === at);
+        });
+        if (!hasAimTag) return false;
+    } else if (style === 'speed') {
+        const hasSpeedTag = actualTags.some(t => {
+            if (t === 'stream' || t === 'streams' || t === 'speed' || t === 'burst' || t === 'bursts' || t === 'alt' || t === 'alternate' || t === 'stamina') return true;
+            if (t.includes('/') && (t.includes('stream') || t.includes('speed') || t.includes('burst') || t.includes('alt') || t.includes('stamina'))) return true;
+            return SPEED_TAGS.some(st => t === st);
+        });
+        if (!hasSpeedTag) return false;
+    }
+    
+    return true;
+}
+
 async function validateCandidateTags(beatmapId, beatmapsetId, customUserTag, style) {
     try {
         const BeatmapModel = require("./BeatmapModel.js");
@@ -993,5 +1027,6 @@ module.exports = {
     recalculateExactPP,
     estimatePP,
     ppToStars,
-    validateCandidateTags
+    validateCandidateTags,
+    isCandidateTagValidInMemory
 };

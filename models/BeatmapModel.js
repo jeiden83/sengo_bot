@@ -603,7 +603,7 @@ async function updateBeatmapsetTagsInDB(beatmapsetId, detail, supabase = null) {
     try {
         const promises = detail.beatmaps.map(async (bm) => {
             const tags = getTagsForBeatmap(detail, bm.id);
-            const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
+            const cleanTags = [...tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1), "meta/validated"];
             
             return dbClient
                 .from('ranked_beatmaps')
