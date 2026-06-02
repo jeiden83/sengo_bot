@@ -76,8 +76,8 @@ function selectRecommendedFromTier(tier) {
     const best = tier.reduce((max, current) => current.matchScore > max.matchScore ? current : max, tier[0]);
     const maxScore = best.matchScore;
 
-    // 30% de probabilidad de tomar uno con 10% a 50% menos de afinidad
-    if (Math.random() < 0.30) {
+    // 40% de probabilidad de tomar uno con 10% a 50% menos de afinidad
+    if (Math.random() < 0.40) {
         const minTarget = maxScore * 0.50;
         const maxTarget = maxScore * 0.90;
         const choices = tier.filter(x => x.matchScore >= minTarget && x.matchScore <= maxTarget);
@@ -126,9 +126,9 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
         });
         const averagePP = totalPP / top15.length;
 
-        // 30% de probabilidad de recomendar en rango de -5% a +20%
+        // 35% de probabilidad de recomendar en rango de -5% a +20%
         let minPP, maxPP;
-        if (Math.random() < 0.30) {
+        if (Math.random() < 0.35) {
             minPP = averagePP * 0.95;
             maxPP = averagePP * 1.20;
         } else {
@@ -427,9 +427,9 @@ async function run(messages, args) {
         });
         const averagePP = totalPP / top15.length;
 
-        // 30% de probabilidad de recomendar en rango de -5% a +20%
+        // 35% de probabilidad de recomendar en rango de -5% a +20%
         if (customMinPP === null) {
-            if (Math.random() < 0.30) {
+            if (Math.random() < 0.35) {
                 minPP = averagePP * 0.95;
                 maxPP = averagePP * 1.20;
             } else {

@@ -603,7 +603,7 @@ async function getPersonalizedRecommendations({
             let candidateMod = customMods || profile.preferredMod;
             let isRandomMod = false;
             if (!customMods) {
-                if (Math.random() < 0.20) {
+                if (Math.random() < 0.15) {
                     candidateMod = getDifferentMod(profile.preferredMod);
                     isRandomMod = true;
                 }
@@ -649,8 +649,8 @@ async function getPersonalizedRecommendations({
                     const cleanTag = t.toLowerCase().trim();
                     return profile.frequentTags.includes(cleanTag);
                 });
-                // 80% alineado con top tags, 20% diferente al top tags del usuario
-                const wantMatching = Math.random() < 0.80;
+                // 60% alineado con top tags, 40% diferente al top tags del usuario
+                const wantMatching = Math.random() < 0.60;
                 let isRandomTag = false;
                 if (wantMatching) {
                     if (!isMatchingTag) return false;
