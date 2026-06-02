@@ -56,7 +56,15 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             description += `**${index + 1}.** ${map_link}\n`;
             
             const affinityStr = locale === 'es' ? `${c.matchScore}% de Afinidad` : `${c.matchScore}% Affinity`;
-            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**\n`;
+            
+            const randFlags = [];
+            if (c.isRandomMod) randFlags.push(locale === 'es' ? 'Mod alternativo' : 'Alt Mod');
+            if (c.isRandomAffinity) randFlags.push(locale === 'es' ? 'Afinidad variable' : 'Alt Affinity');
+            if (c.isRandomTag) randFlags.push(locale === 'es' ? 'Tag aleatorio' : 'Alt Tag');
+            
+            const randStr = randFlags.length > 0 ? ` 🎲 *(${randFlags.join(", ")})*` : "";
+            
+            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**${randStr}\n`;
             description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
 
             const speedMultiplier = (c.mods.includes("DT") || c.mods.includes("NC")) ? 1.5 : (c.mods.includes("HT") ? 0.75 : 1.0);

@@ -82,7 +82,11 @@ function selectRecommendedFromTier(tier) {
         const maxTarget = maxScore * 0.90;
         const choices = tier.filter(x => x.matchScore >= minTarget && x.matchScore <= maxTarget);
         if (choices.length > 0) {
-            return choices[Math.floor(Math.random() * choices.length)];
+            const chosen = choices[Math.floor(Math.random() * choices.length)];
+            if (chosen !== best) {
+                chosen.isRandomAffinity = true;
+            }
+            return chosen;
         }
     }
     return best;

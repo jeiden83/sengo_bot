@@ -601,12 +601,15 @@ async function getPersonalizedRecommendations({
 
             // Determinar mod para este candidato (si no hay customMods)
             let candidateMod = customMods || profile.preferredMod;
+            let isRandomMod = false;
             if (!customMods) {
                 if (Math.random() < 0.20) {
                     candidateMod = getDifferentMod(profile.preferredMod);
+                    isRandomMod = true;
                 }
             }
             c._assignedMod = candidateMod;
+            c._isRandomMod = isRandomMod;
 
             // 1. Filtrar estrictamente por el rango de PP estimado al 100% de acc
             if (customMinPP !== null) {
@@ -648,11 +651,14 @@ async function getPersonalizedRecommendations({
                 });
                 // 80% alineado con top tags, 20% diferente al top tags del usuario
                 const wantMatching = Math.random() < 0.80;
+                let isRandomTag = false;
                 if (wantMatching) {
                     if (!isMatchingTag) return false;
                 } else {
                     if (isMatchingTag) return false;
+                    isRandomTag = true;
                 }
+                c._isRandomTag = isRandomTag;
             }
 
             return true;
@@ -821,7 +827,9 @@ async function getPersonalizedRecommendations({
                 creator: c.creator,
                 matchScore: Math.min(100, Math.round(score)),
                 rawScore: score,
-                matchReasons: reasons
+                matchReasons: reasons,
+                isRandomMod: c._isRandomMod || false,
+                isRandomTag: c._isRandomTag || false
             };
         });
 
