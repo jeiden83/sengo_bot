@@ -163,9 +163,9 @@ async function run(messages, args) {
                 const fs = require('fs');
                 let globalToken = null;
                 try {
-                    const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
-                    globalToken = tokenData.access_token;
-                } catch {}
+                const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                globalToken = tokenData.access_token;
+            } catch {}
 
                 if (!globalToken) return [];
 
@@ -288,10 +288,10 @@ async function run(messages, args) {
             const fs = require('fs');
             let globalToken = null;
             try {
-                const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+                const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
                 globalToken = tokenData.access_token;
             } catch (err) {
-                console.error("Error al leer osu_token.json:", err);
+                console.error("Error al leer osu_api_extended_token.json:", err);
             }
 
             if (!globalToken) {

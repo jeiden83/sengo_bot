@@ -211,11 +211,13 @@ async function getBeatmap(beatmap_id, priority = 2) {
     try {
         const supabase = getSupabaseClient();
         if (supabase) {
-            const { data: dbMap, error } = await supabase
+            const { data: dbMaps, error } = await supabase
                 .from('ranked_beatmaps')
                 .select('*')
                 .eq('beatmap_id', cleanId)
-                .maybeSingle();
+                .limit(1);
+
+            const dbMap = dbMaps?.[0];
 
             if (!error && dbMap) {
                 const STATUS_MAP = {

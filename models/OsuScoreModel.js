@@ -267,10 +267,10 @@ async function getUserRecentScores(parsed_args) {
         try {
             let globalToken = null;
             try {
-                const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+                const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
                 globalToken = tokenData.access_token;
             } catch (err) {
-                console.error("Error al leer osu_token.json:", err);
+                console.error("Error al leer osu_api_extended_token.json:", err);
             }
 
             if (!globalToken) {
@@ -433,10 +433,10 @@ async function _getUserTopScores(parsed_args) {
     try {
         let globalToken = null;
         try {
-            const tokenData = JSON.parse(fs.readFileSync('./osu_token.json', 'utf8'));
+            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
             globalToken = tokenData.access_token;
         } catch (err) {
-            console.error("Error al leer osu_token.json:", err);
+            console.error("Error al leer osu_api_extended_token.json:", err);
         }
 
         if (!globalToken) {

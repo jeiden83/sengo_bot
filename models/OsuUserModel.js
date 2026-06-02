@@ -23,51 +23,80 @@ function setWithLimit(map, key, value, limit = 100) {
     map.set(key, value);
 }
 
+let apiExtendedInitialized = null;
+let webTokenPromise = null;
+
 /**
- * Carga las credenciales públicas generales de la API de osu! y las guarda localmente.
- * Soporta refresco automático.
+ * Carga las credenciales públicas generales de la API de osu! para Sengo y las guarda localmente.
+ * Soporta refresco automático y evita colisiones de peticiones.
  */
 async function loadToken() {
-    const tokenFilePath = path.resolve('osu_token.json');
+    const tokenFilePath = path.resolve('osu_web_token.json');
 
     try {
-        const osu_token = JSON.parse(await fs.readFile(tokenFilePath, 'utf-8'));
-        if (Date.now() >= osu_token.expires_at) {
-            return await createToken();
+        const fileContent = await fs.readFile(tokenFilePath, 'utf-8');
+        const osu_token = JSON.parse(fileContent);
+        if (osu_token && osu_token.expires_at && Date.now() < osu_token.expires_at) {
+            return osu_token;
         }
-        return osu_token;
     } catch (error) {
-        return await createToken();
+        // Ignorar error al leer y continuar a crear
     }
 
-    async function createToken() {
-        const authClient = new Auth(CONFIG.OSU_CLIENT_ID, CONFIG.OSU_CLIENT_SECRET, "");
-        const osu_token = await authClient.clientCredentialsGrant();
-
-        const accessTokenData = {
-            access_token: osu_token.access_token,
-            expires_in: osu_token.expires_in,
-            token_type: osu_token.token_type,
-            expires_at: Date.now() + osu_token.expires_in * 1000
-        };
-
-        await fs.writeFile(tokenFilePath, JSON.stringify(accessTokenData, null, 2));
-        console.log("# Token recargado");
-        return osu_token;
+    if (webTokenPromise) {
+        return webTokenPromise;
     }
+
+    webTokenPromise = (async () => {
+        try {
+            const authClient = new Auth(CONFIG.OSU_CLIENT_ID, CONFIG.OSU_CLIENT_SECRET, "");
+            const osu_token = await authClient.clientCredentialsGrant();
+
+            const accessTokenData = {
+                access_token: osu_token.access_token,
+                expires_in: osu_token.expires_in,
+                token_type: osu_token.token_type,
+                expires_at: Date.now() + osu_token.expires_in * 1000
+            };
+
+            await fs.writeFile(tokenFilePath, JSON.stringify(accessTokenData, null, 2));
+            console.log("# Token de Sengo (osu-web.js) recargado");
+            return accessTokenData;
+        } finally {
+            webTokenPromise = null;
+        }
+    })();
+
+    return webTokenPromise;
 }
 
 /**
- * Login alternativo de osu-api-extended para la sesión global pública.
+ * Login alternativo de osu-api-extended para la sesión global pública de Sengo.
+ * Utiliza una promesa singleton para evitar accesos concurrentes al archivo e iniciar sesión repetidamente.
  */
 async function NewloadToken() {
-    await auth.login({
-        type: 'v2',
-        client_id: CONFIG.OSU_CLIENT_ID,
-        client_secret: CONFIG.OSU_CLIENT_SECRET,
-        scopes: ['public'],
-        cachedTokenPath: './osu_token.json'
-    });
+    if (apiExtendedInitialized) {
+        return apiExtendedInitialized;
+    }
+
+    apiExtendedInitialized = (async () => {
+        try {
+            await auth.login({
+                type: 'v2',
+                client_id: CONFIG.OSU_CLIENT_ID,
+                client_secret: CONFIG.OSU_CLIENT_SECRET,
+                scopes: ['public'],
+                cachedTokenPath: './osu_api_extended_token.json'
+            });
+            console.log("# Login de osu-api-extended para Sengo inicializado con éxito");
+        } catch (err) {
+            console.error("# Error al inicializar login de osu-api-extended para Sengo:", err);
+            apiExtendedInitialized = null; // Permitir reintento
+            throw err;
+        }
+    })();
+
+    return apiExtendedInitialized;
 }
 
 /**

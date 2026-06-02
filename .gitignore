@@ -34,3 +34,5 @@ osu_token.json.bak
 dev_docs/
 rework_user_cache.json
 rework_queue.json
+osu_api_extended_token.json
+osu_web_token.json

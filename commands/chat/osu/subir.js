@@ -152,7 +152,10 @@ function similarity(s1, s2) {
 
 async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
     try {
-        const tokenData = require('../../../osu_token.json');
+        await OsuUserModel.NewloadToken();
+        const fs = require('fs');
+        const path = require('path');
+        const tokenData = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../osu_api_extended_token.json'), 'utf8'));
 
         // Reemplazamos guiones por espacios para evitar que el motor de búsqueda de osu! 
         // los interprete como operadores de exclusión (ej. "-Scramble-" -> excluir Scramble)

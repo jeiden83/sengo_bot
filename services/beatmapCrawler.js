@@ -31,13 +31,8 @@ async function checkNewBeatmaps() {
     }
 
     try {
-        await auth.login({
-            type: 'v2',
-            client_id: CONFIG.OSU_CLIENT_ID,
-            client_secret: CONFIG.OSU_CLIENT_SECRET,
-            scopes: ['public'],
-            cachedTokenPath: './osu_token.json'
-        });
+        const OsuUserModel = require('../models/OsuUserModel.js');
+        await OsuUserModel.NewloadToken();
 
         const statuses = ['ranked', 'loved'];
         let totalSaved = 0;
