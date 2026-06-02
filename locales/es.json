@@ -1115,9 +1115,10 @@
     "usertags_desc": "Aquí tienes todos los `user_tags` registrados en Sengo. Puedes recomendarlos usando `s.rec -usertag \"nombre_tag\"`:\n\u200b",
     "usertags_err_empty": "No se encontraron user tags en la base de datos.",
     "usertags_err_failed": "Ocurrió un error al cargar la lista de user tags.",
-    "usertags_none": "Ninguno",
-    "fumo": {
-      "show_footer": "Subido por: {username} | Total Fumos: {total}",
+    "usertags_none": "Ninguno"
+  },
+  "fumo": {
+    "show_footer": "Subido por: {username} | Total Fumos: {total}",
       "no_registered": "🧸 No hay fotos de fumo registradas en la base de datos.",
       "err_only_admin": "❌ Este comando está reservado para los administradores.",
       "err_invalid_id_delete": "❌ Especifica un ID numérico de fumo válido para eliminar. Ejemplo: `.fumo delete 5`",
@@ -1166,7 +1167,6 @@
       "list_row": "**ID {id}**\n👤 **Subido por:** {username} (`{userId}`)\n🏰 **Servidor:** {guild}",
       "list_guild_dm": "Mensaje Privado",
       "list_results_field": "Resultados"
-    }
   }
 }
 

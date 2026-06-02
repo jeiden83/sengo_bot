@@ -1115,9 +1115,10 @@
     "usertags_desc": "Here are all the `user_tags` registered in Sengo. You can recommend them using `s.rec -usertag \"tag_name\"`:\n\u200b",
     "usertags_err_empty": "No user tags were found in the database.",
     "usertags_err_failed": "An error occurred while loading the user tags list.",
-    "usertags_none": "None",
-    "fumo": {
-      "show_footer": "Uploaded by: {username} | Total Fumos: {total}",
+    "usertags_none": "None"
+  },
+  "fumo": {
+    "show_footer": "Uploaded by: {username} | Total Fumos: {total}",
       "no_registered": "🧸 No fumo images registered in the database.",
       "err_only_admin": "❌ This command is reserved for administrators.",
       "err_invalid_id_delete": "❌ Specify a valid numeric fumo ID to delete. Example: `.fumo delete 5`",
@@ -1166,7 +1167,6 @@
       "list_row": "**ID {id}**\n👤 **Uploaded by:** {username} (`{userId}`)\n🏰 **Server:** {guild}",
       "list_guild_dm": "Direct Message",
       "list_results_field": "Results"
-    }
   }
 }
 
