@@ -165,7 +165,7 @@ async function run(messages, args, intialized_data) {
 
     // Si no hay argumentos, listar comandos
     if (args[0] == null || args[0].trim() === "") {
-        const excludeTypes = new Set(['admin']);
+        const excludeTypes = new Set(['admin', 'meme']);
 
         // Agrupar por tipo
         const groupedCommands = {};
