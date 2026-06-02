@@ -26,13 +26,55 @@ async function startTagEnricherWorker() {
                 continue;
             }
 
-            // Obtener un solo beatmapset pendiente de tags (ordenando por más antiguo primero para evitar colisiones con local)
-            const { data: rows, error: fetchError } = await supabase
+            // Obtener un beatmapset para procesar priorizando en cascada inteligente
+            let rows = null;
+            let fetchError = null;
+
+            // 1. Intentar buscar primero sets con user_tags NULL (totalmente nuevos)
+            const { data: nullRows, error: err1 } = await supabase
                 .from('ranked_beatmaps')
                 .select('beatmapset_id')
                 .is('user_tags', null)
                 .order('created_at', { ascending: true })
                 .limit(1);
+
+            if (err1) {
+                fetchError = err1;
+            } else if (nullRows && nullRows.length > 0) {
+                rows = nullRows;
+            } else {
+                // 2. Si no hay NULLs, priorizar sets que tengan tags clave de usuarios pero que no estén validados
+                const keyTags = ['skillset/alt', 'skillset/streams', 'skillset/jumps', 'style/aim', 'style/speed'];
+                const { data: keyRows, error: err2 } = await supabase
+                    .from('ranked_beatmaps')
+                    .select('beatmapset_id')
+                    .not('user_tags', 'is', null)
+                    .not('user_tags', 'cs', '{"meta/validated"}')
+                    .or(keyTags.map(tag => `user_tags.cs.{"${tag}"}`).join(','))
+                    .order('created_at', { ascending: true })
+                    .limit(1);
+
+                if (err2) {
+                    fetchError = err2;
+                } else if (keyRows && keyRows.length > 0) {
+                    rows = keyRows;
+                } else {
+                    // 3. Si no hay con tags clave, validar cualquier mapa que tenga user_tags pero no meta/validated
+                    const { data: remainingRows, error: err3 } = await supabase
+                        .from('ranked_beatmaps')
+                        .select('beatmapset_id')
+                        .not('user_tags', 'is', null)
+                        .not('user_tags', 'cs', '{"meta/validated"}')
+                        .order('created_at', { ascending: true })
+                        .limit(1);
+
+                    if (err3) {
+                        fetchError = err3;
+                    } else if (remainingRows && remainingRows.length > 0) {
+                        rows = remainingRows;
+                    }
+                }
+            }
 
             if (fetchError) {
                 Logger.system(`[Worker Tags] Error al consultar pendientes: ${fetchError.message}`);

@@ -592,6 +592,7 @@ async function run(messages, args) {
                 const acceptedMid = [];
                 const acceptedLow = [];
                 const seenBeatmapsets = new Set();
+                let hotScrapes = 0;
 
                 for (const candidate of candidates) {
                     if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
@@ -615,12 +616,18 @@ async function run(messages, args) {
                         if (memValid !== null) {
                             tagIsValid = memValid;
                         } else {
-                            tagIsValid = await RecommendationModel.validateCandidateTags(
-                                candidate.beatmapId, 
-                                candidate.beatmapsetId, 
-                                customUserTag, 
-                                currentStyle
-                            );
+                            // Limitar a un máximo de 6 scrapes en caliente por recomendación
+                            if (hotScrapes < 6) {
+                                hotScrapes++;
+                                tagIsValid = await RecommendationModel.validateCandidateTags(
+                                    candidate.beatmapId, 
+                                    candidate.beatmapsetId, 
+                                    customUserTag, 
+                                    currentStyle
+                                );
+                            } else {
+                                tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
+                            }
                         }
                     }
                     if (!tagIsValid) continue;
@@ -790,6 +797,7 @@ async function run(messages, args) {
             const acceptedMid = [];
             const acceptedLow = [];
             const seenBeatmapsets = new Set();
+            let hotScrapes = 0;
 
             for (const candidate of candidates) {
                 if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
@@ -813,12 +821,18 @@ async function run(messages, args) {
                     if (memValid !== null) {
                         tagIsValid = memValid;
                     } else {
-                        tagIsValid = await RecommendationModel.validateCandidateTags(
-                            candidate.beatmapId, 
-                            candidate.beatmapsetId, 
-                            customUserTag, 
-                            currentStyle
-                        );
+                        // Limitar a un máximo de 6 scrapes en caliente por recomendación
+                        if (hotScrapes < 6) {
+                            hotScrapes++;
+                            tagIsValid = await RecommendationModel.validateCandidateTags(
+                                candidate.beatmapId, 
+                                candidate.beatmapsetId, 
+                                customUserTag, 
+                                currentStyle
+                            );
+                        } else {
+                            tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
+                        }
                     }
                 }
                 if (!tagIsValid) continue;

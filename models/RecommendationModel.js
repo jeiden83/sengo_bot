@@ -503,10 +503,10 @@ async function getPersonalizedRecommendations({
         // Silenciar
     }
 
-    // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho)
+    // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho, priorizando validados)
     const useTagsFilter = ['tags', 'aim', 'speed'].includes(style) || !!customUserTag;
     
-    const buildBaseQuery = () => {
+    const buildBaseQuery = (validatedOnly = false, unvalidatedOnly = false) => {
         let q = supabase
             .from('ranked_beatmaps')
             .select('*')
@@ -521,17 +521,34 @@ async function getPersonalizedRecommendations({
         }
 
         if (customUserTag) {
-            q = q.contains('user_tags', [customUserTag]);
+            if (validatedOnly) {
+                q = q.contains('user_tags', [customUserTag, 'meta/validated']);
+            } else if (unvalidatedOnly) {
+                q = q.contains('user_tags', [customUserTag]).not('user_tags', 'cs', '{"meta/validated"}');
+            } else {
+                q = q.contains('user_tags', [customUserTag]);
+            }
         } else if (useTagsFilter) {
-            q = q.not('user_tags', 'is', null);
+            if (validatedOnly) {
+                q = q.contains('user_tags', ['meta/validated']);
+            } else if (unvalidatedOnly) {
+                q = q.not('user_tags', 'is', null).not('user_tags', 'cs', '{"meta/validated"}');
+            } else {
+                q = q.not('user_tags', 'is', null);
+            }
         }
         return q;
     };
 
-    const [highRes, midRes, lowRes] = await Promise.all([
-        buildBaseQuery().gte('playcount', 1000000).order('playcount', { ascending: false }).limit(400),
-        buildBaseQuery().lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(300),
-        buildBaseQuery().lt('playcount', 150000).or(`playcount.gte.1000,beatmapset_id.gte.${recentThreshold}`).order('playcount', { ascending: false }).limit(300)
+    // Consultamos por separado los ya validados y los pendientes de validar
+    const [valHigh, valMid, valLow, unvalHigh, unvalMid, unvalLow] = await Promise.all([
+        buildBaseQuery(true, false).gte('playcount', 1000000).order('playcount', { ascending: false }).limit(200),
+        buildBaseQuery(true, false).lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(150),
+        buildBaseQuery(true, false).lt('playcount', 150000).or(`playcount.gte.1000,beatmapset_id.gte.${recentThreshold}`).order('playcount', { ascending: false }).limit(150),
+        
+        buildBaseQuery(false, true).gte('playcount', 1000000).order('playcount', { ascending: false }).limit(200),
+        buildBaseQuery(false, true).lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(150),
+        buildBaseQuery(false, true).lt('playcount', 150000).or(`playcount.gte.1000,beatmapset_id.gte.${recentThreshold}`).order('playcount', { ascending: false }).limit(150)
     ]);
 
     let candidates = [];
@@ -547,9 +564,15 @@ async function getPersonalizedRecommendations({
         }
     };
 
-    addCandidates(highRes.data);
-    addCandidates(midRes.data);
-    addCandidates(lowRes.data);
+    // Agregar validados primero
+    addCandidates(valHigh.data);
+    addCandidates(valMid.data);
+    addCandidates(valLow.data);
+
+    // Luego agregar no validados como fallback
+    addCandidates(unvalHigh.data);
+    addCandidates(unvalMid.data);
+    addCandidates(unvalLow.data);
 
     // Fallback: si intentamos filtrar por user_tags pero no encontramos suficientes candidatos,
     // reintentamos sin el filtro de user_tags para aim/speed.
