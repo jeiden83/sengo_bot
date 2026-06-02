@@ -369,7 +369,7 @@ async function run(messages, args) {
                 .order('count', { ascending: false });
 
             if (error || !tags || tags.length === 0) {
-                const errorMsg = "No se encontraron user tags en la base de datos.";
+                const errorMsg = t(locale, 'recommend.usertags_err_empty');
                 if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
                 return message.channel.send(errorMsg);
             }
@@ -396,15 +396,15 @@ async function run(messages, args) {
                 'context': '🌐 context',
                 'gimmick': '🧠 gimmick',
                 'expression': '💬 expression',
-                'otros': '📁 otros'
+                'otros': locale === 'es' ? '📁 otros' : '📁 others'
             };
 
             const embed = new EmbedBuilder()
-                .setTitle("🏷️ Lista de User Tags Disponibles")
+                .setTitle(t(locale, 'recommend.usertags_title'))
                 .setColor(getEmbedColor(message))
-                .setDescription("Aquí tienes todos los `user_tags` registrados en Sengo. Puedes recomendarlos usando `s.rec -usertag \"nombre_tag\"`:\n\u200b")
+                .setDescription(t(locale, 'recommend.usertags_desc'))
                 .setFooter({
-                    text: "Sengo Bot",
+                    text: "Sengo",
                     iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
                 })
                 .setTimestamp();
@@ -414,7 +414,7 @@ async function run(messages, args) {
                 items.sort((a, b) => b.count - a.count);
                 const itemsStr = items.map(item => `\`${item.full}\` (${item.count.toLocaleString()})`).join(" • ");
                 const truncatedStr = itemsStr.length > 1020 ? itemsStr.substring(0, 1017) + "..." : itemsStr;
-                embed.addFields({ name: displayName, value: truncatedStr || 'Ninguno' });
+                embed.addFields({ name: displayName, value: truncatedStr || t(locale, 'recommend.usertags_none') });
             }
 
             if (isSlash) {
@@ -425,7 +425,7 @@ async function run(messages, args) {
             return;
         } catch (err) {
             console.error("Error al listar user tags:", err);
-            const errorMsg = "Ocurrió un error al cargar la lista de user tags.";
+            const errorMsg = t(locale, 'recommend.usertags_err_failed');
             if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
             return message.channel.send(errorMsg);
         }

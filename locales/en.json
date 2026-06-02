@@ -1110,7 +1110,12 @@
     "label_style_custom_tag": "Tag: {tag}",
     "label_mods_any": "Any",
     "label_yes": "Yes",
-    "label_no": "No"
+    "label_no": "No",
+    "usertags_title": "🏷️ Available User Tags List",
+    "usertags_desc": "Here are all the `user_tags` registered in Sengo. You can recommend them using `s.rec -usertag \"tag_name\"`:\n\u200b",
+    "usertags_err_empty": "No user tags were found in the database.",
+    "usertags_err_failed": "An error occurred while loading the user tags list.",
+    "usertags_none": "None"
   }
 }
 
