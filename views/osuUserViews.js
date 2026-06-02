@@ -420,8 +420,8 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
 
 function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFilter, mode = 'sengo', playmodeFilter = null, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const startIndex = (page - 1) * 10;
-    const chunk = mappers.slice(startIndex, startIndex + 10);
+    const startIndex = (page - 1) * 5;
+    const chunk = mappers.slice(startIndex, startIndex + 5);
     
     const sortLabels = {
         'ranked': t(locale, 'mapper.sort_ranked'),
