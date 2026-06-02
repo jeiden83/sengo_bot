@@ -27,6 +27,8 @@
   "about": {
     "only_author": "❌ Only the person who ran the command can use this navigation.",
     "footer": "Sengo • s.about • Page {page} of {total}",
+    "creator_title": "👑 Creator / Developer",
+    "creator_value": "• **GitHub**: [jeiden83](https://github.com/jeiden83)\n• **Discord**: `jeiden83`\n• **osu!**: [jeiden](https://osu.ppy.sh/users/jeiden)",
     "buttons": {
       "home": "Home",
       "oauth": "OAuth",

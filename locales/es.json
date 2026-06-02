@@ -27,6 +27,8 @@
   "about": {
     "only_author": "❌ Solo la persona que ejecutó el comando puede usar esta navegación.",
     "footer": "Sengo • s.acerca • Página {page} de {total}",
+    "creator_title": "👑 Creador / Desarrollador",
+    "creator_value": "• **GitHub**: [jeiden83](https://github.com/jeiden83)\n• **Discord**: `jeiden83`\n• **osu!**: [jeiden](https://osu.ppy.sh/users/jeiden)",
     "buttons": {
       "home": "Inicio",
       "oauth": "OAuth",

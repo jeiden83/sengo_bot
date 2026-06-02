@@ -108,7 +108,7 @@ function doAboutEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
     const descriptionTemplate = t(locale, `about.pages.${pageIndex}.description`);
     const description = descriptionTemplate.replace(/{prefix}/g, prefix);
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setTitle(title)
         .setDescription(description)
         .setColor(embedColor)
@@ -118,6 +118,16 @@ function doAboutEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
+
+    if (pageIndex === 0) {
+        embed.addFields({
+            name: t(locale, 'about.creator_title'),
+            value: t(locale, 'about.creator_value'),
+            inline: false
+        });
+    }
+
+    return embed;
 }
 
 /**
