@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
+const country_codes = require("../src/country_codes.json");
 
 /**
  * Renderiza el embed para el enlace seguro de OAuth (link.js)
@@ -423,6 +424,12 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
     const startIndex = (page - 1) * 5;
     const chunk = mappers.slice(startIndex, startIndex + 5);
     
+    let countryName = countryFilter;
+    if (countryFilter) {
+        const countryInfo = country_codes[countryFilter.toUpperCase()];
+        countryName = countryInfo ? countryInfo.country : countryFilter;
+    }
+    
     const sortLabels = {
         'ranked': t(locale, 'mapper.sort_ranked'),
         'loved': t(locale, 'mapper.sort_loved'),
@@ -444,8 +451,8 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
         totalLabel = t(locale, 'mapper.total_sengo', { count: mappers.length });
         title = t(locale, 'mapper.top_title_sengo');
     } else if (mode === 'national') {
-        totalLabel = t(locale, 'mapper.total_national', { country: countryFilter, count: mappers.length });
-        title = t(locale, 'mapper.top_title_national', { country: countryFilter });
+        totalLabel = t(locale, 'mapper.total_national', { country: countryName, count: mappers.length });
+        title = t(locale, 'mapper.top_title_national', { country: countryName });
     } else if (mode === 'global') {
         totalLabel = t(locale, 'mapper.total_global', { count: mappers.length });
         title = t(locale, 'mapper.top_title_global');
@@ -454,7 +461,7 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
     let description = totalLabel;
     if (countryFilter && mode !== 'national') {
         const flag = getFlagEmoji(countryFilter);
-        description += t(locale, 'mapper.filtered_by_country', { flag, country: countryFilter });
+        description += t(locale, 'mapper.filtered_by_country', { flag, country: countryName });
     }
     if (playmodeFilter) {
         const modeLabels = {
