@@ -520,7 +520,9 @@ async function getPersonalizedRecommendations({
             q = q.in('ranked_status', [1, 2]); // Ranked, Approved
         }
 
-        if (useTagsFilter) {
+        if (customUserTag) {
+            q = q.contains('user_tags', [customUserTag]);
+        } else if (useTagsFilter) {
             q = q.not('user_tags', 'is', null);
         }
         return q;
