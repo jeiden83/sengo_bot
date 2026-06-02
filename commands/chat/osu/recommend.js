@@ -567,127 +567,169 @@ async function run(messages, args) {
         }
 
         const skipSetLocal = new Set();
+        let totalHotScrapes = 0;
+
+        async function fetchAndFilterRecs(targetMinPP, targetMaxPP, localSkipSet, isFallbackRun = false) {
+            const candidates = await RecommendationModel.getPersonalizedRecommendations({
+                topScores,
+                customMinPP: targetMinPP,
+                customMaxPP: targetMaxPP,
+                customMods: customMods,
+                style: currentStyle,
+                customUserTag: customUserTag,
+                showPlayed,
+                skipSet: localSkipSet
+            });
+
+            const acceptedHigh = [];
+            const acceptedMid = [];
+            const acceptedLow = [];
+            const seenBeatmapsets = new Set();
+
+            for (const candidate of candidates) {
+                if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
+                    break;
+                }
+                if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
+
+                const pop = candidate.popularity;
+                if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
+                if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
+                if (pop < 150000 && acceptedLow.length >= 10) continue;
+
+                const idStr = candidate.beatmapId.toString();
+                const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
+
+                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+                
+                let tagIsValid = true;
+                if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
+                    const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
+                    if (memValid !== null) {
+                        tagIsValid = memValid;
+                    } else {
+                        // Limitar a un máximo de 6 scrapes en caliente acumulados por comando
+                        if (totalHotScrapes < 6) {
+                            totalHotScrapes++;
+                            tagIsValid = await RecommendationModel.validateCandidateTags(
+                                candidate.beatmapId, 
+                                candidate.beatmapsetId, 
+                                customUserTag, 
+                                currentStyle
+                            );
+                        } else {
+                            tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
+                        }
+                    }
+                }
+                if (!tagIsValid) continue;
+
+                let accepted = false;
+                if (showPlayed) {
+                    if (hasScore) accepted = true;
+                } else {
+                    if (!hasScore) accepted = true;
+                }
+
+                if (accepted) {
+                    seenBeatmapsets.add(candidate.beatmapsetId);
+                    
+                    // Si es un fallback/búsqueda relajada, reducir su matchScore en base al desvío de parámetros
+                    if (isFallbackRun) {
+                        candidate.matchScore = Math.max(45, Math.round(candidate.matchScore * 0.80));
+                        candidate.isRandomAffinity = true; // Agrega el emoji 🎲
+                        if (!candidate.matchReasons.includes("Rango PP ampliado")) {
+                            candidate.matchReasons.push("Rango PP/BPM ampliado");
+                        }
+                    }
+                    
+                    if (pop >= 1000000) {
+                        acceptedHigh.push(candidate);
+                    } else if (pop >= 150000) {
+                        acceptedMid.push(candidate);
+                    } else {
+                        acceptedLow.push(candidate);
+                    }
+                }
+
+                if (!isCached) {
+                    await new Promise(resolve => setTimeout(resolve, 80));
+                }
+            }
+
+            // Ordenar cada lista por afinidad descendente usando rawScore
+            acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
+            acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
+            acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
+
+            const result = [];
+            // Intentar tomar la mejor de cada categoría usando selectRecommendedFromTier
+            const rec1 = selectRecommendedFromTier(acceptedHigh);
+            const rec2 = selectRecommendedFromTier(acceptedMid);
+            const rec3 = selectRecommendedFromTier(acceptedLow);
+            
+            if (rec1) result.push(rec1);
+            if (rec2) result.push(rec2);
+            if (rec3) result.push(rec3);
+
+            // Si no llegamos a 3, rellenamos con el resto
+            if (result.length < 3) {
+                const remaining = [];
+                const usedIds = new Set(result.map(r => r.beatmapId));
+                const allRemaining = [
+                    ...acceptedHigh,
+                    ...acceptedMid,
+                    ...acceptedLow
+                ];
+                allRemaining.forEach(c => {
+                    if (!usedIds.has(c.beatmapId)) {
+                        remaining.push(c);
+                    }
+                });
+                remaining.sort((a, b) => b.rawScore - a.rawScore);
+                for (const item of remaining) {
+                    if (result.length >= 3) break;
+                    result.push(item);
+                }
+            }
+
+            return result;
+        }
 
         async function getRecommendations() {
             try {
                 if (isInitialRun) {
                     await updateStatus(t(locale, 'recommend.step_query_db'), t(locale, 'recommend.step_query_db_log'));
                 }
-                const candidates = await RecommendationModel.getPersonalizedRecommendations({
-                    topScores,
-                    customMinPP: minPP,
-                    customMaxPP: maxPP,
-                    customMods: customMods,
-                    style: currentStyle,
-                    customUserTag: customUserTag,
-                    showPlayed,
-                    skipSet: skipSetLocal
-                });
+                
+                // Intento 1: Búsqueda ideal
+                totalHotScrapes = 0;
+                let finalRecs = await fetchAndFilterRecs(minPP, maxPP, skipSetLocal, false);
 
                 if (isInitialRun) {
                     await updateStatus(t(locale, 'recommend.step_filter_plays'), t(locale, 'recommend.step_filter_plays_log'));
                 }
 
-                const acceptedHigh = [];
-                const acceptedMid = [];
-                const acceptedLow = [];
-                const seenBeatmapsets = new Set();
-                let hotScrapes = 0;
-
-                for (const candidate of candidates) {
-                    if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
-                        break;
-                    }
-                    if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
-
-                    const pop = candidate.popularity;
-                    if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
-                    if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
-                    if (pop < 150000 && acceptedLow.length >= 10) continue;
-
-                    const idStr = candidate.beatmapId.toString();
-                    const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
-
-                    const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
-                    
-                    let tagIsValid = true;
-                    if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
-                        const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
-                        if (memValid !== null) {
-                            tagIsValid = memValid;
-                        } else {
-                            // Limitar a un máximo de 6 scrapes en caliente por recomendación
-                            if (hotScrapes < 6) {
-                                hotScrapes++;
-                                tagIsValid = await RecommendationModel.validateCandidateTags(
-                                    candidate.beatmapId, 
-                                    candidate.beatmapsetId, 
-                                    customUserTag, 
-                                    currentStyle
-                                );
-                            } else {
-                                tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
-                            }
-                        }
-                    }
-                    if (!tagIsValid) continue;
-
-                    let accepted = false;
-                    if (showPlayed) {
-                        if (hasScore) accepted = true;
-                    } else {
-                        if (!hasScore) accepted = true;
-                    }
-
-                    if (accepted) {
-                        seenBeatmapsets.add(candidate.beatmapsetId);
-                        if (pop >= 1000000) {
-                            acceptedHigh.push(candidate);
-                        } else if (pop >= 150000) {
-                            acceptedMid.push(candidate);
-                        } else {
-                            acceptedLow.push(candidate);
-                        }
-                    }
-
-                    if (!isCached) {
-                        await new Promise(resolve => setTimeout(resolve, 80));
-                    }
-                }
-
-                // Ordenar cada lista por afinidad descendente usando rawScore
-                acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
-                acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
-                acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
-
-                let finalRecs = [];
-                // Intentar tomar la mejor de cada categoría usando selectRecommendedFromTier
-                const rec1 = selectRecommendedFromTier(acceptedHigh);
-                const rec2 = selectRecommendedFromTier(acceptedMid);
-                const rec3 = selectRecommendedFromTier(acceptedLow);
-                
-                if (rec1) finalRecs.push(rec1);
-                if (rec2) finalRecs.push(rec2);
-                if (rec3) finalRecs.push(rec3);
-
-                // Si no llegamos a 3, rellenamos con el resto
+                // Intento 2: Si no tenemos al menos 3 recomendaciones, relajamos la tolerancia de PP/BPM
                 if (finalRecs.length < 3) {
-                    const remaining = [];
-                    const usedIds = new Set(finalRecs.map(r => r.beatmapId));
-                    const allRemaining = [
-                        ...acceptedHigh,
-                        ...acceptedMid,
-                        ...acceptedLow
-                    ];
-                    allRemaining.forEach(c => {
-                        if (!usedIds.has(c.beatmapId)) {
-                            remaining.push(c);
+                    const relaxedMinPP = minPP * 0.80;
+                    const relaxedMaxPP = maxPP * 1.25;
+
+                    // Agregar los ya encontrados al skip set temporal de la segunda búsqueda para que no se dupliquen
+                    const fallbackSkipSet = new Set(skipSetLocal);
+                    finalRecs.forEach(r => {
+                        fallbackSkipSet.add(r.beatmapId);
+                        if (r.beatmapsetId) {
+                            fallbackSkipSet.add(r.beatmapsetId.toString());
                         }
                     });
-                    remaining.sort((a, b) => b.rawScore - a.rawScore);
-                    for (const item of remaining) {
+
+                    const fallbackRecs = await fetchAndFilterRecs(relaxedMinPP, relaxedMaxPP, fallbackSkipSet, true);
+                    
+                    // Rellenar con los mapas del fallback relajado
+                    for (const candidate of fallbackRecs) {
                         if (finalRecs.length >= 3) break;
-                        finalRecs.push(item);
+                        finalRecs.push(candidate);
                     }
                 }
 
@@ -782,117 +824,27 @@ async function run(messages, args) {
 
     async function getRecommendationsForButtons() {
         try {
-            const candidates = await RecommendationModel.getPersonalizedRecommendations({
-                topScores,
-                customMinPP: minPP,
-                customMaxPP: maxPP,
-                customMods: customMods,
-                style: currentStyle,
-                customUserTag: customUserTag,
-                showPlayed,
-                skipSet: skipSet
-            });
+            totalHotScrapes = 0;
+            // Intento 1: Búsqueda ideal
+            let finalRecs = await fetchAndFilterRecs(minPP, maxPP, skipSet, false);
 
-            const acceptedHigh = [];
-            const acceptedMid = [];
-            const acceptedLow = [];
-            const seenBeatmapsets = new Set();
-            let hotScrapes = 0;
-
-            for (const candidate of candidates) {
-                if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
-                    break;
-                }
-                if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
-
-                const pop = candidate.popularity;
-                if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
-                if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
-                if (pop < 150000 && acceptedLow.length >= 10) continue;
-
-                const idStr = candidate.beatmapId.toString();
-                const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
-
-                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
-                
-                let tagIsValid = true;
-                if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
-                    const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
-                    if (memValid !== null) {
-                        tagIsValid = memValid;
-                    } else {
-                        // Limitar a un máximo de 6 scrapes en caliente por recomendación
-                        if (hotScrapes < 6) {
-                            hotScrapes++;
-                            tagIsValid = await RecommendationModel.validateCandidateTags(
-                                candidate.beatmapId, 
-                                candidate.beatmapsetId, 
-                                customUserTag, 
-                                currentStyle
-                            );
-                        } else {
-                            tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
-                        }
-                    }
-                }
-                if (!tagIsValid) continue;
-
-                let accepted = false;
-                if (showPlayed) {
-                    if (hasScore) accepted = true;
-                } else {
-                    if (!hasScore) accepted = true;
-                }
-
-                if (accepted) {
-                    seenBeatmapsets.add(candidate.beatmapsetId);
-                    if (pop >= 1000000) {
-                        acceptedHigh.push(candidate);
-                    } else if (pop >= 150000) {
-                        acceptedMid.push(candidate);
-                    } else {
-                        acceptedLow.push(candidate);
-                    }
-                }
-
-                if (!isCached) {
-                    await new Promise(resolve => setTimeout(resolve, 80));
-                }
-            }
-
-            // Ordenar cada lista por afinidad descendente usando rawScore
-            acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
-            acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
-            acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
-
-            let finalRecs = [];
-            // Intentar tomar la mejor de cada categoría
-            const rec1 = selectRecommendedFromTier(acceptedHigh);
-            const rec2 = selectRecommendedFromTier(acceptedMid);
-            const rec3 = selectRecommendedFromTier(acceptedLow);
-            
-            if (rec1) finalRecs.push(rec1);
-            if (rec2) finalRecs.push(rec2);
-            if (rec3) finalRecs.push(rec3);
-
-            // Si no llegamos a 3, rellenamos con el resto
+            // Intento 2: Búsqueda relajada si faltan recomendaciones
             if (finalRecs.length < 3) {
-                const remaining = [];
-                const usedIds = new Set(finalRecs.map(r => r.beatmapId));
-                const allRemaining = [
-                    ...acceptedHigh,
-                    ...acceptedMid,
-                    ...acceptedLow
-                ];
-                allRemaining.forEach(c => {
-                    if (!usedIds.has(c.beatmapId)) {
-                        remaining.push(c);
+                const relaxedMinPP = minPP * 0.80;
+                const relaxedMaxPP = maxPP * 1.25;
+
+                const fallbackSkipSet = new Set(skipSet);
+                finalRecs.forEach(r => {
+                    fallbackSkipSet.add(r.beatmapId);
+                    if (r.beatmapsetId) {
+                        fallbackSkipSet.add(r.beatmapsetId.toString());
                     }
                 });
-                remaining.sort((a, b) => b.rawScore - a.rawScore);
-                for (const item of remaining) {
+
+                const fallbackRecs = await fetchAndFilterRecs(relaxedMinPP, relaxedMaxPP, fallbackSkipSet, true);
+                for (const candidate of fallbackRecs) {
                     if (finalRecs.length >= 3) break;
-                    finalRecs.push(item);
+                    finalRecs.push(candidate);
                 }
             }
 
