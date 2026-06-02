@@ -577,7 +577,10 @@ function getTagsForBeatmap(detail, beatmapId) {
     
     const bm = detail.beatmaps.find(b => b.id === parseInt(beatmapId));
     if (!bm || !bm.top_tag_ids || bm.top_tag_ids.length === 0) {
-        // Fallback: si no hay tags por dificultad, devolvemos los tags del set completo
+        // Evitamos heredar tags del set completo si el set tiene más de una dificultad
+        if (detail.beatmaps.length > 1) {
+            return [];
+        }
         return detail.related_tags.map(t => t.name);
     }
     
@@ -586,7 +589,9 @@ function getTagsForBeatmap(detail, beatmapId) {
         tagMap.set(t.id, t.name);
     });
     
+    // Solo consideramos tags que alcancen el umbral de visualización oficial de la UI de osu! (al menos 5 votos)
     return bm.top_tag_ids
+        .filter(obj => obj.count >= 5)
         .map(obj => tagMap.get(obj.tag_id))
         .filter(Boolean);
 }
