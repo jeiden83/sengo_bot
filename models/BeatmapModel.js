@@ -503,7 +503,7 @@ async function getOsuPpsData(gamemode = 'osu') {
 }
 
 let lastScraperBlockTime = 0;
-const tagsCache = new Map();
+const tagsDetailCache = new Map();
 
 const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
@@ -513,7 +513,7 @@ const USER_AGENTS = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36 OPR/107.0.0.0'
 ];
 
-async function getBeatmapsetTags(beatmapsetId, priority = 0) {
+async function getBeatmapsetTagsDetail(beatmapsetId, priority = 0) {
     const now = Date.now();
     
     // Si fuimos bloqueados recientemente por Cloudflare, evitar nuevas peticiones HTTP por 15 minutos
@@ -521,7 +521,7 @@ async function getBeatmapsetTags(beatmapsetId, priority = 0) {
         return null;
     }
 
-    const cached = tagsCache.get(beatmapsetId);
+    const cached = tagsDetailCache.get(beatmapsetId);
     if (cached && (now - cached.timestamp) < (cached.isError ? 3600000 : 3600000 * 24)) { // Caché de error por 1 hora, tags por 24 horas
         return cached.isError ? null : cached.data;
     }
@@ -545,26 +545,77 @@ async function getBeatmapsetTags(beatmapsetId, priority = 0) {
             const $ = cheerio.load(res.data);
             const jsonText = $('#json-beatmapset').html();
             if (!jsonText) {
-                return [];
+                return null;
             }
             const data = JSON.parse(jsonText);
-            const related = data.related_tags || [];
-            const tags = related.map(t => t.name);
+            const result = {
+                related_tags: data.related_tags || [],
+                beatmaps: (data.beatmaps || []).map(b => ({
+                    id: b.id,
+                    top_tag_ids: b.top_tag_ids || []
+                }))
+            };
             
-            tagsCache.set(beatmapsetId, { data: tags, timestamp: Date.now(), isError: false });
-            return tags;
+            tagsDetailCache.set(beatmapsetId, { data: result, timestamp: Date.now(), isError: false });
+            return result;
         } catch (e) {
             const is403 = e.response && e.response.status === 403;
             if (is403) {
                 lastScraperBlockTime = Date.now();
-                Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
+                Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags detallados para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
             } else {
-                Logger.system(`Scraper: Error al obtener tags para beatmapset ${beatmapsetId}: ${e.message}`);
+                Logger.system(`Scraper: Error al obtener tags detallados para beatmapset ${beatmapsetId}: ${e.message}`);
             }
-            tagsCache.set(beatmapsetId, { data: [], timestamp: Date.now(), isError: true });
+            tagsDetailCache.set(beatmapsetId, { data: null, timestamp: Date.now(), isError: true });
             return null;
         }
     }, priority);
+}
+
+function getTagsForBeatmap(detail, beatmapId) {
+    if (!detail || !detail.beatmaps || !detail.related_tags) return [];
+    
+    const bm = detail.beatmaps.find(b => b.id === parseInt(beatmapId));
+    if (!bm || !bm.top_tag_ids || bm.top_tag_ids.length === 0) {
+        // Fallback: si no hay tags por dificultad, devolvemos los tags del set completo
+        return detail.related_tags.map(t => t.name);
+    }
+    
+    const tagMap = new Map();
+    detail.related_tags.forEach(t => {
+        tagMap.set(t.id, t.name);
+    });
+    
+    return bm.top_tag_ids
+        .map(obj => tagMap.get(obj.tag_id))
+        .filter(Boolean);
+}
+
+async function updateBeatmapsetTagsInDB(beatmapsetId, detail, supabase = null) {
+    const dbClient = supabase || getSupabaseClient();
+    if (!dbClient || !detail) return;
+
+    try {
+        const promises = detail.beatmaps.map(async (bm) => {
+            const tags = getTagsForBeatmap(detail, bm.id);
+            const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
+            
+            return dbClient
+                .from('ranked_beatmaps')
+                .update({ user_tags: cleanTags })
+                .eq('beatmap_id', bm.id);
+        });
+        
+        await Promise.all(promises);
+    } catch (err) {
+        Logger.system(`Error al actualizar tags por dificultad en BD para set ${beatmapsetId}: ${err.message}`);
+    }
+}
+
+async function getBeatmapsetTags(beatmapsetId, priority = 0) {
+    const detail = await getBeatmapsetTagsDetail(beatmapsetId, priority);
+    if (!detail || !detail.related_tags) return null;
+    return detail.related_tags.map(t => t.name);
 }
 
 function isScraperBlocked() {
@@ -580,6 +631,9 @@ const BeatmapModel = {
     lookupBeatmapByMD5,
     getOsuPpsData,
     getBeatmapsetTags,
+    getBeatmapsetTagsDetail,
+    getTagsForBeatmap,
+    updateBeatmapsetTagsInDB,
     isScraperBlocked
 };
 

@@ -182,20 +182,17 @@ async function buildUserProfileAsync(topScores, supabase = null) {
                 // Si faltan tags, raspar un máximo de 5 al vuelo para autocurar la base de datos
                 if (missingSets.size > 0) {
                     const uniqueMissingSetIds = Array.from(missingSets.keys()).slice(0, 5);
-                    const { getBeatmapsetTags } = require('./BeatmapModel.js');
+                    const { getBeatmapsetTagsDetail, updateBeatmapsetTagsInDB, getTagsForBeatmap } = require('./BeatmapModel.js');
                     
                     for (const setId of uniqueMissingSetIds) {
                         try {
-                            const tags = await getBeatmapsetTags(setId, 2);
-                            if (tags && tags.length > 0) {
-                                const cleanTags = tags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
-                                
-                                await dbClient
-                                    .from('ranked_beatmaps')
-                                    .update({ user_tags: cleanTags })
-                                    .eq('beatmapset_id', setId);
+                            const detail = await getBeatmapsetTagsDetail(setId, 2);
+                            if (detail) {
+                                await updateBeatmapsetTagsInDB(setId, detail, dbClient);
                                 
                                 const mapId = missingSets.get(setId);
+                                const rawMapTags = getTagsForBeatmap(detail, mapId);
+                                const cleanTags = rawMapTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
                                 dbTagsMap.set(mapId, cleanTags);
                             }
                         } catch (err) {
@@ -938,11 +935,63 @@ async function recalculateExactPP(recs, activeMods) {
     return recs;
 }
 
+async function validateCandidateTags(beatmapId, beatmapsetId, customUserTag, style) {
+    try {
+        const BeatmapModel = require("./BeatmapModel.js");
+        const detail = await BeatmapModel.getBeatmapsetTagsDetail(beatmapsetId, 2);
+        
+        // Si no se pudo obtener o está bloqueado, devolvemos true por fail-safe
+        if (!detail) return true;
+
+        const actualTags = BeatmapModel.getTagsForBeatmap(detail, beatmapId).map(t => t.toLowerCase().trim());
+
+        // Validar tag personalizado
+        if (customUserTag) {
+            const cleanTarget = customUserTag.toLowerCase().trim();
+            const hasTargetTag = actualTags.some(t => t === cleanTarget || t.includes(cleanTarget));
+            if (!hasTargetTag) {
+                // Autocuración: actualizar en BD en segundo plano para no demorar la recomendación
+                BeatmapModel.updateBeatmapsetTagsInDB(beatmapsetId, detail).catch(() => {});
+                return false;
+            }
+        }
+
+        // Validar por estilo (aim/speed)
+        if (style === 'aim') {
+            const hasAimTag = actualTags.some(t => {
+                if (t === 'aim' || t === 'jump' || t === 'jumps') return true;
+                if (t.includes('/') && (t.includes('aim') || t.includes('jump'))) return true;
+                return AIM_TAGS.some(at => t === at);
+            });
+            if (!hasAimTag) {
+                BeatmapModel.updateBeatmapsetTagsInDB(beatmapsetId, detail).catch(() => {});
+                return false;
+            }
+        } else if (style === 'speed') {
+            const hasSpeedTag = actualTags.some(t => {
+                if (t === 'stream' || t === 'streams' || t === 'speed' || t === 'burst' || t === 'bursts' || t === 'alt' || t === 'alternate' || t === 'stamina') return true;
+                if (t.includes('/') && (t.includes('stream') || t.includes('speed') || t.includes('burst') || t.includes('alt') || t.includes('stamina'))) return true;
+                return SPEED_TAGS.some(st => t === st);
+            });
+            if (!hasSpeedTag) {
+                BeatmapModel.updateBeatmapsetTagsInDB(beatmapsetId, detail).catch(() => {});
+                return false;
+            }
+        }
+
+        return true;
+    } catch (err) {
+        Logger.system(`Error en validateCandidateTags para mapa ${beatmapId}: ${err.message}`);
+        return true; // Fail-safe
+    }
+}
+
 module.exports = {
     buildUserProfile,
     buildUserProfileAsync,
     getPersonalizedRecommendations,
     recalculateExactPP,
     estimatePP,
-    ppToStars
+    ppToStars,
+    validateCandidateTags
 };

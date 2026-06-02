@@ -608,6 +608,18 @@ async function run(messages, args) {
                     const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
 
                     const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+                    
+                    let tagIsValid = true;
+                    if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
+                        tagIsValid = await RecommendationModel.validateCandidateTags(
+                            candidate.beatmapId, 
+                            candidate.beatmapsetId, 
+                            customUserTag, 
+                            currentStyle
+                        );
+                    }
+                    if (!tagIsValid) continue;
+
                     let accepted = false;
                     if (showPlayed) {
                         if (hasScore) accepted = true;
@@ -789,6 +801,18 @@ async function run(messages, args) {
                 const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
 
                 const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+                
+                let tagIsValid = true;
+                if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
+                    tagIsValid = await RecommendationModel.validateCandidateTags(
+                        candidate.beatmapId, 
+                        candidate.beatmapsetId, 
+                        customUserTag, 
+                        currentStyle
+                    );
+                }
+                if (!tagIsValid) continue;
+
                 let accepted = false;
                 if (showPlayed) {
                     if (hasScore) accepted = true;

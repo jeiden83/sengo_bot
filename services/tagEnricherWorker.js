@@ -1,5 +1,5 @@
 const { getSupabaseClient } = require('../db/database.js');
-const { getBeatmapsetTags, isScraperBlocked } = require('../models/BeatmapModel.js');
+const { getBeatmapsetTagsDetail, updateBeatmapsetTagsInDB, isScraperBlocked } = require('../models/BeatmapModel.js');
 const Logger = require('../utils/logger.js');
 
 let sessionCount = 0;
@@ -49,20 +49,11 @@ async function startTagEnricherWorker() {
             const setId = rows[0].beatmapset_id;
             sessionCount++;
 
-            const userTags = await getBeatmapsetTags(setId);
+            const detail = await getBeatmapsetTagsDetail(setId);
 
-            if (userTags !== null) {
-                const cleanUserTags = userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
-
-                // Guardar en base de datos
-                const { error: updateError } = await supabase
-                    .from('ranked_beatmaps')
-                    .update({ user_tags: cleanUserTags })
-                    .eq('beatmapset_id', setId);
-
-                if (!updateError) {
-                    sessionSuccess++;
-                }
+            if (detail !== null) {
+                await updateBeatmapsetTagsInDB(setId, detail, supabase);
+                sessionSuccess++;
             }
 
             // Cada 5 peticiones (aproximadamente cada minuto), registrar reporte de progreso

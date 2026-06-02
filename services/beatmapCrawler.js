@@ -19,7 +19,7 @@ const LANGUAGES = {
     10: 'Spanish', 11: 'Italian', 12: 'Russian', 13: 'Polish', 14: 'Other'
 };
 
-const { getBeatmapsetTags } = require('../models/BeatmapModel.js');
+const { getBeatmapsetTagsDetail, getTagsForBeatmap } = require('../models/BeatmapModel.js');
 
 async function checkNewBeatmaps() {
     Logger.system("Iniciando actualización diaria de nuevos beatmaps...");
@@ -51,10 +51,10 @@ async function checkNewBeatmaps() {
             const beatmapsToInsert = [];
 
             for (const set of response.beatmapsets) {
-                // Obtener tags de usuario raspando la web
-                let userTags = null;
+                // Obtener tags de usuario detallados raspando la web
+                let detail = null;
                 try {
-                    userTags = await getBeatmapsetTags(set.id);
+                    detail = await getBeatmapsetTagsDetail(set.id);
                 } catch (e) {
                     // Silenciar y continuar
                 }
@@ -65,10 +65,6 @@ async function checkNewBeatmaps() {
                 const mapperTags = set.tags 
                     ? set.tags.toLowerCase().split(/\s+/).filter(t => t.length > 1)
                     : [];
-                
-                const cleanUserTags = userTags !== null
-                    ? userTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1)
-                    : null;
 
                 const sanitizeNumeric = (val, defaultVal = 0) => {
                     if (val === null || val === undefined || isNaN(val) || !isFinite(val)) {
@@ -79,6 +75,12 @@ async function checkNewBeatmaps() {
 
                 for (const map of set.beatmaps) {
                     if (map.mode_int !== 0) continue;
+
+                    let mapUserTags = null;
+                    if (detail) {
+                        const rawMapTags = getTagsForBeatmap(detail, map.id);
+                        mapUserTags = rawMapTags.map(t => t.toLowerCase().trim()).filter(t => t.length > 1);
+                    }
 
                     beatmapsToInsert.push({
                         beatmap_id: map.id,
@@ -100,7 +102,7 @@ async function checkNewBeatmaps() {
                         genre: genre,
                         language: language,
                         tags: mapperTags,
-                        user_tags: cleanUserTags,
+                        user_tags: mapUserTags,
                         playcount: sanitizeNumeric(set.play_count, 0),
                         favourite_count: sanitizeNumeric(set.favourite_count, 0),
                         ranked_status: set.ranked,
