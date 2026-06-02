@@ -2,11 +2,19 @@ const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { doOsuProfileEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
 
-async function getOsuWorldUser(userId) {
+async function getOsuWorldUser(userId, mode) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 1500);
     try {
-        const response = await fetch(`https://osuworld.octo.moe/api/users/${userId}`, {
+        let url = `https://osuworld.octo.moe/api/users/${userId}`;
+        if (mode) {
+            let osuWorldMode = mode.toLowerCase();
+            if (osuWorldMode === 'ctb' || osuWorldMode === 'fruits') {
+                osuWorldMode = 'fruits';
+            }
+            url += `?mode=${osuWorldMode}`;
+        }
+        const response = await fetch(url, {
             signal: controller.signal
         });
         clearTimeout(timeout);
@@ -64,7 +72,7 @@ async function run(messages, args) {
 
     let osuworld_data = null;
     if (osu_userdata.fn_response && osu_userdata.fn_response.id) {
-        osuworld_data = await getOsuWorldUser(osu_userdata.fn_response.id);
+        osuworld_data = await getOsuWorldUser(osu_userdata.fn_response.id, osu_userdata.parsed_args.gamemode);
     }
 
     return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data, locale);
