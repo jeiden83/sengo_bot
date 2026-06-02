@@ -272,6 +272,8 @@ async function run(messages, args) {
     let customMaxPP = null;
     let customMods = null;
     let forceRefresh = false;
+    let currentStyle = 'standard';
+    let isPPExpanded = false;
 
     const cleanArgs = [];
     let skipNext = false;
@@ -388,8 +390,8 @@ async function run(messages, args) {
     const linkedUser = await OsuUserModel.getLinkedUser(res.User, message.author.id);
     let hasSupporter = linkedUser ? !!linkedUser.is_supporter : false;
 
-    // Verificar si es una consulta por defecto (sin filtros custom)
-    const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false);
+    // Verificar si es una consulta por defecto (sin filtros custom y estilo standard)
+    const isDefaultRun = (customMinPP === null && customMaxPP === null && customMods === null && showPlayed === false && currentStyle === 'standard');
 
     // Si se usa -force, borrar la caché del usuario antes de continuar
     if (forceRefresh) {
@@ -404,8 +406,6 @@ async function run(messages, args) {
     let preferredMod = "NM";
     let suggestedMod;
     let profile;
-    let currentStyle = 'standard';
-    let isPPExpanded = false;
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     if (activeGamemode !== "osu") {
