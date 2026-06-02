@@ -317,6 +317,26 @@ async function run(messages, args) {
             }
             continue;
         }
+        if (arg === "-tags" || arg === "-t") {
+            currentStyle = 'tags';
+            continue;
+        }
+        if (arg === "-aim" || arg === "-a") {
+            currentStyle = 'aim';
+            continue;
+        }
+        if (arg === "-speed" || arg === "-s") {
+            currentStyle = 'speed';
+            continue;
+        }
+        if (arg === "-length" || arg === "-longitud") {
+            currentStyle = 'length';
+            continue;
+        }
+        if (arg === "-rarezas" || arg === "-r") {
+            currentStyle = 'rarezas';
+            continue;
+        }
         cleanArgs.push(args[i]);
     }
 
