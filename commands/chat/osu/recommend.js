@@ -80,7 +80,13 @@ function selectRecommendedFromTier(tier) {
     if (Math.random() < 0.40) {
         const minTarget = maxScore * 0.50;
         const maxTarget = maxScore * 0.90;
-        const choices = tier.filter(x => x.matchScore >= minTarget && x.matchScore <= maxTarget);
+        let choices = tier.filter(x => x.matchScore >= minTarget && x.matchScore <= maxTarget);
+        if (choices.length === 0) {
+            choices = tier.filter(x => x.matchScore < maxScore);
+        }
+        if (choices.length === 0) {
+            choices = tier.filter(x => x !== best);
+        }
         if (choices.length > 0) {
             const chosen = choices[Math.floor(Math.random() * choices.length)];
             if (chosen !== best) {
@@ -128,9 +134,11 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
 
         // 35% de probabilidad de recomendar en rango de -5% a +20%
         let minPP, maxPP;
+        let isPPExpanded = false;
         if (Math.random() < 0.35) {
             minPP = averagePP * 0.95;
             maxPP = averagePP * 1.20;
+            isPPExpanded = true;
         } else {
             minPP = averagePP * 0.90;
             maxPP = averagePP * 1.10;
@@ -184,6 +192,10 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
         }
 
         await RecommendationModel.recalculateExactPP(finalRecs);
+
+        if (isPPExpanded) {
+            finalRecs.forEach(r => r.isPPExpanded = true);
+        }
 
         if (finalRecs.length > 0) {
             recommendCache.set(cacheKey, {
@@ -373,6 +385,7 @@ async function run(messages, args) {
     let suggestedMod;
     let profile;
     let currentStyle = 'standard';
+    let isPPExpanded = false;
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     if (activeGamemode !== "osu") {
@@ -398,6 +411,7 @@ async function run(messages, args) {
         suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
         profile = cached.profile;
         currentStyle = cached.style || 'standard';
+        isPPExpanded = cached.isPPExpanded || false;
     } else {
         // Obtener perfil del usuario para mostrar información correcta en el embed
         try {
@@ -428,10 +442,12 @@ async function run(messages, args) {
         const averagePP = totalPP / top15.length;
 
         // 35% de probabilidad de recomendar en rango de -5% a +20%
+        isPPExpanded = false;
         if (customMinPP === null) {
             if (Math.random() < 0.35) {
                 minPP = averagePP * 0.95;
                 maxPP = averagePP * 1.20;
+                isPPExpanded = true;
             } else {
                 minPP = averagePP * 0.90;
                 maxPP = averagePP * 1.10;
@@ -544,6 +560,10 @@ async function run(messages, args) {
                 // Ordenar por popularidad descendente para presentación
                 finalRecs.sort((a, b) => b.popularity - a.popularity);
 
+                if (isPPExpanded) {
+                    finalRecs.forEach(r => r.isPPExpanded = true);
+                }
+
                 await RecommendationModel.recalculateExactPP(finalRecs, customMods);
                 return finalRecs;
             } catch (err) {
@@ -564,6 +584,7 @@ async function run(messages, args) {
                 suggestedMod: activeMods,
                 profile,
                 style: currentStyle,
+                isPPExpanded,
                 timestamp: Date.now()
             });
         }
@@ -718,6 +739,10 @@ async function run(messages, args) {
 
             // Ordenar por popularidad descendente para presentación
             finalRecs.sort((a, b) => b.popularity - a.popularity);
+
+            if (isPPExpanded) {
+                finalRecs.forEach(r => r.isPPExpanded = true);
+            }
 
             await RecommendationModel.recalculateExactPP(finalRecs, customMods);
             return finalRecs;

@@ -61,6 +61,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             if (c.isRandomMod) randFlags.push(locale === 'es' ? 'Mod alternativo' : 'Alt Mod');
             if (c.isRandomAffinity) randFlags.push(locale === 'es' ? 'Afinidad variable' : 'Alt Affinity');
             if (c.isRandomTag) randFlags.push(locale === 'es' ? 'Tag aleatorio' : 'Alt Tag');
+            if (c.isPPExpanded) randFlags.push(locale === 'es' ? 'Rango PP ampliado' : 'Expanded PP Range');
             
             const randStr = randFlags.length > 0 ? ` 🎲 *(${randFlags.join(", ")})*` : "";
             
