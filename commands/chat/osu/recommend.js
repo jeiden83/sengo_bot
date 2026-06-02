@@ -464,7 +464,15 @@ async function run(messages, args) {
                 const seenBeatmapsets = new Set();
 
                 for (const candidate of candidates) {
+                    if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
+                        break;
+                    }
                     if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
+
+                    const pop = candidate.popularity;
+                    if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
+                    if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
+                    if (pop < 150000 && acceptedLow.length >= 10) continue;
 
                     const idStr = candidate.beatmapId.toString();
                     const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
@@ -479,7 +487,6 @@ async function run(messages, args) {
 
                     if (accepted) {
                         seenBeatmapsets.add(candidate.beatmapsetId);
-                        const pop = candidate.popularity;
                         if (pop >= 1000000) {
                             acceptedHigh.push(candidate);
                         } else if (pop >= 150000) {
@@ -632,7 +639,15 @@ async function run(messages, args) {
             const seenBeatmapsets = new Set();
 
             for (const candidate of candidates) {
+                if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
+                    break;
+                }
                 if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
+
+                const pop = candidate.popularity;
+                if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
+                if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
+                if (pop < 150000 && acceptedLow.length >= 10) continue;
 
                 const idStr = candidate.beatmapId.toString();
                 const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
@@ -647,7 +662,6 @@ async function run(messages, args) {
 
                 if (accepted) {
                     seenBeatmapsets.add(candidate.beatmapsetId);
-                    const pop = candidate.popularity;
                     if (pop >= 1000000) {
                         acceptedHigh.push(candidate);
                     } else if (pop >= 150000) {
