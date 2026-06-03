@@ -23,11 +23,14 @@ async function run(messages, args) {
         let playmodeFilter = null;
         let onlyActive = false;
         let page = 1;
+        let forceUpdate = false;
 
         for (let idx = 0; idx < args.length; idx++) {
             const arg = args[idx].toLowerCase();
             if (arg === '-bn') {
                 // modo bn detectado
+            } else if (arg === '-force' || arg === '-f' || arg === '-recargar') {
+                forceUpdate = true;
             } else if (arg === '-m' || arg === '-mode' || arg === '-modo') {
                 if (idx + 1 < args.length) {
                     const modeInput = args[idx + 1].toLowerCase();
@@ -67,7 +70,7 @@ async function run(messages, args) {
 
         let bnUsers;
         try {
-            bnUsers = await MappersGuildModel.getBnUsers();
+            bnUsers = await MappersGuildModel.getBnUsers(forceUpdate);
         } catch (error) {
             console.error("Error al obtener datos de Mappers Guild:", error);
             await message.reply(t(locale, 'mapper.err_bn_fetch'));

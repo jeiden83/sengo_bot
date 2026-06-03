@@ -1,8 +1,26 @@
+const fs = require("fs");
+const path = require("path");
 const axios = require("axios");
+
+const CACHE_FILE = path.join(process.cwd(), "data/bn_cache.json");
 
 let cachedBnData = null;
 let lastBnFetch = 0;
-const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes cache
+
+// Cargar la caché persistente desde disco al iniciar el módulo
+try {
+    if (fs.existsSync(CACHE_FILE)) {
+        const fileContent = fs.readFileSync(CACHE_FILE, "utf8");
+        const parsed = JSON.parse(fileContent);
+        if (parsed && Array.isArray(parsed.data)) {
+            cachedBnData = parsed.data;
+            lastBnFetch = parsed.lastFetch || 0;
+            console.log(`[BN-CACHE] Caché persistente cargada desde disco (${cachedBnData.length} BNs).`);
+        }
+    }
+} catch (err) {
+    console.error("[BN-CACHE] Error al cargar caché persistente desde disco:", err);
+}
 
 /**
  * Obtiene la lista completa de usuarios del Mappers' Guild y filtra a los BNs y NATs.
@@ -11,7 +29,7 @@ const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes cache
  */
 async function getBnUsers(force = false) {
     const now = Date.now();
-    if (!force && cachedBnData && (now - lastBnFetch < CACHE_DURATION)) {
+    if (!force && cachedBnData) {
         return cachedBnData;
     }
 
@@ -63,6 +81,22 @@ async function getBnUsers(force = false) {
 
             cachedBnData = mappedUsers;
             lastBnFetch = now;
+
+            // Guardar caché persistente en disco de forma asíncrona
+            try {
+                fs.mkdirSync(path.dirname(CACHE_FILE), { recursive: true });
+                fs.writeFile(CACHE_FILE, JSON.stringify({
+                    lastFetch: lastBnFetch,
+                    data: cachedBnData
+                }, null, 2), "utf8", (err) => {
+                    if (err) {
+                        console.error("[BN-CACHE] Error al escribir caché persistente en disco:", err);
+                    }
+                });
+            } catch (err) {
+                console.error("[BN-CACHE] Error al guardar caché en disco:", err);
+            }
+
             return cachedBnData;
         } else {
             throw new Error("Formato de respuesta inválido de Mappers' Guild API");
