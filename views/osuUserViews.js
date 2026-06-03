@@ -530,6 +530,177 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
     return embed;
 }
 
+
+/**
+ * Renderiza el embed del perfil detallado de un BN (Beatmap Nominator)
+ */
+function doOsuBnProfileEmbed(message, bnUser, locale = 'es') {
+    const flag = getFlagEmoji(bnUser.countryCode || 'XX');
+    
+    const isClosed = !bnUser.requestStatus || bnUser.requestStatus.includes('closed') || bnUser.requestStatus.length === 0;
+    const statusText = isClosed 
+        ? t(locale, 'mapper.bn_status_closed') 
+        : t(locale, 'mapper.bn_status_open');
+    
+    // Métodos de solicitud
+    const requestMethods = bnUser.requestStatus 
+        ? bnUser.requestStatus.filter(s => s !== 'closed').map(s => {
+            if (s === 'personalQueue') return 'mod queue';
+            if (s === 'gameChat') return 'game chat';
+            return s;
+          }).join(', ') 
+        : 'N/A';
+        
+    // Modos de juego del BN
+    const modesDetails = [];
+    if (bnUser.modesInfo && bnUser.modesInfo.length > 0) {
+        bnUser.modesInfo.forEach(m => {
+            const levelLabel = m.level === 'probation' ? ` (${locale === 'es' ? 'Prueba' : 'Probation'})` : '';
+            modesDetails.push(`• **osu!${m.mode === 'fruits' ? 'catch' : m.mode}**${levelLabel}`);
+        });
+    } else if (bnUser.modes) {
+        bnUser.modes.forEach(m => {
+            modesDetails.push(`• **osu!${m === 'fruits' ? 'catch' : m}**`);
+        });
+    }
+    
+    const groupsText = bnUser.groups ? bnUser.groups.filter(g => g !== 'user').map(g => g.toUpperCase()).join(', ') : 'BN';
+    
+    const embed = new EmbedBuilder()
+        .setTitle(`${flag} ${bnUser.username} (${groupsText})`)
+        .setURL(`https://osu.ppy.sh/users/${bnUser.osuId}`)
+        .setColor(isClosed ? '#ff3333' : '#33ff33')
+        .setThumbnail(`https://a.ppy.sh/${bnUser.osuId}`)
+        .addFields(
+            {
+                name: t(locale, 'mapper.bn_general_info'),
+                value: [
+                    `• **Status:** ${statusText}`,
+                    bnUser.lastOpenedForRequests ? `• **${t(locale, 'mapper.bn_last_opened')}:** <t:${Math.floor(new Date(bnUser.lastOpenedForRequests).getTime() / 1000)}:R>` : null,
+                    requestMethods !== 'N/A' && requestMethods ? `• **${t(locale, 'mapper.bn_request_methods')}:** ${requestMethods}` : null,
+                    bnUser.languages && bnUser.languages.length > 0 ? `• **${t(locale, 'mapper.bn_languages')}:** ${bnUser.languages.join(', ')}` : null,
+                    bnUser.rankedBeatmapsets ? `• **${t(locale, 'mapper.bn_ranked_maps')}:** ${bnUser.rankedBeatmapsets}` : null,
+                    bnUser.bnDuration ? `• **${t(locale, 'mapper.bn_duration')}:** ${bnUser.bnDuration} ${t(locale, 'mapper.bn_duration_days')}` : null
+                ].filter(Boolean).join('\n'),
+                inline: false
+            }
+        );
+        
+    if (modesDetails.length > 0) {
+        embed.addFields({
+            name: t(locale, 'mapper.bn_modes'),
+            value: modesDetails.join('\n'),
+            inline: true
+        });
+    }
+    
+    if (bnUser.requestLink) {
+        embed.addFields({
+            name: t(locale, 'mapper.bn_request_link'),
+            value: bnUser.requestLink,
+            inline: true
+        });
+    }
+
+    const prefs = [];
+    if (bnUser.genrePreferences && bnUser.genrePreferences.length > 0) {
+        prefs.push(`• **${t(locale, 'mapper.bn_pref_genres')}:** ${bnUser.genrePreferences.join(', ')}`);
+    }
+    if (bnUser.languagePreferences && bnUser.languagePreferences.length > 0) {
+        prefs.push(`• **${t(locale, 'mapper.bn_pref_languages')}:** ${bnUser.languagePreferences.join(', ')}`);
+    }
+    if (bnUser.detailPreferences && bnUser.detailPreferences.length > 0) {
+        prefs.push(`• **${t(locale, 'mapper.bn_pref_details')}:** ${bnUser.detailPreferences.join(', ')}`);
+    }
+    if (bnUser.customMapPreferences && bnUser.customMapPreferences.length > 0) {
+        prefs.push(`• **${t(locale, 'mapper.bn_pref_custom')}:** ${bnUser.customMapPreferences.join(', ')}`);
+    }
+    
+    if (prefs.length > 0) {
+        embed.addFields({
+            name: t(locale, 'mapper.bn_preferences'),
+            value: prefs.join('\n'),
+            inline: false
+        });
+    }
+
+    if (bnUser.requestInfo) {
+        const cleanInfo = bnUser.requestInfo.length > 1024 
+            ? bnUser.requestInfo.substring(0, 1000) + '...'
+            : bnUser.requestInfo;
+        embed.addFields({
+            name: t(locale, 'mapper.bn_request_info'),
+            value: cleanInfo,
+            inline: false
+        });
+    }
+
+    if (bnUser.cover) {
+        embed.setImage(bnUser.cover);
+    }
+    
+    embed.setFooter({ text: 'Sengo • bn.mappersguild.com', iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" }).setTimestamp();
+    
+    return embed;
+}
+
+/**
+ * Renderiza una página de la lista de Beatmap Nominators (BN)
+ */
+function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, onlyActive, locale = 'es') {
+    const embedColor = getEmbedColor(message);
+    const startIndex = (page - 1) * 10;
+    const chunk = bnUsers.slice(startIndex, startIndex + 10);
+    
+    const title = t(locale, 'mapper.bn_list_title');
+    let desc = '';
+    
+    const filters = [];
+    if (playmodeFilter) {
+        const modeLabels = {
+            'osu': 'osu!',
+            'taiko': 'osu!taiko',
+            'fruits': 'osu!catch',
+            'mania': 'osu!mania'
+        };
+        filters.push(`${t(locale, 'mapper.bn_list_filter_mode')}: **${modeLabels[playmodeFilter] || playmodeFilter}**`);
+    }
+    if (onlyActive) {
+        filters.push(`**${t(locale, 'mapper.bn_list_filter_active')}**`);
+    }
+    
+    if (filters.length > 0) {
+        desc += `🔍 **${t(locale, 'mapper.bn_list_applied_filters')}:** ${filters.join(' | ')}\n\n`;
+    }
+    
+    desc += `${t(locale, 'mapper.bn_list_total')}: **${bnUsers.length}**\n\n`;
+    
+    if (bnUsers.length === 0) {
+        desc += `*${t(locale, 'mapper.bn_list_empty')}*`;
+    } else {
+        chunk.forEach((bn, idx) => {
+            const globalIndex = startIndex + idx + 1;
+            const flag = getFlagEmoji(bn.countryCode || 'XX');
+            const isClosed = !bn.requestStatus || bn.requestStatus.includes('closed') || bn.requestStatus.length === 0;
+            const statusIcon = isClosed ? '🟥' : '🟩';
+            
+            const modesStr = bn.modes ? bn.modes.map(m => m === 'fruits' ? 'catch' : m).join(', ') : 'none';
+            const groupsStr = bn.groups ? bn.groups.filter(g => g !== 'user').map(g => g.toUpperCase()).join('/') : 'BN';
+            
+            desc += `\`#${globalIndex.toString().padEnd(2, ' ')}\` ▸ ${flag} [**${bn.username}**](https://osu.ppy.sh/users/${bn.osuId}) (${modesStr}) [${groupsStr}] ▸ ${statusIcon}\n`;
+        });
+    }
+    
+    const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(desc)
+        .setColor(embedColor)
+        .setFooter({ text: `Sengo • bn.mappersguild.com • Página ${page}/${totalPages}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+        
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
@@ -537,5 +708,8 @@ module.exports = {
     doOsuMapperEmbed,
     buildMapperButtonsRow,
     doOsuMapperListEmbed,
-    doOsuMapperTopEmbed
+    doOsuMapperTopEmbed,
+    doOsuBnProfileEmbed,
+    doOsuBnListEmbed
 };
+

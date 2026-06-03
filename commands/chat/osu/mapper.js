@@ -1,11 +1,10 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
-const { doOsuMapperEmbed, buildMapperButtonsRow, doOsuMapperListEmbed, doOsuMapperTopEmbed } = require("../../../views/osuUserViews.js");
+const { doOsuMapperEmbed, buildMapperButtonsRow, doOsuMapperListEmbed, doOsuMapperTopEmbed, doOsuBnProfileEmbed, doOsuBnListEmbed } = require("../../../views/osuUserViews.js");
 const { getEmbedColor, buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { Client } = require("osu-web.js");
+const MappersGuildModel = require("../../../models/MappersGuildModel.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { EmbedBuilder } = require("discord.js");
-const fs = require("fs/promises");
-const path = require("path");
 const CONFIG = require("../../../config.js");
 const { getSupabaseClient } = require("../../../db/database.js");
 const { t } = require("../../../utils/i18n.js");
@@ -13,6 +12,148 @@ const { t } = require("../../../utils/i18n.js");
 async function run(messages, args) {
     const { message, res, logger } = messages;
     const locale = message.locale || 'es';
+
+    // Detectar si estamos en modo BN (Beatmap Nominators)
+    const isBnMode = args.some(arg => arg.toLowerCase() === '-bn');
+
+    if (isBnMode) {
+        if (logger) logger.process("Procesando comando de Beatmap Nominators...");
+
+        let username = null;
+        let playmodeFilter = null;
+        let onlyActive = false;
+        let page = 1;
+
+        for (let idx = 0; idx < args.length; idx++) {
+            const arg = args[idx].toLowerCase();
+            if (arg === '-bn') {
+                // modo bn detectado
+            } else if (arg === '-m' || arg === '-mode' || arg === '-modo') {
+                if (idx + 1 < args.length) {
+                    const modeInput = args[idx + 1].toLowerCase();
+                    if (modeInput === 'std' || modeInput === 'standard' || modeInput === 'osu') {
+                        playmodeFilter = 'osu';
+                    } else if (modeInput === 'taiko' || modeInput === 'tko') {
+                        playmodeFilter = 'taiko';
+                    } else if (modeInput === 'fruits' || modeInput === 'ctb' || modeInput === 'catch') {
+                        playmodeFilter = 'fruits';
+                    } else if (modeInput === 'mania' || modeInput === 'mna') {
+                        playmodeFilter = 'mania';
+                    }
+                    idx++;
+                }
+            } else if (arg === '-std' || arg === '-standard' || arg === '-osu') {
+                playmodeFilter = 'osu';
+            } else if (arg === '-taiko') {
+                playmodeFilter = 'taiko';
+            } else if (arg === '-ctb' || arg === '-fruits' || arg === '-catch') {
+                playmodeFilter = 'fruits';
+            } else if (arg === '-mania') {
+                playmodeFilter = 'mania';
+            } else if (arg === '-activo' || arg === '-activos' || arg === '-active' || arg === '-open') {
+                onlyActive = true;
+            } else if (arg === '-p' || arg === '-page' || arg === '-pagina') {
+                if (idx + 1 < args.length) {
+                    const pageVal = parseInt(args[idx + 1]);
+                    if (!isNaN(pageVal) && pageVal > 0) {
+                        page = pageVal;
+                    }
+                    idx++;
+                }
+            } else if (!arg.startsWith('-')) {
+                username = args[idx];
+            }
+        }
+
+        let bnUsers;
+        try {
+            bnUsers = await MappersGuildModel.getBnUsers();
+        } catch (error) {
+            console.error("Error al obtener datos de Mappers Guild:", error);
+            return message.reply(t(locale, 'mapper.err_bn_fetch'));
+        }
+
+        if (username) {
+            const target = bnUsers.find(u => u.username.toLowerCase() === username.toLowerCase() || String(u.osuId) === username);
+            if (!target) {
+                const partialTarget = bnUsers.find(u => u.username.toLowerCase().includes(username.toLowerCase()));
+                if (partialTarget) {
+                    const embed = doOsuBnProfileEmbed(message, partialTarget, locale);
+                    if (logger) logger.success("Comando BN (perfil coincidencia parcial) cargado con éxito.");
+                    return message.channel.send({ embeds: [embed] });
+                }
+                return message.reply(t(locale, 'mapper.err_bn_not_found', { username }));
+            }
+            const embed = doOsuBnProfileEmbed(message, target, locale);
+            if (logger) logger.success("Comando BN (perfil) cargado con éxito.");
+            return message.channel.send({ embeds: [embed] });
+        }
+
+        // Listar mappers
+        let filtered = [...bnUsers];
+        if (playmodeFilter) {
+            filtered = filtered.filter(u => u.modes && u.modes.includes(playmodeFilter));
+        }
+        if (onlyActive) {
+            filtered = filtered.filter(u => u.requestStatus && !u.requestStatus.includes('closed') && u.requestStatus.length > 0);
+        }
+
+        const itemsPerPage = 10;
+        const totalPages = Math.max(1, Math.ceil(filtered.length / itemsPerPage));
+        let currentPage = Math.min(Math.max(1, page), totalPages);
+
+        const listEmbed = doOsuBnListEmbed(message, filtered, currentPage, totalPages, playmodeFilter, onlyActive, locale);
+        const customSuffixes = { first: 'first', prev: 'prev', next: 'next', last: 'last' };
+        const components = totalPages > 1 ? [buildPaginationRow({ prefix: 'bnlist', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })] : [];
+
+        const mainMessage = await message.channel.send({
+            embeds: [listEmbed],
+            components: components
+        });
+
+        if (totalPages > 1) {
+            const collector = mainMessage.createMessageComponentCollector({
+                filter: btnInt => btnInt.user.id === message.author.id,
+                idle: 120000
+            });
+
+            collector.on('collect', async i => {
+                try {
+                    await i.deferUpdate();
+                    const buttonId = i.customId;
+
+                    if (buttonId === 'bnlist_first') {
+                        currentPage = 1;
+                    } else if (buttonId === 'bnlist_last') {
+                        currentPage = totalPages;
+                    } else if (buttonId === 'bnlist_prev') {
+                        currentPage = Math.max(1, currentPage - 1);
+                    } else if (buttonId === 'bnlist_next') {
+                        currentPage = Math.min(totalPages, currentPage + 1);
+                    }
+
+                    const nextEmbed = doOsuBnListEmbed(message, filtered, currentPage, totalPages, playmodeFilter, onlyActive, locale);
+                    const nextComponents = [buildPaginationRow({ prefix: 'bnlist', current: currentPage, total: totalPages, oneIndexed: true, customSuffixes })];
+
+                    await i.editReply({
+                        embeds: [nextEmbed],
+                        components: nextComponents
+                    });
+                } catch (err) {
+                    console.error("Error al procesar interacción de bnlist:", err);
+                }
+            });
+
+            collector.on('end', async () => {
+                try {
+                    await mainMessage.edit({ components: [] });
+                } catch {}
+            });
+        }
+
+        if (logger) logger.success("Clasificación de BNs cargada con éxito.");
+        return;
+    }
 
     // Detectar si estamos en modo top
     const isTopMode = args.some(arg => arg.toLowerCase() === '-top');

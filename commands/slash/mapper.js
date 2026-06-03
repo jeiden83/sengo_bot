@@ -52,6 +52,16 @@ const data = new SlashCommandBuilder()
         option.setName("sengo")
             .setDescription("Muestra el top de todos los mappers vinculados a Sengo")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("bn")
+            .setDescription("Activa el modo de Beatmap Nominators (BN)")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("bn_activo")
+            .setDescription("Filtra la lista de BNs para mostrar solo aquellos con solicitudes abiertas")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -65,6 +75,8 @@ async function run(interaction, res) {
     const server = interaction.options.getBoolean("server");
     const globalOpt = interaction.options.getBoolean("global");
     const sengo = interaction.options.getBoolean("sengo");
+    const bn = interaction.options.getBoolean("bn");
+    const bnActivo = interaction.options.getBoolean("bn_activo");
     
     if (top) args.push("-top");
     if (pais) {
@@ -78,6 +90,8 @@ async function run(interaction, res) {
     if (server) args.push("-server");
     if (globalOpt) args.push("-global");
     if (sengo) args.push("-sengo");
+    if (bn) args.push("-bn");
+    if (bnActivo) args.push("-activo");
 
     return await mapperChatCommand.run(messages, args);
 }
