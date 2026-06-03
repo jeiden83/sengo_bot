@@ -70,7 +70,8 @@ async function run(messages, args) {
             bnUsers = await MappersGuildModel.getBnUsers();
         } catch (error) {
             console.error("Error al obtener datos de Mappers Guild:", error);
-            return message.reply(t(locale, 'mapper.err_bn_fetch'));
+            await message.reply(t(locale, 'mapper.err_bn_fetch'));
+            return;
         }
 
         if (username) {
@@ -80,13 +81,16 @@ async function run(messages, args) {
                 if (partialTarget) {
                     const embed = doOsuBnProfileEmbed(message, partialTarget, locale);
                     if (logger) logger.success("Comando BN (perfil coincidencia parcial) cargado con éxito.");
-                    return message.channel.send({ embeds: [embed] });
+                    await message.channel.send({ embeds: [embed] });
+                    return;
                 }
-                return message.reply(t(locale, 'mapper.err_bn_not_found', { username }));
+                await message.reply(t(locale, 'mapper.err_bn_not_found', { username }));
+                return;
             }
             const embed = doOsuBnProfileEmbed(message, target, locale);
             if (logger) logger.success("Comando BN (perfil) cargado con éxito.");
-            return message.channel.send({ embeds: [embed] });
+            await message.channel.send({ embeds: [embed] });
+            return;
         }
 
         // Listar mappers
@@ -699,6 +703,9 @@ run.alias = {
     },
     "creator": {
         "args": ""
+    },
+    "bn": {
+        "args": "-bn"
     }
 };
 
