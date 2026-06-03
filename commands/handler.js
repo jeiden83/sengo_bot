@@ -260,7 +260,7 @@ async function chatCommand(intialized_data, command_data) {
         }
 
         // Detección automática de sugerencias de optimización para el usuario
-        if (found_command && found_command.type === "osu") {
+        if (found_command && found_command.type === "osu" && command !== "bn") {
             try {
                 const { argsParserNoCommand } = require("./utils/argsParser.js");
                 const OsuUserModel = require("../models/OsuUserModel.js");
@@ -268,6 +268,7 @@ async function chatCommand(intialized_data, command_data) {
                 const parsed_args = argsParserNoCommand(args);
                 const discordId = message.author.id;
                 
+                const locale = message.locale || 'es';
                 let suggestion = null;
                 let userToken = null;
                 let user_found = null;
@@ -279,7 +280,7 @@ async function chatCommand(intialized_data, command_data) {
                 if (countryFilter && countryFilter !== "SELF") {
                     userToken = await OsuUserModel.getOAuthTokenRecord(discordId);
                     if (userToken && userToken.country_code && countryFilter.toUpperCase() === userToken.country_code.toUpperCase()) {
-                        suggestion = `💡 *Tip: Como tu país ya es **${userToken.country_code.toUpperCase()}**, puedes usar simplemente \`-pais\` sin especificar el código y Sengo lo autodetectará.*`;
+                        suggestion = t(locale, 'tips.country_redundant', { country: userToken.country_code.toUpperCase() });
                     }
                 }
 
@@ -307,13 +308,13 @@ async function chatCommand(intialized_data, command_data) {
                     }
 
                     if (isSelf) {
-                        suggestion = `💡 *Tip: Como ya estás vinculado al bot, no necesitas escribir tu nombre en el comando; puedes usarlo directamente.*`;
+                        suggestion = t(locale, 'tips.username_redundant');
                     }
                 }
 
                 // 3. Sugerencia de Servidor Redundante
                 if (!suggestion && (argsLower.includes('-bancho') || argsLower.includes('-server bancho'))) {
-                    suggestion = `💡 *Tip: El servidor por defecto es Bancho, por lo que no es necesario agregar \`-bancho\` o \`-server bancho\`.*`;
+                    suggestion = t(locale, 'tips.server_redundant');
                 }
 
                 // 4. Sugerencia de Modo de Juego Redundante
@@ -323,7 +324,7 @@ async function chatCommand(intialized_data, command_data) {
                     }
                     const currentMode = (user_found && user_found.main_gamemode) ? user_found.main_gamemode : 'osu';
                     if (currentMode === 'osu') {
-                        suggestion = `💡 *Tip: Como tu modo de juego por defecto es standard, no necesitas agregar \`-osu\` o \`-std\` al comando.*`;
+                        suggestion = t(locale, 'tips.mode_redundant');
                     }
                 }
 

@@ -3,6 +3,12 @@
     "loading": "Querying database and osu! API...",
     "error_unexpected": "An unexpected error occurred while processing the command."
   },
+  "tips": {
+    "country_redundant": "💡 *Tip: Since your country is already **{country}**, you can simply use `-country` without specifying the code and Sengo will auto-detect it.*",
+    "username_redundant": "💡 *Tip: Since you are already linked to the bot, you don't need to type your username in the command; you can run it directly.*",
+    "server_redundant": "💡 *Tip: The default server is Bancho, so there is no need to add `-bancho` or `-server bancho`.*",
+    "mode_redundant": "💡 *Tip: Since your default game mode is standard, you don't need to add `-osu` or `-std` to the command.*"
+  },
   "osu": {
     "profile": {
       "title": "{username}'s osu! profile",

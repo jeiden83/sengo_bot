@@ -3,6 +3,12 @@
     "loading": "Consultando base de datos y API de osu!...",
     "error_unexpected": "Ocurrió un error inesperado al procesar el comando."
   },
+  "tips": {
+    "country_redundant": "💡 *Tip: Como tu país ya es **{country}**, puedes usar simplemente `-pais` sin especificar el código y Sengo lo autodetectará.*",
+    "username_redundant": "💡 *Tip: Como ya estás vinculado al bot, no necesitas escribir tu nombre en el comando; puedes usarlo directamente.*",
+    "server_redundant": "💡 *Tip: El servidor por defecto es Bancho, por lo que no es necesario agregar `-bancho` o `-server bancho`.*",
+    "mode_redundant": "💡 *Tip: Como tu modo de juego por defecto es standard, no necesitas agregar `-osu` o `-std` al comando.*"
+  },
   "osu": {
     "profile": {
       "title": "Perfil de osu! de {username}",
