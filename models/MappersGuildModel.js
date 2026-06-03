@@ -6,11 +6,12 @@ const CACHE_DURATION = 15 * 60 * 1000; // 15 minutes cache
 
 /**
  * Obtiene la lista completa de usuarios del Mappers' Guild y filtra a los BNs y NATs.
+ * @param {boolean} force - Si es true, ignora la caché y realiza la petición.
  * @returns {Promise<Array>} Lista de BNs y NATs filtrados.
  */
-async function getBnUsers() {
+async function getBnUsers(force = false) {
     const now = Date.now();
-    if (cachedBnData && (now - lastBnFetch < CACHE_DURATION)) {
+    if (!force && cachedBnData && (now - lastBnFetch < CACHE_DURATION)) {
         return cachedBnData;
     }
 
@@ -76,6 +77,33 @@ async function getBnUsers() {
     }
 }
 
+/**
+ * Inicia el servicio en segundo plano para actualizar los datos de BNs cada hora.
+ */
+function startBnBackgroundService() {
+    const Logger = require("../utils/logger.js");
+    Logger.system("Iniciando servicio de actualización periódica de BNs (Mappers' Guild)...");
+    
+    // Precarga inicial al iniciar el bot
+    getBnUsers(true).then(() => {
+        Logger.system("Datos de BNs (Mappers' Guild) precargados exitosamente en caché.");
+    }).catch(err => {
+        Logger.system(`Error en precarga inicial de BNs: ${err.message}`);
+    });
+
+    // Ejecutar cada 1 hora
+    setInterval(async () => {
+        Logger.system("Ejecutando actualización periódica horaria de BNs...");
+        try {
+            await getBnUsers(true);
+            Logger.system("Actualización periódica de BNs completada exitosamente.");
+        } catch (err) {
+            Logger.system(`Error al actualizar periódicamente los BNs: ${err.message}`);
+        }
+    }, 60 * 60 * 1000); // 1 hora
+}
+
 module.exports = {
-    getBnUsers
+    getBnUsers,
+    startBnBackgroundService
 };

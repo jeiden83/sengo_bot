@@ -119,6 +119,10 @@ async function main(reload) {
     const { initBeatmapCrawler } = require("./services/beatmapCrawler.js");
     initBeatmapCrawler();
 
+    // Inicializar el servicio de actualización horaria de Beatmap Nominators (BN)
+    const MappersGuildModel = require("./models/MappersGuildModel.js");
+    MappersGuildModel.startBnBackgroundService();
+
     // Inicializar el worker silencioso de enriquecimiento de user tags (5 peticiones/min) tras 60 segundos
     setTimeout(() => {
         const { startTagEnricherWorker } = require("./services/tagEnricherWorker.js");
