@@ -6,7 +6,7 @@ const config = require("./config.js");
 const readline = require('readline');
 
 const Logger = require("./utils/logger.js");
-const { syncOlderLogs, analyzeTodayLogs } = require("./services/syncLogs.js");
+const { analyzeTodayLogs } = require("./services/syncLogs.js");
 const fs = require('fs');
 const path = require('path');
 
@@ -78,58 +78,14 @@ async function main(reload) {
     
     res = await connectDB(config);
 
-    if (res.status === 1) {
-        // Inicializar almacenamiento persistente de cumpleaños
-        const BirthdayModel = require("./models/BirthdayModel.js");
-        BirthdayModel.initSupabaseStorage().catch(err => {
-            Logger.system(`Error al inicializar almacenamiento de cumpleaños: ${err.message}`);
-        });
-
-        const { syncYuriImages } = require("./services/yuriSync.js");
-        syncYuriImages(res.supabaseClient).catch(err => {
-            Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
-        });
-    }
-
-    // 3. Si es el primer encendido del día (no existía el archivo log de hoy) y está en Supabase, subir logs de días anteriores
-    if (!todayLogExists && res.status === 1) {
-        syncOlderLogs(res.supabaseClient).catch(err => {
-            Logger.system(`Error en la tarea de sincronización de logs antiguos: ${err.message}`);
-        });
-    }
-
     const ReworkModel = require("./models/ReworkModel.js");
     ReworkModel.initClient(client);
 
     await load_listeners(res, client, config);
 
-    // Inicializar el servidor HTTP de webhook de GitHub (para asegurar el puerto de Render)
-    const { initWebhookServer } = require("./commands/utils/webhook.js");
-    initWebhookServer(client, res, config);
-
-    // Inicializar el servicio de anuncios de cumpleaños
-    const { initBirthdayAnnouncer } = require("./services/birthdayAnnouncer.js");
-    initBirthdayAnnouncer(client);
-
-    // Inicializar el servicio de sincronización diaria de supporter
-    const { initSupporterSync } = require("./services/supporterSync.js");
-    initSupporterSync();
-
-    // Inicializar el servicio de sincronización diaria de beatmaps
-    const { initBeatmapCrawler } = require("./services/beatmapCrawler.js");
-    initBeatmapCrawler();
-
-    // Inicializar el servicio de actualización horaria de Beatmap Nominators (BN)
-    const MappersGuildModel = require("./models/MappersGuildModel.js");
-    MappersGuildModel.startBnBackgroundService();
-
-    // Inicializar el worker silencioso de enriquecimiento de user tags (5 peticiones/min) tras 60 segundos
-    setTimeout(() => {
-        const { startTagEnricherWorker } = require("./services/tagEnricherWorker.js");
-        startTagEnricherWorker().catch(err => {
-            Logger.system(`Error en el worker de user tags: ${err.message}`);
-        });
-    }, 60000);
+    // Inicializar todos los servicios en segundo plano de forma ordenada
+    const { initializeServices } = require("./services/servicesManager.js");
+    initializeServices(client, res, config, todayLogExists);
 
     await login(client, config);  
 
