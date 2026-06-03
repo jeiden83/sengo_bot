@@ -556,11 +556,13 @@ function doOsuBnProfileEmbed(message, bnUser, locale = 'es') {
     if (bnUser.modesInfo && bnUser.modesInfo.length > 0) {
         bnUser.modesInfo.forEach(m => {
             const levelLabel = m.level === 'probation' ? ` (${locale === 'es' ? 'Prueba' : 'Probation'})` : '';
-            modesDetails.push(`• **osu!${m.mode === 'fruits' ? 'catch' : m.mode}**${levelLabel}`);
+            const modeName = m.mode === 'osu' ? 'std' : (m.mode === 'fruits' ? 'catch' : m.mode);
+            modesDetails.push(`• **osu!${modeName}**${levelLabel}`);
         });
     } else if (bnUser.modes) {
         bnUser.modes.forEach(m => {
-            modesDetails.push(`• **osu!${m === 'fruits' ? 'catch' : m}**`);
+            const modeName = m === 'osu' ? 'std' : (m === 'fruits' ? 'catch' : m);
+            modesDetails.push(`• **osu!${modeName}**`);
         });
     }
     
@@ -684,7 +686,7 @@ function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, on
             const isClosed = !bn.requestStatus || bn.requestStatus.includes('closed') || bn.requestStatus.length === 0;
             const statusIcon = isClosed ? '🟥' : '🟩';
             
-            const modesStr = bn.modes ? bn.modes.map(m => m === 'fruits' ? 'catch' : m).join(', ') : 'none';
+            const modesStr = bn.modes ? bn.modes.map(m => m === 'fruits' ? 'catch' : (m === 'osu' ? 'std' : m)).join(', ') : 'none';
             const groupsStr = bn.groups ? bn.groups.filter(g => g !== 'user').map(g => g.toUpperCase()).join('/') : 'BN';
             
             desc += `\`#${globalIndex.toString().padEnd(2, ' ')}\` ▸ ${flag} [**${bn.username}**](https://osu.ppy.sh/users/${bn.osuId}) (${modesStr}) [${groupsStr}] ▸ ${statusIcon}\n`;
