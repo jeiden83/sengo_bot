@@ -190,8 +190,9 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     form.append('username', options.username || 'Sengo User');
     form.append('resolution', options.resolution || '1280x720');
     
-    if (options.discordId) {
-        form.append('discordID', options.discordId);
+    const discordUserId = options.discordUserId || options.discordId;
+    if (discordUserId) {
+        form.append('discordUserId', discordUserId);
     }
 
     // Opciones booleanas por defecto

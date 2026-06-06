@@ -83,7 +83,9 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         replayBuffer,
         fileName,
         skin,
-        resolution
+        resolution,
+        discordUserId: message?.author?.id,
+        ...options
     });
 
     const renderId = renderData.renderID;
