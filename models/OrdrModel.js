@@ -9,6 +9,19 @@ let socket = null;
 let disconnectTimeout = null;
 
 /**
+ * Obtiene y valida la API Key de o!rdr en el entorno.
+ * Filtra marcadores de posición comunes (como 'true', 'false', o 'YOUR_API_KEY').
+ * @returns {string|null} Retorna la API Key válida o null
+ */
+function getValidApiKey() {
+    const apiKey = process.env.ORDR_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'true' || apiKey === 'false' || apiKey === 'YOUR_API_KEY') {
+        return null;
+    }
+    return apiKey;
+}
+
+/**
  * Inicializa y conecta el WebSocket de o!rdr si no está activo.
  */
 function initWebSocket() {
@@ -33,8 +46,8 @@ function initWebSocket() {
 
     socket.on('connect', () => {
         console.log("📡 [OrdrModel] Conectado exitosamente al WebSocket de o!rdr.");
-        const apiKey = process.env.ORDR_API_KEY;
-        if (apiKey && apiKey.trim() !== '') {
+        const apiKey = getValidApiKey();
+        if (apiKey) {
             console.log("🔑 [OrdrModel] Autenticando WebSocket con la API Key...");
             socket.emit('bot_auth', apiKey);
         }
@@ -141,7 +154,7 @@ function obtenerMensajeError(errorCode, locale = 'es') {
  * @returns {Promise<object>} Retorna la respuesta de la API de o!rdr
  */
 async function requestRender({ replayBuffer, fileName, locale = 'es', ...options }) {
-    const apiKey = process.env.ORDR_API_KEY;
+    const apiKey = getValidApiKey();
     const devMode = process.env.ORDR_DEV_MODE === 'true';
     const form = new FormData();
 
@@ -149,10 +162,10 @@ async function requestRender({ replayBuffer, fileName, locale = 'es', ...options
     form.append('replayFile', replayBuffer, { filename: fileName || 'replay.osr' });
 
     // Determinar si usamos la API key real o forzamos Developer Mode
-    if (apiKey && apiKey.trim() !== '' && !devMode) {
+    if (apiKey && !devMode) {
         form.append('apiKey', apiKey);
     } else {
-        console.log(`⚠️ [OrdrModel] ${devMode ? 'ORDR_DEV_MODE activo' : 'ORDR_API_KEY no encontrada en .env'}. Activando Developer Mode de o!rdr.`);
+        console.log(`⚠️ [OrdrModel] ${devMode ? 'ORDR_DEV_MODE activo' : 'ORDR_API_KEY no configurada o es dummy'}. Activando Developer Mode de o!rdr.`);
         form.append('verificationKey', 'devmode_success');
     }
 
