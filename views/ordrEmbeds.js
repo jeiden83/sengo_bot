@@ -56,10 +56,11 @@ function doQueueEmbed(message, renderId, options = {}, locale = 'es') {
  * @param {string|number} progress Porcentaje de progreso (0-100 o texto)
  * @param {string} state Estado del renderizador
  * @param {string} description Descripción del render proveniente de o!rdr
+ * @param {object} options Opciones de configuración del render
  * @param {string} locale Idioma del servidor
  * @returns {EmbedBuilder} EmbedBuilder de Discord
  */
-function doProgressEmbed(message, renderId, progress, state, description, locale = 'es') {
+function doProgressEmbed(message, renderId, progress, state, description, options = {}, locale = 'es') {
     const embedColor = getEmbedColor(message);
     
     // Si o!rdr nos provee detalles del replay (título de canción, etc.), los usamos como descripción
@@ -72,6 +73,8 @@ function doProgressEmbed(message, renderId, progress, state, description, locale
         .setDescription(embedDescription)
         .addFields(
             { name: t(locale, 'render.progress_status'), value: `\`${state}\``, inline: true },
+            { name: t(locale, 'render.queued_skin'), value: `\`${options.skin || 'Default'}\``, inline: true },
+            { name: t(locale, 'render.queued_res'), value: `\`${options.resolution || '1280x720'}\``, inline: true },
             { name: t(locale, 'render.progress_bar'), value: makeProgressBar(progress), inline: false }
         )
         .setColor(embedColor)
@@ -87,10 +90,11 @@ function doProgressEmbed(message, renderId, progress, state, description, locale
  * @param {number} renderId ID del render
  * @param {string} videoUrl Enlace de o!rdr del video finalizado
  * @param {string} description Descripción del replay proveniente de o!rdr
+ * @param {object} options Opciones de configuración del render
  * @param {string} locale Idioma del servidor
  * @returns {object} Objeto conteniendo el embed y los componentes (botones)
  */
-function doDoneEmbed(message, renderId, videoUrl, description, locale = 'es') {
+function doDoneEmbed(message, renderId, videoUrl, description, options = {}, locale = 'es') {
     const embedColor = getEmbedColor(message);
     
     const embedDescription = description 
@@ -100,6 +104,10 @@ function doDoneEmbed(message, renderId, videoUrl, description, locale = 'es') {
     const embed = new EmbedBuilder()
         .setTitle(t(locale, 'render.done_title'))
         .setDescription(embedDescription)
+        .addFields(
+            { name: t(locale, 'render.queued_skin'), value: `\`${options.skin || 'Default'}\``, inline: true },
+            { name: t(locale, 'render.queued_res'), value: `\`${options.resolution || '1280x720'}\``, inline: true }
+        )
         .setColor(embedColor)
         .setFooter({ text: `Sengo • Render ID: #${renderId}`, iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();

@@ -96,6 +96,7 @@ async function run(messages, args) {
                         data.progress,
                         data.state,
                         data.description,
+                        { skin: skinName, resolution },
                         locale
                     );
                     
@@ -113,11 +114,46 @@ async function run(messages, args) {
                     renderId,
                     data.videoUrl,
                     data.description,
+                    { skin: skinName, resolution },
                     locale
                 );
                 
                 try {
-                    await sentMessage.edit({ content: data.videoUrl, embeds: [embed], components });
+                    let files = [];
+                    let content = data.videoUrl;
+                    
+                    try {
+                        console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${data.videoUrl}...`);
+                        const headResponse = await fetch(data.videoUrl, { method: 'HEAD' });
+                        if (headResponse.ok) {
+                            const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
+                            const maxLimit = 25 * 1024 * 1024; // 25 MB
+                            
+                            if (contentLength > 0 && contentLength <= maxLimit) {
+                                console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
+                                const videoResponse = await fetch(data.videoUrl);
+                                if (videoResponse.ok) {
+                                    const videoBuffer = await videoResponse.buffer();
+                                    files.push({
+                                        attachment: videoBuffer,
+                                        name: `sengo_render_${renderId}.mp4`
+                                    });
+                                    content = ''; // Limpiar enlace si logramos adjuntarlo
+                                }
+                            } else {
+                                console.log(`⚠️ [o!rdr] Video demasiado grande para adjuntar (${(contentLength / 1024 / 1024).toFixed(2)} MB).`);
+                            }
+                        }
+                    } catch (fetchErr) {
+                        console.error(`[o!rdr] Error al descargar/comprobar el video:`, fetchErr.message);
+                    }
+
+                    await sentMessage.edit({
+                        content: content || null,
+                        embeds: [embed],
+                        components,
+                        files
+                    });
                 } catch (err) {
                     console.error(`[o!rdr] Error al editar mensaje final para #${renderId}:`, err);
                 }
