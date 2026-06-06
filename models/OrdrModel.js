@@ -254,14 +254,11 @@ function trackProgress(renderId, callbacks, locale = 'es') {
     initWebSocket();
 }
 
-/**
- * Obtiene el preset del usuario enlazado a su ID de Discord en o!rdr.
- * @param {string} discordId ID del usuario en Discord
- * @returns {Promise<object|null>} Información del preset o null si no tiene
- */
 async function getUserPreset(discordId) {
-    const apiKey = getValidApiKey();
-    if (!apiKey) {
+    const prodApiKey = process.env.ORDR_API_KEY;
+    const isDummyKey = !prodApiKey || prodApiKey.trim() === '' || prodApiKey === 'true' || prodApiKey === 'false' || prodApiKey === 'YOUR_API_KEY';
+
+    if (isDummyKey) {
         return {
             isDevSimulated: true,
             presetName: "Preset de Prueba (Modo Dev)",
@@ -272,7 +269,7 @@ async function getUserPreset(discordId) {
     }
 
     try {
-        const response = await fetch(`https://apis.issou.best/ordr/presets/bot?key=${apiKey}&discord_id=${discordId}`);
+        const response = await fetch(`https://apis.issou.best/ordr/presets/bot?key=${prodApiKey}&discord_id=${discordId}`);
         if (!response.ok) {
             if (response.status === 404) {
                 return null;
