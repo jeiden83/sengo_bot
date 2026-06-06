@@ -28,7 +28,7 @@ async function run(messages, args) {
                              `**Última actualización**: \`${lastSaved}\`\n\n` +
                              `🔗 **¿Quieres cambiar tu configuración?**\n` +
                              `Por seguridad, debes hacerlo desde la página oficial de o!rdr iniciando sesión con Discord y guardando tus cambios allí:\n` +
-                             `https://issou.best/ordr`,
+                             `https://ordr.issou.best/`,
                 color: 0x3498db,
                 footer: {
                     text: `Sengo Bot • o!rdr presets`,
