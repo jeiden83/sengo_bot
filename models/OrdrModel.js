@@ -2,6 +2,7 @@ const fetch = require('node-fetch');
 const FormData = require('form-data');
 const { io } = require('socket.io-client');
 const { t } = require('../utils/i18n.js');
+const { getSupabaseClient } = require('../db/database.js');
 
 // Mapa para gestionar los renders activos en seguimiento: renderId -> { callbacks, locale }
 const activeRenders = new Map();
@@ -283,10 +284,52 @@ async function getUserPreset(discordId) {
         throw err;
     }
 }
+/**
+ * Consulta el cooldown de renderizado de un usuario desde Supabase.
+ * @param {string} discordId ID de Discord del usuario
+ * @returns {Promise<number|null>} Timestamp en ms del último render, o null si no existe
+ */
+async function getRenderCooldown(discordId) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+        .from('render_cooldowns')
+        .select('last_render_at')
+        .eq('discord_id', discordId)
+        .maybeSingle();
+
+    if (error) {
+        console.error(`[OrdrModel] Error al consultar cooldown para ${discordId}:`, error.message);
+        return null;
+    }
+
+    if (!data) return null;
+    return new Date(data.last_render_at).getTime();
+}
+
+/**
+ * Registra o actualiza el cooldown de renderizado de un usuario en Supabase.
+ * @param {string} discordId ID de Discord del usuario
+ * @returns {Promise<void>}
+ */
+async function setRenderCooldown(discordId) {
+    const supabase = getSupabaseClient();
+    const { error } = await supabase
+        .from('render_cooldowns')
+        .upsert({
+            discord_id: discordId,
+            last_render_at: new Date().toISOString()
+        }, { onConflict: 'discord_id' });
+
+    if (error) {
+        console.error(`[OrdrModel] Error al guardar cooldown para ${discordId}:`, error.message);
+    }
+}
 
 module.exports = {
     requestRender,
     trackProgress,
     obtenerMensajeError,
-    getUserPreset
+    getUserPreset,
+    getRenderCooldown,
+    setRenderCooldown
 };
