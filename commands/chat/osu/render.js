@@ -3,9 +3,10 @@ const { parseOSR } = require("../../utils/osr_parser.js");
 const { t } = require("../../../utils/i18n.js");
 const OrdrModel = require("../../../models/OrdrModel.js");
 const { doQueueEmbed, doProgressEmbed, doDoneEmbed, doErrorEmbed } = require("../../../views/ordrEmbeds.js");
+const { getSupabaseClient } = require("../../../db/database.js");
 
-// Almacena el timestamp del ultimo render de cada usuario en Discord (cooldown de 5 minutos)
-const renderCooldowns = new Map();
+// Constante de cooldown: 5 minutos en milisegundos
+const RENDER_COOLDOWN_MS = 5 * 60 * 1000;
 
 async function run(messages, args) {
     const { message, reply } = messages;
@@ -122,22 +123,39 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     const { message } = messages;
     const userId = message?.author?.id;
 
-    // Verificar cooldown del usuario en Discord (1 render cada 5 minutos)
+    // Verificar cooldown persistente del usuario en Supabase (1 render cada 5 minutos)
     if (userId) {
-        const lastRender = renderCooldowns.get(userId);
-        if (lastRender) {
-            const timePassed = Date.now() - lastRender;
-            const cooldownTime = 5 * 60 * 1000; // 5 minutos en ms
-            if (timePassed < cooldownTime) {
-                const cooldownEndSeconds = Math.floor((lastRender + cooldownTime) / 1000);
-                const discordTimestamp = `<t:${cooldownEndSeconds}:R>`;
+        try {
+            const supabase = getSupabaseClient();
+            const { data: cooldownRow } = await supabase
+                .from('render_cooldowns')
+                .select('last_render_at')
+                .eq('discord_id', userId)
+                .maybeSingle();
 
-                const errMessage = t(locale, 'render.err_cooldown', {
-                    time: discordTimestamp
-                });
+            if (cooldownRow) {
+                const lastRenderMs = new Date(cooldownRow.last_render_at).getTime();
+                const timePassed = Date.now() - lastRenderMs;
+                if (timePassed < RENDER_COOLDOWN_MS) {
+                    const cooldownEndSeconds = Math.floor((lastRenderMs + RENDER_COOLDOWN_MS) / 1000);
+                    const discordTimestamp = `<t:${cooldownEndSeconds}:R>`;
 
-                throw new Error(`${message.author.toString()}, ${errMessage}`);
+                    const errMessage = t(locale, 'render.err_cooldown', {
+                        time: discordTimestamp
+                    });
+
+                    const cooldownErr = new Error(`${message.author.toString()}, ${errMessage}`);
+                    cooldownErr.isCooldownError = true;
+                    throw cooldownErr;
+                }
             }
+        } catch (err) {
+            // Si es un error de cooldown lanzado por nosotros, re-lanzarlo
+            if (err.isCooldownError) {
+                throw err;
+            }
+            // Errores de DB se ignoran para no bloquear el render
+            console.warn(`[startRenderFlow] Error al consultar cooldown en Supabase para ${userId}:`, err.message);
         }
     }
 
@@ -171,9 +189,19 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         ...options
     });
 
-    // Registrar el timestamp tras la peticion exitosa
+    // Registrar/actualizar el timestamp del cooldown de forma persistente en Supabase
     if (userId) {
-        renderCooldowns.set(userId, Date.now());
+        try {
+            const supabase = getSupabaseClient();
+            await supabase
+                .from('render_cooldowns')
+                .upsert({
+                    discord_id: userId,
+                    last_render_at: new Date().toISOString()
+                }, { onConflict: 'discord_id' });
+        } catch (err) {
+            console.warn(`[startRenderFlow] Error al guardar cooldown en Supabase para ${userId}:`, err.message);
+        }
     }
 
     const renderId = renderData.renderID;
