@@ -1303,6 +1303,7 @@
     "err_too_many_requests": "Has excedido el límite de peticiones de o!rdr (429 Too Many Requests). Por favor, espera unos minutos o usa una API key válida.",
     "no_preset_found": "No tienes ningún preset enlazado a tu ID de Discord en o!rdr.\n\n🔗 Si deseas configurar o cambiar tus preferencias de renderizado (skin, resolución, volumen, etc.), hazlo desde la página de o!rdr iniciando sesión con tu Discord:\nhttps://ordr.issou.best/",
     "err_config_fetch": "Ocurrió un error al intentar consultar tu preset en o!rdr.",
+    "dev_mode_preset_warning": "⚠️ **Modo de desarrollo activo**: El bot está usando datos de prueba simulados porque no tiene configurada una clave de API de o!rdr autorizada. Por lo tanto, no se puede consultar tu configuración real.",
     "errors": {
       "default": "Error desconocido en el renderizador de o!rdr (Código {code})",
       "1": "El ID de la skin proporcionada no existe.",
