@@ -118,7 +118,7 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
                     renderId,
                     data.progress,
                     data.state,
-                    data.description,
+                    options.customDescription || data.description,
                     { skin: skinName, resolution },
                     locale
                 );
@@ -136,7 +136,7 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
                 message,
                 renderId,
                 data.videoUrl,
-                data.description,
+                options.customDescription || data.description,
                 { skin: skinName, resolution },
                 locale
             );

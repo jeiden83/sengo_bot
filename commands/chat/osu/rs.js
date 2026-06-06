@@ -2,7 +2,7 @@ const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatm
 const { t } = require("../../../utils/i18n.js");
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
-const { buildPaginationRow, buildRecentButtonsRow } = require("../../../views/osuViewHelpers.js");
+const { buildPaginationRow, buildRecentButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
@@ -376,11 +376,20 @@ async function run(messages, args) {
                         }
                     };
                     
+                    const username = targetScore.user?.username || 'Usuario';
+                    const artist = targetScore.beatmapset?.artist || '';
+                    const title = targetScore.beatmapset?.title || '';
+                    const version = targetScore.beatmap?.version || '';
+                    const stars = targetScore.beatmap?.difficulty_rating ? ` (${targetScore.beatmap.difficulty_rating.toFixed(2)}★)` : '';
+                    const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
+                    const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
+                    const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
+
                     await renderCmd.startRenderFlow(
                         mockMessages,
                         replayBuffer,
                         `recent_${scoreId}.osr`,
-                        { skin: 'Default', resolution: '1280x720' },
+                        { skin: 'Default', resolution: '1280x720', customDescription },
                         locale
                     );
                     

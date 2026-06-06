@@ -1,4 +1,4 @@
-const { buildPaginationRow, buildCompareSingleButtonsRow } = require("../../../views/osuViewHelpers.js");
+const { buildPaginationRow, buildCompareSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
 const { doOsuCompareSingleEmbed, doOsuCompareListEmbed, getOsuCompareContent } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
@@ -281,11 +281,20 @@ async function run(messages, args) {
                             }
                         };
                         
+                        const username = targetScore.user?.username || 'Usuario';
+                        const artist = targetScore.beatmapset?.artist || '';
+                        const title = targetScore.beatmapset?.title || '';
+                        const version = targetScore.beatmap?.version || '';
+                        const stars = targetScore.beatmap?.difficulty_rating ? ` (${targetScore.beatmap.difficulty_rating.toFixed(2)}★)` : '';
+                        const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
+                        const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
+                        const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
+
                         await renderCmd.startRenderFlow(
                             mockMessages,
                             replayBuffer,
                             `compare_${scoreId}.osr`,
-                            { skin: 'Default', resolution: '1280x720' },
+                            { skin: 'Default', resolution: '1280x720', customDescription },
                             locale
                         );
                         
