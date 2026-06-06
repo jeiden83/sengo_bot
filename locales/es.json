@@ -297,6 +297,11 @@
       "header": "Recomienda mapas de farm (PP) personalizados",
       "body": "Sugiere mapas que coinciden con tu nivel y estilo de juego basándose en la base de datos de beatmaps clasificados de Sengo.\n\n**Parámetros:**\n• `-pp <valor o rango>`: Filtra por un PP objetivo (ej. `-pp 300` o `-pp 250-300`). Si indicas un valor único, buscará dentro de un rango de +-10%.\n• `-mods <mods>`: Filtra recomendaciones para mods específicos (ej. `-mods HDDT`, `-mods HR`, `-mods NM`).\n• `-jugados` o `-played`: Incluye mapas que ya has jugado en tu Top 100 de osu! (por defecto los excluye).\n• `-force` o `-forzar`: Fuerza a recalcular nuevas recomendaciones ignorando la caché.\n\n**Estilos de Juego (Botones interactivos):**\n• **🎯 Saltos**: Filtra mapas con enfoque en patrones de saltos y aim.\n• **⚡ Streams**: Filtra mapas con enfoque en velocidad, stamina y streams.\n• **⏳ Maratones**: Recomienda mapas largos (+5 minutos).\n• **🔮 Loved**: Busca mapas en estado Loved/Qualified en lugar de Ranked/Approved.\n• **🏷️ User Tags**: Filtra exclusivamente mapas que tengan tags de la comunidad cargados en la BD y que tengan afinidad directa con tus patrones más jugados.",
       "usage": "s.recommend [-pp rango] [-mods mod] [-jugados] [-force]\nEjemplos:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -jugados\n- s.recommend -force"
+    },
+    "render": {
+      "header": "Renderiza un replay (.osr) de osu!standard",
+      "body": "Envía un replay de osu!standard a o!rdr para ser renderizado a vídeo. Sube un archivo `.osr` con el comando o responde a un mensaje que lo contenga. Puedes personalizar la skin y resolución con los argumentos.",
+      "usage": "s.render [adjuntando archivo .osr]\ns.render -skin [nombre_skin] -res [1280x720|1920x1080]"
     }
   },
   "contributors": {
@@ -1277,6 +1282,53 @@
     "err_usage": "Uso correcto: `s.entre [jugador1] [jugador2]`. Si solo especificas un jugador, se te comparará a ti (debes estar vinculado).",
     "err_not_linked": "El usuario de Discord <@{id}> no está vinculado a Sengo.",
     "err_not_found": "No se pudo encontrar al jugador `{user}`."
+  },
+  "render": {
+    "queued_title": "🎬 Render Encolado",
+    "queued_desc": "El replay ha sido enviado correctamente a o!rdr y está en la cola.",
+    "queued_id": "ID del Render",
+    "queued_skin": "Skin",
+    "queued_res": "Resolución",
+    "progress_title": "⚙️ Procesando Render",
+    "progress_desc": "Rastreado por WebSocket en tiempo real.",
+    "progress_status": "Estado Actual",
+    "progress_bar": "Progreso",
+    "done_title": "✅ Render Finalizado",
+    "done_desc": "¡El renderizado de tu jugada ha terminado con éxito!",
+    "done_btn": "Ver Video",
+    "error_title": "❌ Error en el Renderizado",
+    "error_desc": "Ocurrió un inconveniente al renderizar la jugada:",
+    "err_no_attachment": "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.",
+    "err_only_std": "Este replay no es de osu!standard. o!rdr y Sengo solo soportan el modo estándar.",
+    "errors": {
+      "default": "Error desconocido en el renderizador de o!rdr (Código {code})",
+      "1": "El ID de la skin proporcionada no existe.",
+      "2": "Ocurrió un error al intentar descargar el replay subido.",
+      "3": "Ocurrió un error de descarga en el servidor de o!rdr.",
+      "4": "Todos los servidores espejo de beatmaps están caídos o inaccesibles.",
+      "5": "El archivo de replay subido no es válido o está corrupto.",
+      "6": "Este replay no es de osu!standard. Sengo y o!rdr solo admiten el modo estándar.",
+      "7": "El beatmap no cuenta con datos de dificultad válidos.",
+      "8": "Ocurrió un error con el beatmap en danser.",
+      "9": "El renderizador de vídeo en el cliente falló.",
+      "10": "Error al codificar el vídeo final.",
+      "11": "Error al subir el vídeo renderizado a los servidores de almacenamiento.",
+      "12": "El beatmap es demasiado largo para ser renderizado.",
+      "13": "El replay no contiene estas de teclado/ratón (está vacío).",
+      "14": "El beatmap no fue encontrado en los servidores espejo de osu!.",
+      "15": "El beatmap no está disponible en la base de datos de osu!.",
+      "16": "El cliente de renderizado tiene una versión desactualizada de danser.",
+      "17": "El beatmap no pudo cargarse debido a un formato no soportado.",
+      "18": "Ocurrió un error inesperado al procesar la cola.",
+      "19": "El renderizador de audio falló.",
+      "20": "La versión del beatmap en el servidor no coincide con la del replay.",
+      "21": "El archivo del replay está corrupto y danser no lo puede leer.",
+      "22": "El servidor de renderizado se quedó sin memoria.",
+      "23": "La skin seleccionada contiene elementos corruptos o inválidos.",
+      "24": "El cliente de renderizado se desconectó a mitad del proceso.",
+      "25": "El renderizado fue cancelado manualmente.",
+      "35": "Falta un campo requerido en la API o es inválido (como la resolución)."
+    }
   }
 }
 

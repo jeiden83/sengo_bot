@@ -297,6 +297,11 @@
       "header": "Recommends personalized farm maps (PP)",
       "body": "Suggests beatmaps matching your skill and playstyle based on Sengo's local database of ranked beatmaps.\n\n**Parameters:**\n• `-pp <value or range>`: Filter by a target PP (e.g. `-pp 300` or `-pp 250-300`). Single values search within a +-10% range.\n• `-mods <mods>`: Filter recommendations for specific mods (e.g. `-mods HDDT`, `-mods HR`, `-mods NM`).\n• `-jugados` or `-played`: Include beatmaps you have already played in your top 100 plays (default excludes them).\n• `-force` or `-forzar`: Forces fresh recommendation calculation ignoring the cache.\n\n**Playstyles (Interactive buttons):**\n• **🎯 Jumps**: Filter maps focusing on jump patterns and aim.\n• **⚡ Streams**: Filter maps focusing on speed, stamina, and streams.\n• **⏳ Marathons**: Recommend long maps (+5 minutes).\n• **🔮 Loved**: Look for Loved/Qualified maps instead of Ranked/Approved.\n• **🏷️ User Tags**: Exclusively filter maps with community tags matching your most played patterns.",
       "usage": "s.recommend [-pp range] [-mods mod] [-played] [-force]\nExamples:\n- s.recommend\n- s.recommend -pp 300\n- s.recommend -pp 250-300 -mods HDDT\n- s.recommend -played\n- s.recommend -force"
+    },
+    "render": {
+      "header": "Renders an osu!standard replay (.osr)",
+      "body": "Sends an osu!standard replay to o!rdr to be rendered to video. Upload an `.osr` file with the command or reply to a message containing one. You can customize the skin and resolution with arguments.",
+      "usage": "s.render [attaching .osr file]\ns.render -skin [skin_name] -res [1280x720|1920x1080]"
     }
   },
   "contributors": {
@@ -1277,6 +1282,53 @@
     "err_usage": "Correct usage: `s.entre [player1] [player2]`. If you only specify one player, you will be compared (you must be linked).",
     "err_not_linked": "Discord user <@{id}> is not linked to Sengo.",
     "err_not_found": "Could not find player `{user}`."
+  },
+  "render": {
+    "queued_title": "🎬 Render Queued",
+    "queued_desc": "The replay has been successfully sent to o!rdr and is in the queue.",
+    "queued_id": "Render ID",
+    "queued_skin": "Skin",
+    "queued_res": "Resolution",
+    "progress_title": "⚙️ Processing Render",
+    "progress_desc": "Tracked via WebSocket in real-time.",
+    "progress_status": "Current Status",
+    "progress_bar": "Progress",
+    "done_title": "✅ Render Finished",
+    "done_desc": "The rendering of your play has completed successfully!",
+    "done_btn": "Watch Video",
+    "error_title": "❌ Render Failed",
+    "error_desc": "An issue occurred while rendering your play:",
+    "err_no_attachment": "Please attach an `.osr` replay file or reply to a message containing one.",
+    "err_only_std": "This replay is not an osu!standard replay. o!rdr and Sengo only support standard mode.",
+    "errors": {
+      "default": "Unknown error in o!rdr renderer (Code {code})",
+      "1": "The provided skin ID does not exist.",
+      "2": "An error occurred while trying to download the uploaded replay.",
+      "3": "A download error occurred on the o!rdr server.",
+      "4": "All beatmap mirror servers are down or unreachable.",
+      "5": "The uploaded replay file is invalid or corrupt.",
+      "6": "This replay is not from osu!standard. Sengo and o!rdr only support standard mode.",
+      "7": "The beatmap has no valid difficulty data.",
+      "8": "An error occurred with the beatmap in danser.",
+      "9": "The video renderer on the client failed.",
+      "10": "Error encoding the final video.",
+      "11": "Error uploading the rendered video to the storage servers.",
+      "12": "The beatmap is too long to be rendered.",
+      "13": "The replay does not contain keyboard/mouse inputs (it is empty).",
+      "14": "The beatmap was not found on osu! mirror servers.",
+      "15": "The beatmap is not available in the osu! database.",
+      "16": "The rendering client is running an outdated version of danser.",
+      "17": "The beatmap could not be loaded due to an unsupported format.",
+      "18": "An unexpected error occurred while processing the queue.",
+      "19": "The audio renderer failed.",
+      "20": "The beatmap version on the server does not match the replay.",
+      "21": "The replay file is corrupt and cannot be read by danser.",
+      "22": "The rendering server ran out of memory.",
+      "23": "The selected skin contains corrupt or invalid elements.",
+      "24": "The rendering client disconnected mid-process.",
+      "25": "The rendering was manually cancelled.",
+      "35": "A required API field is missing or invalid (such as the resolution)."
+    }
   }
 }
 
