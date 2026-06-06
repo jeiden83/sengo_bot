@@ -169,7 +169,7 @@ function getDifficultyEmoji(stars) {
 /**
  * Genera la fila de botones de paginación para Recent Score, añadiendo el botón de renderizar si procede.
  */
-function buildRecentButtonsRow(current, total, score) {
+function buildRecentButtonsRow(current, total, score, renderDisabled = false) {
     const row = buildPaginationRow({ prefix: 'rs', current, total, oneIndexed: true });
     
     const canRender = score && 
@@ -183,6 +183,7 @@ function buildRecentButtonsRow(current, total, score) {
                 .setCustomId('rs_render')
                 .setLabel('🎬')
                 .setStyle(ButtonStyle.Primary)
+                .setDisabled(renderDisabled)
         );
     }
     return row;
@@ -191,7 +192,7 @@ function buildRecentButtonsRow(current, total, score) {
 /**
  * Genera la fila de botones de paginación para Compare Single, añadiendo el botón de renderizar si procede.
  */
-function buildCompareSingleButtonsRow(current, total, score) {
+function buildCompareSingleButtonsRow(current, total, score, renderDisabled = false) {
     const row = buildPaginationRow({
         prefix: 'c_single',
         current,
@@ -211,6 +212,7 @@ function buildCompareSingleButtonsRow(current, total, score) {
                 .setCustomId('c_single_render')
                 .setLabel('🎬')
                 .setStyle(ButtonStyle.Primary)
+                .setDisabled(renderDisabled)
         );
     }
     return row;

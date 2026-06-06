@@ -142,16 +142,17 @@ function obtenerMensajeError(errorCode, locale = 'es') {
  */
 async function requestRender({ replayBuffer, fileName, locale = 'es', ...options }) {
     const apiKey = process.env.ORDR_API_KEY;
+    const devMode = process.env.ORDR_DEV_MODE === 'true';
     const form = new FormData();
 
     // Adjuntar archivo .osr
     form.append('replayFile', replayBuffer, { filename: fileName || 'replay.osr' });
 
     // Determinar si usamos la API key real o forzamos Developer Mode
-    if (apiKey && apiKey.trim() !== '') {
+    if (apiKey && apiKey.trim() !== '' && !devMode) {
         form.append('apiKey', apiKey);
     } else {
-        console.log("⚠️ [OrdrModel] ORDR_API_KEY no encontrada en .env. Activando Developer Mode de o!rdr.");
+        console.log(`⚠️ [OrdrModel] ${devMode ? 'ORDR_DEV_MODE activo' : 'ORDR_API_KEY no encontrada en .env'}. Activando Developer Mode de o!rdr.`);
         form.append('verificationKey', 'devmode_success');
     }
 

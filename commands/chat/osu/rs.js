@@ -322,9 +322,21 @@ async function run(messages, args) {
     collector.on('collect', async i => {
         try {
             if (i.customId === 'rs_render') {
-                await i.deferUpdate(); // confirmamos la pulsación del botón
-                
                 const targetScore = parser_res.fn_response[index - 1];
+                
+                // Deshabilitar botón de render en el mensaje original para evitar flood
+                try {
+                    const updatedRow = buildRecentButtonsRow(index, total_plays, targetScore, true);
+                    if (typeof i.update === 'function') {
+                        await i.update({ components: [updatedRow] });
+                    } else {
+                        await i.deferUpdate();
+                    }
+                } catch (err) {
+                    console.error("Error al deshabilitar el botón de render en rs:", err);
+                    try { await i.deferUpdate(); } catch {}
+                }
+                
                 const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${targetScore.user?.username || 'Usuario'}**...`);
                 
                 try {
