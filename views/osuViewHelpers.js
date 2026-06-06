@@ -174,7 +174,8 @@ function buildRecentButtonsRow(current, total, score) {
     
     const canRender = score && 
                       (score.mode === 'osu' || score.ruleset_id === 0) && 
-                      (score.id !== undefined && score.id !== null);
+                      (score.id !== undefined && score.id !== null) &&
+                      score.replay === true;
                       
     if (canRender) {
         row.addComponents(
@@ -201,7 +202,8 @@ function buildCompareSingleButtonsRow(current, total, score) {
     
     const canRender = score && 
                       (score.mode === 'osu' || score.ruleset_id === 0) && 
-                      (score.id !== undefined && score.id !== null);
+                      (score.id !== undefined && score.id !== null) &&
+                      score.replay === true;
                       
     if (canRender) {
         row.addComponents(

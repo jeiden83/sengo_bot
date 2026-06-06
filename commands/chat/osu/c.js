@@ -250,9 +250,8 @@ async function run(messages, args) {
                             throw new Error("No token available");
                         }
                         
-                        const mode = targetScore.mode || 'osu';
                         const scoreId = targetScore.id;
-                        const url = `https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`;
+                        const url = `https://osu.ppy.sh/api/v2/scores/${scoreId}/download`;
                         
                         const downloadRes = await fetch(url, {
                             headers: {
