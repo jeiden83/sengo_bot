@@ -21,11 +21,8 @@ function getValidApiKey() {
     if (process.env.ORDR_DEV_MODE === 'true' || process.env.ORDR_API_KEY === 'true' || process.env.ORDR_API_KEY === 'false') {
         return null;
     }
-    let apiKey = process.env.ORDR_API_KEY;
+    const apiKey = process.env.ORDR_API_KEY;
     if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_API_KEY') {
-        apiKey = process.env.RENDER_KEY;
-    }
-    if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_API_KEY' || apiKey === 'true' || apiKey === 'false') {
         return null;
     }
     return apiKey;
