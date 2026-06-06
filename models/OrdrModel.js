@@ -196,7 +196,7 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     // Determinar si usamos la API key real o forzamos Developer Mode
     const isDevMode = !apiKey || devMode;
     if (!isDevMode) {
-        form.append('apiKey', apiKey);
+        form.append('verificationKey', apiKey);
     } else {
         console.log(`⚠️ [OrdrModel] ${devMode ? 'ORDR_DEV_MODE activo' : 'ORDR_API_KEY no configurada o es dummy'}. Activando Developer Mode de o!rdr.`);
         form.append('verificationKey', 'devmode_success');
