@@ -495,6 +495,134 @@ async function run(messages, args) {
     let preferredMod = "NM";
     let suggestedMod;
     let profile;
+    let totalHotScrapes = 0;
+
+    async function fetchAndFilterRecs(targetMinPP, targetMaxPP, localSkipSet, isFallbackRun = false) {
+        const candidates = await RecommendationModel.getPersonalizedRecommendations({
+            topScores,
+            customMinPP: targetMinPP,
+            customMaxPP: targetMaxPP,
+            customMods: customMods,
+            style: currentStyle,
+            customUserTag: customUserTag,
+            showPlayed,
+            skipSet: localSkipSet
+        });
+
+        const acceptedHigh = [];
+        const acceptedMid = [];
+        const acceptedLow = [];
+        const seenBeatmapsets = new Set();
+
+        for (const candidate of candidates) {
+            if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
+                break;
+            }
+            if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
+
+            const pop = candidate.popularity;
+            if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
+            if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
+            if (pop < 150000 && acceptedLow.length >= 10) continue;
+
+            const idStr = candidate.beatmapId.toString();
+            const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
+
+            const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
+            
+            let tagIsValid = true;
+            if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
+                const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
+                if (memValid !== null) {
+                    tagIsValid = memValid;
+                } else {
+                    // Limitar a un máximo de 6 scrapes en caliente acumulados por comando
+                    if (totalHotScrapes < 6) {
+                        totalHotScrapes++;
+                        tagIsValid = await RecommendationModel.validateCandidateTags(
+                            candidate.beatmapId, 
+                            candidate.beatmapsetId, 
+                            customUserTag, 
+                            currentStyle
+                        );
+                    } else {
+                        tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
+                    }
+                }
+            }
+            if (!tagIsValid) continue;
+
+            let accepted = false;
+            if (showPlayed) {
+                if (hasScore) accepted = true;
+            } else {
+                if (!hasScore) accepted = true;
+            }
+
+            if (accepted) {
+                seenBeatmapsets.add(candidate.beatmapsetId);
+                
+                // Si es un fallback/búsqueda relajada, reducir su matchScore en base al desvío de parámetros
+                if (isFallbackRun) {
+                    candidate.matchScore = Math.max(45, Math.round(candidate.matchScore * 0.80));
+                    candidate.isRandomAffinity = true; // Agrega el emoji 🎲
+                    if (!candidate.matchReasons.includes("Rango PP ampliado")) {
+                        candidate.matchReasons.push("Rango PP/BPM ampliado");
+                    }
+                }
+                
+                if (pop >= 1000000) {
+                    acceptedHigh.push(candidate);
+                } else if (pop >= 150000) {
+                    acceptedMid.push(candidate);
+                } else {
+                    acceptedLow.push(candidate);
+                }
+            }
+
+            if (!isCached) {
+                await new Promise(resolve => setTimeout(resolve, 80));
+            }
+        }
+
+        // Ordenar cada lista por afinidad descendente usando rawScore
+        acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
+        acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
+        acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
+
+        const result = [];
+        // Intentar tomar la mejor de cada categoría usando selectRecommendedFromTier
+        const rec1 = selectRecommendedFromTier(acceptedHigh);
+        const rec2 = selectRecommendedFromTier(acceptedMid);
+        const rec3 = selectRecommendedFromTier(acceptedLow);
+        
+        if (rec1) result.push(rec1);
+        if (rec2) result.push(rec2);
+        if (rec3) result.push(rec3);
+
+        // Si no llegamos a 3, rellenamos con el resto
+        if (result.length < 3) {
+            const remaining = [];
+            const usedIds = new Set(result.map(r => r.beatmapId));
+            const allRemaining = [
+                ...acceptedHigh,
+                ...acceptedMid,
+                ...acceptedLow
+            ];
+            allRemaining.forEach(c => {
+                if (!usedIds.has(c.beatmapId)) {
+                    remaining.push(c);
+                }
+            });
+            remaining.sort((a, b) => b.rawScore - a.rawScore);
+            for (const item of remaining) {
+                if (result.length >= 3) break;
+                result.push(item);
+            }
+        }
+
+        return result;
+    }
 
     const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     if (activeGamemode !== "osu") {
@@ -567,134 +695,6 @@ async function run(messages, args) {
         }
 
         const skipSetLocal = new Set();
-        let totalHotScrapes = 0;
-
-        async function fetchAndFilterRecs(targetMinPP, targetMaxPP, localSkipSet, isFallbackRun = false) {
-            const candidates = await RecommendationModel.getPersonalizedRecommendations({
-                topScores,
-                customMinPP: targetMinPP,
-                customMaxPP: targetMaxPP,
-                customMods: customMods,
-                style: currentStyle,
-                customUserTag: customUserTag,
-                showPlayed,
-                skipSet: localSkipSet
-            });
-
-            const acceptedHigh = [];
-            const acceptedMid = [];
-            const acceptedLow = [];
-            const seenBeatmapsets = new Set();
-
-            for (const candidate of candidates) {
-                if (acceptedHigh.length >= 10 && acceptedMid.length >= 10 && acceptedLow.length >= 10) {
-                    break;
-                }
-                if (seenBeatmapsets.has(candidate.beatmapsetId)) continue;
-
-                const pop = candidate.popularity;
-                if (pop >= 1000000 && acceptedHigh.length >= 10) continue;
-                if (pop >= 150000 && pop < 1000000 && acceptedMid.length >= 10) continue;
-                if (pop < 150000 && acceptedLow.length >= 10) continue;
-
-                const idStr = candidate.beatmapId.toString();
-                const isCached = scoreCheckCache.has(`${osuUserId}:${idStr}:${activeGamemode}`) || (top100Ids && top100Ids.has(idStr));
-
-                const hasScore = await checkHasScore(candidate.beatmapId, osuUserId, activeGamemode, top100Ids);
-                
-                let tagIsValid = true;
-                if (customUserTag || ['aim', 'speed'].includes(currentStyle)) {
-                    const memValid = RecommendationModel.isCandidateTagValidInMemory(candidate, customUserTag, currentStyle);
-                    if (memValid !== null) {
-                        tagIsValid = memValid;
-                    } else {
-                        // Limitar a un máximo de 6 scrapes en caliente acumulados por comando
-                        if (totalHotScrapes < 6) {
-                            totalHotScrapes++;
-                            tagIsValid = await RecommendationModel.validateCandidateTags(
-                                candidate.beatmapId, 
-                                candidate.beatmapsetId, 
-                                customUserTag, 
-                                currentStyle
-                            );
-                        } else {
-                            tagIsValid = false; // Detener scraping en caliente para evitar latencias de Discord
-                        }
-                    }
-                }
-                if (!tagIsValid) continue;
-
-                let accepted = false;
-                if (showPlayed) {
-                    if (hasScore) accepted = true;
-                } else {
-                    if (!hasScore) accepted = true;
-                }
-
-                if (accepted) {
-                    seenBeatmapsets.add(candidate.beatmapsetId);
-                    
-                    // Si es un fallback/búsqueda relajada, reducir su matchScore en base al desvío de parámetros
-                    if (isFallbackRun) {
-                        candidate.matchScore = Math.max(45, Math.round(candidate.matchScore * 0.80));
-                        candidate.isRandomAffinity = true; // Agrega el emoji 🎲
-                        if (!candidate.matchReasons.includes("Rango PP ampliado")) {
-                            candidate.matchReasons.push("Rango PP/BPM ampliado");
-                        }
-                    }
-                    
-                    if (pop >= 1000000) {
-                        acceptedHigh.push(candidate);
-                    } else if (pop >= 150000) {
-                        acceptedMid.push(candidate);
-                    } else {
-                        acceptedLow.push(candidate);
-                    }
-                }
-
-                if (!isCached) {
-                    await new Promise(resolve => setTimeout(resolve, 80));
-                }
-            }
-
-            // Ordenar cada lista por afinidad descendente usando rawScore
-            acceptedHigh.sort((a, b) => b.rawScore - a.rawScore);
-            acceptedMid.sort((a, b) => b.rawScore - a.rawScore);
-            acceptedLow.sort((a, b) => b.rawScore - a.rawScore);
-
-            const result = [];
-            // Intentar tomar la mejor de cada categoría usando selectRecommendedFromTier
-            const rec1 = selectRecommendedFromTier(acceptedHigh);
-            const rec2 = selectRecommendedFromTier(acceptedMid);
-            const rec3 = selectRecommendedFromTier(acceptedLow);
-            
-            if (rec1) result.push(rec1);
-            if (rec2) result.push(rec2);
-            if (rec3) result.push(rec3);
-
-            // Si no llegamos a 3, rellenamos con el resto
-            if (result.length < 3) {
-                const remaining = [];
-                const usedIds = new Set(result.map(r => r.beatmapId));
-                const allRemaining = [
-                    ...acceptedHigh,
-                    ...acceptedMid,
-                    ...acceptedLow
-                ];
-                allRemaining.forEach(c => {
-                    if (!usedIds.has(c.beatmapId)) {
-                        remaining.push(c);
-                    }
-                });
-                remaining.sort((a, b) => b.rawScore - a.rawScore);
-                for (const item of remaining) {
-                    if (result.length >= 3) break;
-                    result.push(item);
-                }
-            }
-
-            return result;
-        }
 
         async function getRecommendations() {
             try {
