@@ -230,7 +230,7 @@
     },
     "entre": {
       "header": "Compara estadísticas entre dos jugadores",
-      "body": "Compara las estadísticas generales (PP, Rango, Rango Nacional, Acc, Ranked Score, Top Play, Partidas, Tiempo, Nivel) de dos jugadores en osu! y determina quién gana la mayoría.",
+      "body": "Compara las estadísticas generales (PP, Rango, Max Combo, Acc, Ranked Score, Top Play, Partidas, Tiempo, Nivel) de dos jugadores en osu! y determina quién gana la mayoría.",
       "usage": "s.entre [jugador1] [jugador2]\ns.entre [jugador1] [jugador2] -mania\ns.entre [jugador1] [jugador2] -gatari"
     },
     "gap": {
@@ -1214,8 +1214,8 @@
     "stat_pp_short": "PP",
     "stat_rank": "Rango Global",
     "stat_rank_short": "Rango",
-    "stat_c_rank": "Rango Nacional",
-    "stat_c_rank_short": "Nacional",
+    "stat_max_combo": "Combo Máximo",
+    "stat_max_combo_short": "Max Combo",
     "stat_acc": "Precisión",
     "stat_acc_short": "Acc",
     "stat_playcount": "Partidas",

@@ -230,7 +230,7 @@
     },
     "entre": {
       "header": "Compare general statistics between two players",
-      "body": "Compares general statistics (PP, Rank, National Rank, Acc, Ranked Score, Top Play, Play Count, Play Time, Level) of two players in osu! and determines who wins the majority.",
+      "body": "Compares general statistics (PP, Rank, Max Combo, Acc, Ranked Score, Top Play, Play Count, Play Time, Level) of two players in osu! and determines who wins the majority.",
       "usage": "s.entre [player1] [player2]\ns.entre [player1] [player2] -mania\ns.entre [player1] [player2] -gatari"
     },
     "gap": {
@@ -1214,8 +1214,8 @@
     "stat_pp_short": "PP",
     "stat_rank": "Global Rank",
     "stat_rank_short": "Rank",
-    "stat_c_rank": "National Rank",
-    "stat_c_rank_short": "National",
+    "stat_max_combo": "Max Combo",
+    "stat_max_combo_short": "Max Combo",
     "stat_acc": "Accuracy",
     "stat_acc_short": "Acc",
     "stat_playcount": "Play Count",

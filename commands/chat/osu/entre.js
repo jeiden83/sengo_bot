@@ -135,17 +135,11 @@ async function run(messages, args) {
         else if (rankB < rankA) winsB++;
     }
 
-    // Country Rank (lower is better, handle nulls)
-    const cRankA = userA.statistics.rank?.country;
-    const cRankB = userB.statistics.rank?.country;
-    if (!cRankA && cRankB) {
-        winsB++;
-    } else if (cRankA && !cRankB) {
-        winsA++;
-    } else if (cRankA && cRankB) {
-        if (cRankA < cRankB) winsA++;
-        else if (cRankB < cRankA) winsB++;
-    }
+    // Max Combo
+    const mcA = userA.statistics.maximum_combo || 0;
+    const mcB = userB.statistics.maximum_combo || 0;
+    if (mcA > mcB) winsA++;
+    else if (mcB > mcA) winsB++;
 
     // Accuracy
     const accA = userA.statistics.hit_accuracy || 0;
@@ -184,6 +178,12 @@ async function run(messages, args) {
     const embed = doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale, topPpA, topPpB);
     return { embeds: [embed] };
 }
+
+run.alias = {
+    "vs": {
+        "args": ""
+    },
+};
 
 run.description = {
     'header': t('es', 'commands.entre.header'),

@@ -747,23 +747,12 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const rankAStr = rankA ? '#' + rankA.toLocaleString(locTag) : 'N/A';
     const rankBStr = rankB ? '#' + rankB.toLocaleString(locTag) : 'N/A';
 
-    // Rango Nacional (Country Rank)
-    const cRankA = userA.statistics.rank?.country;
-    const cRankB = userB.statistics.rank?.country;
-    let markersCRank = { a: '', a_end: '', b: '', b_end: '' };
-    if (!cRankA && cRankB) {
-        markersCRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
-    } else if (cRankA && !cRankB) {
-        markersCRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
-    } else if (cRankA && cRankB) {
-        if (cRankA < cRankB) {
-            markersCRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
-        } else if (cRankB < cRankA) {
-            markersCRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
-        }
-    }
-    const cRankAStr = cRankA ? '#' + cRankA.toLocaleString(locTag) : 'N/A';
-    const cRankBStr = cRankB ? '#' + cRankB.toLocaleString(locTag) : 'N/A';
+    // Max Combo
+    const mcA = userA.statistics.maximum_combo || 0;
+    const mcB = userB.statistics.maximum_combo || 0;
+    const markersMc = getMarkers(mcA, mcB);
+    const mcAStr = mcA.toLocaleString(locTag) + 'x';
+    const mcBStr = mcB.toLocaleString(locTag) + 'x';
 
     // Accuracy
     const accA = userA.statistics.hit_accuracy || 0;
@@ -889,7 +878,7 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const blockRows = [
         formatRow(t(locale, 'entre.stat_pp_short'), ppAStr, ppBStr, markersPP, markersPP),
         formatRow(t(locale, 'entre.stat_rank_short'), rankAStr, rankBStr, markersRank, markersRank),
-        formatRow(t(locale, 'entre.stat_c_rank_short'), cRankAStr, cRankBStr, markersCRank, markersCRank),
+        formatRow(t(locale, 'entre.stat_max_combo_short'), mcAStr, mcBStr, markersMc, markersMc),
         formatRow(t(locale, 'entre.stat_acc_short'), accAStr, accBStr, markersAcc, markersAcc),
         formatRow(t(locale, 'entre.stat_ranked_score_short'), rsAStr, rsBStr, markersRs, markersRs),
         formatRow(t(locale, 'entre.stat_top_play_short'), topPpAStr, topPpBStr, markersTopPp, markersTopPp),
