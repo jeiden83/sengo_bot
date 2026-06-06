@@ -171,6 +171,17 @@ async function requestRender({ replayBuffer, fileName, locale = 'es', ...options
     });
 }
 
+const ALLOWED_RENDER_OPTIONS = [
+    'skin', 'customSkin', 'resolution', 'globalVolume', 'musicVolume', 'hitsoundVolume',
+    'showHitErrorMeter', 'showUnstableRate', 'showScore', 'showHPBar', 'showComboCounter',
+    'showPPCounter', 'showScoreboard', 'showBorders', 'showMods', 'showResultScreen',
+    'showAimErrorMeter', 'showHitCounter', 'showKeyOverlay', 'useSkinCursor', 'useSkinColors',
+    'useSkinHitsounds', 'useBeatmapColors', 'loadStoryboard', 'loadVideo', 'introBGDim',
+    'inGameBGDim', 'breakBGDim', 'showDanserLogo', 'skip', 'cursorSize', 'cursorTrail',
+    'sliderSnakingIn', 'sliderSnakingOut', 'showAvatarsOnScoreboard', 'playNightcoreSamples',
+    'showStrainGraph', 'showSliderBreaks', 'ignoreFail'
+];
+
 /**
  * Realiza la peticion real HTTP a la API de o!rdr.
  */
@@ -191,26 +202,37 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
         form.append('verificationKey', 'devmode_success');
     }
 
-    // El campo 'skin' es físicamente obligatorio para la validación HTTP de o!rdr.
-    // Si no se especifica, enviamos 'default' como placeholder. Si se proporciona 'discordUserId'
-    // con una API key válida, o!rdr aplicará automáticamente el preset del usuario sobrescribiendo este valor.
-    const skinToSend = options.skin || 'default';
-    form.append('skin', skinToSend);
+    // Asegurarse de que skin y resolution tengan valores obligatorios por defecto si no vienen
+    if (!options.skin) {
+        options.skin = 'default';
+    }
+    if (!options.resolution) {
+        options.resolution = '1280x720';
+    }
+    if (!options.username) {
+        options.username = 'Sengo User';
+    }
 
-    form.append('username', options.username || 'Sengo User');
-    form.append('resolution', options.resolution || '1280x720');
-    
     const discordUserId = options.discordUserId || options.discordId;
     if (discordUserId) {
         form.append('discordUserId', discordUserId);
     }
 
-    // Opciones booleanas por defecto
-    form.append('showKeyOverlay', (options.showKeyOverlay !== false).toString());
-    form.append('showHitCounter', (options.showHitCounter === true).toString());
+    // Mapear todas las opciones permitidas al FormData de forma dinámica
+    for (const key of ALLOWED_RENDER_OPTIONS) {
+        if (options[key] !== undefined && options[key] !== null) {
+            let val = options[key];
+            if (typeof val === 'boolean') {
+                val = val.toString();
+            } else {
+                val = String(val);
+            }
+            form.append(key, val);
+        }
+    }
 
     // Log de depuración con los campos que se enviarán (sin mostrar el buffer)
-    console.log(`📤 [OrdrModel] Enviando solicitud a la API de o!rdr... (devMode=${isDevMode}, skinToSend=${skinToSend}, discordUserId=${discordUserId || 'N/A'})`);
+    console.log(`📤 [OrdrModel] Enviando solicitud a la API de o!rdr... (devMode=${isDevMode}, skin=${options.skin}, discordUserId=${discordUserId || 'N/A'})`);
     const response = await fetch('https://apis.issou.best/ordr/renders', {
         method: 'POST',
         body: form,
@@ -331,11 +353,25 @@ async function setRenderCooldown(discordId) {
     }
 }
 
+async function getCustomSkinInfo(customSkinId) {
+    try {
+        const response = await fetch(`https://apis.issou.best/ordr/skins/custom/${customSkinId}`);
+        if (!response.ok) {
+            return null;
+        }
+        return await response.json();
+    } catch (err) {
+        console.error(`Error al obtener skin custom ${customSkinId}:`, err);
+        return null;
+    }
+}
+
 module.exports = {
     requestRender,
     trackProgress,
     obtenerMensajeError,
     getUserPreset,
+    getCustomSkinInfo,
     getRenderCooldown,
     setRenderCooldown
 };
