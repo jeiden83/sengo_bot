@@ -166,11 +166,11 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     if (!options.skinSpecified) {
         try {
             const preset = await OrdrModel.getUserPreset(userId);
-            if (preset) {
-                // Tiene preset → NO enviar skin para que o!rdr aplique su preset automáticamente
+            if (preset && !preset.isDevSimulated) {
+                // Tiene preset real → NO enviar skin para que o!rdr aplique su preset automáticamente
                 skin = undefined;
             } else {
-                // No tiene preset → fallback a la skin estándar de osu! en o!rdr
+                // No tiene preset o es simulado (dev mode) → fallback a la skin estándar de osu! en o!rdr
                 skin = 'default';
             }
         } catch (err) {
@@ -179,15 +179,24 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         }
     }
 
-    // Enviar solicitud de renderizado a o!rdr
-    const renderData = await OrdrModel.requestRender({
+    // Construir parámetros finales de renderizado (sin incluir campos internos como skinSpecified)
+    const renderParams = {
         replayBuffer,
         fileName,
-        skin,
         resolution,
         discordUserId: userId,
-        ...options
-    });
+        locale
+    };
+
+    // Solo incluir skin si fue resuelto (evita enviar undefined que rompe la API)
+    if (skin) {
+        renderParams.skin = skin;
+    }
+
+    console.log(`🎨 [Render] Parámetros finales: skin=${skin || '(omitido/preset)'}, resolution=${resolution}, discordUserId=${userId}`);
+
+    // Enviar solicitud de renderizado a o!rdr
+    const renderData = await OrdrModel.requestRender(renderParams);
 
     // Registrar cooldown del usuario en la base de datos
     if (userId) {

@@ -183,7 +183,8 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     form.append('replayFile', replayBuffer, { filename: fileName || 'replay.osr' });
 
     // Determinar si usamos la API key real o forzamos Developer Mode
-    if (apiKey && !devMode) {
+    const isDevMode = !apiKey || devMode;
+    if (!isDevMode) {
         form.append('apiKey', apiKey);
     } else {
         console.log(`⚠️ [OrdrModel] ${devMode ? 'ORDR_DEV_MODE activo' : 'ORDR_API_KEY no configurada o es dummy'}. Activando Developer Mode de o!rdr.`);
@@ -191,10 +192,17 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     }
 
     // Configurar opciones estéticas por defecto si no se indican
-    // Si skin es undefined, NO se envía para que o!rdr aplique el preset del usuario automáticamente
+    // Si hay API key real y skin no fue especificado, o!rdr aplica el preset del usuario automáticamente vía discordUserId.
+    // En dev mode, discordUserId NO aplica presets, así que 'skin' es OBLIGATORIO.
     if (options.skin) {
         form.append('skin', options.skin);
+    } else if (isDevMode) {
+        // Forzar skin en dev mode para evitar error 35 (campo obligatorio faltante)
+        console.log(`⚠️ [OrdrModel] Dev mode activo y skin no proporcionado. Forzando skin='default' para evitar error 35.`);
+        form.append('skin', 'default');
     }
+    // Si !isDevMode y !options.skin → se omite skin para que o!rdr aplique preset automáticamente
+
     form.append('username', options.username || 'Sengo User');
     form.append('resolution', options.resolution || '1280x720');
     
@@ -207,7 +215,8 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     form.append('showKeyOverlay', (options.showKeyOverlay !== false).toString());
     form.append('showHitCounter', (options.showHitCounter === true).toString());
 
-    console.log("📤 [OrdrModel] Enviando solicitud a la API de o!rdr...");
+    // Log de depuración con los campos que se enviarán (sin mostrar el buffer)
+    console.log(`📤 [OrdrModel] Enviando solicitud a la API de o!rdr... (devMode=${isDevMode}, skin=${options.skin || (isDevMode ? 'default (forzado)' : '(preset)')}, discordUserId=${discordUserId || 'N/A'})`);
     const response = await fetch('https://apis.issou.best/ordr/renders', {
         method: 'POST',
         body: form,
