@@ -80,13 +80,15 @@ async function run(messages, args) {
         }
 
         // 4. Parsear parámetros opcionales -skin y -res
-        let skin = 'Default';
+        let skin = undefined;
         let resolution = '1280x720';
+        let skinSpecified = false;
 
         for (let i = 0; i < args.length; i++) {
             const arg = args[i].toLowerCase();
             if (arg === '-skin' && i + 1 < args.length) {
                 skin = args[i + 1];
+                skinSpecified = true;
                 i++;
             } else if ((arg === '-res' || arg === '-resolution') && i + 1 < args.length) {
                 resolution = args[i + 1];
@@ -95,7 +97,7 @@ async function run(messages, args) {
         }
 
         // 5. Iniciar el flujo de renderizado asíncronamente
-        await startRenderFlow(messages, replayBuffer, attachment.name, { skin, resolution }, locale);
+        await startRenderFlow(messages, replayBuffer, attachment.name, { skin, resolution, skinSpecified }, locale);
         return;
 
     } catch (err) {
@@ -139,8 +141,25 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         }
     }
 
-    const skin = options.skin || 'Default';
+    let skin = options.skin;
     const resolution = options.resolution || '1280x720';
+
+    // Si el usuario no especificó skin de forma explícita, verificamos su preset de o!rdr
+    if (!options.skinSpecified) {
+        try {
+            const preset = await OrdrModel.getUserPreset(userId);
+            if (preset) {
+                // Si tiene preset, dejamos skin como undefined para que o!rdr lo aplique de forma nativa
+                skin = undefined;
+            } else {
+                // Fallback a la skin por defecto de osu! en o!rdr ('default')
+                skin = 'default';
+            }
+        } catch (err) {
+            console.warn(`[startRenderFlow] No se pudo obtener el preset para el usuario ${userId}, usando fallback 'default':`, err.message);
+            skin = 'default';
+        }
+    }
 
     // Enviar solicitud de renderizado a o!rdr
     const renderData = await OrdrModel.requestRender({
@@ -158,10 +177,10 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     }
 
     const renderId = renderData.renderID;
-    const skinName = renderData.skin || skin;
+    const skinDisplay = skin || t(locale, 'render.preset_skin') || 'Preset';
 
     // Enviar embed de encolado inicial
-    const queueEmbed = doQueueEmbed(message, renderId, { skin: skinName, resolution }, locale);
+    const queueEmbed = doQueueEmbed(message, renderId, { skin: skinDisplay, resolution }, locale);
     const sentMessage = await message.channel.send({ embeds: [queueEmbed] });
 
     // Variables para control de actualizaciones (throttling) y evitar límites de rate de Discord
