@@ -45,7 +45,26 @@ class OsuApiQueue {
             this.lastRequestTime = Date.now();
 
             try {
-                const result = await item.requestFn();
+                // Wrapper de timeout para evitar bloqueos permanentes de la cola ante API muerta/colgada
+                const runWithTimeout = (fn, timeoutMs = 15000) => {
+                    return new Promise((resolve, reject) => {
+                        const timer = setTimeout(() => {
+                            reject(new Error("Timeout: La petición a la API de osu! superó el límite de la cola (15s)."));
+                        }, timeoutMs);
+
+                        Promise.resolve(fn())
+                            .then(res => {
+                                clearTimeout(timer);
+                                resolve(res);
+                            })
+                            .catch(err => {
+                                clearTimeout(timer);
+                                reject(err);
+                            });
+                    });
+                };
+
+                const result = await runWithTimeout(item.requestFn, 15000);
                 item.resolve(result);
                 
                 // Si la petición fue exitosa, reducir gradualmente el delay de vuelta al mínimo (100ms)
