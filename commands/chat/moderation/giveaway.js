@@ -58,17 +58,17 @@ async function run(messages, args) {
             headerText: t(locale, 'giveaway.help_header'),
             fields: [
                 {
-                    name: `📝 ${t(locale, 'giveaway.help_desc_title')}`,
+                    name: t(locale, 'giveaway.help_desc_title'),
                     value: t(locale, 'giveaway.help_desc_value'),
                     inline: false
                 },
                 {
-                    name: `❓ ${t(locale, 'giveaway.help_usage_title')}`,
+                    name: t(locale, 'giveaway.help_usage_title'),
                     value: `\`\`\`\n${prefix}${trigger} crear <#canal> <ganadores> <tiempo> <premio>\n${prefix}${trigger} terminar <mensaje_id|enlace>\n${prefix}${trigger} reroll <mensaje_id|enlace>\n\`\`\``,
                     inline: false
                 },
                 {
-                    name: `🔗 ${t(locale, 'giveaway.help_alias_title')}`,
+                    name: t(locale, 'giveaway.help_alias_title'),
                     value: "`sorteo`",
                     inline: true
                 }
