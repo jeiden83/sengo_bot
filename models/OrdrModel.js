@@ -190,9 +190,7 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     }
 
     // Configurar opciones estéticas por defecto si no se indican
-    if (options.skin) {
-        form.append('skin', options.skin);
-    }
+    form.append('skin', options.skin || 'default');
     form.append('username', options.username || 'Sengo User');
     form.append('resolution', options.resolution || '1280x720');
     

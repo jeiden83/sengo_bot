@@ -148,9 +148,9 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     if (!options.skinSpecified) {
         try {
             const preset = await OrdrModel.getUserPreset(userId);
-            if (preset) {
-                // Si tiene preset, dejamos skin como undefined para que o!rdr lo aplique de forma nativa
-                skin = undefined;
+            if (preset && preset.skin) {
+                // Si tiene preset, usamos la skin de su preset
+                skin = preset.skin;
             } else {
                 // Fallback a la skin por defecto de osu! en o!rdr ('default')
                 skin = 'default';
