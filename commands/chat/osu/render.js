@@ -100,6 +100,9 @@ async function run(messages, args) {
 
     } catch (err) {
         console.error("Error en s.render:", err);
+        if (err.message && !err.message.includes('Unexpected token') && !err.message.includes('fetch')) {
+            return `❌ ${err.message}`;
+        }
         return t(locale, 'general.error_unexpected');
     }
 }
