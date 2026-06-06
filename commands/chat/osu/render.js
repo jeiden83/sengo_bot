@@ -159,15 +159,18 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     let skin = options.skin;
     const resolution = options.resolution || '1280x720';
 
-    // Si el usuario no especificó skin de forma explícita, verificamos su preset de o!rdr
+    // Según la documentación oficial de o!rdr:
+    // "o!rdr will apply your user's preset by itself when the discordUserId field is supplied"
+    // Si el usuario no especificó skin manualmente, dejamos que o!rdr aplique su preset automáticamente.
+    // Solo usamos fallback 'default' si no tiene preset y no especificó skin.
     if (!options.skinSpecified) {
         try {
             const preset = await OrdrModel.getUserPreset(userId);
-            if (preset && preset.skin) {
-                // Si tiene preset, usamos la skin de su preset
-                skin = preset.skin;
+            if (preset) {
+                // Tiene preset → NO enviar skin para que o!rdr aplique su preset automáticamente
+                skin = undefined;
             } else {
-                // Fallback a la skin por defecto de osu! en o!rdr ('default')
+                // No tiene preset → fallback a la skin estándar de osu! en o!rdr
                 skin = 'default';
             }
         } catch (err) {
