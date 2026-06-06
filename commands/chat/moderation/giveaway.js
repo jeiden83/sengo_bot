@@ -9,6 +9,7 @@ const {
     getWinnersModal
 } = require("../../../views/giveawayViews.js");
 const { t } = require("../../../utils/i18n.js");
+const config = require("../../../config.js");
 
 function parseDurationLocal(str) {
     const match = str.match(/^(\d+)([smhd])$/i);
@@ -49,11 +50,8 @@ async function run(messages, args) {
 
     const sub = args[0]?.toLowerCase();
     if (!sub || !['crear', 'create', 'terminar', 'end', 'reroll'].includes(sub)) {
-        const rawContent = message.content || "";
-        const prefix = rawContent.toLowerCase().startsWith("sd.")
-            ? rawContent.slice(0, 3)
-            : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
-        const trigger = rawContent ? (rawContent.slice(prefix.length).split(/\s+/)[0].toLowerCase() || "giveaway") : "giveaway";
+        const prefix = message.content ? message.content.slice(0, config.BOT_PREFIX.length) : config.BOT_PREFIX;
+        const trigger = message.content ? (message.content.slice(prefix.length).split(/\s+/)[0].toLowerCase() || "giveaway") : "giveaway";
         
         const { doHelpCommandEmbed } = require("../../../views/generalViews.js");
         

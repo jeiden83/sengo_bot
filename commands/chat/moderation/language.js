@@ -2,14 +2,12 @@ const { PermissionsBitField } = require('discord.js');
 const { updateGuildConfig } = require('../../../models/GuildConfigModel.js');
 const { doLanguageChangedEmbed, doLanguageHelpEmbed, doLanguageListEmbed } = require('../../../views/languageViews.js');
 const { t } = require('../../../utils/i18n.js');
+const config = require('../../../config.js');
 
 async function run(messages, args) {
     const { message } = messages;
     const locale = message.locale || 'es';
-    const rawContent = message.content || "";
-    const prefix = rawContent.toLowerCase().startsWith("sd.")
-        ? rawContent.slice(0, 3)
-        : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
+    const prefix = message.content ? message.content.slice(0, config.BOT_PREFIX.length) : config.BOT_PREFIX;
 
     if (!message.guild) {
         return t(locale, 'language.only_guild');

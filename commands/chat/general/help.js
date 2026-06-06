@@ -1,5 +1,6 @@
 const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
 const { t } = require("../../../utils/i18n.js");
+const config = require("../../../config.js");
 
 function formatUsage(usageText, mainName, aliases = [], locale = 'es') {
     if (!usageText) return `.${mainName}`;
@@ -146,10 +147,7 @@ function getCategoryCommands(category, commandsMap, mainCommandsSet) {
 async function run(messages, args, intialized_data) {
     const { message } = messages;
     const locale = message.locale || 'es';
-    const rawContent = message.content || "";
-    const prefix = rawContent.toLowerCase().startsWith("sd.")
-        ? rawContent.slice(0, 3)
-        : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
+    const prefix = message.content ? message.content.slice(0, config.BOT_PREFIX.length) : config.BOT_PREFIX;
 
     // Orden y etiquetas de los tipos de comandos
     const type_order = ["osu", "utils", "meme", "general", "about", "moderation"];

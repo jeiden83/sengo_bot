@@ -1,13 +1,11 @@
 const { doAboutEmbed, buildAboutNavigationRows } = require("../../../views/generalViews.js");
 const { t } = require("../../../utils/i18n.js");
+const config = require("../../../config.js");
 
 async function run(messages, args) {
     const { message, reply } = messages;
     const locale = message.locale || 'es';
-    const rawContent = message.content || "";
-    const prefix = rawContent.toLowerCase().startsWith("sd.")
-        ? rawContent.slice(0, 3)
-        : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
+    const prefix = message.content ? message.content.slice(0, config.BOT_PREFIX.length) : config.BOT_PREFIX;
 
     const initialEmbed = doAboutEmbed(message, 0, locale, prefix);
     const initialRows = buildAboutNavigationRows(0, locale);
