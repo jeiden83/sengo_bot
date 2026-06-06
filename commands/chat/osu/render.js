@@ -21,20 +21,16 @@ async function run(messages, args) {
             const name = preset.presetName || "Sin nombre";
             const lastSaved = preset.lastSavedOn ? new Date(preset.lastSavedOn).toLocaleDateString(locale) : "N/A";
             
-            let description = `Tienes un preset enlazado a tu cuenta de Discord en o!rdr.\n\n` +
-                              `**Nombre del Preset**: \`${name}\`\n` +
-                              `**Última actualización**: \`${lastSaved}\`\n\n`;
+            let description = t(locale, 'render.config_desc', { name, lastSaved });
 
             if (preset.isDevSimulated) {
                 description += t(locale, 'render.dev_mode_preset_warning') + `\n\n`;
             }
 
-            description += `🔗 **¿Quieres cambiar tu configuración?**\n` +
-                           `Por seguridad, debes hacerlo desde la página oficial de o!rdr iniciando sesión con Discord y guardando tus cambios allí:\n` +
-                           `https://ordr.issou.best/`;
+            description += t(locale, 'render.config_how_to_change');
 
             const embed = {
-                title: "⚙️ Tu Configuración en o!rdr",
+                title: t(locale, 'render.config_title'),
                 description,
                 color: 0x3498db,
                 footer: {

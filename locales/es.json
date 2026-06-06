@@ -1304,6 +1304,9 @@
     "no_preset_found": "No tienes ningún preset enlazado a tu ID de Discord en o!rdr.\n\n🔗 Si deseas configurar o cambiar tus preferencias de renderizado (skin, resolución, volumen, etc.), hazlo desde la página de o!rdr iniciando sesión con tu Discord:\nhttps://ordr.issou.best/",
     "err_config_fetch": "Ocurrió un error al intentar consultar tu preset en o!rdr.",
     "dev_mode_preset_warning": "⚠️ **Modo de desarrollo activo**: El bot está usando datos de prueba simulados porque no tiene configurada una clave de API de o!rdr autorizada. Por lo tanto, no se puede consultar tu configuración real.",
+    "config_title": "⚙️ Tu Configuración en o!rdr",
+    "config_desc": "Tienes un preset enlazado a tu cuenta de Discord en o!rdr.\n\n**Nombre del Preset**: `{name}`\n**Última actualización**: `{lastSaved}`\n\n",
+    "config_how_to_change": "🔗 **¿Quieres cambiar tu configuración?**\nPor seguridad, debes hacerlo desde la página oficial de o!rdr iniciando sesión con Discord y guardando tus cambios allí:\nhttps://ordr.issou.best/",
     "errors": {
       "default": "Error desconocido en el renderizador de o!rdr (Código {code})",
       "1": "El ID de la skin proporcionada no existe.",
