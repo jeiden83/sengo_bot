@@ -101,6 +101,10 @@ async function run(messages, args) {
         return;
 
     } catch (err) {
+        // Los errores de cooldown son esperados, no se loguean como error
+        if (err.isCooldownError) {
+            return `⏳ ${err.message}`;
+        }
         console.error("Error en s.render:", err);
         if (err.message && !err.message.includes('Unexpected token') && !err.message.includes('fetch')) {
             return `❌ ${err.message}`;
