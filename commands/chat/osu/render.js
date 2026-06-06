@@ -156,143 +156,26 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         }
     }
 
-    // Construir parámetros finales de renderizado
+    let skin = options.skin;
+    const resolution = options.resolution || '1280x720';
+
+    // Si el usuario no especificó skin manualmente, enviamos 'default' como placeholder obligatorio para la validación HTTP.
+    // Si la API key está verificada en o!rdr, el servidor pisará automáticamente este valor con el preset del usuario.
+    if (!options.skinSpecified) {
+        skin = 'default';
+    }
+
+    // Construir parámetros finales de renderizado (sin incluir campos internos como skinSpecified)
     const renderParams = {
         replayBuffer,
         fileName,
+        resolution,
         discordUserId: userId,
-        locale
+        locale,
+        skin
     };
 
-    let skinNameForEmbed = 'default';
-
-    // 1. Obtener y mapear el preset del usuario si no especificó parámetros manuales excluyentes
-    if (!options.skinSpecified) {
-        try {
-            const preset = await OrdrModel.getUserPreset(userId);
-            if (preset && !preset.isDevSimulated) {
-                // Mapear campos estéticos del preset
-                renderParams.resolution = preset.resolution || '1280x720';
-                
-                // Skin
-                if (preset.customSkin) {
-                    renderParams.skin = preset.customSkin;
-                    renderParams.customSkin = true;
-                    // Buscar información de la skin custom
-                    try {
-                        const skinInfo = await OrdrModel.getCustomSkinInfo(preset.customSkin);
-                        skinNameForEmbed = skinInfo && skinInfo.skinName ? `Preset (${skinInfo.skinName})` : `Preset (Custom Skin ID: ${preset.customSkin})`;
-                    } catch (err) {
-                        skinNameForEmbed = `Preset (Custom Skin ID: ${preset.customSkin})`;
-                    }
-                } else if (preset.skin) {
-                    renderParams.skin = preset.skin;
-                    renderParams.customSkin = false;
-                    skinNameForEmbed = `Preset (${preset.skin})`;
-                } else {
-                    renderParams.skin = 'default';
-                    renderParams.customSkin = false;
-                    skinNameForEmbed = 'Preset (default)';
-                }
-
-                // Volumen
-                if (preset.globalVolume !== undefined) renderParams.globalVolume = preset.globalVolume;
-                if (preset.musicVolume !== undefined) renderParams.musicVolume = preset.musicVolume;
-                if (preset.hitsoundVolume !== undefined) renderParams.hitsoundVolume = preset.hitsoundVolume;
-
-                // Elementos de la interfaz (HUD)
-                if (preset.showHitErrorMeter !== undefined) renderParams.showHitErrorMeter = preset.showHitErrorMeter;
-                if (preset.showUnstableRate !== undefined) renderParams.showUnstableRate = preset.showUnstableRate;
-                if (preset.showScore !== undefined) renderParams.showScore = preset.showScore;
-                if (preset.showHPBar !== undefined) renderParams.showHPBar = preset.showHPBar;
-                if (preset.showComboCounter !== undefined) renderParams.showComboCounter = preset.showComboCounter;
-                if (preset.showPPCounter !== undefined) renderParams.showPPCounter = preset.showPPCounter;
-                if (preset.showKeyOverlay !== undefined) renderParams.showKeyOverlay = preset.showKeyOverlay;
-                if (preset.showScoreboard !== undefined) renderParams.showScoreboard = preset.showScoreboard;
-                if (preset.showAvatarsOnScoreboard !== undefined) renderParams.showAvatarsOnScoreboard = preset.showAvatarsOnScoreboard;
-                if (preset.showBorders !== undefined) renderParams.showBorders = preset.showBorders;
-                if (preset.showMods !== undefined) renderParams.showMods = preset.showMods;
-                if (preset.showResultScreen !== undefined) renderParams.showResultScreen = preset.showResultScreen;
-                if (preset.showHitCounter !== undefined) renderParams.showHitCounter = preset.showHitCounter;
-                if (preset.showSliderBreaks !== undefined) renderParams.showSliderBreaks = preset.showSliderBreaks;
-                if (preset.showAimErrorMeter !== undefined) renderParams.showAimErrorMeter = preset.showAimErrorMeter;
-                if (preset.showStrainGraph !== undefined) renderParams.showStrainGraph = preset.showStrainGraph;
-
-                // Cursor y colores
-                if (preset.useSkinCursor !== undefined) renderParams.useSkinCursor = preset.useSkinCursor;
-                if (preset.useSkinHitsounds !== undefined) renderParams.useSkinHitsounds = preset.useSkinHitsounds;
-                if (preset.playNightcoreSamples !== undefined) renderParams.playNightcoreSamples = preset.playNightcoreSamples;
-                if (preset.cursorSize !== undefined) renderParams.cursorSize = preset.cursorSize;
-                if (preset.cursorTrail !== undefined) renderParams.cursorTrail = preset.cursorTrail;
-                if (preset.drawComboNumbers !== undefined) renderParams.drawComboNumbers = preset.drawComboNumbers;
-
-                if (preset.circleColors === 'beatmap') {
-                    renderParams.useBeatmapColors = true;
-                    renderParams.useSkinColors = false;
-                } else if (preset.circleColors === 'skin') {
-                    renderParams.useBeatmapColors = false;
-                    renderParams.useSkinColors = true;
-                }
-
-                // Storyboard y Video
-                if (preset.loadStoryboardVideo !== undefined) {
-                    renderParams.loadStoryboard = preset.loadStoryboardVideo;
-                    renderParams.loadVideo = preset.loadStoryboardVideo;
-                }
-
-                // Dim de fondo
-                if (preset.introBGDim !== undefined) renderParams.introBGDim = preset.introBGDim;
-                if (preset.inGameBGDim !== undefined) renderParams.inGameBGDim = preset.inGameBGDim;
-                if (preset.breakBGDim !== undefined) renderParams.breakBGDim = preset.breakBGDim;
-
-                // Varios
-                if (preset.showDanserLogo !== undefined) renderParams.showDanserLogo = preset.showDanserLogo;
-                if (preset.ignoreFail !== undefined) renderParams.ignoreFail = preset.ignoreFail;
-                if (preset.skip !== undefined) renderParams.skip = preset.skip;
-                if (preset.sliderSnakingIn !== undefined) renderParams.sliderSnakingIn = preset.sliderSnakingIn;
-                if (preset.sliderSnakingOut !== undefined) renderParams.sliderSnakingOut = preset.sliderSnakingOut;
-            } else {
-                renderParams.skin = 'default';
-                renderParams.resolution = options.resolution || '1280x720';
-                skinNameForEmbed = 'default';
-            }
-        } catch (err) {
-            console.warn(`[startRenderFlow] No se pudo obtener o mapear el preset para el usuario ${userId}, usando fallback 'default':`, err.message);
-            renderParams.skin = 'default';
-            renderParams.resolution = options.resolution || '1280x720';
-            skinNameForEmbed = 'default';
-        }
-    } else {
-        // El usuario especificó parámetros manuales en el comando de discord
-        renderParams.skin = options.skin;
-        renderParams.resolution = options.resolution || '1280x720';
-        
-        // Si el parámetro de skin es numérico, es una skin custom
-        if (/^\d+$/.test(options.skin)) {
-            renderParams.customSkin = true;
-            try {
-                const skinInfo = await OrdrModel.getCustomSkinInfo(options.skin);
-                skinNameForEmbed = skinInfo && skinInfo.skinName ? skinInfo.skinName : options.skin;
-            } catch (err) {
-                skinNameForEmbed = options.skin;
-            }
-        } else {
-            renderParams.customSkin = false;
-            skinNameForEmbed = options.skin;
-        }
-    }
-
-    // Asegurar fallbacks finales
-    if (!renderParams.skin) {
-        renderParams.skin = 'default';
-        renderParams.customSkin = false;
-        skinNameForEmbed = 'default';
-    }
-    if (!renderParams.resolution) {
-        renderParams.resolution = '1280x720';
-    }
-
-    console.log(`🎨 [Render] Parámetros finales: skin=${renderParams.skin} (customSkin=${renderParams.customSkin}), resolution=${renderParams.resolution}, discordUserId=${userId}`);
+    console.log(`🎨 [Render] Parámetros finales: skin=${skin} (preset=${!options.skinSpecified}), resolution=${resolution}, discordUserId=${userId}`);
 
     // Enviar solicitud de renderizado a o!rdr
     const renderData = await OrdrModel.requestRender(renderParams);
@@ -303,8 +186,7 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
     }
 
     const renderId = renderData.renderID;
-    const skinDisplay = skinNameForEmbed;
-    const resolution = renderParams.resolution;
+    const skinDisplay = options.skinSpecified ? skin : (t(locale, 'render.preset_skin') || 'Preset');
 
     // Enviar embed de encolado inicial
     const queueEmbed = doQueueEmbed(message, renderId, { skin: skinDisplay, resolution }, locale);
