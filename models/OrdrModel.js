@@ -176,13 +176,30 @@ async function requestRender({ replayBuffer, fileName, locale = 'es', ...options
         headers: form.getHeaders()
     });
 
-    const data = await response.json();
+    let data = null;
+    const contentType = response.headers.get('content-type') || '';
+    
+    if (contentType.includes('application/json')) {
+        try {
+            data = await response.json();
+        } catch (err) {
+            console.error("[OrdrModel] Error al parsear JSON de o!rdr:", err);
+        }
+    }
+
     if (!response.ok) {
-        // Mapear errores de respuesta de la API directamente
-        const msg = data.message || "Error desconocido en la API.";
-        const code = data.errorCode || 0;
+        if (response.status === 429) {
+            throw new Error(t(locale, 'render.err_too_many_requests') || "Has excedido el límite de peticiones de o!rdr (429 Too Many Requests). Por favor, espera unos minutos o usa una API key válida.");
+        }
+        
+        const msg = (data && data.message) || `Error del servidor o!rdr (Status: ${response.status}).`;
+        const code = (data && data.errorCode) || 0;
         const mappedError = obtenerMensajeError(code, locale) || msg;
         throw new Error(mappedError);
+    }
+
+    if (!data || !data.renderID) {
+        throw new Error("La API de o!rdr no devolvió una respuesta válida en formato JSON.");
     }
 
     console.log(`✅ [OrdrModel] Render encolado con éxito. ID: ${data.renderID}`);

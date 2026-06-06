@@ -1300,6 +1300,7 @@
     "error_desc": "Ocurrió un inconveniente al renderizar la jugada:",
     "err_no_attachment": "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.",
     "err_only_std": "Este replay no es de osu!standard. o!rdr y Sengo solo soportan el modo estándar.",
+    "err_too_many_requests": "Has excedido el límite de peticiones de o!rdr (429 Too Many Requests). Por favor, espera unos minutos o usa una API key válida.",
     "errors": {
       "default": "Error desconocido en el renderizador de o!rdr (Código {code})",
       "1": "El ID de la skin proporcionada no existe.",
