@@ -54,129 +54,146 @@ async function run(messages, args) {
             }
         }
 
-        // 5. Enviar solicitud de renderizado a o!rdr
-        const renderData = await OrdrModel.requestRender({
-            replayBuffer,
-            fileName: attachment.name,
-            skin,
-            resolution
-        });
-
-        const renderId = renderData.renderID;
-        const skinName = renderData.skin || skin;
-
-        // 6. Enviar embed de encolado inicial
-        const queueEmbed = doQueueEmbed(message, renderId, { skin: skinName, resolution }, locale);
-        const sentMessage = await message.channel.send({ embeds: [queueEmbed] });
-
-        // Variables para control de actualizaciones (throttling) y evitar límites de rate de Discord
-        let lastEditTime = Date.now();
-        let lastState = '';
-        let lastProgress = -1;
-
-        // 7. Iniciar el tracking de progreso en tiempo real mediante WebSockets
-        OrdrModel.trackProgress(renderId, {
-            onAdded: (data) => {
-                console.log(`[o!rdr] Render #${renderId} agregado a la cola.`);
-            },
-            onProgress: async (data) => {
-                const now = Date.now();
-                const stateChanged = data.state !== lastState;
-                const progressChanged = data.progress !== lastProgress;
-                
-                // Actualizamos si cambia el estado del renderizador, si cambia el progreso y han pasado más de 2.5s
-                if (stateChanged || (progressChanged && (now - lastEditTime > 2500))) {
-                    lastState = data.state;
-                    lastProgress = data.progress;
-                    lastEditTime = now;
-
-                    const progressEmbed = doProgressEmbed(
-                        message,
-                        renderId,
-                        data.progress,
-                        data.state,
-                        data.description,
-                        { skin: skinName, resolution },
-                        locale
-                    );
-                    
-                    try {
-                        await sentMessage.edit({ embeds: [progressEmbed] });
-                    } catch (err) {
-                        console.error(`[o!rdr] Error al editar mensaje de progreso para #${renderId}:`, err);
-                    }
-                }
-            },
-            onDone: async (data) => {
-                console.log(`[o!rdr] Render #${renderId} finalizado correctamente.`);
-                const { embed, components } = doDoneEmbed(
-                    message,
-                    renderId,
-                    data.videoUrl,
-                    data.description,
-                    { skin: skinName, resolution },
-                    locale
-                );
-                
-                try {
-                    let files = [];
-                    let content = data.videoUrl;
-                    
-                    try {
-                        console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${data.videoUrl}...`);
-                        const headResponse = await fetch(data.videoUrl, { method: 'HEAD' });
-                        if (headResponse.ok) {
-                            const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
-                            const maxLimit = 25 * 1024 * 1024; // 25 MB
-                            
-                            if (contentLength > 0 && contentLength <= maxLimit) {
-                                console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
-                                const videoResponse = await fetch(data.videoUrl);
-                                if (videoResponse.ok) {
-                                    const videoBuffer = await videoResponse.buffer();
-                                    files.push({
-                                        attachment: videoBuffer,
-                                        name: `sengo_render_${renderId}.mp4`
-                                    });
-                                    content = ''; // Limpiar enlace si logramos adjuntarlo
-                                }
-                            } else {
-                                console.log(`⚠️ [o!rdr] Video demasiado grande para adjuntar (${(contentLength / 1024 / 1024).toFixed(2)} MB).`);
-                            }
-                        }
-                    } catch (fetchErr) {
-                        console.error(`[o!rdr] Error al descargar/comprobar el video:`, fetchErr.message);
-                    }
-
-                    await sentMessage.edit({
-                        content: content || null,
-                        embeds: [embed],
-                        components,
-                        files
-                    });
-                } catch (err) {
-                    console.error(`[o!rdr] Error al editar mensaje final para #${renderId}:`, err);
-                }
-            },
-            onError: async (errorMessage) => {
-                console.error(`[o!rdr] Render #${renderId} falló: ${errorMessage}`);
-                const errorEmbed = doErrorEmbed(message, renderId, errorMessage, locale);
-                
-                try {
-                    await sentMessage.edit({ embeds: [errorEmbed], components: [] });
-                } catch (err) {
-                    console.error(`[o!rdr] Error al editar mensaje de error para #${renderId}:`, err);
-                }
-            }
-        }, locale);
-
-        // Retornamos undefined para indicarle al despachador que la respuesta se gestiona asíncronamente
+        // 5. Iniciar el flujo de renderizado asíncronamente
+        await startRenderFlow(messages, replayBuffer, attachment.name, { skin, resolution }, locale);
         return;
 
     } catch (err) {
         console.error("Error en s.render:", err);
         return t(locale, 'general.error_unexpected');
     }
+}
+
+/**
+ * Inicia el flujo completo de renderizado: encolamiento, WebSocket y embeds.
+ * @param {object} messages Objeto conteniendo message y reply
+ * @param {Buffer} replayBuffer Buffer del archivo replay .osr
+ * @param {string} fileName Nombre del archivo replay
+ * @param {object} options Opciones de skin y resolución
+ * @param {string} locale Código de idioma
+ * @returns {Promise<number>} ID del render
+ */
+async function startRenderFlow(messages, replayBuffer, fileName, options = {}, locale = 'es') {
+    const { message } = messages;
+    const skin = options.skin || 'Default';
+    const resolution = options.resolution || '1280x720';
+
+    // Enviar solicitud de renderizado a o!rdr
+    const renderData = await OrdrModel.requestRender({
+        replayBuffer,
+        fileName,
+        skin,
+        resolution
+    });
+
+    const renderId = renderData.renderID;
+    const skinName = renderData.skin || skin;
+
+    // Enviar embed de encolado inicial
+    const queueEmbed = doQueueEmbed(message, renderId, { skin: skinName, resolution }, locale);
+    const sentMessage = await message.channel.send({ embeds: [queueEmbed] });
+
+    // Variables para control de actualizaciones (throttling) y evitar límites de rate de Discord
+    let lastEditTime = Date.now();
+    let lastState = '';
+    let lastProgress = -1;
+
+    // Iniciar el tracking de progreso en tiempo real mediante WebSockets
+    OrdrModel.trackProgress(renderId, {
+        onAdded: (data) => {
+            console.log(`[o!rdr] Render #${renderId} agregado a la cola.`);
+        },
+        onProgress: async (data) => {
+            const now = Date.now();
+            const stateChanged = data.state !== lastState;
+            const progressChanged = data.progress !== lastProgress;
+            
+            if (stateChanged || (progressChanged && (now - lastEditTime > 2500))) {
+                lastState = data.state;
+                lastProgress = data.progress;
+                lastEditTime = now;
+
+                const progressEmbed = doProgressEmbed(
+                    message,
+                    renderId,
+                    data.progress,
+                    data.state,
+                    data.description,
+                    { skin: skinName, resolution },
+                    locale
+                );
+                
+                try {
+                    await sentMessage.edit({ embeds: [progressEmbed] });
+                } catch (err) {
+                    console.error(`[o!rdr] Error al editar mensaje de progreso para #${renderId}:`, err);
+                }
+            }
+        },
+        onDone: async (data) => {
+            console.log(`[o!rdr] Render #${renderId} finalizado correctamente.`);
+            const { embed, components } = doDoneEmbed(
+                message,
+                renderId,
+                data.videoUrl,
+                data.description,
+                { skin: skinName, resolution },
+                locale
+            );
+            
+            try {
+                let files = [];
+                let content = data.videoUrl;
+                
+                try {
+                    console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${data.videoUrl}...`);
+                    const headResponse = await fetch(data.videoUrl, { method: 'HEAD' });
+                    if (headResponse.ok) {
+                        const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
+                        const maxLimit = 25 * 1024 * 1024; // 25 MB
+                        
+                        if (contentLength > 0 && contentLength <= maxLimit) {
+                            console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
+                            const videoResponse = await fetch(data.videoUrl);
+                            if (videoResponse.ok) {
+                                const videoBuffer = await videoResponse.buffer();
+                                files.push({
+                                    attachment: videoBuffer,
+                                    name: `sengo_render_${renderId}.mp4`
+                                });
+                                content = '';
+                            }
+                        } else {
+                            console.log(`⚠️ [o!rdr] Video demasiado grande para adjuntar (${(contentLength / 1024 / 1024).toFixed(2)} MB).`);
+                        }
+                    }
+                } catch (fetchErr) {
+                    console.error(`[o!rdr] Error al descargar/comprobar el video:`, fetchErr.message);
+                }
+
+                await sentMessage.edit({
+                    content: content || null,
+                    embeds: [embed],
+                    components,
+                    files
+                });
+            } catch (err) {
+                console.error(`[o!rdr] Error al editar mensaje final para #${renderId}:`, err);
+            }
+        },
+        onError: async (errorMessage) => {
+            console.error(`[o!rdr] Render #${renderId} falló: ${errorMessage}`);
+            const errorEmbed = doErrorEmbed(message, renderId, errorMessage, locale);
+            
+            try {
+                await sentMessage.edit({ embeds: [errorEmbed], components: [] });
+            } catch (err) {
+                console.error(`[o!rdr] Error al editar mensaje de error para #${renderId}:`, err);
+            }
+        }
+    }, locale);
+
+    return renderId;
 }
 
 run.alias = {
@@ -189,4 +206,4 @@ run.description = {
     'usage': t('es', 'commands.render.usage')
 };
 
-module.exports = { run, description: run.description };
+module.exports = { run, startRenderFlow, description: run.description };

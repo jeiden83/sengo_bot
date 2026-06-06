@@ -2,7 +2,7 @@ const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatm
 const { t } = require("../../../utils/i18n.js");
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
-const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { buildPaginationRow, buildRecentButtonsRow } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res } = messages;
@@ -307,14 +307,10 @@ async function run(messages, args) {
     // Procesamos la jugada inicial
     const initialEmbed = await processScore(index);
 
-    const getButtonsRow = (curr, max) => {
-        return buildPaginationRow({ prefix: 'rs', current: curr, total: max, oneIndexed: true });
-    };
-
     const sent_message = await message.channel.send({
         content: content_msg,
         embeds: [initialEmbed],
-        components: [getButtonsRow(index, total_plays)]
+        components: [buildRecentButtonsRow(index, total_plays, parser_res.fn_response[index - 1])]
     });
 
     const filter = btnInt => btnInt.user.id === message.author.id;
@@ -325,6 +321,77 @@ async function run(messages, args) {
 
     collector.on('collect', async i => {
         try {
+            if (i.customId === 'rs_render') {
+                await i.deferUpdate(); // confirmamos la pulsación del botón
+                
+                const targetScore = parser_res.fn_response[index - 1];
+                const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${targetScore.user?.username || 'Usuario'}**...`);
+                
+                try {
+                    const fetch = require('node-fetch');
+                    const OsuUserModel = require('../../../models/OsuUserModel.js');
+                    const fs = require('fs');
+                    await OsuUserModel.NewloadToken();
+                    
+                    let token = null;
+                    try {
+                        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                        token = tokenData.access_token;
+                    } catch (err) {
+                        console.error("Error al leer token:", err);
+                    }
+                    
+                    if (!token) {
+                        throw new Error("No token available");
+                    }
+                    
+                    const mode = targetScore.mode || 'osu';
+                    const scoreId = targetScore.id;
+                    const url = `https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`;
+                    
+                    const downloadRes = await fetch(url, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`
+                        }
+                    });
+                    
+                    if (!downloadRes.ok) {
+                        throw new Error(`osu! API returned ${downloadRes.status}`);
+                    }
+                    
+                    const replayBuffer = await downloadRes.buffer();
+                    
+                    // Invocar el flujo de renderizado usando startRenderFlow
+                    const renderCmd = require('./render.js');
+                    const mockMessages = {
+                        message: {
+                            author: i.user,
+                            locale: locale,
+                            channel: {
+                                send: async (options) => {
+                                    try { await infoMsg.delete(); } catch {}
+                                    return await i.channel.send(options);
+                                },
+                                sendTyping: async () => {}
+                            }
+                        }
+                    };
+                    
+                    await renderCmd.startRenderFlow(
+                        mockMessages,
+                        replayBuffer,
+                        `recent_${scoreId}.osr`,
+                        { skin: 'Default', resolution: '1280x720' },
+                        locale
+                    );
+                    
+                } catch (err) {
+                    console.error("Error al descargar replay de Recent Play:", err);
+                    await infoMsg.edit(`❌ **Error:** No se pudo obtener el replay para esta jugada desde los servidores de osu! (es común para jugadas que no son del Top 100 del mapa o si son muy antiguas/fallidas).`);
+                }
+                return;
+            }
+
             await i.deferUpdate();
 
             if (i.customId === 'rs_oldest') {
@@ -343,7 +410,7 @@ async function run(messages, args) {
             await i.editReply({
                 content: content,
                 embeds: [embed],
-                components: [getButtonsRow(index, total_plays)]
+                components: [buildRecentButtonsRow(index, total_plays, parser_res.fn_response[index - 1])]
             });
         } catch (err) {
             console.error("Error al navegar entre scores con botones:", err);

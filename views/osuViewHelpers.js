@@ -166,6 +166,27 @@ function getDifficultyEmoji(stars) {
     return '⚫'; // Expert+
 }
 
+/**
+ * Genera la fila de botones de paginación para Recent Score, añadiendo el botón de renderizar si procede.
+ */
+function buildRecentButtonsRow(current, total, score) {
+    const row = buildPaginationRow({ prefix: 'rs', current, total, oneIndexed: true });
+    
+    const canRender = score && 
+                      (score.mode === 'osu' || score.ruleset_id === 0) && 
+                      (score.id !== undefined && score.id !== null);
+                      
+    if (canRender) {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId('rs_render')
+                .setLabel('🎬')
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+    return row;
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -176,5 +197,6 @@ module.exports = {
     buildAnsiBlock,
     getFlagEmoji,
     buildPaginationRow,
+    buildRecentButtonsRow,
     getDifficultyEmoji
 };
