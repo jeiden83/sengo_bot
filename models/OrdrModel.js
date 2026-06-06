@@ -17,11 +17,15 @@ let queuePromise = Promise.resolve();
  * @returns {string|null} Retorna la API Key válida o null
  */
 function getValidApiKey() {
+    // Si se activa explicitamente el modo desarrollo o la API key es dummy (true/false)
+    if (process.env.ORDR_DEV_MODE === 'true' || process.env.ORDR_API_KEY === 'true' || process.env.ORDR_API_KEY === 'false') {
+        return null;
+    }
     let apiKey = process.env.ORDR_API_KEY;
-    if (!apiKey || apiKey.trim() === '' || apiKey === 'true' || apiKey === 'false' || apiKey === 'YOUR_API_KEY') {
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_API_KEY') {
         apiKey = process.env.RENDER_KEY;
     }
-    if (!apiKey || apiKey.trim() === '' || apiKey === 'true' || apiKey === 'false' || apiKey === 'YOUR_API_KEY') {
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_API_KEY' || apiKey === 'true' || apiKey === 'false') {
         return null;
     }
     return apiKey;
