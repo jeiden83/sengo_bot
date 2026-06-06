@@ -28,7 +28,7 @@ function getFlagEmoji(countryCode) {
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
  */
 async function fetchGithubStats(repoName, before, after) {
-    const headers = { 'User-Agent': 'SengoBot-Discord-Webhook' };
+    const headers = { 'User-Agent': 'Sengo-Discord-Webhook' };
     if (process.env.GITHUB_TOKEN) {
         headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
     }
@@ -110,7 +110,7 @@ function getNgrokCommand() {
  * Si ya existe una instancia activa, se cierra antes para evitar conflictos de puerto.
  */
 function initWebhookServer(client, dbRes, config) {
-    const useSupabase = true; // SengoBot ahora siempre está en modo Supabase
+    const useSupabase = true; // Sengo ahora siempre está en modo Supabase
     // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
     const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
 
@@ -142,7 +142,7 @@ function initWebhookServer(client, dbRes, config) {
         exec(configCmd, (err, stdout, stderr) => {
             if (err) {
                 Logger.system(`Error configurando token de ngrok: ${err.message}`);
-                Logger.system("⚠️ SengoBot no pudo ejecutar ngrok. Asegúrate de copiar 'ngrok.exe' directamente a la carpeta raíz del bot o añadirlo a las variables de entorno (PATH) de tu sistema.");
+                Logger.system("⚠️ Sengo no pudo ejecutar ngrok. Asegúrate de copiar 'ngrok.exe' directamente a la carpeta raíz del bot o añadirlo a las variables de entorno (PATH) de tu sistema.");
                 return;
             }
             
@@ -328,7 +328,7 @@ function startServer(client, dbRes, port, config) {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cuenta Vinculada - SengoBot</title>
+    <title>Cuenta Vinculada - Sengo</title>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -538,7 +538,7 @@ function startServer(client, dbRes, port, config) {
                 </div>` : ''}
             </div>
 
-            <p class="footer-text">Ya puedes cerrar esta ventana y regresar a Discord. ¡Gracias por usar SengoBot! <span class="accent-heart">❤</span></p>
+            <p class="footer-text">Ya puedes cerrar esta ventana y regresar a Discord. ¡Gracias por usar Sengo! <span class="accent-heart">❤</span></p>
         </div>
     </div>
 </body>
@@ -557,7 +557,7 @@ function startServer(client, dbRes, port, config) {
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
         if ((req.method === 'GET' || req.method === 'HEAD') && (req.url === '/' || req.url === '/health' || req.url === '/webhook' || req.url === '/github')) {
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'UP', message: 'SengoBot is running smoothly' }));
+            res.end(JSON.stringify({ status: 'UP', message: 'Sengo is running smoothly' }));
             return;
         }
 
@@ -653,7 +653,7 @@ async function handlePushEvent(client, dbRes, payload) {
 
     if (registeredChannels.length === 0) return;
 
-    // Obtener versión de SengoBot
+    // Obtener versión de Sengo
     const pkgPath = path.join(__dirname, '../../package.json');
     let version = '2.0.0';
     try {

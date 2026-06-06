@@ -194,7 +194,7 @@ async function requestReworkRecalculation(osuId, reworkId) {
     const url = 'https://api.pp.huismetbenen.nl/queue/add-to-queue';
     const headers = {
         'Content-Type': 'application/json',
-        'User-Agent': 'SengoBot',
+        'User-Agent': 'Sengo',
         'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${cookie}`
     };
 

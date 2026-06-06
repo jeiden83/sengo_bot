@@ -190,7 +190,7 @@ async function run(messages, args) {
 
 
         embed.setFooter({
-            text: `SengoBot • Solicitado por ${message.author.username}`,
+            text: `Sengo • Solicitado por ${message.author.username}`,
             iconURL: message.author.displayAvatarURL({ dynamic: true, size: 512 })
         }).setTimestamp();
 

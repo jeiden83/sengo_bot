@@ -20,7 +20,7 @@ function analyzeTodayLogs() {
         const uniqueServers = new Set();
 
         for (const line of lines) {
-            if (line.includes('Iniciando SengoBot')) {
+            if (line.includes('Iniciando Sengo')) {
                 startsCount++;
             }
             if (line.includes('[PASO 1/3: INICIO]')) {

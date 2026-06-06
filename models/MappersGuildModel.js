@@ -37,7 +37,7 @@ async function getBnUsers(force = false) {
         const response = await axios.get("https://bn.mappersguild.com/api/users/relevantInfo", {
             timeout: 15000,
             headers: {
-                "User-Agent": "SengoBot (https://github.com/jeiden83/sengo_bot)"
+                "User-Agent": "Sengo (https://github.com/jeiden83/sengo_bot)"
             }
         });
 

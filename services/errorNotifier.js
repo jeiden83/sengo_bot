@@ -76,7 +76,7 @@ async function reportErrorToWebhook(error, context) {
 
         // Crear el contenido del archivo .txt adjunto con toda la información detallada para depuración
         const attachmentContent = `=========================================
-SENGO BOT - INFORME DETALLADO DE ERROR
+SENGO - INFORME DETALLADO DE ERROR
 =========================================
 Fecha/Hora: ${new Date().toISOString()}
 Comando: ${commandName || 'Desconocido'}
@@ -108,7 +108,7 @@ ${message ? message.content : 'N/A'}
         };
 
         await webhookClient.send({
-            username: 'SengoBot Error Logger',
+            username: 'Sengo Error Logger',
             avatarURL: 'https://i.imgur.com/HnB61P6.png', // Un avatar elegante por defecto
             embeds: [embed],
             files: [fileAttachment]

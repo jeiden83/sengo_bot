@@ -30,7 +30,7 @@ async function main(reload) {
     }
 
     // 2. Registrar el inicio actual del bot en el log diario de hoy
-    Logger.system("Iniciando SengoBot en modo SUPABASE...");
+    Logger.system("Iniciando Sengo en modo SUPABASE...");
 
     // Notificar apagado a la instancia anterior si estamos en Render
     const externalUrl = process.env.RENDER_EXTERNAL_URL;
