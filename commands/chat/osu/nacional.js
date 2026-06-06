@@ -162,6 +162,7 @@ async function run(messages, args) {
     let startIndex = (embedPage - 1) * pageSize;
 
     const isAccSort = !!parsed_args.accSort;
+    const isScoreSort = !!parsed_args.scoreSort;
     let playersList = [];
     let total = 0;
     let progressMessage = null;
@@ -173,6 +174,31 @@ async function run(messages, args) {
             const currentData = await OsuUserModel.fetchRegionalRankingPage(countryFilter, selectedRegion, targetGamemode, embedPage);
             playersList = currentData.chunk;
             total = currentData.total;
+
+            if (isScoreSort && playersList.length > 0) {
+                playersList = await Promise.all(
+                    playersList.map(async (p) => {
+                        try {
+                            const profile = await OsuUserModel.getOsuUser({
+                                username: [p.user.id.toString()],
+                                gamemode: targetGamemode,
+                                server: 'bancho'
+                            });
+                            if (profile && typeof profile === 'object' && profile.statistics) {
+                                return {
+                                    ...p,
+                                    ranked_score: profile.statistics.ranked_score || 0,
+                                    pp: profile.statistics.pp || p.pp
+                                };
+                            }
+                        } catch (e) {
+                            console.error(`Error al obtener perfil de ${p.user.id}:`, e);
+                        }
+                        return { ...p, ranked_score: 0 };
+                    })
+                );
+                playersList.sort((a, b) => b.ranked_score - a.ranked_score);
+            }
         } catch (err) {
             console.error("Error al obtener ranking regional:", err);
             return t(locale, 'nacional.err_fetch_regional', { region: selectedRegionName });
@@ -199,6 +225,33 @@ async function run(messages, args) {
             } catch (err) {
                 console.error("Error al obtener ranking por Acc:", err);
                 const errMsg = t(locale, 'nacional.err_fetch_acc', { country: countryFilter });
+                if (progressMessage) {
+                    await progressMessage.edit(errMsg);
+                    return;
+                }
+                return errMsg;
+            }
+        } else if (isScoreSort) {
+            let lastUpdate = 0;
+            const onProgress = async (current, totalVal) => {
+                const now = Date.now();
+                if (!progressMessage) {
+                    progressMessage = await message.channel.send(t(locale, 'nacional.fetching_score', { current, total: totalVal }));
+                    lastUpdate = now;
+                } else if (now - lastUpdate > 1500 || current === totalVal) {
+                    try {
+                        await progressMessage.edit(t(locale, 'nacional.fetching_score', { current, total: totalVal }));
+                        lastUpdate = now;
+                    } catch {}
+                }
+            };
+
+            try {
+                playersList = await OsuUserModel.fetchRankingScore(countryFilter, targetGamemode, onProgress);
+                total = playersList.length;
+            } catch (err) {
+                console.error("Error al obtener ranking por Score:", err);
+                const errMsg = t(locale, 'nacional.err_fetch_score', { country: countryFilter });
                 if (progressMessage) {
                     await progressMessage.edit(errMsg);
                     return;
@@ -247,12 +300,13 @@ async function run(messages, args) {
             gamemodeName,
             targetGamemode,
             isAccSort: false,
+            isScoreSort,
             isRegional: true,
             regionName: selectedRegionName,
             message
         });
     } else {
-        const chunk = isAccSort ? playersList.slice(startIndex, startIndex + 10) : playersList;
+        const chunk = (isAccSort || isScoreSort) ? playersList.slice(startIndex, startIndex + 10) : playersList;
         embed = doOsuRankingEmbed({
             chunk,
             total,
@@ -261,6 +315,7 @@ async function run(messages, args) {
             gamemodeName,
             targetGamemode,
             isAccSort,
+            isScoreSort,
             message
         });
     }
@@ -321,21 +376,47 @@ async function run(messages, args) {
                 });
             } else if (viewMode === 'regional') {
                 const currentData = await OsuUserModel.fetchRegionalRankingPage(countryFilter, selectedRegion, targetGamemode, currentPage);
+                let chunk = currentData.chunk;
+                if (isScoreSort && chunk.length > 0) {
+                    chunk = await Promise.all(
+                        chunk.map(async (p) => {
+                            try {
+                                const profile = await OsuUserModel.getOsuUser({
+                                    username: [p.user.id.toString()],
+                                    gamemode: targetGamemode,
+                                    server: 'bancho'
+                                });
+                                if (profile && typeof profile === 'object' && profile.statistics) {
+                                    return {
+                                        ...p,
+                                        ranked_score: profile.statistics.ranked_score || 0,
+                                        pp: profile.statistics.pp || p.pp
+                                    };
+                                }
+                            } catch (e) {
+                                console.error(`Error al obtener perfil de ${p.user.id}:`, e);
+                            }
+                            return { ...p, ranked_score: 0 };
+                        })
+                    );
+                    chunk.sort((a, b) => b.ranked_score - a.ranked_score);
+                }
                 currentEmbed = doOsuRankingEmbed({
-                    chunk: currentData.chunk,
+                    chunk,
                     total,
                     startIndex,
                     countryFilter,
                     gamemodeName,
                     targetGamemode,
                     isAccSort: false,
+                    isScoreSort,
                     isRegional: true,
                     regionName: selectedRegionName,
                     message
                 });
             } else {
                 let currentChunk;
-                if (isAccSort) {
+                if (isAccSort || isScoreSort) {
                     currentChunk = playersList.slice(startIndex, startIndex + 10);
                 } else {
                     const currentData = await OsuUserModel.fetchRankingPage(countryFilter, targetGamemode, startIndex);
@@ -350,6 +431,7 @@ async function run(messages, args) {
                     gamemodeName,
                     targetGamemode,
                     isAccSort,
+                    isScoreSort,
                     message
                 });
             }

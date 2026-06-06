@@ -414,6 +414,7 @@ function argsParserNoCommand(args, options = {}) {
     let recentSort = false;
     let comboSort = false;
     let accSort = false;
+    let scoreSort = false;
     let bestSort = false;
     let detailed = false;
     let filterPass = false;
@@ -748,6 +749,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-acc"
         if (arg === "-acc") {
             accSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-score"
+        if (arg === "-score") {
+            scoreSort = true;
             continue;
         }
 
@@ -1116,6 +1123,7 @@ function argsParserNoCommand(args, options = {}) {
         'recentSort': recentSort,
         'comboSort': comboSort,
         'accSort': accSort,
+        'scoreSort': scoreSort,
         'bestSort': bestSort,
         'detailed': detailed,
         'filterPass': filterPass,

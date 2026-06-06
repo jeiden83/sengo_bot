@@ -6,7 +6,7 @@ const { t } = require("../utils/i18n.js");
 /**
  * Genera el embed con la tabla del ranking nacional o regional comprimido.
  */
-function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isRegional, regionName, message }) {
+function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isScoreSort, isRegional, regionName, message }) {
     const locale = message.locale || 'es';
     const countryInfo = country_codes[countryFilter];
     const countryName = countryInfo ? countryInfo.country : (chunk[0]?.user?.country?.name || countryFilter);
@@ -16,23 +16,49 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         const flag = `:flag_${item.user.country_code.toLowerCase()}:`;
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
-        const ppStr = `**${Math.round(item.pp).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} pp**`;
         
-        let accStr = "";
-        if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
-            accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
+        let mainValueStr = "";
+        let secondLine = "";
+        const rankLabel = t(locale, 'nacional.rank_label');
+
+        if (isScoreSort) {
+            const scoreVal = item.ranked_score || 0;
+            const scoreStr = `**${scoreVal.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} score**`;
+            const ppStr = `${Math.round(item.pp).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} pp`;
+            
+            let accStr = "";
+            if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
+                accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
+            }
+
+            mainValueStr = `${scoreStr}${accStr}`;
+
+            if (isRegional) {
+                secondLine = `  ↳ pp: **${ppStr}** • ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            } else {
+                const natRank = item.country_rank ? `**#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • ` : "";
+                secondLine = `  ↳ pp: **${ppStr}** • ${natRank}**#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            }
+        } else {
+            const ppStr = `**${Math.round(item.pp).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} pp**`;
+            
+            let accStr = "";
+            if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
+                accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
+            }
+
+            mainValueStr = `${ppStr}${accStr}`;
+
+            if (isRegional) {
+                secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            } else if (isAccSort) {
+                secondLine = `  ↳ ${rankLabel}: **#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            } else {
+                secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
+            }
         }
 
-        const rankLabel = t(locale, 'nacional.rank_label');
-        const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${ppStr}${accStr}`;
-        let secondLine;
-        if (isRegional) {
-            secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
-        } else if (isAccSort) {
-            secondLine = `  ↳ ${rankLabel}: **#${item.country_rank}** ${t(locale, 'nacional.national_rank_label')} • **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
-        } else {
-            secondLine = `  ↳ ${rankLabel}: **#${item.global_rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}** ${t(locale, 'nacional.global_rank_label')}`;
-        }
+        const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${mainValueStr}`;
         return `${firstLine}\n${secondLine}`;
     });
 
@@ -44,8 +70,13 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
     let titlePrefix = t(locale, 'nacional.embed_title_national');
     if (isRegional) {
         titlePrefix = t(locale, 'nacional.embed_title_regional');
+        if (isScoreSort) {
+            titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score' : 'by Score'}`;
+        }
     } else if (isAccSort) {
         titlePrefix = t(locale, 'nacional.embed_title_acc');
+    } else if (isScoreSort) {
+        titlePrefix = t(locale, 'nacional.embed_title_score');
     }
 
     const locationStr = isRegional && regionName ? `${countryName} (${regionName})` : countryName;
