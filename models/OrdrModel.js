@@ -8,6 +8,9 @@ const activeRenders = new Map();
 let socket = null;
 let disconnectTimeout = null;
 
+// Cola secuencial de peticiones para evitar 429 Rate Limit en o!rdr
+let queuePromise = Promise.resolve();
+
 /**
  * Obtiene y valida la API Key de o!rdr en el entorno.
  * Filtra marcadores de posición comunes (como 'true', 'false', o 'YOUR_API_KEY').
@@ -144,16 +147,29 @@ function obtenerMensajeError(errorCode, locale = 'es') {
 }
 
 /**
- * Envía una solicitud de renderizado a o!rdr.
+ * Envía una solicitud de renderizado a o!rdr utilizando una cola local para evitar rate limits (429).
  * @param {object} params Parámetros de renderizado
- * @param {Buffer} params.replayBuffer Buffer binario del archivo .osr
- * @param {string} params.fileName Nombre del archivo de replay
- * @param {string} [params.locale] Idioma de preferencia
- * @param {string} [params.skin] Skin seleccionada
- * @param {string} [params.resolution] Resolución
  * @returns {Promise<object>} Retorna la respuesta de la API de o!rdr
  */
 async function requestRender({ replayBuffer, fileName, locale = 'es', ...options }) {
+    return new Promise((resolve, reject) => {
+        queuePromise = queuePromise.then(async () => {
+            try {
+                const result = await _executeRequestRender({ replayBuffer, fileName, locale, ...options });
+                resolve(result);
+            } catch (err) {
+                reject(err);
+            }
+            // Retardo de enfriamiento de 1.5 segundos entre peticiones para proteger la API de o!rdr
+            await new Promise(r => setTimeout(r, 1500));
+        });
+    });
+}
+
+/**
+ * Realiza la peticion real HTTP a la API de o!rdr.
+ */
+async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ...options }) {
     const apiKey = getValidApiKey();
     const devMode = process.env.ORDR_DEV_MODE === 'true';
     const form = new FormData();
