@@ -17,7 +17,10 @@ let queuePromise = Promise.resolve();
  * @returns {string|null} Retorna la API Key válida o null
  */
 function getValidApiKey() {
-    const apiKey = process.env.ORDR_API_KEY;
+    let apiKey = process.env.ORDR_API_KEY;
+    if (!apiKey || apiKey.trim() === '' || apiKey === 'true' || apiKey === 'false' || apiKey === 'YOUR_API_KEY') {
+        apiKey = process.env.RENDER_KEY;
+    }
     if (!apiKey || apiKey.trim() === '' || apiKey === 'true' || apiKey === 'false' || apiKey === 'YOUR_API_KEY') {
         return null;
     }
