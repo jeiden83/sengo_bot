@@ -2,8 +2,10 @@
 
 ![](https://jeiden.s-ul.eu/9dtHHLhw)
 
+Bot de Discord para [**osu!**](https://osu.ppy.sh/) hecho para suplir algunas carencias de los actuales. Inspirado en el [**owo!**](https://github.com/AznStevy/owo-bot) 
 
-Bot de de Discord para [**osu!**](https://osu.ppy.sh/) hecho para suplir algunas carencias de los actuales. Inspirado en el [**owo!**](https://github.com/AznStevy/owo-bot) 
+🔗 **[Invita a Sengo a tu servidor](https://discord.com/oauth2/authorize?client_id=1064201701210468454)**
+
 > El servidor mencionado en algunos comandos es el [**Osu Latinoamerica!**](https://discord.gg/Ey2PYd4J73) 
 
 ## Instalacion
