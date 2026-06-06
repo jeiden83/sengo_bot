@@ -898,7 +898,7 @@
     "drain": " *(Drain: {drain})*",
     "combo": "Combo",
     "objects": "Objetos",
-    "recommended_pp": "Valores de PP recomendados",
+    "recommended_pp": "Valores de PP por acc",
     "footer_map": "Sengo • Beatmap ID: {id}",
     "btn_launch": "Lanzar osu!",
     "tags": "Etiquetas",
