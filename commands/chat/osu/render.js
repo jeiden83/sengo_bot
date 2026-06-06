@@ -117,7 +117,7 @@ async function run(messages, args) {
                 );
                 
                 try {
-                    await sentMessage.edit({ embeds: [embed], components });
+                    await sentMessage.edit({ content: data.videoUrl, embeds: [embed], components });
                 } catch (err) {
                     console.error(`[o!rdr] Error al editar mensaje final para #${renderId}:`, err);
                 }
