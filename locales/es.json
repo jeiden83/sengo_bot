@@ -203,6 +203,11 @@
       "body": "Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nOtorga un rol del país con respecto al usuario linkeado al bot.",
       "usage": "s.pais"
     },
+    "identidad": {
+      "header": "Autorol de país y dígitos",
+      "body": "Aplicable para el [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nAsigna automáticamente ambos roles (país y dígitos) según tu cuenta de osu! vinculada por OAuth.",
+      "usage": "s.identidad"
+    },
     "replay": {
       "header": "Analizador de replay (.osr)",
       "body": "Sube un archivo `.osr` al chat junto con el comando `s.replay`, o responde al mensaje que tenga el archivo para ver sus datos técnicos.",
@@ -650,6 +655,7 @@
     "err_guild_only": "Este comando solo se puede usar en un servidor.",
     "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
     "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
     "err_already_has_role": "Ya tienes un rol de {digits} dígitos asignado.",
     "err_seven_digits": "Bro. Sube un poco más en el ranking y te asigno el rol de 6 dígitos.",
     "one_digit": "Verdaderamente increíble para ser Top global.",
@@ -661,12 +667,33 @@
     "err_guild_only": "Este comando solo se puede usar en un servidor.",
     "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
     "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
     "err_already_has_role": "Ya tienes un rol de país asignado.",
     "success_assign": "Rol de país asignado exitosamente.",
     "err_assign": "Hubo un error al asignar el rol.",
     "reason_create": "Rol de país para {code}",
     "success_create_assign": "Rol de país creado, posicionado y asignado exitosamente.",
     "err_create_assign": "Hubo un error al crear o asignar el rol de país."
+  },
+  "identidad": {
+    "err_guild_only": "Este comando solo se puede usar en un servidor.",
+    "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
+    "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
+    "status_title": "Tarjetas de Identidad de Osu! de {username}",
+    "country_section": "🌎 **País**: ",
+    "digits_section": "🔢 **Dígitos**: ",
+    "country_already_has": "Ya tienes asignado el rol de país: `{roleName}`",
+    "country_assigned": "Se te ha asignado el rol de país: `{roleName}`",
+    "country_created": "Se ha creado y asignado el rol de país: `{roleName}`",
+    "country_err_assign": "No se pudo asignar el rol de país `{roleName}` debido a un error de permisos.",
+    "country_err_create": "No se pudo crear el rol para el país `{country}`.",
+    "digits_already_has": "Ya tienes asignado el rol de `{digits}` dígitos.",
+    "digits_assigned": "Se te ha asignado el rol de `{digits}` dígitos: `{roleName}`",
+    "digits_err_seven": "Bro. Sube un poco más en el ranking y te asigno el de 6 dígitos.",
+    "digits_one_digit": "Verdaderamente increíble para ser Top 1 global.",
+    "digits_err_not_found": "No se encontró el rol de `{digits}` dígitos en este servidor.",
+    "digits_err_assign": "No se pudo asignar el rol de `{digits}` dígitos debido a un error."
   },
   "replay": {
     "err_no_attachment": "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.",

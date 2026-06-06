@@ -914,6 +914,40 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         .setTimestamp();
 }
 
+/**
+ * Renderiza el embed para la tarjeta de identidad (.identidad)
+ */
+function doOsuIdentityEmbed(message, osuUser, results, locale = 'es') {
+    const embedColor = getEmbedColor(message);
+    const flag = getFlagEmoji(osuUser.country_code);
+    
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'identidad.status_title', { username: osuUser.username }))
+        .setURL(`https://osu.ppy.sh/users/${osuUser.id}`)
+        .setColor(embedColor)
+        .setThumbnail(osuUser.avatar_url)
+        .setTimestamp();
+        
+    if (osuUser.cover_url || (osuUser.cover && osuUser.cover.url)) {
+        embed.setImage(osuUser.cover_url || osuUser.cover.url);
+    }
+    
+    embed.addFields(
+        {
+            name: `${flag} ${t(locale, 'identidad.country_section')}`,
+            value: results.countryStatus,
+            inline: false
+        },
+        {
+            name: `🔢 ${t(locale, 'identidad.digits_section')}`,
+            value: results.digitsStatus,
+            inline: false
+        }
+    );
+    
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
@@ -924,6 +958,7 @@ module.exports = {
     doOsuMapperTopEmbed,
     doOsuBnProfileEmbed,
     doOsuBnListEmbed,
-    doOsuCompareStatsEmbed
+    doOsuCompareStatsEmbed,
+    doOsuIdentityEmbed
 };
 

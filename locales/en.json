@@ -203,6 +203,11 @@
       "body": "Applicable for [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nGrants a country role based on the user linked to the bot.",
       "usage": "s.pais"
     },
+    "identidad": {
+      "header": "Country and digit self-role",
+      "body": "Applicable for [**Osu! Latinoamerica**](https://discord.gg/Ey2PYd4J73).\nAutomatically assigns both roles (country and digits) based on your osu! account linked via OAuth.",
+      "usage": "s.identidad"
+    },
     "replay": {
       "header": "Replay analyzer (.osr)",
       "body": "Upload an `.osr` file to the chat along with the `s.replay` command, or reply to a message containing the file to see its technical details.",
@@ -650,6 +655,7 @@
     "err_guild_only": "This command can only be used in a server.",
     "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
     "err_not_linked": "To use this command, you must first link your account to the bot.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
     "err_already_has_role": "You already have a {digits}-digit role assigned.",
     "err_seven_digits": "Bro. Climb a bit more in the ranking and I will assign you the 6-digit role.",
     "one_digit": "Truly incredible to be global Top rank.",
@@ -661,12 +667,33 @@
     "err_guild_only": "This command can only be used in a server.",
     "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
     "err_not_linked": "To use this command, you must first link your account to the bot.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
     "err_already_has_role": "You already have a country role assigned.",
     "success_assign": "Country role successfully assigned.",
     "err_assign": "There was an error assigning the role.",
     "reason_create": "Country role for {code}",
     "success_create_assign": "Country role successfully created, positioned, and assigned.",
     "err_create_assign": "There was an error creating or assigning the country role."
+  },
+  "identidad": {
+    "err_guild_only": "This command can only be used in a server.",
+    "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
+    "err_not_linked": "To use this command, you must first link your account to the bot.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
+    "status_title": "Osu! Identity Cards for {username}",
+    "country_section": "🌎 **Country**: ",
+    "digits_section": "🔢 **Digits**: ",
+    "country_already_has": "You already have the country role assigned: `{roleName}`",
+    "country_assigned": "Successfully assigned country role: `{roleName}`",
+    "country_created": "Created and assigned country role: `{roleName}`",
+    "country_err_assign": "Could not assign country role `{roleName}` due to a permission error.",
+    "country_err_create": "Could not create the role for country `{country}`.",
+    "digits_already_has": "You already have the `{digits}`-digit role assigned.",
+    "digits_assigned": "Successfully assigned the `{digits}`-digit role: `{roleName}`",
+    "digits_err_seven": "Bro. Climb a bit more in the ranking and I will assign you the 6-digit role.",
+    "digits_one_digit": "Truly incredible to be global Top 1.",
+    "digits_err_not_found": "A `{digits}`-digit role was not found configured in this server.",
+    "digits_err_assign": "Could not assign the `{digits}`-digit role due to an error."
   },
   "replay": {
     "err_no_attachment": "Please attach an `.osr` replay file or reply to a message that has one.",
