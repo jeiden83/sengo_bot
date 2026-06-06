@@ -27,6 +27,11 @@ const data = new SlashCommandBuilder()
             .setDescription("Ordenar por ranked score en lugar de Performance Points")
             .setRequired(false)
     )
+    .addBooleanOption(option =>
+        option.setName("totalscore")
+            .setDescription("Ordenar por score total en lugar de Performance Points")
+            .setRequired(false)
+    )
     .addStringOption(option =>
         option.setName("regional")
             .setDescription("Nombre o código de la región para mostrar, o 'lista' para ver las opciones")
@@ -40,6 +45,7 @@ async function run(interaction, res) {
     const pagina = interaction.options.getInteger("pagina");
     const acc = interaction.options.getBoolean("acc");
     const score = interaction.options.getBoolean("score");
+    const totalscore = interaction.options.getBoolean("totalscore");
     const regional = interaction.options.getString("regional");
 
     if (pais !== null && pais !== undefined) {
@@ -53,6 +59,9 @@ async function run(interaction, res) {
     }
     if (score) {
         args.push("-score");
+    }
+    if (totalscore) {
+        args.push("-totalscore");
     }
     if (regional !== null && regional !== undefined) {
         args.push("-regional", regional);

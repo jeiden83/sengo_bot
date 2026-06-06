@@ -3,6 +3,7 @@ const OsuUserModel = require('../../../models/OsuUserModel.js');
 const { doOsuMissingFriendsEmbed, doOsuFriendsListEmbed } = require('../../../views/osuUserViews.js');
 const { buildPaginationRow } = require('../../../views/osuViewHelpers.js');
 const { t } = require('../../../utils/i18n.js');
+const { argsParserNoCommand } = require('../../utils/argsParser.js');
 
 // Función para comprobar mutualidad de los amigos vinculados en la página actual
 async function checkMutualsForChunk(chunk, myOsuId, linkedMap) {
@@ -133,6 +134,18 @@ async function run(messages, args) {
         return { embeds: [emptyEmbed] };
     }
 
+    // Parse -pais flag
+    const parsed_args = argsParserNoCommand(args);
+    let countryFilter = parsed_args.country;
+    let filterCountryCode = null;
+    if (countryFilter) {
+        if (countryFilter === "SELF") {
+            filterCountryCode = meDetails.country_code ? meDetails.country_code.toUpperCase() : null;
+        } else {
+            filterCountryCode = countryFilter.toUpperCase();
+        }
+    }
+
     // Obtener usuarios vinculados en la BD
     if (logger) logger.process(t(locale, 'amigos.log_check_bot_linked'));
     const linkedMap = await OsuUserModel.getLinkedUsersMap();
@@ -141,13 +154,30 @@ async function run(messages, args) {
     friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
 
     const totalFriends = friends.length;
-    const maxPages = Math.ceil(totalFriends / 10);
+
+    // Filtrar por país si se ha especificado
+    let filteredFriends = friends;
+    if (filterCountryCode) {
+        filteredFriends = friends.filter(f => f.country_code && f.country_code.toUpperCase() === filterCountryCode);
+    }
+
+    if (filteredFriends.length === 0) {
+        const embedColor = message.member?.roles?.highest?.color || '#ff66aa';
+        const emptyEmbed = new EmbedBuilder()
+            .setTitle(filterCountryCode ? t(locale, 'amigos.list_title_country', { country: filterCountryCode }) : t(locale, 'amigos.empty_title'))
+            .setColor(embedColor)
+            .setDescription(filterCountryCode ? t(locale, 'amigos.empty_desc_country', { country: filterCountryCode }) : t(locale, 'amigos.empty_desc'))
+            .setTimestamp();
+        return { embeds: [emptyEmbed] };
+    }
+
+    const maxPages = Math.ceil(filteredFriends.length / 10);
     let pageNum = 1;
     let startIndex = 0;
 
     // Función para renderizar el embed de una página utilizando la capa de visualización (View)
     const generateEmbed = (chunk, page, maxP) => {
-        return doOsuFriendsListEmbed(message, friends, chunk, page, maxP, startIndex, totalFriends);
+        return doOsuFriendsListEmbed(message, filteredFriends, chunk, page, maxP, startIndex, totalFriends, filterCountryCode);
     };
 
     const getButtonsRow = (start, total) => {
@@ -156,7 +186,7 @@ async function run(messages, args) {
 
     // Procesar la página inicial
     if (logger) logger.process(t(locale, 'amigos.log_check_mutuals_page', { page: 1 }));
-    const initialChunk = friends.slice(startIndex, startIndex + 10);
+    const initialChunk = filteredFriends.slice(startIndex, startIndex + 10);
     await checkMutualsForChunk(initialChunk, myOsuId, linkedMap);
 
     const initialEmbed = generateEmbed(initialChunk, pageNum, maxPages);
@@ -164,7 +194,7 @@ async function run(messages, args) {
     let sent_message;
     const sendOptions = {
         embeds: [initialEmbed],
-        components: totalFriends > 10 ? [getButtonsRow(startIndex, totalFriends)] : []
+        components: filteredFriends.length > 10 ? [getButtonsRow(startIndex, filteredFriends.length)] : []
     };
 
     if (reply) {
@@ -173,7 +203,7 @@ async function run(messages, args) {
         sent_message = await message.channel.send(sendOptions);
     }
 
-    if (totalFriends <= 10) return;
+    if (filteredFriends.length <= 10) return;
 
     const btnFilter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({
@@ -192,11 +222,11 @@ async function run(messages, args) {
             } else if (i.customId === 'amigos_next') {
                 startIndex = startIndex + 10;
             } else if (i.customId === 'amigos_last') {
-                startIndex = Math.floor((totalFriends - 1) / 10) * 10;
+                startIndex = Math.floor((filteredFriends.length - 1) / 10) * 10;
             }
 
             pageNum = Math.floor(startIndex / 10) + 1;
-            const currentChunk = friends.slice(startIndex, startIndex + 10);
+            const currentChunk = filteredFriends.slice(startIndex, startIndex + 10);
 
             // Verificar si este chunk ya tiene los datos de mutualidad cargados, si no, los cargamos
             const needsCheck = currentChunk.some(friend => friend.mutual === undefined);
@@ -209,7 +239,7 @@ async function run(messages, args) {
 
             await i.editReply({
                 embeds: [updatedEmbed],
-                components: [getButtonsRow(startIndex, totalFriends)]
+                components: [getButtonsRow(startIndex, filteredFriends.length)]
             });
         } catch (err) {
             console.error("Error al navegar la lista de amigos:", err);

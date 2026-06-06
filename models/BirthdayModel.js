@@ -199,6 +199,28 @@ function getGuildChannel(guildId) {
 }
 
 /**
+ * Configura el rol de cumpleaños de un servidor.
+ * @param {string} guildId - ID del servidor.
+ * @param {string|null} roleId - ID del rol o null para desactivar.
+ */
+function setGuildRole(guildId, roleId) {
+    if (!db.configs[guildId]) {
+        db.configs[guildId] = {};
+    }
+    db.configs[guildId].roleId = roleId;
+    saveBirthdays();
+}
+
+/**
+ * Obtiene el rol de cumpleaños de un servidor.
+ * @param {string} guildId - ID del servidor.
+ * @returns {string|null} ID del rol o null si no está configurado.
+ */
+function getGuildRole(guildId) {
+    return db.configs[guildId]?.roleId || null;
+}
+
+/**
  * Obtiene la fecha del último anuncio realizado en el servidor.
  * @param {string} guildId - ID del servidor.
  * @returns {string|null} Fecha en formato YYYY-MM-DD o null.
@@ -468,6 +490,8 @@ module.exports = {
     removeUserBirthday,
     setGuildChannel,
     getGuildChannel,
+    setGuildRole,
+    getGuildRole,
     getGuildLastAnnounced,
     setGuildLastAnnounced,
     getGuildConfig,

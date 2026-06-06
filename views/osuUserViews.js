@@ -58,10 +58,16 @@ function doOsuMissingFriendsEmbed(message, missingFriends) {
 /**
  * Renderiza una página de la lista de amigos en osu! (amigos.js)
  */
-function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends) {
+function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends, filterCountryCode) {
     const embedColor = getEmbedColor(message);
     const locale = message.locale || 'es';
-    let desc = t(locale, 'amigos.list_header', { total: totalFriends });
+    let desc = "";
+
+    if (filterCountryCode) {
+        desc = t(locale, 'amigos.list_header_country', { country: filterCountryCode, count: friends.length, total: totalFriends });
+    } else {
+        desc = t(locale, 'amigos.list_header', { total: totalFriends });
+    }
 
     chunk.forEach((friend, idx) => {
         const globalIndex = startIndex + idx + 1;
@@ -78,8 +84,10 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
 
     desc += t(locale, 'amigos.list_legend');
 
+    const title = filterCountryCode ? t(locale, 'amigos.list_title_country', { country: filterCountryCode }) : t(locale, 'amigos.list_title');
+
     return new EmbedBuilder()
-        .setTitle(t(locale, 'amigos.list_title'))
+        .setTitle(title)
         .setDescription(desc)
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")

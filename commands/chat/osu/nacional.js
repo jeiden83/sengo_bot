@@ -163,6 +163,7 @@ async function run(messages, args) {
 
     const isAccSort = !!parsed_args.accSort;
     const isScoreSort = !!parsed_args.scoreSort;
+    const isTotalScoreSort = !!parsed_args.totalScoreSort;
     let playersList = [];
     let total = 0;
     let progressMessage = null;
@@ -175,7 +176,7 @@ async function run(messages, args) {
             playersList = currentData.chunk;
             total = currentData.total;
 
-            if (isScoreSort && playersList.length > 0) {
+            if ((isScoreSort || isTotalScoreSort) && playersList.length > 0) {
                 playersList = await Promise.all(
                     playersList.map(async (p) => {
                         try {
@@ -188,16 +189,21 @@ async function run(messages, args) {
                                 return {
                                     ...p,
                                     ranked_score: profile.statistics.ranked_score || 0,
+                                    total_score: profile.statistics.total_score || 0,
                                     pp: profile.statistics.pp || p.pp
                                 };
                             }
                         } catch (e) {
                             console.error(`Error al obtener perfil de ${p.user.id}:`, e);
                         }
-                        return { ...p, ranked_score: 0 };
+                        return { ...p, ranked_score: 0, total_score: 0 };
                     })
                 );
-                playersList.sort((a, b) => b.ranked_score - a.ranked_score);
+                if (isTotalScoreSort) {
+                    playersList.sort((a, b) => b.total_score - a.total_score);
+                } else {
+                    playersList.sort((a, b) => b.ranked_score - a.ranked_score);
+                }
             }
         } catch (err) {
             console.error("Error al obtener ranking regional:", err);
@@ -258,6 +264,33 @@ async function run(messages, args) {
                 }
                 return errMsg;
             }
+        } else if (isTotalScoreSort) {
+            let lastUpdate = 0;
+            const onProgress = async (current, totalVal) => {
+                const now = Date.now();
+                if (!progressMessage) {
+                    progressMessage = await message.channel.send(t(locale, 'nacional.fetching_totalscore', { current, total: totalVal }));
+                    lastUpdate = now;
+                } else if (now - lastUpdate > 1500 || current === totalVal) {
+                    try {
+                        await progressMessage.edit(t(locale, 'nacional.fetching_totalscore', { current, total: totalVal }));
+                        lastUpdate = now;
+                    } catch {}
+                }
+            };
+
+            try {
+                playersList = await OsuUserModel.fetchRankingTotalScore(countryFilter, targetGamemode, onProgress);
+                total = playersList.length;
+            } catch (err) {
+                console.error("Error al obtener ranking por Score Total:", err);
+                const errMsg = t(locale, 'nacional.err_fetch_totalscore', { country: countryFilter });
+                if (progressMessage) {
+                    await progressMessage.edit(errMsg);
+                    return;
+                }
+                return errMsg;
+            }
         } else {
             let initialData;
             try {
@@ -301,12 +334,13 @@ async function run(messages, args) {
             targetGamemode,
             isAccSort: false,
             isScoreSort,
+            isTotalScoreSort,
             isRegional: true,
             regionName: selectedRegionName,
             message
         });
     } else {
-        const chunk = (isAccSort || isScoreSort) ? playersList.slice(startIndex, startIndex + 10) : playersList;
+        const chunk = (isAccSort || isScoreSort || isTotalScoreSort) ? playersList.slice(startIndex, startIndex + 10) : playersList;
         embed = doOsuRankingEmbed({
             chunk,
             total,
@@ -316,6 +350,7 @@ async function run(messages, args) {
             targetGamemode,
             isAccSort,
             isScoreSort,
+            isTotalScoreSort,
             message
         });
     }

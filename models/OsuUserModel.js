@@ -1113,6 +1113,88 @@ async function fetchRankingScore(countryFilter, gamemode, onProgress) {
     return allPlayers;
 }
 
+/**
+ * Obtiene los primeros 1000 jugadores de un país y modo de juego,
+ * ordenándolos por score total de forma descendente, con caché persistente de 2 horas.
+ */
+async function fetchRankingTotalScore(countryFilter, gamemode, onProgress) {
+    const cacheKey = `${countryFilter.toUpperCase()}_${gamemode.toLowerCase()}`;
+    const cacheFile = path.join(__dirname, "../data/nacional_totalscore_cache.json");
+
+    let cache = {};
+    try {
+        const data = await fs.readFile(cacheFile, "utf-8");
+        cache = JSON.parse(data);
+    } catch (e) {}
+
+    const now = Date.now();
+    const TTL = 7200000; // 2 horas
+
+    if (cache[cacheKey] && (now - cache[cacheKey].timestamp < TTL)) {
+        console.log(`[CACHE]: Utilizando ranking nacional de Score Total en caché para ${cacheKey}`);
+        return cache[cacheKey].players;
+    }
+
+    const totalPages = 20;
+    const tokenData = await loadToken();
+    const accessToken = tokenData.access_token;
+
+    const fetchPage = async (page) => {
+        return osuApiQueue.add(async () => {
+            const url = `https://osu.ppy.sh/api/v2/rankings/${gamemode}/performance?country=${countryFilter}&page=${page}`;
+            const res = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            });
+            return res.data;
+        });
+    };
+
+    let allPlayers = [];
+
+    for (let p = 1; p <= totalPages; p++) {
+        try {
+            const data = await fetchPage(p);
+            if (data.ranking && data.ranking.length > 0) {
+                allPlayers = allPlayers.concat(data.ranking);
+                if (data.ranking.length < 50) {
+                    break;
+                }
+            } else {
+                break;
+            }
+        } catch (err) {
+            console.error(`Error al obtener página ${p} de ranking para Score Total:`, err);
+            if (p === 1) throw err;
+            break;
+        }
+
+        if (onProgress) {
+            await onProgress(allPlayers.length, 1000);
+        }
+    }
+
+    allPlayers.sort((a, b) => (b.total_score || 0) - (a.total_score || 0));
+
+    cache[cacheKey] = {
+        timestamp: now,
+        players: allPlayers
+    };
+
+    try {
+        await fs.mkdir(path.dirname(cacheFile), { recursive: true });
+        await fs.writeFile(cacheFile, JSON.stringify(cache, null, 2), "utf-8");
+    } catch (e) {
+        console.error("Error al escribir caché de ranking nacional de Score Total:", e);
+    }
+
+    return allPlayers;
+}
+
 const regionalRankingCacheFile = path.join(__dirname, "../data/regional_rankings_cache.json");
 let regionalRankingCache = {};
 let regionalRankingCacheLoaded = false;
@@ -1992,6 +2074,7 @@ const OsuUserModel = {
     fetchRankingPage,
     fetchRankingAcc,
     fetchRankingScore,
+    fetchRankingTotalScore,
     fetchRegionalRankingPage,
     getOsuWorldUser,
     getMapperTop,

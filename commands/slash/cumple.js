@@ -43,6 +43,18 @@ const data = new SlashCommandBuilder()
             )
     )
     .addSubcommand(sub =>
+        sub.setName("rol")
+            .setDescription("Configura el rol temporal de cumpleaños (Mods/Admins)")
+            .addRoleOption(opt =>
+                opt.setName("rol")
+                    .setDescription("El rol que se asignará temporalmente al cumpleañero")
+            )
+            .addBooleanOption(opt =>
+                opt.setName("desactivar")
+                    .setDescription("Establece en True para desactivar la asignación del rol")
+            )
+    )
+    .addSubcommand(sub =>
         sub.setName("actualizar")
             .setDescription("Fuerza la comprobación de cumpleaños del día y felicita a los que falten")
     );
@@ -70,6 +82,15 @@ async function run(interaction, res) {
             args.push("desactivar");
         } else if (canal) {
             args.push(canal.id);
+        }
+    } else if (subcommand === "rol") {
+        const rol = interaction.options.getRole("rol");
+        const desactivar = interaction.options.getBoolean("desactivar");
+        
+        if (desactivar) {
+            args.push("desactivar");
+        } else if (rol) {
+            args.push(rol.id);
         }
     }
 

@@ -6,7 +6,7 @@ const { t } = require("../utils/i18n.js");
 /**
  * Genera el embed con la tabla del ranking nacional o regional comprimido.
  */
-function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isScoreSort, isRegional, regionName, message }) {
+function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isScoreSort, isTotalScoreSort, isRegional, regionName, message }) {
     const locale = message.locale || 'es';
     const countryInfo = country_codes[countryFilter];
     const countryName = countryInfo ? countryInfo.country : (chunk[0]?.user?.country?.name || countryFilter);
@@ -21,9 +21,10 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         let secondLine = "";
         const rankLabel = t(locale, 'nacional.rank_label');
 
-        if (isScoreSort) {
-            const scoreVal = item.ranked_score || 0;
-            const scoreStr = `**${scoreVal.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} score**`;
+        if (isScoreSort || isTotalScoreSort) {
+            const scoreVal = isTotalScoreSort ? (item.total_score || 0) : (item.ranked_score || 0);
+            const scoreSuffix = isTotalScoreSort ? (locale === 'es' ? 'score total' : 'total score') : 'score';
+            const scoreStr = `**${scoreVal.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} ${scoreSuffix}**`;
             const ppStr = `${Math.round(item.pp).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} pp`;
             
             let accStr = "";
@@ -72,11 +73,15 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
         titlePrefix = t(locale, 'nacional.embed_title_regional');
         if (isScoreSort) {
             titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score' : 'by Score'}`;
+        } else if (isTotalScoreSort) {
+            titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score Total' : 'by Total Score'}`;
         }
     } else if (isAccSort) {
         titlePrefix = t(locale, 'nacional.embed_title_acc');
     } else if (isScoreSort) {
         titlePrefix = t(locale, 'nacional.embed_title_score');
+    } else if (isTotalScoreSort) {
+        titlePrefix = t(locale, 'nacional.embed_title_totalscore');
     }
 
     const locationStr = isRegional && regionName ? `${countryName} (${regionName})` : countryName;

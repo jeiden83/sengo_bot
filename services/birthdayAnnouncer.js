@@ -7,10 +7,16 @@ const { t } = require("../utils/i18n.js");
 
 async function checkGuildBirthdays(guild, client) {
     const channelId = BirthdayModel.getGuildChannel(guild.id);
-    if (!channelId) return [];
+    const roleId = BirthdayModel.getGuildRole(guild.id);
+    if (!channelId && !roleId) return [];
 
     const bdayList = await BirthdayModel.getGuildBirthdays(guild);
     if (bdayList.length === 0) return [];
+
+    let birthdayRoleObj = null;
+    if (roleId) {
+        birthdayRoleObj = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+    }
 
     const now = new Date();
     let channel = null;
@@ -28,33 +34,53 @@ async function checkGuildBirthdays(guild, client) {
         const localMonth = localNow.getUTCMonth() + 1;
         const localYear = localNow.getUTCFullYear();
 
-        // Verificar si hoy es el cumpleaños del usuario en su zona horaria
-        if (localDay === bday.day && localMonth === bday.month) {
-            const lastAnnouncedYear = BirthdayModel.getGuildUserAnnounced(guild.id, userId);
-            if (lastAnnouncedYear === localYear) continue; // Ya felicitado este año
+        const isBirthdayToday = (localDay === bday.day && localMonth === bday.month);
 
-            // Carga perezosa del canal si tenemos un anuncio que hacer
-            if (!channel) {
-                channel = await client.channels.fetch(channelId).catch(() => null);
+        if (isBirthdayToday) {
+            // Asignar rol de cumpleaños si está configurado
+            if (birthdayRoleObj && bday.member) {
+                if (!bday.member.roles.cache.has(roleId)) {
+                    await bday.member.roles.add(birthdayRoleObj)
+                        .catch(err => console.error(`[BirthdayService] Error al asignar rol de cumpleaños a ${bday.member.user.tag}:`, err.message));
+                }
             }
-            if (!channel) break; // Si el canal no es válido, salir
 
-            Logger.system(`Anunciando cumpleaños de ${bday.member.user.tag} en el servidor ${guild.name} (#${channel.name})`);
-            
-            const age = bday.year ? localYear - bday.year : null;
-            const isLinked = !!countryCode;
-            const embed = doBirthdayAnnounceEmbed(client, bday.member, age, isLinked, guildLocale);
+            // Anunciar cumpleaños si hay un canal configurado
+            if (channelId) {
+                const lastAnnouncedYear = BirthdayModel.getGuildUserAnnounced(guild.id, userId);
+                if (lastAnnouncedYear !== localYear) {
+                    // Carga perezosa del canal si tenemos un anuncio que hacer
+                    if (!channel) {
+                        channel = await client.channels.fetch(channelId).catch(() => null);
+                    }
+                    if (channel) {
+                        Logger.system(`Anunciando cumpleaños de ${bday.member.user.tag} en el servidor ${guild.name} (#${channel.name})`);
+                        
+                        const age = bday.year ? localYear - bday.year : null;
+                        const isLinked = !!countryCode;
+                        const embed = doBirthdayAnnounceEmbed(client, bday.member, age, isLinked, guildLocale);
 
-            await channel.send({
-                content: t(guildLocale, 'cumple.announce_ping', { userId }),
-                embeds: [embed]
-            }).catch(err => {
-                console.error(`Error al enviar mensaje de cumpleaños a ${bday.member.user.tag}:`, err);
-            });
+                        await channel.send({
+                            content: t(guildLocale, 'cumple.announce_ping', { userId }),
+                            embeds: [embed]
+                        }).catch(err => {
+                            console.error(`Error al enviar mensaje de cumpleaños a ${bday.member.user.tag}:`, err);
+                        });
 
-            // Registrar como anunciado este año en este servidor
-            BirthdayModel.setGuildUserAnnounced(guild.id, userId, localYear);
-            announcedTags.push(bday.member.user.tag);
+                        // Registrar como anunciado este año en este servidor
+                        BirthdayModel.setGuildUserAnnounced(guild.id, userId, localYear);
+                        announcedTags.push(bday.member.user.tag);
+                    }
+                }
+            }
+        } else {
+            // Quitar rol de cumpleaños si está configurado y el usuario lo tiene
+            if (birthdayRoleObj && bday.member) {
+                if (bday.member.roles.cache.has(roleId)) {
+                    await bday.member.roles.remove(birthdayRoleObj)
+                        .catch(err => console.error(`[BirthdayService] Error al quitar rol de cumpleaños a ${bday.member.user.tag}:`, err.message));
+                }
+            }
         }
     }
 
@@ -72,7 +98,7 @@ async function checkBirthdays(client) {
             return;
         }
         const guilds = client.guilds.cache;
-        for (const [guildId, guild] of guilds) {
+        for (const [, guild] of guilds) {
             await checkGuildBirthdays(guild, client);
         }
     } catch (error) {

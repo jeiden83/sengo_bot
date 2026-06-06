@@ -134,6 +134,67 @@ async function run(messages, args) {
         return t(locale, 'cumple.channel_success', { channelId });
     }
 
+    // 1.5 Caso de configurar rol de cumpleaños
+    if (sub === "rol" || sub === "role") {
+        if (!guild) return t(locale, 'cumple.only_guild');
+        
+        const member = message.member || await guild.members.fetch(authorId).catch(() => null);
+        if (!member) return t(locale, 'cumple.err_validate_member');
+        
+        const hasPermission = member.permissions.has(PermissionFlagsBits.ManageGuild) || 
+                              member.permissions.has(PermissionFlagsBits.Administrator);
+        if (!hasPermission) {
+            return t(locale, 'cumple.err_no_permission');
+        }
+
+        if (!cleanArgs[1]) {
+            const currentRoleId = BirthdayModel.getGuildRole(guild.id);
+            if (currentRoleId) {
+                return t(locale, 'cumple.role_current', { roleId: currentRoleId });
+            }
+            return t(locale, 'cumple.role_none');
+        }
+
+        const roleArg = cleanArgs[1].toLowerCase();
+        if (roleArg === "quitar" || roleArg === "desactivar" || roleArg === "none") {
+            BirthdayModel.setGuildRole(guild.id, null);
+            return t(locale, 'cumple.role_disabled');
+        }
+
+        let roleId = null;
+        const match = cleanArgs[1].match(/^<@&(\d+)>$/) || cleanArgs[1].match(/^(\d+)$/);
+        if (match) {
+            roleId = match[1];
+        }
+
+        if (!roleId) {
+            return t(locale, 'cumple.role_invalid');
+        }
+
+        const targetRole = guild.roles.cache.get(roleId) || await guild.roles.fetch(roleId).catch(() => null);
+        if (!targetRole) {
+            return t(locale, 'cumple.role_not_found');
+        }
+
+        // Verificar que Sengo tenga permisos para gestionar roles
+        const botMember = guild.members.me || await guild.members.fetch(message.client.user.id).catch(() => null);
+        if (!botMember) {
+            return t(locale, 'general.error_unexpected');
+        }
+
+        if (!botMember.permissions.has(PermissionFlagsBits.ManageRoles)) {
+            return t(locale, 'cumple.role_err_manage_roles');
+        }
+
+        // Verificar si el rol a gestionar está por encima de Sengo en la jerarquía
+        if (targetRole.position >= botMember.roles.highest.position) {
+            return t(locale, 'cumple.role_err_hierarchy', { roleId: targetRole.id });
+        }
+
+        BirthdayModel.setGuildRole(guild.id, targetRole.id);
+        return t(locale, 'cumple.role_success', { roleId: targetRole.id });
+    }
+
     // 2. Caso de eliminar cumpleaños
     if (sub === "quitar" || sub === "remove" || sub === "borrar" || sub === "delete") {
         const removed = BirthdayModel.removeUserBirthday(authorId);
