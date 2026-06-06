@@ -127,17 +127,14 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
             const timePassed = Date.now() - lastRender;
             const cooldownTime = 5 * 60 * 1000; // 5 minutos en ms
             if (timePassed < cooldownTime) {
-                const timeLeftMs = cooldownTime - timePassed;
-                const minutesLeft = Math.floor(timeLeftMs / 60000);
-                const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+                const cooldownEndSeconds = Math.floor((lastRender + cooldownTime) / 1000);
+                const discordTimestamp = `<t:${cooldownEndSeconds}:R>`;
 
                 const errMessage = t(locale, 'render.err_cooldown', {
-                    minutes: minutesLeft,
-                    seconds: secondsLeft
+                    time: discordTimestamp
                 });
 
-                await message.channel.send({ content: `❌ ${message.author.toString()}, ${errMessage}` });
-                return;
+                throw new Error(`${message.author.toString()}, ${errMessage}`);
             }
         }
     }
