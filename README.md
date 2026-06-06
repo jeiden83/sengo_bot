@@ -40,17 +40,26 @@ TATSU_API_KEY=tu_tatsu_key_aqui
 OWNER_ID=tu_discord_id_aqui
 SENGOBOT_GUILD_ID=tu_guild_id_aqui
 
+# Token de GitHub para repositorios (Opcional - para estadísticas de webhook)
+GITHUB_TOKEN=tu_token_de_github_aqui
+
 # Configuración de Despliegue (OAuth, Webhooks y Desarrollo Local)
 PORT=3000
 RENDER=false
 RENDER_EXTERNAL_URL=https://tu-url-de-render-o-ngrok.com
 START_NGROK=false
 
-# Token de apagado remoto seguro
+# Token de apagado remoto seguro (Requerido para despliegues continuos en Render)
 SHUTDOWN_TOKEN=tu_token_de_apagado_aqui
+
+# Webhook de errores críticos (Opcional)
+ERROR_WEBHOOK_URL=url_de_tu_webhook_de_errores_aqui
+
+# Token de Huismetbenen (Opcional - requerido para la funcionalidad de Rework de PP)
+HUISMETBENEN_ACCESS_TOKEN=tu_token_de_huismetbenen_aqui
 ```
 
-- Correr el bot con el `run.sh` (recomendado), o bien con:
+- Correr el bot:
 ```bash
 node .
 ```
