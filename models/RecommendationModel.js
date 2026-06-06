@@ -674,8 +674,16 @@ async function getPersonalizedRecommendations({
                 });
                 if (!hasSpeedTag) return false;
             } else if (style === 'length') {
-                // Filtrar estrictamente: mínimo 5 minutos (300 segundos) para maratones
-                if (c.total_length < 300) return false;
+                const isDT = candidateMod.includes("DT") || candidateMod.includes("NC");
+                if (isDT) {
+                    // Si es DT/NC, queremos mapas de más de 1 minuto (60 segundos) de duración real
+                    // pero menores de 5 minutos (300 segundos) NoMod.
+                    // 60 segs reales * 1.5 = 90 segs NoMod.
+                    if (c.total_length < 90 || c.total_length >= 300) return false;
+                } else {
+                    // Si no es DT/NC, mínimo 5 minutos (300 segundos) NoMod.
+                    if (c.total_length < 300) return false;
+                }
             } else if (style === 'tags') {
                 // Filtrar estrictamente: solo mapas que contengan user_tags
                 if (!c.user_tags || c.user_tags.length === 0) return false;
@@ -718,12 +726,18 @@ async function getPersonalizedRecommendations({
             score += lengthScore;
 
             if (style === 'length') {
-                if (c.total_length >= 600) {
-                    score += 40;
-                    reasons.push("Maratón extra largo (+10m)");
-                } else {
+                const isDT = candidateMod.includes("DT") || candidateMod.includes("NC");
+                if (isDT) {
                     score += 25;
-                    reasons.push("Maratón largo (+5m)");
+                    reasons.push("Largo con DT (+1m)");
+                } else {
+                    if (c.total_length >= 600) {
+                        score += 40;
+                        reasons.push("Maratón extra largo (+10m)");
+                    } else {
+                        score += 25;
+                        reasons.push("Maratón largo (+5m)");
+                    }
                 }
             } else if (lengthScore >= 11) {
                 reasons.push("Duración similar");
