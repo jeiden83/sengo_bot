@@ -8,6 +8,40 @@ async function run(messages, args) {
     const { message, reply } = messages;
     const locale = message.locale || 'es';
 
+    // Comprobar si se solicitó el flag -config
+    const hasConfigFlag = args.some(arg => arg.toLowerCase() === '-config');
+    if (hasConfigFlag) {
+        try {
+            await message.channel.sendTyping();
+            const preset = await OrdrModel.getUserPreset(message.author.id);
+            if (!preset) {
+                return t(locale, 'render.no_preset_found');
+            }
+
+            const name = preset.presetName || "Sin nombre";
+            const lastSaved = preset.lastSavedOn ? new Date(preset.lastSavedOn).toLocaleDateString(locale) : "N/A";
+            
+            const embed = {
+                title: "⚙️ Tu Configuración en o!rdr",
+                description: `Tienes un preset enlazado a tu cuenta de Discord en o!rdr.\n\n` +
+                             `**Nombre del Preset**: \`${name}\`\n` +
+                             `**Última actualización**: \`${lastSaved}\`\n\n` +
+                             `🔗 **¿Quieres cambiar tu configuración?**\n` +
+                             `Por seguridad, debes hacerlo desde la página oficial de o!rdr iniciando sesión con Discord y guardando tus cambios allí:\n` +
+                             `https://issou.best/ordr`,
+                color: 0x3498db,
+                footer: {
+                    text: `Sengo Bot • o!rdr presets`,
+                    icon_url: message.client?.user?.displayAvatarURL() || ""
+                }
+            };
+            return { embeds: [embed] };
+        } catch (err) {
+            console.error("Error al obtener la configuración de o!rdr:", err);
+            return t(locale, 'render.err_config_fetch');
+        }
+    }
+
     // 1. Buscar el archivo adjunto .osr en el mensaje o en el mensaje respondido
     let attachment = message.attachments.find(a => a.name.endsWith('.osr'));
     if (!attachment && reply && reply.attachments) {

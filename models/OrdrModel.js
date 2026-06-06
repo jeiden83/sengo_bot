@@ -251,8 +251,41 @@ function trackProgress(renderId, callbacks, locale = 'es') {
     initWebSocket();
 }
 
+/**
+ * Obtiene el preset del usuario enlazado a su ID de Discord en o!rdr.
+ * @param {string} discordId ID del usuario en Discord
+ * @returns {Promise<object|null>} Información del preset o null si no tiene
+ */
+async function getUserPreset(discordId) {
+    const apiKey = getValidApiKey();
+    if (!apiKey) {
+        return {
+            isDevSimulated: true,
+            presetName: "Preset de Prueba (Modo Dev)",
+            skin: "Default Skin",
+            resolution: "1280x720",
+            lastSavedOn: new Date().toISOString()
+        };
+    }
+
+    try {
+        const response = await fetch(`https://apis.issou.best/ordr/presets/bot?key=${apiKey}&discord_id=${discordId}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                return null;
+            }
+            throw new Error(`Error al consultar preset en o!rdr (Status: ${response.status})`);
+        }
+        return await response.json();
+    } catch (err) {
+        console.error("Error al obtener preset de o!rdr:", err);
+        throw err;
+    }
+}
+
 module.exports = {
     requestRender,
     trackProgress,
-    obtenerMensajeError
+    obtenerMensajeError,
+    getUserPreset
 };
