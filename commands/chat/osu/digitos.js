@@ -24,6 +24,10 @@ async function run(messages, args) {
     // Si no está linkeado al bot
     if (!user_found) return t(locale, 'digitos.err_not_linked');
 
+    // Verificar si está vinculado por OAuth
+    const oauth_record = await OsuUserModel.getOAuthTokenRecord(discord_id);
+    if (!oauth_record) return t(locale, 'digitos.err_not_oauth');
+
     // Obtener el usuario de osu
     const osu_user = await getOsuUser({ "username": [user_found.osu_id], "gamemode": user_found.main_gamemode });
 
