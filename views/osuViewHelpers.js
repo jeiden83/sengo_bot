@@ -187,6 +187,33 @@ function buildRecentButtonsRow(current, total, score) {
     return row;
 }
 
+/**
+ * Genera la fila de botones de paginación para Compare Single, añadiendo el botón de renderizar si procede.
+ */
+function buildCompareSingleButtonsRow(current, total, score) {
+    const row = buildPaginationRow({
+        prefix: 'c_single',
+        current,
+        total,
+        oneIndexed: true,
+        customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+    });
+    
+    const canRender = score && 
+                      (score.mode === 'osu' || score.ruleset_id === 0) && 
+                      (score.id !== undefined && score.id !== null);
+                      
+    if (canRender) {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId('c_single_render')
+                .setLabel('🎬')
+                .setStyle(ButtonStyle.Primary)
+        );
+    }
+    return row;
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -198,5 +225,6 @@ module.exports = {
     getFlagEmoji,
     buildPaginationRow,
     buildRecentButtonsRow,
+    buildCompareSingleButtonsRow,
     getDifficultyEmoji
 };

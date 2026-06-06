@@ -1,4 +1,4 @@
-const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { buildPaginationRow, buildCompareSingleButtonsRow } = require("../../../views/osuViewHelpers.js");
 const { getUnrankedBeatmapUserAllScores, argsParser, getBeatmapUserAllScores, findBeatmapInChannel, getBeatmap, getOsuUser, argsParserNoCommand } = require("../../utils/osu.js");
 const { doOsuCompareSingleEmbed, doOsuCompareListEmbed, getOsuCompareContent } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
@@ -212,20 +212,10 @@ async function run(messages, args) {
 
         const initialEmbed = await processScore(index);
 
-        const getSingleButtonsRow = (curr, max) => {
-            return buildPaginationRow({
-                prefix: 'c_single',
-                current: curr,
-                total: max,
-                oneIndexed: true,
-                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
-            });
-        };
-
         const sent_message = await message.channel.send({
             content: content_msg,
             embeds: [initialEmbed],
-            components: [getSingleButtonsRow(index, filtered_scores.length)]
+            components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1])]
         });
 
         const filter = btnInt => btnInt.user.id === message.author.id;
@@ -236,6 +226,77 @@ async function run(messages, args) {
 
         collector.on('collect', async i => {
             try {
+                if (i.customId === 'c_single_render') {
+                    await i.deferUpdate(); // confirmamos la pulsación del botón
+                    
+                    const targetScore = filtered_scores[index - 1];
+                    const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${targetScore.user?.username || 'Usuario'}**...`);
+                    
+                    try {
+                        const fetch = require('node-fetch');
+                        const OsuUserModel = require('../../../models/OsuUserModel.js');
+                        const fs = require('fs');
+                        await OsuUserModel.NewloadToken();
+                        
+                        let token = null;
+                        try {
+                            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                            token = tokenData.access_token;
+                        } catch (err) {
+                            console.error("Error al leer token:", err);
+                        }
+                        
+                        if (!token) {
+                            throw new Error("No token available");
+                        }
+                        
+                        const mode = targetScore.mode || 'osu';
+                        const scoreId = targetScore.id;
+                        const url = `https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`;
+                        
+                        const downloadRes = await fetch(url, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (!downloadRes.ok) {
+                            throw new Error(`osu! API returned ${downloadRes.status}`);
+                        }
+                        
+                        const replayBuffer = await downloadRes.buffer();
+                        
+                        // Invocar el flujo de renderizado usando startRenderFlow
+                        const renderCmd = require('./render.js');
+                        const mockMessages = {
+                            message: {
+                                author: i.user,
+                                locale: locale,
+                                channel: {
+                                    send: async (options) => {
+                                        try { await infoMsg.delete(); } catch {}
+                                        return await i.channel.send(options);
+                                    },
+                                    sendTyping: async () => {}
+                                }
+                            }
+                        };
+                        
+                        await renderCmd.startRenderFlow(
+                            mockMessages,
+                            replayBuffer,
+                            `compare_${scoreId}.osr`,
+                            { skin: 'Default', resolution: '1280x720' },
+                            locale
+                        );
+                        
+                    } catch (err) {
+                        console.error("Error al descargar replay de Compare Play:", err);
+                        await infoMsg.edit(`❌ **Error:** No se pudo obtener el replay para esta jugada desde los servidores de osu! (es común para jugadas que no son del Top 100 del mapa o si son muy antiguas/fallidas).`);
+                    }
+                    return;
+                }
+
                 await i.deferUpdate();
 
                 if (i.customId === 'c_single_first') {
@@ -254,7 +315,7 @@ async function run(messages, args) {
                 await i.editReply({
                     content: content_msg,
                     embeds: [embed],
-                    components: [getSingleButtonsRow(index, filtered_scores.length)]
+                    components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1])]
                 });
             } catch (err) {
                 console.error("Error al navegar single compare score:", err);
