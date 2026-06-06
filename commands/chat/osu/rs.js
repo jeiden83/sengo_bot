@@ -388,11 +388,20 @@ async function run(messages, args) {
                         }
                     };
                     
-                    const username = targetScore.user?.username || 'Usuario';
-                    const artist = targetScore.beatmapset?.artist || '';
-                    const title = targetScore.beatmapset?.title || '';
-                    const version = targetScore.beatmap?.version || '';
-                    const stars = targetScore.beatmap?.difficulty_rating ? ` (${targetScore.beatmap.difficulty_rating.toFixed(2)}★)` : '';
+                    let beatmapInfo = null;
+                    try {
+                        beatmapInfo = await getBeatmap(targetScore.beatmap.id);
+                    } catch (err) {
+                        console.warn("[rs_render] No se pudo obtener metadatos adicionales del beatmap:", err.message);
+                    }
+
+                    const username = targetScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
+                    const artist = targetScore.beatmapset?.artist || beatmapInfo?.beatmapset?.artist || '';
+                    const title = targetScore.beatmapset?.title || beatmapInfo?.beatmapset?.title || '';
+                    const version = targetScore.beatmap?.version || beatmapInfo?.version || '';
+                    const stars = (targetScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating)
+                        ? ` (${(targetScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating).toFixed(2)}★)`
+                        : '';
                     const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
                     const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
                     const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
@@ -401,7 +410,7 @@ async function run(messages, args) {
                         mockMessages,
                         replayBuffer,
                         `recent_${scoreId}.osr`,
-                        { skin: 'Default', resolution: '1280x720', customDescription },
+                        { skin: 'default', resolution: '1280x720', skinSpecified: false, customDescription },
                         locale
                     );
                     

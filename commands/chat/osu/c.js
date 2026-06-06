@@ -293,11 +293,13 @@ async function run(messages, args) {
                             }
                         };
                         
-                        const username = targetScore.user?.username || 'Usuario';
-                        const artist = targetScore.beatmapset?.artist || '';
-                        const title = targetScore.beatmapset?.title || '';
-                        const version = targetScore.beatmap?.version || '';
-                        const stars = targetScore.beatmap?.difficulty_rating ? ` (${targetScore.beatmap.difficulty_rating.toFixed(2)}★)` : '';
+                        const username = targetScore.user?.username || parsed_args.username?.[0] || 'Usuario';
+                        const artist = targetScore.beatmapset?.artist || beatmap_metadata.beatmapset?.artist || '';
+                        const title = targetScore.beatmapset?.title || beatmap_metadata.beatmapset?.title || '';
+                        const version = targetScore.beatmap?.version || beatmap_metadata.version || '';
+                        const stars = (targetScore.beatmap?.difficulty_rating || beatmap_metadata.difficulty_rating)
+                            ? ` (${(targetScore.beatmap?.difficulty_rating || beatmap_metadata.difficulty_rating).toFixed(2)}★)`
+                            : '';
                         const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
                         const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
                         const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
@@ -306,7 +308,7 @@ async function run(messages, args) {
                             mockMessages,
                             replayBuffer,
                             `compare_${scoreId}.osr`,
-                            { skin: 'Default', resolution: '1280x720', customDescription },
+                            { skin: 'default', resolution: '1280x720', skinSpecified: false, customDescription },
                             locale
                         );
                         
