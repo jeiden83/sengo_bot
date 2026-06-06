@@ -146,7 +146,10 @@ function getCategoryCommands(category, commandsMap, mainCommandsSet) {
 async function run(messages, args, intialized_data) {
     const { message } = messages;
     const locale = message.locale || 'es';
-    const prefix = message.content && message.content.startsWith("sd.") ? "sd." : "s.";
+    const rawContent = message.content || "";
+    const prefix = rawContent.toLowerCase().startsWith("sd.")
+        ? rawContent.slice(0, 3)
+        : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
 
     // Orden y etiquetas de los tipos de comandos
     const type_order = ["osu", "utils", "meme", "general", "about", "moderation"];

@@ -4,7 +4,10 @@ const { t } = require("../../../utils/i18n.js");
 async function run(messages, args) {
     const { message, reply } = messages;
     const locale = message.locale || 'es';
-    const prefix = message.content && message.content.startsWith("sd.") ? "sd." : "s.";
+    const rawContent = message.content || "";
+    const prefix = rawContent.toLowerCase().startsWith("sd.")
+        ? rawContent.slice(0, 3)
+        : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
 
     const initialEmbed = doAboutEmbed(message, 0, locale, prefix);
     const initialRows = buildAboutNavigationRows(0, locale);

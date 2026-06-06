@@ -49,8 +49,11 @@ async function run(messages, args) {
 
     const sub = args[0]?.toLowerCase();
     if (!sub || !['crear', 'create', 'terminar', 'end', 'reroll'].includes(sub)) {
-        const prefix = message.content.startsWith("sd.") ? "sd." : "s.";
-        const trigger = message.content.slice(prefix.length).split(/\s+/)[0].toLowerCase() || "giveaway";
+        const rawContent = message.content || "";
+        const prefix = rawContent.toLowerCase().startsWith("sd.")
+            ? rawContent.slice(0, 3)
+            : (rawContent.toLowerCase().startsWith("s.") ? rawContent.slice(0, 2) : "s.");
+        const trigger = rawContent ? (rawContent.slice(prefix.length).split(/\s+/)[0].toLowerCase() || "giveaway") : "giveaway";
         
         const { doHelpCommandEmbed } = require("../../../views/generalViews.js");
         
