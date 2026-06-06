@@ -228,6 +228,11 @@
       "body": "Compares a score on the last map fetched by Sengo. The score can belong to the command user or another player.",
       "usage": "s.c : Compares the score of the user linked to the bot.\ns.c 'user' : Compares the score of the user in the argument.\ns.c -p 2 : Shows page 2 of the scores list.\ns.c -m HD : Filters by exact mods.\ns.c -g 200 : Filters by scores of 200 pp or more.\ns.c -i 1 : Shows a detailed embed of the best score (similar to .rs)."
     },
+    "entre": {
+      "header": "Compare general statistics between two players",
+      "body": "Compares general statistics (PP, Rank, National Rank, Acc, Ranked Score, Top Play, Play Count, Play Time, Level) of two players in osu! and determines who wins the majority.",
+      "usage": "s.entre [player1] [player2]\ns.entre [player1] [player2] -mania\ns.entre [player1] [player2] -gatari"
+    },
     "gap": {
       "header": "Server-wide >c leaderboard",
       "body": "Performs a >c across all linked users in the server, showing a paginated list sorted by score or pp.",
@@ -1201,6 +1206,33 @@
       "list_row": "**ID {id}**\n👤 **Uploaded by:** {username} (`{userId}`)\n🏰 **Server:** {guild}",
       "list_guild_dm": "Direct Message",
       "list_results_field": "Results"
+  },
+  "entre": {
+    "title": "Stats Comparison",
+    "desc": "Comparing {user1} and {user2} in **{mode}** mode ({server}).",
+    "stat_pp": "PP",
+    "stat_pp_short": "PP",
+    "stat_rank": "Global Rank",
+    "stat_rank_short": "Rank",
+    "stat_c_rank": "National Rank",
+    "stat_c_rank_short": "National",
+    "stat_acc": "Accuracy",
+    "stat_acc_short": "Acc",
+    "stat_playcount": "Play Count",
+    "stat_playcount_short": "Plays",
+    "stat_playtime": "Play Time",
+    "stat_playtime_short": "Time",
+    "stat_ranked_score": "Ranked Score",
+    "stat_ranked_score_short": "R. Score",
+    "stat_top_play": "Top Play",
+    "stat_top_play_short": "Top Play",
+    "stat_level": "Level",
+    "stat_level_short": "Level",
+    "winner": "🏆 **{winner}** wins the comparison by **{wins}** to **{losses}**.",
+    "tie": "🤝 It's a tie (**{wins}** to **{losses}**).",
+    "err_usage": "Correct usage: `s.entre [player1] [player2]`. If you only specify one player, you will be compared (you must be linked).",
+    "err_not_linked": "Discord user <@{id}> is not linked to Sengo.",
+    "err_not_found": "Could not find player `{user}`."
   }
 }
 

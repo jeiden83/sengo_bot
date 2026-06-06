@@ -128,10 +128,18 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
         *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego consultado.
 *   **`s.pais`**
     Asigna de forma automática el rol correspondiente a tu país de osu! (exclusivo para el servidor de **Osu! Latinoamérica**).
-*   **`s.gap [jugador1] [jugador2]`**
-    Muestra la brecha (gap) en rango y PP entre dos jugadores.
+*   **`s.gap`**
+    Muestra la brecha (gap) y diferencia exacta de puntuación, precisión y PP de los usuarios vinculados del servidor en el último beatmap consultado.
     *   *Parámetros y flags útiles:*
+        *   `-p <página>`: Navega por la lista de scores del servidor.
+        *   `-force`: Fuerza la actualización de puntuaciones desde la API de osu!.
+        *   `$reply`: Ejecuta el comando para el beatmap del mensaje al que se responde.
+*   **`s.entre [jugador1] [jugador2]`**
+    Compara las estadísticas generales (PP, Rank, Acc, Playcount, Playtime, Medallas, Nivel) de dos jugadores en osu! y determina quién gana la mayoría.
+    *   *Parámetros y flags útiles:*
+        *   `[jugador1] [jugador2]`: Nombre de usuario de osu! o mención de Discord de los jugadores a comparar. Si solo se especifica uno, se comparará contra ti.
         *   `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego para la comparación.
+        *   `-gatari` / `-bancho`: Cambia el servidor de osu! consultado.
 *   **`s.amigos`**
     Compara y muestra el ranking entre tus amigos mutuals agregados al bot.
     *   *Parámetros y flags útiles:*

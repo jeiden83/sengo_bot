@@ -703,6 +703,220 @@ function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, on
     return embed;
 }
 
+/**
+ * Renderiza el embed para la comparación de estadísticas (s.entre)
+ */
+function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale = 'es', topPpA = 0, topPpB = 0) {
+    const embedColor = getEmbedColor(message);
+    const flagA = getFlagEmoji(userA.country_code);
+    const flagB = getFlagEmoji(userB.country_code);
+    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
+
+    const formatCompact = (num, locale) => {
+        if (num >= 1e9) {
+            return (num / 1e9).toLocaleString(locale, { maximumFractionDigits: 2 }) + 'B';
+        }
+        if (num >= 1e6) {
+            return (num / 1e6).toLocaleString(locale, { maximumFractionDigits: 2 }) + 'M';
+        }
+        return num.toLocaleString(locale);
+    };
+
+    // PP
+    const ppA = userA.statistics.pp || 0;
+    const ppB = userB.statistics.pp || 0;
+    const markersPP = getMarkers(ppA, ppB);
+    const ppAStr = ppA.toLocaleString(locTag) + ' pp';
+    const ppBStr = ppB.toLocaleString(locTag) + ' pp';
+
+    // Rank
+    const rankA = userA.statistics.global_rank;
+    const rankB = userB.statistics.global_rank;
+    let markersRank = { a: '', a_end: '', b: '', b_end: '' };
+    if (!rankA && rankB) {
+        markersRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+    } else if (rankA && !rankB) {
+        markersRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
+    } else if (rankA && rankB) {
+        if (rankA < rankB) {
+            markersRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
+        } else if (rankB < rankA) {
+            markersRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+        }
+    }
+    const rankAStr = rankA ? '#' + rankA.toLocaleString(locTag) : 'N/A';
+    const rankBStr = rankB ? '#' + rankB.toLocaleString(locTag) : 'N/A';
+
+    // Rango Nacional (Country Rank)
+    const cRankA = userA.statistics.rank?.country;
+    const cRankB = userB.statistics.rank?.country;
+    let markersCRank = { a: '', a_end: '', b: '', b_end: '' };
+    if (!cRankA && cRankB) {
+        markersCRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+    } else if (cRankA && !cRankB) {
+        markersCRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
+    } else if (cRankA && cRankB) {
+        if (cRankA < cRankB) {
+            markersCRank = { a: '🏆 **', a_end: '**', b: '', b_end: '' };
+        } else if (cRankB < cRankA) {
+            markersCRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+        }
+    }
+    const cRankAStr = cRankA ? '#' + cRankA.toLocaleString(locTag) : 'N/A';
+    const cRankBStr = cRankB ? '#' + cRankB.toLocaleString(locTag) : 'N/A';
+
+    // Accuracy
+    const accA = userA.statistics.hit_accuracy || 0;
+    const accB = userB.statistics.hit_accuracy || 0;
+    const markersAcc = getMarkers(accA, accB);
+    const accAStr = accA.toFixed(2) + '%';
+    const accBStr = accB.toFixed(2) + '%';
+
+    // Play Count
+    const pcA = userA.statistics.play_count || 0;
+    const pcB = userB.statistics.play_count || 0;
+    const markersPc = getMarkers(pcA, pcB);
+    const pcAStr = pcA.toLocaleString(locTag);
+    const pcBStr = pcB.toLocaleString(locTag);
+
+    // Play Time
+    const ptA = userA.statistics.play_time || 0;
+    const ptB = userB.statistics.play_time || 0;
+    const markersPt = getMarkers(ptA, ptB);
+    const ptAStr = Math.floor(ptA / 3600).toLocaleString(locTag) + ' hrs';
+    const ptBStr = Math.floor(ptB / 3600).toLocaleString(locTag) + ' hrs';
+
+    // Ranked Score
+    const rsA = userA.statistics.ranked_score || 0;
+    const rsB = userB.statistics.ranked_score || 0;
+    const markersRs = getMarkers(rsA, rsB);
+    const rsAStr = formatCompact(rsA, locTag);
+    const rsBStr = formatCompact(rsB, locTag);
+
+    // Top PP
+    const markersTopPp = getMarkers(topPpA, topPpB);
+    const topPpAStr = topPpA > 0 ? topPpA.toFixed(1) + ' pp' : '0 pp';
+    const topPpBStr = topPpB > 0 ? topPpB.toFixed(1) + ' pp' : '0 pp';
+
+    // Level
+    const lvlA = (userA.statistics.level?.current || 0) + (userA.statistics.level?.progress || 0) / 100;
+    const lvlB = (userB.statistics.level?.current || 0) + (userB.statistics.level?.progress || 0) / 100;
+    const markersLvl = getMarkers(lvlA, lvlB);
+    const lvlAStr = lvlA.toFixed(2);
+    const lvlBStr = lvlB.toFixed(2);
+
+    function getMarkers(valA, valB) {
+        if (valA === valB) return { a: '', a_end: '', b: '', b_end: '' };
+        return valA > valB
+            ? { a: '🏆 **', a_end: '**', b: '', b_end: '' }
+            : { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+    }
+
+    let winnerText = '';
+    if (winsA > winsB) {
+        winnerText = t(locale, 'entre.winner', { winner: userA.username, wins: winsA, losses: winsB });
+    } else if (winsB > winsA) {
+        winnerText = t(locale, 'entre.winner', { winner: userB.username, wins: winsB, losses: winsA });
+    } else {
+        winnerText = t(locale, 'entre.tie', { wins: winsA, losses: winsB });
+    }
+
+    const modeLabels = {
+        'osu': 'osu!std',
+        'taiko': 'osu!taiko',
+        'fruits': 'osu!catch',
+        'mania': 'osu!mania'
+    };
+    const resolvedMode = modeLabels[gamemode] || gamemode;
+    const resolvedServer = server.charAt(0).toUpperCase() + server.slice(1);
+
+    const descHeader = t(locale, 'entre.desc', {
+        user1: `${flagA} ${userA.username}`,
+        user2: `${userB.username} ${flagB}`,
+        mode: resolvedMode,
+        server: resolvedServer
+    });
+
+    const ansi = {
+        reset: "\u001b[0m",
+        cyan: "\u001b[0;36m",
+        greenBold: "\u001b[1;32m",
+        red: "\u001b[0;31m",
+        white: "\u001b[0;37m"
+    };
+
+    const pad = (str, len, align = 'left') => {
+        const s = str || '';
+        if (align === 'right') {
+            return s.padStart(len);
+        } else if (align === 'center') {
+            const totalPadding = len - s.length;
+            if (totalPadding <= 0) return s;
+            const leftPadding = Math.floor(totalPadding / 2);
+            const rightPadding = totalPadding - leftPadding;
+            return ' '.repeat(leftPadding) + s + ' '.repeat(rightPadding);
+        }
+        return s.padEnd(len);
+    };
+
+    const formatRow = (label, valA, valB, markerA, markerB) => {
+        const valACol = pad(valA, 10, 'right');
+        const labelCol = pad(label, 10, 'center');
+        const valBCol = pad(valB, 10, 'left');
+
+        const coloredLabel = `${ansi.cyan}${labelCol}${ansi.reset}`;
+
+        const winA = markerA && markerA.a && markerA.a.includes('🏆');
+        const winB = markerB && markerB.b && markerB.b.includes('🏆');
+
+        let coloredValA = "";
+        let coloredValB = "";
+
+        if (winA && !winB) {
+            coloredValA = `${ansi.greenBold}${valACol}${ansi.reset}`;
+            coloredValB = `${ansi.red}${valBCol}${ansi.reset}`;
+        } else if (winB && !winA) {
+            coloredValA = `${ansi.red}${valACol}${ansi.reset}`;
+            coloredValB = `${ansi.greenBold}${valBCol}${ansi.reset}`;
+        } else {
+            coloredValA = `${ansi.white}${valACol}${ansi.reset}`;
+            coloredValB = `${ansi.white}${valBCol}${ansi.reset}`;
+        }
+
+        return `${coloredValA}  ${coloredLabel}  ${coloredValB}`;
+    };
+
+    const blockRows = [
+        formatRow(t(locale, 'entre.stat_pp_short'), ppAStr, ppBStr, markersPP, markersPP),
+        formatRow(t(locale, 'entre.stat_rank_short'), rankAStr, rankBStr, markersRank, markersRank),
+        formatRow(t(locale, 'entre.stat_c_rank_short'), cRankAStr, cRankBStr, markersCRank, markersCRank),
+        formatRow(t(locale, 'entre.stat_acc_short'), accAStr, accBStr, markersAcc, markersAcc),
+        formatRow(t(locale, 'entre.stat_ranked_score_short'), rsAStr, rsBStr, markersRs, markersRs),
+        formatRow(t(locale, 'entre.stat_top_play_short'), topPpAStr, topPpBStr, markersTopPp, markersTopPp),
+        formatRow(t(locale, 'entre.stat_playcount_short'), pcAStr, pcBStr, markersPc, markersPc),
+        formatRow(t(locale, 'entre.stat_playtime_short'), ptAStr, ptBStr, markersPt, markersPt),
+        formatRow(t(locale, 'entre.stat_level_short'), `Lv. ${lvlAStr}`, `Lv. ${lvlBStr}`, markersLvl, markersLvl)
+    ].join('\n');
+
+    const description = [
+        descHeader,
+        `\n📊 **${t(locale, 'entre.title')}**\n`,
+        `\`\`\`ansi`,
+        blockRows,
+        `\`\`\``,
+        `\n${winnerText}`
+    ].join('\n');
+
+    return new EmbedBuilder()
+        .setTitle(t(locale, 'entre.title'))
+        .setDescription(description)
+        .setColor(embedColor)
+        .setAuthor({ name: userA.username, iconURL: userA.avatar_url, url: `https://osu.ppy.sh/users/${userA.id}` })
+        .setThumbnail(userB.avatar_url)
+        .setFooter({ text: 'Sengo', iconURL: 'https://jeiden.s-ul.eu/3ssHl9Gd' })
+        .setTimestamp();
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
@@ -712,6 +926,7 @@ module.exports = {
     doOsuMapperListEmbed,
     doOsuMapperTopEmbed,
     doOsuBnProfileEmbed,
-    doOsuBnListEmbed
+    doOsuBnListEmbed,
+    doOsuCompareStatsEmbed
 };
 

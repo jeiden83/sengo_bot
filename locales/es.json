@@ -228,6 +228,11 @@
       "body": "Compara una score en el último mapa que consigue el bot Sengo. La score puede ser del usuario del comando u otro jugador.",
       "usage": "s.c : Compara la score del usuario linkeado al bot.\ns.c 'usuario' : Compara la score del usuario en el argumento.\ns.c -p 2 : Muestra la página 2 de la lista de puntuaciones.\ns.c -m HD : Filtra por mods exactos.\ns.c -g 200 : Filtra por jugadas de 200 pp o más.\ns.c -i 1 : Muestra un embed detallado de la mejor score (similar a .rs)."
     },
+    "entre": {
+      "header": "Compara estadísticas entre dos jugadores",
+      "body": "Compara las estadísticas generales (PP, Rango, Rango Nacional, Acc, Ranked Score, Top Play, Partidas, Tiempo, Nivel) de dos jugadores en osu! y determina quién gana la mayoría.",
+      "usage": "s.entre [jugador1] [jugador2]\ns.entre [jugador1] [jugador2] -mania\ns.entre [jugador1] [jugador2] -gatari"
+    },
     "gap": {
       "header": ">c Global entre el server",
       "body": "Hace un >c con respecto a los usuarios linkeados en el servidor, mostrando la lista paginada y ordenada por score o pp.",
@@ -1201,6 +1206,33 @@
       "list_row": "**ID {id}**\n👤 **Subido por:** {username} (`{userId}`)\n🏰 **Servidor:** {guild}",
       "list_guild_dm": "Mensaje Privado",
       "list_results_field": "Resultados"
+  },
+  "entre": {
+    "title": "Comparación de Estadísticas",
+    "desc": "Comparando a {user1} y {user2} en el modo **{mode}** ({server}).",
+    "stat_pp": "PP",
+    "stat_pp_short": "PP",
+    "stat_rank": "Rango Global",
+    "stat_rank_short": "Rango",
+    "stat_c_rank": "Rango Nacional",
+    "stat_c_rank_short": "Nacional",
+    "stat_acc": "Precisión",
+    "stat_acc_short": "Acc",
+    "stat_playcount": "Partidas",
+    "stat_playcount_short": "Partidas",
+    "stat_playtime": "Tiempo de Juego",
+    "stat_playtime_short": "Tiempo",
+    "stat_ranked_score": "Score Rankeado",
+    "stat_ranked_score_short": "R. Score",
+    "stat_top_play": "Top Play",
+    "stat_top_play_short": "Top Play",
+    "stat_level": "Nivel",
+    "stat_level_short": "Nivel",
+    "winner": "🏆 **{winner}** gana la comparación por **{wins}** a **{losses}**.",
+    "tie": "🤝 Es un empate (**{wins}** a **{losses}**).",
+    "err_usage": "Uso correcto: `s.entre [jugador1] [jugador2]`. Si solo especificas un jugador, se te comparará a ti (debes estar vinculado).",
+    "err_not_linked": "El usuario de Discord <@{id}> no está vinculado a Sengo.",
+    "err_not_found": "No se pudo encontrar al jugador `{user}`."
   }
 }
 
