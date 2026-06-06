@@ -4,6 +4,9 @@ const { t } = require("../../../utils/i18n.js");
 const OrdrModel = require("../../../models/OrdrModel.js");
 const { doQueueEmbed, doProgressEmbed, doDoneEmbed, doErrorEmbed } = require("../../../views/ordrEmbeds.js");
 
+// Almacena el timestamp del ultimo render de cada usuario en Discord (cooldown de 5 minutos)
+const renderCooldowns = new Map();
+
 async function run(messages, args) {
     const { message, reply } = messages;
     const locale = message.locale || 'es';
@@ -112,6 +115,30 @@ async function run(messages, args) {
  */
 async function startRenderFlow(messages, replayBuffer, fileName, options = {}, locale = 'es') {
     const { message } = messages;
+    const userId = message?.author?.id;
+
+    // Verificar cooldown del usuario en Discord (1 render cada 5 minutos)
+    if (userId) {
+        const lastRender = renderCooldowns.get(userId);
+        if (lastRender) {
+            const timePassed = Date.now() - lastRender;
+            const cooldownTime = 5 * 60 * 1000; // 5 minutos en ms
+            if (timePassed < cooldownTime) {
+                const timeLeftMs = cooldownTime - timePassed;
+                const minutesLeft = Math.floor(timeLeftMs / 60000);
+                const secondsLeft = Math.floor((timeLeftMs % 60000) / 1000);
+
+                const errMessage = t(locale, 'render.err_cooldown', {
+                    minutes: minutesLeft,
+                    seconds: secondsLeft
+                });
+
+                await message.channel.send({ content: `❌ ${message.author.toString()}, ${errMessage}` });
+                return;
+            }
+        }
+    }
+
     const skin = options.skin || 'Default';
     const resolution = options.resolution || '1280x720';
 
@@ -121,9 +148,14 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
         fileName,
         skin,
         resolution,
-        discordUserId: message?.author?.id,
+        discordUserId: userId,
         ...options
     });
+
+    // Registrar el timestamp tras la peticion exitosa
+    if (userId) {
+        renderCooldowns.set(userId, Date.now());
+    }
 
     const renderId = renderData.renderID;
     const skinName = renderData.skin || skin;

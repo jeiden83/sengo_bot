@@ -1301,6 +1301,7 @@
     "err_no_attachment": "Por favor, adjunta un archivo de replay `.osr` o responde a un mensaje que lo tenga.",
     "err_only_std": "Este replay no es de osu!standard. o!rdr y Sengo solo soportan el modo estándar.",
     "err_too_many_requests": "Has excedido el límite de peticiones de o!rdr (429 Too Many Requests). Por favor, espera unos minutos o usa una API key válida.",
+    "err_cooldown": "Debes esperar {minutes}m y {seconds}s antes de solicitar otro renderizado.",
     "no_preset_found": "No tienes ningún preset enlazado a tu ID de Discord en o!rdr.\n\n🔗 Si deseas configurar o cambiar tus preferencias de renderizado (skin, resolución, volumen, etc.), hazlo desde la página de o!rdr iniciando sesión con tu Discord:\nhttps://ordr.issou.best/",
     "err_config_fetch": "Ocurrió un error al intentar consultar tu preset en o!rdr.",
     "dev_mode_preset_warning": "⚠️ **Modo de desarrollo activo**: El bot está usando datos de prueba simulados porque no tiene configurada una clave de API de o!rdr autorizada. Por lo tanto, no se puede consultar tu configuración real.",
