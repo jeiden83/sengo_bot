@@ -3,6 +3,20 @@
     "loading": "Consultando base de datos y API de osu!...",
     "error_unexpected": "Ocurrió un error inesperado al procesar el comando."
   },
+  "bug": {
+    "err_owner_only": "❌ Solo el creador de Sengo puede usar esta opción del comando.",
+    "webhook_configured": "✅ El webhook para reportes de bugs ha sido configurado correctamente.",
+    "err_invalid_webhook": "❌ La URL provista no es un webhook de Discord válido.",
+    "err_no_webhook_set": "❌ No se ha configurado ningún webhook para recibir reportes de bugs. Por favor, contacta al creador del bot.",
+    "err_empty_report": "❌ No puedes enviar un reporte de bug vacío. Describe el bug o adjunta una imagen.",
+    "report_sent": "✅ Tu reporte de bug ha sido enviado con éxito. ¡Gracias por tu ayuda!",
+    "err_send_failed": "❌ Hubo un error al intentar enviar tu reporte al webhook.",
+    "modal_title": "Reportar un Bug en Sengo",
+    "modal_bug_title_label": "Título del Bug (Opcional)",
+    "modal_bug_title_placeholder": "Ej: Error al usar s.r",
+    "modal_bug_body_label": "Descripción del Bug (Opcional)",
+    "modal_bug_body_placeholder": "Explica detalladamente qué sucedió..."
+  },
   "tips": {
     "country_redundant": "💡 *Tip: Como tu país ya es **{country}**, puedes usar simplemente `-pais` sin especificar el código y Sengo lo autodetectará.*",
     "username_redundant": "💡 *Tip: Como ya estás vinculado al bot, no necesitas escribir tu nombre en el comando; puedes usarlo directamente.*",
@@ -102,6 +116,11 @@
     }
   },
   "commands": {
+    "bug": {
+      "header": "Reportar un bug a los desarrolladores.",
+      "body": "Envía un reporte de bug directamente al creador del bot.",
+      "usage": "s.bug <texto> : Envía un bug con el texto indicado.\nEl comando también acepta adjuntos (imágenes/fotos) y enlaces de mensajes si respondes a un mensaje."
+    },
     "help": {
       "header": "Los comandos de Sengo, explicados paso a paso.",
       "body": "Muestra la lista completa de comandos o el detalle y uso de un comando específico.",

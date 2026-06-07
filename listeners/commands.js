@@ -440,7 +440,13 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             }
 
             // Para avisar que se mandara un slash
-            await interaction.deferReply();
+            const slash_commands_map = slash_commands.get('slash_commands_map');
+            const cmdObj = slash_commands_map ? slash_commands_map.get(message_command) : null;
+            const noDefer = cmdObj?.noDefer || cmdObj?.run?.noDefer || false;
+
+            if (!noDefer) {
+                await interaction.deferReply();
+            }
 
             const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
@@ -450,19 +456,32 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             }
 
             if (!slash_result) {
-                await interaction.editReply("El comando no devolvió ningún resultado.");
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply("El comando no devolvió ningún resultado.");
+                } else {
+                    await interaction.reply({ content: "El comando no devolvió ningún resultado.", ephemeral: true });
+                }
                 logger.failed("El comando no devolvió ningún resultado.");
                 return;
             }
 
             // Comprobar la longitud del resultado del slash si es un string y enviar un error si es muy largo
             if (typeof slash_result === 'string' && slash_result.length > MAX_MESSAGE_LENGTH) {
-                await interaction.editReply(`❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`);
+                const tooLongMsg = `❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`;
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply(tooLongMsg);
+                } else {
+                    await interaction.reply({ content: tooLongMsg, ephemeral: true });
+                }
                 logger.failed("El resultado superó los 2000 caracteres.");
                 return;
             }
 
-            await interaction.editReply(slash_result);
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply(slash_result);
+            } else {
+                await interaction.reply(slash_result);
+            }
             logger.success(`/${message_command} completado con éxito.`);
 
         } catch (error) {
@@ -470,9 +489,17 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             console.error("Error ejecutando el comando:", error);
             const friendlyMsg = getFriendlyErrorMessage(error);
             const ownerMention = process.env.OWNER_ID ? `<@${process.env.OWNER_ID}>` : "el creador";
-            await interaction.editReply(
-                friendlyMsg || `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`
-            );
+            const responseText = friendlyMsg || `Hubo un error al ejecutar el comando. Ahora ${ownerMention} lo sabrá.`;
+            
+            try {
+                if (interaction.deferred || interaction.replied) {
+                    await interaction.editReply(responseText);
+                } else {
+                    await interaction.reply({ content: responseText, ephemeral: true });
+                }
+            } catch (replyError) {
+                console.error("Error al responder al fallo de interacción:", replyError);
+            }
             
             // Notificar al Webhook de errores de forma asíncrona
             reportErrorToWebhook(error, {

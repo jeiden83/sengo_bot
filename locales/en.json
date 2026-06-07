@@ -3,6 +3,20 @@
     "loading": "Querying database and osu! API...",
     "error_unexpected": "An unexpected error occurred while processing the command."
   },
+  "bug": {
+    "err_owner_only": "❌ Only the creator of Sengo can use this option of the command.",
+    "webhook_configured": "✅ The bug report webhook has been successfully configured.",
+    "err_invalid_webhook": "❌ The provided URL is not a valid Discord webhook.",
+    "err_no_webhook_set": "❌ No webhook has been configured to receive bug reports. Please contact the bot creator.",
+    "err_empty_report": "❌ You cannot send an empty bug report. Please describe the bug or attach an image.",
+    "report_sent": "✅ Your bug report has been sent successfully. Thank you for your help!",
+    "err_send_failed": "❌ An error occurred while trying to send your report to the webhook.",
+    "modal_title": "Report a Bug in Sengo",
+    "modal_bug_title_label": "Bug Title (Optional)",
+    "modal_bug_title_placeholder": "E.g., Error using s.r",
+    "modal_bug_body_label": "Bug Description (Optional)",
+    "modal_bug_body_placeholder": "Explain in detail what happened..."
+  },
   "tips": {
     "country_redundant": "💡 *Tip: Since your country is already **{country}**, you can simply use `-country` without specifying the code and Sengo will auto-detect it.*",
     "username_redundant": "💡 *Tip: Since you are already linked to the bot, you don't need to type your username in the command; you can run it directly.*",
@@ -102,6 +116,11 @@
     }
   },
   "commands": {
+    "bug": {
+      "header": "Report a bug to the developers.",
+      "body": "Sends a bug report directly to the bot creator.",
+      "usage": "s.bug <text> : Sends a bug with the specified text.\nThe command also accepts attachments (images/photos) and message links if replying to a message."
+    },
     "help": {
       "header": "Sengo commands, explained step by step.",
       "body": "Shows the complete list of commands or the details and usage of a specific command.",
