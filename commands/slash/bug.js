@@ -93,11 +93,23 @@ async function run(interaction, res) {
             attachmentUrl
         );
 
-        await webhookClient.send({
+        const sendPayload = {
             username: "Sengo Bug Reporter",
             avatarURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
             embeds: [embed]
-        });
+        };
+
+        try {
+            await webhookClient.send(sendPayload);
+        } catch (webhookError) {
+            if (webhookError.code === 220001) {
+                const threadName = title ? `Bug: ${title}` : `Bug de ${interaction.user.username}`;
+                sendPayload.threadName = threadName.substring(0, 100);
+                await webhookClient.send(sendPayload);
+            } else {
+                throw webhookError;
+            }
+        }
 
         await modalSubmit.editReply({
             content: t(locale, 'bug.report_sent')
@@ -116,6 +128,21 @@ async function run(interaction, res) {
                 });
             } catch (e) {
                 console.error("Error al enviar fallback de error en /bug:", e);
+            }
+
+            // Reportar al webhook de errores
+            try {
+                const { reportErrorToWebhook } = require("../../services/errorNotifier.js");
+                reportErrorToWebhook(err, {
+                    commandName: 'slash_bug',
+                    args: [],
+                    user: interaction.user,
+                    guild: interaction.guild,
+                    channel: interaction.channel,
+                    interaction: interaction
+                });
+            } catch (notifierErr) {
+                console.error("Error al intentar reportar el fallo al webhook de errores:", notifierErr);
             }
         }
     }

@@ -56,18 +56,48 @@ async function run(messages, args) {
             attachmentUrl
         );
 
-        await webhookClient.send({
+        const sendPayload = {
             username: "Sengo Suggestions",
             avatarURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
             embeds: [embed]
-        });
+        };
+
+        try {
+            await webhookClient.send(sendPayload);
+        } catch (webhookError) {
+            if (webhookError.code === 220001) {
+                sendPayload.threadName = `Sugerencia de ${message.author.username}`.substring(0, 100);
+                await webhookClient.send(sendPayload);
+            } else {
+                throw webhookError;
+            }
+        }
 
         return t(locale, 'sugerencia.report_sent');
     } catch (err) {
         console.error("Error al enviar la sugerencia al webhook:", err);
+        try {
+            const { reportErrorToWebhook } = require("../../../services/errorNotifier.js");
+            reportErrorToWebhook(err, {
+                commandName: 'sugerencia',
+                args: args,
+                user: message.author,
+                guild: message.guild,
+                channel: message.channel,
+                message: message
+            });
+        } catch (notifierErr) {
+            console.error("Error al intentar reportar el fallo al webhook de errores:", notifierErr);
+        }
         return t(locale, 'sugerencia.err_send_failed');
     }
 }
+
+run.alias = {
+    'feat': {
+        'args': ''
+    }
+};
 
 run.description = {
     'header': t('es', 'commands.sugerencia.header'),

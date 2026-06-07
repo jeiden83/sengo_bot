@@ -56,15 +56,39 @@ async function run(messages, args) {
             attachmentUrl
         );
 
-        await webhookClient.send({
+        const sendPayload = {
             username: "Sengo Bug Reporter",
             avatarURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
             embeds: [embed]
-        });
+        };
+
+        try {
+            await webhookClient.send(sendPayload);
+        } catch (webhookError) {
+            if (webhookError.code === 220001) {
+                sendPayload.threadName = `Bug de ${message.author.username}`.substring(0, 100);
+                await webhookClient.send(sendPayload);
+            } else {
+                throw webhookError;
+            }
+        }
 
         return t(locale, 'bug.report_sent');
     } catch (err) {
         console.error("Error al enviar el reporte de bug al webhook:", err);
+        try {
+            const { reportErrorToWebhook } = require("../../../services/errorNotifier.js");
+            reportErrorToWebhook(err, {
+                commandName: 'bug',
+                args: args,
+                user: message.author,
+                guild: message.guild,
+                channel: message.channel,
+                message: message
+            });
+        } catch (notifierErr) {
+            console.error("Error al intentar reportar el fallo al webhook de errores:", notifierErr);
+        }
         return t(locale, 'bug.err_send_failed');
     }
 }
