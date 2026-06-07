@@ -17,6 +17,20 @@
     "modal_bug_body_label": "Bug Description (Optional)",
     "modal_bug_body_placeholder": "Explain in detail what happened..."
   },
+  "sugerencia": {
+    "err_owner_only": "❌ Only the creator of Sengo can use this option of the command.",
+    "webhook_configured": "✅ The suggestion webhook has been successfully configured.",
+    "err_invalid_webhook": "❌ The provided URL is not a valid Discord webhook.",
+    "err_no_webhook_set": "❌ No webhook has been configured to receive suggestions. Please contact the bot creator.",
+    "err_empty_report": "❌ You cannot send an empty suggestion. Please describe your suggestion or attach an image.",
+    "report_sent": "✅ Thanks for the suggestion.",
+    "err_send_failed": "❌ An error occurred while trying to send your suggestion to the webhook.",
+    "modal_title": "Submit a Suggestion for Sengo",
+    "modal_title_label": "Suggestion Title (Optional)",
+    "modal_title_placeholder": "E.g., New command s.xyz",
+    "modal_body_label": "Suggestion Description (Optional)",
+    "modal_body_placeholder": "Explain in detail your suggestion..."
+  },
   "tips": {
     "country_redundant": "💡 *Tip: Since your country is already **{country}**, you can simply use `-country` without specifying the code and Sengo will auto-detect it.*",
     "username_redundant": "💡 *Tip: Since you are already linked to the bot, you don't need to type your username in the command; you can run it directly.*",
@@ -120,6 +134,11 @@
       "header": "Report a bug to the developers.",
       "body": "Sends a bug report directly to the bot creator.",
       "usage": "s.bug <text> : Sends a bug with the specified text.\nThe command also accepts attachments (images/photos) and message links if replying to a message."
+    },
+    "sugerencia": {
+      "header": "Submit a suggestion to the developers.",
+      "body": "Sends a suggestion or improvement idea directly to the bot creator.",
+      "usage": "s.sugerencia <text> : Sends a suggestion with the specified text.\nThe command also accepts attachments (images/photos) and message links if replying to a message."
     },
     "help": {
       "header": "Sengo commands, explained step by step.",

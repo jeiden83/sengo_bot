@@ -9,13 +9,27 @@
     "err_invalid_webhook": "❌ La URL provista no es un webhook de Discord válido.",
     "err_no_webhook_set": "❌ No se ha configurado ningún webhook para recibir reportes de bugs. Por favor, contacta al creador del bot.",
     "err_empty_report": "❌ No puedes enviar un reporte de bug vacío. Describe el bug o adjunta una imagen.",
-    "report_sent": "✅ Tu reporte de bug ha sido enviado con éxito. ¡Gracias por tu ayuda!",
+    "report_sent": "✅ Gracias por el reporte.",
     "err_send_failed": "❌ Hubo un error al intentar enviar tu reporte al webhook.",
     "modal_title": "Reportar un Bug en Sengo",
     "modal_bug_title_label": "Título del Bug (Opcional)",
     "modal_bug_title_placeholder": "Ej: Error al usar s.r",
     "modal_bug_body_label": "Descripción del Bug (Opcional)",
     "modal_bug_body_placeholder": "Explica detalladamente qué sucedió..."
+  },
+  "sugerencia": {
+    "err_owner_only": "❌ Solo el creador de Sengo puede usar esta opción del comando.",
+    "webhook_configured": "✅ El webhook para sugerencias ha sido configurado correctamente.",
+    "err_invalid_webhook": "❌ La URL provista no es un webhook de Discord válido.",
+    "err_no_webhook_set": "❌ No se ha configurado ningún webhook para recibir sugerencias. Por favor, contacta al creador del bot.",
+    "err_empty_report": "❌ No puedes enviar una sugerencia vacía. Describe tu sugerencia o adjunta una imagen.",
+    "report_sent": "✅ Gracias por la sugerencia.",
+    "err_send_failed": "❌ Hubo un error al intentar enviar tu sugerencia al webhook.",
+    "modal_title": "Enviar una Sugerencia para Sengo",
+    "modal_title_label": "Título de la Sugerencia (Opcional)",
+    "modal_title_placeholder": "Ej: Nuevo comando s.xyz",
+    "modal_body_label": "Descripción de la Sugerencia (Opcional)",
+    "modal_body_placeholder": "Explica detalladamente tu sugerencia..."
   },
   "tips": {
     "country_redundant": "💡 *Tip: Como tu país ya es **{country}**, puedes usar simplemente `-pais` sin especificar el código y Sengo lo autodetectará.*",
@@ -120,6 +134,11 @@
       "header": "Reportar un bug a los desarrolladores.",
       "body": "Envía un reporte de bug directamente al creador del bot.",
       "usage": "s.bug <texto> : Envía un bug con el texto indicado.\nEl comando también acepta adjuntos (imágenes/fotos) y enlaces de mensajes si respondes a un mensaje."
+    },
+    "sugerencia": {
+      "header": "Enviar una sugerencia a los desarrolladores.",
+      "body": "Envía una sugerencia o idea de mejora directamente al creador del bot.",
+      "usage": "s.sugerencia <texto> : Envía una sugerencia con el texto indicado.\nEl comando también acepta adjuntos (imágenes/fotos) y enlaces de mensajes si respondes a un mensaje."
     },
     "help": {
       "header": "Los comandos de Sengo, explicados paso a paso.",
