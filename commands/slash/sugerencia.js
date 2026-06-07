@@ -3,6 +3,28 @@ const { getSetting } = require("../../models/BotSettingsModel.js");
 const { doSuggestionReportEmbed } = require("../../views/suggestionViews.js");
 const { t } = require("../../utils/i18n.js");
 
+async function getForumTagId(client, webhookUrl, tagNames) {
+    try {
+        const match = webhookUrl.match(/\/webhooks\/(\d+)\//);
+        if (!match) return null;
+        
+        const webhookId = match[1];
+        const webhookData = await client.fetchWebhook(webhookId);
+        if (!webhookData || !webhookData.channelId) return null;
+        
+        const channel = await client.channels.fetch(webhookData.channelId);
+        if (channel && channel.availableTags && Array.isArray(channel.availableTags)) {
+            const targetTag = channel.availableTags.find(t => 
+                tagNames.includes(t.name.toLowerCase())
+            );
+            return targetTag ? targetTag.id : null;
+        }
+    } catch (err) {
+        console.error(`[Webhook Tags] Error al buscar tags [${tagNames.join(', ')}]:`, err);
+    }
+    return null;
+}
+
 const data = new SlashCommandBuilder()
     .setName("sugerencia")
     .setDescription("Enviar una sugerencia para el bot / Submit a suggestion for the bot")
@@ -93,6 +115,9 @@ async function run(interaction, res) {
             attachmentUrl
         );
 
+        const client = interaction.client;
+        const tagId = await getForumTagId(client, webhookUrl, ['feature', 'sugerencia', 'sugerencias']);
+
         const sendPayload = {
             username: "Sengo Suggestions",
             avatarURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
@@ -105,6 +130,9 @@ async function run(interaction, res) {
             if (webhookError.code === 220001) {
                 const threadName = title ? `Sugerencia: ${title}` : `Sugerencia de ${interaction.user.username}`;
                 sendPayload.threadName = threadName.substring(0, 100);
+                if (tagId) {
+                    sendPayload.appliedTags = [tagId];
+                }
                 await webhookClient.send(sendPayload);
             } else {
                 throw webhookError;

@@ -3,6 +3,28 @@ const { getSetting, setSetting } = require("../../../models/BotSettingsModel.js"
 const { doSuggestionReportEmbed } = require("../../../views/suggestionViews.js");
 const { t } = require("../../../utils/i18n.js");
 
+async function getForumTagId(client, webhookUrl, tagNames) {
+    try {
+        const match = webhookUrl.match(/\/webhooks\/(\d+)\//);
+        if (!match) return null;
+        
+        const webhookId = match[1];
+        const webhookData = await client.fetchWebhook(webhookId);
+        if (!webhookData || !webhookData.channelId) return null;
+        
+        const channel = await client.channels.fetch(webhookData.channelId);
+        if (channel && channel.availableTags && Array.isArray(channel.availableTags)) {
+            const targetTag = channel.availableTags.find(t => 
+                tagNames.includes(t.name.toLowerCase())
+            );
+            return targetTag ? targetTag.id : null;
+        }
+    } catch (err) {
+        console.error(`[Webhook Tags] Error al buscar tags [${tagNames.join(', ')}]:`, err);
+    }
+    return null;
+}
+
 async function run(messages, args) {
     const { message } = messages;
     const locale = message.locale || 'es';
@@ -56,6 +78,9 @@ async function run(messages, args) {
             attachmentUrl
         );
 
+        const client = message.client;
+        const tagId = await getForumTagId(client, webhookUrl, ['feature', 'sugerencia', 'sugerencias']);
+
         const sendPayload = {
             username: "Sengo Suggestions",
             avatarURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
@@ -67,6 +92,9 @@ async function run(messages, args) {
         } catch (webhookError) {
             if (webhookError.code === 220001) {
                 sendPayload.threadName = `Sugerencia de ${message.author.username}`.substring(0, 100);
+                if (tagId) {
+                    sendPayload.appliedTags = [tagId];
+                }
                 await webhookClient.send(sendPayload);
             } else {
                 throw webhookError;
