@@ -1152,11 +1152,12 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     return { embeds: [embed, embed2] };
 }
 
-function getOsuCompareContent(parsed_args, username, beatmap_metadata, locale = 'es') {
+function getOsuCompareContent(parsed_args, username, beatmap_metadata, locale = 'es', customStars = null) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
 
-    let mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
+    const starsVal = customStars !== null ? customStars : difficulty_rating;
+    let mapa = `[${title} [${version}] - ${starsVal.toFixed(2) + '★'} ](${url})`;
     const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
     return t(locale, 'compare.list_embed_content', { username, mode: displayMode, mapa });
 }

@@ -363,9 +363,40 @@ async function run(messages, args) {
 
     let startIndex = (page - 1) * 10;
 
+    let targetStars = beatmap_metadata.difficulty_rating;
+    try {
+        const { getBeatmap_osu } = require("../../utils/osu.js");
+        const rosu = require("rosu-pp-js");
+        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
+        
+        const activeGamemode = parsed_args.gamemode || targetGamemode || beatmap_metadata.mode;
+        const rosuModeMap = {
+            'osu': rosu.GameMode.Osu,
+            'taiko': rosu.GameMode.Taiko,
+            'fruits': rosu.GameMode.Catch,
+            'mania': rosu.GameMode.Mania,
+            0: rosu.GameMode.Osu,
+            1: rosu.GameMode.Taiko,
+            2: rosu.GameMode.Catch,
+            3: rosu.GameMode.Mania
+        };
+        const activeMode = rosuModeMap[activeGamemode] !== undefined ? rosuModeMap[activeGamemode] : rosu.GameMode.Osu;
+        if (map.mode !== activeMode) {
+            map.convert(activeMode);
+        }
+        
+        const baseAttrs = new rosu.Performance().calculate(map);
+        if (baseAttrs && baseAttrs.difficulty && baseAttrs.difficulty.stars !== undefined) {
+            targetStars = baseAttrs.difficulty.stars;
+        }
+        map.free();
+    } catch (err) {
+        console.error("Error calculating target stars for compare:", err);
+    }
+
     const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, filtered_scores.slice(startIndex, startIndex + 10), startIndex, filtered_scores.length, beatmap_metadata);
     const username = scores[0]?.user?.username || (await getOsuUser(parsed_args)).username || 'Usuario';
-    const content = getOsuCompareContent(parsed_args, username, beatmap_metadata, locale);
+    const content = getOsuCompareContent(parsed_args, username, beatmap_metadata, locale, targetStars);
 
     const getListButtonsRow = (start, total) => {
         return buildPaginationRow({ prefix: 'c', current: start, total, pageSize: 10 });
