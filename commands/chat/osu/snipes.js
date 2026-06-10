@@ -57,7 +57,7 @@ async function run(messages, args){
     // Si el porcentaje es menor al 99.9%, mostramos la tarjeta de progreso
     if (percentage < 99.9) {
         const embed = new EmbedBuilder()
-            .setTitle("📊 Progreso de Scrapeo Nacional (VE)")
+            .setTitle(`📊 Progreso de Scrapeo Nacional (${country_code})`)
             .setDescription(`La base de datos de leaderboards nacionales está siendo poblada localmente en segundo plano.
             
 ▸ **Modo:** \`${playmode === 'osu' ? 'std' : playmode}\`
