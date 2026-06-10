@@ -61,8 +61,9 @@ async function run(messages, args){
     // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos de Supabase
     const { data: userScores, error: errUserScores } = await supabase
         .from('top_scores')
-        .select('pp, mods, ended_at')
-        .eq('user_id', id.toString());
+        .select('pp, mods, ended_at, ranked_beatmaps!inner(mode)')
+        .eq('user_id', id.toString())
+        .eq('ranked_beatmaps.mode', look_gamemode);
 
     if (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
