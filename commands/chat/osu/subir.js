@@ -74,9 +74,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     let total_hits = 0;
 
     if (mode === 'mania') {
-        difficulty_constructor.n320 = perfect;
+        difficulty_constructor.nGeki = perfect;
         difficulty_constructor.n300 = great;
-        difficulty_constructor.n200 = good;
+        difficulty_constructor.nKatu = good;
         difficulty_constructor.n100 = ok;
         difficulty_constructor.n50 = meh;
         total_hits = perfect + great + good + ok + meh + miss;
@@ -96,9 +96,15 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         difficulty_constructor.n50 = meh;
         total_hits = great + ok + meh + miss;
 
-        if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+        if (recent_scores.statistics.large_tick_hit !== undefined) {
+            difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+            difficulty_constructor.osuLargeTickHits = recent_scores.statistics.large_tick_hit;
+        }
         if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
-        if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
+        if (recent_scores.statistics.ignore_hit !== undefined) {
+            difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
+            difficulty_constructor.osuSmallTickHits = recent_scores.statistics.ignore_hit;
+        }
     }
 
     const rosuModeMap = {
@@ -110,7 +116,11 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
 
     if (map.mode !== activeMode) {
-        map.convert(activeMode);
+        try {
+            map.convert(activeMode);
+        } catch (err) {
+            console.error("[calculatePP-subir] Error al convertir el mapa:", err);
+        }
     }
 
     if (maximo_pp) {

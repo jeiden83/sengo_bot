@@ -131,7 +131,42 @@ function convertGatariMods(modsBitmask) {
  */
 function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     normalizeScore(recent_scores);
-    const { great = 0, ok = 0, meh = 0, miss = 0 } = recent_scores.statistics;
+    const { great = 0, ok = 0, meh = 0, miss = 0, perfect = 0, good = 0, small_tick_miss = 0 } = recent_scores.statistics;
+
+    let mode = recent_scores.mode;
+    if (mode === undefined) {
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        if (recent_scores.ruleset_id !== undefined) {
+            mode = rulesetMap[recent_scores.ruleset_id];
+        } else if (recent_scores.mode_int !== undefined) {
+            mode = rulesetMap[recent_scores.mode_int];
+        }
+    }
+    if (typeof mode === 'number') {
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        mode = rulesetMap[mode] || 'osu';
+    }
+    mode = mode || 'osu';
+
+    const rosuModeMap = {
+        'osu': rosu.GameMode.Osu,
+        'taiko': rosu.GameMode.Taiko,
+        'fruits': rosu.GameMode.Catch,
+        'mania': rosu.GameMode.Mania,
+        0: rosu.GameMode.Osu,
+        1: rosu.GameMode.Taiko,
+        2: rosu.GameMode.Catch,
+        3: rosu.GameMode.Mania
+    };
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+
+    if (map.mode !== activeMode) {
+        try {
+            map.convert(activeMode);
+        } catch (err) {
+            console.error("[calculatePP] Error al convertir el mapa:", err);
+        }
+    }
 
     const max_perfomance_constructor = { 
         mods: recent_scores.mods, 
@@ -144,19 +179,35 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         misses: miss,
         n300: great,
         n100: ok,
-        n50: meh
+        n50: meh,
+        nGeki: perfect,
+        nKatu: (mode === 'fruits' || mode === 'catch') ? small_tick_miss : good
     };
 
-    if (recent_scores.statistics.large_tick_hit !== undefined) difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
-    if (recent_scores.statistics.slider_tail_hit !== undefined) difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
-    if (recent_scores.statistics.ignore_hit !== undefined) difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
+    if (recent_scores.statistics.large_tick_hit !== undefined) {
+        difficulty_constructor.largeTickHits = recent_scores.statistics.large_tick_hit;
+        difficulty_constructor.osuLargeTickHits = recent_scores.statistics.large_tick_hit;
+    }
+    if (recent_scores.statistics.slider_tail_hit !== undefined) {
+        difficulty_constructor.sliderEndHits = recent_scores.statistics.slider_tail_hit;
+    }
+    if (recent_scores.statistics.ignore_hit !== undefined) {
+        difficulty_constructor.smallTickHits = recent_scores.statistics.ignore_hit;
+        difficulty_constructor.osuSmallTickHits = recent_scores.statistics.ignore_hit;
+    }
 
     if (maximo_pp) {
         const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
         return maxAttrs;
     }
 
-    const total_hits = great + ok + meh + miss;
+    let total_hits = great + ok + meh + miss;
+    if (mode === 'mania') {
+        total_hits = perfect + great + good + ok + meh + miss;
+    } else if (mode === 'fruits') {
+        total_hits = great + ok + meh + miss + small_tick_miss;
+    }
+
     const difficulty = new rosu.Difficulty(max_perfomance_constructor);
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
