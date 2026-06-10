@@ -319,13 +319,10 @@ async function run(messages, args) {
             const beatmap = await getBeatmap(score.beatmap.id);
             const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
 
-            const failPercent = map.nObjects > 0 ? (total_hits / map.nObjects) : 0;
-            
             const activeModsStr = score.mods && score.mods.length > 0 
                 ? score.mods.map(m => m.acronym || m).join('') 
                 : '';
             const activeMode = parser_res.parsed_args.gamemode || score.mode || 'osu';
-            const totalLength = map.totalLength;
 
             // Carpeta de caché local
             const cacheDir = path.resolve(__dirname, "../../../db/local/beatmap.osu", String(beatmap.beatmapset_id));
@@ -333,7 +330,62 @@ async function run(messages, args) {
                 fs.mkdirSync(cacheDir, { recursive: true });
             }
 
-            const cacheFileName = `${beatmap.id}_${activeMode}_${activeModsStr || 'nomod'}_fail_${Math.round(failPercent * 1000)}.png`;
+            // Calcular la duración total ajustada por el multiplicador de velocidad
+            const { BeatmapAttributesBuilder } = require("rosu-pp-js");
+            const attrsBuilder = new BeatmapAttributesBuilder({
+                map: map,
+                mods: activeModsStr
+            });
+            const mapAttrs = attrsBuilder.build();
+            const speedMultiplier = mapAttrs.clockRate || 1.0;
+            const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
+
+            const failPercent = map.nObjects > 0 ? (total_hits / map.nObjects) : 0;
+            const failLabel = `FAIL (${Math.round(failPercent * 100)}%)`;
+
+            // Calcular la posición temporal exacta en el eje X (tiempo) usando hitobjects del archivo .osu
+            let failPercentTime = failPercent;
+            const osuFilePath = path.join(cacheDir, `${beatmap.id}.osu`);
+            if (fs.existsSync(osuFilePath)) {
+                try {
+                    const osuContent = fs.readFileSync(osuFilePath, 'utf8');
+                    const lines = osuContent.split(/\r?\n/);
+                    let inHitObjects = false;
+                    const times = [];
+                    for (const line of lines) {
+                        const trimmed = line.trim();
+                        if (trimmed === '[HitObjects]') {
+                            inHitObjects = true;
+                            continue;
+                        }
+                        if (inHitObjects) {
+                            if (trimmed.startsWith('[') && trimmed.endsWith(']')) {
+                                break;
+                            }
+                            if (trimmed === '') continue;
+                            const parts = trimmed.split(',');
+                            if (parts.length >= 3) {
+                                const tVal = parseInt(parts[2], 10);
+                                if (!isNaN(tVal)) {
+                                    times.push(tVal);
+                                }
+                            }
+                        }
+                    }
+                    if (times.length > 0) {
+                        const failIndex = Math.max(0, Math.min(total_hits - 1, times.length - 1));
+                        const failTimeMs = times[failIndex];
+                        const totalLengthMs = totalLength * 1000;
+                        if (totalLengthMs > 0) {
+                            failPercentTime = Math.max(0, Math.min(1, failTimeMs / totalLengthMs));
+                        }
+                    }
+                } catch (err) {
+                    console.error("Error al parsear hitobjects del .osu para obtener tiempo de fallo:", err);
+                }
+            }
+
+            const cacheFileName = `${beatmap.id}_${activeMode}_${activeModsStr || 'nomod'}_fail_${total_hits}.png`;
             const cacheFilePath = path.join(cacheDir, cacheFileName);
 
             let graphBuffer;
@@ -359,7 +411,7 @@ async function run(messages, args) {
                         }
                     }
 
-                    graphBuffer = generateStrainGraph(map, activeModsStr, activeMode, totalLength, failPercent);
+                    graphBuffer = generateStrainGraph(map, activeModsStr, activeMode, totalLength, failPercentTime, failLabel);
                     fs.writeFileSync(cacheFilePath, graphBuffer);
                 } finally {
                     map.free();

@@ -14,9 +14,10 @@ function formatLength(seconds) {
  * @param {string} activeMode Modo de juego activo ('osu', 'taiko', 'fruits', 'mania')
  * @param {number} totalLength Duración total del mapa en segundos
  * @param {number} [failPercent] Porcentaje opcional en que falló el usuario (0 a 1)
+ * @param {string} [failLabel] Etiqueta opcional personalizada de fail
  * @returns {Buffer} Búfer de la imagen PNG
  */
-function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent) {
+function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent, failLabel) {
     const diff = new rosu.Difficulty({ mods: modsStr });
     const strains = diff.strains(map);
 
@@ -218,7 +219,8 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent)
         ctx.font = 'bold 10px sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'bottom';
-        ctx.fillText(`FAIL (${Math.round(failPercent * 100)}%)`, failX, padding.top - 6);
+        const label = failLabel || `FAIL (${Math.round(failPercent * 100)}%)`;
+        ctx.fillText(label, failX, padding.top - 6);
     }
 
     // IMPORTANTE: Liberar memoria asignada de WebAssembly
