@@ -253,12 +253,183 @@ async function run(messages, args) {
         locale
     });
 
-    if (reply) {
-        reply.reply({ embeds: [embed], components });
-        return;
+    let sentMessage;
+    if (reply && typeof reply.reply === 'function') {
+        sentMessage = await reply.reply({ embeds: [embed], components });
+    } else if (message.channel && typeof message.channel.send === 'function') {
+        sentMessage = await message.channel.send({ embeds: [embed], components });
+    } else {
+        return { embeds: [embed], components };
     }
 
-    return { embeds: [embed], components };
+    if (!sentMessage) return;
+
+    const collector = sentMessage.createMessageComponentCollector({
+        filter: btnInt => btnInt.user.id === message.author.id,
+        idle: 60000
+    });
+
+    let currentStrainsPage = false;
+    let strainsAttachment = null;
+
+    collector.on('collect', async btnInt => {
+        try {
+            await btnInt.deferUpdate();
+
+            if (btnInt.customId === 'map_strains') {
+                currentStrainsPage = true;
+
+                if (!strainsAttachment) {
+                    const { generateStrainGraph } = require("../../../utils/strainGraph.js");
+                    const tempMap = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
+                    
+                    if (beatmap.mode === 'osu' && requestedMode && requestedMode !== 'osu') {
+                        const modeMap = {
+                            'osu': rosu.GameMode.Osu,
+                            'taiko': rosu.GameMode.Taiko,
+                            'fruits': rosu.GameMode.Catch,
+                            'mania': rosu.GameMode.Mania
+                        };
+                        if (modeMap[requestedMode] !== undefined) {
+                            tempMap.convert(modeMap[requestedMode]);
+                        }
+                    }
+
+                    const graphBuffer = generateStrainGraph(tempMap, activeModsStr, activeMode, totalLength);
+                    
+                    const { AttachmentBuilder } = require("discord.js");
+                    strainsAttachment = new AttachmentBuilder(graphBuffer, { name: 'strains.png' });
+                    
+                    tempMap.free();
+                }
+
+                const newEmbedsData = doOsuMapEmbed({
+                    beatmap,
+                    activeMode,
+                    isConverted,
+                    stars,
+                    baseStars,
+                    statusName,
+                    embedColor,
+                    ppValues: { ppSS, pp99, pp98, pp95 },
+                    attributes: {
+                        bpm,
+                        baseBpm,
+                        speedMultiplier,
+                        totalLength,
+                        hitLength,
+                        maxCombo,
+                        cs,
+                        baseCs,
+                        ar,
+                        baseAr,
+                        od,
+                        baseOd,
+                        hp,
+                        baseHp,
+                        csLabel,
+                        modsStr
+                    },
+                    objectsValue,
+                    userTags,
+                    locale,
+                    showStrainsPage: true
+                });
+
+                await btnInt.editReply({
+                    embeds: [newEmbedsData.embed],
+                    components: newEmbedsData.components,
+                    files: [strainsAttachment]
+                });
+            } else if (btnInt.customId === 'map_info') {
+                currentStrainsPage = false;
+
+                const newEmbedsData = doOsuMapEmbed({
+                    beatmap,
+                    activeMode,
+                    isConverted,
+                    stars,
+                    baseStars,
+                    statusName,
+                    embedColor,
+                    ppValues: { ppSS, pp99, pp98, pp95 },
+                    attributes: {
+                        bpm,
+                        baseBpm,
+                        speedMultiplier,
+                        totalLength,
+                        hitLength,
+                        maxCombo,
+                        cs,
+                        baseCs,
+                        ar,
+                        baseAr,
+                        od,
+                        baseOd,
+                        hp,
+                        baseHp,
+                        csLabel,
+                        modsStr
+                    },
+                    objectsValue,
+                    userTags,
+                    locale,
+                    showStrainsPage: false
+                });
+
+                await btnInt.editReply({
+                    embeds: [newEmbedsData.embed],
+                    components: newEmbedsData.components,
+                    files: []
+                });
+            }
+        } catch (err) {
+            console.error("Error al procesar interacciones de botones en s.m:", err);
+        }
+    });
+
+    collector.on('end', async () => {
+        try {
+            const newEmbedsData = doOsuMapEmbed({
+                beatmap,
+                activeMode,
+                isConverted,
+                stars,
+                baseStars,
+                statusName,
+                embedColor,
+                ppValues: { ppSS, pp99, pp98, pp95 },
+                attributes: {
+                    bpm,
+                    baseBpm,
+                    speedMultiplier,
+                    totalLength,
+                    hitLength,
+                    maxCombo,
+                    cs,
+                    baseCs,
+                    ar,
+                    baseAr,
+                    od,
+                    baseOd,
+                    hp,
+                    baseHp,
+                    csLabel,
+                    modsStr
+                },
+                objectsValue,
+                userTags,
+                locale,
+                showStrainsPage: currentStrainsPage
+            });
+
+            await sentMessage.edit({
+                components: [newEmbedsData.components[0]]
+            });
+        } catch {}
+    });
+
+    return;
 }
 
 run.alias = {

@@ -985,6 +985,8 @@
     "recommended_pp": "Recommended PP values",
     "footer_map": "Sengo • Beatmap ID: {id}",
     "btn_launch": "Launch osu!",
+    "btn_strains": "View Strains",
+    "btn_info": "View Info",
     "tags": "Tags",
     "creator": "Creator",
     "duration": "Length",

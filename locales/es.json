@@ -985,6 +985,8 @@
     "recommended_pp": "Valores de PP por acc",
     "footer_map": "Sengo • Beatmap ID: {id}",
     "btn_launch": "Lanzar osu!",
+    "btn_strains": "Ver Strains",
+    "btn_info": "Ver Info",
     "tags": "Etiquetas",
     "creator": "Creador",
     "duration": "Duración",
