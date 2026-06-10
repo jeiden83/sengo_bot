@@ -1841,6 +1841,46 @@ async function ensureNoChokeScores(scores, gamemode) {
     await Promise.all(promises);
 }
 
+/**
+ * Obtiene el total de mapas rankeados en un modo específico.
+ */
+async function getRankedBeatmapsCount(mode) {
+    const supabase = getSupabaseClient();
+    const { count, error } = await supabase
+        .from('ranked_beatmaps')
+        .select('beatmap_id', { count: 'exact', head: true })
+        .eq('mode', mode);
+    if (error) throw error;
+    return count || 0;
+}
+
+/**
+ * Obtiene el total de mapas procesados/guardados para snipes en un modo específico.
+ */
+async function getProcessedSnipesCount(mode) {
+    const supabase = getSupabaseClient();
+    const { count, error } = await supabase
+        .from('top_scores')
+        .select('beatmap_id, ranked_beatmaps!inner(mode)', { count: 'exact', head: true })
+        .eq('ranked_beatmaps.mode', mode);
+    if (error) throw error;
+    return count || 0;
+}
+
+/**
+ * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico.
+ */
+async function getUserNationalTops(userId, mode) {
+    const supabase = getSupabaseClient();
+    const { data, error } = await supabase
+        .from('top_scores')
+        .select('pp, mods, ended_at, ranked_beatmaps!inner(mode)')
+        .eq('user_id', userId.toString())
+        .eq('ranked_beatmaps.mode', mode);
+    if (error) throw error;
+    return data || [];
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
@@ -1859,7 +1899,10 @@ const OsuScoreModel = {
     handlePredictivePreload,
     triggerBackgroundOsuPreload,
     triggerBackgroundRecentPreload,
-    ensureNoChokeScores
+    ensureNoChokeScores,
+    getRankedBeatmapsCount,
+    getProcessedSnipesCount,
+    getUserNationalTops
 };
 
 module.exports = OsuScoreModel;

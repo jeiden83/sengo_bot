@@ -1,6 +1,6 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
-const { getSupabaseClient } = require("../../../db/database.js");
+const OsuScoreModel = require("../../../models/OsuScoreModel.js");
 const { doOsuSnipesEmbed, doOsuSnipesProgressEmbed } = require("../../../views/osuEmbeds.js");
 
 const modeToInt = {
@@ -27,26 +27,20 @@ async function run(messages, args){
         return t(locale, 'snipes.err_country_support');
     }
 
-    const supabase = getSupabaseClient();
-
     // 1. Obtener total de mapas rankeados en este modo de juego
-    const { count: totalMaps, error: errTotal } = await supabase
-        .from('ranked_beatmaps')
-        .select('beatmap_id', { count: 'exact', head: true })
-        .eq('mode', look_gamemode);
-
-    if (errTotal) {
+    let totalMaps = 0;
+    try {
+        totalMaps = await OsuScoreModel.getRankedBeatmapsCount(look_gamemode);
+    } catch (errTotal) {
         console.error("Error al obtener total de mapas en snipes.js:", errTotal);
         return t(locale, 'snipes.err_db_maps');
     }
 
     // 2. Obtener mapas que ya han sido procesados y guardados en top_scores en este modo de juego
-    const { count: processedMaps, error: errProcessed } = await supabase
-        .from('top_scores')
-        .select('beatmap_id, ranked_beatmaps!inner(mode)', { count: 'exact', head: true })
-        .eq('ranked_beatmaps.mode', look_gamemode);
-
-    if (errProcessed) {
+    let processedMaps = 0;
+    try {
+        processedMaps = await OsuScoreModel.getProcessedSnipesCount(look_gamemode);
+    } catch (errProcessed) {
         console.error("Error al obtener mapas procesados en snipes.js:", errProcessed);
         return t(locale, 'snipes.err_db_progress');
     }
@@ -58,14 +52,11 @@ async function run(messages, args){
         return doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_code, playmode, locale);
     }
 
-    // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos de Supabase
-    const { data: userScores, error: errUserScores } = await supabase
-        .from('top_scores')
-        .select('pp, mods, ended_at, ranked_beatmaps!inner(mode)')
-        .eq('user_id', id.toString())
-        .eq('ranked_beatmaps.mode', look_gamemode);
-
-    if (errUserScores) {
+    // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos del Modelo
+    let userScores = [];
+    try {
+        userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode);
+    } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
         return t(locale, 'snipes.err_db_scores');
     }
