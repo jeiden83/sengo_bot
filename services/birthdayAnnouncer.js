@@ -117,13 +117,38 @@ function initBirthdayAnnouncer(client) {
     client.once(Events.ClientReady, () => {
         setTimeout(() => {
             checkBirthdays(client);
+            scheduleHourlyChecks(client);
         }, 10000); // 10 segundos después del ready
     });
+}
 
-    // Programar comprobación cada 1 hora
-    setInterval(() => {
+/**
+ * Programa los chequeos horarios alineados con el inicio de cada hora (más 5 segundos).
+ * @param {Client} client - Cliente de Discord.js.
+ */
+function scheduleHourlyChecks(client) {
+    const now = new Date();
+    // Obtener la siguiente hora en punto + 5 segundos para asegurar que el cambio de día se haya consolidado en cada zona horaria
+    const nextHour = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        now.getHours() + 1,
+        0,
+        5,
+        0
+    );
+    const msToNextHour = nextHour.getTime() - now.getTime();
+
+    Logger.system(`Programando primer chequeo de cumpleaños en punto en ${Math.round(msToNextHour / 1000)} segundos.`);
+
+    setTimeout(() => {
         checkBirthdays(client);
-    }, 60 * 60 * 1000); // 1 hora
+        // Establecer el intervalo regular de 1 hora a partir de ese momento
+        setInterval(() => {
+            checkBirthdays(client);
+        }, 60 * 60 * 1000); // 1 hora
+    }, msToNextHour);
 }
 
 module.exports = {
