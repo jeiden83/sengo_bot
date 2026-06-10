@@ -682,8 +682,7 @@ function doOsuMapEmbed({
     attributes,
     objectsValue,
     userTags,
-    locale = 'es',
-    showStrainsPage = false
+    locale = 'es'
 }) {
     const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
@@ -740,7 +739,7 @@ function doOsuMapEmbed({
 ▸ **${t(locale, 'map.recommended_pp')}:**
 ${ppAnsiBlock}${userTagsStr}
         `)
-        .setImage(showStrainsPage ? 'attachment://strains.png' : beatmap.beatmapset.covers["cover@2x"])
+        .setImage(beatmap.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({
             text: t(locale, 'map.footer_map', { id: beatmap.id }),
@@ -772,26 +771,17 @@ ${ppAnsiBlock}${userTagsStr}
                 .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
         );
 
-    const navRow = new ActionRowBuilder();
-    if (showStrainsPage) {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId('map_info')
-                .setLabel(t(locale, 'map.btn_info'))
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('ℹ️')
-        );
-    } else {
-        navRow.addComponents(
-            new ButtonBuilder()
-                .setCustomId('map_strains')
-                .setLabel(t(locale, 'map.btn_strains'))
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('📈')
-        );
-    }
+    return { embed, components: [row] };
+}
 
-    return { embed, components: [row, navRow] };
+/**
+ * Renderiza el embed que muestra el gráfico de strains de dificultad
+ */
+function doOsuStrainEmbed({ embedColor }) {
+    const embed = new EmbedBuilder()
+        .setImage('attachment://strains.png')
+        .setColor(embedColor);
+    return embed;
 }
 
 /**
@@ -1567,6 +1557,7 @@ module.exports = {
     getOsuCompareContent,
     doOsuSubirEmbed,
     doOsuMapEmbed,
+    doOsuStrainEmbed,
     doOsuMapsetEmbed,
     doOsuSnipesEmbed,
     doOsuProfileEmbed,
