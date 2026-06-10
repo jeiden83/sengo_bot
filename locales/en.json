@@ -1000,7 +1000,14 @@
     "total": "**• Total #1s:** `#{count}`",
     "avg_pp": "**• Average PP:** `{pp}`",
     "most_used_mod": "**• Most used mod:** `[{mod}] = {count}`",
-    "most_snipes_year": "**• Year with most snipes:** `[{year}] = {count}`"
+    "most_snipes_year": "**• Year with most snipes:** `[{year}] = {count}`",
+    "err_country_support": "The snipes and national leaderboards system in the local database currently only supports Venezuela (VE) or countries with supporters added in the bot.",
+    "err_db_maps": "Error connecting to the database to fetch beatmap progress.",
+    "err_db_progress": "Error connecting to the database to calculate scraping progress.",
+    "err_db_scores": "Error querying the local user scores.",
+    "progress_title": "📊 National Scraping Progress ({country})",
+    "progress_desc": "The national leaderboards database is being populated locally in the background.\n\n▸ **Mode:** `{mode}`\n▸ **Current progress:** `{percentage}%` (`{processed}` / `{total}` beatmaps processed)\n\nThe full `s.snipes` command will be automatically available once the initial population for this game mode finishes.",
+    "progress_footer": "Sengo • Snipes System"
   },
   "mapper": {
     "err_sengo_only": "❌ *The flag `-sengo` is exclusive to the bot administrator.*",

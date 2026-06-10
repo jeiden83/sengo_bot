@@ -909,6 +909,25 @@ ${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSn
     return { embeds: [embed] };
 }
 
+/**
+ * Renderiza el embed del progreso de scrapeo inicial de snipes
+ */
+function doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_code, playmode, locale = 'es') {
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'snipes.progress_title', { country: country_code }))
+        .setDescription(t(locale, 'snipes.progress_desc', {
+            mode: playmode === 'osu' ? 'std' : playmode,
+            percentage: percentage.toFixed(2),
+            processed: processedMaps,
+            total: totalMaps
+        }))
+        .setColor('#ff66aa')
+        .setFooter({ text: t(locale, 'snipes.progress_footer') })
+        .setTimestamp();
+
+    return { embeds: [embed] };
+}
+
 function checkOsuData(osu_userdata) {
     const global_ranking = osu_userdata.statistics.global_rank || 0;
     const peak_ranking = osu_userdata.rank_highest ? osu_userdata.rank_highest.rank : 0;
@@ -1561,6 +1580,7 @@ module.exports = {
     doOsuStrainEmbed,
     doOsuMapsetEmbed,
     doOsuSnipesEmbed,
+    doOsuSnipesProgressEmbed,
     doOsuProfileEmbed,
     doOsuReworkMapEmbed,
     doOsuReworkUserEmbed,

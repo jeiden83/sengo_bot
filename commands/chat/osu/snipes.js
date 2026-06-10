@@ -1,8 +1,7 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 const { getSupabaseClient } = require("../../../db/database.js");
-const { EmbedBuilder } = require("discord.js");
-const { doOsuSnipesEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuSnipesEmbed, doOsuSnipesProgressEmbed } = require("../../../views/osuEmbeds.js");
 
 const modeToInt = {
     'osu': 0,
@@ -25,7 +24,7 @@ async function run(messages, args){
 
     // Solo soportamos Venezuela (VE) por ahora mientras se raspa la base de datos nacional
     if (country_code !== 'VE') {
-        return "El sistema de snipes y leaderboards nacionales en base de datos local actualmente solo cuenta con soporte para Venezuela (VE) o países con supporter agregados en el bot.";
+        return t(locale, 'snipes.err_country_support');
     }
 
     const supabase = getSupabaseClient();
@@ -38,7 +37,7 @@ async function run(messages, args){
 
     if (errTotal) {
         console.error("Error al obtener total de mapas en snipes.js:", errTotal);
-        return "Error al conectar a la base de datos para obtener el progreso de mapas.";
+        return t(locale, 'snipes.err_db_maps');
     }
 
     // 2. Obtener mapas que ya han sido procesados y guardados en top_scores en este modo de juego
@@ -49,26 +48,14 @@ async function run(messages, args){
 
     if (errProcessed) {
         console.error("Error al obtener mapas procesados en snipes.js:", errProcessed);
-        return "Error al conectar a la base de datos para calcular el progreso de scrapeo.";
+        return t(locale, 'snipes.err_db_progress');
     }
 
     const percentage = totalMaps > 0 ? (processedMaps / totalMaps) * 100 : 0;
 
     // Si el porcentaje es menor al 99.9%, mostramos la tarjeta de progreso
     if (percentage < 99.9) {
-        const embed = new EmbedBuilder()
-            .setTitle(`📊 Progreso de Scrapeo Nacional (${country_code})`)
-            .setDescription(`La base de datos de leaderboards nacionales está siendo poblada localmente en segundo plano.
-            
-▸ **Modo:** \`${playmode === 'osu' ? 'std' : playmode}\`
-▸ **Progreso actual:** \`${percentage.toFixed(2)}%\` (\`${processedMaps}\` / \`${totalMaps}\` mapas procesados)
-
-El comando \`s.snipes\` completo estará disponible automáticamente cuando finalice el poblamiento inicial de este modo de juego.`)
-            .setColor('#ff66aa')
-            .setFooter({ text: "Sengo • Sistema de Snipes" })
-            .setTimestamp();
-
-        return { embeds: [embed] };
+        return doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_code, playmode, locale);
     }
 
     // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos de Supabase
@@ -79,7 +66,7 @@ El comando \`s.snipes\` completo estará disponible automáticamente cuando fina
 
     if (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
-        return "Error al consultar las puntuaciones locales del usuario.";
+        return t(locale, 'snipes.err_db_scores');
     }
 
     if (!userScores || userScores.length === 0) {
