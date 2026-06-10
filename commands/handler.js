@@ -29,18 +29,20 @@ async function handleOAuthFailure(author, logger) {
 }
 
 // Analiza un fallo o error en la ejecución de un comando de chat para sugerir alternativas inteligentes
-async function smartErrorSuggester(command, args, message, res, errorTextOrResult) {
+async function smartErrorSuggester(command, args, message, res, errorTextOrResult, isOsuCommand = false) {
     if (!args || args.length === 0) return null;
 
     // Caso 0: Sintaxis de mods inválida o incorrecta
-    try {
-        const { argsParserNoCommand } = require("./utils/argsParser.js");
-        const parsed_args = argsParserNoCommand(args);
-        if (parsed_args.invalidModsWarning) {
-            return `❌ Sintaxis de mods incorrecta. Para filtrar por mods, debes usar **-mods HDDT** o **+HDDT** (ej: \`s.${command} -mods hddt\` o \`s.${command} +hddt\`).`;
+    if (isOsuCommand) {
+        try {
+            const { argsParserNoCommand } = require("./utils/argsParser.js");
+            const parsed_args = argsParserNoCommand(args);
+            if (parsed_args.invalidModsWarning) {
+                return `❌ Sintaxis de mods incorrecta. Para filtrar por mods, debes usar **-mods HDDT** o **+HDDT** (ej: \`s.${command} -mods hddt\` o \`s.${command} +hddt\`).`;
+            }
+        } catch (err) {
+            console.error("Error al verificar sintaxis de mods en smartErrorSuggester:", err);
         }
-    } catch (err) {
-        console.error("Error al verificar sintaxis de mods en smartErrorSuggester:", err);
     }
 
     const commandLower = command.toLowerCase();
@@ -372,7 +374,7 @@ async function chatCommand(intialized_data, command_data) {
             reply.reply = decorateSend(originalReplyReply, message);
         }
 
-        const preSmartSuggestion = await smartErrorSuggester(command, args, message, res);
+        const preSmartSuggestion = await smartErrorSuggester(command, args, message, res, null, found_command && found_command.type === 'osu');
         if (preSmartSuggestion) {
             if (logger) logger.failed(`Sugerencia inteligente activa: ${preSmartSuggestion.replace(/❌\s*/g, '').slice(0, 100)}`);
             return preSmartSuggestion;
@@ -386,7 +388,7 @@ async function chatCommand(intialized_data, command_data) {
             );
 
             if (typeof result === 'string') {
-                const smartSuggestion = await smartErrorSuggester(command, args, message, res, result);
+                const smartSuggestion = await smartErrorSuggester(command, args, message, res, result, found_command && found_command.type === 'osu');
                 if (smartSuggestion) {
                     result = smartSuggestion;
                 }
@@ -417,7 +419,7 @@ async function chatCommand(intialized_data, command_data) {
             return result;
         } catch (error) {
             if (logger) logger.failed(error.message);
-            const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message);
+            const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message, found_command && found_command.type === 'osu');
             if (smartSuggestion) {
                 return smartSuggestion;
             }
