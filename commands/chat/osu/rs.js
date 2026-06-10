@@ -304,14 +304,110 @@ async function run(messages, args) {
         return embed;
     }
 
+    async function triggerFailStrainEmbed(sentMessageOrInteraction, score, mainEmbed, components, scoreIndex) {
+        try {
+            const fs = require("fs");
+            const path = require("path");
+
+            const stats = score.statistics || {};
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+            const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+            const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+            const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+            const total_hits = great + ok + meh + miss;
+
+            const beatmap = await getBeatmap(score.beatmap.id);
+            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+
+            const failPercent = map.nObjects > 0 ? (total_hits / map.nObjects) : 0;
+            
+            const activeModsStr = score.mods && score.mods.length > 0 
+                ? score.mods.map(m => m.acronym || m).join('') 
+                : '';
+            const activeMode = parser_res.parsed_args.gamemode || score.mode || 'osu';
+            const totalLength = map.totalLength;
+
+            // Carpeta de caché local
+            const cacheDir = path.resolve(__dirname, "../../../db/local/beatmap.osu", String(beatmap.beatmapset_id));
+            if (!fs.existsSync(cacheDir)) {
+                fs.mkdirSync(cacheDir, { recursive: true });
+            }
+
+            const cacheFileName = `${beatmap.id}_${activeMode}_${activeModsStr || 'nomod'}_fail_${Math.round(failPercent * 1000)}.png`;
+            const cacheFilePath = path.join(cacheDir, cacheFileName);
+
+            let graphBuffer;
+            if (fs.existsSync(cacheFilePath)) {
+                graphBuffer = fs.readFileSync(cacheFilePath);
+                map.free();
+            } else {
+                const { generateStrainGraph } = require("../../../utils/strainGraph.js");
+                
+                try {
+                    // Convertir el modo de juego si es necesario
+                    const requestedMode = parser_res.parsed_args.gamemode;
+                    if (beatmap.mode === 'osu' && requestedMode && requestedMode !== 'osu') {
+                        const { GameMode } = require("rosu-pp-js");
+                        const modeMap = {
+                            'osu': GameMode.Osu,
+                            'taiko': GameMode.Taiko,
+                            'fruits': GameMode.Catch,
+                            'mania': GameMode.Mania
+                        };
+                        if (modeMap[requestedMode] !== undefined) {
+                            map.convert(modeMap[requestedMode]);
+                        }
+                    }
+
+                    graphBuffer = generateStrainGraph(map, activeModsStr, activeMode, totalLength, failPercent);
+                    fs.writeFileSync(cacheFilePath, graphBuffer);
+                } finally {
+                    map.free();
+                }
+            }
+
+            // Evitar condiciones de carrera si el usuario ya navegó a otra jugada
+            if (scoreIndex !== index) return;
+
+            const { AttachmentBuilder } = require("discord.js");
+            const strainsAttachment = new AttachmentBuilder(graphBuffer, { name: 'strains.png' });
+
+            const { doOsuStrainEmbed } = require("../../../views/osuEmbeds.js");
+            const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
+            const embedColor = getEmbedColor(message);
+            const strainEmbed = doOsuStrainEmbed({ embedColor });
+
+            if (typeof sentMessageOrInteraction.editReply === 'function') {
+                await sentMessageOrInteraction.editReply({
+                    embeds: [mainEmbed, strainEmbed],
+                    components,
+                    files: [strainsAttachment]
+                });
+            } else {
+                await sentMessageOrInteraction.edit({
+                    embeds: [mainEmbed, strainEmbed],
+                    components,
+                    files: [strainsAttachment]
+                });
+            }
+        } catch (err) {
+            console.error("Error al generar gráfico de fail-strain en rs:", err);
+        }
+    }
+
     // Procesamos la jugada inicial
     const initialEmbed = await processScore(index);
+    const targetScore = parser_res.fn_response[index - 1];
 
     const sent_message = await message.channel.send({
         content: content_msg,
         embeds: [initialEmbed],
-        components: [buildRecentButtonsRow(index, total_plays, parser_res.fn_response[index - 1])]
+        components: [buildRecentButtonsRow(index, total_plays, targetScore)]
     });
+
+    if (targetScore && !targetScore.passed) {
+        triggerFailStrainEmbed(sent_message, targetScore, initialEmbed, [buildRecentButtonsRow(index, total_plays, targetScore)], index);
+    }
 
     const filter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({
@@ -322,11 +418,11 @@ async function run(messages, args) {
     collector.on('collect', async i => {
         try {
             if (i.customId === 'rs_render') {
-                const targetScore = parser_res.fn_response[index - 1];
+                const currentScore = parser_res.fn_response[index - 1];
                 
                 // Deshabilitar botón de render en el mensaje original para evitar flood
                 try {
-                    const updatedRow = buildRecentButtonsRow(index, total_plays, targetScore, true);
+                    const updatedRow = buildRecentButtonsRow(index, total_plays, currentScore, true);
                     if (typeof i.update === 'function') {
                         await i.update({ components: [updatedRow] });
                     } else {
@@ -337,7 +433,7 @@ async function run(messages, args) {
                     try { await i.deferUpdate(); } catch {}
                 }
                 
-                const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${targetScore.user?.username || 'Usuario'}**...`);
+                const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${currentScore.user?.username || 'Usuario'}**...`);
                 
                 try {
                     const fetch = require('node-fetch');
@@ -357,7 +453,7 @@ async function run(messages, args) {
                         throw new Error("No token available");
                     }
                     
-                    const scoreId = targetScore.id;
+                    const scoreId = currentScore.id;
                     const url = `https://osu.ppy.sh/api/v2/scores/${scoreId}/download`;
                     
                     const downloadRes = await fetch(url, {
@@ -390,20 +486,20 @@ async function run(messages, args) {
                     
                     let beatmapInfo = null;
                     try {
-                        beatmapInfo = await getBeatmap(targetScore.beatmap.id);
+                        beatmapInfo = await getBeatmap(currentScore.beatmap.id);
                     } catch (err) {
                         console.warn("[rs_render] No se pudo obtener metadatos adicionales del beatmap:", err.message);
                     }
 
-                    const username = targetScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
-                    const artist = targetScore.beatmapset?.artist || beatmapInfo?.beatmapset?.artist || '';
-                    const title = targetScore.beatmapset?.title || beatmapInfo?.beatmapset?.title || '';
-                    const version = targetScore.beatmap?.version || beatmapInfo?.version || '';
-                    const stars = (targetScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating)
-                        ? ` (${(targetScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating).toFixed(2)}★)`
+                    const username = currentScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
+                    const artist = currentScore.beatmapset?.artist || beatmapInfo?.beatmapset?.artist || '';
+                    const title = currentScore.beatmapset?.title || beatmapInfo?.beatmapset?.title || '';
+                    const version = currentScore.beatmap?.version || beatmapInfo?.version || '';
+                    const stars = (currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating)
+                        ? ` (${(currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating).toFixed(2)}★)`
                         : '';
-                    const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
-                    const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
+                    const modsString = currentScore.mods && currentScore.mods.length > 0 ? ` +${formatMods(currentScore.mods)}` : '';
+                    const accuracy = currentScore.accuracy ? ` | Accuracy: ${(currentScore.accuracy * 100).toFixed(2)}%` : '';
                     const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
 
                     await renderCmd.startRenderFlow(
@@ -433,14 +529,21 @@ async function run(messages, args) {
                 index = 1;
             }
 
+            const nextScore = parser_res.fn_response[index - 1];
             const embed = await processScore(index);
             const content = t(locale, 'recent.showing_index', { index, total: total_plays });
+            const nextComponents = [buildRecentButtonsRow(index, total_plays, nextScore)];
 
             await i.editReply({
                 content: content,
                 embeds: [embed],
-                components: [buildRecentButtonsRow(index, total_plays, parser_res.fn_response[index - 1])]
+                components: nextComponents,
+                files: []
             });
+
+            if (nextScore && !nextScore.passed) {
+                triggerFailStrainEmbed(i, nextScore, embed, nextComponents, index);
+            }
         } catch (err) {
             console.error("Error al navegar entre scores con botones:", err);
         }

@@ -13,9 +13,10 @@ function formatLength(seconds) {
  * @param {string} modsStr String de los mods activos
  * @param {string} activeMode Modo de juego activo ('osu', 'taiko', 'fruits', 'mania')
  * @param {number} totalLength Duración total del mapa en segundos
+ * @param {number} [failPercent] Porcentaje opcional en que falló el usuario (0 a 1)
  * @returns {Buffer} Búfer de la imagen PNG
  */
-function generateStrainGraph(map, modsStr, activeMode, totalLength) {
+function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent) {
     const diff = new rosu.Difficulty({ mods: modsStr });
     const strains = diff.strains(map);
 
@@ -199,6 +200,26 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength) {
     ctx.fillStyle = '#8d8990';
     ctx.font = '10px sans-serif';
     ctx.fillText('Dificultad (Strain) a lo largo del mapa', width - padding.right, padding.top - 16);
+
+    // Dibujar marcador de FAIL si el score falló
+    if (failPercent !== undefined && failPercent !== null && failPercent >= 0 && failPercent <= 1) {
+        const failX = padding.left + failPercent * graphWidth;
+
+        ctx.strokeStyle = '#ff3333';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(failX, padding.top);
+        ctx.lineTo(failX, height - padding.bottom);
+        ctx.stroke();
+        ctx.setLineDash([]); // Restablecer a línea sólida
+
+        ctx.fillStyle = '#ff3333';
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'bottom';
+        ctx.fillText(`FAIL (${Math.round(failPercent * 100)}%)`, failX, padding.top - 6);
+    }
 
     // IMPORTANTE: Liberar memoria asignada de WebAssembly
     strains.free();
