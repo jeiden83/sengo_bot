@@ -162,7 +162,7 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
     if (!['link', 'vincular'].includes(commandLower)) {
         const hasOAuth = args.some(arg => {
             const lowerArg = arg.toLowerCase();
-            return lowerArg === 'oauth' || lowerArg === '-oauth' || lowerArg === '--oauth';
+            return lowerArg === '-oauth' || lowerArg === '--oauth';
         });
         if (hasOAuth) {
             return `❌ **El parámetro** \`-oauth\` solo es válido en el comando \`.link -oauth\` para vincular tu cuenta de osu! de forma privada y segura.`;

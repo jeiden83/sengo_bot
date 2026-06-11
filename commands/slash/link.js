@@ -11,21 +11,24 @@ const data = new SlashCommandBuilder()
             .setRequired(false)
     )
     .addBooleanOption(option =>
-        option.setName("oauth")
-            .setDescription("Usa la vinculación segura y privada mediante OAuth")
+        option.setName("chat")
+            .setDescription("Usa la vinculación tradicional de chat (pública)")
             .setRequired(false)
     )
     .addStringOption(addModoOption);
 
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
-    const oauth = interaction.options.getBoolean("oauth");
-    if (oauth) {
-        args.push("-oauth");
+    const chat = interaction.options.getBoolean("chat");
+    if (chat) {
+        args.push("-chat");
     }
+    messages.isSlash = true;
+    messages.interaction = interaction;
     return await linkChatCommand.run(messages, args);
 }
 
 run.description = "Vincula o desvincula tu cuenta de discord con un usuario de osu!";
+run.noDefer = true;
 
 module.exports = { data, run, description: run.description };

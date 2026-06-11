@@ -128,7 +128,7 @@ async function run(interaction, res) {
             await webhookClient.send(sendPayload);
         } catch (webhookError) {
             if (webhookError.code === 220001) {
-                const threadName = title ? `Bug: ${title}` : `Bug de ${interaction.user.username}`;
+                const threadName = title ? title : `Bug de ${interaction.user.username}`;
                 sendPayload.threadName = threadName.substring(0, 100);
                 if (tagId) {
                     sendPayload.appliedTags = [tagId];

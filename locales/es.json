@@ -263,8 +263,8 @@
     },
     "link": {
       "header": "Vincula tu cuenta de osu! con el bot",
-      "body": "Vincula tu usuario de Discord con tu cuenta de osu!.\nPor defecto usa la vinculación tradicional (pública).\nUsa el flag `-oauth` para vincularte de forma segura y privada por DMs.",
-      "usage": "s.link [usuario_osu] : Vincula tu cuenta de forma tradicional.\ns.link -oauth : Envía el enlace de vinculación seguro por privado.\ns.link unlink : Desvincula completamente tu cuenta."
+      "body": "Vincula tu usuario de Discord con tu cuenta de osu! de forma segura y privada usando OAuth.\nUsa el flag `-chat` si deseas vincularte usando el método tradicional (público).",
+      "usage": "s.link : Envía el enlace de vinculación seguro (OAuth) por privado.\ns.link -chat [usuario_osu] : Vincula tu cuenta de forma tradicional (pública).\ns.link unlink : Desvincula completamente tu cuenta."
     },
     "c": {
       "header": "El >c de toda la vida",

@@ -263,8 +263,8 @@
     },
     "link": {
       "header": "Link your osu! account with the bot",
-      "body": "Link your Discord user with your osu! account.\nBy default, it uses traditional (public) linking.\nUse the `-oauth` flag to link securely and privately via DMs.",
-      "usage": "s.link [osu_user] : Link your account traditionally.\ns.link -oauth : Sends the secure linking link privately.\ns.link unlink : Completely unlink your account."
+      "body": "Link your Discord user with your osu! account securely and privately using OAuth.\nUse the `-chat` flag if you want to link using the traditional (public) method.",
+      "usage": "s.link : Sends the secure linking link (OAuth) privately.\ns.link -chat [osu_user] : Link your account traditionally (public).\ns.link unlink : Completely unlink your account."
     },
     "c": {
       "header": "The classic compare command (>c)",

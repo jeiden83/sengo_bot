@@ -65,6 +65,35 @@ async function run(messages, args) {
         return t(locale, 'bug.err_empty_report');
     }
 
+    let parsedTitle = null;
+    let parsedBody = bodyText || null;
+
+    if (bodyText) {
+        if (bodyText.includes('\n')) {
+            const lines = bodyText.split('\n');
+            parsedTitle = lines[0].trim().substring(0, 100);
+            parsedBody = lines.slice(1).join('\n').trim() || null;
+        } else if (bodyText.length <= 100) {
+            parsedTitle = bodyText;
+            parsedBody = null;
+        } else {
+            const sentenceBoundary = bodyText.slice(0, 100).match(/[\.\?\!]\s/);
+            if (sentenceBoundary && sentenceBoundary.index !== undefined) {
+                const titleEnd = sentenceBoundary.index + 1;
+                parsedTitle = bodyText.slice(0, titleEnd).trim();
+                parsedBody = bodyText.slice(titleEnd).trim() || null;
+            } else {
+                let title = bodyText.slice(0, 80);
+                const lastSpace = title.lastIndexOf(' ');
+                if (lastSpace > 30) {
+                    title = title.slice(0, lastSpace);
+                }
+                parsedTitle = title.trim() + '...';
+                parsedBody = bodyText.slice(title.length).trim() || null;
+            }
+        }
+    }
+
     try {
         const webhookClient = new WebhookClient({ url: webhookUrl });
         const embed = doBugReportEmbed(
@@ -72,8 +101,8 @@ async function run(messages, args) {
             message.guild,
             message.channel,
             new Date(),
-            null, // Título opcional en chat command no hay
-            bodyText || null,
+            parsedTitle,
+            parsedBody,
             repliedMessage,
             attachmentUrl
         );
@@ -91,7 +120,8 @@ async function run(messages, args) {
             await webhookClient.send(sendPayload);
         } catch (webhookError) {
             if (webhookError.code === 220001) {
-                sendPayload.threadName = `Bug de ${message.author.username}`.substring(0, 100);
+                const threadName = parsedTitle || `Bug de ${message.author.username}`;
+                sendPayload.threadName = threadName.substring(0, 100);
                 if (tagId) {
                     sendPayload.appliedTags = [tagId];
                 }
