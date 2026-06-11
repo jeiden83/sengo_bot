@@ -7,22 +7,13 @@ const data = new SlashCommandBuilder()
     .setDescription("Vincula o desvincula tu cuenta de discord con un usuario de osu!")
     .addStringOption(option =>
         option.setName("usuario")
-            .setDescription("Nombre de usuario de osu! a vincular (dejar vacío para desvincular)")
-            .setRequired(false)
-    )
-    .addBooleanOption(option =>
-        option.setName("chat")
-            .setDescription("Usa la vinculación tradicional de chat (pública)")
+            .setDescription("Escribe 'unlink' o 'desvincular' para desvincular tu cuenta")
             .setRequired(false)
     )
     .addStringOption(addModoOption);
 
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
-    const chat = interaction.options.getBoolean("chat");
-    if (chat) {
-        args.push("-chat");
-    }
     messages.isSlash = true;
     messages.interaction = interaction;
     return await linkChatCommand.run(messages, args);
