@@ -25,27 +25,59 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
     let lines = [];
     const mode = activeMode || 'osu';
 
+    let peakIndices = [];
     if (mode === 'osu') {
-        if (strains.aim) lines.push({ label: 'Aim', data: strains.aim, color: '#ff66aa', fill: 'rgba(255, 102, 170, 0.12)' });
-        if (strains.speed) lines.push({ label: 'Speed', data: strains.speed, color: '#44aaff', fill: 'rgba(68, 170, 255, 0.12)' });
+        if (strains.aim) lines.push({ label: 'Aim', data: strains.aim, color: '#ff66aa', fill: 'rgba(255, 102, 170, 0.12)', width: 1.5 });
+        if (strains.speed) lines.push({ label: 'Speed', data: strains.speed, color: '#44aaff', fill: 'rgba(68, 170, 255, 0.12)', width: 1.5 });
         if (strains.aim && strains.speed && strains.aim.length === strains.speed.length) {
             const totalData = [];
+            let maxTotal = 0;
             for (let i = 0; i < strains.aim.length; i++) {
-                totalData.push(strains.aim[i] + strains.speed[i]);
+                const val = strains.aim[i] + strains.speed[i];
+                totalData.push(val);
+                if (val > maxTotal) {
+                    maxTotal = val;
+                }
             }
-            lines.push({ label: 'Total', data: totalData, color: '#ffd700', fill: 'rgba(0, 0, 0, 0)' });
+            lines.push({ label: 'Total', data: totalData, color: '#ffd700', fill: 'rgba(0, 0, 0, 0)', width: 3.0 });
+
+            // Encontrar picos locales que estén al menos al 88% del máximo total
+            const peakThreshold = maxTotal * 0.88;
+            for (let i = 1; i < totalData.length - 1; i++) {
+                const val = totalData[i];
+                if (val >= peakThreshold && val > totalData[i - 1] && val > totalData[i + 1]) {
+                    peakIndices.push(i);
+                }
+            }
+
+            if (peakIndices.length === 0 && maxTotal > 0) {
+                const maxIdx = totalData.indexOf(maxTotal);
+                if (maxIdx !== -1) peakIndices.push(maxIdx);
+            }
+
+            // Evitar picos demasiado juntos (debouncing espacial)
+            const minDistancePoints = Math.max(3, Math.round(totalData.length * 0.05));
+            peakIndices.sort((a, b) => totalData[b] - totalData[a]); // Ordenar por valor descendente
+            const filteredPeaks = [];
+            for (const idx of peakIndices) {
+                const isTooClose = filteredPeaks.some(p => Math.abs(p - idx) < minDistancePoints);
+                if (!isTooClose) {
+                    filteredPeaks.push(idx);
+                }
+            }
+            peakIndices = filteredPeaks.slice(0, 3).sort((a, b) => a - b);
         }
         if (modsStr.toUpperCase().includes('FL') && strains.flashlight) {
-            lines.push({ label: 'Flashlight', data: strains.flashlight, color: '#ffcc44', fill: 'rgba(255, 204, 68, 0.12)' });
+            lines.push({ label: 'Flashlight', data: strains.flashlight, color: '#ffcc44', fill: 'rgba(255, 204, 68, 0.12)', width: 2.0 });
         }
     } else if (mode === 'taiko') {
-        if (strains.stamina) lines.push({ label: 'Stamina', data: strains.stamina, color: '#ff5555', fill: 'rgba(255, 85, 85, 0.12)' });
-        if (strains.color) lines.push({ label: 'Color', data: strains.color, color: '#5599ff', fill: 'rgba(85, 153, 255, 0.12)' });
-        if (strains.rhythm) lines.push({ label: 'Rhythm', data: strains.rhythm, color: '#ffcc55', fill: 'rgba(255, 204, 85, 0.12)' });
+        if (strains.stamina) lines.push({ label: 'Stamina', data: strains.stamina, color: '#ff5555', fill: 'rgba(255, 85, 85, 0.12)', width: 2.0 });
+        if (strains.color) lines.push({ label: 'Color', data: strains.color, color: '#5599ff', fill: 'rgba(85, 153, 255, 0.12)', width: 2.0 });
+        if (strains.rhythm) lines.push({ label: 'Rhythm', data: strains.rhythm, color: '#ffcc55', fill: 'rgba(255, 204, 85, 0.12)', width: 2.0 });
     } else if (mode === 'fruits') {
-        if (strains.movement) lines.push({ label: 'Movement', data: strains.movement, color: '#ff8833', fill: 'rgba(255, 136, 51, 0.12)' });
+        if (strains.movement) lines.push({ label: 'Movement', data: strains.movement, color: '#ff8833', fill: 'rgba(255, 136, 51, 0.12)', width: 2.0 });
     } else if (mode === 'mania') {
-        if (strains.strains) lines.push({ label: 'Strain', data: strains.strains, color: '#aa55ff', fill: 'rgba(170, 85, 255, 0.12)' });
+        if (strains.strains) lines.push({ label: 'Strain', data: strains.strains, color: '#aa55ff', fill: 'rgba(170, 85, 255, 0.12)', width: 2.0 });
     }
 
     // Si no hay líneas válidas con datos, liberar memoria y crear gráfico vacío/básico
@@ -120,47 +152,97 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
         ctx.stroke();
     }
 
-    // Dibujar las series (Strains)
+    // Dibujar las bandas de pico de dificultad en el fondo (detrás de las líneas)
+    if (mode === 'osu' && peakIndices && peakIndices.length > 0) {
+        ctx.save();
+        peakIndices.forEach(idx => {
+            const x = padding.left + (idx / (maxPointsCount - 1)) * graphWidth;
+            const bandWidth = 12;
+
+            // Gradiente horizontal para dar efecto de resplandor (glow)
+            const grad = ctx.createLinearGradient(x - bandWidth, padding.top, x + bandWidth, padding.top);
+            grad.addColorStop(0, 'rgba(255, 215, 0, 0.0)');
+            grad.addColorStop(0.3, 'rgba(255, 215, 0, 0.06)');
+            grad.addColorStop(0.5, 'rgba(255, 215, 0, 0.12)');
+            grad.addColorStop(0.7, 'rgba(255, 215, 0, 0.06)');
+            grad.addColorStop(1, 'rgba(255, 215, 0, 0.0)');
+
+            ctx.fillStyle = grad;
+            ctx.fillRect(x - bandWidth, padding.top, bandWidth * 2, graphHeight);
+
+            // Dibujar una delgada línea discontinua en el centro de la banda
+            ctx.strokeStyle = 'rgba(255, 215, 0, 0.25)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([3, 3]);
+            ctx.beginPath();
+            ctx.moveTo(x, padding.top);
+            ctx.lineTo(x, height - padding.bottom);
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
+
+    // Dibujar las series (Strains) con curvas suavizadas (redondeadas)
     lines.forEach(line => {
         const data = line.data;
         const points = data.length;
         if (points < 2) return;
 
+        const firstX = padding.left;
+        const firstY = padding.top + graphHeight - (data[0] / maxVal) * graphHeight;
+        const lastX = padding.left + graphWidth;
+        const lastY = padding.top + graphHeight - (data[points - 1] / maxVal) * graphHeight;
+
         // 1. Dibujar el área rellena (Fill) debajo de la curva
-        ctx.fillStyle = line.fill;
-        ctx.beginPath();
-        
-        let startX = padding.left;
-        let startY = padding.top + graphHeight;
-        ctx.moveTo(startX, startY);
+        if (line.fill && line.fill !== 'rgba(0, 0, 0, 0)' && line.fill !== 'transparent') {
+            ctx.fillStyle = line.fill;
+            ctx.beginPath();
+            ctx.moveTo(padding.left, padding.top + graphHeight);
+            ctx.lineTo(firstX, firstY);
 
-        for (let i = 0; i < points; i++) {
-            const val = data[i];
-            const x = padding.left + (i / (points - 1)) * graphWidth;
-            const y = padding.top + graphHeight - (val / maxVal) * graphHeight;
-            ctx.lineTo(x, y);
+            if (points === 2) {
+                ctx.lineTo(lastX, lastY);
+            } else {
+                for (let i = 1; i < points - 1; i++) {
+                    const currentX = padding.left + (i / (points - 1)) * graphWidth;
+                    const currentY = padding.top + graphHeight - (data[i] / maxVal) * graphHeight;
+                    const nextX = padding.left + ((i + 1) / (points - 1)) * graphWidth;
+                    const nextY = padding.top + graphHeight - (data[i + 1] / maxVal) * graphHeight;
+                    
+                    const xc = (currentX + nextX) / 2;
+                    const yc = (currentY + nextY) / 2;
+                    ctx.quadraticCurveTo(currentX, currentY, xc, yc);
+                }
+                ctx.lineTo(lastX, lastY);
+            }
+
+            ctx.lineTo(padding.left + graphWidth, padding.top + graphHeight);
+            ctx.closePath();
+            ctx.fill();
         }
-
-        ctx.lineTo(padding.left + graphWidth, padding.top + graphHeight);
-        ctx.closePath();
-        ctx.fill();
 
         // 2. Dibujar la línea de contorno (Stroke) de la curva
         ctx.strokeStyle = line.color;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = line.width || 2.5;
         ctx.lineCap = 'round';
         ctx.lineJoin = 'round';
         ctx.beginPath();
 
-        for (let i = 0; i < points; i++) {
-            const val = data[i];
-            const x = padding.left + (i / (points - 1)) * graphWidth;
-            const y = padding.top + graphHeight - (val / maxVal) * graphHeight;
-            if (i === 0) {
-                ctx.moveTo(x, y);
-            } else {
-                ctx.lineTo(x, y);
+        ctx.moveTo(firstX, firstY);
+        if (points === 2) {
+            ctx.lineTo(lastX, lastY);
+        } else {
+            for (let i = 1; i < points - 1; i++) {
+                const currentX = padding.left + (i / (points - 1)) * graphWidth;
+                const currentY = padding.top + graphHeight - (data[i] / maxVal) * graphHeight;
+                const nextX = padding.left + ((i + 1) / (points - 1)) * graphWidth;
+                const nextY = padding.top + graphHeight - (data[i + 1] / maxVal) * graphHeight;
+                
+                const xc = (currentX + nextX) / 2;
+                const yc = (currentY + nextY) / 2;
+                ctx.quadraticCurveTo(currentX, currentY, xc, yc);
             }
+            ctx.lineTo(lastX, lastY);
         }
         ctx.stroke();
     });
