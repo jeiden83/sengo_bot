@@ -130,8 +130,12 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es')
     let footerText = t(locale, 'recent.embed_footer_default');
     if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
-        if (ratioVal !== null && ratioVal < 10) {
-            footerText = t(locale, 'recent.embed_footer_virgo');
+        if (ratioVal !== null) {
+            if (ratioVal < 1) {
+                footerText = t(locale, 'recent.embed_footer_negativo');
+            } else if (ratioVal < 10) {
+                footerText = t(locale, 'recent.embed_footer_virgo');
+            }
         }
     }
 

@@ -909,6 +909,7 @@
     "showing_index": "Showing recent play **#{index}** of **{total}**:",
     "embed_author": "Recent Score of {username} in {mode}!",
     "embed_footer_virgo": "virgo ratio",
+    "embed_footer_negativo": "negative ratio",
     "embed_footer_default": "Sengo",
     "list_author": "Recent scores of {username} in osu!{mode}",
     "list_footer": "Showing recent plays {start}-{end} of {total}",

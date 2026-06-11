@@ -909,6 +909,7 @@
     "showing_index": "Mostrando la jugada **#{index}** de **{total}** recientes:",
     "embed_author": "Puntuación Reciente de {username} en {mode}!",
     "embed_footer_virgo": "ratio de virgo",
+    "embed_footer_negativo": "ratio negativo",
     "embed_footer_default": "Sengo",
     "list_author": "Puntuaciones recientes de {username} en osu!{mode}",
     "list_footer": "Mostrando jugadas {start}-{end} de {total} recientes",
