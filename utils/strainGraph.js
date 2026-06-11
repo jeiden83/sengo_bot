@@ -41,8 +41,8 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
             }
             lines.push({ label: 'Total', data: totalData, color: '#ffd700', fill: 'rgba(0, 0, 0, 0)', width: 3.0 });
 
-            // Encontrar picos locales que estén al menos al 88% del máximo total
-            const peakThreshold = maxTotal * 0.88;
+            // Encontrar picos locales que estén al menos al 80% del máximo total
+            const peakThreshold = maxTotal * 0.80;
             for (let i = 1; i < totalData.length - 1; i++) {
                 const val = totalData[i];
                 if (val >= peakThreshold && val > totalData[i - 1] && val > totalData[i + 1]) {
@@ -56,7 +56,7 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
             }
 
             // Evitar picos demasiado juntos (debouncing espacial)
-            const minDistancePoints = Math.max(3, Math.round(totalData.length * 0.05));
+            const minDistancePoints = Math.max(2, Math.round(totalData.length * 0.015));
             peakIndices.sort((a, b) => totalData[b] - totalData[a]); // Ordenar por valor descendente
             const filteredPeaks = [];
             for (const idx of peakIndices) {
@@ -65,7 +65,7 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
                     filteredPeaks.push(idx);
                 }
             }
-            peakIndices = filteredPeaks.slice(0, 3).sort((a, b) => a - b);
+            peakIndices = filteredPeaks.slice(0, 5).sort((a, b) => a - b);
         }
         if (modsStr.toUpperCase().includes('FL') && strains.flashlight) {
             lines.push({ label: 'Flashlight', data: strains.flashlight, color: '#ffcc44', fill: 'rgba(255, 204, 68, 0.12)', width: 2.0 });
