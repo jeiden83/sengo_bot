@@ -219,6 +219,20 @@ async function run(messages, args) {
     } catch (e) {
         console.error("Error al obtener tags en m.js:", e);
     }
+    // Asegurar que tenemos las fechas y el user_id del beatmapset si no están presentes (por ejemplo, si vino de la DB)
+    if (beatmap.beatmapset && (!beatmap.beatmapset.submitted_date || !beatmap.beatmapset.last_updated || !beatmap.beatmapset.user_id)) {
+        try {
+            const { getBeatmapset } = require("../../utils/osu.js");
+            const fullSet = await getBeatmapset(beatmap.beatmapset_id);
+            if (fullSet) {
+                beatmap.beatmapset.submitted_date = fullSet.submitted_date;
+                beatmap.beatmapset.last_updated = fullSet.last_updated;
+                beatmap.beatmapset.user_id = fullSet.user_id;
+            }
+        } catch (e) {
+            console.error("Error al obtener detalles del beatmapset en m.js:", e);
+        }
+    }
 
     const { doOsuMapEmbed } = require("../../../views/osuEmbeds.js");
     const { embed, components } = doOsuMapEmbed({

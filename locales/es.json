@@ -973,6 +973,8 @@
     "objects_mania": "Notas: `{circles}` | Hold: `{holds}`",
     "author_created_by": "Creado por {creator}",
     "mode": "Modo",
+    "submitted": "Submiteado",
+    "updated": "Editado",
     "converted": " *(Convertido)*",
     "difficulty": "Dificultad",
     "base": " *(Base: {base}★)*",

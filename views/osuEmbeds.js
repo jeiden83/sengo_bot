@@ -720,6 +720,21 @@ function doOsuMapEmbed({
     const pp98Color = `\u001b[1;36m${ppValues.pp98}pp\u001b[0m`;
     const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}/100% - ${pp99Color}/99% - ${pp98Color}/98%\n\`\`\``;
 
+    const submittedUnix = beatmap.beatmapset.submitted_date ? Math.floor(new Date(beatmap.beatmapset.submitted_date).getTime() / 1000) : null;
+    const updatedUnix = beatmap.beatmapset.last_updated ? Math.floor(new Date(beatmap.beatmapset.last_updated).getTime() / 1000) : null;
+
+    let datesLine = '';
+    const dateParts = [];
+    if (submittedUnix) {
+        dateParts.push(`**${t(locale, 'map.submitted')}:** <t:${submittedUnix}:d>`);
+    }
+    if (updatedUnix) {
+        dateParts.push(`**${t(locale, 'map.updated')}:** <t:${updatedUnix}:d>`);
+    }
+    if (dateParts.length > 0) {
+        datesLine = `\n▸ ${dateParts.join(' ▸ ')}`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: t(locale, 'map.author_created_by', { creator: beatmap.beatmapset.creator }),
@@ -734,7 +749,7 @@ function doOsuMapEmbed({
 ▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? t(locale, 'map.bpm_base', { base: attributes.baseBpm }) : ''} ▸ **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\` ${t(locale, 'map.drain', { drain: formatLength(attributes.hitLength) })} ▸ **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\`
 ▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? `*(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''} ▸ **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? `*(${attributes.baseAr.toFixed(1)})*` : ''} ▸ **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? `*(${attributes.baseOd.toFixed(1)})*` : ''} ▸ **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? `*(${attributes.baseHp.toFixed(1)})*` : ''}
 
-▸ **${t(locale, 'map.objects')}:** ${objectsValue}
+▸ **${t(locale, 'map.objects')}:** ${objectsValue}${datesLine}
 
 ▸ **${t(locale, 'map.recommended_pp')}:**
 ${ppAnsiBlock}${userTagsStr}
@@ -803,7 +818,22 @@ function doOsuMapsetEmbed({
 
     const sortedBeatmaps = [...beatmapset.beatmaps].sort((a, b) => a.difficulty_rating - b.difficulty_rating);
 
-    let description = `▸ **${t(locale, 'map.creator')}:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmapset.user_id}) ▸ **${t(locale, 'map.status')}:** \`${statusName}\` ▸ **BPM:** \`${beatmapset.bpm}\`\n\n`;
+    const submittedUnix = beatmapset.submitted_date ? Math.floor(new Date(beatmapset.submitted_date).getTime() / 1000) : null;
+    const updatedUnix = beatmapset.last_updated ? Math.floor(new Date(beatmapset.last_updated).getTime() / 1000) : null;
+
+    let datesLine = '';
+    const dateParts = [];
+    if (submittedUnix) {
+        dateParts.push(`**${t(locale, 'map.submitted')}:** <t:${submittedUnix}:d>`);
+    }
+    if (updatedUnix) {
+        dateParts.push(`**${t(locale, 'map.updated')}:** <t:${updatedUnix}:d>`);
+    }
+    if (dateParts.length > 0) {
+        datesLine = `▸ ${dateParts.join(' ▸ ')}\n`;
+    }
+
+    let description = `▸ **${t(locale, 'map.creator')}:** [${beatmapset.creator}](https://osu.ppy.sh/users/${beatmapset.user_id}) ▸ **${t(locale, 'map.status')}:** \`${statusName}\` ▸ **BPM:** \`${beatmapset.bpm}\`\n${datesLine}\n`;
 
     const modeEmojis = {
         'osu': '⚪',
