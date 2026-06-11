@@ -28,6 +28,13 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
     if (mode === 'osu') {
         if (strains.aim) lines.push({ label: 'Aim', data: strains.aim, color: '#ff66aa', fill: 'rgba(255, 102, 170, 0.12)' });
         if (strains.speed) lines.push({ label: 'Speed', data: strains.speed, color: '#44aaff', fill: 'rgba(68, 170, 255, 0.12)' });
+        if (strains.aim && strains.speed && strains.aim.length === strains.speed.length) {
+            const totalData = [];
+            for (let i = 0; i < strains.aim.length; i++) {
+                totalData.push(strains.aim[i] + strains.speed[i]);
+            }
+            lines.push({ label: 'Total', data: totalData, color: '#ffd700', fill: 'rgba(0, 0, 0, 0)' });
+        }
         if (modsStr.toUpperCase().includes('FL') && strains.flashlight) {
             lines.push({ label: 'Flashlight', data: strains.flashlight, color: '#ffcc44', fill: 'rgba(255, 204, 68, 0.12)' });
         }
