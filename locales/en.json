@@ -1415,5 +1415,18 @@
       "51": "The beatmap difficulty is blacklisted.",
       "default": "Unknown error in o!rdr renderer (Code {code})"
     }
+  },
+  "blacklist": {
+    "user_blacklisted": "❌ You are not allowed to use Sengo or execute this command because you are in the blacklist.",
+    "err_only_admin": "❌ This command is reserved for bot administrators.",
+    "invalid_action": "❌ Invalid action. Correct usage:\n> `.blacklist -add <discordId>` (general block)\n> `.blacklist -add <discordId> <commands>` (specific command block)\n> `.blacklist -remove <discordId>` (remove from blacklist)\n> `.blacklist -lista` (list blacklisted users)",
+    "err_no_user": "❌ Specify a valid Discord ID to add or remove from the blacklist.",
+    "add_success": "✅ User <@{userId}> (`{userId}`) has been added to Sengo's general blacklist.",
+    "add_commands_success": "✅ User <@{userId}> (`{userId}`) has been added to Sengo's blacklist for commands: {commands}.",
+    "remove_success": "✅ User <@{userId}> (`{userId}`) has been removed from Sengo's blacklist.",
+    "empty": "🖤 Sengo's blacklist is empty.",
+    "title": "🖤 Sengo Blacklist",
+    "list_entry": "{index}. <@{userId}> (`{userId}`) - Restrictions: {commands} - By: <@{addedBy}> on {date}",
+    "general_block": "General (All commands)"
   }
 }

@@ -237,6 +237,25 @@ async function chatCommand(intialized_data, command_data) {
     const chat_commands_map = intialized_data.get('chat_commands_map');
 
 	if (chat_commands_set.has(command)) {
+        // Verificar blacklist primero
+        const { isUserBlacklisted } = require("../models/BlacklistModel.js");
+        let mainCommand = command;
+        const chat_main_commands_set = intialized_data.get('chat_main_commands_set');
+        if (chat_main_commands_set && !chat_main_commands_set.has(command)) {
+            for (const [name, mod] of chat_commands_map.entries()) {
+                if (mod === chat_commands_map.get(command) && chat_main_commands_set.has(name)) {
+                    mainCommand = name;
+                    break;
+                }
+            }
+        }
+
+        if (await isUserBlacklisted(message.author.id, command) || await isUserBlacklisted(message.author.id, mainCommand)) {
+            const locale = message.locale || 'es';
+            if (logger) logger.failed(`Usuario bloqueado por blacklist para el comando: ${command}`);
+            return t(locale, "blacklist.user_blacklisted");
+        }
+
 		const found_command = chat_commands_map.get(command);
 	
 		// Revisamos si hay un alias en el comando y si el comando ejecutado es un alias de ese comando
@@ -450,11 +469,25 @@ async function chatCommand(intialized_data, command_data) {
 	return not_found_responses[Math.floor(Math.random() * not_found_responses.length)];
 }
 async function slashCommand(chat_commands, slash_commands, interaction, res) {
+	const { commandName } = interaction;
+
+    // Verificar blacklist primero
+    const { isUserBlacklisted } = require("../models/BlacklistModel.js");
+    if (await isUserBlacklisted(interaction.user.id, commandName)) {
+        const locale = interaction.resolvedLocale || 'es';
+        const msg = t(locale, "blacklist.user_blacklisted");
+        if (interaction.deferred || interaction.replied) {
+            await interaction.editReply(msg);
+        } else {
+            await interaction.reply({ content: msg, ephemeral: true });
+        }
+        if (interaction.logger) interaction.logger.failed(`Usuario bloqueado por blacklist para el comando slash: ${commandName}`);
+        return true;
+    }
+
 	const slash_commands_set = slash_commands.get('slash_commands_set');
 	const slash_commands_map = slash_commands.get('slash_commands_map');
 	const chat_commands_map = chat_commands.get('chat_commands_map');
-
-	const { commandName } = interaction;
 
 	if (slash_commands_set.has(commandName)) {
         const found_command = slash_commands_map.get(commandName);

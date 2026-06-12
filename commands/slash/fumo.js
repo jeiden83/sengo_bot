@@ -91,12 +91,7 @@ async function run(interaction, res, chat_commands) {
         return "❌ Error: La base de datos no está disponible.";
     }
 
-    if (process.env.OWNER_ID && interaction.user.id !== process.env.OWNER_ID) {
-        const locale = interaction.locale || 'es';
-        const msg = t(locale, "fumo.err_owner_only");
-        await interaction.editReply(msg);
-        return true;
-    }
+
 
     await fumoChatCommand.ensureBucketExists(supabase);
 

@@ -1415,5 +1415,18 @@
       "51": "La dificultad específica del beatmap está en la lista negra.",
       "default": "Error desconocido en el renderizador de o!rdr (Código {code})"
     }
+  },
+  "blacklist": {
+    "user_blacklisted": "❌ No tienes permitido usar este comando o ejecutar Sengo porque te encuentras en la lista negra.",
+    "err_only_admin": "❌ Este comando está reservado para los administradores del bot.",
+    "invalid_action": "❌ Acción inválida. Uso correcto:\n> `.blacklist -add <discordId>` (bloqueo general)\n> `.blacklist -add <discordId> <comandos>` (bloqueo de comandos específicos)\n> `.blacklist -remove <discordId>` (remover de blacklist)\n> `.blacklist -lista` (listar bloqueados)",
+    "err_no_user": "❌ Especifica un ID de Discord válido para agregar o remover de la blacklist.",
+    "add_success": "✅ El usuario <@{userId}> (`{userId}`) ha sido agregado a la blacklist general de Sengo.",
+    "add_commands_success": "✅ El usuario <@{userId}> (`{userId}`) ha sido agregado a la blacklist de Sengo para los comandos: {commands}.",
+    "remove_success": "✅ El usuario <@{userId}> (`{userId}`) ha sido removido de la blacklist de Sengo.",
+    "empty": "🖤 La blacklist de Sengo está vacía.",
+    "title": "🖤 Lista Negra de Sengo",
+    "list_entry": "{index}. <@{userId}> (`{userId}`) - Restricciones: {commands} - Por: <@{addedBy}> el {date}",
+    "general_block": "General (Todos los comandos)"
   }
 }
