@@ -1158,10 +1158,11 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 }
             }
 
-            if (supporterToken) {
-                if (logger) logger.process(`[GAP] Optimizando consulta usando el token de supporter de ${supporterUsername}`);
+            let apiFriendScores = [];
+            let useOptimization = false;
 
-                let apiFriendScores = [];
+            if (supporterToken) {
+                if (logger) logger.process(`[GAP] Intentando optimización usando el token de supporter de ${supporterUsername}`);
                 try {
                     const legacyOnlyVal = isLazerMode ? 0 : 1;
                     const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=${gamemode}&type=friend&legacy_only=${legacyOnlyVal}`;
@@ -1173,10 +1174,14 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                         }
                     });
                     apiFriendScores = response.data.scores || response.data || [];
+                    useOptimization = true;
                 } catch (e) {
-                    console.error("[GAP] Error al obtener amigos de la API:", e);
+                    console.error("[GAP] Error al obtener amigos de la API (es posible que el token no tenga supporter o esté inactivo):", e.message || e);
                 }
+            }
 
+            if (useOptimization) {
+                if (logger) logger.process(`[GAP] Optimizando consulta con éxito usando la lista de amigos del supporter`);
                 for (const user of usersToFetch) {
                     const uId = user.osu_id.toString();
                     const apiScore = apiFriendScores.find(s => s.user_id?.toString() === uId || (s.user && s.user.id?.toString() === uId));
