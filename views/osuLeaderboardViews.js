@@ -17,9 +17,10 @@ function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
     let position = startIndex + 1;
 
     user_scores.forEach(score => {
-        const flag = getFlagEmoji((score.user && score.user.country_code) ? score.user.country_code : "XX");
-        const username = score.user ? score.user.username : score.username;
-        const username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id})`;
+        const countryCode = score.user?.country_code || score.country_code;
+        const flag = getFlagEmoji(countryCode ? countryCode : "XX");
+        const username = score.user?.username || score.username || `User ${score.user_id}`;
+        const username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id || score.user?.id})`;
 
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
@@ -104,9 +105,10 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 
     scores_chunk.forEach((score, i) => {
         const globalIndex = startIndex + i + 1;
-        const flag = getFlagEmoji(score.user ? score.user.country_code : "");
-        const username = score.user ? score.user.username : 'Usuario';
-        const userId = score.user ? score.user.id : score.user_id;
+        const countryCode = score.user?.country_code || score.country_code || "";
+        const flag = getFlagEmoji(countryCode);
+        const username = score.user?.username || score.username || 'Usuario';
+        const userId = score.user?.id || score.user_id;
         const userUrl = `https://osu.ppy.sh/users/${userId}`;
         const userLink = `[${username}](${userUrl})`;
 

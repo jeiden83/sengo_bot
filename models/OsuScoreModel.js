@@ -97,6 +97,20 @@ function normalizeScore(score) {
     score.classic_total_score = resolvedClassic;
     score.score = resolvedScore;
 
+    // Asegurar que el objeto score.user existe y tiene country_code si están disponibles a nivel raíz (p.ej. de filas de la BD)
+    if (!score.user) {
+        score.user = {};
+    }
+    if (!score.user.id && score.user_id) {
+        score.user.id = Number(score.user_id);
+    }
+    if (!score.user.username && score.username) {
+        score.user.username = score.username;
+    }
+    if (!score.user.country_code && score.country_code) {
+        score.user.country_code = score.country_code;
+    }
+
     return score;
 }
 
@@ -932,111 +946,157 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
 
     const supabase = getSupabaseClient();
 
-    // Mezclar con los scores de Supabase
-    if (supabase && !forceUpdate) {
+    // Mezclar con los scores de Supabase y tokens en paralelo
+    const tokenCountryCodes = {};
+    let dbScores = null;
+    let dbTokens = null;
+
+    if (supabase) {
         try {
-            const { data: dbScores, error: dbError } = await supabase
-                .from('local_scores')
-                .select('*')
-                .eq('beatmap_id', beatmapId.toString());
-            
-            if (!dbError && dbScores) {
-                // Agrupar por usuario y elegir la mejor play pasada (o la más reciente si no hay pasadas)
-                const dbByUser = {};
-                for (const row of dbScores) {
-                    const uId = row.user_id.toString();
-                    if (!dbByUser[uId]) dbByUser[uId] = [];
-                    dbByUser[uId].push(row);
+            const promises = [
+                supabase
+                    .from('oauth_tokens')
+                    .select('discord_id, osu_id, username, access_token, refresh_token, expires_at, country_code')
+            ];
+            if (!forceUpdate) {
+                promises.push(
+                    supabase
+                        .from('local_scores')
+                        .select('*')
+                        .eq('beatmap_id', beatmapId.toString())
+                );
+            }
+
+            const results = await Promise.all(promises);
+            const tokensRes = results[0];
+            const scoresRes = results[1];
+
+            if (tokensRes && !tokensRes.error && tokensRes.data) {
+                dbTokens = tokensRes.data;
+                for (const row of tokensRes.data) {
+                    if (row.osu_id && row.country_code) {
+                        tokenCountryCodes[row.osu_id.toString()] = row.country_code;
+                    }
+                }
+            }
+            if (scoresRes && !scoresRes.error && scoresRes.data) {
+                dbScores = scoresRes.data;
+            }
+        } catch (e) {
+            console.error("[GAP] Error en precarga paralela de Supabase:", e);
+        }
+    }
+
+    if (dbScores && !forceUpdate) {
+        try {
+            // Agrupar por usuario y elegir la mejor play pasada (o la más reciente si no hay pasadas)
+            const dbByUser = {};
+            const knownCountryCodes = {};
+            for (const row of dbScores) {
+                const uId = row.user_id.toString();
+                if (!dbByUser[uId]) dbByUser[uId] = [];
+                dbByUser[uId].push(row);
+                if (row.country_code) {
+                    knownCountryCodes[uId] = row.country_code;
+                }
+            }
+
+            for (const uId in dbByUser) {
+                const rows = dbByUser[uId];
+                // Priorizar plays pasadas sobre fallidas
+                const passedRows = rows.filter(r => r.passed !== false);
+                const bestRow = passedRows.length > 0
+                    ? passedRows.reduce((a, b) => (Number(a.pp || 0) > Number(b.pp || 0) ? a : b))
+                    : rows.reduce((a, b) => (new Date(a.ended_at).getTime() > new Date(b.ended_at).getTime() ? a : b));
+
+                const row = bestRow;
+
+                // Intentar recuperar el country_code faltante
+                if (!row.country_code && knownCountryCodes[uId]) {
+                    row.country_code = knownCountryCodes[uId];
+                }
+                if (!row.country_code && tokenCountryCodes[uId]) {
+                    row.country_code = tokenCountryCodes[uId];
                 }
 
-                for (const uId in dbByUser) {
-                    const rows = dbByUser[uId];
-                    // Priorizar plays pasadas sobre fallidas
-                    const passedRows = rows.filter(r => r.passed !== false);
-                    const bestRow = passedRows.length > 0
-                        ? passedRows.reduce((a, b) => (Number(a.pp || 0) > Number(b.pp || 0) ? a : b))
-                        : rows.reduce((a, b) => (new Date(a.ended_at).getTime() > new Date(b.ended_at).getTime() ? a : b));
+                // Saltar scores claramente inválidas (legacy y total son 0, no tiene datos útiles de score)
+                const hasValidScore = Number(row.legacy_total_score || 0) > 0 || Number(row.total_score || 0) > 0;
+                if (!hasValidScore && row.passed !== false) {
+                    // Score inválida (Lazer guardada sin classic_total_score), no usarla como caché
+                    continue;
+                }
+                const rowEndedAtTime = new Date(row.ended_at).getTime();
+                const existing = cachedData.scores[uId];
+                const cachedEndedAtTime = existing ? new Date(existing.ended_at || 0).getTime() : 0;
+                
+                let shouldReplace = false;
+                if (!existing || existing.noScore === true) {
+                    shouldReplace = true;
+                } else {
+                    const rowPassed = row.passed !== false;
+                    const existingPassed = existing.passed !== false;
 
-                    const row = bestRow;
-                    // Saltar scores claramente inválidas (legacy y total son 0, no tiene datos útiles de score)
-                    const hasValidScore = Number(row.legacy_total_score || 0) > 0 || Number(row.total_score || 0) > 0;
-                    if (!hasValidScore && row.passed !== false) {
-                        // Score inválida (Lazer guardada sin classic_total_score), no usarla como caché
-                        continue;
-                    }
-                    const rowEndedAtTime = new Date(row.ended_at).getTime();
-                    const existing = cachedData.scores[uId];
-                    const cachedEndedAtTime = existing ? new Date(existing.ended_at || 0).getTime() : 0;
-                    
-                    let shouldReplace = false;
-                    if (!existing || existing.noScore === true) {
+                    if (rowPassed && !existingPassed) {
                         shouldReplace = true;
+                    } else if (!rowPassed && existingPassed) {
+                        shouldReplace = false;
                     } else {
-                        const rowPassed = row.passed !== false;
-                        const existingPassed = existing.passed !== false;
-
-                        if (rowPassed && !existingPassed) {
-                            shouldReplace = true;
-                        } else if (!rowPassed && existingPassed) {
-                            shouldReplace = false;
-                        } else {
-                            // Ambos pasaron o ambos fallaron
-                            if (rowPassed) {
-                                // Ambos pasaron: comparar por pp o score según el estado del mapa
-                                const isLoved = metadata && metadata.status === 'loved';
-                                if (isLoved) {
-                                    const rowScore = Number(row.legacy_total_score || row.total_score || 0);
-                                    const existingScore = Number(existing.legacy_total_score || existing.total_score || 0);
-                                    shouldReplace = rowScore > existingScore;
-                                } else {
-                                    const rowPP = Number(row.pp || 0);
-                                    const existingPP = Number(existing.pp || 0);
-                                    shouldReplace = rowPP > existingPP;
-                                }
+                        // Ambos pasaron o ambos fallaron
+                        if (rowPassed) {
+                            // Ambos pasaron: comparar por pp o score según el estado del mapa
+                            const isLoved = metadata && metadata.status === 'loved';
+                            if (isLoved) {
+                                const rowScore = Number(row.legacy_total_score || row.total_score || 0);
+                                const existingScore = Number(existing.legacy_total_score || existing.total_score || 0);
+                                shouldReplace = rowScore > existingScore;
                             } else {
-                                // Ambos fallaron: comparar por map_completion o combo
-                                const rowCompletion = Number(row.map_completion || 0);
-                                const existingCompletion = Number(existing.map_completion || 0);
-                                if (rowCompletion !== existingCompletion) {
-                                    shouldReplace = rowCompletion > existingCompletion;
-                                } else {
-                                    shouldReplace = rowEndedAtTime > cachedEndedAtTime;
-                                }
+                                const rowPP = Number(row.pp || 0);
+                                const existingPP = Number(existing.pp || 0);
+                                shouldReplace = rowPP > existingPP;
+                            }
+                        } else {
+                            // Ambos fallaron: comparar por map_completion o combo
+                            const rowCompletion = Number(row.map_completion || 0);
+                            const existingCompletion = Number(existing.map_completion || 0);
+                            if (rowCompletion !== existingCompletion) {
+                                shouldReplace = rowCompletion > existingCompletion;
+                            } else {
+                                shouldReplace = rowEndedAtTime > cachedEndedAtTime;
                             }
                         }
                     }
-                    
-                    if (shouldReplace) {
-                        const mappedScore = {
-                            id: Number(row.id),
-                            accuracy: row.accuracy,
-                            ended_at: row.ended_at,
-                            started_at: row.started_at,
-                            legacy_total_score: Number(row.legacy_total_score),
-                            total_score: Number(row.total_score),
-                            max_combo: row.max_combo,
-                            statistics: row.statistics || {},
-                            mods: row.mods || [],
-                            passed: row.passed,
-                            pp: row.pp,
-                            rank: row.rank,
-                            map_completion: row.map_completion,
-                            beatmap: {
-                                id: Number(row.beatmap_id),
-                                status: row.beatmap_status
-                            },
-                            user: {
-                                id: Number(row.user_id),
-                                username: row.username,
-                                country_code: row.country_code
-                            },
-                            user_id: Number(row.user_id),
-                            // Si le falta country_code, marcar como expirado para que la API lo refresque
-                            fetched_at: row.country_code ? new Date(row.created_at).getTime() : 0
-                        };
-                        normalizeScore(mappedScore);
-                        cachedData.scores[uId] = mappedScore;
-                    }
+                }
+                
+                if (shouldReplace) {
+                    const mappedScore = {
+                        id: Number(row.id),
+                        accuracy: row.accuracy,
+                        ended_at: row.ended_at,
+                        started_at: row.started_at,
+                        legacy_total_score: Number(row.legacy_total_score),
+                        total_score: Number(row.total_score),
+                        max_combo: row.max_combo,
+                        statistics: row.statistics || {},
+                        mods: row.mods || [],
+                        passed: row.passed,
+                        pp: row.pp,
+                        rank: row.rank,
+                        map_completion: row.map_completion,
+                        beatmap: {
+                            id: Number(row.beatmap_id),
+                            status: row.beatmap_status
+                        },
+                        user: {
+                            id: Number(row.user_id),
+                            username: row.username,
+                            country_code: row.country_code
+                        },
+                        user_id: Number(row.user_id),
+                        // Si le falta country_code, marcar como expirado para que la API lo refresque
+                        fetched_at: row.country_code ? new Date(row.created_at).getTime() : 0
+                    };
+                    normalizeScore(mappedScore);
+                    cachedData.scores[uId] = mappedScore;
                 }
             }
         } catch (err) {
@@ -1047,30 +1107,24 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
     let tokenPool = [];
     let tokenIndex = 0;
 
-    if (supabase) {
+    if (supabase && dbTokens) {
         try {
-            const { data: dbTokens, error: dbError } = await supabase
-                .from('oauth_tokens')
-                .select('discord_id, username, access_token, refresh_token, expires_at');
-            
-            if (!dbError && dbTokens) {
-                const OsuUserModel = require("./OsuUserModel.js");
-                const refreshed = await Promise.all(dbTokens.map(async (row) => {
-                    try {
-                        const token = await OsuUserModel.getValidTokenForUser(row.discord_id);
-                        if (token) {
-                            return {
-                                token,
-                                username: row.username || row.discord_id
-                            };
-                        }
-                    } catch (err) {
-                        console.error(`[GAP] Error al refrescar token para el usuario ${row.discord_id} en la pool:`, err);
+            const OsuUserModel = require("./OsuUserModel.js");
+            const refreshed = await Promise.all(dbTokens.map(async (row) => {
+                try {
+                    const token = await OsuUserModel.getValidTokenForUser(row.discord_id);
+                    if (token) {
+                        return {
+                            token,
+                            username: row.username || row.discord_id
+                        };
                     }
-                    return null;
-                }));
-                tokenPool = refreshed.filter(t => t !== null);
-            }
+                } catch (err) {
+                    console.error(`[GAP] Error al refrescar token para el usuario ${row.discord_id} en la pool:`, err);
+                }
+                return null;
+            }));
+            tokenPool = refreshed.filter(t => t !== null);
         } catch (e) {
             console.error("[GAP] Error al cargar la pool de tokens OAuth:", e);
         }
@@ -1102,6 +1156,20 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
         // Poblamos con los scores cacheados válidos
         for (const user of usersArray) {
             const cachedScore = cachedData.scores[user.osu_id];
+            if (cachedScore) {
+                if (!cachedScore.country_code && tokenCountryCodes[user.osu_id.toString()]) {
+                    cachedScore.country_code = tokenCountryCodes[user.osu_id.toString()];
+                    cacheModified = true;
+                }
+                if (!cachedScore.user) {
+                    cachedScore.user = {};
+                }
+                if (!cachedScore.user.country_code && tokenCountryCodes[user.osu_id.toString()]) {
+                    cachedScore.user.country_code = tokenCountryCodes[user.osu_id.toString()];
+                    cacheModified = true;
+                }
+                normalizeScore(cachedScore);
+            }
             let isFresh = false;
             if (cachedScore) {
                 const fetchedAt = cachedScore.fetched_at || cachedData.updated_at || 0;
@@ -1476,32 +1544,63 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
 
 async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
     const userScores = new Collection();
+    const tokenCountryCodes = {};
 
     // 1. Intentar consultar Supabase si está disponible
     try {
         const supabase = getSupabaseClient();
 
         if (supabase) {
-            const { data, error } = await supabase
-                .from('local_scores')
-                .select('*')
-                .eq('beatmap_id', beatmapId.toString());
+            const [scoresRes, tokensRes] = await Promise.all([
+                supabase
+                    .from('local_scores')
+                    .select('*')
+                    .eq('beatmap_id', beatmapId.toString()),
+                supabase
+                    .from('oauth_tokens')
+                    .select('osu_id, country_code')
+            ]);
 
-            if (error) {
-                console.error('❌ Error obteniendo scores locales de Supabase:', error.message);
-            } else if (data && data.length > 0) {
-                // Agrupar todas las jugadas por user_id
+            if (tokensRes && !tokensRes.error && tokensRes.data) {
+                for (const row of tokensRes.data) {
+                    if (row.osu_id && row.country_code) {
+                        tokenCountryCodes[row.osu_id.toString()] = row.country_code;
+                    }
+                }
+            }
+
+            if (scoresRes.error) {
+                console.error('❌ Error obteniendo scores locales de Supabase:', scoresRes.error.message);
+            } else if (scoresRes.data && scoresRes.data.length > 0) {
+                const data = scoresRes.data;
+                // Agrupar todas las jugadas por user_id y recolectar códigos de país conocidos
                 const tempUserScores = {};
+                const knownCountryCodes = {};
                 for (const row of data) {
                     const uId = row.user_id.toString();
                     if (!tempUserScores[uId]) tempUserScores[uId] = [];
                     tempUserScores[uId].push(normalizeScore(row));
+                    if (row.country_code) {
+                        knownCountryCodes[uId] = row.country_code;
+                    }
                 }
 
                 // Elegir la mejor play de cada usuario
                 for (const uId in tempUserScores) {
                     const scoresList = tempUserScores[uId];
                     const best = scoresList.reduce((a, b) => (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b));
+                    
+                    // Rellenar country_code si le falta
+                    if (!best.country_code) {
+                        best.country_code = knownCountryCodes[uId] || tokenCountryCodes[uId] || null;
+                    }
+                    if (!best.user) {
+                        best.user = {};
+                    }
+                    if (!best.user.country_code) {
+                        best.user.country_code = best.country_code;
+                    }
+
                     userScores.set(uId, best);
                 }
             }
@@ -1536,6 +1635,16 @@ async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
                     const uId = userId.toString();
                     const normalizedLocal = normalizeScore(bestLocal);
                     
+                    if (!normalizedLocal.country_code) {
+                        normalizedLocal.country_code = tokenCountryCodes[uId] || null;
+                    }
+                    if (!normalizedLocal.user) {
+                        normalizedLocal.user = {};
+                    }
+                    if (!normalizedLocal.user.country_code) {
+                        normalizedLocal.user.country_code = normalizedLocal.country_code;
+                    }
+
                     // Si ya existe de Supabase, quedarnos con la de mayor total_score
                     if (userScores.has(uId)) {
                         const existing = userScores.get(uId);
