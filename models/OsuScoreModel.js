@@ -783,6 +783,7 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
     // Eliminar campos que no existen en la tabla de Supabase
     delete score.classic_total_score;
     delete score.score;
+    delete score.user;
 
     // Play fallida en multi
     if(!score["passed"] && score["map_completion"] == 1) score.multi_failed = true;
@@ -1112,7 +1113,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
             const OsuUserModel = require("./OsuUserModel.js");
             const refreshed = await Promise.all(dbTokens.map(async (row) => {
                 try {
-                    const token = await OsuUserModel.getValidTokenForUser(row.discord_id);
+                    const token = await OsuUserModel.getValidTokenForUser(row.discord_id, 2, row);
                     if (token) {
                         return {
                             token,

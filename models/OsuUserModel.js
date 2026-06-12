@@ -622,7 +622,7 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
  * Deduplica llamadas concurrentes y actualiza la base de datos de manera atómica para evitar
  * perder credenciales por fallos de red en llamadas secundarias (como /me).
  */
-async function getValidTokenForUser(discordId, priority = 2) {
+async function getValidTokenForUser(discordId, priority = 2, existingToken = null) {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
 
@@ -630,13 +630,17 @@ async function getValidTokenForUser(discordId, priority = 2) {
         return activeRefreshPromises.get(discordId);
     }
 
-    const { data, error } = await supabase
-        .from('oauth_tokens')
-        .select('*')
-        .eq('discord_id', discordId)
-        .maybeSingle();
+    let data = existingToken;
+    if (!data) {
+        const { data: dbData, error } = await supabase
+            .from('oauth_tokens')
+            .select('*')
+            .eq('discord_id', discordId)
+            .maybeSingle();
 
-    if (error || !data) return null;
+        if (error || !dbData) return null;
+        data = dbData;
+    }
 
     const isExpired = new Date(data.expires_at) <= new Date(Date.now() + 60 * 1000); // 1 minuto de margen
     if (isExpired) {
