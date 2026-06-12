@@ -1428,5 +1428,12 @@
     "title": "🖤 Sengo Blacklist",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restrictions: {commands} - By: <@{addedBy}> on {date}",
     "general_block": "General (All commands)"
+  },
+  "commands": {
+    "blacklist": {
+      "header": "Blacklist Management",
+      "body": "Allows administrators to block users from using Sengo globally or for specific commands.",
+      "usage": "s.blacklist [-lista | -add <id> | -add <id> <commands> | -remove <id>]"
+    }
   }
 }

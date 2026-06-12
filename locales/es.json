@@ -1428,5 +1428,12 @@
     "title": "🖤 Lista Negra de Sengo",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restricciones: {commands} - Por: <@{addedBy}> el {date}",
     "general_block": "General (Todos los comandos)"
+  },
+  "commands": {
+    "blacklist": {
+      "header": "Gestión de Lista Negra (Blacklist)",
+      "body": "Permite a los administradores bloquear usuarios para que no puedan usar Sengo en general o comandos específicos.",
+      "usage": "s.blacklist [-lista | -add <id> | -add <id> <comandos> | -remove <id>]"
+    }
   }
 }
