@@ -744,6 +744,11 @@ async function run(messages, args) {
     await ensureBucketExists(supabase);
 
     const author = message.author;
+    const locale = getLocale(message);
+    if (process.env.OWNER_ID && author.id !== process.env.OWNER_ID) {
+        return t(locale, "fumo.err_owner_only");
+    }
+
     const member = message.member;
     const guild = message.guild;
 

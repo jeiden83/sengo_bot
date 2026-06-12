@@ -1257,6 +1257,7 @@
     "usertags_none": "None"
   },
   "fumo": {
+    "err_owner_only": "❌ Only the creator of Sengo can use this command.",
     "show_footer": "Uploaded by: {username} | Total Fumos: {total}",
     "no_registered": "🧸 No fumo images registered in the database.",
     "err_only_admin": "❌ This command is reserved for administrators.",

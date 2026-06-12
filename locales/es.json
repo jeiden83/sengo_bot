@@ -1257,6 +1257,7 @@
     "usertags_none": "Ninguno"
   },
   "fumo": {
+    "err_owner_only": "❌ Solo el creador de Sengo puede usar este comando.",
     "show_footer": "Subido por: {username} | Total Fumos: {total}",
     "no_registered": "🧸 No hay fotos de fumo registradas en la base de datos.",
     "err_only_admin": "❌ Este comando está reservado para los administradores.",
