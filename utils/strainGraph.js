@@ -40,32 +40,6 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
                 }
             }
             lines.push({ label: 'Total', data: totalData, color: '#ffd700', fill: 'rgba(0, 0, 0, 0)', width: 3.0 });
-
-            // Encontrar picos locales que estén al menos al 80% del máximo total
-            const peakThreshold = maxTotal * 0.80;
-            for (let i = 1; i < totalData.length - 1; i++) {
-                const val = totalData[i];
-                if (val >= peakThreshold && val > totalData[i - 1] && val > totalData[i + 1]) {
-                    peakIndices.push(i);
-                }
-            }
-
-            if (peakIndices.length === 0 && maxTotal > 0) {
-                const maxIdx = totalData.indexOf(maxTotal);
-                if (maxIdx !== -1) peakIndices.push(maxIdx);
-            }
-
-            // Evitar picos demasiado juntos (debouncing espacial)
-            const minDistancePoints = Math.max(2, Math.round(totalData.length * 0.015));
-            peakIndices.sort((a, b) => totalData[b] - totalData[a]); // Ordenar por valor descendente
-            const filteredPeaks = [];
-            for (const idx of peakIndices) {
-                const isTooClose = filteredPeaks.some(p => Math.abs(p - idx) < minDistancePoints);
-                if (!isTooClose) {
-                    filteredPeaks.push(idx);
-                }
-            }
-            peakIndices = filteredPeaks.slice(0, 5).sort((a, b) => a - b);
         }
         if (modsStr.toUpperCase().includes('FL') && strains.flashlight) {
             lines.push({ label: 'Flashlight', data: strains.flashlight, color: '#ffcc44', fill: 'rgba(255, 204, 68, 0.12)', width: 2.0 });
@@ -78,6 +52,74 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
         if (strains.movement) lines.push({ label: 'Movement', data: strains.movement, color: '#ff8833', fill: 'rgba(255, 136, 51, 0.12)', width: 2.0 });
     } else if (mode === 'mania') {
         if (strains.strains) lines.push({ label: 'Strain', data: strains.strains, color: '#aa55ff', fill: 'rgba(170, 85, 255, 0.12)', width: 2.0 });
+    }
+
+    // Calcular peakIndices de forma genérica para todos los modos de juego
+    let maxPointsCount = 0;
+    lines.forEach(line => {
+        if (line.data && line.data.length > maxPointsCount) {
+            maxPointsCount = line.data.length;
+        }
+    });
+
+    if (maxPointsCount > 0) {
+        let totalData = [];
+        let maxTotal = 0;
+
+        // Si ya hay una línea "Total" (como en osu!), la usamos directamente.
+        // De lo contrario, calculamos la suma de todas las series.
+        const totalLine = lines.find(l => l.label === 'Total');
+        if (totalLine) {
+            totalData = totalLine.data;
+            for (let i = 0; i < totalData.length; i++) {
+                if (totalData[i] > maxTotal) {
+                    maxTotal = totalData[i];
+                }
+            }
+        } else {
+            for (let i = 0; i < maxPointsCount; i++) {
+                let sum = 0;
+                lines.forEach(line => {
+                    if (line.data && line.data[i] !== undefined) {
+                        sum += line.data[i];
+                    }
+                });
+                totalData.push(sum);
+                if (sum > maxTotal) {
+                    maxTotal = sum;
+                }
+            }
+        }
+
+        if (maxTotal > 0) {
+            // Encontrar picos locales que estén al menos al 80% del máximo total
+            const peakThreshold = maxTotal * 0.80;
+            for (let i = 1; i < totalData.length - 1; i++) {
+                const val = totalData[i];
+                if (val >= peakThreshold && val > totalData[i - 1] && val > totalData[i + 1]) {
+                    peakIndices.push(i);
+                }
+            }
+
+            if (peakIndices.length === 0) {
+                const maxIdx = totalData.indexOf(maxTotal);
+                if (maxIdx !== -1) peakIndices.push(maxIdx);
+            }
+
+            // Evitar picos demasiado juntos (debouncing espacial)
+            // Ajustamos la distancia mínima para que las etiquetas de tiempo no se solapen.
+            // Para un ancho de 670px, unos 50px de distancia es ideal (~7.5% de la longitud total).
+            const minDistancePoints = Math.max(5, Math.round(totalData.length * 0.075));
+            peakIndices.sort((a, b) => totalData[b] - totalData[a]); // Ordenar por valor descendente
+            const filteredPeaks = [];
+            for (const idx of peakIndices) {
+                const isTooClose = filteredPeaks.some(p => Math.abs(p - idx) < minDistancePoints);
+                if (!isTooClose) {
+                    filteredPeaks.push(idx);
+                }
+            }
+            peakIndices = filteredPeaks.slice(0, 5).sort((a, b) => a - b);
+        }
     }
 
     // Si no hay líneas válidas con datos, liberar memoria y crear gráfico vacío/básico
@@ -114,10 +156,8 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
 
     // Encontrar el valor máximo de todas las series de strains para escalar el eje Y
     let maxVal = 0;
-    let maxPointsCount = 0;
     lines.forEach(line => {
         const len = line.data.length;
-        if (len > maxPointsCount) maxPointsCount = len;
         for (let i = 0; i < len; i++) {
             if (line.data[i] > maxVal) {
                 maxVal = line.data[i];
@@ -153,7 +193,7 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
     }
 
     // Dibujar las bandas de pico de dificultad en el fondo (detrás de las líneas)
-    if (mode === 'osu' && peakIndices && peakIndices.length > 0) {
+    if (peakIndices && peakIndices.length > 0) {
         ctx.save();
         peakIndices.forEach(idx => {
             const x = padding.left + (idx / (maxPointsCount - 1)) * graphWidth;
@@ -264,6 +304,43 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
     // Tiempo total de finalización
     ctx.textAlign = 'right';
     ctx.fillText(formatLength(totalLength), width - padding.right, height - padding.bottom + 8);
+
+    // Dibujar etiquetas de tiempo de los picos de dificultad (siempre que no solapen con las estándar)
+    if (peakIndices && peakIndices.length > 0) {
+        ctx.save();
+        ctx.fillStyle = '#ffd700'; // Color dorado para destacar
+        ctx.font = 'bold 10px sans-serif';
+        ctx.textBaseline = 'top';
+        ctx.textAlign = 'center';
+
+        peakIndices.forEach(idx => {
+            const x = padding.left + (idx / (maxPointsCount - 1)) * graphWidth;
+            const peakSeconds = (idx / (maxPointsCount - 1)) * totalLength;
+            const label = formatLength(peakSeconds);
+
+            // Calcular distancia a las etiquetas estándar para evitar colisiones
+            const xZero = padding.left;
+            const xMid = padding.left + graphWidth / 2;
+            const xEnd = padding.left + graphWidth;
+
+            const minDistanceToStandard = 30; // Distancia mínima en píxeles
+            
+            const tooCloseToZero = Math.abs(x - xZero) < minDistanceToStandard + 5;
+            const tooCloseToMid = Math.abs(x - xMid) < minDistanceToStandard;
+            const tooCloseToEnd = Math.abs(x - xEnd) < minDistanceToStandard + 5;
+
+            if (!tooCloseToZero && !tooCloseToMid && !tooCloseToEnd) {
+                // Dibujar un borde oscuro detrás del texto dorado para garantizar legibilidad
+                ctx.strokeStyle = '#181619';
+                ctx.lineWidth = 3;
+                ctx.lineJoin = 'miter';
+                ctx.miterLimit = 2;
+                ctx.strokeText(label, x, height - padding.bottom + 8);
+                ctx.fillText(label, x, height - padding.bottom + 8);
+            }
+        });
+        ctx.restore();
+    }
 
     // Dibujar leyenda en la esquina superior izquierda
     ctx.textBaseline = 'middle';
