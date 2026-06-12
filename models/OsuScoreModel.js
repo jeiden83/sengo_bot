@@ -1241,12 +1241,13 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                                 try {
                                     const ppResult = calculatePP(existingScore, mapInstance);
                                     existingScore.pp = ppResult.pp;
-                                    cachedData.scores[user.osu_id] = existingScore;
-                                    cacheModified = true;
                                 } catch (err) {
                                     console.error(`[GAP] Error al calcular el PP para el usuario en caché ${user.osu_id}:`, err);
                                 }
                             }
+                            existingScore.fetched_at = Date.now();
+                            cachedData.scores[user.osu_id] = existingScore;
+                            cacheModified = true;
                             scores.set(uId, existingScore);
                         } else {
                             // Si tampoco tiene score en la BD local ni en amigos de la API, marcar como noScore
