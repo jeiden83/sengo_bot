@@ -898,6 +898,7 @@
     "content_standard": "**Tabla de clasificación (leaderboard) en osu!{mode}{suffix} para:**",
     "content_country": "**Tabla de clasificación nacional ({country}){suffix} en osu!{mode} para:**",
     "content_friends": "**Tabla de clasificación de amigos de {username}{suffix} en osu!{mode} para:**",
+    "content_server": "**Tabla de clasificación del servidor {serverName}{suffix} en osu!{mode} para:**",
     "oauth_button_label": "Vincular Cuenta (OAuth)"
   },
   "recent": {

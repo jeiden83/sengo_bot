@@ -898,6 +898,7 @@
     "content_standard": "**Leaderboard in osu!{mode}{suffix} for:**",
     "content_country": "**National leaderboard ({country}){suffix} in osu!{mode} for:**",
     "content_friends": "**Friends leaderboard of {username}{suffix} in osu!{mode} for:**",
+    "content_server": "**Server leaderboard of {serverName}{suffix} in osu!{mode} for:**",
     "oauth_button_label": "Link Account (OAuth)"
   },
   "recent": {

@@ -185,7 +185,7 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 /**
  * Genera el string de contenido de encabezado para el comando lb
  */
-function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false, locale = "es") {
+function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false, locale = "es", serverName = null) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
     const displayMode = targetGamemode === 'osu' ? 'std' : (targetGamemode === 'fruits' ? 'ctb' : targetGamemode);
@@ -193,7 +193,13 @@ function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, fr
 
     const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
     let titleText = "";
-    if (countryCode) {
+    if (serverName) {
+        titleText = t(locale, 'leaderboard.content_server', {
+            serverName,
+            suffix,
+            mode: displayMode
+        });
+    } else if (countryCode) {
         titleText = t(locale, 'leaderboard.content_country', {
             country: countryCode.toUpperCase(),
             suffix,

@@ -661,7 +661,7 @@ function argsParserNoCommand(args, options = {}) {
         }
 
         // Si es el flag de -friends o -amigo o -amigos
-        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos") {
+        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos" || arg === "-f") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {

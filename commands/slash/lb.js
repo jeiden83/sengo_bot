@@ -36,6 +36,11 @@ const data = new SlashCommandBuilder()
         option.setName("lazer")
             .setDescription("Fuerza el leaderboard al estilo lazer (scoring normalizado).")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("amigos")
+            .setDescription("Filtrar por amigos del usuario o por miembros del servidor.")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -47,6 +52,11 @@ async function run(interaction, res) {
     const modsContiene = interaction.options.getString("mods_contiene");
     const stable = interaction.options.getBoolean("stable");
     const lazer = interaction.options.getBoolean("lazer");
+    const amigos = interaction.options.getBoolean("amigos");
+
+    if (amigos) {
+        args.push("-friends");
+    }
 
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
