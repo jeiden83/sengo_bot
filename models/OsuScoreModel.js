@@ -1156,17 +1156,6 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                         console.error("[GAP] Error al buscar token del owner:", e);
                     }
                 }
-                if (!supporterToken) {
-                    try {
-                        const supporterRes = await OsuUserModel.getSupporterTokenForCountry("ANY");
-                        if (supporterRes) {
-                            supporterToken = supporterRes.token;
-                            supporterUsername = supporterRes.username;
-                        }
-                    } catch (e) {
-                        console.error("[GAP] Error al buscar supporter token fallback:", e);
-                    }
-                }
             }
 
             if (supporterToken) {
@@ -1188,144 +1177,79 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                     console.error("[GAP] Error al obtener amigos de la API:", e);
                 }
 
-                const usersFoundInFriends = [];
-                const missingFromFriends = [];
-
                 for (const user of usersToFetch) {
                     const uId = user.osu_id.toString();
                     const apiScore = apiFriendScores.find(s => s.user_id?.toString() === uId || (s.user && s.user.id?.toString() === uId));
                     if (apiScore) {
-                        usersFoundInFriends.push({ user, score: apiScore });
+                        normalizeScore(apiScore);
+                        delete apiScore.beatmap;
+                        delete apiScore.beatmapset;
+
+                        if (mapInstance && (apiScore.pp === undefined || apiScore.pp === null || apiScore.pp === 0)) {
+                            try {
+                                const ppResult = calculatePP(apiScore, mapInstance);
+                                apiScore.pp = ppResult.pp;
+                            } catch (err) {
+                                console.error(`[GAP] Error al calcular el PP para el usuario en listado de amigos ${user.osu_id}:`, err);
+                            }
+                        }
+
+                        apiScore.fetched_at = Date.now();
+                        scores.set(uId, apiScore);
+                        cachedData.scores[user.osu_id] = apiScore;
+                        cacheModified = true;
+                        processedCount++;
+
+                        const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
+                        const { great = 0, ok = 0, meh = 0, miss = 0 } = apiScore.statistics || {};
+                        const total_hits = great + ok + meh + miss;
+                        const map_completion = apiScore.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
+
+                        const pre_calculated = {
+                            pp: apiScore.pp,
+                            beatmap_max_combo,
+                            map_completion
+                        };
+
+                        const scoreToSave = {
+                            ...apiScore,
+                            beatmap: {
+                                id: beatmapId,
+                                status: metadata?.status || 'ranked'
+                            },
+                            user: {
+                                username: apiScore.user?.username || user.username || `User ${user.osu_id}`,
+                                country_code: apiScore.user?.country_code || null
+                            },
+                            user_id: user.osu_id
+                        };
+
+                        saveUserscore(scoreToSave, pre_calculated, true).catch(err => {
+                            console.error(`[GAP] Error al guardar score de user ${user.osu_id} en Supabase:`, err);
+                        });
                     } else {
-                        missingFromFriends.push(user);
-                    }
-                }
-
-                for (const { user, score } of usersFoundInFriends) {
-                    normalizeScore(score);
-                    delete score.beatmap;
-                    delete score.beatmapset;
-
-                    if (mapInstance && (score.pp === undefined || score.pp === null || score.pp === 0)) {
-                        try {
-                            const ppResult = calculatePP(score, mapInstance);
-                            score.pp = ppResult.pp;
-                        } catch (err) {
-                            console.error(`[GAP] Error al calcular el PP para el usuario en listado de amigos ${user.osu_id}:`, err);
-                        }
-                    }
-
-                    score.fetched_at = Date.now();
-                    scores.set(user.osu_id.toString(), score);
-                    cachedData.scores[user.osu_id] = score;
-                    cacheModified = true;
-                    processedCount++;
-
-                    const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
-                    const { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics || {};
-                    const total_hits = great + ok + meh + miss;
-                    const map_completion = score.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
-
-                    const pre_calculated = {
-                        pp: score.pp,
-                        beatmap_max_combo,
-                        map_completion
-                    };
-
-                    const scoreToSave = {
-                        ...score,
-                        beatmap: {
-                            id: beatmapId,
-                            status: metadata?.status || 'ranked'
-                        },
-                        user: {
-                            username: score.user?.username || user.username || `User ${user.osu_id}`,
-                            country_code: score.user?.country_code || null
-                        },
-                        user_id: user.osu_id
-                    };
-
-                    saveUserscore(scoreToSave, pre_calculated, true).catch(err => {
-                        console.error(`[GAP] Error al guardar score de user ${user.osu_id} en Supabase:`, err);
-                    });
-                }
-
-                if (missingFromFriends.length > 0) {
-                    const usersToQuery = missingFromFriends.slice(0, 10);
-                    if (logger) logger.process(`[GAP] Consultando de forma individual a ${usersToQuery.length} usuarios faltantes/expirados`);
-
-                    await Promise.all(usersToQuery.map(async (user) => {
-                        try {
-                            const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${user.osu_id}?mode=${gamemode}`;
-                            const response = await axios.get(url, {
-                                headers: {
-                                    'Authorization': `Bearer ${supporterToken}`,
-                                    'Content-Type': 'application/json',
-                                    'x-api-version': '20240728'
+                        // Si no está en el listado de amigos de la API:
+                        // Conservamos el score de la base de datos local (cargado en cachedData.scores), si existe.
+                        const existingScore = cachedData.scores[user.osu_id];
+                        if (existingScore && existingScore.noScore !== true) {
+                            if (mapInstance && (existingScore.pp === undefined || existingScore.pp === null || existingScore.pp === 0)) {
+                                try {
+                                    const ppResult = calculatePP(existingScore, mapInstance);
+                                    existingScore.pp = ppResult.pp;
+                                    cachedData.scores[user.osu_id] = existingScore;
+                                    cacheModified = true;
+                                } catch (err) {
+                                    console.error(`[GAP] Error al calcular el PP para el usuario en caché ${user.osu_id}:`, err);
                                 }
-                            });
-                            const result = response.data;
-                            if (result && result.score) {
-                                normalizeScore(result.score);
-                                delete result.score.beatmap;
-                                delete result.score.beatmapset;
-
-                                if (mapInstance && (result.score.pp === undefined || result.score.pp === null || result.score.pp === 0)) {
-                                    try {
-                                        const ppResult = calculatePP(result.score, mapInstance);
-                                        result.score.pp = ppResult.pp;
-                                    } catch {}
-                                }
-
-                                result.score.fetched_at = Date.now();
-                                scores.set(user.osu_id.toString(), result.score);
-                                cachedData.scores[user.osu_id] = result.score;
-                                cacheModified = true;
-
-                                const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
-                                const { great = 0, ok = 0, meh = 0, miss = 0 } = result.score.statistics || {};
-                                const total_hits = great + ok + meh + miss;
-                                const map_completion = result.score.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
-
-                                const pre_calculated = {
-                                    pp: result.score.pp,
-                                    beatmap_max_combo,
-                                    map_completion
-                                };
-
-                                const scoreToSave = {
-                                    ...result.score,
-                                    beatmap: {
-                                        id: beatmapId,
-                                        status: metadata?.status || 'ranked'
-                                    },
-                                    user: {
-                                        username: result.score.user?.username || user.username || `User ${user.osu_id}`,
-                                        country_code: result.score.user?.country_code || null
-                                    },
-                                    user_id: user.osu_id
-                                };
-
-                                saveUserscore(scoreToSave, pre_calculated, true).catch(err => {
-                                    console.error(`[GAP] Error al guardar score de user ${user.osu_id} en Supabase:`, err);
-                                });
-                            } else {
-                                cachedData.scores[user.osu_id] = { noScore: true, fetched_at: Date.now() };
-                                cacheModified = true;
                             }
-                            processedCount++;
-                        } catch (error) {
-                            processedCount++;
-                            errorCount++;
-                            const status = error.status || error.response?.status;
-                            if (status === 404) {
-                                cachedData.scores[user.osu_id] = { noScore: true, fetched_at: Date.now() };
-                                cacheModified = true;
-                            } else {
-                                console.error(`[GAP] Error al consultar score individual de ${user.osu_id}:`, error.message || error);
-                            }
+                            scores.set(uId, existingScore);
+                        } else {
+                            // Si tampoco tiene score en la BD local ni en amigos de la API, marcar como noScore
+                            cachedData.scores[user.osu_id] = { noScore: true, fetched_at: Date.now() };
+                            cacheModified = true;
                         }
-                    }));
+                        processedCount++;
+                    }
                 }
             } else {
                 const concurrencyLimit = Math.max(25, tokenPool.length);
