@@ -9,15 +9,14 @@ async function getLinkedMembers(message, res, beatmapMode = 'osu', bypass = fals
         const guildId = targetGuildId || (!bypass && message.guild ? message.guild.id : null);
         
         let guild = null;
-        if (!bypass) {
-            if (targetGuildId) {
-                guild = await message.client.guilds.fetch(targetGuildId).catch(() => null);
-            } else {
-                guild = message.guild;
-            }
+        if (targetGuildId) {
+            guild = await message.client.guilds.fetch(targetGuildId).catch(() => null);
+        } else if (!bypass) {
+            guild = message.guild;
         }
         
-        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, guild, bypass });
+        const effectiveBypass = targetGuildId ? false : bypass;
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId, guild, bypass: effectiveBypass });
 
         if (!linkedUsers || linkedUsers.length === 0) {
             return [];
