@@ -340,6 +340,11 @@
       "header": "Renderiza un replay (.osr) de osu!standard",
       "body": "Envía un replay de osu!standard a [o!rdr](https://ordr.issou.best/) para ser renderizado a vídeo. Sube un archivo `.osr` con el comando o responde a un mensaje que lo contenga. Puedes personalizar la skin y resolución con los argumentos.",
       "usage": "s.render [adjuntando archivo .osr]\ns.render -skin [nombre_skin] -res [1280x720|1920x1080]"
+    },
+    "blacklist": {
+      "header": "Gestión de Lista Negra (Blacklist)",
+      "body": "Permite a los administradores bloquear usuarios para que no puedan usar Sengo en general o comandos específicos.",
+      "usage": "s.blacklist [-lista | -add <id> | -add <id> <comandos> | -remove <id>]"
     }
   },
   "contributors": {
@@ -1428,12 +1433,5 @@
     "title": "🖤 Lista Negra de Sengo",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restricciones: {commands} - Por: <@{addedBy}> el {date}",
     "general_block": "General (Todos los comandos)"
-  },
-  "commands": {
-    "blacklist": {
-      "header": "Gestión de Lista Negra (Blacklist)",
-      "body": "Permite a los administradores bloquear usuarios para que no puedan usar Sengo en general o comandos específicos.",
-      "usage": "s.blacklist [-lista | -add <id> | -add <id> <comandos> | -remove <id>]"
-    }
   }
 }

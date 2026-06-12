@@ -340,6 +340,11 @@
       "header": "Renders an osu!standard replay (.osr)",
       "body": "Sends an osu!standard replay to [o!rdr](https://ordr.issou.best/) to be rendered to video. Upload an `.osr` file with the command or reply to a message containing one. You can customize the skin and resolution with arguments.",
       "usage": "s.render [attaching .osr file]\ns.render -skin [skin_name] -res [1280x720|1920x1080]"
+    },
+    "blacklist": {
+      "header": "Blacklist Management",
+      "body": "Allows administrators to block users from using Sengo globally or for specific commands.",
+      "usage": "s.blacklist [-lista | -add <id> | -add <id> <commands> | -remove <id>]"
     }
   },
   "contributors": {
@@ -1428,12 +1433,5 @@
     "title": "🖤 Sengo Blacklist",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restrictions: {commands} - By: <@{addedBy}> on {date}",
     "general_block": "General (All commands)"
-  },
-  "commands": {
-    "blacklist": {
-      "header": "Blacklist Management",
-      "body": "Allows administrators to block users from using Sengo globally or for specific commands.",
-      "usage": "s.blacklist [-lista | -add <id> | -add <id> <commands> | -remove <id>]"
-    }
   }
 }
