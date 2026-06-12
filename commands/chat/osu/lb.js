@@ -1,4 +1,4 @@
-const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken, saveUserscore, normalizeScore, getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
 const fetch = require('node-fetch');
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
@@ -30,34 +30,6 @@ async function fetchLeaderboardCached(url, headers, logger = null) {
     return scores;
 }
 
-function mapDbScoreToApiScore(row) {
-    if (!row) return null;
-    return {
-        id: Number(row.id),
-        accuracy: row.accuracy,
-        ended_at: row.ended_at,
-        started_at: row.started_at,
-        legacy_total_score: Number(row.legacy_total_score || 0),
-        total_score: Number(row.total_score || 0),
-        max_combo: row.max_combo,
-        statistics: row.statistics || {},
-        mods: row.mods || [],
-        passed: row.passed,
-        pp: row.pp ? Number(row.pp) : null,
-        rank: row.rank,
-        map_completion: row.map_completion,
-        beatmap: {
-            id: Number(row.beatmap_id),
-            status: row.beatmap_status
-        },
-        user: {
-            id: Number(row.user_id),
-            username: row.username,
-            country_code: row.country_code
-        },
-        user_id: Number(row.user_id)
-    };
-}
 
 const { doOsuLbEmbed, doOsuLbContent } = require("../../../views/osuLeaderboardViews.js");
 const { t } = require("../../../utils/i18n.js");
@@ -72,16 +44,15 @@ async function run(messages, args) {
     let friendsFilter = parsed_args.friendsFilter;
     let friendsUsername = null;
     let detected_gamemode = null;
-    let serverName = null;
 
     const isServerLeaderboard = (friendsFilter === "SELF" && message.guild !== null && message.guild !== undefined);
 
     // Verificar requerimiento de OAuth para funciones avanzadas de ranking
     const hasOAuthFilters = !isServerLeaderboard && (
-                            (friendsFilter !== null && friendsFilter !== undefined) || 
-                            (countryFilter !== null && countryFilter !== undefined) || 
-                            (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
-                            (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined)
+        (friendsFilter !== null && friendsFilter !== undefined) ||
+        (countryFilter !== null && countryFilter !== undefined) ||
+        (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) ||
+        (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined)
     );
 
     if (hasOAuthFilters) {
@@ -93,17 +64,17 @@ async function run(messages, args) {
             try {
                 const { doOsuOAuthEmbed } = require("../../../views/osuUserViews.js");
                 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-                
+
                 const redirectUri = getRedirectUri();
                 const authUrl = getAuthUrl(message.author.id, redirectUri);
                 const embed = doOsuOAuthEmbed(authUrl);
-                
+
                 const button = new ButtonBuilder()
                     .setLabel(t(locale, 'leaderboard.oauth_button_label'))
                     .setStyle(ButtonStyle.Link)
                     .setURL(authUrl);
                 const row = new ActionRowBuilder().addComponents(button);
-                
+
                 await message.author.send({ embeds: [embed], components: [row] });
                 return t(locale, 'leaderboard.err_oauth_required');
             } catch (dmError) {
@@ -111,7 +82,7 @@ async function run(messages, args) {
                 return t(locale, 'leaderboard.err_oauth_required_dm_failed');
             }
         }
-        
+
         const token = await OsuUserModel.getValidTokenForUser(message.author.id);
         if (!token) {
             return t(locale, 'leaderboard.err_session_validation');
@@ -184,11 +155,11 @@ async function run(messages, args) {
     let scores = null;
     let usedSupporter = null;
 
-    const hasFilters = (friendsFilter !== null && friendsFilter !== undefined) || 
-                        (countryFilter !== null && countryFilter !== undefined) || 
-                        (modsArray.length > 0) || 
-                        (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) || 
-                        (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined);
+    const hasFilters = (friendsFilter !== null && friendsFilter !== undefined) ||
+        (countryFilter !== null && countryFilter !== undefined) ||
+        (modsArray.length > 0) ||
+        (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) ||
+        (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined);
 
     let globalScoresPromise = null;
     if (hasFilters) {
@@ -197,9 +168,9 @@ async function run(messages, args) {
                 const fs = require('fs');
                 let globalToken = null;
                 try {
-                const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-                globalToken = tokenData.access_token;
-            } catch {}
+                    const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                    globalToken = tokenData.access_token;
+                } catch { }
 
                 if (!globalToken) return [];
 
@@ -218,278 +189,45 @@ async function run(messages, args) {
 
     // 0. Caso leaderboard de amigos
     if (friendsFilter) {
-        if (isServerLeaderboard) {
-            serverName = message.guild.name;
-            
-            // 1. Obtener miembros vinculados del servidor
-            const { getLinkedUsers } = require("../../../models/OsuUserModel.js");
-            const linkedUsers = await getLinkedUsers({ guildId: message.guild.id, guild: message.guild });
-            if (linkedUsers.length === 0) {
-                return t(locale, 'gap.no_users', { context: message.guild.name, mode: targetGamemode });
+        const searchFilter = friendsFilter === "SELF" ? message.author.id : friendsFilter;
+        const userToken = await OsuUserModel.getOAuthTokenRecordByUsernameOrId(searchFilter);
+        if (!userToken) {
+            const filterName = friendsFilter === "SELF" ? message.author.username : friendsFilter;
+            return t(locale, 'leaderboard.err_user_not_found', { filter: filterName });
+        }
+
+        if (!userToken.is_supporter) {
+            return t(locale, 'leaderboard.err_no_supporter', { username: userToken.username });
+        }
+
+        friendsUsername = userToken.username;
+        usedSupporter = {
+            username: userToken.username,
+            fallback: false
+        };
+
+        if (logger) logger.process(`Obteniendo ranking de amigos de ${friendsUsername}`);
+        try {
+            const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
+            urlObj.searchParams.append('mode', targetGamemode);
+            urlObj.searchParams.append('type', 'friend');
+            urlObj.searchParams.append('legacy_only', legacyOnlyVal);
+            if (modsArray.length > 0) {
+                modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
             }
 
-            // 2. Obtener token de supporter (priorizando el del OWNER_ID / Jeiden)
-            let supporterToken = null;
-            let supporterUsername = null;
-            if (process.env.OWNER_ID) {
-                const tokenRecord = await OsuUserModel.getOAuthTokenRecord(process.env.OWNER_ID);
-                if (tokenRecord) {
-                    const validToken = await OsuUserModel.getValidTokenForUser(process.env.OWNER_ID);
-                    if (validToken) {
-                        supporterToken = validToken;
-                        supporterUsername = tokenRecord.username;
-                    }
-                }
+            scores = await fetchLeaderboardCached(urlObj.toString(), {
+                'Authorization': `Bearer ${userToken.access_token}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }, logger);
+        } catch (e) {
+            console.error("Error al obtener friends ranking:", e);
+            const is403 = e.message && e.message.includes('403');
+            if (is403) {
+                return t(locale, 'leaderboard.err_auth_403', { username: friendsUsername });
             }
-            if (!supporterToken) {
-                // Fallback: usar el token de la persona que ejecutó el comando si tiene supporter
-                const userToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
-                if (userToken && userToken.is_supporter) {
-                    const validToken = await OsuUserModel.getValidTokenForUser(message.author.id);
-                    if (validToken) {
-                        supporterToken = validToken;
-                        supporterUsername = userToken.username;
-                    }
-                }
-            }
-            if (!supporterToken) {
-                // Fallback 2: usar cualquier supporter de la pool
-                const supporterRes = await OsuUserModel.getSupporterTokenForCountry("ANY");
-                if (supporterRes) {
-                    supporterToken = supporterRes.token;
-                    supporterUsername = supporterRes.username;
-                }
-            }
-
-            if (!supporterToken) {
-                return t(locale, 'leaderboard.err_no_supporter_pool', { country: 'ANY' });
-            }
-
-            usedSupporter = {
-                username: supporterUsername,
-                fallback: false
-            };
-
-            if (logger) logger.process(`Obteniendo ranking del servidor ${message.guild.name} usando el token de ${supporterUsername}`);
-
-            // 3. Consultar la API de amigos de ese supporter
-            let apiFriendScores = [];
-            try {
-                const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
-                urlObj.searchParams.append('mode', targetGamemode);
-                urlObj.searchParams.append('type', 'friend');
-                urlObj.searchParams.append('legacy_only', legacyOnlyVal);
-                if (modsArray.length > 0) {
-                    modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
-                }
-
-                apiFriendScores = await fetchLeaderboardCached(urlObj.toString(), {
-                    'Authorization': `Bearer ${supporterToken}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }, logger);
-            } catch (e) {
-                console.error("Error al obtener friends ranking en server leaderboard:", e);
-            }
-
-            // 4. Consultar Supabase local_scores para los miembros vinculados
-            const supabase = OsuUserModel.getSupabaseClient();
-            let dbScores = [];
-            if (supabase && linkedUsers.length > 0) {
-                try {
-                    const osuIds = linkedUsers.map(u => u.osu_id.toString());
-                    const { data, error } = await supabase
-                        .from('local_scores')
-                        .select('*')
-                        .eq('beatmap_id', beatmap_metadata.id.toString())
-                        .in('user_id', osuIds);
-                    if (!error && data) {
-                        dbScores = data;
-                    }
-                } catch (dbErr) {
-                    console.error("Error al consultar Supabase local_scores:", dbErr);
-                }
-            }
-
-            // 5. Consultar de forma individual los usuarios que falten o requieran actualizarse (con límite de max 10)
-            const missingUsersToFetch = [];
-            const now = Date.now();
-            const CACHE_TTL_SCORE = 24 * 60 * 60 * 1000; // 24 horas
-
-            for (const user of linkedUsers) {
-                const hasApiScore = apiFriendScores.some(s => s.user_id?.toString() === user.osu_id.toString() || (s.user && s.user.id?.toString() === user.osu_id.toString()));
-                if (hasApiScore) continue;
-
-                const dbScore = dbScores.find(s => s.user_id?.toString() === user.osu_id.toString());
-                const isDbFresh = dbScore && (now - new Date(dbScore.created_at || dbScore.ended_at).getTime() < CACHE_TTL_SCORE);
-
-                if (!isDbFresh) {
-                    missingUsersToFetch.push(user);
-                }
-            }
-
-            if (missingUsersToFetch.length > 0) {
-                if (logger) logger.process(`Consultando de forma individual a ${missingUsersToFetch.length} usuarios faltantes/expirados`);
-                const usersToQuery = missingUsersToFetch.slice(0, 10);
-                await Promise.all(usersToQuery.map(async (user) => {
-                    try {
-                        const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores/users/${user.osu_id}?mode=${targetGamemode}`;
-                        const response = await fetch(url, {
-                            headers: {
-                                'Authorization': `Bearer ${supporterToken}`,
-                                'Content-Type': 'application/json',
-                                'x-api-version': '20240728'
-                            }
-                        });
-                        if (response.ok) {
-                            const scoreData = await response.json();
-                            if (scoreData && scoreData.score) {
-                                apiFriendScores.push(scoreData.score);
-                            }
-                        }
-                    } catch (e) {
-                        console.error(`Error al consultar score individual de ${user.osu_id}:`, e);
-                    }
-                }));
-            }
-
-            // 6. Mezclar y normalizar los resultados
-            let mapInstance = null;
-            try {
-                mapInstance = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
-            } catch (err) {
-                console.error("Error al cargar mapInstance para cálculo de PP:", err);
-            }
-
-            const serverScoresMap = new Map();
-
-            for (const user of linkedUsers) {
-                const uId = user.osu_id.toString();
-                const apiScore = apiFriendScores.find(s => s.user_id?.toString() === uId || (s.user && s.user.id?.toString() === uId));
-                const dbScoreRow = dbScores.find(s => s.user_id?.toString() === uId);
-
-                let selectedScore = null;
-                let shouldSaveApiScore = false;
-
-                if (apiScore && dbScoreRow) {
-                    const mappedDbScore = mapDbScoreToApiScore(dbScoreRow);
-                    
-                    let apiIsBetter = false;
-                    if (beatmap_metadata.status === 'loved') {
-                        const scoreA = Number(apiScore.legacy_total_score || apiScore.total_score || apiScore.score || 0);
-                        const scoreB = Number(mappedDbScore.legacy_total_score || mappedDbScore.total_score || mappedDbScore.score || 0);
-                        apiIsBetter = scoreA > scoreB;
-                    } else {
-                        if (!apiScore.pp && mapInstance) {
-                            try {
-                                const ppResult = calculatePP(apiScore, mapInstance);
-                                apiScore.pp = ppResult.pp;
-                            } catch (e) {}
-                        }
-                        const ppA = Number(apiScore.pp || 0);
-                        const ppB = Number(mappedDbScore.pp || 0);
-                        apiIsBetter = ppA > ppB;
-                    }
-
-                    if (apiIsBetter) {
-                        selectedScore = apiScore;
-                        shouldSaveApiScore = true;
-                    } else {
-                        selectedScore = mappedDbScore;
-                    }
-                } else if (apiScore) {
-                    selectedScore = apiScore;
-                    shouldSaveApiScore = true;
-                } else if (dbScoreRow) {
-                    selectedScore = mapDbScoreToApiScore(dbScoreRow);
-                }
-
-                if (selectedScore) {
-                    normalizeScore(selectedScore);
-                    serverScoresMap.set(uId, selectedScore);
-
-                    if (shouldSaveApiScore && selectedScore) {
-                        const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
-                        const { great = 0, ok = 0, meh = 0, miss = 0 } = selectedScore.statistics || {};
-                        const total_hits = great + ok + meh + miss;
-                        const map_completion = selectedScore.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
-
-                        const pre_calculated = {
-                            pp: selectedScore.pp,
-                            beatmap_max_combo,
-                            map_completion
-                        };
-
-                        const scoreToSave = {
-                            ...selectedScore,
-                            beatmap: {
-                                id: beatmap_metadata.id,
-                                status: beatmap_metadata.status
-                            },
-                            user: {
-                                id: selectedScore.user?.id || selectedScore.user_id,
-                                username: selectedScore.user?.username || user.username || `User ${uId}`,
-                                country_code: selectedScore.user?.country_code || null
-                            },
-                            user_id: selectedScore.user?.id || selectedScore.user_id
-                        };
-
-                        saveUserscore(scoreToSave, pre_calculated, true).catch(err => {
-                            console.error(`[LB-Friends] Error al guardar score de user ${uId} en Supabase:`, err);
-                        });
-                    }
-                }
-            }
-
-            if (mapInstance) {
-                try {
-                    mapInstance.free();
-                } catch (e) {}
-            }
-
-            scores = Array.from(serverScoresMap.values());
-            
-        } else {
-            const searchFilter = friendsFilter === "SELF" ? message.author.id : friendsFilter;
-            const userToken = await OsuUserModel.getOAuthTokenRecordByUsernameOrId(searchFilter);
-            if (!userToken) {
-                const filterName = friendsFilter === "SELF" ? message.author.username : friendsFilter;
-                return t(locale, 'leaderboard.err_user_not_found', { filter: filterName });
-            }
-
-            if (!userToken.is_supporter) {
-                return t(locale, 'leaderboard.err_no_supporter', { username: userToken.username });
-            }
-
-            friendsUsername = userToken.username;
-            usedSupporter = {
-                username: userToken.username,
-                fallback: false
-            };
-
-            if (logger) logger.process(`Obteniendo ranking de amigos de ${friendsUsername}`);
-            try {
-                const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
-                urlObj.searchParams.append('mode', targetGamemode);
-                urlObj.searchParams.append('type', 'friend');
-                urlObj.searchParams.append('legacy_only', legacyOnlyVal);
-                if (modsArray.length > 0) {
-                    modsArray.forEach(mod => urlObj.searchParams.append('mods[]', mod));
-                }
-
-                scores = await fetchLeaderboardCached(urlObj.toString(), {
-                    'Authorization': `Bearer ${userToken.access_token}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }, logger);
-            } catch (e) {
-                console.error("Error al obtener friends ranking:", e);
-                const is403 = e.message && e.message.includes('403');
-                if (is403) {
-                    return t(locale, 'leaderboard.err_auth_403', { username: friendsUsername });
-                }
-                return t(locale, 'leaderboard.err_friends_api', { username: friendsUsername });
-            }
+            return t(locale, 'leaderboard.err_friends_api', { username: friendsUsername });
         }
     }
     // 1. Caso leaderboard nacional
@@ -500,9 +238,9 @@ async function run(messages, args) {
             return t(locale, 'leaderboard.err_no_supporter_pool', { country: countryFilter });
         }
         usedSupporter = supporterRes;
-        
+
         if (logger) logger.process(`Obteniendo ranking nacional de ${countryFilter} con el token de ${supporterRes.username}`);
-        
+
         try {
             const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/scores`);
             urlObj.searchParams.append('mode', targetGamemode);
@@ -593,8 +331,8 @@ async function run(messages, args) {
             return s.total_score || s.score || 0;
         }
         return (s.legacy_total_score && s.legacy_total_score > 0) ? s.legacy_total_score :
-               (s.classic_total_score && s.classic_total_score > 0) ? s.classic_total_score :
-               s.total_score || s.score || 0;
+            (s.classic_total_score && s.classic_total_score > 0) ? s.classic_total_score :
+                s.total_score || s.score || 0;
     };
     scores.sort((a, b) => getRawScore(b) - getRawScore(a));
 
@@ -693,7 +431,7 @@ async function run(messages, args) {
                     try {
                         const ppResult = calculatePP(score, map);
                         score.pp = ppResult.pp;
-                    } catch (e) {
+                    } catch {
                         score.pp = 0;
                     }
                 }
@@ -726,7 +464,7 @@ async function run(messages, args) {
     let page = requestedPage;
     let startIndex = (page - 1) * 5;
 
-    const content = await doOsuLbContent(beatmap_metadata, targetGamemode, countryFilter, friendsUsername, isLazerMode, locale, serverName);
+    const content = await doOsuLbContent(beatmap_metadata, targetGamemode, countryFilter, friendsUsername, isLazerMode, locale);
     const initialEmbed = await doOsuLbEmbed(message, filtered_scores.slice(startIndex, startIndex + 5), beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, usedSupporter, locale);
 
     const getLbButtonsRow = (start, total) => {
@@ -786,7 +524,7 @@ async function run(messages, args) {
     collector.on('end', async () => {
         try {
             await sent_message.edit({ components: [] });
-        } catch {}
+        } catch { }
     });
 
     return;
@@ -819,25 +557,25 @@ run.description = {
 async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer = null) {
     if (!beatmapId || !countryCode) return;
     const countryFilter = countryCode.toUpperCase();
-    
+
     let legacyOnlyVal = 1;
     if (isLazer === true) {
         legacyOnlyVal = 0;
     }
-    
+
     try {
         const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
         if (!supporterRes) {
             console.log(`[BG-LB-PRELOAD] No hay supporter para el país ${countryFilter}`);
             return;
         }
-        
+
         const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores`);
         urlObj.searchParams.append('mode', mode || 'osu');
         urlObj.searchParams.append('type', 'country');
         urlObj.searchParams.append('legacy_only', legacyOnlyVal);
         urlObj.searchParams.append('country', countryFilter.toUpperCase());
-        
+
         await fetchLeaderboardCached(urlObj.toString(), {
             'Authorization': `Bearer ${supporterRes.token}`,
             'Content-Type': 'application/json',

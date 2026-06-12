@@ -2,7 +2,7 @@ const OsuUserModel = require("../../models/OsuUserModel.js");
 
 const getGamemodeFromMessage = (msg) => {
     if (!msg) return null;
-    
+
     const clean = (text) => {
         if (!text) return '';
         return text
@@ -10,7 +10,7 @@ const getGamemodeFromMessage = (msg) => {
             .replace(/\S*osu\.ppy\.sh\S*/gi, '')
             .replace(/\S*osu\.direct\S*/gi, '');
     };
-    
+
     // 1. Buscar en embeds
     const e = msg.embeds?.[0];
     if (e) {
@@ -57,7 +57,7 @@ const extractUserFromLeaderboardMessage = (msg, targetIndex = 1) => {
 
     const description = e.description;
     const entryRegex = /(?:#|\*\*#|\*\*#\*\*)\s*(\d+)[\s\S]*?\[([^\]]+)\]\(https:\/\/osu\.ppy\.sh\/users\/(\d+)\)/g;
-    
+
     const entries = [];
     let match;
     while ((match = entryRegex.exec(description)) !== null) {
@@ -84,7 +84,7 @@ const extractUserFromLeaderboardMessage = (msg, targetIndex = 1) => {
     return null;
 };
 
-async function findBeatmapInChannel(message, isReply, targetIndex = 1){
+async function findBeatmapInChannel(message, isReply, targetIndex = 1) {
     const extractAllIds = str => {
         if (!str) return [];
         const ids = [];
@@ -291,11 +291,11 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1){
     }
 }
 
-async function parsingCommandFunction(parsed_args, command_parameters){
-    const {message, res, command_function, beatmap_url, gamemode} = command_parameters;
+async function parsingCommandFunction(parsed_args, command_parameters) {
+    const { message, res, command_function, beatmap_url, gamemode } = command_parameters;
     const discord_id = message.author.id;
     let user_found;
-    
+
     // Buscamos el user linkeado con el bot 
     user_found = await OsuUserModel.getLinkedUser(res.User, discord_id);
 
@@ -320,22 +320,22 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
     // Si no hay args
     const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
-    if(no_args || parsed_args.override === 'rm' && parsed_args.username[0] == ''){
+    if (no_args || parsed_args.override === 'rm' && parsed_args.username[0] == '') {
 
         // si no hay uno linkeado al bot
-        if(!user_found) return {'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+        if (!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
 
         // Aplicamos el comando con el linkeado al bot
         const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
         parsed_args.gamemode = defaultMode;
-        const fn_response = await command_function({'username' : [user_found.osu_id], 'beatmap_url' : beatmap_url, 'gamemode' : defaultMode});
-        return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
-    // Si hay args
+        const fn_response = await command_function({ 'username': [user_found.osu_id], 'beatmap_url': beatmap_url, 'gamemode': defaultMode });
+        return { 'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args };
+        // Si hay args
     } else {
 
         // Si entre los args hubo uno de username
-        if(parsed_args.username.length != 0 && parsed_args.username[0] != "") {
-            
+        if (parsed_args.username.length != 0 && parsed_args.username[0] != "") {
+
             // Para manejar mejor el username
             let arg_user = parsed_args.username[0].split(" ")[0];
 
@@ -352,28 +352,28 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
             // Si es una id de discord (de 17 a 20 dígitos), buscamos en la db y actualizamos el parsed_arg con la id de osu vinculada
             const isDiscordId = /^\d{17,20}$/.test(arg_user);
-            if(isDiscordId) {
+            if (isDiscordId) {
                 user_found = await OsuUserModel.getLinkedUser(res.User, arg_user);
 
-                if(!user_found) return {'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args};
+                if (!user_found) return { 'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args };
                 parsed_args.username[0] = user_found.osu_id;
 
-            // Se busca el nombre de osu 
+                // Se busca el nombre de osu 
             } else {
 
                 // Se actualiza para cambiarlo a la id
                 const osuUser = await OsuUserModel.getOsuUser(parsed_args);
                 if (typeof osuUser === 'string') {
-                    return {'fn_response': osuUser, 'user_found': user_found, 'reparsed_args': parsed_args};
+                    return { 'fn_response': osuUser, 'user_found': user_found, 'reparsed_args': parsed_args };
                 }
                 parsed_args.username[0] = osuUser.id;
             }
 
-        // Si no hubo un username entre los args
+            // Si no hubo un username entre los args
         } else {
 
             // Se usa el linkeado al bot
-            if(!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+            if (!user_found) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link -oauth\` o slash \`/link -oauth\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
             parsed_args.username[0] = user_found.osu_id;
         }
 
@@ -393,7 +393,7 @@ async function parsingCommandFunction(parsed_args, command_parameters){
 
         const fn_response = await command_function(parsed_args);
 
-        return {'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args};
+        return { 'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args };
     }
 }
 
@@ -446,9 +446,9 @@ function argsParserNoCommand(args, options = {}) {
         if (!str) return false;
         const clean = str.trim();
         const match = clean.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                      clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                      clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
-                      (!ignoreBeatmap && clean.match(/^\d{5,10}$/));
+            clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+            clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+            (!ignoreBeatmap && clean.match(/^\d{5,10}$/));
         return !!match;
     };
 
@@ -508,7 +508,7 @@ function argsParserNoCommand(args, options = {}) {
 
     // Separamos por las comas y revisamos cada args_commands por cada args del mensaje
     let args_list = args_aux.split(",");
-    
+
     let grouped_args = [];
     let inside_quotes = false;
     let quote_char = "";
@@ -516,7 +516,7 @@ function argsParserNoCommand(args, options = {}) {
 
     for (let j = 0; j < args_list.length; j++) {
         let current = args_list[j];
-        
+
         // Si empieza y termina con la misma comilla (ya sea " o ')
         if ((current.startsWith('"') && current.endsWith('"') && current.length > 1) ||
             (current.startsWith("'") && current.endsWith("'") && current.length > 1)) {
@@ -661,7 +661,7 @@ function argsParserNoCommand(args, options = {}) {
         }
 
         // Si es el flag de -friends o -amigo o -amigos
-        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos" || arg === "-f") {
+        if (arg === "-friends" || arg === "-amigo" || arg === "-amigos") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 if (next_arg !== "" && !next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {
@@ -905,7 +905,7 @@ function argsParserNoCommand(args, options = {}) {
         if (arg.startsWith("+")) {
             const possibleMods = arg.slice(1).toUpperCase();
             if (/^[A-Z]{2,}$/.test(possibleMods)) {
-                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
                 if (chars.every(c => validModChars.has(c)) && possibleMods.length % 2 === 0) {
                     modFilter = possibleMods;
@@ -917,12 +917,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si empieza con "-" y coincide con una combinación de mods válidos, pero no es un flag oficial (ej: "-HDDT")
         if (arg.startsWith("-") && !arg.startsWith("-mods") && !arg.startsWith("-mod")) {
             const potentialMods = arg.slice(1).toUpperCase();
-            const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+            const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
             const chars = potentialMods.split('');
             const isAllMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
-            
+
             const knownFlags = new Set([
-                'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region', 
+                'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region',
                 'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina',
                 'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke'
             ]);
@@ -948,7 +948,7 @@ function argsParserNoCommand(args, options = {}) {
             let next = arg.slice(prefixLen).trim();
             if (next.length > 0) {
                 const possibleMods = next.toUpperCase();
-                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
                 const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
                 if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
@@ -973,7 +973,7 @@ function argsParserNoCommand(args, options = {}) {
             let next = arg.slice(3).trim();
             if (next.length > 0) {
                 const possibleMods = next.toUpperCase();
-                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
                 const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
                 if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
@@ -998,7 +998,7 @@ function argsParserNoCommand(args, options = {}) {
             let next = arg.slice(2).trim();
             if (next.length > 0) {
                 const possibleMods = next.toUpperCase();
-                const validModChars = new Set(['H','D','R','F','E','T','S','N','P','C','L','V','K','M','O','Z']);
+                const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
                 const isAllValidMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
                 if (isAllValidMods || possibleMods === "NM" || possibleMods === "NONE") {
@@ -1155,14 +1155,14 @@ function argsParserNoCommand(args, options = {}) {
     return parsed_args;
 }
 
-async function argsParser(args, command_parameters = {}){
+async function argsParser(args, command_parameters = {}) {
     const parsed_args = argsParserNoCommand(args, command_parameters);
-    const { fn_response, user_found, reparsed_args} = await parsingCommandFunction(parsed_args, command_parameters);
+    const { fn_response, user_found, reparsed_args } = await parsingCommandFunction(parsed_args, command_parameters);
 
     return {
         'fn_response': fn_response,
         'parsed_args': reparsed_args,
-        'user_found': user_found        
+        'user_found': user_found
     };
 }
 
