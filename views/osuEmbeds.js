@@ -20,7 +20,7 @@ const emoji_mods = require("../src/emoji_mods.json");
  * @param {object} pre_calculated Atributos calculados previamente (PP, combo, estrellas)
  * @returns {Promise<EmbedBuilder>} EmbedBuilder configurado para Discord
  */
-async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es') {
+async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es', scoreMode = 'classic') {
     const username = recent_scores.user.username;
     const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
     const avatar_url = recent_scores.user.avatar_url;
@@ -31,7 +31,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es')
     const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
 
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
-    const score = getFormattedScore(recent_scores);
+    const score = getFormattedScore(recent_scores, scoreMode);
     const accuracy = (recent_scores.accuracy * 100).toFixed(2);
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
@@ -272,7 +272,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
 /**
  * Renderiza el embed para una única jugada del Top de PP de osu!
  */
-async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount, locale = message.locale || 'es') {
+async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount, locale = message.locale || 'es', scoreMode = 'classic') {
     const username = score.user.username;
     const user_url = score.user.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user.id}`;
     const avatar_url = score.user.avatar_url;
@@ -283,7 +283,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const beatmap_cover = score.beatmapset.covers["cover@2x"];
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    const score_val = getFormattedScore(score);
+    const score_val = getFormattedScore(score, scoreMode);
     const accuracy = (score.accuracy * 100).toFixed(2);
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
@@ -468,7 +468,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 /**
  * Renderiza el embed para comparar una única score en un mapa específico (c.js)
  */
-async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, beatmap_metadata) {
+async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, beatmap_metadata, scoreMode = 'classic') {
     const locale = message.locale || 'es';
     const username = score.user?.username || parsed_args.username[0] || 'Usuario';
     const user_url = score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user?.id || score.user_id}`;
@@ -480,7 +480,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const beatmap_cover = beatmap_metadata.beatmapset.covers["cover@2x"];
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    const score_val = getFormattedScore(score);
+    const score_val = getFormattedScore(score, scoreMode);
     const accuracy = (score.accuracy * 100).toFixed(2);
     const user_max_combo = score.max_combo;
 

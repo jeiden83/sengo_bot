@@ -8,6 +8,10 @@ async function run(messages, args) {
     const { message, res } = messages;
     const locale = message.locale || 'es';
 
+    const OsuUserModel = require("../../../models/OsuUserModel.js");
+    const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+    let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
+
     // Parseamos args
     const parser_res = await argsParser(args, {
         "message": message,
@@ -299,7 +303,7 @@ async function run(messages, args) {
         };
 
         saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
-        const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale);
+        const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale, currentScoreMode);
         map.free();
         return embed;
     }
@@ -454,11 +458,11 @@ async function run(messages, args) {
     const sent_message = await message.channel.send({
         content: content_msg,
         embeds: [initialEmbed],
-        components: [buildRecentButtonsRow(index, total_plays, targetScore)]
+        components: [buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode)]
     });
 
     if (targetScore && !targetScore.passed) {
-        triggerFailStrainEmbed(sent_message, targetScore, initialEmbed, [buildRecentButtonsRow(index, total_plays, targetScore)], index);
+        triggerFailStrainEmbed(sent_message, targetScore, initialEmbed, [buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode)], index);
     }
 
     const filter = btnInt => btnInt.user.id === message.author.id;
@@ -571,7 +575,10 @@ async function run(messages, args) {
 
             await i.deferUpdate();
 
-            if (i.customId === 'rs_oldest') {
+            if (i.customId.startsWith('rs_toggle_score_')) {
+                currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
+                await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+            } else if (i.customId === 'rs_oldest') {
                 index = total_plays;
             } else if (i.customId === 'rs_older') {
                 index = Math.min(total_plays, index + 1);
@@ -584,7 +591,7 @@ async function run(messages, args) {
             const nextScore = parser_res.fn_response[index - 1];
             const embed = await processScore(index);
             const content = t(locale, 'recent.showing_index', { index, total: total_plays });
-            const nextComponents = [buildRecentButtonsRow(index, total_plays, nextScore)];
+            const nextComponents = [buildRecentButtonsRow(index, total_plays, nextScore, false, currentScoreMode)];
 
             await i.editReply({
                 content: content,

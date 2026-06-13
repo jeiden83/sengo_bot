@@ -8,10 +8,12 @@ function getEmbedColor(message) {
     return roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 }
 
-function getFormattedScore(score) {
-    const raw_score = (score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
-                      (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
-                      score.total_score || score.score || 0;
+function getFormattedScore(score, scoreMode = 'classic') {
+    const raw_score = scoreMode === 'lazer'
+        ? (score.total_score || score.score || 0)
+        : ((score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
+           (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
+           score.total_score || score.score || 0);
     return raw_score.toLocaleString('es-ES');
 }
 
@@ -24,7 +26,7 @@ function getGradeEmoji(rank, passed) {
 
 function formatMods(mods, isLazer) {
     if (!mods) return `<:NM:${emoji_mods["NM"]}>`;
-    
+
     const modsCopy = [...mods];
     if (!isLazer) {
         const hasCL = modsCopy.some(m => (m.acronym || m) === 'CL');
@@ -117,7 +119,7 @@ const getFlagEmoji = (countryCode) => {
  * @returns {ActionRowBuilder} Fila de acción con los botones configurados.
  */
 function buildPaginationRow({ prefix, current, total, pageSize = 10, oneIndexed = false, customSuffixes = null }) {
-    const suffixes = customSuffixes || (oneIndexed 
+    const suffixes = customSuffixes || (oneIndexed
         ? { first: 'newest', prev: 'newer', next: 'older', last: 'oldest' }
         : { first: 'first', prev: 'prev', next: 'next', last: 'last' });
 
@@ -169,14 +171,14 @@ function getDifficultyEmoji(stars) {
 /**
  * Genera la fila de botones de paginación para Recent Score, añadiendo el botón de renderizar si procede.
  */
-function buildRecentButtonsRow(current, total, score, renderDisabled = false) {
+function buildRecentButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
     const row = buildPaginationRow({ prefix: 'rs', current, total, oneIndexed: true });
-    
-    const canRender = score && 
-                      (score.mode === 'osu' || score.ruleset_id === 0) && 
-                      (score.id !== undefined && score.id !== null) &&
-                      score.replay === true;
-                      
+
+    const canRender = score &&
+        (score.mode === 'osu' || score.ruleset_id === 0) &&
+        (score.id !== undefined && score.id !== null) &&
+        score.replay === true;
+
     if (canRender) {
         row.addComponents(
             new ButtonBuilder()
@@ -186,13 +188,23 @@ function buildRecentButtonsRow(current, total, score, renderDisabled = false) {
                 .setDisabled(renderDisabled)
         );
     }
+
+    const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
+    const toggleId = `rs_toggle_score_${scoreMode}`;
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId(toggleId)
+            .setLabel(toggleLabel)
+            .setStyle(ButtonStyle.Secondary)
+    );
+
     return row;
 }
 
 /**
  * Genera la fila de botones de paginación para Compare Single, añadiendo el botón de renderizar si procede.
  */
-function buildCompareSingleButtonsRow(current, total, score, renderDisabled = false) {
+function buildCompareSingleButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
     const row = buildPaginationRow({
         prefix: 'c_single',
         current,
@@ -200,12 +212,12 @@ function buildCompareSingleButtonsRow(current, total, score, renderDisabled = fa
         oneIndexed: true,
         customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
     });
-    
-    const canRender = score && 
-                      (score.mode === 'osu' || score.ruleset_id === 0) && 
-                      (score.id !== undefined && score.id !== null) &&
-                      score.replay === true;
-                      
+
+    const canRender = score &&
+        (score.mode === 'osu' || score.ruleset_id === 0) &&
+        (score.id !== undefined && score.id !== null) &&
+        score.replay === true;
+
     if (canRender) {
         row.addComponents(
             new ButtonBuilder()
@@ -215,6 +227,16 @@ function buildCompareSingleButtonsRow(current, total, score, renderDisabled = fa
                 .setDisabled(renderDisabled)
         );
     }
+
+    const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
+    const toggleId = `c_single_toggle_score_${scoreMode}`;
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId(toggleId)
+            .setLabel(toggleLabel)
+            .setStyle(ButtonStyle.Secondary)
+    );
+
     return row;
 }
 

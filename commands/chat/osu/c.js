@@ -152,6 +152,10 @@ async function run(messages, args) {
     // Modo 1: Single Play Display (-i <index>)
     // ----------------------------------------------------
     if (parsed_args.explicitIndex) {
+        const OsuUserModel = require("../../../models/OsuUserModel.js");
+        const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+        let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
+
         let index = parsed_args.index || 1;
         let content_msg = '';
 
@@ -205,7 +209,7 @@ async function run(messages, args) {
                 "pp_fc": pp_fc
             };
 
-            const embed = await doOsuCompareSingleEmbed(message, score, pre_calculated, scoreIndex, filtered_scores.length, parsed_args, beatmap_metadata);
+            const embed = await doOsuCompareSingleEmbed(message, score, pre_calculated, scoreIndex, filtered_scores.length, parsed_args, beatmap_metadata, currentScoreMode);
             map.free();
             return embed;
         }
@@ -215,7 +219,7 @@ async function run(messages, args) {
         const sent_message = await message.channel.send({
             content: content_msg,
             embeds: [initialEmbed],
-            components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1])]
+            components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)]
         });
 
         const filter = btnInt => btnInt.user.id === message.author.id;
@@ -321,7 +325,10 @@ async function run(messages, args) {
 
                 await i.deferUpdate();
 
-                if (i.customId === 'c_single_first') {
+                if (i.customId.startsWith('c_single_toggle_score_')) {
+                    currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
+                    await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+                } else if (i.customId === 'c_single_first') {
                     index = 1;
                 } else if (i.customId === 'c_single_prev') {
                     index = Math.max(1, index - 1);
@@ -337,7 +344,7 @@ async function run(messages, args) {
                 await i.editReply({
                     content: content_msg,
                     embeds: [embed],
-                    components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1])]
+                    components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)]
                 });
             } catch (err) {
                 console.error("Error al navegar single compare score:", err);

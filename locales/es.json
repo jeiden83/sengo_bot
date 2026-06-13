@@ -919,7 +919,9 @@
     "embed_footer_default": "Sengo",
     "list_author": "Puntuaciones recientes de {username} en osu!{mode}",
     "list_footer": "Mostrando jugadas {start}-{end} de {total} recientes",
-    "list_footer_loading": "⏳ Calculando pp de la play #{index} de {total}..."
+    "list_footer_loading": "⏳ Calculando pp de la play #{index} de {total}...",
+    "lazer_no_target_embed": "❌ Responde a un embed de jugada válido de Sengo o asegúrate de que haya uno reciente en el canal.",
+    "lazer_err_parsing": "❌ No se pudo extraer la información del jugador o el mapa del embed."
   },
   "profile": {
     "top_ranking": "**• Top ranking:** `{rank}` {peak}\n",

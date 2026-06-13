@@ -2055,11 +2055,27 @@ async function setCountryScraped(countryCode, isScraped = true) {
     }
 }
 
+async function setPreferredScoreMode(discordId, scoreMode) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    try {
+        await supabase
+            .from('users')
+            .upsert({
+                discord_id: discordId,
+                preferred_score_mode: scoreMode
+            }, { onConflict: 'discord_id' });
+    } catch (err) {
+        console.error(`Error al guardar modo de score preferido para ${discordId}:`, err);
+    }
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
     getOsuUser,
     getLinkedUser,
+    setPreferredScoreMode,
     linkUser,
     unlinkUser,
     getLinkedUsers,

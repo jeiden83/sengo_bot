@@ -919,7 +919,9 @@
     "embed_footer_default": "Sengo",
     "list_author": "Recent scores of {username} in osu!{mode}",
     "list_footer": "Showing recent plays {start}-{end} of {total}",
-    "list_footer_loading": "⏳ Calculating pp of play #{index} of {total}..."
+    "list_footer_loading": "⏳ Calculating pp of play #{index} of {total}...",
+    "lazer_no_target_embed": "❌ Reply to a valid Sengo play embed or make sure there is a recent one in the channel.",
+    "lazer_err_parsing": "❌ Could not extract player or map information from the embed."
   },
   "profile": {
     "top_ranking": "**• Top ranking:** `{rank}` {peak}\n",
