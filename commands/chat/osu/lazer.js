@@ -115,7 +115,7 @@ async function run(messages, args, forcedMode = 'lazer') {
         const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
         const total_hits = great + ok + meh + miss;
 
-        const map = await getBeatmap_osu(score.beatmap.beatmapset_id || beatmap.beatmapset_id, score.beatmap.id || beatmap.id, beatmap);
+        const map = await getBeatmap_osu(score.beatmap?.beatmapset_id || beatmap.beatmapset_id, score.beatmap?.id || beatmap.id, beatmap);
         const maxAttrs = calculatePP(score, map, "maximo_pp");
 
         const user_pp = score.pp ? score.pp : calculatePP(score, map, null, maxAttrs).pp;
@@ -158,7 +158,17 @@ async function run(messages, args, forcedMode = 'lazer') {
         if (type === 'recent') {
             resultEmbed = await doOsuEmbed(message, score, pre_calculated, locale, currentScoreMode);
         } else if (type === 'top') {
-            resultEmbed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, { gamemode: gamemode }, 0, locale, currentScoreMode);
+            resultEmbed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, {
+                gamemode: gamemode,
+                ppThreshold: null,
+                modFilter: null,
+                modContainFilter: null,
+                searchFilter: null,
+                recentSort: false,
+                comboSort: false,
+                accSort: false,
+                nochoke: false
+            }, 0, locale, currentScoreMode);
         } else {
             resultEmbed = await doOsuCompareSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, { username: [score.user.username] }, beatmap, currentScoreMode);
         }

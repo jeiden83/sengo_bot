@@ -307,7 +307,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     }
 
     let prefix_desc = '';
-    if (parsed_args.ppThreshold !== null) {
+    if (parsed_args.ppThreshold !== null && parsed_args.ppThreshold !== undefined) {
         let filterText = '';
         if (parsed_args.modFilter) filterText += t(locale, 'top.pp_threshold_filter_exact', { mod: parsed_args.modFilter });
         if (parsed_args.modContainFilter) filterText += t(locale, 'top.pp_threshold_filter_contain', { mod: parsed_args.modContainFilter });
@@ -317,9 +317,9 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     }
 
     let active_filters = [];
-    if (parsed_args.modFilter !== null) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
-    if (parsed_args.modContainFilter !== null) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
-    if (parsed_args.searchFilter !== null) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
+    if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
+    if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
+    if (parsed_args.searchFilter !== null && parsed_args.searchFilter !== undefined) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
     if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
     if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
     if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
