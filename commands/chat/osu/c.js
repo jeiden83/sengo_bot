@@ -219,7 +219,7 @@ async function run(messages, args) {
         const sent_message = await message.channel.send({
             content: content_msg,
             embeds: [initialEmbed],
-            components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)]
+            components: buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)
         });
 
         const filter = btnInt => btnInt.user.id === message.author.id;
@@ -235,9 +235,9 @@ async function run(messages, args) {
                     
                     // Deshabilitar botón de render en el mensaje original para evitar flood
                     try {
-                        const updatedRow = buildCompareSingleButtonsRow(index, filtered_scores.length, targetScore, true);
+                        const updatedComponents = buildCompareSingleButtonsRow(index, filtered_scores.length, targetScore, true, currentScoreMode);
                         if (typeof i.update === 'function') {
-                            await i.update({ components: [updatedRow] });
+                            await i.update({ components: updatedComponents });
                         } else {
                             await i.deferUpdate();
                         }
@@ -344,7 +344,7 @@ async function run(messages, args) {
                 await i.editReply({
                     content: content_msg,
                     embeds: [embed],
-                    components: [buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)]
+                    components: buildCompareSingleButtonsRow(index, filtered_scores.length, filtered_scores[index - 1], false, currentScoreMode)
                 });
             } catch (err) {
                 console.error("Error al navegar single compare score:", err);

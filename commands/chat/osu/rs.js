@@ -458,11 +458,11 @@ async function run(messages, args) {
     const sent_message = await message.channel.send({
         content: content_msg,
         embeds: [initialEmbed],
-        components: [buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode)]
+        components: buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode)
     });
 
     if (targetScore && !targetScore.passed) {
-        triggerFailStrainEmbed(sent_message, targetScore, initialEmbed, [buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode)], index);
+        triggerFailStrainEmbed(sent_message, targetScore, initialEmbed, buildRecentButtonsRow(index, total_plays, targetScore, false, currentScoreMode), index);
     }
 
     const filter = btnInt => btnInt.user.id === message.author.id;
@@ -478,9 +478,9 @@ async function run(messages, args) {
                 
                 // Deshabilitar botón de render en el mensaje original para evitar flood
                 try {
-                    const updatedRow = buildRecentButtonsRow(index, total_plays, currentScore, true);
+                    const updatedComponents = buildRecentButtonsRow(index, total_plays, currentScore, true, currentScoreMode);
                     if (typeof i.update === 'function') {
-                        await i.update({ components: [updatedRow] });
+                        await i.update({ components: updatedComponents });
                     } else {
                         await i.deferUpdate();
                     }
@@ -591,7 +591,7 @@ async function run(messages, args) {
             const nextScore = parser_res.fn_response[index - 1];
             const embed = await processScore(index);
             const content = t(locale, 'recent.showing_index', { index, total: total_plays });
-            const nextComponents = [buildRecentButtonsRow(index, total_plays, nextScore, false, currentScoreMode)];
+            const nextComponents = buildRecentButtonsRow(index, total_plays, nextScore, false, currentScoreMode);
 
             await i.editReply({
                 content: content,

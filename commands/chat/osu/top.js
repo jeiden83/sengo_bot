@@ -210,7 +210,7 @@ async function run(messages, args) {
         const sent_message = await message.channel.send({
             content: content_msg,
             embeds: [initialEmbed],
-            components: [getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])]
+            components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
         });
 
         const filter = btnInt => btnInt.user.id === message.author.id;
@@ -223,6 +223,17 @@ async function run(messages, args) {
             try {
                 if (i.customId === 'top_render') {
                     const currentScore = filtered_scores[index - 1];
+                    try {
+                        const updatedComponents = getSingleButtonsRow(index, total_plays, currentScore, true);
+                        if (typeof i.update === 'function') {
+                            await i.update({ components: updatedComponents });
+                        } else {
+                            await i.deferUpdate();
+                        }
+                    } catch (err) {
+                        console.error("Error al deshabilitar el botón de render en top:", err);
+                        try { await i.deferUpdate(); } catch {}
+                    }
                     const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${currentScore.user?.username || 'Usuario'}**...`);
                     
                     try {
@@ -327,7 +338,7 @@ async function run(messages, args) {
                 await i.editReply({
                     content: content_msg,
                     embeds: [embed],
-                    components: [getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])]
+                    components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
                 });
             } catch (err) {
                 console.error("Error al navegar single top score:", err);

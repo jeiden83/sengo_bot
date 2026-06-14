@@ -182,11 +182,11 @@ async function run(messages, args, forcedMode = 'lazer') {
     
     const getComponents = (currIndex, scoreObj) => {
         if (type === 'recent') {
-            return [buildRecentButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
+            return buildRecentButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode);
         } else if (type === 'top') {
-            return [buildTopSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
+            return buildTopSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode);
         } else {
-            return [buildCompareSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
+            return buildCompareSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode);
         }
     };
 

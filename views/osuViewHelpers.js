@@ -172,15 +172,16 @@ function getDifficultyEmoji(stars) {
  * Genera la fila de botones de paginación para Recent Score, añadiendo el botón de renderizar si procede.
  */
 function buildRecentButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
-    const row = buildPaginationRow({ prefix: 'rs', current, total, oneIndexed: true });
+    const row1 = buildPaginationRow({ prefix: 'rs', current, total, oneIndexed: true });
 
     const canRender = score &&
         (score.mode === 'osu' || score.ruleset_id === 0) &&
         (score.id !== undefined && score.id !== null) &&
         score.replay === true;
 
+    const row2 = new ActionRowBuilder();
     if (canRender) {
-        row.addComponents(
+        row2.addComponents(
             new ButtonBuilder()
                 .setCustomId('rs_render')
                 .setLabel('🎬')
@@ -191,21 +192,21 @@ function buildRecentButtonsRow(current, total, score, renderDisabled = false, sc
 
     const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
     const toggleId = `rs_toggle_score_${scoreMode}`;
-    row.addComponents(
+    row2.addComponents(
         new ButtonBuilder()
             .setCustomId(toggleId)
             .setLabel(toggleLabel)
             .setStyle(ButtonStyle.Secondary)
     );
 
-    return row;
+    return [row1, row2];
 }
 
 /**
  * Genera la fila de botones de paginación para Compare Single, añadiendo el botón de renderizar si procede.
  */
 function buildCompareSingleButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
-    const row = buildPaginationRow({
+    const row1 = buildPaginationRow({
         prefix: 'c_single',
         current,
         total,
@@ -218,8 +219,9 @@ function buildCompareSingleButtonsRow(current, total, score, renderDisabled = fa
         (score.id !== undefined && score.id !== null) &&
         score.replay === true;
 
+    const row2 = new ActionRowBuilder();
     if (canRender) {
-        row.addComponents(
+        row2.addComponents(
             new ButtonBuilder()
                 .setCustomId('c_single_render')
                 .setLabel('🎬')
@@ -230,21 +232,21 @@ function buildCompareSingleButtonsRow(current, total, score, renderDisabled = fa
 
     const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
     const toggleId = `c_single_toggle_score_${scoreMode}`;
-    row.addComponents(
+    row2.addComponents(
         new ButtonBuilder()
             .setCustomId(toggleId)
             .setLabel(toggleLabel)
             .setStyle(ButtonStyle.Secondary)
     );
 
-    return row;
+    return [row1, row2];
 }
 
 /**
  * Genera la fila de botones de paginación para Top Single Play, añadiendo el botón de renderizar y de alternar modo.
  */
 function buildTopSingleButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
-    const row = buildPaginationRow({
+    const row1 = buildPaginationRow({
         prefix: 'top',
         current,
         total,
@@ -257,8 +259,9 @@ function buildTopSingleButtonsRow(current, total, score, renderDisabled = false,
         (score.id !== undefined && score.id !== null) &&
         score.replay === true;
 
+    const row2 = new ActionRowBuilder();
     if (canRender) {
-        row.addComponents(
+        row2.addComponents(
             new ButtonBuilder()
                 .setCustomId('top_render')
                 .setLabel('🎬')
@@ -269,14 +272,14 @@ function buildTopSingleButtonsRow(current, total, score, renderDisabled = false,
 
     const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
     const toggleId = `top_toggle_score_${scoreMode}`;
-    row.addComponents(
+    row2.addComponents(
         new ButtonBuilder()
             .setCustomId(toggleId)
             .setLabel(toggleLabel)
             .setStyle(ButtonStyle.Secondary)
     );
 
-    return row;
+    return [row1, row2];
 }
 
 module.exports = {
