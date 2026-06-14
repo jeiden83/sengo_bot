@@ -544,7 +544,7 @@ ${ansiBlock}
 /**
  * Renderiza el embed para la lista de puntuaciones comparadas (c.js)
  */
-async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, startIndex, total_plays, beatmap_metadata) {
+async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, startIndex, total_plays, beatmap_metadata, scoreMode = 'classic') {
     const locale = message.locale || 'es';
     let embed_description = '';
 
@@ -564,7 +564,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
-        const legacy_score = getFormattedScore(score);
+        const legacy_score = getFormattedScore(score, scoreMode);
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
 
@@ -604,8 +604,19 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 
     const avatar_url = user_scores_chunk[0]?.user?.avatar_url || `https://a.ppy.sh/${parsed_args.username[0]}`;
     const embedColor = getEmbedColor(message);
+    const userId = user_scores_chunk[0]?.user?.id || parsed_args.username[0];
+    const username = user_scores_chunk[0]?.user?.username || parsed_args.username[0] || 'Usuario';
+    const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
+    const user_url = user_scores_chunk[0]?.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${userId}` : `https://osu.ppy.sh/users/${userId}`;
+    const beatmap_url = `https://osu.ppy.sh/b/${beatmap_metadata.id}`;
 
     const embed = new EmbedBuilder()
+        .setAuthor({
+            name: t(locale, 'compare.list_embed_author', { username, mode: displayMode }),
+            url: user_url,
+            iconURL: avatar_url
+        })
+        .setURL(beatmap_url)
         .setDescription(embed_description)
         .setColor(embedColor)
         .setThumbnail(avatar_url)
@@ -614,7 +625,6 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
-
     return embed;
 }
 

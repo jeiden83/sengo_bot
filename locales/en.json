@@ -825,7 +825,8 @@
     "single_embed_author": "Score comparison #{rank} for {username}",
     "single_embed_footer": "Sengo • Score #{index} of {total} compared",
     "list_embed_footer": "Showing scores {start}-{end} of {total} total",
-    "list_embed_content": "Scores for `{username}` on `osu!{mode}`:\n{mapa}"
+    "list_embed_content": "Scores for `{username}` on `osu!{mode}`:\n{mapa}",
+    "list_embed_author": "Scores for {username} on osu!{mode}"
   },
   "gap": {
     "err_creator_only_server": "❌ Only the bot creator can use the `-server` flag.",

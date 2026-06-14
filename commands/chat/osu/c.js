@@ -54,9 +54,28 @@ async function run(messages, args) {
         return t(locale, 'compare.err_no_scores');
     }
 
-    // Asignamos el índice original
+    // Resolver usuario de osu! para asegurar ID numérico y avatar correctos en todo el flujo
+    const osuUser = await getOsuUser(parsed_args).catch(() => null);
+    const resolvedUserId = osuUser?.id || parsed_args.username[0];
+    const resolvedUsername = osuUser?.username || parsed_args.username[0] || 'Usuario';
+    const server = parsed_args.server || 'bancho';
+
+    // Asignamos el índice original y la información del usuario
     scores.forEach((score, idx) => {
         score.originalRank = idx + 1;
+        if (!score.user) {
+            score.user = {
+                id: resolvedUserId,
+                username: resolvedUsername,
+                avatar_url: osuUser?.avatar_url || `https://a.ppy.sh/${resolvedUserId}`,
+                server: server
+            };
+        } else {
+            if (!score.user.id && resolvedUserId) score.user.id = resolvedUserId;
+            if (!score.user.username && resolvedUsername) score.user.username = resolvedUsername;
+            if (!score.user.avatar_url && osuUser?.avatar_url) score.user.avatar_url = osuUser.avatar_url;
+            if (!score.user.server && server) score.user.server = server;
+        }
     });
 
     // APLICAR FILTROS SOLICITADOS
@@ -116,7 +135,7 @@ async function run(messages, args) {
     }
 
     if (filtered_scores.length === 0) {
-        const username = scores[0]?.user?.username || parsed_args.username[0] || 'Usuario';
+        const username = resolvedUsername;
         let errorMsg = t(locale, 'compare.err_no_filtered_scores', { username });
         if (parsed_args.modFilter !== null) errorMsg += `\n ▸ ${t(locale, 'compare.filter_exact_mods')}: \`${parsed_args.modFilter}\``;
         if (parsed_args.modContainFilter !== null) errorMsg += `\n ▸ ${t(locale, 'compare.filter_contain_mods')}: \`${parsed_args.modContainFilter}\``;
@@ -401,18 +420,33 @@ async function run(messages, args) {
         console.error("Error calculating target stars for compare:", err);
     }
 
-    const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, filtered_scores.slice(startIndex, startIndex + 10), startIndex, filtered_scores.length, beatmap_metadata);
-    const username = scores[0]?.user?.username || (await getOsuUser(parsed_args)).username || 'Usuario';
+    const OsuUserModel = require("../../../models/OsuUserModel.js");
+    const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+    let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
+
+    const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, filtered_scores.slice(startIndex, startIndex + 10), startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode);
+    const username = resolvedUsername;
     const content = getOsuCompareContent(parsed_args, username, beatmap_metadata, locale, targetStars);
 
-    const getListButtonsRow = (start, total) => {
-        return buildPaginationRow({ prefix: 'c', current: start, total, pageSize: 10 });
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const getListComponents = (start, total, scoreMode) => {
+        const row1 = buildPaginationRow({ prefix: 'c', current: start, total, pageSize: 10 });
+        const row2 = new ActionRowBuilder();
+        const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
+        const toggleId = `c_toggle_score_${scoreMode}`;
+        row2.addComponents(
+            new ButtonBuilder()
+                .setCustomId(toggleId)
+                .setLabel(toggleLabel)
+                .setStyle(ButtonStyle.Secondary)
+        );
+        return [row1, row2];
     };
 
     const sent_message = await message.channel.send({
         content: content,
         embeds: [initialListEmbed],
-        components: [getListButtonsRow(startIndex, filtered_scores.length)]
+        components: getListComponents(startIndex, filtered_scores.length, currentScoreMode)
     });
 
     const filter = btnInt => btnInt.user.id === message.author.id;
@@ -425,7 +459,10 @@ async function run(messages, args) {
         try {
             await i.deferUpdate();
 
-            if (i.customId === 'c_first') {
+            if (i.customId.startsWith('c_toggle_score_')) {
+                currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
+                await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+            } else if (i.customId === 'c_first') {
                 startIndex = 0;
             } else if (i.customId === 'c_prev') {
                 startIndex = Math.max(0, startIndex - 10);
@@ -436,11 +473,11 @@ async function run(messages, args) {
             }
 
             const chunk = filtered_scores.slice(startIndex, startIndex + 10);
-            const embed = await doOsuCompareListEmbed(message, parsed_args, chunk, startIndex, filtered_scores.length, beatmap_metadata);
+            const embed = await doOsuCompareListEmbed(message, parsed_args, chunk, startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode);
 
             await i.editReply({
                 embeds: [embed],
-                components: [getListButtonsRow(startIndex, filtered_scores.length)]
+                components: getListComponents(startIndex, filtered_scores.length, currentScoreMode)
             });
         } catch (err) {
             console.error("Error al navegar la lista de comparación:", err);

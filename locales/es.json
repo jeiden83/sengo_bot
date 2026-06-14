@@ -825,7 +825,8 @@
     "single_embed_author": "Comparación de score #{rank} para {username}",
     "single_embed_footer": "Sengo • Jugada #{index} de {total} comparadas",
     "list_embed_footer": "Mostrando puntuaciones {start}-{end} de {total} totales",
-    "list_embed_content": "Puntuaciones de `{username}` en `osu!{mode}`:\n{mapa}"
+    "list_embed_content": "Puntuaciones de `{username}` en `osu!{mode}`:\n{mapa}",
+    "list_embed_author": "Puntuaciones de {username} en osu!{mode}"
   },
   "gap": {
     "err_creator_only_server": "❌ Solo el creador del bot puede usar el flag `-server`.",

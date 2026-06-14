@@ -1,4 +1,4 @@
-const { getBeatmap_osu, getUserRecentScores, getUserTopScores, getBeatmapUserAllScores, getUnrankedBeatmapUserAllScores, getBeatmap, calculatePP, saveUserscore } = require("../../utils/osu.js");
+const { getBeatmap_osu, getUserRecentScores, getUserTopScores, getBeatmapUserAllScores, getUnrankedBeatmapUserAllScores, getBeatmap, calculatePP, saveUserscore, argsParserNoCommand } = require("../../utils/osu.js");
 const { doOsuEmbed, doOsuCompareSingleEmbed, doOsuTopSingleEmbed } = require("../../../views/osuEmbeds.js");
 const { buildRecentButtonsRow, buildCompareSingleButtonsRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
@@ -38,49 +38,90 @@ async function run(messages, args, forcedMode = 'lazer') {
     const embed = targetMsg.embeds[0];
     const authorUrl = embed.author?.url || '';
     const titleUrl = embed.url || '';
-    const userMatch = authorUrl.match(/users?\/(\d+)/) || authorUrl.match(/u\/(\d+)/);
-    const beatmapMatch = titleUrl.match(/b(eatmaps)?\/(\d+)/);
-
-    if (!userMatch || !beatmapMatch) {
+    const userMatch = authorUrl.match(/users?\/([^\/\s?#]+)/) || authorUrl.match(/u\/([^\/\s?#]+)/);
+    
+    if (!userMatch) {
         return t(locale, 'recent.lazer_err_parsing') || "❌ No se pudo extraer la información del jugador o el mapa del embed.";
     }
 
-    const isList = embed.description && (embed.description.includes('**#1**') || embed.description.includes('**#2**') || embed.description.includes('**#3**') || embed.description.includes('➔'));
-    if (isList) {
-        return "❌ Este comando solo se puede usar respondiendo a una jugada individual (no a una lista).";
-    }
-
     const userId = userMatch[1];
-    const beatmapId = beatmapMatch[2];
     const server = authorUrl.includes('gatari') ? 'gatari' : 'bancho';
 
-    let beatmap;
-    try {
-        beatmap = await getBeatmap(beatmapId);
-    } catch (err) {
-        console.error("Error al cargar beatmap en lazer:", err);
-        return "❌ Error al cargar los detalles del mapa.";
+    // Parsear el índice especificado por el usuario si lo hay, ej: .lazer 3
+    const cmdParsed = argsParserNoCommand(args);
+    let index = cmdParsed.index;
+
+    // Si no se especifica, se intenta extraer del contenido del mensaje (por ejemplo, "**#3**")
+    if (!index) {
+        const indexMatch = targetMsg.content ? targetMsg.content.match(/\*\*#(\d+)\*\*/) : null;
+        index = indexMatch ? parseInt(indexMatch[1], 10) : 1;
     }
-    const gamemode = beatmap.mode || 'osu';
 
-    const indexMatch = targetMsg.content ? targetMsg.content.match(/\*\*#(\d+)\*\*/) : null;
-    let index = indexMatch ? parseInt(indexMatch[1], 10) : 1;
-
+    // Detectamos el tipo de embed/lista
     let type = 'recent';
     const msgContent = targetMsg.content || '';
-    const embedFooter = (embed.footer && embed.footer.text) || '';
-    const authorName = (embed.author && embed.author.name) || '';
-    if (msgContent.includes('comparadas') || msgContent.includes('compared') || embedFooter.includes('compared') || embedFooter.includes('comparación') || authorName.includes('comparación') || authorName.includes('compared')) {
+    const embedFooter = ((embed.footer && embed.footer.text) || '').toLowerCase();
+    const authorName = ((embed.author && embed.author.name) || '').toLowerCase();
+
+    const isCompare = msgContent.includes('comparadas') || 
+                      msgContent.includes('compared') || 
+                      embedFooter.includes('compared') || 
+                      embedFooter.includes('comparación') || 
+                      authorName.includes('comparación') || 
+                      authorName.includes('compared') ||
+                      (embedFooter.includes('puntuaciones') && !embedFooter.includes('recientes') && !embedFooter.includes('mejores')) ||
+                      (embedFooter.includes('scores') && !embedFooter.includes('recent') && !embedFooter.includes('best')) ||
+                      (authorName.includes('puntuaciones de') && !authorName.includes('recientes') && !authorName.includes('mejores'));
+
+    const isTop = msgContent.includes('top de pp') || 
+                  msgContent.includes('pp top') || 
+                  embedFooter.includes('pp top') || 
+                  embedFooter.includes('top de pp') || 
+                  authorName.includes('top de pp') || 
+                  authorName.includes('pp top') ||
+                  embedFooter.includes('mejores') ||
+                  embedFooter.includes('best') ||
+                  authorName.includes('mejores puntuaciones') ||
+                  authorName.includes('best plays');
+
+    if (isCompare) {
         type = 'compare';
-    } else if (msgContent.includes('Top de PP') || msgContent.includes('PP Top') || embedFooter.includes('PP Top') || embedFooter.includes('Top de PP') || authorName.includes('Top de PP') || authorName.includes('PP Top')) {
+    } else if (isTop) {
         type = 'top';
     }
 
+    const beatmapMatch = titleUrl ? titleUrl.match(/b(eatmaps)?\/(\d+)/) : null;
+    const beatmapId = beatmapMatch ? beatmapMatch[2] : null;
+
+    if (type === 'compare' && !beatmapId) {
+        return "❌ No se pudo extraer el ID del mapa para la comparación.";
+    }
+
+    let beatmap = null;
+    if (beatmapId) {
+        try {
+            beatmap = await getBeatmap(beatmapId);
+        } catch (err) {
+            console.error("Error al cargar beatmap en lazer:", err);
+        }
+    }
+
+    if (type === 'compare' && !beatmap) {
+        return "❌ Error al cargar los detalles del mapa.";
+    }
+
+    // Resolver gamemode a partir de la información disponible
+    let gamemode = 'osu';
+    if (authorName.includes('mania')) gamemode = 'mania';
+    else if (authorName.includes('taiko')) gamemode = 'taiko';
+    else if (authorName.includes('catch') || authorName.includes('fruits')) gamemode = 'fruits';
+    if (beatmap) gamemode = beatmap.mode || gamemode;
+
     let scores = [];
     if (type === 'recent') {
-        scores = await getUserRecentScores({ username: [userId], gamemode: gamemode, server: server });
+        scores = await getUserRecentScores({ username: [userId], gamemode: cmdParsed.gamemode || gamemode, server: server });
     } else if (type === 'top') {
-        scores = await getUserTopScores({ username: [userId], gamemode: gamemode, server: server });
+        scores = await getUserTopScores({ username: [userId], gamemode: cmdParsed.gamemode || gamemode, server: server });
     } else {
         const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
         const fn = unranked_statuses.has(beatmap.status) ? getUnrankedBeatmapUserAllScores : getBeatmapUserAllScores;
@@ -100,13 +141,25 @@ async function run(messages, args, forcedMode = 'lazer') {
     // Helper to process a score at index
     async function processScore(scoreIndex) {
         const score = scores[scoreIndex - 1];
+        if (!score) {
+            throw new Error("Puntuación no encontrada en la posición especificada.");
+        }
         if (!score.user) {
             score.user = {
-                username: embed.author.name ? embed.author.name.split(':')[0].trim() : 'Usuario',
+                username: embed.author?.name ? embed.author.name.split(':')[0].trim() : 'Usuario',
                 id: userId,
-                avatar_url: embed.author.iconURL || `https://a.ppy.sh/${userId}`,
+                avatar_url: embed.author?.iconURL || `https://a.ppy.sh/${userId}`,
                 server: server
             };
+        }
+
+        // Si el beatmap no se cargó del embed pero el score lo tiene, lo cargamos dinámicamente
+        if (!beatmap && score.beatmap) {
+            try {
+                beatmap = await getBeatmap(score.beatmap.id);
+            } catch (err) {
+                console.error("Error al cargar beatmap desde score:", err);
+            }
         }
 
         const stats = score.statistics || {};
@@ -116,11 +169,13 @@ async function run(messages, args, forcedMode = 'lazer') {
         const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
         const total_hits = great + ok + meh + miss;
 
-        const map = await getBeatmap_osu(score.beatmap?.beatmapset_id || beatmap.beatmapset_id, score.beatmap?.id || beatmap.id, beatmap);
+        const beatmapsetId = score.beatmap?.beatmapset_id || beatmap?.beatmapset_id || beatmap?.beatmapset?.id;
+        const targetBeatmapId = score.beatmap?.id || beatmap?.id || beatmapId;
+        const map = await getBeatmap_osu(beatmapsetId, targetBeatmapId, beatmap);
         const maxAttrs = calculatePP(score, map, "maximo_pp");
 
         const user_pp = score.pp ? score.pp : calculatePP(score, map, null, maxAttrs).pp;
-        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+        const beatmap_max_combo = beatmap?.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
 
         let pp_fc = null;
         const isFC = score.perfect || (miss === 0 && score.max_combo >= beatmap_max_combo - 2);
