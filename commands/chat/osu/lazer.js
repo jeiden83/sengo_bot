@@ -1,6 +1,6 @@
 const { getBeatmap_osu, getUserRecentScores, getUserTopScores, getBeatmapUserAllScores, getUnrankedBeatmapUserAllScores, getBeatmap, calculatePP, saveUserscore } = require("../../utils/osu.js");
 const { doOsuEmbed, doOsuCompareSingleEmbed, doOsuTopSingleEmbed } = require("../../../views/osuEmbeds.js");
-const { buildRecentButtonsRow, buildCompareSingleButtonsRow, buildPaginationRow, formatMods } = require("../../../views/osuViewHelpers.js");
+const { buildRecentButtonsRow, buildCompareSingleButtonsRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 
@@ -69,9 +69,10 @@ async function run(messages, args, forcedMode = 'lazer') {
     let type = 'recent';
     const msgContent = targetMsg.content || '';
     const embedFooter = (embed.footer && embed.footer.text) || '';
-    if (msgContent.includes('comparadas') || msgContent.includes('compared') || embedFooter.includes('compared') || embedFooter.includes('comparación')) {
+    const authorName = (embed.author && embed.author.name) || '';
+    if (msgContent.includes('comparadas') || msgContent.includes('compared') || embedFooter.includes('compared') || embedFooter.includes('comparación') || authorName.includes('comparación') || authorName.includes('compared')) {
         type = 'compare';
-    } else if (msgContent.includes('Top de PP') || msgContent.includes('PP Top') || embedFooter.includes('PP Top') || embedFooter.includes('Top de PP')) {
+    } else if (msgContent.includes('Top de PP') || msgContent.includes('PP Top') || embedFooter.includes('PP Top') || embedFooter.includes('Top de PP') || authorName.includes('Top de PP') || authorName.includes('PP Top')) {
         type = 'top';
     }
 
@@ -183,13 +184,7 @@ async function run(messages, args, forcedMode = 'lazer') {
         if (type === 'recent') {
             return [buildRecentButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
         } else if (type === 'top') {
-            return [buildPaginationRow({
-                prefix: 'top',
-                current: currIndex,
-                total: total_plays,
-                oneIndexed: true,
-                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
-            })];
+            return [buildTopSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
         } else {
             return [buildCompareSingleButtonsRow(currIndex, total_plays, scoreObj, false, currentScoreMode)];
         }
@@ -212,7 +207,7 @@ async function run(messages, args, forcedMode = 'lazer') {
 
     collector.on('collect', async i => {
         try {
-            if (i.customId === 'rs_render' || i.customId === 'c_single_render') {
+            if (i.customId === 'rs_render' || i.customId === 'c_single_render' || i.customId === 'top_render') {
                 let infoMsg;
                 try {
                     infoMsg = await message.channel.send("⏳ **Descargando replay y preparando renderizado...**");
@@ -300,7 +295,7 @@ async function run(messages, args, forcedMode = 'lazer') {
 
             await i.deferUpdate();
 
-            if (i.customId.startsWith('rs_toggle_score_') || i.customId.startsWith('c_single_toggle_score_')) {
+            if (i.customId.startsWith('rs_toggle_score_') || i.customId.startsWith('c_single_toggle_score_') || i.customId.startsWith('top_toggle_score_')) {
                 currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
                 await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
             } else if (i.customId === 'rs_oldest' || i.customId === 'c_single_last' || i.customId === 'top_last') {

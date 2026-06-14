@@ -1,7 +1,7 @@
 const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
 
 const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEmbeds.js");
-const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { buildPaginationRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
@@ -147,6 +147,10 @@ async function run(messages, args) {
             content_msg = t(locale, 'top.showing_score_index', { index, total: total_plays });
         }
 
+        const OsuUserModel = require("../../../models/OsuUserModel.js");
+        const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+        let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
+
         // Función auxiliar para procesar y construir el embed de un score determinado
         async function processScore(scoreIndex) {
             const score = filtered_scores[scoreIndex - 1];
@@ -192,27 +196,21 @@ async function run(messages, args) {
                 "pp_fc": pp_fc
             };
 
-            const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount, locale);
+            const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount, locale, currentScoreMode);
             map.free();
             return embed;
         }
 
         const initialEmbed = await processScore(index);
 
-        const getSingleButtonsRow = (curr, max) => {
-            return buildPaginationRow({
-                prefix: 'top',
-                current: curr,
-                total: max,
-                oneIndexed: true,
-                customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
-            });
+        const getSingleButtonsRow = (curr, max, scoreObj, renderDisabled = false) => {
+            return buildTopSingleButtonsRow(curr, max, scoreObj, renderDisabled, currentScoreMode);
         };
 
         const sent_message = await message.channel.send({
             content: content_msg,
             embeds: [initialEmbed],
-            components: [getSingleButtonsRow(index, total_plays)]
+            components: [getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])]
         });
 
         const filter = btnInt => btnInt.user.id === message.author.id;
@@ -223,9 +221,97 @@ async function run(messages, args) {
 
         collector.on('collect', async i => {
             try {
+                if (i.customId === 'top_render') {
+                    const currentScore = filtered_scores[index - 1];
+                    const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${currentScore.user?.username || 'Usuario'}**...`);
+                    
+                    try {
+                        const fetch = require('node-fetch');
+                        const OsuUserModel = require('../../../models/OsuUserModel.js');
+                        const fs = require('fs');
+                        await OsuUserModel.NewloadToken();
+                        
+                        let token = null;
+                        try {
+                            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                            token = tokenData.access_token;
+                        } catch (err) {
+                            console.error("Error al leer token:", err);
+                        }
+                        
+                        if (!token) {
+                            throw new Error("No token available");
+                        }
+                        
+                        const scoreId = currentScore.id;
+                        const url = `https://osu.ppy.sh/api/v2/scores/${scoreId}/download`;
+                        
+                        const downloadRes = await fetch(url, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                        
+                        if (!downloadRes.ok) {
+                            throw new Error(`osu! API returned ${downloadRes.status}`);
+                        }
+                        
+                        const replayBuffer = await downloadRes.buffer();
+                        
+                        const renderCmd = require('./render.js');
+                        const mockMessages = {
+                            message: {
+                                author: i.user,
+                                locale: locale,
+                                channel: {
+                                    send: async (options) => {
+                                        try { await infoMsg.delete(); } catch {}
+                                        return await i.channel.send(options);
+                                    },
+                                    sendTyping: async () => {}
+                                }
+                            }
+                        };
+                        
+                        let beatmapInfo = null;
+                        try {
+                            beatmapInfo = await getBeatmap(currentScore.beatmap.id);
+                        } catch (err) {
+                            console.warn("[top_render] No se pudo obtener metadatos adicionales del beatmap:", err.message);
+                        }
+
+                        const username = currentScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
+                        const artist = currentScore.beatmapset?.artist || beatmapInfo?.beatmapset?.artist || '';
+                        const title = currentScore.beatmapset?.title || beatmapInfo?.beatmapset?.title || '';
+                        const version = currentScore.beatmap?.version || beatmapInfo?.version || '';
+                        const stars = (currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating)
+                            ? ` (${(currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating).toFixed(2)}★)`
+                            : '';
+                        const modsString = currentScore.mods && currentScore.mods.length > 0 ? ` +${formatMods(currentScore.mods)}` : '';
+                        const accuracy = currentScore.accuracy ? ` | Accuracy: ${(currentScore.accuracy * 100).toFixed(2)}%` : '';
+                        const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
+
+                        await renderCmd.startRenderFlow(
+                            mockMessages,
+                            replayBuffer,
+                            `recent_${scoreId}.osr`,
+                            { skin: 'default', resolution: '1280x720', skinSpecified: false, customDescription },
+                            locale
+                        );
+                        
+                    } catch (err) {
+                        console.error("Error al descargar replay de Top Play:", err);
+                        await infoMsg.edit(`❌ **Error:** No se pudo obtener el replay para esta jugada desde los servidores de osu! (es común para jugadas que no son del Top 100 del mapa o si son muy antiguas/fallidas).`);
+                    }
+                    return;
+                }
+
                 await i.deferUpdate();
 
-                if (i.customId === 'top_first') {
+                if (i.customId.startsWith('top_toggle_score_')) {
+                    currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
+                    await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+                } else if (i.customId === 'top_first') {
                     index = 1;
                 } else if (i.customId === 'top_prev') {
                     index = Math.max(1, index - 1);
@@ -241,7 +327,7 @@ async function run(messages, args) {
                 await i.editReply({
                     content: content_msg,
                     embeds: [embed],
-                    components: [getSingleButtonsRow(index, total_plays)]
+                    components: [getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])]
                 });
             } catch (err) {
                 console.error("Error al navegar single top score:", err);

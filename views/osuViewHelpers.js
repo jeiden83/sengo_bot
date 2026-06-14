@@ -240,6 +240,45 @@ function buildCompareSingleButtonsRow(current, total, score, renderDisabled = fa
     return row;
 }
 
+/**
+ * Genera la fila de botones de paginación para Top Single Play, añadiendo el botón de renderizar y de alternar modo.
+ */
+function buildTopSingleButtonsRow(current, total, score, renderDisabled = false, scoreMode = 'classic') {
+    const row = buildPaginationRow({
+        prefix: 'top',
+        current,
+        total,
+        oneIndexed: true,
+        customSuffixes: { first: 'first', prev: 'prev', next: 'next', last: 'last' }
+    });
+
+    const canRender = score &&
+        (score.mode === 'osu' || score.ruleset_id === 0) &&
+        (score.id !== undefined && score.id !== null) &&
+        score.replay === true;
+
+    if (canRender) {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId('top_render')
+                .setLabel('🎬')
+                .setStyle(ButtonStyle.Primary)
+                .setDisabled(renderDisabled)
+        );
+    }
+
+    const toggleLabel = scoreMode === 'lazer' ? 'Classic 🎮' : 'Lazer 🌐';
+    const toggleId = `top_toggle_score_${scoreMode}`;
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId(toggleId)
+            .setLabel(toggleLabel)
+            .setStyle(ButtonStyle.Secondary)
+    );
+
+    return row;
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -252,5 +291,7 @@ module.exports = {
     buildPaginationRow,
     buildRecentButtonsRow,
     buildCompareSingleButtonsRow,
+    buildTopSingleButtonsRow,
     getDifficultyEmoji
 };
+
