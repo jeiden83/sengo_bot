@@ -1,7 +1,11 @@
 const Logger = require("../utils/logger.js");
+const BotSettingsModel = require("../models/BotSettingsModel.js");
 
 let discordClient = null;
 let supabase = null;
+
+const SYNC_SETTING_KEY = "last_guilds_sync_time";
+const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
 /**
  * Sincroniza los servidores (guilds) en los que se encuentra un usuario específico.
@@ -53,13 +57,28 @@ async function syncUserGuilds(discordId) {
 }
 
 /**
- * Realiza una sincronización completa para todos los usuarios vinculados.
+ * Realiza una sincronización completa para todos los usuarios vinculados si ha pasado suficiente tiempo.
+ * @param {boolean} force - Si es true, ignora el tiempo transcurrido y sincroniza de inmediato.
  */
-async function syncAllGuilds() {
+async function syncAllGuilds(force = false) {
     if (!discordClient || !supabase) return;
 
-    Logger.system("[guildsSync] Iniciando sincronización completa de servidores para todos los usuarios vinculados...");
     try {
+        if (!force) {
+            const lastSyncStr = await BotSettingsModel.getSetting(SYNC_SETTING_KEY);
+            if (lastSyncStr) {
+                const lastSync = new Date(lastSyncStr);
+                const timePassed = Date.now() - lastSync.getTime();
+                if (timePassed < SYNC_INTERVAL_MS) {
+                    const minutesPassed = Math.round(timePassed / 1000 / 60);
+                    Logger.system(`[guildsSync] Sincronización completa omitida. Última realizada hace ${minutesPassed} minutos.`);
+                    return;
+                }
+            }
+        }
+
+        Logger.system("[guildsSync] Iniciando sincronización completa de servidores para todos los usuarios vinculados...");
+
         // 1. Obtener todos los usuarios vinculados de Supabase
         const { data: allUsers, error } = await supabase
             .from('users')
@@ -79,7 +98,6 @@ async function syncAllGuilds() {
         }
 
         for (const [guildId, guild] of discordClient.guilds.cache) {
-            // Verificar miembros presentes en esta guild en lotes de 100
             const presentInGuild = new Set();
             const chunkSize = 100;
             for (let i = 0; i < discordIds.length; i += chunkSize) {
@@ -134,6 +152,8 @@ async function syncAllGuilds() {
             }
         }
 
+        // Guardar la marca de tiempo de sincronización exitosa de forma persistente
+        await BotSettingsModel.setSetting(SYNC_SETTING_KEY, new Date().toISOString());
         Logger.system(`[guildsSync] Sincronización completa terminada. Se actualizaron ${updatedCount} usuarios.`);
     } catch (err) {
         console.error('[guildsSync] Error en la sincronización completa:', err);
@@ -147,7 +167,7 @@ function initGuildsSync(client, supabaseClient) {
     discordClient = client;
     supabase = supabaseClient;
 
-    Logger.system("[guildsSync] Inicializando servicio de sincronización de servidores...");
+    Logger.system("[guildsSync] Sincronización completa persistente y asíncrona iniciada.");
 
     // Evento: Miembro se une a un servidor
     client.on('guildMemberAdd', async (member) => {
@@ -198,18 +218,19 @@ function initGuildsSync(client, supabaseClient) {
         }
     });
 
-    // Programar sincronización completa diaria y al inicio
+    // Programar comprobación inicial asíncrona a los 15 segundos del encendido
     setTimeout(() => {
-        syncAllGuilds().catch(err => {
+        syncAllGuilds(false).catch(err => {
             console.error('[guildsSync] Error en syncAllGuilds al arranque:', err);
         });
-    }, 15000); // 15 segundos después de iniciar
+    }, 15000);
 
+    // Comprobar cada hora si corresponde hacer la sincronización completa (según la marca persistente de la DB)
     setInterval(() => {
-        syncAllGuilds().catch(err => {
-            console.error('[guildsSync] Error en syncAllGuilds diario:', err);
+        syncAllGuilds(false).catch(err => {
+            console.error('[guildsSync] Error en syncAllGuilds periódico:', err);
         });
-    }, 24 * 60 * 60 * 1000); // Cada 24 horas
+    }, 60 * 60 * 1000); // Cada 1 hora
 }
 
 module.exports = {
