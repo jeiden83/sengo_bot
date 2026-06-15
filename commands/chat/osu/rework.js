@@ -480,6 +480,7 @@ async function run(messages, args) {
     }
 
     let sentMessage = null;
+    const processStartTime = Date.now();
     let stepStartTime = Date.now();
 
     const stepTemplates = locale === 'es' ? [
@@ -541,10 +542,16 @@ async function run(messages, args) {
             return `${emoji} ${s.text}${durationText}${extraText}`;
         });
 
+        const totalElapsed = Date.now() - processStartTime;
         const progressEmbed = new EmbedBuilder()
             .setTitle(locale === 'es' ? "Calculando Rework..." : "Calculating Rework...")
             .setDescription(descriptionLines.join('\n'))
-            .setColor(embedColor);
+            .setColor(embedColor)
+            .setFooter({
+                text: locale === 'es'
+                    ? `Sengo • Tiempo transcurrido: ${(totalElapsed / 1000).toFixed(2)}s`
+                    : `Sengo • Elapsed time: ${(totalElapsed / 1000).toFixed(2)}s`
+            });
 
         try {
             if (!sentMessage) {
