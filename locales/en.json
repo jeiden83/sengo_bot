@@ -1156,7 +1156,7 @@
     "calc_diff": "Difficulty",
     "calc_rework": "Rework",
     "calc_values_header": "Recalculated PP Values (Estimation):",
-    "calc_status_no_scores": "💡 *Note: This map has no scores in this rework. Estimated values equal to Live are shown.*",
+    "calc_status_no_scores": "💡 *Note: This map has no scores in this rework (or was recently updated/submitted and has not been processed yet). Estimated values equal to Live are shown. Try again later.*",
     "calc_status_exact": "✅ *Exact mods match in rework plays. (Ratio: {ratio}%)*",
     "calc_status_estimate": "⚠️ *No plays with this mods combination in the rework. Estimation based on map average. (Ratio: {ratio}%)*",
     "user_author": "Rework PP Details for {username}!",
