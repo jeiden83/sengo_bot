@@ -1696,6 +1696,65 @@ ${statsBlock}
     return embed;
 }
 
+async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, reworkStars, rework, locale = 'es') {
+    const embedColor = getEmbedColor(message);
+    const mapName = `${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]`;
+    const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
+    const beatmapCover = beatmap.beatmapset.covers["cover@2x"];
+
+    const modsStr = parsedPlay.mods && parsedPlay.mods.length > 0
+        ? `+${parsedPlay.mods.join("")}`
+        : "None";
+
+    const diff = reworkPP - parsedPlay.livePP;
+    const diffSign = diff >= 0 ? "+" : "";
+    const emoji = diff >= 0 ? "🟢" : "🔴";
+    const diffString = `${emoji} ${diffSign}${diff.toFixed(2)}pp`;
+
+    // Calcular/mostrar estrellas si están disponibles
+    const liveSR = parsedPlay.liveModStars || beatmap.difficulty_rating || 0;
+    const reworkSR = reworkStars || liveSR;
+    const srDiff = reworkSR - liveSR;
+    const srDiffSign = srDiff >= 0 ? "+" : "";
+    const srDisplay = `${liveSR.toFixed(2)}★ -> ${reworkSR.toFixed(2)}★ (${srDiffSign}${srDiff.toFixed(2)})`;
+
+    let hitsText = "";
+    if (parsedPlay.hits && parsedPlay.hits.length > 0) {
+        hitsText = ` [${parsedPlay.hits.join("/")}]`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: locale === 'es' 
+                ? `Comparación de Jugada Rework para ${parsedPlay.username}`
+                : `Rework Play Comparison for ${parsedPlay.username}`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTitle(mapName)
+        .setURL(mapUrl)
+        .setImage(beatmapCover)
+        .setColor(embedColor)
+        .setDescription(`
+**• ${t(locale, 'rework.calc_mods')}:** \`${modsStr}\`
+**• ${t(locale, 'rework.calc_diff')}:** \`${srDisplay}\`
+**• ${t(locale, 'rework.calc_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})
+
+**${t(locale, 'rework.user_comp_header') || 'Comparación de PP'}:**
+▸ **${t(locale, 'rework.user_comp_live') || 'PP en Live'}:** \`${parsedPlay.livePP.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_rework') || 'PP en Rework'}:** \`${reworkPP.toFixed(2)} pp\`
+▸ **${t(locale, 'rework.user_comp_change') || 'Cambio'}:** \`${diffString}\`
+▸ **${t(locale, 'rework.top_single_precision') || 'Precisión'}:** \`${parsedPlay.accuracy.toFixed(2)}%\`${hitsText}
+▸ **Combo:** \`x${parsedPlay.combo || '?'}/${parsedPlay.maxCombo || beatmap.max_combo || '?'}\`
+        `)
+        .setFooter({
+            text: `Sengo • PP Rework Play Comparison`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
 module.exports = {
     doOsuEmbed,
     doOsuListEmbed,
@@ -1715,6 +1774,7 @@ module.exports = {
     doOsuReworkUserEmbed,
     doOsuReworkListEmbed,
     doOsuReworkTopEmbed,
-    doOsuReworkTopSingleEmbed
+    doOsuReworkTopSingleEmbed,
+    doOsuReworkPlayEmbed
 };
 

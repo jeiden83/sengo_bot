@@ -609,6 +609,123 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
     return result;
 }
 
+// Calcular valor de PP exacto para una jugada/score específico usando la API de pp.huismetbenen.nl
+async function calculateReworkPPForScoreExact(beatmapId, modsStr, scoreStats, gamemode, reworkCode) {
+    let modeNum = 0;
+    if (gamemode === 'taiko' || gamemode === 1) modeNum = 1;
+    else if (gamemode === 'fruits' || gamemode === 'catch' || gamemode === 2) modeNum = 2;
+    else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
+
+    const cleanMods = (modsStr || "").replace(/[+]/g, '').toUpperCase();
+    const ignored = new Set(['CL', 'NF', 'SO', 'SD', 'PF']);
+    let modsArray = [];
+    if (cleanMods && cleanMods !== 'NOMOD' && cleanMods !== 'NM' && cleanMods !== 'NONE') {
+        const matches = cleanMods.match(/.{1,2}/g) || [];
+        modsArray = matches.filter(m => !ignored.has(m));
+    }
+
+    const session = await loadSession();
+    if (!session.accessToken) {
+        throw new Error("No access token available");
+    }
+
+    const url = 'https://api.pp.huismetbenen.nl/calculate-score';
+    const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Sengo',
+        'Connection': 'close',
+        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
+    };
+
+    const payload = {
+        map_id: Number(beatmapId),
+        mods: modsArray,
+        gamemode: modeNum,
+        rework: reworkCode,
+        accuracy: scoreStats.accuracy,
+        combo: scoreStats.combo || null,
+        count_300: scoreStats.count_300 !== undefined ? scoreStats.count_300 : null,
+        count_100: scoreStats.count_100 !== undefined ? scoreStats.count_100 : null,
+        count_50: scoreStats.count_50 !== undefined ? scoreStats.count_50 : null,
+        misses: scoreStats.misses !== undefined ? scoreStats.misses : 0
+    };
+
+    let attempts = 3;
+    for (let i = 0; i < attempts; i++) {
+        try {
+            const response = await axios.post(url, payload, { headers, timeout: 8000 });
+            if (response.headers['set-cookie']) {
+                await updateCookiesFromHeaders(response.headers['set-cookie']);
+            }
+            return {
+                pp: response.data.performance_attributes ? response.data.performance_attributes.pp : 0,
+                stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : 0
+            };
+        } catch (err) {
+            const isNetworkError = err.code === 'ECONNRESET' || err.message.includes('socket hang up') || err.code === 'ETIMEDOUT';
+            if (isNetworkError && i < attempts - 1) {
+                await new Promise(resolve => setTimeout(resolve, 300));
+                const updatedSession = await loadSession();
+                headers.Cookie = `HUISMETBENEN_ACCESS_TOKEN=${updatedSession.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${updatedSession.refreshToken}`;
+                continue;
+            }
+            throw err;
+        }
+    }
+}
+
+// Calcular estimación de PP para un score en base al promedio/ratio de scores del mapa
+function calculateReworkPPForScore(beatmapScores, modsStr, livePP) {
+    const targetNormalized = normalizeMods(modsStr);
+    
+    const matchingScores = beatmapScores.filter(s => {
+        const norm = normalizeMods(s.mods);
+        return norm === targetNormalized;
+    });
+
+    let ratio = 1.0;
+    let srRatio = 1.0;
+
+    if (matchingScores.length > 0) {
+        let sumRatio = 0;
+        let sumSrRatio = 0;
+        let count = 0;
+        for (const score of matchingScores) {
+            if (score.values && score.values.difference_live_relative) {
+                sumRatio += score.values.difference_live_relative;
+                const liveSr = score.values.sr - (score.values.difference_sr_live || 0);
+                sumSrRatio += liveSr > 0 ? (score.values.sr / liveSr) : 1.0;
+                count++;
+            }
+        }
+        if (count > 0) {
+            ratio = sumRatio / count;
+            srRatio = sumSrRatio / count;
+        }
+    } else if (beatmapScores.length > 0) {
+        let sumRatio = 0;
+        let sumSrRatio = 0;
+        let count = 0;
+        for (const score of beatmapScores) {
+            if (score.values && score.values.difference_live_relative) {
+                sumRatio += score.values.difference_live_relative;
+                const liveSr = score.values.sr - (score.values.difference_sr_live || 0);
+                sumSrRatio += liveSr > 0 ? (score.values.sr / liveSr) : 1.0;
+                count++;
+            }
+        }
+        if (count > 0) {
+            ratio = sumRatio / count;
+            srRatio = sumSrRatio / count;
+        }
+    }
+
+    return {
+        pp: livePP * ratio,
+        srRatio
+    };
+}
+
 const userReworkScoresCache = new Map();
 
 // Obtener todas las puntuaciones recalculadas del jugador en un rework
@@ -656,6 +773,8 @@ module.exports = {
     normalizeMods,
     calculateReworkPPForMap,
     calculateReworkPPForMapExact,
+    calculateReworkPPForScoreExact,
+    calculateReworkPPForScore,
     getUserReworkScores,
     addToQueue,
     removeFromQueue,

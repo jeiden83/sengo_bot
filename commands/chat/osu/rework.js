@@ -1,10 +1,115 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParser, argsParserNoCommand, getOsuUser } = require("../../utils/osu.js");
 const ReworkModel = require("../../../models/ReworkModel.js");
 const rosu = require("rosu-pp-js");
-const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed, doOsuReworkPlayEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
 const { EmbedBuilder } = require("discord.js");
 const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
+
+function stripAnsi(str) {
+    if (!str) return "";
+    return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
+}
+
+function parsePlayEmbed(embed) {
+    if (!embed) return null;
+
+    const desc = embed.description || "";
+    const fieldsText = (embed.fields || []).map(f => f.value).join(" ");
+    const combinedText = desc + " " + fieldsText;
+
+    let beatmapId = null;
+    if (embed.url) {
+        const match = embed.url.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                      embed.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+        if (match) beatmapId = match[1];
+    }
+    if (!beatmapId && embed.author?.url) {
+        const match = embed.author.url.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                      embed.author.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+        if (match) beatmapId = match[1];
+    }
+    if (!beatmapId) {
+        const allMatches = combinedText.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                           combinedText.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+        if (allMatches) beatmapId = allMatches[1];
+    }
+
+    if (!beatmapId) return null;
+
+    const modMatches = [...combinedText.matchAll(/<:([A-Z0-9]{2,4}):\d+>/g)];
+    let mods = modMatches.map(m => m[1]).filter(m => m !== 'NM' && m !== 'CL');
+    
+    if (mods.length === 0) {
+        const textModMatch = combinedText.match(/\+([A-Z0-9]{2,})/i);
+        if (textModMatch) {
+            const possibleMods = textModMatch[1].toUpperCase();
+            mods = possibleMods.match(/.{1,2}/g) || [];
+        }
+    }
+
+    const cleanText = stripAnsi(combinedText);
+    
+    const hitStatsMatch = cleanText.match(/\[([\d/]+)\]/);
+    let hits = null;
+    let count_300 = null;
+    let count_100 = null;
+    let count_50 = null;
+    let misses = 0;
+    if (hitStatsMatch) {
+        hits = hitStatsMatch[1].split('/').map(Number);
+        if (hits.length === 4) {
+            count_300 = hits[0];
+            count_100 = hits[1];
+            count_50 = hits[2];
+            misses = hits[3];
+        } else if (hits.length === 3) {
+            count_300 = hits[0];
+            count_100 = hits[1];
+            misses = hits[2];
+        } else if (hits.length === 6) {
+            misses = hits[5];
+        }
+    }
+
+    const ppMatch = cleanText.match(/(\d+(?:\.\d+)?)PP\//i) || cleanText.match(/(\d+(?:\.\d+)?)\s*pp/i);
+    const livePP = ppMatch ? parseFloat(ppMatch[1]) : null;
+
+    const accMatch = cleanText.match(/(\d+(?:\.\d+)?)%/);
+    const accuracy = accMatch ? parseFloat(accMatch[1]) : null;
+
+    const comboMatch = cleanText.match(/x(\d+)\/(\d+)/) || cleanText.match(/combo:\s*x?(\d+)/i);
+    const combo = comboMatch ? parseInt(comboMatch[1]) : null;
+    const maxCombo = comboMatch && comboMatch[2] ? parseInt(comboMatch[2]) : null;
+
+    let username = "Jugador";
+    if (embed.author?.name) {
+        username = embed.author.name
+            .replace(/Detalles de jugada de /i, "")
+            .replace(/#\d+\s+/g, "")
+            .replace(/ en Bancho/i, "")
+            .trim();
+    }
+
+    if (livePP === null || accuracy === null) {
+        return null;
+    }
+
+    return {
+        beatmapId,
+        mods,
+        accuracy,
+        combo,
+        maxCombo,
+        count_300,
+        count_100,
+        count_50,
+        misses,
+        livePP,
+        username,
+        hits
+    };
+}
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
@@ -461,8 +566,38 @@ async function run(messages, args) {
     // ----------------------------------------------------
     // Caso 3: s.rework [mapa] [+mods] (Cálculo de Beatmap en Rework)
     // ----------------------------------------------------
+    let parsedPlay = null;
+    if (!initial_parsed.beatmap_url) {
+        let repliedMsg = null;
+        if (message.reference && message.reference.messageId) {
+            try {
+                repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+            } catch (e) {
+                console.error("Error al obtener mensaje de referencia:", e);
+            }
+        }
+
+        if (repliedMsg && repliedMsg.embeds && repliedMsg.embeds.length > 0) {
+            parsedPlay = parsePlayEmbed(repliedMsg.embeds[0]);
+        }
+
+        if (!parsedPlay) {
+            try {
+                const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
+                for (const msg of fetch_messages.values()) {
+                    if (msg.embeds && msg.embeds.length > 0) {
+                        parsedPlay = parsePlayEmbed(msg.embeds[0]);
+                        if (parsedPlay) break;
+                    }
+                }
+            } catch (e) {
+                console.error("Error al buscar play en canal:", e);
+            }
+        }
+    }
+
     if (logger) logger.process("Buscando mapa para calcular rework");
-    let beatmap_id = initial_parsed.beatmap_url;
+    let beatmap_id = parsedPlay ? parsedPlay.beatmapId : initial_parsed.beatmap_url;
 
     if (!beatmap_id && initial_parsed.username && initial_parsed.username[0]) {
         const potential_id = initial_parsed.username[0].trim();
@@ -488,13 +623,13 @@ async function run(messages, args) {
         "Descargando archivo .osu...",
         "Calculando valores en local...",
         "Obteniendo configuración del rework...",
-        "Consultando rework exacto a pp.huismetbenen.nl..."
+        parsedPlay ? "Consultando rework de la jugada a pp.huismetbenen.nl..." : "Consultando rework exacto a pp.huismetbenen.nl..."
     ] : [
         "Fetching beatmap metadata...",
         "Downloading .osu file...",
         "Calculating local values...",
         "Fetching rework configuration...",
-        "Querying exact rework to pp.huismetbenen.nl..."
+        parsedPlay ? "Querying play rework to pp.huismetbenen.nl..." : "Querying exact rework to pp.huismetbenen.nl..."
     ];
 
     const activeSteps = [];
@@ -592,7 +727,7 @@ async function run(messages, args) {
     }
 
     await updateProgress(2, 'loading');
-    let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || "";
+    let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || (parsedPlay ? parsedPlay.mods.join("") : "");
     const activeModsStr = modsStr.replace(/CL/g, "");
 
     let requestedMode = initial_parsed.gamemode;
@@ -648,6 +783,54 @@ async function run(messages, args) {
         return;
     }
     await updateProgress(3, 'success');
+
+    if (parsedPlay) {
+        parsedPlay.liveModStars = liveModStars;
+        map.free();
+
+        await updateProgress(4, 'loading');
+        
+        let reworkPP = null;
+        let reworkStars = null;
+        try {
+            const res = await ReworkModel.calculateReworkPPForScoreExact(beatmap.id, modsStr, parsedPlay, activeMode, rework.code);
+            reworkPP = res.pp;
+            reworkStars = res.stars;
+            await updateProgress(4, 'success');
+        } catch (err) {
+            console.warn(`[Rework] No se pudo realizar el cálculo exacto de score: ${err.message}`);
+        }
+
+        if (!reworkPP) {
+            await updateProgress(4, 'warning', `(No disponible, estimando...)`);
+            stepTemplates.push(locale === 'es' ? "Calculando estimación..." : "Calculating estimation...");
+            await updateProgress(5, 'loading');
+
+            let beatmapScores = [];
+            try {
+                beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
+            } catch (e) {
+                console.error("Error al obtener scores de beatmap en Rework:", e);
+            }
+
+            const est = ReworkModel.calculateReworkPPForScore(beatmapScores, modsStr, parsedPlay.livePP);
+            reworkPP = est.pp;
+            const liveSR = parsedPlay.liveModStars || beatmap.difficulty_rating || 0;
+            reworkStars = liveSR * est.srRatio;
+            await updateProgress(5, 'success');
+        }
+
+        const embed = await doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, reworkStars, rework, locale);
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            await sentMessage.edit({ content: null, embeds: [embed] });
+            return;
+        }
+        if (reply) {
+            reply.reply({ embeds: [embed] });
+            return;
+        }
+        return { embeds: [embed] };
+    }
 
     let reworkResult = null;
     await updateProgress(4, 'loading', `[100%: ⏳, 99%: ⚪, 98%: ⚪, 95%: ⚪]`);
