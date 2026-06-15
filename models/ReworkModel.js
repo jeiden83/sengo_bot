@@ -517,13 +517,15 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
 
     const url = 'https://api.pp.huismetbenen.nl/calculate-score';
     const accuracies = [100, 99, 98, 95];
-    const headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Sengo',
-        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
-    };
 
     const fetchAcc = async (acc) => {
+        const activeSession = await loadSession();
+        const headers = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Sengo',
+            'Connection': 'close',
+            'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${activeSession.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${activeSession.refreshToken}`
+        };
         const payload = {
             map_id: Number(beatmapId),
             mods: modsArray,
@@ -532,17 +534,33 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
             accuracy: acc,
             combo: livePPValues.maxCombo || null
         };
-        const response = await axios.post(url, payload, { headers, httpsAgent, timeout: 6000 });
         
-        if (response.headers['set-cookie']) {
-            await updateCookiesFromHeaders(response.headers['set-cookie']);
+        let attempts = 3;
+        for (let i = 0; i < attempts; i++) {
+            try {
+                // Hacemos la petición sin usar el agente Keep-Alive ya que usamos Connection: close
+                const response = await axios.post(url, payload, { headers, timeout: 6000 });
+                if (response.headers['set-cookie']) {
+                    await updateCookiesFromHeaders(response.headers['set-cookie']);
+                }
+                return {
+                    acc,
+                    pp: response.data.performance_attributes ? response.data.performance_attributes.pp : 0,
+                    stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : livePPValues.baseStars
+                };
+            } catch (err) {
+                const isNetworkError = err.code === 'ECONNRESET' || err.message.includes('socket hang up') || err.code === 'ETIMEDOUT';
+                if (isNetworkError && i < attempts - 1) {
+                    console.log(`[ReworkModel] Petición para acc ${acc}% falló (${err.message}). Reintentando en 300ms... (Intento ${i + 1}/${attempts})`);
+                    await new Promise(resolve => setTimeout(resolve, 300));
+                    const updatedSession = await loadSession();
+                    headers.Cookie = `HUISMETBENEN_ACCESS_TOKEN=${updatedSession.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${updatedSession.refreshToken}`;
+                    continue;
+                }
+                console.log(`[DEBUG ReworkModel] Requesting acc ${acc}% FAILED with error: ${err.message} (code: ${err.code})`);
+                throw err;
+            }
         }
-        
-        return {
-            acc,
-            pp: response.data.performance_attributes ? response.data.performance_attributes.pp : 0,
-            stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : livePPValues.baseStars
-        };
     };
 
     const results = [];
