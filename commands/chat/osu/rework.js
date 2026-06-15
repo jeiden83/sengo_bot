@@ -477,20 +477,67 @@ async function run(messages, args) {
         beatmap_id = channel_result.beatmap_url;
     }
 
+    let sentMessage = null;
+    const progressLines = [
+        `⏳ **Procesando rework en Sengo...**`,
+        `• Obteniendo metadatos del mapa... ⏳`,
+        `• Descargando archivo .osu... ⚪`,
+        `• Calculando valores en local... ⚪`,
+        `• Obteniendo configuración del rework... ⚪`,
+        `• Consultando rework exacto a pp.huismetbenen.nl... ⚪`
+    ];
+
+    const updateProgress = async (index, emoji, extra = "") => {
+        progressLines[index] = progressLines[index].replace(/[⏳⚪✅❌⚠️🔄]/, emoji);
+        if (extra) {
+            const baseText = progressLines[index].split('...')[0] + '...';
+            progressLines[index] = `${baseText} ${extra}`;
+        }
+        try {
+            if (!sentMessage) {
+                if (reply) {
+                    sentMessage = await reply.reply({ content: progressLines.join('\n') });
+                } else {
+                    sentMessage = await message.channel.send({ content: progressLines.join('\n') });
+                }
+            } else if (typeof sentMessage.edit === 'function') {
+                await sentMessage.edit({ content: progressLines.join('\n') });
+            }
+        } catch (e) {
+            // Ignorar
+        }
+    };
+
+    await updateProgress(1, '⏳');
+
     let beatmap;
     try {
         beatmap = await getBeatmap(beatmap_id);
+        await updateProgress(1, '✅');
     } catch (e) {
-        return t(locale, 'rework.err_map_metadata', { mapId: beatmap_id });
+        const errText = t(locale, 'rework.err_map_metadata', { mapId: beatmap_id });
+        if (sentMessage) {
+            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
+            return;
+        }
+        return errText;
     }
 
     let map;
+    await updateProgress(2, '⏳');
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
+        await updateProgress(2, '✅');
     } catch (e) {
-        return t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
+        const errText = t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
+        if (sentMessage) {
+            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
+            return;
+        }
+        return errText;
     }
 
+    await updateProgress(3, '⏳');
     let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || "";
     const activeModsStr = modsStr.replace(/CL/g, "");
 
@@ -531,36 +578,80 @@ async function run(messages, args) {
     };
 
     map.free();
+    await updateProgress(3, '✅');
 
+    await updateProgress(4, '⏳');
     // Obtener Rework
     const rework = await ReworkModel.getReworkByQuery(reworkQuery, activeMode);
     if (!rework) {
-        return t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
+        const errText = t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
+        if (sentMessage) {
+            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
+            return;
+        }
+        return errText;
     }
+    await updateProgress(4, '✅');
 
     let reworkResult = null;
+    await updateProgress(5, '⏳', `[100%: ⏳, 99%: ⚪, 98%: ⚪, 95%: ⚪]`);
+
+    const onProgress = async (acc, status, extraVal) => {
+        const accs = [100, 99, 98, 95];
+        const accIdx = accs.indexOf(acc);
+        
+        let progressStr = accs.map((a, idx) => {
+            let emoji = '⚪';
+            if (idx < accIdx) emoji = '✅';
+            else if (idx === accIdx) {
+                if (status === 'loading') emoji = '⏳';
+                else if (status === 'success') emoji = '✅';
+                else if (status === 'retry') emoji = '🔄';
+                else if (status === 'failed') emoji = '❌';
+            }
+            let extraInfo = "";
+            if (idx === accIdx && status === 'retry') {
+                extraInfo = ` (Reintento ${extraVal || 2}/3)`;
+            }
+            return `${a}%: ${emoji}${extraInfo}`;
+        }).join(', ');
+        
+        await updateProgress(5, '⏳', `[${progressStr}]`);
+    };
 
     if (logger) logger.process(`Intentando calcular Rework exacto para beatmap ID: ${beatmap.id}`);
     try {
-        reworkResult = await ReworkModel.calculateReworkPPForMapExact(beatmap.id, modsStr, livePPValues, activeMode, rework.code);
+        reworkResult = await ReworkModel.calculateReworkPPForMapExact(beatmap.id, modsStr, livePPValues, activeMode, rework.code, onProgress);
+        await updateProgress(5, '✅');
     } catch (err) {
         console.warn(`[Rework] No se pudo realizar el cálculo exacto (fallando a promedio): ${err.message}`);
     }
 
     if (!reworkResult) {
+        await updateProgress(5, '⚠️', `(No disponible, estimando por promedio...)`);
         if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id} (Promedio)`);
         let beatmapScores = [];
         try {
             beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
         } catch (e) {
             console.error("Error al obtener scores de beatmap en Rework:", e);
-            return t(locale, 'rework.err_rework_map_api');
+            const errText = t(locale, 'rework.err_rework_map_api');
+            if (sentMessage) {
+                await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
+                return;
+            }
+            return errText;
         }
         reworkResult = ReworkModel.calculateReworkPPForMap(beatmapScores, modsStr, livePPValues);
     }
 
     const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale);
     
+    if (sentMessage && typeof sentMessage.edit === 'function') {
+        await sentMessage.edit({ content: null, embeds: [embed] });
+        return;
+    }
+
     if (reply) {
         reply.reply({ embeds: [embed] });
         return;

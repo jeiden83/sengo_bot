@@ -491,7 +491,7 @@ function calculateReworkPPForMap(beatmapScores, modsStr, livePPValues) {
 }
 
 // Calcular valores de PP exactos usando la API de pp.huismetbenen.nl
-async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, gamemode, reworkCode) {
+async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, gamemode, reworkCode, onProgressCallback) {
     const cacheKey = `${beatmapId}:${reworkCode}:${modsStr || "NM"}`;
     if (calculatedReworkCache.has(cacheKey)) {
         return calculatedReworkCache.get(cacheKey);
@@ -551,6 +551,9 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
             } catch (err) {
                 const isNetworkError = err.code === 'ECONNRESET' || err.message.includes('socket hang up') || err.code === 'ETIMEDOUT';
                 if (isNetworkError && i < attempts - 1) {
+                    if (onProgressCallback) {
+                        onProgressCallback(acc, 'retry', i + 2);
+                    }
                     console.log(`[ReworkModel] Petición para acc ${acc}% falló (${err.message}). Reintentando en 300ms... (Intento ${i + 1}/${attempts})`);
                     await new Promise(resolve => setTimeout(resolve, 300));
                     const updatedSession = await loadSession();
@@ -565,7 +568,21 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
 
     const results = [];
     for (const acc of accuracies) {
-        results.push(await fetchAcc(acc));
+        if (onProgressCallback) {
+            onProgressCallback(acc, 'loading');
+        }
+        try {
+            const res = await fetchAcc(acc);
+            results.push(res);
+            if (onProgressCallback) {
+                onProgressCallback(acc, 'success', res.pp);
+            }
+        } catch (err) {
+            if (onProgressCallback) {
+                onProgressCallback(acc, 'failed');
+            }
+            throw err;
+        }
     }
 
     const resSS = results.find(r => r.acc === 100);
