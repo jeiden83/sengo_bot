@@ -1140,7 +1140,9 @@
     "err_no_score_info": "Could not extract score information. Make sure you reply to a `.osr` replay file or a compatible bot embed.",
     "err_md5_failed": "Could not find the original beatmap using the internal MD5 of the replay (`{md5}`). This usually happens with some replays exported from osu!lazer or modified maps. \n**Solution:** Send the replay again by replying to a message containing the link to the original beatmap.",
     "err_map_not_found": "Could not find the beatmap `{mapName}` in the osu! database.",
-    "err_user_not_found": "Could not resolve the ID for user `{username}` and you are not linked to a profile."
+    "err_user_not_found": "Could not resolve the ID for user `{username}` and you are not linked to a profile.",
+    "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` to use this command.",
+    "err_online_identity_mismatch": "❌ You cannot upload scores from other online players."
   },
   "rework": {
     "calc_author": "PP Estimation in Rework: {reworkName}",

@@ -1140,7 +1140,9 @@
     "err_no_score_info": "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.",
     "err_md5_failed": "No pude encontrar el mapa original usando el MD5 interno de la replay (`{md5}`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.",
     "err_map_not_found": "No pude encontrar el mapa `{mapName}` en la base de datos de osu!.",
-    "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil."
+    "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil.",
+    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando.",
+    "err_online_identity_mismatch": "❌ No puedes subir jugadas de otros jugadores online."
   },
   "rework": {
     "calc_author": "Estimación de PP en Rework: {reworkName}",

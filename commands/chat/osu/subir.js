@@ -356,6 +356,19 @@ async function run(messages, args, initialized_data) {
     const parsed_args = argsParserNoCommand(args);
     const locale = message.locale || 'es';
 
+    // 1. Validar vinculación tradicional y OAuth del autor
+    const authorId = message.author.id;
+    const linkedAuthor = await OsuUserModel.getLinkedUser(res.User, authorId);
+    if (!linkedAuthor) {
+        console.log(`[S.SUBIR] Error: El usuario no está vinculado.`);
+        return t(locale, 'subir.err_need_oauth');
+    }
+    const oauthRecord = await OsuUserModel.getOAuthTokenRecord(authorId);
+    if (!oauthRecord) {
+        console.log(`[S.SUBIR] Error: El usuario no tiene vinculación OAuth.`);
+        return t(locale, 'subir.err_need_oauth');
+    }
+
     console.log(`\n--- [S.SUBIR] Nueva solicitud de subida ---`);
     console.log(`[S.SUBIR] Usuario solicitante: ${message.author.tag} (${message.author.id})`);
 
@@ -556,29 +569,24 @@ async function run(messages, args, initialized_data) {
     console.log(`[S.SUBIR] Mapa resuelto correctamente. Beatmap ID: ${beatmap_id}`);
     const beatmap_metadata = await getBeatmap(beatmap_id);
 
-    // Get user id
+    // Resolviendo la identidad de la score (Online vs Offline)
     let user_id = null;
     const osuUser = await getOsuUser({ username: [parsedData.player_name], gamemode: 'osu' });
+    
+    // ponytail: Se asume que si getOsuUser devuelve un error (string), el jugador no existe online y es local/offline.
     if (typeof osuUser !== 'string') {
-        user_id = osuUser.id;
+        // Caso A: El jugador existe en osu! oficial (Online)
+        const onlineOsuId = osuUser.id;
+        if (String(onlineOsuId) !== String(linkedAuthor.osu_id)) {
+            console.log(`[S.SUBIR] Error: El jugador de la score (${parsedData.player_name}: ${onlineOsuId}) no coincide con el autor vinculado (${linkedAuthor.osu_id})`);
+            return t(locale, 'subir.err_online_identity_mismatch');
+        }
+        user_id = onlineOsuId;
+        parsedData.player_name = osuUser.username; // Sobrescribe con el nombre oficial por posibles fallos de OCR
     } else {
-        const linked = await OsuUserModel.getLinkedUser(res.User, message.author.id);
-        if (linked) user_id = linked.osu_id;
-    }
-
-    if (!user_id) {
-        return t(locale, 'subir.err_user_not_found', { username: parsedData.player_name });
-    }
-
-    // Obtener el perfil real del usuario para corregir posibles fallos del OCR en el nombre
-    let finalOsuUser = typeof osuUser !== 'string' ? osuUser : null;
-    if (!finalOsuUser && user_id) {
-        const fetched = await getOsuUser({ username: [String(user_id)], gamemode: 'osu' });
-        if (typeof fetched !== 'string') finalOsuUser = fetched;
-    }
-
-    if (finalOsuUser && finalOsuUser.username) {
-        parsedData.player_name = finalOsuUser.username; // Sobrescribe Aquaro por Aquare (oficial)
+        // Caso B: El jugador no existe en osu! oficial (Offline)
+        console.log(`[S.SUBIR] El jugador '${parsedData.player_name}' no existe online. Tratándolo como score offline.`);
+        user_id = linkedAuthor.osu_id;
     }
 
     // Nota: El ajuste de zona horaria del OCR ha sido removido porque las replays (.osr) y embeds de bots
