@@ -2,6 +2,58 @@ const axios = require('axios');
 const fs = require('fs/promises');
 const path = require('path');
 
+let currentSession = null;
+const SESSION_FILE = path.resolve('huismetbenen_session.json');
+const calculatedReworkCache = new Map();
+
+async function loadSession() {
+    if (currentSession) return currentSession;
+    try {
+        const data = await fs.readFile(SESSION_FILE, 'utf-8');
+        currentSession = JSON.parse(data);
+    } catch (err) {
+        currentSession = {
+            accessToken: process.env.HUISMETBENEN_ACCESS_TOKEN || null,
+            refreshToken: process.env.HUISMETBENEN_REFRESH_TOKEN || null
+        };
+    }
+    return currentSession;
+}
+
+async function saveSession(accessToken, refreshToken) {
+    currentSession = { accessToken, refreshToken };
+    try {
+        await fs.writeFile(SESSION_FILE, JSON.stringify(currentSession, null, 2), 'utf-8');
+    } catch (err) {
+        console.error("[Rework] Error al guardar sesión de huismetbenen:", err);
+    }
+}
+
+async function updateCookiesFromHeaders(setCookieHeaders) {
+    if (!setCookieHeaders || !Array.isArray(setCookieHeaders)) return;
+    
+    let updated = false;
+    let newAccess = currentSession ? currentSession.accessToken : null;
+    let newRefresh = currentSession ? currentSession.refreshToken : null;
+
+    for (const cookieStr of setCookieHeaders) {
+        const matchAccess = cookieStr.match(/HUISMETBENEN_ACCESS_TOKEN=([^;]+)/);
+        if (matchAccess && (!currentSession || matchAccess[1] !== currentSession.accessToken)) {
+            newAccess = matchAccess[1];
+            updated = true;
+        }
+        const matchRefresh = cookieStr.match(/HUISMETBENEN_REFRESH_TOKEN=([^;]+)/);
+        if (matchRefresh && (!currentSession || matchRefresh[1] !== currentSession.refreshToken)) {
+            newRefresh = matchRefresh[1];
+            updated = true;
+        }
+    }
+
+    if (updated) {
+        await saveSession(newAccess, newRefresh);
+    }
+}
+
 // Caché local en memoria y en archivo para persistencia
 let reworkUserCache = new Map();
 const CACHE_FILE = path.resolve('rework_user_cache.json');
@@ -187,15 +239,15 @@ function getQueueStatus(osuId, reworkId) {
 
 // Solicitar recalculación de rework a pp.huismetbenen.nl
 async function requestReworkRecalculation(osuId, reworkId) {
-    const cookie = process.env.HUISMETBENEN_COOKIE || process.env.HUISMETBENEN_ACCESS_TOKEN;
-    if (!cookie) {
-        return { success: false, error: "HUISMETBENEN_COOKIE o HUISMETBENEN_ACCESS_TOKEN no configurado en .env" };
+    const session = await loadSession();
+    if (!session.accessToken) {
+        return { success: false, error: "HUISMETBENEN_ACCESS_TOKEN no configurado o no cargado" };
     }
     const url = 'https://api.pp.huismetbenen.nl/queue/add-to-queue';
     const headers = {
         'Content-Type': 'application/json',
         'User-Agent': 'Sengo',
-        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${cookie}`
+        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
     };
 
     try {
@@ -203,6 +255,11 @@ async function requestReworkRecalculation(osuId, reworkId) {
             user_id: Number(osuId),
             rework: Number(reworkId)
         }, { headers, timeout: 8000 });
+
+        if (res.headers['set-cookie']) {
+            await updateCookiesFromHeaders(res.headers['set-cookie']);
+        }
+
         return { success: true, status: res.status, data: res.data };
     } catch (err) {
         const errorMsg = err.response ? JSON.stringify(err.response.data) : err.message;
@@ -430,6 +487,86 @@ function calculateReworkPPForMap(beatmapScores, modsStr, livePPValues) {
     };
 }
 
+// Calcular valores de PP exactos usando la API de pp.huismetbenen.nl
+async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, gamemode, reworkCode) {
+    const cacheKey = `${beatmapId}:${reworkCode}:${modsStr || "NM"}`;
+    if (calculatedReworkCache.has(cacheKey)) {
+        return calculatedReworkCache.get(cacheKey);
+    }
+
+    let modeNum = 0;
+    if (gamemode === 'taiko' || gamemode === 1) modeNum = 1;
+    else if (gamemode === 'fruits' || gamemode === 'catch' || gamemode === 2) modeNum = 2;
+    else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
+
+    const cleanMods = (modsStr || "").replace(/[+]/g, '').toUpperCase();
+    const ignored = new Set(['CL', 'NF', 'SO', 'SD', 'PF']);
+    let modsArray = [];
+    if (cleanMods && cleanMods !== 'NOMOD' && cleanMods !== 'NM' && cleanMods !== 'NONE') {
+        const matches = cleanMods.match(/.{1,2}/g) || [];
+        modsArray = matches.filter(m => !ignored.has(m));
+    }
+
+    const session = await loadSession();
+    if (!session.accessToken) {
+        throw new Error("No access token available");
+    }
+
+    const url = 'https://api.pp.huismetbenen.nl/calculate-score';
+    const accuracies = [100, 99, 98, 95];
+    const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Sengo',
+        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
+    };
+
+    const fetchAcc = async (acc) => {
+        const payload = {
+            map_id: Number(beatmapId),
+            mods: modsArray,
+            gamemode: modeNum,
+            rework: reworkCode,
+            accuracy: acc,
+            combo: livePPValues.maxCombo || null
+        };
+        const response = await axios.post(url, payload, { headers, timeout: 6000 });
+        
+        if (response.headers['set-cookie']) {
+            await updateCookiesFromHeaders(response.headers['set-cookie']);
+        }
+        
+        return {
+            acc,
+            pp: response.data.performance_attributes ? response.data.performance_attributes.pp : 0,
+            stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : livePPValues.baseStars
+        };
+    };
+
+    const results = await Promise.all(accuracies.map(acc => fetchAcc(acc)));
+
+    const resSS = results.find(r => r.acc === 100);
+    const res99 = results.find(r => r.acc === 99);
+    const res98 = results.find(r => r.acc === 98);
+    const res95 = results.find(r => r.acc === 95);
+
+    const ratio = resSS.pp / (livePPValues.ppSS || 1);
+
+    const result = {
+        ppSS: resSS.pp,
+        pp99: res99.pp,
+        pp98: res98.pp,
+        pp95: res95.pp,
+        stars: resSS.stars,
+        ratio,
+        hasExactMatch: true,
+        hasScores: true,
+        isExactCalculation: true
+    };
+
+    calculatedReworkCache.set(cacheKey, result);
+    return result;
+}
+
 const userReworkScoresCache = new Map();
 
 // Obtener todas las puntuaciones recalculadas del jugador en un rework
@@ -476,6 +613,7 @@ module.exports = {
     getBeatmapReworkScores,
     normalizeMods,
     calculateReworkPPForMap,
+    calculateReworkPPForMapExact,
     getUserReworkScores,
     addToQueue,
     removeFromQueue,

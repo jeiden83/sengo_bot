@@ -526,7 +526,8 @@ async function run(messages, args) {
         pp99,
         pp98,
         pp95,
-        baseStars
+        baseStars,
+        maxCombo: baseStarsAttrs.difficulty.maxCombo
     };
 
     map.free();
@@ -537,16 +538,26 @@ async function run(messages, args) {
         return t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
     }
 
-    if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id}`);
-    let beatmapScores = [];
+    let reworkResult = null;
+
+    if (logger) logger.process(`Intentando calcular Rework exacto para beatmap ID: ${beatmap.id}`);
     try {
-        beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
-    } catch (e) {
-        console.error("Error al obtener scores de beatmap en Rework:", e);
-        return t(locale, 'rework.err_rework_map_api');
+        reworkResult = await ReworkModel.calculateReworkPPForMapExact(beatmap.id, modsStr, livePPValues, activeMode, rework.code);
+    } catch (err) {
+        console.warn(`[Rework] No se pudo realizar el cálculo exacto (fallando a promedio): ${err.message}`);
     }
 
-    const reworkResult = ReworkModel.calculateReworkPPForMap(beatmapScores, modsStr, livePPValues);
+    if (!reworkResult) {
+        if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id} (Promedio)`);
+        let beatmapScores = [];
+        try {
+            beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
+        } catch (e) {
+            console.error("Error al obtener scores de beatmap en Rework:", e);
+            return t(locale, 'rework.err_rework_map_api');
+        }
+        reworkResult = ReworkModel.calculateReworkPPForMap(beatmapScores, modsStr, livePPValues);
+    }
 
     const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale);
     

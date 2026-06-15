@@ -1331,7 +1331,11 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
 
     let modsDisplay = modsStr ? `+${modsStr.toUpperCase()}` : "Nomod";
     let statusText = "";
-    if (!reworkResult.hasScores) {
+    if (reworkResult.isExactCalculation) {
+        statusText = locale === 'es'
+            ? `✨ **Cálculo matemático exacto** de la calculadora de Reworks.`
+            : `✨ **Exact mathematical calculation** from the Reworks calculator.`;
+    } else if (!reworkResult.hasScores) {
         statusText = t(locale, 'rework.calc_status_no_scores');
     } else if (reworkResult.hasExactMatch) {
         statusText = t(locale, 'rework.calc_status_exact', { ratio: (reworkResult.ratio * 100).toFixed(1) });
