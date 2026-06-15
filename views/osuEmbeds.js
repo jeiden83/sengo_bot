@@ -507,6 +507,48 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
+    const OsuUserModel = require("../models/OsuUserModel.js");
+    
+    let isOffline = false;
+    let resolvedOsuId = null;
+    let uploaderName = '';
+    let isDifferentUser = false;
+
+    // Primero verificamos si el jugador de la score existe online
+    const playerOsuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
+    if (!playerOsuUser || typeof playerOsuUser === 'string') {
+        isOffline = true;
+        isDifferentUser = true;
+    } else {
+        resolvedOsuId = playerOsuUser.id;
+        const scoreUserId = String(score.user_id || score.user?.id || '');
+        if (scoreUserId && String(resolvedOsuId) !== scoreUserId) {
+            isDifferentUser = true;
+        }
+    }
+
+    let disclaimer = '';
+    let authorText = '';
+    let authorUrl = '';
+
+    if (isDifferentUser) {
+        const uploaderOsuUser = await OsuUserModel.getOsuUser({ username: [score.user_id || score.user?.id], gamemode: 'osu' }).catch(() => null);
+        uploaderName = (uploaderOsuUser && typeof uploaderOsuUser !== 'string') ? uploaderOsuUser.username : 'Usuario';
+
+        if (isOffline) {
+            disclaimer = t(locale, 'compare.disclaimer_offline', { player: `*${username}*`, uploader: uploaderName }) + '\n';
+            authorText = t(locale, 'compare.single_embed_author_other_offline', { rank: score.originalRank || index, player: username, uploader: uploaderName });
+            authorUrl = `https://osu.ppy.sh/users/${score.user_id || score.user?.id}`;
+        } else {
+            disclaimer = t(locale, 'compare.disclaimer_online', { player: `[${username}](https://osu.ppy.sh/users/${resolvedOsuId})`, uploader: uploaderName }) + '\n';
+            authorText = t(locale, 'compare.single_embed_author_other', { rank: score.originalRank || index, player: username, uploader: uploaderName });
+            authorUrl = `https://osu.ppy.sh/users/${resolvedOsuId}`;
+        }
+    } else {
+        authorText = t(locale, 'compare.single_embed_author', { rank: score.originalRank || index, username });
+        authorUrl = user_url;
+    }
+
     let active_filters = [];
     if (parsed_args.modFilter !== null) active_filters.push(`${t(locale, 'compare.filter_exact_mods')}: ${parsed_args.modFilter}`);
     if (parsed_args.modContainFilter !== null) active_filters.push(`${t(locale, 'compare.filter_contain_mods')}: ${parsed_args.modContainFilter}`);
@@ -521,13 +563,13 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'compare.single_embed_author', { rank: score.originalRank || index, username }),
-            url: user_url,
+            name: authorText,
+            url: authorUrl,
             iconURL: `${avatar_url}`,
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`${disclaimer}${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
 ${ansiBlock}
         `)
         .setImage(beatmap_cover)
@@ -589,6 +631,21 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
+        const OsuUserModel = require("../models/OsuUserModel.js");
+        const uploaderUsername = parsed_args.username[0] || 'Usuario';
+        const scoreUsername = score.user?.username || score.username || '';
+        const isDifferentUser = scoreUsername && scoreUsername.toLowerCase() !== uploaderUsername.toLowerCase();
+        
+        let playerTag = '';
+        if (isDifferentUser) {
+            const osuUser = await OsuUserModel.getOsuUser({ username: [scoreUsername], gamemode: 'osu' }).catch(() => null);
+            if (!osuUser || typeof osuUser === 'string') {
+                playerTag = `*${scoreUsername}* ▸ `;
+            } else {
+                playerTag = `[${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id}) ▸ `;
+            }
+        }
+
         const isFirst = globalIndex === 1;
         const rank_pos = isFirst ? `**#${score.originalRank || globalIndex}**` : `#${score.originalRank || globalIndex}`;
 
@@ -597,7 +654,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const formatted_pp = isFirst ? `__**${pp}**__` : `__${pp}__`;
         const formatted_combo = isFirst ? `**x${max_combo}**` : `x${max_combo}`;
 
-        const score_line = `${rank_pos} ▸ ${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
+        const score_line = `${rank_pos} ▸ ${playerTag}${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
 
         embed_description = embed_description.concat(score_line);
     }
@@ -631,7 +688,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 /**
  * Renderiza el embed para la confirmación de subida manual de score
  */
-function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale = 'es') {
+function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale = 'es', uploadMetadata = null) {
     const embedColor = getEmbedColor(message);
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
@@ -662,10 +719,31 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
 
     const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, recent_scores.max_combo, pre_calculated.beatmap_max_combo);
 
+    let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
+    let authorUrl = `https://osu.ppy.sh/users/${user_id}`;
+
+    if (uploadMetadata) {
+        const { player_name, uploader_name, isOffline, resolvedOsuId, uploaderOsuId } = uploadMetadata;
+        const isSelf = player_name.toLowerCase() === uploader_name.toLowerCase();
+
+        if (isSelf) {
+            authorName = t(locale, 'subir.embed_author_self', { username: uploader_name });
+            authorUrl = `https://osu.ppy.sh/users/${uploaderOsuId}`;
+        } else {
+            if (isOffline) {
+                authorName = t(locale, 'subir.embed_author_other_offline', { player: player_name, uploader: uploader_name });
+                authorUrl = `https://osu.ppy.sh/users/${uploaderOsuId}`;
+            } else {
+                authorName = t(locale, 'subir.embed_author_other', { player: player_name, uploader: uploader_name });
+                authorUrl = `https://osu.ppy.sh/users/${resolvedOsuId}`;
+            }
+        }
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'subir.embed_author', { username: parsedData.player_name }),
-            url: `https://osu.ppy.sh/users/${user_id}`,
+            name: authorName,
+            url: authorUrl,
             iconURL: recent_scores.user.avatar_url
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)

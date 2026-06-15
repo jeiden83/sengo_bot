@@ -825,6 +825,10 @@
     "showing_score_index": "Showing score **#{index}** of **{total}** compared:",
     "active_filters": "Active filters",
     "single_embed_author": "Score comparison #{rank} for {username}",
+    "single_embed_author_other": "Score comparison #{rank} ({player} for {uploader})",
+    "single_embed_author_other_offline": "Score comparison #{rank} ({player} offline for {uploader})",
+    "disclaimer_online": "👤 Original play by {player} saved for **{uploader}**",
+    "disclaimer_offline": "👤 Original play by {player} (offline) saved for **{uploader}**",
     "single_embed_footer": "Sengo • Score #{index} of {total} compared",
     "list_embed_footer": "Showing scores {start}-{end} of {total} total",
     "list_embed_content": "Scores for `{username}` on `osu!{mode}`:\n{mapa}",
@@ -1135,14 +1139,16 @@
   },
   "subir": {
     "embed_author": "Manual score saved for {username}",
+    "embed_author_self": "Manual score saved for {username}",
+    "embed_author_other": "Manual score of {player} saved for {uploader}",
+    "embed_author_other_offline": "Manual score of {player} (offline) saved for {uploader}",
     "score_label": "Score",
     "err_no_source": "You must attach a `.osr` replay file or reply to a message containing a `.osr` replay or a compatible score embed.",
     "err_no_score_info": "Could not extract score information. Make sure you reply to a `.osr` replay file or a compatible bot embed.",
     "err_md5_failed": "Could not find the original beatmap using the internal MD5 of the replay (`{md5}`). This usually happens with some replays exported from osu!lazer or modified maps. \n**Solution:** Send the replay again by replying to a message containing the link to the original beatmap.",
     "err_map_not_found": "Could not find the beatmap `{mapName}` in the osu! database.",
     "err_user_not_found": "Could not resolve the ID for user `{username}` and you are not linked to a profile.",
-    "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` to use this command.",
-    "err_online_identity_mismatch": "❌ You cannot upload scores from other online players."
+    "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` to use this command."
   },
   "rework": {
     "calc_author": "PP Estimation in Rework: {reworkName}",

@@ -825,6 +825,10 @@
     "showing_score_index": "Mostrando la puntuación **#{index}** de **{total}** comparadas:",
     "active_filters": "Filtros activos",
     "single_embed_author": "Comparación de score #{rank} para {username}",
+    "single_embed_author_other": "Comparación de score #{rank} ({player} para {uploader})",
+    "single_embed_author_other_offline": "Comparación de score #{rank} ({player} offline para {uploader})",
+    "disclaimer_online": "👤 Jugada original de {player} guardada para **{uploader}**",
+    "disclaimer_offline": "👤 Jugada original de {player} (offline) guardada para **{uploader}**",
     "single_embed_footer": "Sengo • Jugada #{index} de {total} comparadas",
     "list_embed_footer": "Mostrando puntuaciones {start}-{end} de {total} totales",
     "list_embed_content": "Puntuaciones de `{username}` en `osu!{mode}`:\n{mapa}",
@@ -1135,14 +1139,16 @@
   },
   "subir": {
     "embed_author": "Score manual guardada para {username}",
+    "embed_author_self": "Score manual guardada para {username}",
+    "embed_author_other": "Score manual de {player} guardada para {uploader}",
+    "embed_author_other_offline": "Score manual de {player} (offline) guardada para {uploader}",
     "score_label": "Puntuación",
     "err_no_source": "Debes adjuntar un archivo de repetición `.osr` o responder (reply) a un mensaje que contenga una replay `.osr` o un embed de score compatible.",
     "err_no_score_info": "No se pudo extraer la información de la score. Asegúrate de responder a un archivo de replay `.osr` o a un embed de bot compatible.",
     "err_md5_failed": "No pude encontrar el mapa original usando el MD5 interno de la replay (`{md5}`). Esto suele ocurrir con algunas replays exportadas desde osu!lazer o mapas modificados. \n**Solución:** Vuelve a enviar la replay respondiendo (haciendo *reply*) a un mensaje que contenga el link del mapa original.",
     "err_map_not_found": "No pude encontrar el mapa `{mapName}` en la base de datos de osu!.",
     "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil.",
-    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando.",
-    "err_online_identity_mismatch": "❌ No puedes subir jugadas de otros jugadores online."
+    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando."
   },
   "rework": {
     "calc_author": "Estimación de PP en Rework: {reworkName}",

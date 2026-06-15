@@ -12,15 +12,26 @@ const { t } = require("../utils/i18n.js");
 /**
  * Renderiza el embed para el comando gap (usuarios vinculados en el beatmap)
  */
-function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0, locale = "es") {
+async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, total_plays = 0, locale = "es") {
     let embed_description = '';
     let position = startIndex + 1;
 
-    user_scores.forEach(score => {
+    const OsuUserModel = require("../models/OsuUserModel.js");
+
+    for (let i = 0; i < user_scores.length; i++) {
+        const score = user_scores[i];
         const countryCode = score.user?.country_code || score.country_code;
         const flag = getFlagEmoji(countryCode ? countryCode : "XX");
         const username = score.user?.username || score.username || `User ${score.user_id}`;
-        const username_link = `[${username}](https://osu.ppy.sh/users/${score.user_id || score.user?.id})`;
+
+        const osuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
+        
+        let username_link = '';
+        if (!osuUser || typeof osuUser === 'string') {
+            username_link = `*${username}*`;
+        } else {
+            username_link = `[${username}](https://osu.ppy.sh/users/${osuUser.id})`;
+        }
 
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
@@ -58,7 +69,7 @@ function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex = 0, t
             `#${position++} - ${flag} ${username_link} - ${time_set} - ${grade_emoji}
             ${total_score} - ${accuracy} - x${max_combo}/${beatmap_max_combo} - ${statistics} - ${pp}PP - ${mods_used}\n\n`
         );
-    });
+    }
     
     const embedColor = getEmbedColor(message);
 

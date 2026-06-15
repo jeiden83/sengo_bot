@@ -570,23 +570,20 @@ async function run(messages, args, initialized_data) {
     const beatmap_metadata = await getBeatmap(beatmap_id);
 
     // Resolviendo la identidad de la score (Online vs Offline)
-    let user_id = null;
+    let user_id = linkedAuthor.osu_id;
+    let isOffline = false;
+    let resolvedOsuUser = null;
     const osuUser = await getOsuUser({ username: [parsedData.player_name], gamemode: 'osu' });
     
     // ponytail: Se asume que si getOsuUser devuelve un error (string), el jugador no existe online y es local/offline.
     if (typeof osuUser !== 'string') {
         // Caso A: El jugador existe en osu! oficial (Online)
-        const onlineOsuId = osuUser.id;
-        if (String(onlineOsuId) !== String(linkedAuthor.osu_id)) {
-            console.log(`[S.SUBIR] Error: El jugador de la score (${parsedData.player_name}: ${onlineOsuId}) no coincide con el autor vinculado (${linkedAuthor.osu_id})`);
-            return t(locale, 'subir.err_online_identity_mismatch');
-        }
-        user_id = onlineOsuId;
         parsedData.player_name = osuUser.username; // Sobrescribe con el nombre oficial por posibles fallos de OCR
+        resolvedOsuUser = osuUser;
     } else {
         // Caso B: El jugador no existe en osu! oficial (Offline)
         console.log(`[S.SUBIR] El jugador '${parsedData.player_name}' no existe online. Tratándolo como score offline.`);
-        user_id = linkedAuthor.osu_id;
+        isOffline = true;
     }
 
     // Nota: El ajuste de zona horaria del OCR ha sido removido porque las replays (.osr) y embeds de bots
@@ -655,7 +652,15 @@ async function run(messages, args, initialized_data) {
     await saveUserscore(recent_scores, pre_calculated, true);
     console.log(`[S.SUBIR] ¡Score guardada exitosamente para ${parsedData.player_name}!`);
 
-    const embed = doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale);
+    const uploadMetadata = {
+        player_name: parsedData.player_name,
+        uploader_name: linkedAuthor.username,
+        isOffline: isOffline,
+        resolvedOsuId: resolvedOsuUser ? resolvedOsuUser.id : null,
+        uploaderOsuId: linkedAuthor.osu_id
+    };
+
+    const embed = doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale, uploadMetadata);
     map.free();
     return { content: '', embeds: [embed] };
 }
