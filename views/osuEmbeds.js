@@ -642,7 +642,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             if (!osuUser || typeof osuUser === 'string') {
                 playerTag = `*${scoreUsername}* ▸ `;
             } else {
-                playerTag = `[${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id}) ▸ `;
+                playerTag = `*offline ▸ [${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id})* ▸ `;
             }
         }
 
