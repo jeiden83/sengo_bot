@@ -504,7 +504,7 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
     else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
 
     const cleanMods = (modsStr || "").replace(/[+]/g, '').toUpperCase();
-    const ignored = new Set(['CL', 'NF', 'SO', 'SD', 'PF']);
+    const ignored = new Set(['NF', 'SO', 'SD', 'PF']);
     let modsArray = [];
     if (cleanMods && cleanMods !== 'NOMOD' && cleanMods !== 'NM' && cleanMods !== 'NONE') {
         const matches = cleanMods.match(/.{1,2}/g) || [];
@@ -617,7 +617,7 @@ async function calculateReworkPPForScoreExact(beatmapId, modsStr, scoreStats, ga
     else if (gamemode === 'mania' || gamemode === 3) modeNum = 3;
 
     const cleanMods = (modsStr || "").replace(/[+]/g, '').toUpperCase();
-    const ignored = new Set(['CL', 'NF', 'SO', 'SD', 'PF']);
+    const ignored = new Set(['NF', 'SO', 'SD', 'PF']);
     let modsArray = [];
     if (cleanMods && cleanMods !== 'NOMOD' && cleanMods !== 'NM' && cleanMods !== 'NONE') {
         const matches = cleanMods.match(/.{1,2}/g) || [];
@@ -644,10 +644,9 @@ async function calculateReworkPPForScoreExact(beatmapId, modsStr, scoreStats, ga
         rework: reworkCode,
         accuracy: scoreStats.accuracy,
         combo: scoreStats.combo || null,
-        count_300: scoreStats.count_300 !== undefined ? scoreStats.count_300 : null,
-        count_100: scoreStats.count_100 !== undefined ? scoreStats.count_100 : null,
-        count_50: scoreStats.count_50 !== undefined ? scoreStats.count_50 : null,
-        misses: scoreStats.misses !== undefined ? scoreStats.misses : 0
+        ok: scoreStats.count_100 !== undefined ? scoreStats.count_100 : null,
+        meh: scoreStats.count_50 !== undefined ? scoreStats.count_50 : null,
+        miss: scoreStats.misses !== undefined ? scoreStats.misses : 0
     };
 
     let attempts = 3;

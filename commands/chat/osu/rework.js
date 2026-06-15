@@ -21,25 +21,25 @@ function parsePlayEmbed(embed) {
     let beatmapId = null;
     if (embed.url) {
         const match = embed.url.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                      embed.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+            embed.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
         if (match) beatmapId = match[1];
     }
     if (!beatmapId && embed.author?.url) {
         const match = embed.author.url.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                      embed.author.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+            embed.author.url.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
         if (match) beatmapId = match[1];
     }
     if (!beatmapId) {
         const allMatches = combinedText.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                           combinedText.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+            combinedText.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
         if (allMatches) beatmapId = allMatches[1];
     }
 
     if (!beatmapId) return null;
 
     const modMatches = [...combinedText.matchAll(/<:([A-Z0-9]{2,4}):\d+>/g)];
-    let mods = modMatches.map(m => m[1]).filter(m => m !== 'NM' && m !== 'CL');
-    
+    let mods = modMatches.map(m => m[1]).filter(m => m !== 'NM');
+
     if (mods.length === 0) {
         const textModMatch = combinedText.match(/\+([A-Z0-9]{2,})/i);
         if (textModMatch) {
@@ -49,7 +49,7 @@ function parsePlayEmbed(embed) {
     }
 
     const cleanText = stripAnsi(combinedText);
-    
+
     const hitStatsMatch = cleanText.match(/\[([\d/]+)\]/);
     let hits = null;
     let count_300 = null;
@@ -486,7 +486,7 @@ async function run(messages, args) {
             collector.on('end', async () => {
                 try {
                     await sent_message.edit({ components: [] });
-                } catch {}
+                } catch { }
             });
 
             return;
@@ -557,7 +557,7 @@ async function run(messages, args) {
         collector.on('end', async () => {
             try {
                 await sent_message.edit({ components: [] });
-            } catch {}
+            } catch { }
         });
 
         return;
@@ -636,7 +636,7 @@ async function run(messages, args) {
 
     const updateProgress = async (stepIndex, status, extra = "") => {
         const embedColor = getEmbedColor(message);
-        
+
         if (activeSteps.length <= stepIndex) {
             for (let i = activeSteps.length; i < stepIndex; i++) {
                 if (activeSteps[i]) {
@@ -788,7 +788,7 @@ async function run(messages, args) {
         parsedPlay.liveModStars = liveModStars;
 
         await updateProgress(4, 'loading');
-        
+
         let reworkPP = null;
         let reworkStars = null;
         try {
@@ -837,7 +837,7 @@ async function run(messages, args) {
     const onProgress = async (acc, status, extraVal) => {
         const accs = [100, 99, 98, 95];
         const accIdx = accs.indexOf(acc);
-        
+
         let progressStr = accs.map((a, idx) => {
             let emoji = '⚪';
             if (idx < accIdx) emoji = '✅';
@@ -853,14 +853,14 @@ async function run(messages, args) {
             }
             return `${a}%: ${emoji}${extraInfo}`;
         }).join(', ');
-        
+
         await updateProgress(4, 'loading', `[${progressStr}]`);
     };
 
     if (logger) logger.process(`Intentando calcular Rework exacto para beatmap ID: ${beatmap.id}`);
     try {
         reworkResult = await ReworkModel.calculateReworkPPForMapExact(beatmap.id, modsStr, livePPValues, activeMode, rework.code, onProgress);
-        
+
         const accs = [100, 99, 98, 95];
         const finalProgressStr = accs.map(a => `${a}%: ✅`).join(', ');
         await updateProgress(4, 'success', `[${finalProgressStr}]`);
@@ -870,10 +870,10 @@ async function run(messages, args) {
 
     if (!reworkResult) {
         await updateProgress(4, 'warning', `(No disponible, estimando por promedio...)`);
-        
+
         stepTemplates.push(locale === 'es' ? "Calculando estimación por promedio..." : "Calculating average estimation...");
         await updateProgress(5, 'loading');
-        
+
         if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id} (Promedio)`);
         let beatmapScores = [];
         try {
@@ -889,7 +889,7 @@ async function run(messages, args) {
     }
 
     const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale);
-    
+
     if (sentMessage && typeof sentMessage.edit === 'function') {
         await sentMessage.edit({ content: null, embeds: [embed] });
         return;
