@@ -1,6 +1,9 @@
 const axios = require('axios');
 const fs = require('fs/promises');
 const path = require('path');
+const https = require('https');
+
+const httpsAgent = new https.Agent({ keepAlive: true });
 
 let currentSession = null;
 const SESSION_FILE = path.resolve('huismetbenen_session.json');
@@ -254,7 +257,7 @@ async function requestReworkRecalculation(osuId, reworkId) {
         const res = await axios.patch(url, {
             user_id: Number(osuId),
             rework: Number(reworkId)
-        }, { headers, timeout: 8000 });
+        }, { headers, httpsAgent, timeout: 8000 });
 
         if (res.headers['set-cookie']) {
             await updateCookiesFromHeaders(res.headers['set-cookie']);
@@ -529,7 +532,7 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
             accuracy: acc,
             combo: livePPValues.maxCombo || null
         };
-        const response = await axios.post(url, payload, { headers, timeout: 6000 });
+        const response = await axios.post(url, payload, { headers, httpsAgent, timeout: 6000 });
         
         if (response.headers['set-cookie']) {
             await updateCookiesFromHeaders(response.headers['set-cookie']);
@@ -542,7 +545,10 @@ async function calculateReworkPPForMapExact(beatmapId, modsStr, livePPValues, ga
         };
     };
 
-    const results = await Promise.all(accuracies.map(acc => fetchAcc(acc)));
+    const results = [];
+    for (const acc of accuracies) {
+        results.push(await fetchAcc(acc));
+    }
 
     const resSS = results.find(r => r.acc === 100);
     const res99 = results.find(r => r.acc === 99);
