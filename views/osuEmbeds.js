@@ -724,17 +724,19 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
 
     if (uploadMetadata) {
         const { player_name, uploader_name, isOffline, resolvedOsuId, uploaderOsuId } = uploadMetadata;
-        const isSelf = player_name.toLowerCase() === uploader_name.toLowerCase();
+        const pName = player_name || '';
+        const uName = uploader_name || '';
+        const isSelf = pName.toLowerCase() === uName.toLowerCase();
 
         if (isSelf) {
-            authorName = t(locale, 'subir.embed_author_self', { username: uploader_name });
+            authorName = t(locale, 'subir.embed_author_self', { username: uName });
             authorUrl = `https://osu.ppy.sh/users/${uploaderOsuId}`;
         } else {
             if (isOffline) {
-                authorName = t(locale, 'subir.embed_author_other_offline', { player: player_name, uploader: uploader_name });
+                authorName = t(locale, 'subir.embed_author_other_offline', { player: pName, uploader: uName });
                 authorUrl = `https://osu.ppy.sh/users/${uploaderOsuId}`;
             } else {
-                authorName = t(locale, 'subir.embed_author_other', { player: player_name, uploader: uploader_name });
+                authorName = t(locale, 'subir.embed_author_other', { player: pName, uploader: uName });
                 authorUrl = `https://osu.ppy.sh/users/${resolvedOsuId}`;
             }
         }

@@ -654,7 +654,7 @@ async function run(messages, args, initialized_data) {
 
     const uploadMetadata = {
         player_name: parsedData.player_name,
-        uploader_name: linkedAuthor.username,
+        uploader_name: message.author.username,
         isOffline: isOffline,
         resolvedOsuId: resolvedOsuUser ? resolvedOsuUser.id : null,
         uploaderOsuId: linkedAuthor.osu_id
