@@ -310,7 +310,16 @@ async function linkUser(User, discordId, osuId, mainGamemode) {
             console.error(`Error al eliminar token OAuth al vincular tradicionalmente a ${discordId}:`, err);
         }
     }
-    return addUser(User, discordId, osuId, mainGamemode);
+    const res = await addUser(User, discordId, osuId, mainGamemode);
+    if (res && res.status === 1) {
+        try {
+            const { syncUserGuilds } = require("../services/guildsSync.js");
+            syncUserGuilds(discordId).catch(() => {});
+        } catch (syncErr) {
+            console.error(`[OsuUserModel] Error al invocar syncUserGuilds en linkUser:`, syncErr);
+        }
+    }
+    return res;
 }
 
 /**
@@ -329,112 +338,35 @@ async function unlinkUser(User, discordId) {
     return await deleteUser(User, discordId);
 }
 
-/**
- * Consulta el listado de usuarios vinculados de Supabase bajo ciertos criterios (guild, bypass).
- */
 async function getLinkedUsers(options = {}) {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
 
     let guildId = null;
-    let guild = null;
     let bypass = false;
 
     // Detectar si nos pasaron directamente el objeto Guild de Discord (tiene id y members)
     if (options && options.id && options.members) {
-        guild = options;
         guildId = options.id;
     } else if (options) {
         guildId = options.guildId || null;
-        guild = options.guild || null;
         bypass = options.bypass || false;
     }
 
     try {
-        // Si no se pide un servidor específico o si no tenemos el objeto de guild para sincronizar
-        if (!guild) {
-            let query = supabase
-                .from('users')
-                .select('discord_id, osu_id, main_gamemode')
-                .not('osu_id', 'is', null);
-
-            if (guildId && !bypass) {
-                query = query.contains('guilds', [guildId]);
-            }
-
-            const { data: linkedUsers, error } = await query;
-            if (error) throw error;
-
-            return linkedUsers || [];
-        }
-
-        // Si tenemos el objeto de guild, recuperamos todos los vinculados globalmente para verificar y autocurar
         let query = supabase
             .from('users')
-            .select('discord_id, osu_id, main_gamemode, guilds')
+            .select('discord_id, osu_id, main_gamemode')
             .not('osu_id', 'is', null);
 
-        const { data: allLinkedUsers, error } = await query;
+        if (guildId && !bypass) {
+            query = query.contains('guilds', [guildId]);
+        }
+
+        const { data: linkedUsers, error } = await query;
         if (error) throw error;
 
-        if (!allLinkedUsers || allLinkedUsers.length === 0) return [];
-
-        const discordIds = allLinkedUsers.map(u => u.discord_id);
-        
-        // Obtener miembros del servidor de Discord de forma masiva en lotes de 100 para respetar el límite de la API de Discord
-        const presentMembers = new Map();
-        const chunkSize = 100;
-        for (let i = 0; i < discordIds.length; i += chunkSize) {
-            const chunk = discordIds.slice(i, i + chunkSize);
-            try {
-                const fetched = await guild.members.fetch({ user: chunk }).catch(async (fetchError) => {
-                    // Si el lote completo falla (por ejemplo, si contiene un ID que no está en la guild),
-                    // recuperamos individualmente para evitar perder a los miembros reales.
-                    const individualResults = new Map();
-                    for (const id of chunk) {
-                        try {
-                            const member = await guild.members.fetch(id);
-                            if (member) {
-                                individualResults.set(id, member);
-                            }
-                        } catch (individualErr) {
-                            // Ignorar error de miembro no encontrado
-                        }
-                    }
-                    return individualResults;
-                });
-                for (const [id, member] of fetched) {
-                    presentMembers.set(id, member);
-                }
-            } catch (err) {
-                console.error(`[OsuUserModel] Error al obtener lote de miembros (${i} a ${i + chunk.length}):`, err);
-            }
-        }
-        
-        const linkedUsers = allLinkedUsers.filter(u => presentMembers.has(u.discord_id));
-
-        // Registrar en segundo plano aquellos que estén en el servidor pero falten en su columna 'guilds'
-        const missingSync = allLinkedUsers.filter(u => presentMembers.has(u.discord_id) && (!u.guilds || !u.guilds.includes(guild.id)));
-        if (missingSync.length > 0) {
-            (async () => {
-                for (const u of missingSync) {
-                    try {
-                        let currentGuilds = u.guilds || [];
-                        if (!currentGuilds.includes(guild.id)) {
-                            currentGuilds.push(guild.id);
-                            await supabase
-                                .from('users')
-                                .update({ guilds: currentGuilds })
-                                .eq('discord_id', u.discord_id);
-                        }
-                    } catch (e) {
-                        console.error(`[OsuUserModel] Error al sincronizar guild para el usuario ${u.discord_id}:`, e);
-                    }
-                }
-            })().catch(() => {});
-        }
-
-        return linkedUsers;
+        return linkedUsers || [];
     } catch (err) {
         console.error('Error al obtener usuarios vinculados en OsuUserModel:', err);
         return [];
@@ -642,6 +574,13 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
         }, { onConflict: 'discord_id' });
 
     if (userError) throw userError;
+
+    try {
+        const { syncUserGuilds } = require("../services/guildsSync.js");
+        syncUserGuilds(discordId).catch(() => {});
+    } catch (syncErr) {
+        console.error(`[OsuUserModel] Error al invocar syncUserGuilds en saveOAuthToken:`, syncErr);
+    }
 
     return { success: true, username: osuUser.username, is_supporter: isSupporter };
 }
