@@ -189,6 +189,51 @@ const activeBeatmapPromises = new Map();
  * Obtiene los detalles de dificultad de un beatmap dado, con caché de 1 hora.
  */
 async function getBeatmap(beatmap_id, priority = 2) {
+    if (typeof beatmap_id === 'string' && beatmap_id.startsWith('set/')) {
+        const cached = beatmapCache.get(beatmap_id);
+        const now = Date.now();
+        if (cached && (now - cached.timestamp) < 3600000) {
+            return cached.data;
+        }
+
+        const beatmapsetId = parseInt(beatmap_id.split('/')[1]);
+        const beatmapset = await getBeatmapset(beatmapsetId, priority);
+        if (beatmapset && beatmapset.beatmaps && beatmapset.beatmaps.length > 0) {
+            // ponytail: picks the highest difficulty map from the set as a naive heuristic. Upgrade path: filter by target gamemode if specified.
+            const sortedMaps = beatmapset.beatmaps.sort((a, b) => b.difficulty_rating - a.difficulty_rating);
+            const chosenBeatmap = sortedMaps[0];
+            
+            const result = {
+                id: chosenBeatmap.id,
+                beatmapset_id: beatmapset.id,
+                max_combo: chosenBeatmap.max_combo || 0,
+                status: beatmapset.status,
+                ar: chosenBeatmap.ar,
+                cs: chosenBeatmap.cs,
+                accuracy: chosenBeatmap.accuracy,
+                hp: chosenBeatmap.hp,
+                bpm: chosenBeatmap.bpm || beatmapset.bpm,
+                difficulty_rating: chosenBeatmap.difficulty_rating,
+                mode: chosenBeatmap.mode,
+                mode_int: chosenBeatmap.mode_int,
+                version: chosenBeatmap.version,
+                total_length: chosenBeatmap.total_length || 0,
+                hit_length: chosenBeatmap.hit_length || 0,
+                url: `https://osu.ppy.sh/beatmaps/${chosenBeatmap.id}`,
+                beatmapset: {
+                    id: beatmapset.id,
+                    title: beatmapset.title,
+                    artist: beatmapset.artist,
+                    creator: beatmapset.creator,
+                    covers: beatmapset.covers
+                }
+            };
+            setWithLimit(beatmapCache, beatmap_id, { data: result, timestamp: Date.now() });
+            return result;
+        }
+        throw new Error("No beatmaps found in beatmapset " + beatmapsetId);
+    }
+
     let cleanId = beatmap_id;
     if (typeof beatmap_id === 'string') {
         const match = beatmap_id.match(/\/beatmaps\/(\d+)/) || beatmap_id.match(/\/b\/(\d+)/);

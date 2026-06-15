@@ -88,11 +88,18 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1) {
     const extractAllIds = str => {
         if (!str) return [];
         const ids = [];
-        const regex = /#(?:osu|taiko|fruits|mania)\/(\d+)|osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/g;
+        const regex = /(?:https?:\/\/)?osu\.ppy\.sh\/beatmapsets\/(\d+)(?:#(osu|taiko|fruits|mania)\/(\d+))?|(?:https?:\/\/)?osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)|#(osu|taiko|fruits|mania)\/(\d+)/g;
         let match;
         while ((match = regex.exec(str)) !== null) {
-            const id = match[1] || match[2];
-            if (id) ids.push(id);
+            if (match[3]) {
+                ids.push(match[3]);
+            } else if (match[1]) {
+                ids.push('set/' + match[1]);
+            } else if (match[4]) {
+                ids.push(match[4]);
+            } else if (match[6]) {
+                ids.push(match[6]);
+            }
         }
         return ids;
     };
@@ -436,11 +443,19 @@ function argsParserNoCommand(args, options = {}) {
     let nochoke = false;
     let mapset = false;
 
-    const extractId = str =>
-        str?.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        str?.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/)?.[1] ||
-        str?.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/)?.[1] ||
-        (!ignoreBeatmap && str?.match(/^\d{5,10}$/) ? str : null);
+    const extractId = str => {
+        if (!str) return null;
+        const bmMatch = str.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+                        str.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
+                        str.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+        if (bmMatch) return bmMatch[1];
+        
+        const setMatch = str.match(/osu\.ppy\.sh\/beatmapsets\/(\d+)/);
+        if (setMatch) return 'set/' + setMatch[1];
+        
+        if (!ignoreBeatmap && str.match(/^\d{5,10}$/)) return str;
+        return null;
+    };
 
     const isBeatmapUrlOrId = str => {
         if (!str) return false;
@@ -448,6 +463,7 @@ function argsParserNoCommand(args, options = {}) {
         const match = clean.match(/#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
             clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
             clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/) ||
+            clean.match(/osu\.ppy\.sh\/beatmapsets\/(\d+)/) ||
             (!ignoreBeatmap && clean.match(/^\d{5,10}$/));
         return !!match;
     };
