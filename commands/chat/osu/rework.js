@@ -786,7 +786,6 @@ async function run(messages, args) {
 
     if (parsedPlay) {
         parsedPlay.liveModStars = liveModStars;
-        map.free();
 
         await updateProgress(4, 'loading');
         
