@@ -134,6 +134,10 @@ async function run(messages, args) {
         return t(locale, 'sugerencia.report_sent');
     } catch (err) {
         console.error("Error al enviar la sugerencia al webhook:", err);
+        const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook")) || err.status === 404;
+        if (isWebhookError) {
+            return t(locale, 'sugerencia.err_webhook_invalid');
+        }
         try {
             const { reportErrorToWebhook } = require("../../../services/errorNotifier.js");
             reportErrorToWebhook(err, {

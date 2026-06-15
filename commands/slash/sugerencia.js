@@ -78,8 +78,9 @@ async function run(interaction, res) {
     await interaction.showModal(modal);
 
     // 4. Esperar la sumisión del modal
+    let modalSubmit = null;
     try {
-        const modalSubmit = await interaction.awaitModalSubmit({
+        modalSubmit = await interaction.awaitModalSubmit({
             filter: i => i.customId === 'suggestion_modal' && i.user.id === interaction.user.id,
             time: 300000 // 5 minutos
         });
@@ -148,29 +149,39 @@ async function run(interaction, res) {
             console.warn("El modal de sugerencia expiró sin respuesta del usuario.");
         } else {
             console.error("Error al procesar el modal de sugerencia:", err);
+            
+            const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook")) || err.status === 404;
+            const errorMsg = isWebhookError ? t(locale, 'sugerencia.err_webhook_invalid') : t(locale, 'sugerencia.err_send_failed');
+
             // Intentar responder amigablemente si ocurre otro error
             try {
-                await interaction.followUp({
-                    content: t(locale, 'sugerencia.err_send_failed'),
-                    ephemeral: true
-                });
+                if (modalSubmit && (modalSubmit.deferred || modalSubmit.replied)) {
+                    await modalSubmit.editReply({ content: errorMsg });
+                } else {
+                    await interaction.followUp({
+                        content: errorMsg,
+                        ephemeral: true
+                    });
+                }
             } catch (e) {
                 console.error("Error al enviar fallback de error en /sugerencia:", e);
             }
 
-            // Reportar al webhook de errores
-            try {
-                const { reportErrorToWebhook } = require("../../services/errorNotifier.js");
-                reportErrorToWebhook(err, {
-                    commandName: 'slash_sugerencia',
-                    args: [],
-                    user: interaction.user,
-                    guild: interaction.guild,
-                    channel: interaction.channel,
-                    interaction: interaction
-                });
-            } catch (notifierErr) {
-                console.error("Error al intentar reportar el fallo al webhook de errores:", notifierErr);
+            if (!isWebhookError) {
+                // Reportar al webhook de errores
+                try {
+                    const { reportErrorToWebhook } = require("../../services/errorNotifier.js");
+                    reportErrorToWebhook(err, {
+                        commandName: 'slash_sugerencia',
+                        args: [],
+                        user: interaction.user,
+                        guild: interaction.guild,
+                        channel: interaction.channel,
+                        interaction: interaction
+                    });
+                } catch (notifierErr) {
+                    console.error("Error al intentar reportar el fallo al webhook de errores:", notifierErr);
+                }
             }
         }
     }

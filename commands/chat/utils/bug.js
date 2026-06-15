@@ -134,6 +134,10 @@ async function run(messages, args) {
         return t(locale, 'bug.report_sent');
     } catch (err) {
         console.error("Error al enviar el reporte de bug al webhook:", err);
+        const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook")) || err.status === 404;
+        if (isWebhookError) {
+            return t(locale, 'bug.err_webhook_invalid');
+        }
         try {
             const { reportErrorToWebhook } = require("../../../services/errorNotifier.js");
             reportErrorToWebhook(err, {

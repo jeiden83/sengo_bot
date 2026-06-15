@@ -11,6 +11,7 @@
     "err_empty_report": "❌ No puedes enviar un reporte de bug vacío. Describe el bug o adjunta una imagen.",
     "report_sent": "✅ Gracias por el reporte.",
     "err_send_failed": "❌ Hubo un error al intentar enviar tu reporte al webhook.",
+    "err_webhook_invalid": "❌ El webhook configurado para recibir reportes de bugs no es válido o ha sido eliminado. Por favor, contacta al creador del bot.",
     "modal_title": "Reportar un Bug en Sengo",
     "modal_bug_title_label": "Título del Bug (Opcional)",
     "modal_bug_title_placeholder": "Ej: Error al usar s.r",
@@ -25,6 +26,7 @@
     "err_empty_report": "❌ No puedes enviar una sugerencia vacía. Describe tu sugerencia o adjunta una imagen.",
     "report_sent": "✅ Gracias por la sugerencia.",
     "err_send_failed": "❌ Hubo un error al intentar enviar tu sugerencia al webhook.",
+    "err_webhook_invalid": "❌ El webhook configurado para recibir sugerencias no es válido o ha sido eliminado. Por favor, contacta al creador del bot.",
     "modal_title": "Enviar una Sugerencia para Sengo",
     "modal_title_label": "Título de la Sugerencia (Opcional)",
     "modal_title_placeholder": "Ej: Nuevo comando s.xyz",
@@ -844,7 +846,8 @@
     "context_server_short": "en el servidor",
     "embed_footer": "Sengo • Mostrando posiciones {start}-{end} de {total}",
     "content_title": "De `{totalUsers}` usuarios, `{scoreUsers}` tienen una score en:\n{mapa}",
-    "content_page": "\n**Página `{page}/{max_pages}`**"
+    "content_page": "\n**Página `{page}/{max_pages}`**",
+    "unranked_map": " **(Mapa sin ranking)**"
   },
   "top": {
     "err_no_scores": "Pero si no tienes puntuaciones registradas",

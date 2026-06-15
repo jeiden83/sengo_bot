@@ -332,9 +332,23 @@ async function unlinkUser(User, discordId) {
 /**
  * Consulta el listado de usuarios vinculados de Supabase bajo ciertos criterios (guild, bypass).
  */
-async function getLinkedUsers({ guildId = null, guild = null, bypass = false } = {}) {
+async function getLinkedUsers(options = {}) {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
+
+    let guildId = null;
+    let guild = null;
+    let bypass = false;
+
+    // Detectar si nos pasaron directamente el objeto Guild de Discord (tiene id y members)
+    if (options && options.id && options.members) {
+        guild = options;
+        guildId = options.id;
+    } else if (options) {
+        guildId = options.guildId || null;
+        guild = options.guild || null;
+        bypass = options.bypass || false;
+    }
 
     try {
         // Si no se pide un servidor específico o si no tenemos el objeto de guild para sincronizar
@@ -373,7 +387,22 @@ async function getLinkedUsers({ guildId = null, guild = null, bypass = false } =
         for (let i = 0; i < discordIds.length; i += chunkSize) {
             const chunk = discordIds.slice(i, i + chunkSize);
             try {
-                const fetched = await guild.members.fetch({ user: chunk });
+                const fetched = await guild.members.fetch({ user: chunk }).catch(async (fetchError) => {
+                    // Si el lote completo falla (por ejemplo, si contiene un ID que no está en la guild),
+                    // recuperamos individualmente para evitar perder a los miembros reales.
+                    const individualResults = new Map();
+                    for (const id of chunk) {
+                        try {
+                            const member = await guild.members.fetch(id);
+                            if (member) {
+                                individualResults.set(id, member);
+                            }
+                        } catch (individualErr) {
+                            // Ignorar error de miembro no encontrado
+                        }
+                    }
+                    return individualResults;
+                });
                 for (const [id, member] of fetched) {
                     presentMembers.set(id, member);
                 }

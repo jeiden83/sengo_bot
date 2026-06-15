@@ -81,7 +81,9 @@ function doOsuGapContent(beatmap_metadata, user_scores, sorted_user_scores, page
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url} = beatmap_metadata;
 
-    const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
+    const isUnranked = beatmap_metadata.status === 'pending' || beatmap_metadata.status === 'graveyard';
+    const unrankedLabel = isUnranked ? t(locale, 'gap.unranked_map') : '';
+    const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})${unrankedLabel}`;
     let content = t(locale, 'gap.content_title', { totalUsers: user_scores.length, scoreUsers: sorted_user_scores.length, mapa });
 
     if (sorted_user_scores.length > 5) {

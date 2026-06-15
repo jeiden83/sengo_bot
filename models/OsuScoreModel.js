@@ -1524,7 +1524,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
         }
     }
 
-    const unrankedScores = await getUnrankedUserScores(beatmapId, gamemode);
+    const unrankedScores = await getUnrankedUserScores(beatmapId, gamemode, usersArray);
 
     for (const [userId, score] of unrankedScores.entries()) {
         if (!scores.has(userId)) {
@@ -1543,7 +1543,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
     return scores;
 }
 
-async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
+async function getUnrankedUserScores(beatmapId, gamemode = 'osu', usersArray = null) {
     const userScores = new Collection();
     const tokenCountryCodes = {};
 
@@ -1586,8 +1586,13 @@ async function getUnrankedUserScores(beatmapId, gamemode = 'osu') {
                     }
                 }
 
+                const allowedOsuIds = usersArray ? new Set(usersArray.map(u => u.osu_id.toString())) : null;
+
                 // Elegir la mejor play de cada usuario
                 for (const uId in tempUserScores) {
+                    if (allowedOsuIds && !allowedOsuIds.has(uId)) {
+                        continue;
+                    }
                     const scoresList = tempUserScores[uId];
                     const best = scoresList.reduce((a, b) => (Number(a.total_score || a.legacy_total_score || 0) > Number(b.total_score || b.legacy_total_score || 0) ? a : b));
                     

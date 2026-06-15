@@ -11,6 +11,7 @@
     "err_empty_report": "❌ You cannot send an empty bug report. Please describe the bug or attach an image.",
     "report_sent": "✅ Your bug report has been sent successfully. Thank you for your help!",
     "err_send_failed": "❌ An error occurred while trying to send your report to the webhook.",
+    "err_webhook_invalid": "❌ The webhook configured to receive bug reports is invalid or has been deleted. Please contact the bot creator.",
     "modal_title": "Report a Bug in Sengo",
     "modal_bug_title_label": "Bug Title (Optional)",
     "modal_bug_title_placeholder": "E.g., Error using s.r",
@@ -25,6 +26,7 @@
     "err_empty_report": "❌ You cannot send an empty suggestion. Please describe your suggestion or attach an image.",
     "report_sent": "✅ Thanks for the suggestion.",
     "err_send_failed": "❌ An error occurred while trying to send your suggestion to the webhook.",
+    "err_webhook_invalid": "❌ The webhook configured to receive suggestions is invalid or has been deleted. Please contact the bot creator.",
     "modal_title": "Submit a Suggestion for Sengo",
     "modal_title_label": "Suggestion Title (Optional)",
     "modal_title_placeholder": "E.g., New command s.xyz",
@@ -844,7 +846,8 @@
     "context_server_short": "in the server",
     "embed_footer": "Sengo • Showing positions {start}-{end} of {total}",
     "content_title": "Out of `{totalUsers}` users, `{scoreUsers}` have a score on:\n{mapa}",
-    "content_page": "\n**Page `{page}/{max_pages}`**"
+    "content_page": "\n**Page `{page}/{max_pages}`**",
+    "unranked_map": " **(Unranked Map)**"
   },
   "top": {
     "err_no_scores": "But you don't have registered scores",

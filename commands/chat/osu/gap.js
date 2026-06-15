@@ -131,7 +131,7 @@ async function run(messages, args){
 
     let user_scores;
     if (beatmap_metadata.status == "pending" || beatmap_metadata.status == "graveyard") {
-        user_scores = await getUnrankedUserScores(beatmap_url, beatmap_metadata.mode);
+        user_scores = await getUnrankedUserScores(beatmap_url, beatmap_metadata.mode, usersArray);
     } else {
         user_scores = await getNewBeatmapUserScores(beatmap_url, usersArray, beatmap_metadata.mode, forceUpdate, logger, beatmap_metadata, parsed_args.isLazerMode === true);
     }
