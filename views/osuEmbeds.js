@@ -1329,7 +1329,11 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
     const pp95Color = `\u001b[1;37m95%:\u001b[0m ${livePPValues.pp95.toFixed(2)}pp -> ${reworkResult.pp95.toFixed(2)}pp (${diffPPColor(reworkResult.pp95 - livePPValues.pp95)})`;
     const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}\n${pp99Color}\n${pp98Color}\n${pp95Color}\n\`\`\``;
 
-    let modsDisplay = modsStr ? `+${modsStr.toUpperCase()}` : "Nomod";
+    let modsDisplay = "Nomod";
+    if (modsStr && modsStr.toUpperCase() !== 'NM') {
+        const chunks = modsStr.toUpperCase().match(/.{1,2}/g) || [];
+        modsDisplay = chunks.map(mod => `<:${mod}:${emoji_mods[mod] || '123'}>`).join(" ");
+    }
     let statusText = "";
     if (reworkResult.isExactCalculation) {
         statusText = locale === 'es'
@@ -1358,7 +1362,7 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setDescription(`
-**• ${t(locale, 'rework.calc_mods')}:** \`${modsDisplay}\`
+**• ${t(locale, 'rework.calc_mods')}:** ${modsDisplay}
 **• ${t(locale, 'rework.calc_diff')}:** \`${srDisplay}\`
 **• ${t(locale, 'rework.calc_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: \`${rework.id}\`)
 
@@ -1702,9 +1706,13 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
     const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
     const beatmapCover = beatmap.beatmapset.covers["cover@2x"];
 
-    const modsStr = parsedPlay.mods && parsedPlay.mods.length > 0
-        ? `+${parsedPlay.mods.join("")}`
-        : "None";
+    let modsDisplay = "Nomod";
+    if (parsedPlay.mods && parsedPlay.mods.length > 0) {
+        modsDisplay = parsedPlay.mods.map(mod => {
+            const modUpper = mod.toUpperCase();
+            return `<:${modUpper}:${emoji_mods[modUpper] || '123'}>`;
+        }).join(" ");
+    }
 
     const diff = reworkPP - parsedPlay.livePP;
     const diffSign = diff >= 0 ? "+" : "";
@@ -1735,7 +1743,7 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
         .setImage(beatmapCover)
         .setColor(embedColor)
         .setDescription(`
-**• ${t(locale, 'rework.calc_mods')}:** \`${modsStr}\`
+**• ${t(locale, 'rework.calc_mods')}:** ${modsDisplay}
 **• ${t(locale, 'rework.calc_diff')}:** \`${srDisplay}\`
 **• ${t(locale, 'rework.calc_rework')}:** \`${rework.name}\` (\`${rework.code}\` / ID: ${rework.id})
 
