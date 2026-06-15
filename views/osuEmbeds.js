@@ -538,7 +538,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         if (isOffline) {
             disclaimer = t(locale, 'compare.disclaimer_offline', { player: `*${username}*`, uploader: uploaderName }) + '\n';
             authorText = t(locale, 'compare.single_embed_author_other_offline', { rank: score.originalRank || index, player: username, uploader: uploaderName });
-            authorUrl = `https://osu.ppy.sh/users/${score.user_id || score.user?.id}`;
+            authorUrl = undefined;
         } else {
             disclaimer = t(locale, 'compare.disclaimer_online', { player: `[${username}](https://osu.ppy.sh/users/${resolvedOsuId})`, uploader: uploaderName }) + '\n';
             authorText = t(locale, 'compare.single_embed_author_other', { rank: score.originalRank || index, player: username, uploader: uploaderName });
@@ -632,9 +632,9 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const OsuUserModel = require("../models/OsuUserModel.js");
-        const uploaderUsername = parsed_args.username[0] || 'Usuario';
+        const mainUsername = user_scores_chunk[0]?.user?.username || parsed_args.username[0] || 'Usuario';
         const scoreUsername = score.user?.username || score.username || '';
-        const isDifferentUser = scoreUsername && scoreUsername.toLowerCase() !== uploaderUsername.toLowerCase();
+        const isDifferentUser = scoreUsername && scoreUsername.toLowerCase() !== mainUsername.toLowerCase();
         
         let playerTag = '';
         if (isDifferentUser) {
@@ -734,7 +734,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         } else {
             if (isOffline) {
                 authorName = t(locale, 'subir.embed_author_other_offline', { player: pName, uploader: uName });
-                authorUrl = `https://osu.ppy.sh/users/${uploaderOsuId}`;
+                authorUrl = undefined;
             } else {
                 authorName = t(locale, 'subir.embed_author_other', { player: pName, uploader: uName });
                 authorUrl = `https://osu.ppy.sh/users/${resolvedOsuId}`;
