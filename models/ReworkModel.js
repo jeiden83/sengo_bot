@@ -476,7 +476,8 @@ function calculateReworkPPForMap(beatmapScores, modsStr, livePPValues) {
     const pp99 = livePPValues.pp99 * ratio;
     const pp98 = livePPValues.pp98 * ratio;
     const pp95 = livePPValues.pp95 * ratio;
-    const stars = livePPValues.baseStars * srRatio;
+    const liveStars = livePPValues.liveModStars !== undefined ? livePPValues.liveModStars : livePPValues.baseStars;
+    const stars = liveStars * srRatio;
 
     return {
         ppSS,

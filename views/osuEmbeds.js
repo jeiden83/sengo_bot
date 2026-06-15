@@ -1343,9 +1343,10 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
         statusText = t(locale, 'rework.calc_status_estimate', { ratio: (reworkResult.ratio * 100).toFixed(1) });
     }
 
-    const diffSR = reworkResult.stars - livePPValues.baseStars;
+    const liveStars = livePPValues.liveModStars !== undefined ? livePPValues.liveModStars : livePPValues.baseStars;
+    const diffSR = reworkResult.stars - liveStars;
     const srDiffStr = diffSR > 0 ? `+${diffSR.toFixed(2)}` : diffSR.toFixed(2);
-    const srDisplay = `${livePPValues.baseStars.toFixed(2)}★ -> ${reworkResult.stars.toFixed(2)}★ (${srDiffStr})`;
+    const srDisplay = `${liveStars.toFixed(2)}★ -> ${reworkResult.stars.toFixed(2)}★ (${srDiffStr})`;
 
     const embed = new EmbedBuilder()
         .setAuthor({

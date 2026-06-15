@@ -616,6 +616,10 @@ async function run(messages, args) {
     const baseStarsAttrs = baseStarsPerf.calculate(map);
     const baseStars = baseStarsAttrs.difficulty.stars;
 
+    const modStarsPerf = new rosu.Performance({ mods: activeModsStr });
+    const modStarsAttrs = modStarsPerf.calculate(map);
+    const liveModStars = modStarsAttrs.difficulty.stars;
+
     // Calcular PP para diferentes precisiones en Live
     const ppSS = new rosu.Performance({ mods: activeModsStr }).calculate(map).pp;
     const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
@@ -628,6 +632,7 @@ async function run(messages, args) {
         pp98,
         pp95,
         baseStars,
+        liveModStars,
         maxCombo: baseStarsAttrs.difficulty.maxCombo
     };
 
