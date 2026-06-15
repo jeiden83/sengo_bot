@@ -596,6 +596,96 @@ async function run(messages, args) {
         }
     }
 
+    // Parsear overrides de mock/parámetros
+    let overrideMods = null;
+    const plusModArg = args.find(arg => typeof arg === 'string' && arg.startsWith('+') && arg.length > 1 && !/^\d+$/.test(arg.slice(1)));
+    if (plusModArg) {
+        overrideMods = plusModArg.slice(1).toUpperCase();
+    } else if (initial_parsed.modFilter) {
+        overrideMods = initial_parsed.modFilter.toUpperCase();
+    }
+
+    let overrideAcc = null;
+    const accIdx = args.findIndex(arg => typeof arg === 'string' && (arg.toLowerCase() === '-acc' || arg.toLowerCase() === '--acc'));
+    if (accIdx !== -1 && accIdx + 1 < args.length) {
+        const rawAcc = args[accIdx + 1].replace('%', '');
+        const num = parseFloat(rawAcc);
+        if (!isNaN(num)) {
+            overrideAcc = num;
+        }
+    }
+
+    let overrideMisses = null;
+    const missIdx = args.findIndex(arg => typeof arg === 'string' && (
+        arg.toLowerCase() === '-miss' || arg.toLowerCase() === '--miss' ||
+        arg.toLowerCase() === '-misses' || arg.toLowerCase() === '--misses'
+    ));
+    if (missIdx !== -1 && missIdx + 1 < args.length) {
+        const num = parseInt(args[missIdx + 1]);
+        if (!isNaN(num)) {
+            overrideMisses = num;
+        }
+    }
+
+    let overrideCombo = null;
+    const comboIdx = args.findIndex(arg => typeof arg === 'string' && (
+        arg.toLowerCase() === '-combo' || arg.toLowerCase() === '--combo' ||
+        (arg.toLowerCase() === '-c' && args[args.indexOf(arg) + 1] && /^\d+$/.test(args[args.indexOf(arg) + 1]))
+    ));
+    if (comboIdx !== -1 && comboIdx + 1 < args.length) {
+        const num = parseInt(args[comboIdx + 1]);
+        if (!isNaN(num)) {
+            overrideCombo = num;
+        }
+    }
+
+    const hitsFormatRegex = /^(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)$/i;
+    const hitsArg = args.find(arg => typeof arg === 'string' && hitsFormatRegex.test(arg));
+
+    // Aplicar overrides a parsedPlay si existe
+    if (parsedPlay) {
+        if (overrideMods) {
+            const cleanOverride = overrideMods === 'NM' || overrideMods === 'NOMOD' ? '' : overrideMods;
+            parsedPlay.mods = cleanOverride ? cleanOverride.match(/.{1,2}/g) || [] : [];
+        }
+        if (overrideAcc !== null) parsedPlay.accuracy = overrideAcc;
+        if (overrideMisses !== null) parsedPlay.misses = overrideMisses;
+        if (overrideCombo !== null) parsedPlay.combo = overrideCombo;
+        
+        if (hitsArg) {
+            const parts = hitsArg.split('/');
+            parsedPlay.count_300 = parts[0].toLowerCase() === 'x' ? undefined : parseInt(parts[0]);
+            parsedPlay.count_100 = parts[1].toLowerCase() === 'x' ? undefined : parseInt(parts[1]);
+            parsedPlay.count_50 = parts[2].toLowerCase() === 'x' ? undefined : parseInt(parts[2]);
+            parsedPlay.misses = parts[3].toLowerCase() === 'x' ? undefined : parseInt(parts[3]);
+        }
+    }
+
+    if (!parsedPlay && (overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg)) {
+        // Inicializar un parsedPlay vacío para simulación
+        parsedPlay = {
+            beatmapId: null,
+            mods: overrideMods && overrideMods !== 'NM' && overrideMods !== 'NOMOD' ? overrideMods.match(/.{1,2}/g) || [] : [],
+            accuracy: overrideAcc !== null ? overrideAcc : 100.0,
+            combo: overrideCombo,
+            maxCombo: null,
+            count_300: undefined,
+            count_100: undefined,
+            count_50: undefined,
+            misses: overrideMisses !== null ? overrideMisses : 0,
+            livePP: 0,
+            username: message.author ? message.author.username : "Jugador",
+            isMock: true
+        };
+        if (hitsArg) {
+            const parts = hitsArg.split('/');
+            parsedPlay.count_300 = parts[0].toLowerCase() === 'x' ? undefined : parseInt(parts[0]);
+            parsedPlay.count_100 = parts[1].toLowerCase() === 'x' ? undefined : parseInt(parts[1]);
+            parsedPlay.count_50 = parts[2].toLowerCase() === 'x' ? undefined : parseInt(parts[2]);
+            parsedPlay.misses = parts[3].toLowerCase() === 'x' ? undefined : parseInt(parts[3]);
+        }
+    }
+
     if (logger) logger.process("Buscando mapa para calcular rework");
     let beatmap_id = parsedPlay ? parsedPlay.beatmapId : initial_parsed.beatmap_url;
 
@@ -612,6 +702,10 @@ async function run(messages, args) {
             return channel_result.bad_response || t(locale, 'rework.err_no_map_history');
         }
         beatmap_id = channel_result.beatmap_url;
+    }
+
+    if (parsedPlay && !parsedPlay.beatmapId) {
+        parsedPlay.beatmapId = beatmap_id;
     }
 
     let sentMessage = null;
@@ -727,7 +821,7 @@ async function run(messages, args) {
     }
 
     await updateProgress(2, 'loading');
-    let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || (parsedPlay ? parsedPlay.mods.join("") : "");
+    let modsStr = overrideMods !== null ? overrideMods : (initial_parsed.modFilter || initial_parsed.modContainFilter || (parsedPlay ? parsedPlay.mods.join("") : ""));
     const activeModsStr = modsStr.replace(/CL/g, "");
 
     let requestedMode = initial_parsed.gamemode;
@@ -770,6 +864,30 @@ async function run(messages, args) {
         liveModStars,
         maxCombo: baseStarsAttrs.difficulty.maxCombo
     };
+
+    if (parsedPlay) {
+        parsedPlay.liveModStars = liveModStars;
+        parsedPlay.maxCombo = baseStarsAttrs.difficulty.maxCombo;
+
+        // Recalcular livePP usando rosu-pp-js si hubo overrides o es mock
+        if (parsedPlay.isMock || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null) {
+            try {
+                const livePerf = new rosu.Performance({
+                    mods: activeModsStr,
+                    accuracy: parsedPlay.accuracy,
+                    combo: parsedPlay.combo || undefined,
+                    n300: parsedPlay.count_300,
+                    n100: parsedPlay.count_100,
+                    n50: parsedPlay.count_50,
+                    misses: parsedPlay.misses
+                });
+                const liveAttrs = livePerf.calculate(map);
+                parsedPlay.livePP = liveAttrs.pp;
+            } catch (err) {
+                console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
+            }
+        }
+    }
 
     map.free();
     await updateProgress(2, 'success');
