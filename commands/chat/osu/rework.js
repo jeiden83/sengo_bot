@@ -3,6 +3,8 @@ const ReworkModel = require("../../../models/ReworkModel.js");
 const rosu = require("rosu-pp-js");
 const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
+const { EmbedBuilder } = require("discord.js");
+const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
@@ -478,66 +480,111 @@ async function run(messages, args) {
     }
 
     let sentMessage = null;
-    const progressLines = [
-        `⏳ **Procesando rework en Sengo...**`,
-        `• Obteniendo metadatos del mapa... ⏳`,
-        `• Descargando archivo .osu... ⚪`,
-        `• Calculando valores en local... ⚪`,
-        `• Obteniendo configuración del rework... ⚪`,
-        `• Consultando rework exacto a pp.huismetbenen.nl... ⚪`
+    let stepStartTime = Date.now();
+
+    const stepTemplates = locale === 'es' ? [
+        "Obteniendo metadatos del mapa...",
+        "Descargando archivo .osu...",
+        "Calculando valores en local...",
+        "Obteniendo configuración del rework...",
+        "Consultando rework exacto a pp.huismetbenen.nl..."
+    ] : [
+        "Fetching beatmap metadata...",
+        "Downloading .osu file...",
+        "Calculating local values...",
+        "Fetching rework configuration...",
+        "Querying exact rework to pp.huismetbenen.nl..."
     ];
 
-    const updateProgress = async (index, emoji, extra = "") => {
-        progressLines[index] = progressLines[index].replace(/[⏳⚪✅❌⚠️🔄]/, emoji);
-        if (extra) {
-            const baseText = progressLines[index].split('...')[0] + '...';
-            progressLines[index] = `${baseText} ${extra}`;
+    const activeSteps = [];
+
+    const updateProgress = async (stepIndex, status, extra = "") => {
+        const embedColor = getEmbedColor(message);
+        
+        if (activeSteps.length <= stepIndex) {
+            for (let i = activeSteps.length; i < stepIndex; i++) {
+                if (activeSteps[i]) {
+                    activeSteps[i].status = 'success';
+                    if (activeSteps[i].duration === null) {
+                        activeSteps[i].duration = 0;
+                    }
+                }
+            }
+            activeSteps.push({
+                text: stepTemplates[stepIndex],
+                status: 'loading',
+                duration: null,
+                extra: ""
+            });
+            stepStartTime = Date.now();
         }
+
+        const step = activeSteps[stepIndex];
+        step.status = status;
+        step.extra = extra;
+
+        if (status === 'success' || status === 'error' || status === 'warning') {
+            if (step.duration === null) {
+                step.duration = Date.now() - stepStartTime;
+            }
+        }
+
+        const descriptionLines = activeSteps.map((s) => {
+            let emoji = '⏳';
+            if (s.status === 'success') emoji = '✅';
+            else if (s.status === 'error') emoji = '❌';
+            else if (s.status === 'warning') emoji = '⚠️';
+            else if (s.status === 'retry') emoji = '🔄';
+
+            let durationText = s.duration !== null ? ` - **${s.duration}ms**` : "";
+            let extraText = s.extra ? ` ${s.extra}` : "";
+            return `${emoji} ${s.text}${durationText}${extraText}`;
+        });
+
+        const progressEmbed = new EmbedBuilder()
+            .setTitle(locale === 'es' ? "Calculando Rework..." : "Calculating Rework...")
+            .setDescription(descriptionLines.join('\n'))
+            .setColor(embedColor);
+
         try {
             if (!sentMessage) {
                 if (reply) {
-                    sentMessage = await reply.reply({ content: progressLines.join('\n') });
+                    sentMessage = await reply.reply({ embeds: [progressEmbed] });
                 } else {
-                    sentMessage = await message.channel.send({ content: progressLines.join('\n') });
+                    sentMessage = await message.channel.send({ embeds: [progressEmbed] });
                 }
             } else if (typeof sentMessage.edit === 'function') {
-                await sentMessage.edit({ content: progressLines.join('\n') });
+                await sentMessage.edit({ embeds: [progressEmbed] });
             }
         } catch (e) {
             // Ignorar
         }
     };
 
-    await updateProgress(1, '⏳');
+    await updateProgress(0, 'loading');
 
     let beatmap;
     try {
         beatmap = await getBeatmap(beatmap_id);
-        await updateProgress(1, '✅');
+        await updateProgress(0, 'success');
     } catch (e) {
         const errText = t(locale, 'rework.err_map_metadata', { mapId: beatmap_id });
-        if (sentMessage) {
-            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
-            return;
-        }
-        return errText;
+        await updateProgress(0, 'error', `(${errText})`);
+        return;
     }
 
     let map;
-    await updateProgress(2, '⏳');
+    await updateProgress(1, 'loading');
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
-        await updateProgress(2, '✅');
+        await updateProgress(1, 'success');
     } catch (e) {
         const errText = t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
-        if (sentMessage) {
-            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
-            return;
-        }
-        return errText;
+        await updateProgress(1, 'error', `(${errText})`);
+        return;
     }
 
-    await updateProgress(3, '⏳');
+    await updateProgress(2, 'loading');
     let modsStr = initial_parsed.modFilter || initial_parsed.modContainFilter || "";
     const activeModsStr = modsStr.replace(/CL/g, "");
 
@@ -578,23 +625,20 @@ async function run(messages, args) {
     };
 
     map.free();
-    await updateProgress(3, '✅');
+    await updateProgress(2, 'success');
 
-    await updateProgress(4, '⏳');
+    await updateProgress(3, 'loading');
     // Obtener Rework
     const rework = await ReworkModel.getReworkByQuery(reworkQuery, activeMode);
     if (!rework) {
         const errText = t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
-        if (sentMessage) {
-            await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
-            return;
-        }
-        return errText;
+        await updateProgress(3, 'error', `(${errText})`);
+        return;
     }
-    await updateProgress(4, '✅');
+    await updateProgress(3, 'success');
 
     let reworkResult = null;
-    await updateProgress(5, '⏳', `[100%: ⏳, 99%: ⚪, 98%: ⚪, 95%: ⚪]`);
+    await updateProgress(4, 'loading', `[100%: ⏳, 99%: ⚪, 98%: ⚪, 95%: ⚪]`);
 
     const onProgress = async (acc, status, extraVal) => {
         const accs = [100, 99, 98, 95];
@@ -616,19 +660,26 @@ async function run(messages, args) {
             return `${a}%: ${emoji}${extraInfo}`;
         }).join(', ');
         
-        await updateProgress(5, '⏳', `[${progressStr}]`);
+        await updateProgress(4, 'loading', `[${progressStr}]`);
     };
 
     if (logger) logger.process(`Intentando calcular Rework exacto para beatmap ID: ${beatmap.id}`);
     try {
         reworkResult = await ReworkModel.calculateReworkPPForMapExact(beatmap.id, modsStr, livePPValues, activeMode, rework.code, onProgress);
-        await updateProgress(5, '✅');
+        
+        const accs = [100, 99, 98, 95];
+        const finalProgressStr = accs.map(a => `${a}%: ✅`).join(', ');
+        await updateProgress(4, 'success', `[${finalProgressStr}]`);
     } catch (err) {
         console.warn(`[Rework] No se pudo realizar el cálculo exacto (fallando a promedio): ${err.message}`);
     }
 
     if (!reworkResult) {
-        await updateProgress(5, '⚠️', `(No disponible, estimando por promedio...)`);
+        await updateProgress(4, 'warning', `(No disponible, estimando por promedio...)`);
+        
+        stepTemplates.push(locale === 'es' ? "Calculando estimación por promedio..." : "Calculating average estimation...");
+        await updateProgress(5, 'loading');
+        
         if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id} (Promedio)`);
         let beatmapScores = [];
         try {
@@ -636,13 +687,11 @@ async function run(messages, args) {
         } catch (e) {
             console.error("Error al obtener scores de beatmap en Rework:", e);
             const errText = t(locale, 'rework.err_rework_map_api');
-            if (sentMessage) {
-                await sentMessage.edit({ content: `❌ **Error:** ${errText}` });
-                return;
-            }
-            return errText;
+            await updateProgress(5, 'error', `(${errText})`);
+            return;
         }
         reworkResult = ReworkModel.calculateReworkPPForMap(beatmapScores, modsStr, livePPValues);
+        await updateProgress(5, 'success');
     }
 
     const embed = await doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult, rework, modsStr, locale);
