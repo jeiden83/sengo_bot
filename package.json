@@ -1,6 +1,6 @@
 {
   "name": "sengo_bot",
-  "version": "2.5.6.0",
+  "version": "2.5.6.1",
   "description": "",
   "main": "index.js",
   "engines": {
