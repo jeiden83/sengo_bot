@@ -11,24 +11,65 @@ const calculatedReworkCache = new Map();
 
 async function loadSession() {
     if (currentSession) return currentSession;
+    
+    // Intentar cargar desde Supabase (bot_settings) para persistencia entre deploys y sincronización dev/render
+    try {
+        const { getSetting, settingsCache } = require('./BotSettingsModel.js');
+        // ponytail: eliminamos de la caché para forzar la lectura directa de la base de datos y evitar tokens desincronizados entre instancias.
+        settingsCache.delete('huismetbenen_session');
+        const dbValue = await getSetting('huismetbenen_session');
+        if (dbValue) {
+            currentSession = JSON.parse(dbValue);
+            return currentSession;
+        }
+    } catch (err) {
+        console.error("[Rework] Error al cargar sesión de huismetbenen desde la base de datos:", err);
+    }
+
+    // Fallback: intentar cargar desde el archivo local
     try {
         const data = await fs.readFile(SESSION_FILE, 'utf-8');
         currentSession = JSON.parse(data);
-    } catch (err) {
+        
+        // Guardar en la base de datos para futuras ejecuciones
+        const { setSetting } = require('./BotSettingsModel.js');
+        await setSetting('huismetbenen_session', JSON.stringify(currentSession)).catch(() => {});
+    } catch {
+        // Fallback final: variables de entorno
         currentSession = {
             accessToken: process.env.HUISMETBENEN_ACCESS_TOKEN || null,
             refreshToken: process.env.HUISMETBENEN_REFRESH_TOKEN || null
         };
+        
+        // Guardar en la base de datos para futuras ejecuciones si tenemos valores
+        if (currentSession.accessToken || currentSession.refreshToken) {
+            try {
+                const { setSetting } = require('./BotSettingsModel.js');
+                await setSetting('huismetbenen_session', JSON.stringify(currentSession));
+            } catch {
+                // Silenciar error en caso de que no haya conexión a la BD aún
+            }
+        }
     }
     return currentSession;
 }
 
 async function saveSession(accessToken, refreshToken) {
     currentSession = { accessToken, refreshToken };
+    
+    // Guardar en la base de datos (Supabase)
+    try {
+        const { setSetting } = require('./BotSettingsModel.js');
+        await setSetting('huismetbenen_session', JSON.stringify(currentSession));
+    } catch (err) {
+        console.error("[Rework] Error al guardar sesión de huismetbenen en la base de datos:", err);
+    }
+
+    // Guardar también en el archivo local como respaldo
     try {
         await fs.writeFile(SESSION_FILE, JSON.stringify(currentSession, null, 2), 'utf-8');
     } catch (err) {
-        console.error("[Rework] Error al guardar sesión de huismetbenen:", err);
+        console.error("[Rework] Error al guardar sesión de huismetbenen en archivo local:", err);
     }
 }
 
