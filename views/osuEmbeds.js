@@ -1329,7 +1329,7 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
     const pp95Color = `\u001b[1;37m95%:\u001b[0m ${livePPValues.pp95.toFixed(2)}pp -> ${reworkResult.pp95.toFixed(2)}pp (${diffPPColor(reworkResult.pp95 - livePPValues.pp95)})`;
     const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}\n${pp99Color}\n${pp98Color}\n${pp95Color}\n\`\`\``;
 
-    let modsDisplay = "Nomod";
+    let modsDisplay = `<:CL:${emoji_mods["CL"]}>`;
     if (modsStr && modsStr.toUpperCase() !== 'NM') {
         const chunks = modsStr.toUpperCase().match(/.{1,2}/g) || [];
         modsDisplay = chunks.map(mod => `<:${mod}:${emoji_mods[mod] || '123'}>`).join(" ");
@@ -1706,7 +1706,7 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
     const mapUrl = `https://osu.ppy.sh/b/${beatmap.id}`;
     const beatmapCover = beatmap.beatmapset.covers["cover@2x"];
 
-    let modsDisplay = "Nomod";
+    let modsDisplay = `<:CL:${emoji_mods["CL"]}>`;
     if (parsedPlay.mods && parsedPlay.mods.length > 0) {
         modsDisplay = parsedPlay.mods.map(mod => {
             const modUpper = mod.toUpperCase();

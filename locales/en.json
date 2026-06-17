@@ -1193,6 +1193,7 @@
     "err_map_metadata": "❌ Could not load metadata for beatmap ID `{mapId}`.",
     "err_map_parse": "❌ Could not download or parse beatmap file `{mapId}`.",
     "err_no_map_history": "❌ No beatmap found in the channel history and no valid ID was specified.",
+    "err_failed_play": "❌ Cannot calculate rework on a failed play.",
     "queue_status_wait": "⏳ **{username}** is already in the recalculation queue for **{reworkName}** ({elapsed}s ago).\nPlease be patient, it will update soon on pp.huismetbenen.nl.",
     "queue_added_wait": "⏳ **{username}** has not been recalculated yet in **{reworkName}**.\nWe have added them to the recalculation queue. Try again in a few minutes.",
     "msg_single_play": "Showing play **#{index}** of **{total}** in Rework:",

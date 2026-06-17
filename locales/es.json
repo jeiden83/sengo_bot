@@ -1193,6 +1193,7 @@
     "err_map_metadata": "❌ No se pudieron cargar los metadatos para el mapa con ID `{mapId}`.",
     "err_map_parse": "❌ No se pudo descargar ni analizar el archivo del mapa `{mapId}`.",
     "err_no_map_history": "❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.",
+    "err_failed_play": "❌ No se puede calcular el rework sobre una play fallida.",
     "queue_status_wait": "⏳ **{username}** ya está en la cola de recalculación para **{reworkName}** (hace {elapsed}s).\nPor favor, ten paciencia, se actualizará pronto en pp.huismetbenen.nl.",
     "queue_added_wait": "⏳ **{username}** no ha sido recalculado aún en **{reworkName}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.",
     "msg_single_play": "Mostrando la jugada **#{index}** de **{total}** en el Rework:",

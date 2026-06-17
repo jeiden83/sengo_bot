@@ -95,6 +95,22 @@ function parsePlayEmbed(embed) {
         return null;
     }
 
+    const isFailed = (
+        /:grade_f:/i.test(combinedText) ||
+        /\bgrade_f\b/i.test(combinedText) ||
+        /\(fail\)/i.test(combinedText) ||
+        /\bfailed\b/i.test(combinedText) ||
+        /\bfailed\b/i.test(embed.title || "")
+    );
+    let isFailedPlay = false;
+    if (isFailed) {
+        const completionMatch = combinedText.match(/\((100(?:\.00)?|\d{1,2}(?:\.\d+)?)%\)/);
+        const completion = completionMatch ? parseFloat(completionMatch[1]) : null;
+        if (completion === null || completion < 100.0) {
+            isFailedPlay = true;
+        }
+    }
+
     return {
         beatmapId,
         mods,
@@ -107,7 +123,8 @@ function parsePlayEmbed(embed) {
         misses,
         livePP,
         username,
-        hits
+        hits,
+        isFailed: isFailedPlay
     };
 }
 
@@ -642,6 +659,10 @@ async function run(messages, args) {
     const hitsFormatRegex = /^(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)$/i;
     const hitsArg = args.find(arg => typeof arg === 'string' && hitsFormatRegex.test(arg));
 
+    if (parsedPlay && parsedPlay.isFailed && overrideAcc === null && overrideMisses === null && overrideCombo === null && !hitsArg) {
+        return t(locale, 'rework.err_failed_play');
+    }
+
     // Aplicar overrides a parsedPlay si existe
     if (parsedPlay) {
         if (overrideMods) {
@@ -666,7 +687,7 @@ async function run(messages, args) {
         parsedPlay = {
             beatmapId: null,
             mods: overrideMods && overrideMods !== 'NM' && overrideMods !== 'NOMOD' ? overrideMods.match(/.{1,2}/g) || [] : [],
-            accuracy: overrideAcc !== null ? overrideAcc : 100.0,
+            accuracy: overrideAcc,
             combo: overrideCombo,
             maxCombo: null,
             count_300: undefined,
@@ -814,6 +835,22 @@ async function run(messages, args) {
     try {
         map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
         await updateProgress(1, 'success');
+        if (parsedPlay && parsedPlay.accuracy === null) {
+            // ponytail: default to standard accuracy formula when only hits/misses are specified
+            const misses = parsedPlay.misses || 0;
+            const c100 = parsedPlay.count_100 || 0;
+            const c50 = parsedPlay.count_50 || 0;
+            const totalObjects = map.nObjects || 0;
+            if (totalObjects > 0) {
+                const c300 = Math.max(0, totalObjects - c100 - c50 - misses);
+                parsedPlay.count_300 = c300;
+                parsedPlay.count_100 = c100;
+                parsedPlay.count_50 = c50;
+                parsedPlay.accuracy = ((c300 * 300 + c100 * 100 + c50 * 50) / (totalObjects * 300)) * 100;
+            } else {
+                parsedPlay.accuracy = 100.0;
+            }
+        }
     } catch (e) {
         const errText = t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
         await updateProgress(1, 'error', `(${errText})`);
@@ -868,6 +905,9 @@ async function run(messages, args) {
     if (parsedPlay) {
         parsedPlay.liveModStars = liveModStars;
         parsedPlay.maxCombo = baseStarsAttrs.difficulty.maxCombo;
+        if (!parsedPlay.combo) {
+            parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
+        }
 
         // Recalcular livePP usando rosu-pp-js si hubo overrides o es mock
         if (parsedPlay.isMock || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null) {
@@ -1026,4 +1066,4 @@ run.description = {
     'usage': t('es', 'commands.rework.usage')
 };
 
-module.exports = { run, "description": run.description };
+module.exports = { run, parsePlayEmbed, "description": run.description };
