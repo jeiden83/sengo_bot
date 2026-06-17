@@ -12,23 +12,26 @@ const calculatedReworkCache = new Map();
 async function loadSession() {
     if (currentSession) return currentSession;
     
-    // Cargar tokens locales (.env y archivo local) primero para comparar
-    let localSession = {
+    // 1. Obtener tokens de .env
+    const envSession = {
         accessToken: process.env.HUISMETBENEN_ACCESS_TOKEN || null,
         refreshToken: process.env.HUISMETBENEN_REFRESH_TOKEN || null
     };
+
+    // 2. Obtener tokens del archivo local
+    let fileSession = { accessToken: null, refreshToken: null };
     try {
         const data = await fs.readFile(SESSION_FILE, 'utf-8');
         const parsed = JSON.parse(data);
         if (parsed.accessToken || parsed.refreshToken) {
-            localSession = parsed;
+            fileSession = parsed;
         }
     } catch {
         // Ignorar si no existe el archivo local
     }
 
-    // Intentar cargar la sesión de Supabase (bot_settings)
-    let dbSession = null;
+    // 3. Obtener tokens de Supabase (bot_settings)
+    let dbSession = { accessToken: null, refreshToken: null };
     try {
         const { getSetting, settingsCache } = require('./BotSettingsModel.js');
         // ponytail: eliminamos de la caché para forzar la lectura directa de la base de datos y evitar tokens desincronizados entre instancias.
@@ -54,13 +57,26 @@ async function loadSession() {
         }
     };
 
-    const localExp = Math.max(getJwtExp(localSession.accessToken), getJwtExp(localSession.refreshToken));
-    const dbExp = dbSession ? Math.max(getJwtExp(dbSession.accessToken), getJwtExp(dbSession.refreshToken)) : 0;
+    const envExp = Math.max(getJwtExp(envSession.accessToken), getJwtExp(envSession.refreshToken));
+    const fileExp = Math.max(getJwtExp(fileSession.accessToken), getJwtExp(fileSession.refreshToken));
+    const dbExp = Math.max(getJwtExp(dbSession.accessToken), getJwtExp(dbSession.refreshToken));
+
+    const maxExp = Math.max(envExp, fileExp, dbExp);
     const now = Date.now();
 
-    // Si el local/env es más nuevo, o el de la BD no existe o está vencido, usamos el local y actualizamos la BD
-    if (localExp > dbExp || dbExp < now) {
-        currentSession = localSession;
+    // Seleccionar la sesión que tenga el token con mayor tiempo de expiración
+    if (maxExp === 0) {
+        currentSession = envSession;
+    } else if (maxExp === envExp) {
+        currentSession = envSession;
+    } else if (maxExp === fileExp) {
+        currentSession = fileSession;
+    } else {
+        currentSession = dbSession;
+    }
+
+    // Si elegimos una sesión local (env o archivo) que es más nueva que la de la BD, o la de la BD está vencida, actualizamos la BD y el archivo
+    if ((maxExp === envExp || maxExp === fileExp) && (maxExp > dbExp || dbExp < now)) {
         if (currentSession.accessToken || currentSession.refreshToken) {
             try {
                 const { setSetting } = require('./BotSettingsModel.js');
@@ -68,9 +84,12 @@ async function loadSession() {
             } catch {
                 // Silenciar error en caso de que no haya conexión a la BD aún
             }
+            try {
+                await fs.writeFile(SESSION_FILE, JSON.stringify(currentSession, null, 2), 'utf-8');
+            } catch {
+                // Silenciar error al escribir archivo local
+            }
         }
-    } else {
-        currentSession = dbSession;
     }
 
     return currentSession;
