@@ -12,36 +12,55 @@ const calculatedReworkCache = new Map();
 async function loadSession() {
     if (currentSession) return currentSession;
     
-    // Intentar cargar desde Supabase (bot_settings) para persistencia entre deploys y sincronización dev/render
+    // Cargar tokens locales (.env y archivo local) primero para comparar
+    let localSession = {
+        accessToken: process.env.HUISMETBENEN_ACCESS_TOKEN || null,
+        refreshToken: process.env.HUISMETBENEN_REFRESH_TOKEN || null
+    };
+    try {
+        const data = await fs.readFile(SESSION_FILE, 'utf-8');
+        const parsed = JSON.parse(data);
+        if (parsed.accessToken || parsed.refreshToken) {
+            localSession = parsed;
+        }
+    } catch {
+        // Ignorar si no existe el archivo local
+    }
+
+    // Intentar cargar la sesión de Supabase (bot_settings)
+    let dbSession = null;
     try {
         const { getSetting, settingsCache } = require('./BotSettingsModel.js');
         // ponytail: eliminamos de la caché para forzar la lectura directa de la base de datos y evitar tokens desincronizados entre instancias.
         settingsCache.delete('huismetbenen_session');
         const dbValue = await getSetting('huismetbenen_session');
         if (dbValue) {
-            currentSession = JSON.parse(dbValue);
-            return currentSession;
+            dbSession = JSON.parse(dbValue);
         }
     } catch (err) {
         console.error("[Rework] Error al cargar sesión de huismetbenen desde la base de datos:", err);
     }
 
-    // Fallback: intentar cargar desde el archivo local
-    try {
-        const data = await fs.readFile(SESSION_FILE, 'utf-8');
-        currentSession = JSON.parse(data);
-        
-        // Guardar en la base de datos para futuras ejecuciones
-        const { setSetting } = require('./BotSettingsModel.js');
-        await setSetting('huismetbenen_session', JSON.stringify(currentSession)).catch(() => {});
-    } catch {
-        // Fallback final: variables de entorno
-        currentSession = {
-            accessToken: process.env.HUISMETBENEN_ACCESS_TOKEN || null,
-            refreshToken: process.env.HUISMETBENEN_REFRESH_TOKEN || null
-        };
-        
-        // Guardar en la base de datos para futuras ejecuciones si tenemos valores
+    // Función auxiliar para obtener la fecha de expiración de un JWT
+    const getJwtExp = (token) => {
+        if (!token) return 0;
+        try {
+            const parts = token.split('.');
+            if (parts.length !== 3) return 0;
+            const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8'));
+            return payload.exp ? payload.exp * 1000 : 0;
+        } catch {
+            return 0;
+        }
+    };
+
+    const localExp = Math.max(getJwtExp(localSession.accessToken), getJwtExp(localSession.refreshToken));
+    const dbExp = dbSession ? Math.max(getJwtExp(dbSession.accessToken), getJwtExp(dbSession.refreshToken)) : 0;
+    const now = Date.now();
+
+    // Si el local/env es más nuevo, o el de la BD no existe o está vencido, usamos el local y actualizamos la BD
+    if (localExp > dbExp || dbExp < now) {
+        currentSession = localSession;
         if (currentSession.accessToken || currentSession.refreshToken) {
             try {
                 const { setSetting } = require('./BotSettingsModel.js');
@@ -50,7 +69,10 @@ async function loadSession() {
                 // Silenciar error en caso de que no haya conexión a la BD aún
             }
         }
+    } else {
+        currentSession = dbSession;
     }
+
     return currentSession;
 }
 
