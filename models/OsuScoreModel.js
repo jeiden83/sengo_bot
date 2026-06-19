@@ -2085,28 +2085,30 @@ async function getRankedBeatmapsCount(mode) {
 }
 
 /**
- * Obtiene el total de mapas procesados/guardados para snipes en un modo específico.
+ * Obtiene el total de mapas procesados/guardados para snipes en un modo específico y país.
  */
-async function getProcessedSnipesCount(mode) {
+async function getProcessedSnipesCount(mode, country_code = 'VE') {
     const supabase = getSupabaseClient();
     const { count, error } = await supabase
         .from('top_scores')
         .select('beatmap_id, ranked_beatmaps!inner(mode)', { count: 'exact', head: true })
-        .eq('ranked_beatmaps.mode', mode);
+        .eq('ranked_beatmaps.mode', mode)
+        .eq('country_code', country_code);
     if (error) throw error;
     return count || 0;
 }
 
 /**
- * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico.
+ * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país.
  */
-async function getUserNationalTops(userId, mode) {
+async function getUserNationalTops(userId, mode, country_code = 'VE') {
     const supabase = getSupabaseClient();
     const { data, error } = await supabase
         .from('top_scores')
         .select('pp, mods, ended_at, ranked_beatmaps!inner(mode)')
         .eq('user_id', userId.toString())
-        .eq('ranked_beatmaps.mode', mode);
+        .eq('ranked_beatmaps.mode', mode)
+        .eq('country_code', country_code);
     if (error) throw error;
     return data || [];
 }

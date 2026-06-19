@@ -39,7 +39,7 @@ async function run(messages, args){
     // 2. Obtener mapas que ya han sido procesados y guardados en top_scores en este modo de juego
     let processedMaps = 0;
     try {
-        processedMaps = await OsuScoreModel.getProcessedSnipesCount(look_gamemode);
+        processedMaps = await OsuScoreModel.getProcessedSnipesCount(look_gamemode, country_code);
     } catch (errProcessed) {
         console.error("Error al obtener mapas procesados en snipes.js:", errProcessed);
         return t(locale, 'snipes.err_db_progress');
@@ -55,7 +55,7 @@ async function run(messages, args){
     // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos del Modelo
     let userScores = [];
     try {
-        userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode);
+        userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code);
     } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
         return t(locale, 'snipes.err_db_scores');
