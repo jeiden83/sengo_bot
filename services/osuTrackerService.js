@@ -439,19 +439,26 @@ async function initOsuTracker(client) {
 
     Logger.system("[TRACKER-SERVICE] Inicializando servicio de tracking de osu!...");
 
-    // Cargar todos los registros del tracker desde la base de datos
-    const records = await OsuTrackerModel.getTrackedUsers();
-    
-    // Inicializar memoria secuencialmente para evitar saturar la API al encender
-    for (const record of records) {
-        await addTrackedUserInMemory(record);
-    }
+    // Ejecutar en segundo plano de forma no bloqueante para el arranque de la app
+    (async () => {
+        try {
+            // Cargar todos los registros del tracker desde la base de datos
+            const records = await OsuTrackerModel.getTrackedUsers();
+            
+            // Inicializar memoria secuencialmente para evitar saturar la API al encender
+            for (const record of records) {
+                await addTrackedUserInMemory(record);
+            }
 
-    Logger.system(`[TRACKER-SERVICE] Cargados ${usersMap.size} usuarios únicos para tracking. Cola Rápida: ${fastQueue.length}, Cola Lenta: ${slowQueue.length}`);
+            Logger.system(`[TRACKER-SERVICE] Cargados ${usersMap.size} usuarios únicos para tracking. Cola Rápida: ${fastQueue.length}, Cola Lenta: ${slowQueue.length}`);
 
-    // Iniciar bucles asíncronos
-    tickFast(client);
-    tickSlow(client);
+            // Iniciar bucles asíncronos
+            tickFast(client);
+            tickSlow(client);
+        } catch (err) {
+            Logger.system(`[TRACKER-SERVICE] Error crítico al inicializar tracker en segundo plano: ${err.message}`);
+        }
+    })();
 }
 
 module.exports = {

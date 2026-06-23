@@ -1,9 +1,6 @@
-const fs = require('fs');
-const path = require('path');
 const OsuUserModel = require("../models/OsuUserModel.js");
 const Logger = require("../utils/logger.js");
-
-const STATUS_FILE = path.join(__dirname, "../db/local/supporter_sync_status.json");
+const BotSettingsModel = require("../models/BotSettingsModel.js");
 
 async function checkSupporterStatuses() {
     Logger.system("Iniciando verificación diaria de estatus de osu! supporter...");
@@ -16,23 +13,23 @@ async function checkSupporterStatuses() {
             });
         }
         try {
-            fs.writeFileSync(STATUS_FILE, JSON.stringify({ lastSyncTime: Date.now() }, null, 2));
+            await BotSettingsModel.setSetting("last_supporter_sync_time", new Date().toISOString());
         } catch (writeErr) {
-            console.error("Error al escribir el status del supporter sync:", writeErr);
+            console.error("Error al escribir el status del supporter sync en Supabase:", writeErr);
         }
     } catch (err) {
         console.error("Error en la sincronización diaria de supporter:", err);
     }
 }
 
-function initSupporterSync() {
+async function initSupporterSync() {
     Logger.system("Inicializando servicio de sincronización diaria de supporter...");
     
     let lastSyncTime = 0;
     try {
-        if (fs.existsSync(STATUS_FILE)) {
-            const data = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'));
-            lastSyncTime = data.lastSyncTime || 0;
+        const lastSyncVal = await BotSettingsModel.getSetting("last_supporter_sync_time");
+        if (lastSyncVal) {
+            lastSyncTime = new Date(lastSyncVal).getTime();
         }
     } catch (e) {
         // Silenciar
@@ -48,8 +45,8 @@ function initSupporterSync() {
         const hoursLeft = (delayBeforeNextSync / (60 * 60 * 1000)).toFixed(2);
         Logger.system(`[Supporter Sync] La sincronización ya se realizó recientemente. Próxima en ${hoursLeft} horas.`);
     } else {
-        // Ejecutar después de 30 segundos si ha pasado más de 24 horas
-        delayBeforeNextSync = 30000;
+        // Ejecutar después de 3 minutos si ha pasado más de 24 horas
+        delayBeforeNextSync = 180000;
     }
 
     // Programar la primera ejecución

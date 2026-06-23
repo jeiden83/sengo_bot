@@ -2,10 +2,7 @@ const { auth, v2 } = require('osu-api-extended');
 const { getSupabaseClient } = require('../db/database.js');
 const CONFIG = require('../config.js');
 const Logger = require('../utils/logger.js');
-const fs = require('fs');
-const path = require('path');
-
-const STATUS_FILE = path.join(__dirname, "../db/local/beatmap_sync_status.json");
+const BotSettingsModel = require('../models/BotSettingsModel.js');
 
 const GENRES = {
     0: 'Any', 1: 'Unspecified', 2: 'Video Game', 3: 'Anime', 4: 'Rock', 5: 'Pop',
@@ -129,23 +126,23 @@ async function checkNewBeatmaps() {
 
         Logger.system(`Actualización diaria de beatmaps completada: ${totalSaved} mapas actualizados/guardados.`);
         try {
-            fs.writeFileSync(STATUS_FILE, JSON.stringify({ lastSyncTime: Date.now() }, null, 2));
+            await BotSettingsModel.setSetting("last_beatmap_sync_time", new Date().toISOString());
         } catch (writeErr) {
-            console.error("Error al escribir el status de beatmap crawler:", writeErr);
+            console.error("Error al escribir el status de beatmap crawler en Supabase:", writeErr);
         }
     } catch (err) {
         console.error("Error en la sincronización diaria de beatmaps:", err);
     }
 }
 
-function initBeatmapCrawler() {
+async function initBeatmapCrawler() {
     Logger.system("Inicializando servicio de sincronización diaria de beatmaps...");
     
     let lastSyncTime = 0;
     try {
-        if (fs.existsSync(STATUS_FILE)) {
-            const data = JSON.parse(fs.readFileSync(STATUS_FILE, 'utf8'));
-            lastSyncTime = data.lastSyncTime || 0;
+        const lastSyncVal = await BotSettingsModel.getSetting("last_beatmap_sync_time");
+        if (lastSyncVal) {
+            lastSyncTime = new Date(lastSyncVal).getTime();
         }
     } catch (e) {
         // Silenciar
@@ -161,8 +158,8 @@ function initBeatmapCrawler() {
         const hoursLeft = (delayBeforeNextSync / (60 * 60 * 1000)).toFixed(2);
         Logger.system(`[Beatmap Sync] La actualización de beatmaps ya se realizó recientemente. Próxima en ${hoursLeft} horas.`);
     } else {
-        // Ejecutar después de 60 segundos si ha pasado más de 24 horas
-        delayBeforeNextSync = 60000;
+        // Ejecutar después de 5 minutos si ha pasado más de 24 horas
+        delayBeforeNextSync = 300000;
     }
 
     // Programar la primera ejecución
