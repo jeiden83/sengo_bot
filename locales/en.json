@@ -1480,7 +1480,11 @@
     "list_no_channel": "*No channel configured*",
     "list_channel_info": "Announcement channel: <#{channelId}>",
     "list_no_discord": "*No Discord link*",
-    "channel_missing_permissions": "⚠️ The bot is missing the following required permissions in the <#{channelId}> channel:\n{missingPermissions}\nPlease grant these permissions so the bot can send play announcements."
+    "channel_missing_permissions": "⚠️ The bot is missing the following required permissions in the <#{channelId}> channel:\n{missingPermissions}\nPlease grant these permissions so the bot can send play announcements.",
+    "channel_not_found": "❌ The configured tracking channel no longer exists or I don't have access to it.",
+    "perm_view_channel": "`View Channel` (ViewChannel)",
+    "perm_send_messages": "`Send Messages` (SendMessages)",
+    "perm_embed_links": "`Embed Links` (EmbedLinks)"
   }
 }
 

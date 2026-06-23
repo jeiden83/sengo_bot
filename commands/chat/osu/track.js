@@ -70,9 +70,9 @@ async function run(messages, args) {
         if (botMember) {
             const permissions = targetChannel.permissionsFor(botMember);
             const missing = [];
-            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(locale === 'es' ? "`Ver canal` (ViewChannel)" : "`View Channel` (ViewChannel)");
-            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(locale === 'es' ? "`Enviar mensajes` (SendMessages)" : "`Send Messages` (SendMessages)");
-            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(locale === 'es' ? "`Insertar enlaces` (EmbedLinks)" : "`Embed Links` (EmbedLinks)");
+            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(t(locale, "track.perm_view_channel"));
+            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(t(locale, "track.perm_send_messages"));
+            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(t(locale, "track.perm_embed_links"));
 
             if (missing.length > 0) {
                 const missingPermissions = missing.map(p => `- ${p}`).join("\n");
@@ -98,9 +98,7 @@ async function run(messages, args) {
 
         const targetChannel = guild.channels.cache.get(trackChannelId) || await guild.channels.fetch(trackChannelId).catch(() => null);
         if (!targetChannel) {
-            return locale === 'es' 
-                ? `❌ El canal de tracking configurado ya no existe o no tengo acceso a él.` 
-                : `❌ The configured tracking channel no longer exists or I don't have access to it.`;
+            return t(locale, "track.channel_not_found");
         }
 
         // Validar permisos del bot en el canal
@@ -108,9 +106,9 @@ async function run(messages, args) {
         if (botMember) {
             const permissions = targetChannel.permissionsFor(botMember);
             const missing = [];
-            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(locale === 'es' ? "`Ver canal` (ViewChannel)" : "`View Channel` (ViewChannel)");
-            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(locale === 'es' ? "`Enviar mensajes` (SendMessages)" : "`Send Messages` (SendMessages)");
-            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(locale === 'es' ? "`Insertar enlaces` (EmbedLinks)" : "`Embed Links` (EmbedLinks)");
+            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(t(locale, "track.perm_view_channel"));
+            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(t(locale, "track.perm_send_messages"));
+            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(t(locale, "track.perm_embed_links"));
 
             if (missing.length > 0) {
                 const missingPermissions = missing.map(p => `- ${p}`).join("\n");
