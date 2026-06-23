@@ -175,9 +175,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': 'Gestiona el tracking de scores de osu! en el servidor.',
-    'body': 'Configura el canal de anuncios de plays o añade/quita usuarios del tracking.',
-    'usage': 's.track canal [#canal/desactivar]\ns.track add <usuario_osu>\ns.track remove <usuario_osu>\ns.track list'
+    'header': t('es', 'commands.track.header'),
+    'body': t('es', 'commands.track.body'),
+    'usage': t('es', 'commands.track.usage')
 };
 
 module.exports = { run, description: run.description };

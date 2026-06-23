@@ -1475,6 +1475,13 @@
     "list_no_channel": "*No hay canal configurado*",
     "list_channel_info": "Canal de anuncios: <#{channelId}>",
     "list_no_discord": "*Sin vinculación de Discord*"
+  },
+  "commands": {
+    "track": {
+      "header": "Gestiona el tracking de scores de osu! en el servidor.",
+      "body": "Configura el canal de anuncios de plays o añade/quita usuarios del tracking.",
+      "usage": "s.track canal [#canal/desactivar]\ns.track add <usuario_osu>\ns.track remove <usuario_osu>\ns.track list"
+    }
   }
 }
 

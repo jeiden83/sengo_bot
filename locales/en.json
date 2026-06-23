@@ -1475,6 +1475,13 @@
     "list_no_channel": "*No channel configured*",
     "list_channel_info": "Announcement channel: <#{channelId}>",
     "list_no_discord": "*No Discord link*"
+  },
+  "commands": {
+    "track": {
+      "header": "Manage osu! score tracking in the server.",
+      "body": "Configure the play announcement channel or add/remove users from tracking.",
+      "usage": "s.track canal [#channel/desactivar]\ns.track add <osu_user>\ns.track remove <osu_user>\ns.track list"
+    }
   }
 }
 
