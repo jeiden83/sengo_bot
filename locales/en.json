@@ -1448,5 +1448,33 @@
     "title": "🖤 Sengo Blacklist",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restrictions: {commands} - By: <@{addedBy}> on {date}",
     "general_block": "General (All commands)"
+  },
+  "track": {
+    "only_guild": "❌ This command can only be used in a server.",
+    "err_admin_only": "❌ You do not have permissions to use this command (Administrator required).",
+    "help_title": "🎮 osu! Tracking - Sengo",
+    "help_desc": "Configure automatic tracking of plays for users in this server.\n\n**Available subcommands:**\n• `{prefix}track canal [#channel/desactivar]` : Configures or disables the play announcement channel.\n• `{prefix}track add <user>` : Adds an osu! user to tracking.\n• `{prefix}track remove <user>` : Removes an osu! user from tracking.\n• `{prefix}track list` : Shows the list of tracked users in this server.",
+    "channel_current": "📢 The current play announcement channel is <#{channelId}>. You can change it with `{prefix}track canal #channel` or disable it with `{prefix}track canal desactivar`.",
+    "channel_none": "📢 There is no play announcement channel currently configured in this server. Use `{prefix}track canal #channel` to set one.",
+    "channel_disable_success": "✅ Play announcement channel has been disabled. Sengo will no longer announce new plays in this server.",
+    "channel_invalid": "❌ You must mention a valid channel (e.g. `#announcements`) or provide its ID.",
+    "channel_not_text": "❌ That text channel was not found in this server. Make sure Sengo has access to it.",
+    "channel_success": "✅ The play announcement channel has been successfully set to <#{channelId}>.",
+    "add_usage": "❌ Correct usage: `{prefix}track add <osu_user>`.",
+    "add_no_channel": "❌ There is no announcement channel configured in this server. Use `{prefix}track canal #channel` first.",
+    "add_not_found": "❌ The user `{username}` could not be found on osu!",
+    "add_success_title": "✅ User Added to Tracking",
+    "add_success_desc": "The osu! user **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} is now being tracked in this server.\nNew plays in their Top 100 will be announced in <#{channelId}>.",
+    "remove_usage": "❌ Correct usage: `{prefix}track remove <osu_user>`.",
+    "remove_not_found": "❌ The user `{username}` is not being tracked in this server.",
+    "remove_success_title": "❌ User Removed from Tracking",
+    "remove_success_desc": "The osu! user **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** has been removed from tracking in this server.",
+    "list_empty": "✨ No users are currently being tracked in this server. Use `{prefix}track add <user>` to start.",
+    "list_title": "🎮 Tracked Users in {guildName}",
+    "list_footer": "Sengo Tracking • {count} user(s)",
+    "list_no_channel": "*No channel configured*",
+    "list_channel_info": "Announcement channel: <#{channelId}>",
+    "list_no_discord": "*No Discord link*"
   }
 }
+

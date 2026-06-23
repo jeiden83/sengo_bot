@@ -577,7 +577,12 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
 
     try {
         const { syncUserGuilds } = require("../services/guildsSync.js");
-        syncUserGuilds(discordId).catch(() => {});
+        const OsuTrackerModel = require("./OsuTrackerModel.js");
+        syncUserGuilds(discordId).then(() => {
+            return OsuTrackerModel.syncOAuthUserToTracking(discordId, osuUser.id.toString(), osuUser.username);
+        }).catch((err) => {
+            console.error(`[OsuUserModel] Error al sincronizar guilds o tracker para OAuth:`, err);
+        });
     } catch (syncErr) {
         console.error(`[OsuUserModel] Error al invocar syncUserGuilds en saveOAuthToken:`, syncErr);
     }

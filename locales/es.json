@@ -1448,5 +1448,33 @@
     "title": "🖤 Lista Negra de Sengo",
     "list_entry": "{index}. <@{userId}> (`{userId}`) - Restricciones: {commands} - Por: <@{addedBy}> el {date}",
     "general_block": "General (Todos los comandos)"
+  },
+  "track": {
+    "only_guild": "❌ Este comando solo se puede usar en un servidor.",
+    "err_admin_only": "❌ No tienes permisos para usar este comando (se requiere ser Administrador).",
+    "help_title": "🎮 Tracking de osu! - Sengo",
+    "help_desc": "Configura el seguimiento automático de jugadas (plays) para los usuarios en este servidor.\n\n**Subcomandos disponibles:**\n• `{prefix}track canal [#canal/desactivar]` : Configura o desactiva el canal de anuncios de plays.\n• `{prefix}track add <usuario>` : Añade un usuario de osu! al seguimiento.\n• `{prefix}track remove <usuario>` : Quita un usuario de osu! del seguimiento.\n• `{prefix}track list` : Muestra la lista de usuarios seguidos en este servidor.",
+    "channel_current": "📢 El canal de anuncios de plays actual es <#{channelId}>. Puedes cambiarlo con `{prefix}track canal #canal` o desactivarlo con `{prefix}track canal desactivar`.",
+    "channel_none": "📢 No hay ningún canal de anuncios de plays configurado actualmente en este servidor. Usa `{prefix}track canal #canal` para establecer uno.",
+    "channel_disable_success": "✅ Se ha desactivado el canal de anuncios de plays. Sengo ya no anunciará nuevas jugadas en este servidor.",
+    "channel_invalid": "❌ Debes mencionar un canal válido (ej: `#anuncios`) o proveer su ID.",
+    "channel_not_text": "❌ No se encontró ese canal de texto en este servidor. Asegúrate de que Sengo tenga acceso al mismo.",
+    "channel_success": "✅ Se ha configurado el canal de anuncios de plays en <#{channelId}> de forma exitosa.",
+    "add_usage": "❌ Uso correcto: `{prefix}track add <usuario_osu>`.",
+    "add_no_channel": "❌ No hay un canal de anuncios configurado en este servidor. Usa primero `{prefix}track canal #canal`.",
+    "add_not_found": "❌ El usuario `{username}` no se pudo encontrar en osu!",
+    "add_success_title": "✅ Usuario Añadido al Tracking",
+    "add_success_desc": "El usuario de osu! **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} ahora está siendo seguido en este servidor.\nLas nuevas jugadas de su Top 100 se anunciarán en <#{channelId}>.",
+    "remove_usage": "❌ Uso correcto: `{prefix}track remove <usuario_osu>`.",
+    "remove_not_found": "❌ El usuario `{username}` no está siendo seguido en este servidor.",
+    "remove_success_title": "❌ Usuario Removido del Tracking",
+    "remove_success_desc": "El usuario de osu! **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** ha sido removido del seguimiento en este servidor.",
+    "list_empty": "✨ No hay ningún usuario siendo seguido en este servidor actualmente. Usa `{prefix}track add <usuario>` para comenzar.",
+    "list_title": "🎮 Usuarios Seguidos en {guildName}",
+    "list_footer": "Sengo Tracking • {count} usuario(s)",
+    "list_no_channel": "*No hay canal configurado*",
+    "list_channel_info": "Canal de anuncios: <#{channelId}>",
+    "list_no_discord": "*Sin vinculación de Discord*"
   }
 }
+

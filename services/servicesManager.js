@@ -103,9 +103,20 @@ function initializeServices(client, dbRes, config, todayLogExists) {
                 Logger.system(`Error en la tarea de sincronización de logs antiguos: ${err.message}`);
             }
         }
+
+        // 8. Servicio de Tracking de osu!
+        try {
+            const { initOsuTracker } = require("./osuTrackerService.js");
+            initOsuTracker(client).catch(err => {
+                Logger.system(`Error al iniciar Osu Tracker Service: ${err.message}`);
+            });
+        } catch (err) {
+            Logger.system(`Error al iniciar Osu Tracker Service: ${err.message}`);
+        }
     }
 }
 
 module.exports = {
     initializeServices
 };
+
