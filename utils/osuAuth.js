@@ -1,4 +1,4 @@
-const fetch = require('node-fetch');
+const fetch = globalThis.fetch;
 const CONFIG = require('../config.js');
 
 /**
