@@ -132,6 +132,16 @@
     }
   },
   "commands": {
+    "track": {
+      "header": "Gestiona el tracking de scores de osu! en el servidor.",
+      "body": "Configura el canal de anuncios de plays o añade/quita usuarios del tracking.",
+      "usage": "s.track canal [#canal/desactivar]\ns.track add <usuario_osu>\ns.track remove <usuario_osu>\ns.track list"
+    },
+    "snipes": {
+      "header": "Muestra los snipes recientes de osu! del usuario o del servidor.",
+      "body": "Obtiene los snipes que has hecho o te han hecho a ti o a otros jugadores del servidor.",
+      "usage": "s.snipes\ns.snipes <usuario>\ns.snipes -lista"
+    },
     "bug": {
       "header": "Reportar un bug a los desarrolladores.",
       "body": "Envía un reporte de bug directamente al creador del bot.",
@@ -1475,13 +1485,6 @@
     "list_no_channel": "*No hay canal configurado*",
     "list_channel_info": "Canal de anuncios: <#{channelId}>",
     "list_no_discord": "*Sin vinculación de Discord*"
-  },
-  "commands": {
-    "track": {
-      "header": "Gestiona el tracking de scores de osu! en el servidor.",
-      "body": "Configura el canal de anuncios de plays o añade/quita usuarios del tracking.",
-      "usage": "s.track canal [#canal/desactivar]\ns.track add <usuario_osu>\ns.track remove <usuario_osu>\ns.track list"
-    }
   }
 }
 
