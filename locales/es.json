@@ -1479,7 +1479,8 @@
     "list_footer": "Sengo Tracking • {count} usuario(s)",
     "list_no_channel": "*No hay canal configurado*",
     "list_channel_info": "Canal de anuncios: <#{channelId}>",
-    "list_no_discord": "*Sin vinculación de Discord*"
+    "list_no_discord": "*Sin vinculación de Discord*",
+    "channel_missing_permissions": "⚠️ Al bot le faltan los siguientes permisos necesarios en el canal <#{channelId}>:\n{missingPermissions}\nPor favor, otorga estos permisos para que el bot pueda enviar los anuncios de plays."
   }
 }
 

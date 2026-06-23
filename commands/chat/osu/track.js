@@ -65,6 +65,21 @@ async function run(messages, args) {
             return t(locale, "track.channel_not_text");
         }
 
+        // Validar permisos del bot en el canal
+        const botMember = guild.members.me || await guild.members.fetch(message.client.user.id).catch(() => null);
+        if (botMember) {
+            const permissions = targetChannel.permissionsFor(botMember);
+            const missing = [];
+            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(locale === 'es' ? "`Ver canal` (ViewChannel)" : "`View Channel` (ViewChannel)");
+            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(locale === 'es' ? "`Enviar mensajes` (SendMessages)" : "`Send Messages` (SendMessages)");
+            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(locale === 'es' ? "`Insertar enlaces` (EmbedLinks)" : "`Embed Links` (EmbedLinks)");
+
+            if (missing.length > 0) {
+                const missingPermissions = missing.map(p => `- ${p}`).join("\n");
+                return t(locale, "track.channel_missing_permissions", { channelId, missingPermissions });
+            }
+        }
+
         await OsuTrackerModel.setTrackChannel(guild.id, channelId);
         osuTrackerService.updateTrackChannelInMemory(guild.id, channelId);
         return t(locale, "track.channel_success", { channelId });
@@ -79,6 +94,28 @@ async function run(messages, args) {
         const trackChannelId = await OsuTrackerModel.getTrackChannel(guild.id);
         if (!trackChannelId) {
             return t(locale, "track.add_no_channel", { prefix });
+        }
+
+        const targetChannel = guild.channels.cache.get(trackChannelId) || await guild.channels.fetch(trackChannelId).catch(() => null);
+        if (!targetChannel) {
+            return locale === 'es' 
+                ? `❌ El canal de tracking configurado ya no existe o no tengo acceso a él.` 
+                : `❌ The configured tracking channel no longer exists or I don't have access to it.`;
+        }
+
+        // Validar permisos del bot en el canal
+        const botMember = guild.members.me || await guild.members.fetch(message.client.user.id).catch(() => null);
+        if (botMember) {
+            const permissions = targetChannel.permissionsFor(botMember);
+            const missing = [];
+            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push(locale === 'es' ? "`Ver canal` (ViewChannel)" : "`View Channel` (ViewChannel)");
+            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push(locale === 'es' ? "`Enviar mensajes` (SendMessages)" : "`Send Messages` (SendMessages)");
+            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push(locale === 'es' ? "`Insertar enlaces` (EmbedLinks)" : "`Embed Links` (EmbedLinks)");
+
+            if (missing.length > 0) {
+                const missingPermissions = missing.map(p => `- ${p}`).join("\n");
+                return t(locale, "track.channel_missing_permissions", { channelId: trackChannelId, missingPermissions });
+            }
         }
 
         const queryUsername = cleanArgs.slice(1).join(" ");

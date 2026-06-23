@@ -1479,7 +1479,8 @@
     "list_footer": "Sengo Tracking • {count} user(s)",
     "list_no_channel": "*No channel configured*",
     "list_channel_info": "Announcement channel: <#{channelId}>",
-    "list_no_discord": "*No Discord link*"
+    "list_no_discord": "*No Discord link*",
+    "channel_missing_permissions": "⚠️ The bot is missing the following required permissions in the <#{channelId}> channel:\n{missingPermissions}\nPlease grant these permissions so the bot can send play announcements."
   }
 }
 
