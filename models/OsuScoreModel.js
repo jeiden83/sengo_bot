@@ -269,7 +269,70 @@ async function getUserRecentScores(parsed_args) {
     const server = parsed_args.server || 'bancho';
     let result = [];
 
-    if (server === 'gatari') {
+    if (server === 'mameosu') {
+        try {
+            let userObj;
+            try {
+                userObj = await OsuUserModel.getUser(parsed_args);
+            } catch (e) {
+                console.error("Error al obtener perfil de usuario para mameosu scores:", e);
+                return [];
+            }
+            if (typeof userObj === 'string') {
+                return [];
+            }
+
+            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+            const m = modeMap[parsed_args.gamemode || 'osu'];
+            
+            const reqUrl = `https://api.mamesosu.net/v1/get_player_scores?id=${userObj.id}&scope=recent&mode=${m}&limit=100`;
+            const response = await fetch(reqUrl, {
+                headers: { 'User-Agent': 'osu!' }
+            });
+            const data = await response.json();
+            
+            if (data.scores && data.scores.length > 0) {
+                result = data.scores.map(s => {
+                    const passed = s.grade !== "F";
+                    return {
+                        accuracy: s.acc / 100,
+                        passed: passed,
+                        rank: s.grade,
+                        mods: convertGatariMods(s.mods),
+                        max_combo: s.max_combo,
+                        statistics: {
+                            perfect: s.ngeki,
+                            great: s.n300,
+                            good: s.nkatu,
+                            ok: s.n100,
+                            meh: s.n50,
+                            miss: s.nmiss
+                        },
+                        pp: s.pp,
+                        total_score: s.score,
+                        legacy_total_score: s.score,
+                        ended_at: new Date(s.play_time + 'Z').toISOString(),
+                        beatmap: {
+                            id: s.beatmap.id,
+                            version: s.beatmap.version,
+                            difficulty_rating: s.beatmap.diff,
+                            mode: parsed_args.gamemode || 'osu',
+                            beatmapset_id: s.beatmap.set_id
+                        },
+                        beatmapset: {
+                            title: s.beatmap.title,
+                            artist: s.beatmap.artist,
+                            creator: s.beatmap.creator,
+                            covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.set_id}/covers/cover@2x.jpg` }
+                        },
+                        user: userObj
+                    };
+                });
+            }
+        } catch (e) {
+            console.error("Error fetching mameosu recent scores:", e);
+        }
+    } else if (server === 'gatari') {
         try {
             const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
             const m = modeMap[parsed_args.gamemode || 'osu'];
@@ -433,7 +496,71 @@ async function _getUserTopScores(parsed_args) {
         return scores;
     };
 
-    if (server === 'gatari') {
+    if (server === 'mameosu') {
+        try {
+            let userObj;
+            try {
+                userObj = await OsuUserModel.getUser(parsed_args);
+            } catch (e) {
+                console.error("Error al obtener perfil de usuario para mameosu tops:", e);
+                return [];
+            }
+            if (typeof userObj === 'string') {
+                return [];
+            }
+
+            const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+            const m = modeMap[parsed_args.gamemode || 'osu'];
+            
+            const reqUrl = `https://api.mamesosu.net/v1/get_player_scores?id=${userObj.id}&scope=best&mode=${m}&limit=100`;
+            const response = await fetch(reqUrl, {
+                headers: { 'User-Agent': 'osu!' }
+            });
+            const data = await response.json();
+            
+            if (!data.scores || data.scores.length === 0) return [];
+            
+            return returnAndCache(data.scores.map(s => {
+                const passed = s.grade !== "F";
+                return {
+                    accuracy: s.acc / 100,
+                    passed: passed,
+                    rank: s.grade,
+                    mods: convertGatariMods(s.mods),
+                    max_combo: s.max_combo,
+                    statistics: {
+                        perfect: s.ngeki,
+                        great: s.n300,
+                        good: s.nkatu,
+                        ok: s.n100,
+                        meh: s.n50,
+                        miss: s.nmiss
+                    },
+                    pp: s.pp,
+                    total_score: s.score,
+                    legacy_total_score: s.score,
+                    ended_at: new Date(s.play_time + 'Z').toISOString(),
+                    beatmap: {
+                        id: s.beatmap.id,
+                        version: s.beatmap.version,
+                        difficulty_rating: s.beatmap.diff,
+                        mode: parsed_args.gamemode || 'osu',
+                        beatmapset_id: s.beatmap.set_id
+                    },
+                    beatmapset: {
+                        title: s.beatmap.title,
+                        artist: s.beatmap.artist,
+                        creator: s.beatmap.creator,
+                        covers: { "cover@2x": `https://assets.ppy.sh/beatmaps/${s.beatmap.set_id}/covers/cover@2x.jpg` }
+                    },
+                    user: userObj
+                };
+            }));
+        } catch (e) {
+            console.error("Error fetching mameosu top scores:", e);
+            return [];
+        }
+    } else if (server === 'gatari') {
         try {
             const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
             const m = modeMap[parsed_args.gamemode || 'osu'];

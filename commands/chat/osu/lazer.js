@@ -45,7 +45,7 @@ async function run(messages, args, forcedMode = 'lazer') {
     }
 
     const userId = userMatch[1];
-    const server = authorUrl.includes('gatari') ? 'gatari' : 'bancho';
+    const server = authorUrl.includes('gatari') ? 'gatari' : (authorUrl.includes('mamesosu') ? 'mameosu' : 'bancho');
 
     // Parsear el índice especificado por el usuario si lo hay, ej: .lazer 3
     const cmdParsed = argsParserNoCommand(args);

@@ -29,7 +29,8 @@ function addServidorOption(option) {
         .setRequired(false)
         .addChoices(
             { name: "Bancho", value: "bancho" },
-            { name: "Gatari", value: "gatari" }
+            { name: "Gatari", value: "gatari" },
+            { name: "Mameosu", value: "mameosu" }
         );
 }
 

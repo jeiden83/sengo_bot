@@ -472,7 +472,7 @@ function argsParserNoCommand(args, options = {}) {
         'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits'
     };
     const server_set = {
-        'gatari': 'gatari', 'bancho': 'bancho'
+        'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu'
     };
 
     const args_commands = [

@@ -81,13 +81,30 @@ async function NewloadToken() {
 
     apiExtendedInitialized = (async () => {
         try {
-            await auth.login({
-                type: 'v2',
-                client_id: CONFIG.OSU_CLIENT_ID,
-                client_secret: CONFIG.OSU_CLIENT_SECRET,
-                scopes: ['public'],
-                cachedTokenPath: './osu_api_extended_token.json'
-            });
+            const fs = require('fs');
+            try {
+                await auth.login({
+                    type: 'v2',
+                    client_id: CONFIG.OSU_CLIENT_ID,
+                    client_secret: CONFIG.OSU_CLIENT_SECRET,
+                    scopes: ['public'],
+                    cachedTokenPath: './osu_api_extended_token.json'
+                });
+            } catch (loginErr) {
+                console.warn("# Falló login inicial de osu-api-extended con caché, limpiando archivo...", loginErr.message);
+                if (fs.existsSync('./osu_api_extended_token.json')) {
+                    try {
+                        fs.unlinkSync('./osu_api_extended_token.json');
+                    } catch (e) {}
+                }
+                // Reintentar login limpio
+                await auth.login({
+                    type: 'v2',
+                    client_id: CONFIG.OSU_CLIENT_ID,
+                    client_secret: CONFIG.OSU_CLIENT_SECRET,
+                    scopes: ['public']
+                });
+            }
             console.log("# Login de osu-api-extended para Sengo inicializado con éxito");
         } catch (err) {
             console.error("# Error al inicializar login de osu-api-extended para Sengo:", err);
@@ -167,6 +184,67 @@ async function _getOsuUser(parsed_args) {
         }
         return user;
     };
+
+    if (server === 'mameosu') {
+        try {
+            const queryParam = /^\d+$/.test(parsed_args.username[0])
+                ? `id=${parsed_args.username[0]}`
+                : `name=${encodeURIComponent(parsed_args.username[0])}`;
+            const response = await fetch(`https://api.mamesosu.net/v1/get_player_info?${queryParam}&scope=all`, {
+                headers: { 'User-Agent': 'osu!' }
+            });
+            const data = await response.json();
+            if (data.status !== 'success' || !data.player) {
+                throw new Error("User not found in Mameosu");
+            }
+            
+            const u = data.player.info;
+            const modeMap = { 'osu': '0', 'taiko': '1', 'fruits': '2', 'mania': '3' };
+            const mKey = modeMap[look_gamemode] || '0';
+            const s = data.player.stats[mKey] || {};
+            const lvlVal = data.player.level?.[mKey] || 1;
+            const lvl = Math.floor(lvlVal);
+            const progress = Math.round((lvlVal % 1) * 100);
+
+            // Mameosu no da lista de logros detallada de forma simple
+            const achCount = []; 
+
+            return returnAndCache({
+                id: u.id,
+                username: u.name,
+                country_code: u.country.toUpperCase(),
+                avatar_url: `https://a.mamesosu.net/${u.id}`,
+                cover_url: `https://a.mamesosu.net/${u.id}`,
+                join_date: new Date(u.creation_time * 1000).toISOString(),
+                rank_highest: null,
+                user_achievements: achCount,
+                statistics: {
+                    global_rank: s.global_rank_pp || 0,
+                    pp: s.pp || 0,
+                    hit_accuracy: s.acc || 0,
+                    play_count: s.plays || 0,
+                    play_time: s.playtime || 0,
+                    total_hits: s.total_hits || 0,
+                    level: { current: lvl, progress: progress },
+                    rank: { country: s.country_rank_pp || 0 },
+                    grade_counts: {
+                        ss: s.x_count || 0,
+                        ssh: s.xh_count || 0,
+                        s: s.s_count || 0,
+                        sh: s.sh_count || 0,
+                        a: s.a_count || 0
+                    }
+                },
+                server: 'mameosu',
+                is_supporter: (u.priv & 4) !== 0
+            });
+        } catch (e) {
+            if (/^\d+$/.test(parsed_args.username[0])) {
+                return `El usuario no se encuentra en Mameosu!\n💡 **Consejo:** Si estás usando tu cuenta enlazada, recuerda que las IDs de Bancho y Mameosu son diferentes. Prueba buscando con tu nombre de usuario: \`/osu usuario:TuNombre servidor:Mameosu\``;
+            }
+            return `El usuario no se encuentra en Mameosu!`;
+        }
+    }
 
     if (server === 'gatari') {
         try {

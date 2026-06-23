@@ -13,6 +13,14 @@ const {
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
 
+function getUserUrl(user, fallbackId) {
+    if (!user) return `https://osu.ppy.sh/users/${fallbackId || ''}`;
+    const id = user.id || fallbackId;
+    if (user.server === 'gatari') return `https://osu.gatari.pw/u/${id}`;
+    if (user.server === 'mameosu') return `https://web.mamesosu.net/u/${id}`;
+    return `https://osu.ppy.sh/users/${id}`;
+}
+
 /**
  * Renderiza el embed para una única jugada reciente de osu!
  * @param {object} message Mensaje de Discord de origen (para extraer colores/roles)
@@ -22,7 +30,7 @@ const emoji_mods = require("../src/emoji_mods.json");
  */
 async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es', scoreMode = 'classic') {
     const username = recent_scores.user.username;
-    const user_url = recent_scores.user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores.user.id}` : `https://osu.ppy.sh/users/${recent_scores.user.id}`;
+    const user_url = getUserUrl(recent_scores.user);
     const avatar_url = recent_scores.user.avatar_url;
 
     const song_title = recent_scores.beatmapset.title;
@@ -57,7 +65,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     let leaderboard_pos = null;
     let user_top_pos = null;
     if (recent_scores.passed) {
-        if (recent_scores.user.server !== 'gatari') {
+        if (recent_scores.user.server === 'bancho' || !recent_scores.user.server) {
             try {
                 const { v2 } = require('osu-api-extended');
                 const OsuUserModel = require('../models/OsuUserModel.js');
@@ -105,7 +113,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
             } catch (e) {
                 console.error("Error fetching beatmap best score position / top scores:", e);
             }
-        } else {
+        } else if (recent_scores.user.server === 'gatari') {
             try {
                 const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
                 const m = modeMap[recent_scores.beatmap.mode || 'osu'];
@@ -125,6 +133,30 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                 }
             } catch (e) {
                 console.error("Error fetching gatari best scores:", e);
+            }
+        } else if (recent_scores.user.server === 'mameosu') {
+            try {
+                const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
+                const m = modeMap[recent_scores.beatmap.mode || 'osu'];
+                const response = await fetch(`https://api.mamesosu.net/v1/get_player_scores?id=${recent_scores.user.id}&scope=best&mode=${m}&limit=100`, {
+                    headers: { 'User-Agent': 'osu!' }
+                });
+                const data = await response.json();
+                if (data && Array.isArray(data.scores)) {
+                    const topIndex = data.scores.findIndex(s => {
+                        const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
+                        const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
+                        const sTime = Math.floor(new Date(s.play_time + 'Z').getTime() / 1000);
+                        return s.beatmap.id === recent_scores.beatmap.id &&
+                            Math.abs(s.score - scoreVal) < 100 &&
+                            Math.abs(sTime - recentTime) < 5;
+                    });
+                    if (topIndex !== -1) {
+                        user_top_pos = topIndex + 1;
+                    }
+                }
+            } catch (e) {
+                console.error("Error fetching mameosu best scores:", e);
             }
         }
     }
@@ -235,7 +267,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
     }
 
     const username = recent_scores_chunk[0].user.username;
-    const user_url = recent_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${recent_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${recent_scores_chunk[0].user.id}`;
+    const user_url = getUserUrl(recent_scores_chunk[0].user);
     const avatar_url = recent_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 
@@ -276,7 +308,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
  */
 async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, ppThresholdCount, locale = message.locale || 'es', scoreMode = 'classic') {
     const username = score.user.username;
-    const user_url = score.user.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user.id}`;
+    const user_url = getUserUrl(score.user);
     const avatar_url = score.user.avatar_url;
 
     const song_title = score.beatmapset.title;
@@ -442,7 +474,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         embed_description = embed_description.concat(score_line);
     }
 
-    const user_url = top_scores_chunk[0].user.server === 'gatari' ? `https://osu.gatari.pw/u/${top_scores_chunk[0].user.id}` : `https://osu.ppy.sh/users/${top_scores_chunk[0].user.id}`;
+    const user_url = getUserUrl(top_scores_chunk[0].user);
     const avatar_url = top_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 
@@ -473,7 +505,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, total_plays, parsed_args, beatmap_metadata, scoreMode = 'classic') {
     const locale = message.locale || 'es';
     const username = score.user?.username || parsed_args.username[0] || 'Usuario';
-    const user_url = score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user?.id || score.user_id}`;
+    const user_url = getUserUrl(score.user, score.user_id);
     const avatar_url = score.user?.avatar_url || `https://a.ppy.sh/${score.user_id || score.user?.id}`;
 
     const song_title = beatmap_metadata.beatmapset.title;
@@ -666,7 +698,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
     const userId = user_scores_chunk[0]?.user?.id || parsed_args.username[0];
     const username = user_scores_chunk[0]?.user?.username || parsed_args.username[0] || 'Usuario';
     const displayMode = parsed_args.gamemode === 'osu' ? 'std' : (parsed_args.gamemode === 'fruits' ? 'ctb' : parsed_args.gamemode);
-    const user_url = user_scores_chunk[0]?.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${userId}` : `https://osu.ppy.sh/users/${userId}`;
+    const user_url = getUserUrl(user_scores_chunk[0]?.user, userId);
     const beatmap_url = `https://osu.ppy.sh/b/${beatmap_metadata.id}`;
 
     const embed = new EmbedBuilder()
@@ -1078,13 +1110,13 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;
 
-    let top_ranking_str = osu_userdata.server === 'gatari' ? "" : t(locale, 'profile.top_ranking', {
+    let top_ranking_str = ['gatari', 'mameosu'].includes(osu_userdata.server) ? "" : t(locale, 'profile.top_ranking', {
         rank: peak_ranking,
         peak: discord_last_peak
     });
 
     let rankedPlayStr = "";
-    if (osu_userdata.server !== 'gatari') {
+    if (!['gatari', 'mameosu'].includes(osu_userdata.server)) {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking && matchmaking.rank) {
             rankedPlayStr = t(locale, 'profile.ranked_play', {
@@ -1130,7 +1162,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     const embed = new EmbedBuilder()
         .setAuthor({
             name: t(locale, 'profile.author_title', { mode: osu_mode, teamPrefix, username: osu_userdata.username }),
-            url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
+            url: getUserUrl(osu_userdata),
             iconURL: icon_url
         })
         .setDescription(t(locale, 'profile.description', {
@@ -1221,7 +1253,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     const hits_per_min = osu_userdata.statistics.play_time > 0 ? Math.round(osu_userdata.statistics.total_hits / (osu_userdata.statistics.play_time / 60)) : 0;
 
     let matchmakingSection = "";
-    if (osu_userdata.server !== 'gatari') {
+    if (!['gatari', 'mameosu'].includes(osu_userdata.server)) {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking) {
             matchmakingSection = t(locale, 'profile.matchmaking_detailed_title') + "\n" +
@@ -1251,7 +1283,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     const embed2 = new EmbedBuilder()
         .setAuthor({
             name: t(locale, 'profile.author_detailed_title', { username: osu_userdata.username }),
-            url: osu_userdata.server === 'gatari' ? `https://osu.gatari.pw/u/${osu_userdata.id}` : `https://osu.ppy.sh/users/${osu_userdata.id}`,
+            url: getUserUrl(osu_userdata),
             iconURL: icon_url
         })
         .setDescription(analysis_desc)
@@ -1383,7 +1415,7 @@ ${statusText}
 
 async function doOsuReworkUserEmbed(message, osuUser, reworkUser, rework, scores = [], isLoading = false, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
+    const user_url = getUserUrl(osuUser);
 
     // pp_change_relative es por ejemplo 0.938963 (lo cual es -6.10%)
     const pctChange = ((reworkUser.pp_change_relative - 1) * 100).toFixed(2);
@@ -1622,7 +1654,7 @@ async function doOsuReworkTopEmbed(message, osuUser, sortedScores, rework, start
 
 async function doOsuReworkTopSingleEmbed(message, osuUser, score, rework, index, total_plays, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const user_url = osuUser.server === 'gatari' ? `https://osu.gatari.pw/u/${osuUser.id}` : `https://osu.ppy.sh/users/${osuUser.id}`;
+    const user_url = getUserUrl(osuUser);
     const avatar_url = osuUser.avatar_url || `https://a.ppy.sh/${osuUser.id}`;
 
     const beatmap = score.beatmap || {};
