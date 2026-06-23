@@ -186,13 +186,14 @@ async function run(messages, args) {
         // Buscar jugada top #1
         const { v2 } = require('osu-api-extended');
         const { osuApiQueue } = require('../../../utils/OsuApiQueue.js');
-        const { getBeatmap, getBeatmap_osu, calculatePP, normalizeScore } = require('../../utils/osu.js');
+        const { getBeatmap, getBeatmap_osu, calculatePP, normalizeScore, NewloadToken } = require('../../utils/osu.js');
         const { doOsuEmbed } = require('../../../views/osuEmbeds.js');
 
         // Indicamos en chat que estamos cargando el test
         const statusMsg = await message.reply("Cargando score de prueba desde la API de osu!...");
 
         try {
+            await NewloadToken();
             const bestScores = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: testOsuId,

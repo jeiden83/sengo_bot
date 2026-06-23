@@ -41,6 +41,7 @@ function calculateSlowDelay() {
  */
 async function fetchLatestScoreIdForUser(osuId, mode = 'osu') {
     try {
+        await OsuUserModel.NewloadToken();
         const best = await osuApiQueue.add(() => v2.scores.list({
             type: 'user_best',
             user_id: osuId,
@@ -162,6 +163,7 @@ async function processNewScore(client, userObj, score) {
     const osuId = userObj.osuId;
     
     // 1. Obtener el Top 100 de mejores puntuaciones del usuario
+    await OsuUserModel.NewloadToken();
     const bestScores = await osuApiQueue.add(() => v2.scores.list({
         type: 'user_best',
         user_id: osuId,
@@ -302,6 +304,7 @@ async function checkUserRecentScore(client, userObj) {
     const osuId = userObj.osuId;
 
     try {
+        await OsuUserModel.NewloadToken();
         const scores = await osuApiQueue.add(() => v2.scores.list({
             type: 'user_recent',
             user_id: osuId,

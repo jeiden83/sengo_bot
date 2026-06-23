@@ -60,6 +60,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         if (recent_scores.user.server !== 'gatari') {
             try {
                 const { v2 } = require('osu-api-extended');
+                const OsuUserModel = require('../models/OsuUserModel.js');
+                await OsuUserModel.NewloadToken();
                 const unrankedWithoutLeaderboard = new Set(['pending', 'wip', 'graveyard']);
                 const hasLeaderboard = recent_scores.beatmap.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
 
