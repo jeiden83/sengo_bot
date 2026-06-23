@@ -137,11 +137,6 @@
       "body": "Configure the play announcement channel or add/remove users from tracking.",
       "usage": "s.track canal [#channel/desactivar]\ns.track add <osu_user>\ns.track remove <osu_user>\ns.track list"
     },
-    "snipes": {
-      "header": "Shows recent osu! snipes for the user or server.",
-      "body": "Retrieves the snipes you have made or that have been made to you or other players.",
-      "usage": "s.snipes\ns.snipes <user>\ns.snipes -list"
-    },
     "bug": {
       "header": "Report a bug to the developers.",
       "body": "Sends a bug report directly to the bot creator.",
