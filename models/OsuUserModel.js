@@ -668,12 +668,16 @@ async function getValidTokenForUser(discordId, priority = 2, existingToken = nul
                 // Determinar si es un error real de revocación o token inválido de osu!.
                 // En la API de osu!, si el refresh_token es inválido o revocado, el endpoint /oauth/token responde
                 // con un status 400 Bad Request y un JSON conteniendo {"error": "invalid_grant"}.
-                const isInvalidGrant = errMsg.includes('invalid_grant');
-                
-                // Solo si estamos 100% seguros de que el token fue revocado o es inválido,
-                // eliminamos el registro. Evitamos eliminarlo por errores genéricos de red o JSON inválido de Cloudflare.
-                if (isInvalidGrant) {
-                    console.log(`[OAuth] Token inválido o revocado (invalid_grant) para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
+                const isTokenRevoked = 
+                     errMsg.includes('invalid_grant') || 
+                     errMsg.includes('invalid_request') || 
+                     errMsg.includes('The refresh token is invalid') || 
+                     errMsg.includes('Token has been revoked');
+                 
+                 // Solo si estamos 100% seguros de que el token fue revocado o es inválido,
+                 // eliminamos el registro. Evitamos eliminarlo por errores genéricos de red o JSON inválido de Cloudflare.
+                 if (isTokenRevoked) {
+                     console.log(`[OAuth] Token inválido o revocado para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
                     try {
                         await supabase
                             .from('oauth_tokens')
