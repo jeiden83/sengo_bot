@@ -157,6 +157,137 @@ async function run(messages, args) {
         return { embeds: [embed] };
     }
 
+    if (sub === "test" || sub === "prueba") {
+        const config = require("../../../config.js");
+        if (message.author.id !== config.OWNER_ID) {
+            return "Este comando es exclusivo del desarrollador/owner del bot.";
+        }
+
+        // Obtener canal de tracking
+        const trackChannelId = await OsuTrackerModel.getTrackChannel(guild.id);
+        if (!trackChannelId) {
+            return `No hay un canal de tracking configurado. Configúralo con \`${prefix}track canal #canal\` primero.`;
+        }
+
+        const channel = await message.client.channels.fetch(trackChannelId).catch(() => null);
+        if (!channel || !channel.isTextBased()) {
+            return `El canal de tracking configurado no es válido o no tengo permisos para verlo.`;
+        }
+
+        // Obtener el primer usuario trackeado de esta guild, o usar peppy (ID: 2) si no hay
+        const trackedList = await OsuTrackerModel.getTrackedUsersInGuild(guild.id);
+        let testOsuId = "2"; // peppy
+        let testDiscordId = null;
+        if (trackedList.length > 0) {
+            testOsuId = trackedList[0].osu_id;
+            testDiscordId = trackedList[0].discord_id;
+        }
+
+        // Buscar jugada top #1
+        const { v2 } = require('osu-api-extended');
+        const { osuApiQueue } = require('../../../utils/OsuApiQueue.js');
+        const { getBeatmap, getBeatmap_osu, calculatePP, normalizeScore } = require('../../utils/osu.js');
+        const { doOsuEmbed } = require('../../../views/osuEmbeds.js');
+
+        // Indicamos en chat que estamos cargando el test
+        const statusMsg = await message.reply("Cargando score de prueba desde la API de osu!...");
+
+        try {
+            const bestScores = await osuApiQueue.add(() => v2.scores.list({
+                type: 'user_best',
+                user_id: testOsuId,
+                mode: 'osu',
+                limit: 1
+            }), 0);
+
+            if (!bestScores || bestScores.length === 0) {
+                await statusMsg.edit("El usuario de prueba no tiene mejores jugadas registradas en osu! standard.");
+                return;
+            }
+
+            const score = bestScores[0];
+            normalizeScore(score);
+
+            const beatmapData = await getBeatmap(score.beatmap.id);
+            const mapObj = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmapData);
+
+            let maxAttrs = null;
+            try {
+                maxAttrs = calculatePP(score, mapObj, "maximo_pp");
+            } catch (err) {
+                console.error("[TRACK-COMMAND-TEST] Error calculating maxAttrs:", err);
+            }
+
+            const user_pp = score.pp ? score.pp : calculatePP(score, mapObj, null, maxAttrs).pp;
+            const beatmap_max_combo = beatmapData.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+
+            const statistics = score.statistics || {};
+            const miss = statistics.miss || 0;
+            const total_hits = (statistics.great || 0) + (statistics.ok || 0) + (statistics.meh || 0) + miss;
+
+            let pp_fc = null;
+            const isFC = score.perfect || (miss === 0 && score.max_combo >= beatmap_max_combo - 2);
+            if (!isFC) {
+                try {
+                    const fc_statistics = {
+                        ...statistics,
+                        great: (statistics.great || 0) + miss,
+                        miss: 0
+                    };
+                    const fc_score = {
+                        ...score,
+                        max_combo: beatmap_max_combo,
+                        statistics: fc_statistics
+                    };
+                    pp_fc = calculatePP(fc_score, mapObj, null, maxAttrs).pp;
+                } catch (err) {
+                    console.error("[TRACK-COMMAND-TEST] Error calculating pp_fc:", err);
+                }
+            }
+
+            const pre_calculated = {
+                "map": mapObj,
+                "map_completion": score.passed ? 100 : total_hits / mapObj.nObjects,
+                "maxAttrs": maxAttrs,
+                "pp": user_pp,
+                "beatmap_max_combo": beatmap_max_combo,
+                "pp_fc": pp_fc
+            };
+
+            const mockMessage = {
+                locale: locale,
+                guild: guild,
+                author: { id: testDiscordId || message.author.id }
+            };
+
+            const embed = await doOsuEmbed(mockMessage, score, pre_calculated, locale, 'classic');
+
+            // Colores
+            embed.setColor('#FFD700'); // Dorado para simular Top #1
+            embed.setAuthor({
+                name: `¡Nueva Top Play #1! ▸ ${score.user.username}`,
+                url: `https://osu.ppy.sh/users/${score.user.id}`,
+                iconURL: score.user.avatar_url
+            });
+
+            await channel.send({ embeds: [embed] });
+            await statusMsg.edit(`¡Anuncio de prueba enviado con éxito al canal <#${trackChannelId}>!`);
+            
+            // Liberar
+            if (mapObj) {
+                try {
+                    mapObj.free();
+                } catch (err) {
+                    console.error("[TRACK-COMMAND-TEST] Error al liberar Beatmap de WASM:", err);
+                }
+            }
+        } catch (e) {
+            console.error("[TRACK-COMMAND-TEST] Error al enviar embed de prueba:", e);
+            await statusMsg.edit(`Error al procesar la jugada de prueba: ${e.message}`);
+        }
+        return;
+    }
+
     if (sub === "list" || sub === "lista") {
         const trackedInGuild = await OsuTrackerModel.getTrackedUsersInGuild(guild.id);
         
