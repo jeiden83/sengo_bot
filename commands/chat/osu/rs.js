@@ -493,7 +493,7 @@ async function run(messages, args) {
                 
                 try {
                     const OsuUserModel = require('../../../models/OsuUserModel.js');
-                    const replayBuffer = await OsuUserModel.downloadReplay(currentScore.id, currentScore.mode || gamemode || 'osu');
+                    const replayBuffer = await OsuUserModel.downloadReplay(currentScore.id, currentScore.mode || parser_res.parsed_args?.gamemode || 'osu');
                     
                     // Invocar el flujo de renderizado usando startRenderFlow
                     const renderCmd = require('./render.js');
