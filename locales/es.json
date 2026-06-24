@@ -1379,6 +1379,7 @@
     "err_only_std": "Este replay no es de osu!standard. o!rdr y Sengo solo soportan el modo estándar.",
     "err_too_many_requests": "Has excedido el límite de peticiones de o!rdr (429 Too Many Requests). Por favor, espera unos minutos o usa una API key válida.",
     "err_cooldown": "Debes esperar hasta {time} antes de solicitar otro renderizado.",
+    "err_fetch_replay": "No se pudo obtener el replay para esta jugada desde los servidores de osu! (es común para jugadas que no son del Top 100 del mapa o si son muy antiguas/fallidas).",
     "no_preset_found": "No tienes ningún preset enlazado a tu ID de Discord en o!rdr.\n\n🔗 Si deseas configurar o cambiar tus preferencias de renderizado (skin, resolución, volumen, etc.), hazlo desde la página de o!rdr iniciando sesión con tu Discord:\nhttps://ordr.issou.best/",
     "err_config_fetch": "Ocurrió un error al intentar consultar tu preset en o!rdr.",
     "preset_skin": "Preset del usuario",

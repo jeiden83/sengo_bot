@@ -1379,6 +1379,7 @@
     "err_only_std": "This replay is not an osu!standard replay. o!rdr and Sengo only support standard mode.",
     "err_too_many_requests": "You have exceeded the o!rdr rate limit (429 Too Many Requests). Please wait a few minutes or use a valid API key.",
     "err_cooldown": "You must wait until {time} before requesting another render.",
+    "err_fetch_replay": "Could not retrieve the replay for this play from osu! servers (this is common for plays that are not in the map's Top 100 or if they are very old/failed).",
     "no_preset_found": "You do not have any preset linked to your Discord ID on o!rdr.\n\n🔗 If you wish to configure or change your rendering preferences (skin, resolution, volume, etc.), do so from the o!rdr website by logging in with your Discord:\nhttps://ordr.issou.best/",
     "err_config_fetch": "An error occurred while trying to query your preset on o!rdr.",
     "preset_skin": "User's Preset",

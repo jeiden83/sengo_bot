@@ -1,5 +1,8 @@
 module.exports = [
     {
+        ignores: ["scratch/**"]
+    },
+    {
         languageOptions: {
             ecmaVersion: 2022,
             sourceType: "commonjs",

@@ -318,7 +318,7 @@ async function run(messages, args, forcedMode = 'lazer') {
                 } catch (err) {
                     console.error("Error al descargar/renderizar:", err);
                     if (infoMsg) {
-                        await infoMsg.edit(`❌ **Error:** No se pudo obtener el replay para esta jugada desde los servidores de osu! (es común para jugadas que no son del Top 100 del mapa o si son muy antiguas/fallidas).`);
+                        await infoMsg.edit(err.isCooldownError ? `❌ ${err.message}` : `❌ **Error:** ${t(locale, 'render.err_fetch_replay')}`);
                     }
                 }
                 return;
