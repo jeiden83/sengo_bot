@@ -244,15 +244,28 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
                 let videoAttached = false;
                 
                 try {
-                    console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${data.videoUrl}...`);
-                    const headResponse = await fetch(data.videoUrl, { method: 'HEAD' });
+                    let directVideoUrl = data.videoUrl;
+                    try {
+                        const dynlinkRes = await fetch(`https://apis.issou.best/dynlink/ordr/gen?id=${renderId}`);
+                        if (dynlinkRes.ok) {
+                            const dynlinkData = await dynlinkRes.json();
+                            if (dynlinkData && dynlinkData.url) {
+                                directVideoUrl = dynlinkData.url;
+                            }
+                        }
+                    } catch (dynErr) {
+                        console.warn(`[o!rdr] No se pudo obtener el link directo de dynlink para #${renderId}:`, dynErr.message);
+                    }
+
+                    console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${directVideoUrl}...`);
+                    const headResponse = await fetch(directVideoUrl, { method: 'HEAD' });
                     if (headResponse.ok) {
                         const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
                         const maxLimit = 25 * 1024 * 1024; // 25 MB
                         
                         if (contentLength > 0 && contentLength <= maxLimit) {
                             console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
-                            const videoResponse = await fetch(data.videoUrl);
+                            const videoResponse = await fetch(directVideoUrl);
                             if (videoResponse.ok) {
                                 const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
                                 files.push({
