@@ -2123,12 +2123,56 @@ async function setPreferredScoreMode(discordId, scoreMode) {
     }
 }
 
+/**
+ * Descarga el archivo de replay desde la API de osu! v2.
+ * Intenta primero con la ruta de ruleset específica y cae a la ruta directa de score si falla.
+ * @param {string|number} scoreId
+ * @param {string} mode
+ * @returns {Promise<Buffer>}
+ */
+async function downloadReplay(scoreId, mode = 'osu') {
+    await NewloadToken();
+    
+    let token = null;
+    try {
+        const tokenData = JSON.parse(await fs.readFile('./osu_api_extended_token.json', 'utf8'));
+        token = tokenData.access_token;
+    } catch (err) {
+        console.error("Error al leer token en downloadReplay:", err);
+    }
+    
+    if (!token) {
+        throw new Error("No token available");
+    }
+    
+    let downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
+        headers: {
+            'Authorization': `Bearer ${token}`
+        }
+    });
+    
+    if (!downloadRes.ok) {
+        downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+    }
+    
+    if (!downloadRes.ok) {
+        throw new Error(`osu! API returned ${downloadRes.status}`);
+    }
+    
+    return Buffer.from(await downloadRes.arrayBuffer());
+}
+
 const OsuUserModel = {
     loadToken,
     NewloadToken,
     getOsuUser,
     getLinkedUser,
     setPreferredScoreMode,
+    downloadReplay,
     linkUser,
     unlinkUser,
     getLinkedUsers,

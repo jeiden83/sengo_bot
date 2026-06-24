@@ -269,43 +269,7 @@ async function run(messages, args) {
                     
                     try {
                         const OsuUserModel = require('../../../models/OsuUserModel.js');
-                        const fs = require('fs');
-                        await OsuUserModel.NewloadToken();
-                        
-                        let token = null;
-                        try {
-                            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-                            token = tokenData.access_token;
-                        } catch (err) {
-                            console.error("Error al leer token:", err);
-                        }
-                        
-                        if (!token) {
-                            throw new Error("No token available");
-                        }
-                        
-                        const scoreId = targetScore.id;
-                        const mode = targetScore.mode || targetGamemode || 'osu';
-                        
-                        let downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                        
-                        if (!downloadRes.ok) {
-                            downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
-                                headers: {
-                                    'Authorization': `Bearer ${token}`
-                                }
-                            });
-                        }
-                        
-                        if (!downloadRes.ok) {
-                            throw new Error(`osu! API returned ${downloadRes.status}`);
-                        }
-                        
-                        const replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
+                        const replayBuffer = await OsuUserModel.downloadReplay(targetScore.id, targetScore.mode || targetGamemode || 'osu');
                         
                         // Invocar el flujo de renderizado usando startRenderFlow
                         const renderCmd = require('./render.js');

@@ -272,41 +272,8 @@ async function run(messages, args, forcedMode = 'lazer') {
 
                 try {
                     const currentScore = scores[index - 1];
-                    const fs = require('fs');
-                    let token = null;
-                    try {
-                        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-                        token = tokenData.access_token;
-                    } catch (err) {
-                        console.error("Error al leer token:", err);
-                    }
-
-                    if (!token) {
-                        throw new Error("No token available");
-                    }
-
-                    const scoreId = currentScore.id;
-                    const mode = currentScore.mode || cmdParsed?.gamemode || gamemode || 'osu';
-                    
-                    let downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
-                        headers: {
-                            'Authorization': `Bearer ${token}`
-                        }
-                    });
-                    
-                    if (!downloadRes.ok) {
-                        downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
-                            headers: {
-                                'Authorization': `Bearer ${token}`
-                            }
-                        });
-                    }
-                    
-                    if (!downloadRes.ok) {
-                        throw new Error(`osu! API returned ${downloadRes.status}`);
-                    }
-
-                    const replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
+                    const OsuUserModel = require('../../../models/OsuUserModel.js');
+                    const replayBuffer = await OsuUserModel.downloadReplay(currentScore.id, currentScore.mode || cmdParsed?.gamemode || gamemode || 'osu');
                     const renderCmd = require('./render.js');
                     const mockMessages = {
                         message: {
