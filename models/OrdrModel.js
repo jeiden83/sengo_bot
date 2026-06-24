@@ -1,4 +1,4 @@
-const FormData = require('form-data');
+/* global FormData, Blob */
 const { io } = require('socket.io-client');
 const { t } = require('../utils/i18n.js');
 const { getSupabaseClient } = require('../db/database.js');
@@ -190,7 +190,7 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     const form = new FormData();
 
     // Adjuntar archivo .osr
-    form.append('replayFile', replayBuffer, { filename: fileName || 'replay.osr' });
+    form.append('replayFile', new Blob([replayBuffer]), fileName || 'replay.osr');
 
     // Determinar si usamos la API key real o forzamos Developer Mode
     const isDevMode = !apiKey || devMode;
@@ -234,8 +234,7 @@ async function _executeRequestRender({ replayBuffer, fileName, locale = 'es', ..
     console.log(`📤 [OrdrModel] Enviando solicitud a la API de o!rdr... (devMode=${isDevMode}, skin=${options.skin}, discordUserId=${discordUserId || 'N/A'})`);
     const response = await fetch('https://apis.issou.best/ordr/renders', {
         method: 'POST',
-        body: form,
-        headers: form.getHeaders()
+        body: form
     });
 
     let data = null;
