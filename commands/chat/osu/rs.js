@@ -509,13 +509,21 @@ async function run(messages, args) {
                     }
                     
                     const scoreId = currentScore.id;
-                    const url = `https://osu.ppy.sh/api/v2/scores/${scoreId}/download`;
+                    const mode = currentScore.mode || gamemode || 'osu';
                     
-                    const downloadRes = await fetch(url, {
+                    let downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
                         headers: {
                             'Authorization': `Bearer ${token}`
                         }
                     });
+                    
+                    if (!downloadRes.ok) {
+                        downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
+                            headers: {
+                                'Authorization': `Bearer ${token}`
+                            }
+                        });
+                    }
                     
                     if (!downloadRes.ok) {
                         throw new Error(`osu! API returned ${downloadRes.status}`);
