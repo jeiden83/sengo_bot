@@ -273,7 +273,7 @@ async function getUserRecentScores(parsed_args) {
         try {
             let userObj;
             try {
-                userObj = await OsuUserModel.getUser(parsed_args);
+                userObj = await OsuUserModel.getOsuUser(parsed_args);
             } catch (e) {
                 console.error("Error al obtener perfil de usuario para mameosu scores:", e);
                 return [];
@@ -500,7 +500,7 @@ async function _getUserTopScores(parsed_args) {
         try {
             let userObj;
             try {
-                userObj = await OsuUserModel.getUser(parsed_args);
+                userObj = await OsuUserModel.getOsuUser(parsed_args);
             } catch (e) {
                 console.error("Error al obtener perfil de usuario para mameosu tops:", e);
                 return [];

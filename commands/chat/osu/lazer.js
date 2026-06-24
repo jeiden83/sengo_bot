@@ -298,7 +298,7 @@ async function run(messages, args, forcedMode = 'lazer') {
                         throw new Error(`osu! API returned ${downloadRes.status}`);
                     }
 
-                    const replayBuffer = await downloadRes.buffer();
+                    const replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
                     const renderCmd = require('./render.js');
                     const mockMessages = {
                         message: {

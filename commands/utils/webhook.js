@@ -5,7 +5,6 @@ const os = require('os');
 const { exec, spawn } = require('child_process');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder, ActivityType } = require('discord.js');
-const fetch = require('node-fetch');
 const url = require('url');
 const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
 const OsuUserModel = require('../../models/OsuUserModel.js');

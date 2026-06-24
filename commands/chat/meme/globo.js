@@ -1,5 +1,4 @@
 const { createCanvas, loadImage } = require('canvas');
-const fetch = require('node-fetch');
 const fs = require('fs');
 const path = require('path');
 const GIFEncoder = require('gifencoder');
@@ -15,7 +14,7 @@ async function run(messages, args) {
   if (!attachment) return t(locale, 'globo.attach_image');
 
   const imageUrl = attachment.url;
-  const baseImgBuffer = await (await fetch(imageUrl)).buffer();
+  const baseImgBuffer = Buffer.from(await (await fetch(imageUrl)).arrayBuffer());
   const globoBuffer = fs.readFileSync(globoPath);
 
   const baseImg = await loadImage(baseImgBuffer);

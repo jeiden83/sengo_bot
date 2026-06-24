@@ -1,4 +1,3 @@
-const fetch = require("node-fetch");
 
 let cachedPoolId = null;
 let cachedPoolIdTimestamp = 0;

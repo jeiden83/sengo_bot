@@ -237,7 +237,6 @@ async function run(messages, args) {
                     const infoMsg = await i.channel.send(`📥 **[o!rdr]** Preparando renderizado para la jugada de **${currentScore.user?.username || 'Usuario'}**...`);
                     
                     try {
-                        const fetch = require('node-fetch');
                         const OsuUserModel = require('../../../models/OsuUserModel.js');
                         const fs = require('fs');
                         await OsuUserModel.NewloadToken();
@@ -267,7 +266,7 @@ async function run(messages, args) {
                             throw new Error(`osu! API returned ${downloadRes.status}`);
                         }
                         
-                        const replayBuffer = await downloadRes.buffer();
+                        const replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
                         
                         const renderCmd = require('./render.js');
                         const mockMessages = {

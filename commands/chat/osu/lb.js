@@ -1,5 +1,4 @@
 const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
-const fetch = require('node-fetch');
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 

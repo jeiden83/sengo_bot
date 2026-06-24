@@ -6,7 +6,6 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
 const axios = require('axios');
 const rosu = require("rosu-pp-js");
-const fetch = require('node-fetch');
 const { t } = require("../../../utils/i18n.js");
 
 /**
@@ -389,7 +388,7 @@ async function run(messages, args, initialized_data) {
         try {
             await message.channel.sendTyping();
             const response = await fetch(osrAttachment.url);
-            const buffer = await response.buffer();
+            const buffer = Buffer.from(await response.arrayBuffer());
             const replayData = parseOSR(buffer);
             if (replayData) {
                 // Parsear mods

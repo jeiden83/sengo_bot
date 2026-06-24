@@ -1,6 +1,5 @@
 const { doOsuReplayEmbed } = require("../../../views/osuReplayViews.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
-const fetch = require('node-fetch');
 const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args, initialized_data) {
@@ -21,7 +20,7 @@ async function run(messages, args, initialized_data) {
         await message.channel.sendTyping();
         
         const response = await fetch(attachment.url);
-        const buffer = await response.buffer();
+        const buffer = Buffer.from(await response.arrayBuffer());
 
         const replayData = parseOSR(buffer);
         if (!replayData) {

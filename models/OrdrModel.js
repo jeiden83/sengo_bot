@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const FormData = require('form-data');
 const { io } = require('socket.io-client');
 const { t } = require('../utils/i18n.js');

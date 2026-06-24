@@ -1298,7 +1298,6 @@ async function getOsuWorldUser(osuId) {
         }
     }
 
-    const fetch = require('node-fetch');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
     try {
@@ -1353,7 +1352,6 @@ async function fetchRegionalRankingPage(countryFilter, regionFilter, gamemode, p
 
     const url = `https://osuworld.octo.moe/api/${countryFilter.toUpperCase()}/${regionFilter.toUpperCase()}/top/${osuWorldMode}?page=${page}`;
     
-    const fetch = require('node-fetch');
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
 

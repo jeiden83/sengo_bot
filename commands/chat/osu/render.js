@@ -1,4 +1,3 @@
-const fetch = require('node-fetch');
 const { parseOSR } = require("../../utils/osr_parser.js");
 const { t } = require("../../../utils/i18n.js");
 const OrdrModel = require("../../../models/OrdrModel.js");
@@ -66,7 +65,7 @@ async function run(messages, args) {
         if (!response.ok) {
             throw new Error(`Failed to fetch attachment: ${response.statusText}`);
         }
-        const replayBuffer = await response.buffer();
+        const replayBuffer = Buffer.from(await response.arrayBuffer());
 
         // 3. Parsear el replay para validar que sea de osu!standard (modo 0)
         const replayData = parseOSR(replayBuffer);
@@ -255,7 +254,7 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
                             console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
                             const videoResponse = await fetch(data.videoUrl);
                             if (videoResponse.ok) {
-                                const videoBuffer = await videoResponse.buffer();
+                                const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
                                 files.push({
                                     attachment: videoBuffer,
                                     name: `sengo_render_${renderId}.mp4`
