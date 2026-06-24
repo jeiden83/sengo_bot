@@ -273,7 +273,8 @@ async function run(messages, args, forcedMode = 'lazer') {
                 try {
                     const currentScore = scores[index - 1];
                     const OsuUserModel = require('../../../models/OsuUserModel.js');
-                    const replayBuffer = await OsuUserModel.downloadReplay(currentScore.id, currentScore.mode || cmdParsed?.gamemode || gamemode || 'osu');
+                    const scoreId = currentScore.id;
+                    const replayBuffer = await OsuUserModel.downloadReplay(scoreId, currentScore.mode || cmdParsed?.gamemode || gamemode || 'osu');
                     const renderCmd = require('./render.js');
                     const mockMessages = {
                         message: {

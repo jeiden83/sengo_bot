@@ -238,7 +238,8 @@ async function run(messages, args) {
                     
                     try {
                         const OsuUserModel = require('../../../models/OsuUserModel.js');
-                        const replayBuffer = await OsuUserModel.downloadReplay(currentScore.id, currentScore.mode || parser_res.parsed_args?.gamemode || 'osu');
+                        const scoreId = currentScore.id;
+                        const replayBuffer = await OsuUserModel.downloadReplay(scoreId, currentScore.mode || parser_res.parsed_args?.gamemode || 'osu');
                         
                         const renderCmd = require('./render.js');
                         const mockMessages = {
