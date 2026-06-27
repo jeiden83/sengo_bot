@@ -73,20 +73,38 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                 const unrankedWithoutLeaderboard = new Set(['pending', 'wip', 'graveyard']);
                 const hasLeaderboard = recent_scores.beatmap.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
 
-                const [best, topScores] = await Promise.all([
-                    hasLeaderboard ? v2.scores.list({
-                        type: 'user_beatmap_best',
-                        beatmap_id: recent_scores.beatmap.id,
-                        user_id: recent_scores.user.id,
-                        mode: recent_scores.beatmap.mode
-                    }).catch(() => null) : null,
-                    v2.scores.list({
-                        type: 'user_best',
-                        user_id: recent_scores.user.id,
-                        mode: recent_scores.beatmap.mode,
-                        limit: 100
-                    }).catch(() => null)
-                ]);
+                let best = null;
+                let topScores = null;
+                const hasUserTopPos = pre_calculated && pre_calculated.user_top_pos !== undefined && pre_calculated.user_top_pos !== null;
+
+                if (hasUserTopPos) {
+                    user_top_pos = pre_calculated.user_top_pos;
+                    if (hasLeaderboard) {
+                        best = await v2.scores.list({
+                            type: 'user_beatmap_best',
+                            beatmap_id: recent_scores.beatmap.id,
+                            user_id: recent_scores.user.id,
+                            mode: recent_scores.beatmap.mode
+                        }).catch(() => null);
+                    }
+                } else {
+                    const [fetchedBest, fetchedTopScores] = await Promise.all([
+                        hasLeaderboard ? v2.scores.list({
+                            type: 'user_beatmap_best',
+                            beatmap_id: recent_scores.beatmap.id,
+                            user_id: recent_scores.user.id,
+                            mode: recent_scores.beatmap.mode
+                        }).catch(() => null) : null,
+                        v2.scores.list({
+                            type: 'user_best',
+                            user_id: recent_scores.user.id,
+                            mode: recent_scores.beatmap.mode,
+                            limit: 100
+                        }).catch(() => null)
+                    ]);
+                    best = fetchedBest;
+                    topScores = fetchedTopScores;
+                }
 
                 if (best && best.score) {
                     const isRecentPlayBest = (
@@ -100,14 +118,33 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                     }
                 }
 
-                if (topScores && Array.isArray(topScores)) {
-                    const topIndex = topScores.findIndex(s => {
+                if (!hasUserTopPos && topScores && Array.isArray(topScores)) {
+                    let topIndex = topScores.findIndex(s => {
                         return (recent_scores.id && s.id === recent_scores.id) ||
                             (new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
                                 (s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
                     });
                     if (topIndex !== -1) {
                         user_top_pos = topIndex + 1;
+                    } else if (topScores.length === 100) {
+                        const topScoresPage2 = await v2.scores.list({
+                            type: 'user_best',
+                            user_id: recent_scores.user.id,
+                            mode: recent_scores.beatmap.mode,
+                            limit: 100,
+                            offset: 100
+                        }).catch(() => null);
+
+                        if (topScoresPage2 && Array.isArray(topScoresPage2)) {
+                            const topIndexPage2 = topScoresPage2.findIndex(s => {
+                                return (recent_scores.id && s.id === recent_scores.id) ||
+                                    (new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
+                                        (s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
+                            });
+                            if (topIndexPage2 !== -1) {
+                                user_top_pos = 100 + topIndexPage2 + 1;
+                            }
+                        }
                     }
                 }
             } catch (e) {

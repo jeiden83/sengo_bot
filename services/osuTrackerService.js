@@ -162,18 +162,36 @@ function updateTrackChannelInMemory(guildId, channelId) {
 async function processNewScore(client, userObj, score) {
     const osuId = userObj.osuId;
     
-    // 1. Obtener el Top 100 de mejores puntuaciones del usuario
+    // 1. Obtener el Top 200 de mejores puntuaciones del usuario
     await OsuUserModel.NewloadToken();
-    const bestScores = await osuApiQueue.add(() => v2.scores.list({
+    let bestScores = await osuApiQueue.add(() => v2.scores.list({
         type: 'user_best',
         user_id: osuId,
         mode: score.beatmap.mode,
-        limit: 100
+        limit: 100,
+        offset: 0
     }), 0);
+
+    if (bestScores && Array.isArray(bestScores) && bestScores.length === 100) {
+        try {
+            const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
+                type: 'user_best',
+                user_id: osuId,
+                mode: score.beatmap.mode,
+                limit: 100,
+                offset: 100
+            }), 0);
+            if (nextBestScores && Array.isArray(nextBestScores)) {
+                bestScores = bestScores.concat(nextBestScores);
+            }
+        } catch (err) {
+            console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername}:`, err);
+        }
+    }
 
     if (!bestScores || !Array.isArray(bestScores)) return;
 
-    // 2. Buscar si el score reciente está en el top 100
+    // 2. Buscar si el score reciente está en el top 200
     const positionIndex = bestScores.findIndex(s => s.id.toString() === score.id.toString());
     
     if (positionIndex === -1) {
@@ -230,7 +248,8 @@ async function processNewScore(client, userObj, score) {
             "maxAttrs": maxAttrs,
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,
-            "pp_fc": pp_fc
+            "pp_fc": pp_fc,
+            "user_top_pos": positionIndex + 1
         };
 
         // 4. Enviar el anuncio a cada servidor trackeado
@@ -326,7 +345,7 @@ async function checkUserRecentScore(client, userObj) {
                 await OsuTrackerModel.updateTrackedUser(srv.id, { last_score_id: scoreIdStr });
             }
 
-            // Procesar y ver si entra en el Top 100
+            // Procesar y ver si entra en el Top 200
             await processNewScore(client, userObj, score);
             return true;
         }
