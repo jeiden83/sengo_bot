@@ -192,7 +192,42 @@ async function processNewScore(client, userObj, score) {
     if (!bestScores || !Array.isArray(bestScores)) return;
 
     // 2. Buscar si el score reciente está en el top 200
-    const positionIndex = bestScores.findIndex(s => s.id.toString() === score.id.toString());
+    let positionIndex = bestScores.findIndex(s => s.id.toString() === score.id.toString());
+    
+    if (positionIndex === -1) {
+        // ponytail: reintento simple de 5 segundos para mitigar lag de réplica de la API de osu!; límite de 1 reintento para evitar colas de llamadas.
+        Logger.system(`[TRACKER-SERVICE] Score ${score.id} no encontrado en el top 200 de ${userObj.osuUsername}. Reintentando en 5 segundos por posible lag de la API de osu!...`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        
+        bestScores = await osuApiQueue.add(() => v2.scores.list({
+            type: 'user_best',
+            user_id: osuId,
+            mode: score.beatmap.mode,
+            limit: 100,
+            offset: 0
+        }), 0);
+
+        if (bestScores && Array.isArray(bestScores) && bestScores.length === 100) {
+            try {
+                const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
+                    type: 'user_best',
+                    user_id: osuId,
+                    mode: score.beatmap.mode,
+                    limit: 100,
+                    offset: 100
+                }), 0);
+                if (nextBestScores && Array.isArray(nextBestScores)) {
+                    bestScores = bestScores.concat(nextBestScores);
+                }
+            } catch (err) {
+                console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername} en reintento:`, err);
+            }
+        }
+        
+        if (bestScores && Array.isArray(bestScores)) {
+            positionIndex = bestScores.findIndex(s => s.id.toString() === score.id.toString());
+        }
+    }
     
     if (positionIndex === -1) {
         // No es una top play, no se anuncia
