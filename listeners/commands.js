@@ -183,11 +183,47 @@ async function chat_command_listener(chat_commands, client, config, res) {
             resolvedLocale = await getGuildLanguage(message.guild.id);
         }
         message.locale = resolvedLocale;
-
-        await message.channel.sendTyping();
-
         const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
         const message_command = message_args.shift().toLowerCase();
+
+        // Detectar si el usuario escribió una flag separada por espacio o sin el guión (ej: "- top", "top", "list", "lazer")
+        const FLAG_CHECK_COMMANDS = new Set([
+            'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
+            'm', 'map', 'subir', 'gap', 'bg', 'top', 't', 'rework',
+            'lbm', 'lbc', 'lbt', 'lbp', 'lazer', 'classic'
+        ]);
+
+        if (FLAG_CHECK_COMMANDS.has(message_command)) {
+            let targetFlag = null;
+            const separatedFlagIdx = message_args.findIndex((arg, idx) => arg === '-' && idx < message_args.length - 1);
+            if (separatedFlagIdx !== -1) {
+                const nextArg = message_args[separatedFlagIdx + 1].toLowerCase().trim();
+                const validFlags = ['top', 'o', 'osu', 'list', 'l', 'nc', 'nochoke', 'rework', 'pp', 'mods', 'm', 'lazer', 'stable'];
+                if (validFlags.includes(nextArg)) {
+                    targetFlag = nextArg;
+                }
+            } else {
+                const missingDashArg = message_args.find(arg => {
+                    if (typeof arg !== 'string') return false;
+                    const clean = arg.toLowerCase().trim();
+                    return ['top', 'list', 'nochoke', 'nc', 'lazer', 'stable'].includes(clean);
+                });
+                if (missingDashArg) {
+                    targetFlag = missingDashArg.toLowerCase().trim();
+                }
+            }
+
+            if (targetFlag) {
+                // ponytail: central smart check for separated or missing dash flags
+                const errorMsg = resolvedLocale === 'es'
+                    ? `⚠️ ¿Quisiste decir \`-${targetFlag}\`? Por favor, escribe el modificador sin espacios (ejemplo: \`${config.BOT_PREFIX}${message_command} -${targetFlag}\`).`
+                    : `⚠️ Did you mean \`-${targetFlag}\`? Please write the modifier without spaces (example: \`${config.BOT_PREFIX}${message_command} -${targetFlag}\`).`;
+                await message.channel.send(errorMsg);
+                return;
+            }
+        }
+
+        await message.channel.sendTyping();
         
         const logger = new Logger(message, message_command, message_args);
         const startTime = logger.startTime;

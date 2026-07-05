@@ -190,7 +190,7 @@ async function run(messages, args) {
     const separatedFlagIdx = args.findIndex((arg, idx) => arg === '-' && idx < args.length - 1);
     if (separatedFlagIdx !== -1) {
         const nextArg = args[separatedFlagIdx + 1].toLowerCase().trim();
-        const validFlags = ['top', 'o', 'osu', 'list', 'l', 'nc', 'nochoke', 'rework', 'pp', 'mods', 'm'];
+        const validFlags = ['top', 'o', 'osu', 'list', 'l', 'nc', 'nochoke', 'rework', 'pp', 'mods', 'm', 'lazer'];
         if (validFlags.includes(nextArg)) {
             targetFlag = nextArg;
         }
@@ -198,7 +198,7 @@ async function run(messages, args) {
         const missingDashArg = args.find(arg => {
             if (typeof arg !== 'string') return false;
             const clean = arg.toLowerCase().trim();
-            return ['top', 'list', 'nochoke', 'nc'].includes(clean);
+            return ['top', 'list', 'nochoke', 'nc', 'lazer'].includes(clean);
         });
         if (missingDashArg) {
             targetFlag = missingDashArg.toLowerCase().trim();
