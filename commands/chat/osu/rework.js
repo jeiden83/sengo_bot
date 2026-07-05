@@ -185,17 +185,30 @@ async function run(messages, args) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
-    // Detectar si el usuario escribió una flag separada por espacio, ej: "- top", "- o"
+    // Detectar si el usuario escribió una flag separada por espacio o sin el guión (ej: "- top", "top", "list")
+    let targetFlag = null;
     const separatedFlagIdx = args.findIndex((arg, idx) => arg === '-' && idx < args.length - 1);
     if (separatedFlagIdx !== -1) {
         const nextArg = args[separatedFlagIdx + 1].toLowerCase().trim();
         const validFlags = ['top', 'o', 'osu', 'list', 'l', 'nc', 'nochoke', 'rework', 'pp', 'mods', 'm'];
         if (validFlags.includes(nextArg)) {
-            // ponytail: smart check for separated flags to prevent treating '-' as user name and throwing user not found
-            return t(locale, 'rework.err_separated_flag', { flag: nextArg });
+            targetFlag = nextArg;
+        }
+    } else {
+        const missingDashArg = args.find(arg => {
+            if (typeof arg !== 'string') return false;
+            const clean = arg.toLowerCase().trim();
+            return ['top', 'list', 'nochoke', 'nc'].includes(clean);
+        });
+        if (missingDashArg) {
+            targetFlag = missingDashArg.toLowerCase().trim();
         }
     }
 
+    if (targetFlag) {
+        // ponytail: smart check for separated or missing dash flags to prevent treating them as usernames
+        return t(locale, 'rework.err_separated_flag', { flag: targetFlag });
+    }
 
     let repliedMsg = null;
     let parsedPlay = null;
