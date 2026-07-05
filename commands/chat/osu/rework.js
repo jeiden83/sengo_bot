@@ -128,6 +128,43 @@ function parsePlayEmbed(embed) {
     };
 }
 
+function extractUserFromProfileEmbed(embed) {
+    if (!embed) return null;
+
+    // 1. Intentar por author.url o embed.url (si contienen /users/ o /u/)
+    const authorUrl = embed.author?.url || '';
+    const embedUrl = embed.url || '';
+    for (const url of [authorUrl, embedUrl]) {
+        const userMatch = url.match(/users?\/([^\/\s?#]+)/) || url.match(/u\/([^\/\s?#]+)/);
+        const hasBeatmapUrl = url && (url.includes('/b/') || url.includes('/beatmaps/'));
+        if (userMatch && !hasBeatmapUrl) {
+            return userMatch[1];
+        }
+    }
+
+    // 2. Intentar por title o author.name usando el patrón de perfil de owo/sengo
+    const title = embed.title || '';
+    const authorName = embed.author?.name || '';
+    const profileRegex = /osu!\s+(?:Standard|Taiko|Catch the Beat|Mania|Fruits|Catch)?\s*Profile for\s+(.+)/i;
+    for (const text of [title, authorName]) {
+        const match = text.match(profileRegex);
+        if (match) {
+            return match[1].trim();
+        }
+    }
+
+    // 3. Intentar por la URL del thumbnail (avatar de osu!)
+    const thumbnailUrl = embed.thumbnail?.url || '';
+    if (thumbnailUrl && thumbnailUrl.includes('a.ppy.sh')) {
+        const thumbMatch = thumbnailUrl.match(/a\.ppy\.sh\/(\d+)/);
+        if (thumbMatch) {
+            return thumbMatch[1];
+        }
+    }
+
+    return null;
+}
+
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
@@ -149,12 +186,10 @@ async function run(messages, args) {
         const embed = repliedMsg.embeds[0];
         parsedPlay = parsePlayEmbed(embed);
         if (!parsedPlay) {
-            const authorUrl = embed.author?.url || '';
-            const userMatch = authorUrl.match(/users?\/([^\/\s?#]+)/) || authorUrl.match(/u\/([^\/\s?#]+)/);
-            const hasBeatmapUrl = embed.url && (embed.url.includes('/b/') || embed.url.includes('/beatmaps/'));
-            if (userMatch && !hasBeatmapUrl) {
+            const targetUser = extractUserFromProfileEmbed(embed);
+            if (targetUser) {
                 isProfileReply = true;
-                replyUserId = userMatch[1];
+                replyUserId = targetUser;
             }
         }
     }
