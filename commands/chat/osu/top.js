@@ -370,7 +370,7 @@ async function run(messages, args) {
     const filter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({
         filter,
-        idle: 30000
+        idle: 60000
     });
 
     collector.on('collect', async i => {

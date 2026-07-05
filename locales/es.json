@@ -1203,7 +1203,8 @@
     "queue_added_wait": "⏳ **{username}** no ha sido recalculado aún en **{reworkName}**.\nLo hemos agregado a la cola de recalculación. Vuelve a intentarlo en unos minutos.",
     "msg_single_play": "Mostrando la jugada **#{index}** de **{total}** en el Rework:",
     "msg_single_play_invalid": "⚠️ Índice inválido. Mostrando la mejor (#1):",
-    "msg_single_play_last": "⚠️ Solo se encontraron **{total}** jugadas en el rework. Mostrando la última (#{total}):"
+    "msg_single_play_last": "⚠️ Solo se encontraron **{total}** jugadas en el rework. Mostrando la última (#{total}):",
+    "err_separated_flag": "⚠️ ¿Quisiste decir `-{flag}`? Por favor, escribe el modificador sin espacios (ejemplo: `s.rework -{flag}`)."
   },
   "ranked": {
     "msg_loading_global": "⏳ Obteniendo tabla de clasificación global...",

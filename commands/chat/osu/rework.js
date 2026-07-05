@@ -185,6 +185,18 @@ async function run(messages, args) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
+    // Detectar si el usuario escribió una flag separada por espacio, ej: "- top", "- o"
+    const separatedFlagIdx = args.findIndex((arg, idx) => arg === '-' && idx < args.length - 1);
+    if (separatedFlagIdx !== -1) {
+        const nextArg = args[separatedFlagIdx + 1].toLowerCase().trim();
+        const validFlags = ['top', 'o', 'osu', 'list', 'l', 'nc', 'nochoke', 'rework', 'pp', 'mods', 'm'];
+        if (validFlags.includes(nextArg)) {
+            // ponytail: smart check for separated flags to prevent treating '-' as user name and throwing user not found
+            return t(locale, 'rework.err_separated_flag', { flag: nextArg });
+        }
+    }
+
+
     let repliedMsg = null;
     let parsedPlay = null;
     let isProfileReply = false;
@@ -558,7 +570,7 @@ async function run(messages, args) {
             const filter = btnInt => btnInt.user.id === message.author.id;
             const collector = sent_message.createMessageComponentCollector({
                 filter,
-                idle: 30000
+                idle: 60000
             });
 
             collector.on('collect', async i => {
@@ -631,7 +643,7 @@ async function run(messages, args) {
         const filter = btnInt => btnInt.user.id === message.author.id;
         const collector = sent_message.createMessageComponentCollector({
             filter,
-            idle: 30000
+            idle: 60000
         });
 
         collector.on('collect', async i => {

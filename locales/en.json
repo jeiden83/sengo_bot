@@ -1203,7 +1203,8 @@
     "queue_added_wait": "⏳ **{username}** has not been recalculated yet in **{reworkName}**.\nWe have added them to the recalculation queue. Try again in a few minutes.",
     "msg_single_play": "Showing play **#{index}** of **{total}** in Rework:",
     "msg_single_play_invalid": "⚠️ Invalid index. Showing best (#1):",
-    "msg_single_play_last": "⚠️ Only **{total}** plays found in the rework. Showing the last one (#{total}):"
+    "msg_single_play_last": "⚠️ Only **{total}** plays found in the rework. Showing the last one (#{total}):",
+    "err_separated_flag": "⚠️ Did you mean `-{flag}`? Please write the modifier without spaces (example: `s.rework -{flag}`)."
   },
   "ranked": {
     "msg_loading_global": "⏳ Fetching global leaderboard...",
