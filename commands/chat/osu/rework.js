@@ -165,6 +165,22 @@ function extractUserFromProfileEmbed(embed) {
     return null;
 }
 
+function getEmbedsFromMessage(msg) {
+    if (!msg) return [];
+    if (msg.embeds && msg.embeds.length > 0) {
+        return msg.embeds;
+    }
+    if (msg.messageSnapshots) {
+        const snapshot = typeof msg.messageSnapshots.first === 'function'
+            ? msg.messageSnapshots.first()
+            : (Array.isArray(msg.messageSnapshots) ? msg.messageSnapshots[0] : null);
+        if (snapshot && snapshot.embeds && snapshot.embeds.length > 0) {
+            return snapshot.embeds;
+        }
+    }
+    return [];
+}
+
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
@@ -182,8 +198,9 @@ async function run(messages, args) {
         }
     }
 
-    if (repliedMsg && repliedMsg.embeds && repliedMsg.embeds.length > 0) {
-        const embed = repliedMsg.embeds[0];
+    const repliedEmbeds = getEmbedsFromMessage(repliedMsg);
+    if (repliedEmbeds.length > 0) {
+        const embed = repliedEmbeds[0];
         parsedPlay = parsePlayEmbed(embed);
         if (!parsedPlay) {
             const targetUser = extractUserFromProfileEmbed(embed);
@@ -659,8 +676,9 @@ async function run(messages, args) {
             try {
                 const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
                 for (const msg of fetch_messages.values()) {
-                    if (msg.embeds && msg.embeds.length > 0) {
-                        parsedPlay = parsePlayEmbed(msg.embeds[0]);
+                    const msgEmbeds = getEmbedsFromMessage(msg);
+                    if (msgEmbeds.length > 0) {
+                        parsedPlay = parsePlayEmbed(msgEmbeds[0]);
                         if (parsedPlay) break;
                     }
                 }
