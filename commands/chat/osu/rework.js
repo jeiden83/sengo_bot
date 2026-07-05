@@ -3,6 +3,7 @@ const ReworkModel = require("../../../models/ReworkModel.js");
 const rosu = require("rosu-pp-js");
 const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed, doOsuReworkPlayEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
+const config = require("../../../config.js");
 const { EmbedBuilder } = require("discord.js");
 const { getEmbedColor } = require("../../../views/osuViewHelpers.js");
 
@@ -207,7 +208,7 @@ async function run(messages, args) {
 
     if (targetFlag) {
         // ponytail: smart check for separated or missing dash flags to prevent treating them as usernames
-        return t(locale, 'rework.err_separated_flag', { flag: targetFlag });
+        return t(locale, 'general.err_separated_flag', { flag: targetFlag, prefix: config.BOT_PREFIX, command: 'rework' });
     }
 
     let repliedMsg = null;

@@ -2,6 +2,7 @@ const { chatCommand, slashCommand, loadCommands, loadSlashCommands } = require("
 const { PermissionsBitField } = require('discord.js');
 const { reportErrorToWebhook } = require("../services/errorNotifier.js");
 const { getGuildLanguage } = require("../models/GuildConfigModel.js");
+const { t } = require("../utils/i18n.js");
 
 const Logger = require("../utils/logger.js");
 
@@ -215,9 +216,11 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
             if (targetFlag) {
                 // ponytail: central smart check for separated or missing dash flags
-                const errorMsg = resolvedLocale === 'es'
-                    ? `⚠️ ¿Quisiste decir \`-${targetFlag}\`? Por favor, escribe el modificador sin espacios (ejemplo: \`${config.BOT_PREFIX}${message_command} -${targetFlag}\`).`
-                    : `⚠️ Did you mean \`-${targetFlag}\`? Please write the modifier without spaces (example: \`${config.BOT_PREFIX}${message_command} -${targetFlag}\`).`;
+                const errorMsg = t(resolvedLocale, 'general.err_separated_flag', {
+                    flag: targetFlag,
+                    prefix: config.BOT_PREFIX,
+                    command: message_command
+                });
                 await message.channel.send(errorMsg);
                 return;
             }
