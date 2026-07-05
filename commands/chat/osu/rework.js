@@ -132,9 +132,44 @@ async function run(messages, args) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
+    let repliedMsg = null;
+    let parsedPlay = null;
+    let isProfileReply = false;
+    let replyUserId = null;
+
+    if (message.reference && message.reference.messageId) {
+        try {
+            repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
+        } catch (e) {
+            console.error("Error al obtener mensaje de referencia:", e);
+        }
+    }
+
+    if (repliedMsg && repliedMsg.embeds && repliedMsg.embeds.length > 0) {
+        const embed = repliedMsg.embeds[0];
+        parsedPlay = parsePlayEmbed(embed);
+        if (!parsedPlay) {
+            const authorUrl = embed.author?.url || '';
+            const userMatch = authorUrl.match(/users?\/([^\/\s?#]+)/) || authorUrl.match(/u\/([^\/\s?#]+)/);
+            const hasBeatmapUrl = embed.url && (embed.url.includes('/b/') || embed.url.includes('/beatmaps/'));
+            if (userMatch && !hasBeatmapUrl) {
+                isProfileReply = true;
+                replyUserId = userMatch[1];
+            }
+        }
+    }
+
+    // Pre-parsear argumentos para ver si ya hay un username o si es lista/top
+    let initial_parsed = argsParserNoCommand(args, { ignoreBeatmap: true });
+    
+    // Si se respondió a un embed de perfil y no hay un username en los argumentos, inyectarlo en args
+    if (isProfileReply && replyUserId && (!initial_parsed.username || initial_parsed.username.length === 0 || initial_parsed.username[0] === "")) {
+        args.push(replyUserId);
+    }
+
     // 1. Parsear argumentos usando argsParserNoCommand
-    const isUserCompareQuery = args.some(arg => typeof arg === 'string' && (arg.toLowerCase().trim() === '-o' || arg.toLowerCase().trim() === '-osu' || arg.toLowerCase().trim() === '-top'));
-    const initial_parsed = argsParserNoCommand(args, { ignoreBeatmap: isUserCompareQuery });
+    const isUserCompareQuery = args.some(arg => typeof arg === 'string' && (arg.toLowerCase().trim() === '-o' || arg.toLowerCase().trim() === '-osu' || arg.toLowerCase().trim() === '-top')) || isProfileReply;
+    initial_parsed = argsParserNoCommand(args, { ignoreBeatmap: isUserCompareQuery });
     const isLista = initial_parsed.listMode;
     const isTop = initial_parsed.reworkTop;
     const reworkQuery = initial_parsed.reworkQuery || "";
@@ -142,10 +177,10 @@ async function run(messages, args) {
     // Determinar si el usuario quiere realizar el cálculo de un mapa
     const hasMapIdOrUrl = !!initial_parsed.beatmap_url;
     const hasMods = !!(initial_parsed.modFilter || initial_parsed.modContainFilter);
-    const hasReply = !!(message.reference || reply);
+    const hasReply = !!(message.reference || reply) && !isProfileReply;
 
     let potential_pure_map_id = false;
-    if (initial_parsed.username && initial_parsed.username[0]) {
+    if (!isUserCompareQuery && initial_parsed.username && initial_parsed.username[0]) {
         const potential_id = initial_parsed.username[0].trim();
         if (/^\d{5,10}$/.test(potential_id)) {
             potential_pure_map_id = true;
@@ -166,6 +201,7 @@ async function run(messages, args) {
     if (!isLista && !isTop && !wantsMapCalculation) {
         isUserCompare = true;
     }
+
 
     // ----------------------------------------------------
     // Caso 1: s.rework -lista (Listado de reworks)
@@ -583,21 +619,7 @@ async function run(messages, args) {
     // ----------------------------------------------------
     // Caso 3: s.rework [mapa] [+mods] (Cálculo de Beatmap en Rework)
     // ----------------------------------------------------
-    let parsedPlay = null;
     if (!initial_parsed.beatmap_url) {
-        let repliedMsg = null;
-        if (message.reference && message.reference.messageId) {
-            try {
-                repliedMsg = await message.channel.messages.fetch(message.reference.messageId);
-            } catch (e) {
-                console.error("Error al obtener mensaje de referencia:", e);
-            }
-        }
-
-        if (repliedMsg && repliedMsg.embeds && repliedMsg.embeds.length > 0) {
-            parsedPlay = parsePlayEmbed(repliedMsg.embeds[0]);
-        }
-
         if (!parsedPlay) {
             try {
                 const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
