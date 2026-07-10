@@ -85,7 +85,7 @@ async function run(messages, args){
         }
     }
 
-    const numBuckets = 10;
+    const numBuckets = 15;
     const range = maxStars - minStars;
     const step = range / numBuckets;
 

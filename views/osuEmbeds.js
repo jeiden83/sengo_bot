@@ -1069,8 +1069,9 @@ function doOsuMapsetEmbed({
 function drawStarDistributionChart(sr, totalScores) {
     const width = 600;
     const height = 180;
-    const canvas = createCanvas(width, height);
+    const canvas = createCanvas(width * 2, height * 2);
     const ctx = canvas.getContext('2d');
+    ctx.scale(2, 2);
 
     // Fondo del gráfico (charcoal dark)
     ctx.fillStyle = '#181619';
