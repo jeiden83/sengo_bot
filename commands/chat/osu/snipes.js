@@ -59,6 +59,11 @@ async function run(messages, args){
     const mappersCount = {};
     let totalBPM = 0, totalAR = 0, totalOD = 0, totalCS = 0;
     let bpmCount = 0, arCount = 0, odCount = 0, csCount = 0;
+    let minBPM = Infinity, maxBPM = -Infinity;
+    let minAR = Infinity, maxAR = -Infinity;
+    let minOD = Infinity, maxOD = -Infinity;
+    let minCS = Infinity, maxCS = -Infinity;
+    let minPP = Infinity, maxPP = -Infinity;
     let oldestScore = null;
     let newestScore = null;
 
@@ -84,6 +89,8 @@ async function run(messages, args){
         if (typeof s.pp === 'number' && s.pp > 0) {
             totalPP += s.pp;
             countWithPP++;
+            if (s.pp < minPP) minPP = s.pp;
+            if (s.pp > maxPP) maxPP = s.pp;
         }
 
         if (isDetailed) {
@@ -108,12 +115,16 @@ async function run(messages, args){
                 if (typeof map.bpm === 'number' && map.bpm > 0) {
                     totalBPM += map.bpm;
                     bpmCount++;
+                    if (map.bpm < minBPM) minBPM = map.bpm;
+                    if (map.bpm > maxBPM) maxBPM = map.bpm;
                 }
                 if (typeof map.ar === 'number' || typeof map.ar === 'string') {
                     const val = parseFloat(map.ar);
                     if (!isNaN(val)) {
                         totalAR += val;
                         arCount++;
+                        if (val < minAR) minAR = val;
+                        if (val > maxAR) maxAR = val;
                     }
                 }
                 if (typeof map.od === 'number' || typeof map.od === 'string') {
@@ -121,6 +132,8 @@ async function run(messages, args){
                     if (!isNaN(val)) {
                         totalOD += val;
                         odCount++;
+                        if (val < minOD) minOD = val;
+                        if (val > maxOD) maxOD = val;
                     }
                 }
                 if (typeof map.cs === 'number' || typeof map.cs === 'string') {
@@ -128,6 +141,8 @@ async function run(messages, args){
                     if (!isNaN(val)) {
                         totalCS += val;
                         csCount++;
+                        if (val < minCS) minCS = val;
+                        if (val > maxCS) maxCS = val;
                     }
                 }
             }
@@ -164,6 +179,18 @@ async function run(messages, args){
         adaptedData.avg_ar = arCount > 0 ? (totalAR / arCount) : 0;
         adaptedData.avg_od = odCount > 0 ? (totalOD / odCount) : 0;
         adaptedData.avg_cs = csCount > 0 ? (totalCS / csCount) : 0;
+
+        adaptedData.min_bpm = minBPM !== Infinity ? minBPM : 0;
+        adaptedData.max_bpm = maxBPM !== -Infinity ? maxBPM : 0;
+        adaptedData.min_ar = minAR !== Infinity ? minAR : 0;
+        adaptedData.max_ar = maxAR !== -Infinity ? maxAR : 0;
+        adaptedData.min_od = minOD !== Infinity ? minOD : 0;
+        adaptedData.max_od = maxOD !== -Infinity ? maxOD : 0;
+        adaptedData.min_cs = minCS !== Infinity ? minCS : 0;
+        adaptedData.max_cs = maxCS !== -Infinity ? maxCS : 0;
+        adaptedData.min_pp = minPP !== Infinity ? minPP : 0;
+        adaptedData.max_pp = maxPP !== -Infinity ? maxPP : 0;
+
         adaptedData.oldest_score = oldestScore;
         adaptedData.newest_score = newestScore;
     }

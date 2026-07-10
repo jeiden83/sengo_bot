@@ -1121,9 +1121,33 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
             .map((m, idx) => `**#${idx + 1}** ${m[0]} \`(${m[1]} #1s)\``)
             .join('\n') || '*Ninguno*';
 
+        const makeTextSlider = (min, avg, max, decimals = 1) => {
+            const minStr = decimals === 0 ? Math.round(min).toString() : min.toFixed(decimals);
+            const avgStr = decimals === 0 ? Math.round(avg).toString() : avg.toFixed(decimals);
+            const maxStr = decimals === 0 ? Math.round(max).toString() : max.toFixed(decimals);
+            
+            if (Math.abs(max - min) < 0.001) {
+                return `\`${avgStr}\``;
+            }
+
+            const totalRange = max - min;
+            const fraction = (avg - min) / totalRange;
+            
+            const lineSlots = 10;
+            const avgPos = Math.min(lineSlots - 1, Math.max(0, Math.round(fraction * lineSlots)));
+            
+            const leftDashes = '─'.repeat(avgPos);
+            const rightDashes = '─'.repeat(lineSlots - avgPos);
+            
+            return `\`${minStr} ${leftDashes}${avgStr}${rightDashes} ${maxStr}\``;
+        };
+
         // Tech specs
-        const techText = `• **BPM Promedio:** \`${Math.round(sniped_userdata.avg_bpm * 10) / 10}\`
-• **AR:** \`${Math.round(sniped_userdata.avg_ar * 100) / 100}\`  |  **OD:** \`${Math.round(sniped_userdata.avg_od * 100) / 100}\`  |  **CS:** \`${Math.round(sniped_userdata.avg_cs * 100) / 100}\``;
+        const techText = `• **BPM**: ${makeTextSlider(sniped_userdata.min_bpm, sniped_userdata.avg_bpm, sniped_userdata.max_bpm, 0)}
+• **AR** : ${makeTextSlider(sniped_userdata.min_ar, sniped_userdata.avg_ar, sniped_userdata.max_ar, 1)}
+• **OD** : ${makeTextSlider(sniped_userdata.min_od, sniped_userdata.avg_od, sniped_userdata.max_od, 1)}
+• **CS** : ${makeTextSlider(sniped_userdata.min_cs, sniped_userdata.avg_cs, sniped_userdata.max_cs, 1)}
+• **PP** : ${makeTextSlider(sniped_userdata.min_pp, sniped_userdata.average_pp, sniped_userdata.max_pp, 0)}`;
 
         // Oldest & Newest
         let historyText = '';
