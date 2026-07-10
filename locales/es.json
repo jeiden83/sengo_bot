@@ -2,7 +2,8 @@
   "general": {
     "loading": "Consultando base de datos y API de osu!...",
     "error_unexpected": "Ocurrió un error inesperado al procesar el comando.",
-    "err_separated_flag": "⚠️ ¿Quisiste decir `-{flag}`? Por favor, escribe el modificador sin espacios (ejemplo: `{prefix}{command} -{flag}`)."
+    "err_separated_flag": "⚠️ ¿Quisiste decir `-{flag}`? Por favor, escribe el modificador sin espacios (ejemplo: `{prefix}{command} -{flag}`).",
+    "err_redundant_mods": "⚠️ No hace falta que escribas el `-{flag}` si ya luego haces el `+{mods}` (ejemplo: `{prefix}{command} +{mods}`)."
   },
   "bug": {
     "err_owner_only": "❌ Solo el creador de Sengo puede usar esta opción del comando.",

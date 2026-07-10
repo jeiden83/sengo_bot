@@ -32,9 +32,47 @@ async function handleOAuthFailure(author, logger) {
 async function smartErrorSuggester(command, args, message, res, errorTextOrResult, isOsuCommand = false) {
     if (!args || args.length === 0) return null;
 
-    // Caso 0: Sintaxis de mods inválida o incorrecta
+    // Caso 0: Sintaxis de mods inválida o incorrecta, o flags de mods redundantes
     if (isOsuCommand) {
         try {
+            // Verificar si escribió -m +EZHD, -mods +EZHD, etc.
+            let redundantFlag = null;
+            let redundantMods = null;
+            for (let i = 0; i < args.length; i++) {
+                const arg = args[i];
+                if (typeof arg !== 'string') continue;
+                const lowerArg = arg.toLowerCase().trim();
+
+                if (['-m', '-mods', '-mod', '-mx'].includes(lowerArg)) {
+                    if (i + 1 < args.length) {
+                        const nextArg = args[i + 1].trim();
+                        if (nextArg.startsWith('+')) {
+                            redundantFlag = arg.slice(1);
+                            redundantMods = nextArg.slice(1);
+                            break;
+                        }
+                    }
+                }
+
+                const attachedMatch = arg.match(/^(-m|-mods|-mod|-mx)\+(.+)$/i);
+                if (attachedMatch) {
+                    redundantFlag = attachedMatch[1].slice(1);
+                    redundantMods = attachedMatch[2];
+                    break;
+                }
+            }
+
+            if (redundantFlag) {
+                const locale = message.locale || 'es';
+                const config = require("../config.js");
+                return t(locale, 'general.err_redundant_mods', {
+                    flag: redundantFlag,
+                    mods: redundantMods,
+                    prefix: config.BOT_PREFIX,
+                    command: command
+                });
+            }
+
             const { argsParserNoCommand } = require("./utils/argsParser.js");
             const parsed_args = argsParserNoCommand(args);
             if (parsed_args.invalidModsWarning) {

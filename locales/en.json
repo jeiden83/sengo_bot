@@ -2,7 +2,8 @@
   "general": {
     "loading": "Querying database and osu! API...",
     "error_unexpected": "An unexpected error occurred while processing the command.",
-    "err_separated_flag": "⚠️ Did you mean `-{flag}`? Please write the modifier without spaces (example: `{prefix}{command} -{flag}`)."
+    "err_separated_flag": "⚠️ Did you mean `-{flag}`? Please write the modifier without spaces (example: `{prefix}{command} -{flag}`).",
+    "err_redundant_mods": "⚠️ You don't need to write `-{flag}` if you are already using `+{mods}` (example: `{prefix}{command} +{mods}`)."
   },
   "bug": {
     "err_owner_only": "❌ Only the creator of Sengo can use this option of the command.",

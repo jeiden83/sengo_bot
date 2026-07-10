@@ -953,9 +953,6 @@ function argsParserNoCommand(args, options = {}) {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 if (!next_arg.startsWith("-")) {
-                    if (next_arg.startsWith("+")) {
-                        next_arg = next_arg.slice(1);
-                    }
                     modFilter = next_arg.toUpperCase();
                     skip_next = true;
                     continue;
@@ -966,9 +963,6 @@ function argsParserNoCommand(args, options = {}) {
             const prefixLen = arg.startsWith("-mods") ? 5 : 4;
             let next = arg.slice(prefixLen).trim();
             if (next.length > 0) {
-                if (next.startsWith("+")) {
-                    next = next.slice(1);
-                }
                 const possibleMods = next.toUpperCase();
                 const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
@@ -985,9 +979,6 @@ function argsParserNoCommand(args, options = {}) {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 if (!next_arg.startsWith("-")) {
-                    if (next_arg.startsWith("+")) {
-                        next_arg = next_arg.slice(1);
-                    }
                     modContainFilter = next_arg.toUpperCase();
                     skip_next = true;
                     continue;
@@ -997,9 +988,6 @@ function argsParserNoCommand(args, options = {}) {
         if (arg.startsWith("-mx") && arg !== "-mx") {
             let next = arg.slice(3).trim();
             if (next.length > 0) {
-                if (next.startsWith("+")) {
-                    next = next.slice(1);
-                }
                 const possibleMods = next.toUpperCase();
                 const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
@@ -1016,9 +1004,6 @@ function argsParserNoCommand(args, options = {}) {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
                 if (!next_arg.startsWith("-")) {
-                    if (next_arg.startsWith("+")) {
-                        next_arg = next_arg.slice(1);
-                    }
                     modFilter = next_arg.toUpperCase();
                     skip_next = true;
                     continue;
@@ -1028,9 +1013,6 @@ function argsParserNoCommand(args, options = {}) {
         if (arg.startsWith("-m") && arg !== "-m") {
             let next = arg.slice(2).trim();
             if (next.length > 0) {
-                if (next.startsWith("+")) {
-                    next = next.slice(1);
-                }
                 const possibleMods = next.toUpperCase();
                 const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
                 const chars = possibleMods.split('');
