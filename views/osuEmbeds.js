@@ -1099,7 +1099,22 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
     if (sniped_userdata.is_detailed) {
         // Estrellas
         const sr = sniped_userdata.star_ranges || {};
-        const starsText = `\`3★-\`: **${sr['3★-'] || 0}**  |  \`4★\`: **${sr['4★'] || 0}**  |  \`5★\`: **${sr['5★'] || 0}**\n\`6★\`: **${sr['6★'] || 0}**  |  \`7★\`: **${sr['7★'] || 0}**  |  \`8★+\`: **${sr['8★+'] || 0}**`;
+        const totalScores = sniped_userdata.count_total || 1;
+        const starRangesDef = [
+            { key: '3★-', label: '3★- ' },
+            { key: '4★',  label: '4★  ' },
+            { key: '5★',  label: '5★  ' },
+            { key: '6★',  label: '6★  ' },
+            { key: '7★',  label: '7★  ' },
+            { key: '8★+', label: '8★+ ' }
+        ];
+        const starsText = starRangesDef.map(r => {
+            const count = sr[r.key] || 0;
+            const pct = (count / totalScores) * 100;
+            const filled = Math.min(10, Math.round(pct / 10));
+            const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
+            return `\`${r.label}\` \`${bar}\` **${count}** (${pct.toFixed(1)}%)`;
+        }).join('\n');
 
         // Mappers
         const mappersText = (sniped_userdata.top_mappers || [])
