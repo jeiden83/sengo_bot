@@ -755,17 +755,31 @@ async function getValidTokenForUser(discordId, priority = 2, existingToken = nul
                  // Solo si estamos 100% seguros de que el token fue revocado o es inválido,
                  // eliminamos el registro. Evitamos eliminarlo por errores genéricos de red o JSON inválido de Cloudflare.
                  if (isTokenRevoked) {
+                     // ponytail: wait and re-check to handle race conditions where another concurrent process refreshed the token first
+                     await new Promise(resolve => setTimeout(resolve, 2500));
+
+                     const { data: latestDbData } = await supabase
+                         .from('oauth_tokens')
+                         .select('*')
+                         .eq('discord_id', discordId)
+                         .maybeSingle();
+
+                     if (latestDbData && latestDbData.refresh_token !== data.refresh_token) {
+                         console.log(`[OAuth] Evitando eliminación de token de ${discordId}: otro proceso concurrente lo refrescó primero.`);
+                         return latestDbData.access_token;
+                     }
+
                      console.log(`[OAuth] Token inválido o revocado para usuario Discord ${discordId}. Eliminando registro de la base de datos.`);
-                    try {
-                        await supabase
-                            .from('oauth_tokens')
-                            .delete()
-                            .eq('discord_id', discordId)
-                            .eq('refresh_token', data.refresh_token);
-                    } catch (dbErr) {
-                        console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
-                    }
-                }
+                     try {
+                         await supabase
+                             .from('oauth_tokens')
+                             .delete()
+                             .eq('discord_id', discordId)
+                             .eq('refresh_token', data.refresh_token);
+                     } catch (dbErr) {
+                         console.error(`[OAuth] Error al intentar eliminar token de ${discordId}:`, dbErr);
+                     }
+                 }
                 
                 return null;
             } finally {
