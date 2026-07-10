@@ -2364,7 +2364,18 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
         const oldScoreVal = currentTop ? Number(currentTop.score || 0) : 0;
 
         if (!currentTop || newScoreVal > oldScoreVal) {
-            const modsString = (score.mods && score.mods.length > 0) ? score.mods.join('') : 'NM';
+            let modsString = 'NM';
+            if (score.mods && score.mods.length > 0) {
+                const mappedMods = score.mods.map(m => {
+                    if (typeof m === 'string') return m;
+                    if (m && typeof m === 'object' && m.acronym) return m.acronym;
+                    return '';
+                }).filter(Boolean);
+                modsString = mappedMods.join('');
+            }
+            if (modsString.length > 16) {
+                modsString = modsString.slice(0, 16);
+            }
             const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
 
             if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== sniperId) {
