@@ -672,6 +672,74 @@ function isScraperBlocked() {
     return (Date.now() - lastScraperBlockTime) < 15 * 60 * 1000;
 }
 
+/**
+ * Guarda un beatmap en la tabla ranked_beatmaps de Supabase.
+ */
+async function saveBeatmapToDB(beatmap, supabase = null) {
+    const dbClient = supabase || getSupabaseClient();
+    if (!dbClient || !beatmap) return;
+
+    try {
+        const set = beatmap.beatmapset || {};
+        
+        let statusNum = 1; // ranked por defecto
+        if (set.ranked !== undefined) {
+            statusNum = set.ranked;
+        } else if (beatmap.status !== undefined) {
+            const STATUS_TO_NUM = {
+                'ranked': 1,
+                'approved': 2,
+                'qualified': 3,
+                'loved': 4
+            };
+            statusNum = STATUS_TO_NUM[beatmap.status.toLowerCase()] || 1;
+        } else if (set.status !== undefined) {
+            const STATUS_TO_NUM = {
+                'ranked': 1,
+                'approved': 2,
+                'qualified': 3,
+                'loved': 4
+            };
+            statusNum = STATUS_TO_NUM[set.status.toLowerCase()] || 1;
+        }
+
+        const beatmapData = {
+            beatmap_id: beatmap.id,
+            beatmapset_id: beatmap.beatmapset_id,
+            title: set.title || 'Beatmap',
+            artist: set.artist || 'Unknown',
+            creator: set.creator || 'Unknown',
+            version: beatmap.version || 'Normal',
+            stars: beatmap.difficulty_rating || 0,
+            mode: beatmap.mode_int !== undefined ? beatmap.mode_int : 0,
+            bpm: beatmap.bpm || 0,
+            total_length: beatmap.total_length || 0,
+            hit_length: beatmap.hit_length || 0,
+            ar: beatmap.ar || 0,
+            cs: beatmap.cs || 0,
+            od: beatmap.accuracy !== undefined ? beatmap.accuracy : 0,
+            hp: beatmap.hp !== undefined ? beatmap.hp : (beatmap.drain !== undefined ? beatmap.drain : 0),
+            max_combo: beatmap.max_combo || null,
+            genre: (set.genre && set.genre.name) ? set.genre.name : 'Unspecified',
+            language: (set.language && set.language.name) ? set.language.name : 'Unspecified',
+            ranked_status: statusNum,
+            created_at: new Date().toISOString()
+        };
+
+        const { error } = await dbClient
+            .from('ranked_beatmaps')
+            .upsert(beatmapData, { onConflict: 'beatmap_id' });
+
+        if (error) {
+            Logger.system(`Error al guardar beatmap ${beatmap.id} en la base de datos: ${error.message}`);
+        } else {
+            console.log(`[BeatmapModel] Beatmap ${beatmap.id} (${set.title}) guardado/actualizado en ranked_beatmaps.`);
+        }
+    } catch (err) {
+        Logger.system(`Excepción al guardar beatmap ${beatmap.id} en la base de datos: ${err.message}`);
+    }
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
@@ -684,7 +752,8 @@ const BeatmapModel = {
     getBeatmapsetTagsDetail,
     getTagsForBeatmap,
     updateBeatmapsetTagsInDB,
-    isScraperBlocked
+    isScraperBlocked,
+    saveBeatmapToDB
 };
 
 module.exports = BeatmapModel;

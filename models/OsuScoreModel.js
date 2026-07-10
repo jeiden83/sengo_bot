@@ -2361,7 +2361,18 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
         }
 
         if (!mapExists) {
-            return;
+            try {
+                const BeatmapModel = require('./BeatmapModel.js');
+                const fullMap = await BeatmapModel.getBeatmap(beatmapId);
+                if (fullMap) {
+                    await BeatmapModel.saveBeatmapToDB(fullMap, supabase);
+                } else {
+                    return;
+                }
+            } catch (fetchErr) {
+                console.error(`[REALTIME-SNIPE] Error al intentar obtener e insertar mapa ${beatmapId}:`, fetchErr);
+                return;
+            }
         }
 
         const { data: currentTop, error: topErr } = await supabase
