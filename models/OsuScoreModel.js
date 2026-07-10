@@ -2348,6 +2348,22 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     const beatmapId = score.beatmap.id.toString();
 
     try {
+        // Verificar si el beatmap existe en la base de datos para evitar violación de FK
+        const { data: mapExists, error: mapErr } = await supabase
+            .from('ranked_beatmaps')
+            .select('beatmap_id')
+            .eq('beatmap_id', beatmapId)
+            .maybeSingle();
+
+        if (mapErr) {
+            console.error(`[REALTIME-SNIPE] Error al verificar existencia de mapa ${beatmapId}:`, mapErr);
+            return;
+        }
+
+        if (!mapExists) {
+            return;
+        }
+
         const { data: currentTop, error: topErr } = await supabase
             .from('top_scores')
             .select('*')
