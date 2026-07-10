@@ -1,9 +1,7 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 const OsuScoreModel = require("../../../models/OsuScoreModel.js");
-const { doOsuSnipesEmbed, doOsuSnipesProgressEmbed } = require("../../../views/osuEmbeds.js");
-
-const snipesCompletedCache = new Set();
+const { doOsuSnipesEmbed } = require("../../../views/osuEmbeds.js");
 
 const modeToInt = {
     'osu': 0,
@@ -27,39 +25,6 @@ async function run(messages, args){
     // Solo soportamos Venezuela (VE) por ahora mientras se raspa la base de datos nacional
     if (country_code !== 'VE') {
         return t(locale, 'snipes.err_country_support');
-    }
-
-    const cacheKey = `${look_gamemode}:${country_code}`;
-    let isCompleted = snipesCompletedCache.has(cacheKey);
-
-    if (!isCompleted) {
-        // 1. Obtener total de mapas rankeados en este modo de juego
-        let totalMaps = 0;
-        try {
-            totalMaps = await OsuScoreModel.getRankedBeatmapsCount(look_gamemode);
-        } catch (errTotal) {
-            console.error("Error al obtener total de mapas en snipes.js:", errTotal);
-            return t(locale, 'snipes.err_db_maps');
-        }
-
-        // 2. Obtener mapas que ya han sido procesados y guardados en top_scores en este modo de juego
-        let processedMaps = 0;
-        try {
-            processedMaps = await OsuScoreModel.getProcessedSnipesCount(look_gamemode, country_code);
-        } catch (errProcessed) {
-            console.error("Error al obtener mapas procesados en snipes.js:", errProcessed);
-            return t(locale, 'snipes.err_db_progress');
-        }
-
-        const percentage = totalMaps > 0 ? (processedMaps / totalMaps) * 100 : 0;
-
-        // Si el porcentaje es menor al 99.9%, mostramos la tarjeta de progreso
-        if (percentage < 99.9) {
-            return doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_code, playmode, locale);
-        }
-
-        // Si ya está completado, lo guardamos en la caché en memoria para futuras consultas
-        snipesCompletedCache.add(cacheKey);
     }
 
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
