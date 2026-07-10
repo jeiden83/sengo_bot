@@ -1100,12 +1100,13 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
         // Estrellas
         const sr = sniped_userdata.star_ranges || {};
         const totalScores = sniped_userdata.count_total || 1;
+        const maxLabelLen = Math.max(...Object.keys(sr).map(k => k.length), 4);
         const starsText = Object.entries(sr).map(([key, count]) => {
             const pct = (count / totalScores) * 100;
             const filled = Math.min(10, Math.round(pct / 10));
             const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
             let label = key;
-            while (label.length < 4) {
+            while (label.length < maxLabelLen) {
                 label += ' ';
             }
             return `\`${label}\` \`${bar}\` **${count}** (${pct.toFixed(1)}%)`;

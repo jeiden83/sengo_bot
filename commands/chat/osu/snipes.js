@@ -60,23 +60,56 @@ async function run(messages, args){
     let countWithPP = 0;
 
     // Métricas detalladas si isDetailed === true
-    let maxStarsVal = 0;
+    const starsList = [];
     if (isDetailed) {
         userScores.forEach(s => {
             const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
-            if (stars > maxStarsVal) maxStarsVal = stars;
+            if (stars > 0) starsList.push(stars);
         });
+        starsList.sort((a, b) => a - b);
     }
 
-    const maxRangeStart = Math.max(4, Math.min(8, Math.floor(maxStarsVal)));
-    const starRanges = { '3★-': 0 };
-    for (let stars = 4; stars < maxRangeStart; stars++) {
-        starRanges[`${stars}★`] = 0;
+    let minStars = 1;
+    let maxStars = 8;
+    if (starsList.length > 0) {
+        const p05Idx = Math.floor(starsList.length * 0.005);
+        const p995Idx = Math.min(starsList.length - 1, Math.floor(starsList.length * 0.995));
+        minStars = starsList[p05Idx];
+        maxStars = starsList[p995Idx];
+        if (minStars === maxStars) {
+            minStars = starsList[0];
+            maxStars = starsList[starsList.length - 1];
+            if (minStars === maxStars) {
+                maxStars = minStars + 5;
+            }
+        }
     }
-    if (maxRangeStart >= 4) {
-        const topKey = maxRangeStart === 8 ? '8★+' : `${maxRangeStart}★+`;
-        starRanges[topKey] = 0;
-    }
+
+    const range = maxStars - minStars;
+    const step = range / 6;
+    const limit1 = minStars + step;
+    const limit2 = minStars + 2 * step;
+    const limit3 = minStars + 3 * step;
+    const limit4 = minStars + 4 * step;
+    const limit5 = minStars + 5 * step;
+
+    const buckets = [
+        { key: 'b1', label: `${limit1.toFixed(1)}★-` },
+        { key: 'b2', label: `${limit1.toFixed(1)}-${limit2.toFixed(1)}★` },
+        { key: 'b3', label: `${limit2.toFixed(1)}-${limit3.toFixed(1)}★` },
+        { key: 'b4', label: `${limit3.toFixed(1)}-${limit4.toFixed(1)}★` },
+        { key: 'b5', label: `${limit4.toFixed(1)}-${limit5.toFixed(1)}★` },
+        { key: 'b6', label: `${limit5.toFixed(1)}★+` }
+    ];
+
+    const starRanges = {
+        'b1': 0,
+        'b2': 0,
+        'b3': 0,
+        'b4': 0,
+        'b5': 0,
+        'b6': 0
+    };
     const mappersCount = {};
     let totalBPM = 0, totalAR = 0, totalOD = 0, totalCS = 0;
     let bpmCount = 0, arCount = 0, odCount = 0, csCount = 0;
@@ -128,17 +161,15 @@ async function run(messages, args){
         if (isDetailed) {
             // Estrellas
             const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
-            if (stars < 4) {
-                starRanges['3★-']++;
+            if (stars > 0) {
+                if (stars < limit1) starRanges['b1']++;
+                else if (stars < limit2) starRanges['b2']++;
+                else if (stars < limit3) starRanges['b3']++;
+                else if (stars < limit4) starRanges['b4']++;
+                else if (stars < limit5) starRanges['b5']++;
+                else starRanges['b6']++;
             } else {
-                const integerStars = Math.floor(stars);
-                if (integerStars >= maxRangeStart) {
-                    const key = maxRangeStart === 8 ? '8★+' : `${maxRangeStart}★+`;
-                    starRanges[key]++;
-                } else {
-                    const key = `${integerStars}★`;
-                    starRanges[key]++;
-                }
+                starRanges['b1']++;
             }
 
             // Mappers
@@ -233,7 +264,10 @@ async function run(messages, args){
     };
 
     if (isDetailed) {
-        adaptedData.star_ranges = starRanges;
+        adaptedData.star_ranges = {};
+        buckets.forEach(b => {
+            adaptedData.star_ranges[b.label] = starRanges[b.key];
+        });
         adaptedData.top_mappers = Object.entries(mappersCount)
             .sort((a, b) => b[1] - a[1])
             .slice(0, 5);
