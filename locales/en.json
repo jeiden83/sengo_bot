@@ -353,6 +353,11 @@
       "header": "Blacklist Management",
       "body": "Allows administrators to block users from using Sengo globally or for specific commands.",
       "usage": "s.blacklist [-lista | -add <id> | -add <id> <commands> | -remove <id>]"
+    },
+    "skin": {
+      "header": "Link and show your osu! skin",
+      "body": "Allows you to link your custom osu! skin to your Discord account so other users can see and download it.",
+      "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> or colocar <link> : Links your skin.\ns.skin -delete or borrar : Deletes your linked skin."
     }
   },
   "contributors": {
@@ -1487,6 +1492,19 @@
     "perm_view_channel": "`View Channel` (ViewChannel)",
     "perm_send_messages": "`Send Messages` (SendMessages)",
     "perm_embed_links": "`Embed Links` (EmbedLinks)"
+  },
+  "skin": {
+    "not_found": "You do not have a linked skin. You can link one using `s.skin -set <link>`.",
+    "not_found_other": "The user {username} does not have a linked skin.",
+    "invalid_link": "❌ Please provide a valid and secure download link (must start with http:// or https://).",
+    "set_success": "✅ Your skin has been linked successfully:\n<{link}>",
+    "delete_success": "✅ Your linked skin has been deleted.",
+    "user_not_found": "❌ Could not find the specified user.",
+    "embed_title": "Skin of {username}",
+    "embed_description": "Click below to download **{username}**'s skin:",
+    "embed_field_name": "Download Link",
+    "embed_field_value": "🔗 [Download Skin]({link})",
+    "embed_footer": "Sengo • Community Skins"
   }
 }
 

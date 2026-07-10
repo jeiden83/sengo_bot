@@ -353,6 +353,11 @@
       "header": "Gestión de Lista Negra (Blacklist)",
       "body": "Permite a los administradores bloquear usuarios para que no puedan usar Sengo en general o comandos específicos.",
       "usage": "s.blacklist [-lista | -add <id> | -add <id> <comandos> | -remove <id>]"
+    },
+    "skin": {
+      "header": "Vincula y muestra tu skin de osu!",
+      "body": "Permite vincular tu skin propia de osu! a tu cuenta de Discord para que otros usuarios puedan verla y descargarla.",
+      "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> o colocar <enlace> : Vincula tu skin.\ns.skin -delete o borrar : Elimina tu skin vinculada."
     }
   },
   "contributors": {
@@ -1487,6 +1492,19 @@
     "perm_view_channel": "`Ver canal` (ViewChannel)",
     "perm_send_messages": "`Enviar mensajes` (SendMessages)",
     "perm_embed_links": "`Insertar enlaces` (EmbedLinks)"
+  },
+  "skin": {
+    "not_found": "No tienes ninguna skin vinculada. Puedes vincular una con `s.skin -set <enlace>`.",
+    "not_found_other": "El usuario {username} no tiene ninguna skin vinculada.",
+    "invalid_link": "❌ Por favor, proporciona un enlace de descarga válido y seguro (debe empezar con http:// o https://).",
+    "set_success": "✅ Tu skin ha sido vinculada correctamente:\n<{link}>",
+    "delete_success": "✅ Tu skin vinculada ha sido eliminada.",
+    "user_not_found": "❌ No se pudo encontrar al usuario especificado.",
+    "embed_title": "Skin de {username}",
+    "embed_description": "Haz clic abajo para descargar la skin de **{username}**:",
+    "embed_field_name": "Enlace de Descarga",
+    "embed_field_value": "🔗 [Descargar Skin]({link})",
+    "embed_footer": "Sengo • Skins de la comunidad"
   }
 }
 

@@ -2123,6 +2123,38 @@ async function setPreferredScoreMode(discordId, scoreMode) {
     }
 }
 
+async function setSkinUrl(discordId, skinUrl) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    try {
+        await supabase
+            .from('users')
+            .upsert({
+                discord_id: discordId,
+                skin_url: skinUrl
+            }, { onConflict: 'discord_id' });
+    } catch (err) {
+        console.error(`Error al guardar skin para ${discordId}:`, err);
+        throw err;
+    }
+}
+
+async function getSkinUrl(discordId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    try {
+        const { data } = await supabase
+            .from('users')
+            .select('skin_url')
+            .eq('discord_id', discordId)
+            .maybeSingle();
+        return data ? data.skin_url : null;
+    } catch (err) {
+        console.error(`Error al obtener skin para ${discordId}:`, err);
+        return null;
+    }
+}
+
 /**
  * Descarga el archivo de replay desde la API de osu! v2.
  * Intenta primero con la ruta de ruleset específica y cae a la ruta directa de score si falla.
@@ -2172,6 +2204,8 @@ const OsuUserModel = {
     getOsuUser,
     getLinkedUser,
     setPreferredScoreMode,
+    setSkinUrl,
+    getSkinUrl,
     downloadReplay,
     linkUser,
     unlinkUser,
