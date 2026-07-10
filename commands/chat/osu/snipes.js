@@ -11,12 +11,16 @@ const modeToInt = {
 };
 
 async function run(messages, args){
-    const { message, res } = messages;
+    const { message, res, reply } = messages;
     const locale = message.locale || 'es';
 
     // Parseamos argumentos de entrada del usuario
     const osu_userdata = await argsParser(args,
         {"message" : message, "res" : res, "command_function" : getOsuUser, "resolveUserByIndex": true, "ignoreBeatmap": true});  
+
+    if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
+        return osu_userdata.fn_response || t(locale, 'rework.err_user_not_found');
+    }
 
     const { country_code, id } = osu_userdata.fn_response;
     const playmode = osu_userdata.fn_response.playmode || 'osu';
@@ -30,28 +34,140 @@ async function run(messages, args){
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
     const isNemesis = osu_userdata.parsed_args?.nemesis === true;
 
+    // Inicializar barra de progreso
+    let sentMessage = null;
+    const processStartTime = Date.now();
+    let stepStartTime = Date.now();
+    const activeSteps = [];
+
+    const stepTemplates = isNemesis
+        ? (locale === 'es' ? ["Obteniendo historial de snipes..."] : ["Fetching snipes history..."])
+        : (isDetailed
+            ? (locale === 'es' 
+                ? [
+                    "Obteniendo tops nacionales...",
+                    "Procesando estadísticas detalladas...",
+                    "Generando gráfico de distribución..."
+                  ] 
+                : [
+                    "Fetching national tops...",
+                    "Processing detailed statistics...",
+                    "Generating distribution chart..."
+                  ]
+              )
+            : (locale === 'es' ? ["Obteniendo tops nacionales..."] : ["Fetching national tops..."])
+          );
+
+    const updateProgress = async (stepIndex, status, extra = "") => {
+        const { EmbedBuilder } = require("discord.js");
+        const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+        const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ff66aa';
+
+        if (activeSteps.length <= stepIndex) {
+            for (let i = activeSteps.length; i < stepIndex; i++) {
+                if (activeSteps[i]) {
+                    activeSteps[i].status = 'success';
+                    if (activeSteps[i].duration === null) {
+                        activeSteps[i].duration = Date.now() - stepStartTime;
+                    }
+                }
+            }
+            activeSteps.push({
+                text: stepTemplates[stepIndex],
+                status: 'loading',
+                duration: null,
+                extra: ""
+            });
+            stepStartTime = Date.now();
+        }
+
+        const step = activeSteps[stepIndex];
+        step.status = status;
+        step.extra = extra;
+
+        if (status === 'success' || status === 'error' || status === 'warning') {
+            if (step.duration === null) {
+                step.duration = Date.now() - stepStartTime;
+            }
+        }
+
+        const descriptionLines = activeSteps.map((s) => {
+            let emoji = '⏳';
+            if (s.status === 'success') emoji = '✅';
+            else if (s.status === 'error') emoji = '❌';
+            else if (s.status === 'warning') emoji = '⚠️';
+
+            let durationText = s.duration !== null ? ` - **${s.duration}ms**` : "";
+            let extraText = s.extra ? ` ${s.extra}` : "";
+            return `${emoji} ${s.text}${durationText}${extraText}`;
+        });
+
+        const totalElapsed = Date.now() - processStartTime;
+        const progressEmbed = new EmbedBuilder()
+            .setTitle(locale === 'es' ? "Procesando Estadísticas de Snipes..." : "Processing Snipe Statistics...")
+            .setDescription(descriptionLines.join('\n'))
+            .setColor(embedColor)
+            .setFooter({
+                text: locale === 'es'
+                    ? `Sengo • Tiempo transcurrido: ${(totalElapsed / 1000).toFixed(2)}s`
+                    : `Sengo • Elapsed time: ${(totalElapsed / 1000).toFixed(2)}s`
+            });
+
+        try {
+            if (!sentMessage) {
+                if (reply) {
+                    sentMessage = await reply.reply({ embeds: [progressEmbed] });
+                } else if (res && typeof res.reply === 'function') {
+                    sentMessage = await res.reply({ embeds: [progressEmbed], fetchReply: true });
+                } else {
+                    sentMessage = await message.reply({ embeds: [progressEmbed] });
+                }
+            } else if (typeof sentMessage.edit === 'function') {
+                await sentMessage.edit({ embeds: [progressEmbed] });
+            }
+        } catch (e) {
+            // Silencioso
+        }
+    };
+
     if (isNemesis) {
+        await updateProgress(0, 'loading');
         let history;
         try {
             history = await OsuScoreModel.getUserSnipesHistory(id);
+            await updateProgress(0, 'success');
         } catch (errHistory) {
             console.error("Error al obtener historial de snipes en snipes.js:", errHistory);
-            return t(locale, 'snipes.err_db_scores');
+            await updateProgress(0, 'error', `(${t(locale, 'snipes.err_db_scores')})`);
+            return;
         }
-        return doOsuSnipesNemesisEmbed(message, history.made, history.received, osu_userdata.fn_response, locale);
+
+        const embedResult = doOsuSnipesNemesisEmbed(message, history.made, history.received, osu_userdata.fn_response, locale);
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            await sentMessage.edit({ content: null, embeds: embedResult.embeds || [embedResult] });
+            return;
+        }
+        return embedResult;
     }
 
-    // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos del Modelo
+    await updateProgress(0, 'loading');
     let userScores = [];
     try {
         userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code, isDetailed);
+        await updateProgress(0, 'success');
     } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
-        return t(locale, 'snipes.err_db_scores');
+        await updateProgress(0, 'error', `(${t(locale, 'snipes.err_db_scores')})`);
+        return;
     }
 
     if (!userScores || userScores.length === 0) {
-        return doOsuSnipesEmbed(message, null, osu_userdata.fn_response, locale);
+        const embedResult = doOsuSnipesEmbed(message, null, osu_userdata.fn_response, locale);
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            await sentMessage.edit({ content: null, embeds: embedResult.embeds || [embedResult] });
+            return;
+        }
+        return embedResult;
     }
 
     const modsCount = {};
@@ -123,6 +239,10 @@ async function run(messages, args){
     let maxPP = -Infinity, maxPP_mapId = null;
     let oldestScore = null;
     let newestScore = null;
+
+    if (isDetailed) {
+        await updateProgress(1, 'loading');
+    }
 
     userScores.forEach(s => {
         // Agrupar mods
@@ -271,6 +391,11 @@ async function run(messages, args){
         }
     });
 
+    if (isDetailed) {
+        await updateProgress(1, 'success');
+        await updateProgress(2, 'loading');
+    }
+
     const averagePP = countWithPP > 0 ? (totalPP / countWithPP) : 0;
 
     const adaptedData = {
@@ -323,7 +448,15 @@ async function run(messages, args){
         adaptedData.newest_score = newestScore;
     }
 
-    return doOsuSnipesEmbed(message, adaptedData, osu_userdata.fn_response, locale);
+    const finalResult = doOsuSnipesEmbed(message, adaptedData, osu_userdata.fn_response, locale);
+    if (sentMessage && typeof sentMessage.edit === 'function') {
+        if (isDetailed) {
+            await updateProgress(2, 'success');
+        }
+        await sentMessage.edit({ content: null, embeds: finalResult.embeds, files: finalResult.files || [] });
+        return;
+    }
+    return finalResult;
 }
 
 run.description = {
