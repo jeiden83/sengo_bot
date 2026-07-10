@@ -1,7 +1,7 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 const OsuScoreModel = require("../../../models/OsuScoreModel.js");
-const { doOsuSnipesEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuSnipesEmbed, doOsuSnipesNemesisEmbed } = require("../../../views/osuEmbeds.js");
 
 const modeToInt = {
     'osu': 0,
@@ -28,6 +28,18 @@ async function run(messages, args){
     }
 
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
+    const isNemesis = osu_userdata.parsed_args?.nemesis === true;
+
+    if (isNemesis) {
+        let history;
+        try {
+            history = await OsuScoreModel.getUserSnipesHistory(id);
+        } catch (errHistory) {
+            console.error("Error al obtener historial de snipes en snipes.js:", errHistory);
+            return t(locale, 'snipes.err_db_scores');
+        }
+        return doOsuSnipesNemesisEmbed(message, history.made, history.received, osu_userdata.fn_response, locale);
+    }
 
     // 3. Si el poblamiento está completado (o es mayor a 99.9%), extraemos y adaptamos los datos del Modelo
     let userScores = [];

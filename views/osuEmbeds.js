@@ -1214,6 +1214,94 @@ function doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_
     return { embeds: [embed] };
 }
 
+/**
+ * Renderiza el embed para la opción de Némesis (s.snipes -nemesis)
+ */
+function doOsuSnipesNemesisEmbed(message, made, received, osu_userdata, locale = 'es') {
+    if (osu_userdata.playmode != 'osu') {
+        return t(locale, 'snipes.err_std_only');
+    }
+
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+    const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
+
+    if (made.length === 0 && received.length === 0) {
+        return t(locale, 'snipes.nemesis_err_no_history', { username: osu_userdata.username });
+    }
+
+    // 1. Tops Arrebatados (Víctimas)
+    const victimsMap = {};
+    made.forEach(item => {
+        const name = item.sniped_name || 'Desconocido';
+        victimsMap[name] = (victimsMap[name] || 0) + 1;
+    });
+    const sortedVictims = Object.entries(victimsMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    // 2. Enemigos Principales (Némesis)
+    const nemesisMap = {};
+    received.forEach(item => {
+        const name = item.sniper_name || 'Desconocido';
+        nemesisMap[name] = (nemesisMap[name] || 0) + 1;
+    });
+    const sortedNemesis = Object.entries(nemesisMap)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5);
+
+    // 3. Recientes
+    const recentMade = made.slice(0, 3);
+    const recentReceived = received.slice(0, 3);
+
+    const victimsText = sortedVictims.length > 0
+        ? sortedVictims.map((v, idx) => `**#${idx + 1}** ${v[0]} \`(${v[1]} #1s)\``).join('\n')
+        : `*${t(locale, 'snipes.nemesis_none')}*`;
+
+    const nemesisText = sortedNemesis.length > 0
+        ? sortedNemesis.map((n, idx) => `**#${idx + 1}** ${n[0]} \`(${n[1]} #1s)\``).join('\n')
+        : `*${t(locale, 'snipes.nemesis_none')}*`;
+
+    const recentMadeText = recentMade.length > 0
+        ? recentMade.map(item => {
+            const mapTitle = item.ranked_beatmaps?.title || 'Beatmap';
+            const mapVer = item.ranked_beatmaps?.version || '';
+            const ppStr = item.pp ? ` (${Math.round(item.pp)}pp)` : '';
+            const timeUnix = Math.floor(new Date(item.ended_at).getTime() / 1000);
+            return `• A **${item.sniped_name || 'Desconocido'}** en [${mapTitle} [${mapVer}]](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
+        }).join('\n')
+        : `*${t(locale, 'snipes.nemesis_none')}*`;
+
+    const recentReceivedText = recentReceived.length > 0
+        ? recentReceived.map(item => {
+            const mapTitle = item.ranked_beatmaps?.title || 'Beatmap';
+            const mapVer = item.ranked_beatmaps?.version || '';
+            const ppStr = item.pp ? ` (${Math.round(item.pp)}pp)` : '';
+            const timeUnix = Math.floor(new Date(item.ended_at).getTime() / 1000);
+            return `• Por **${item.sniper_name || 'Desconocido'}** en [${mapTitle} [${mapVer}]](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
+        }).join('\n')
+        : `*${t(locale, 'snipes.nemesis_none')}*`;
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: t(locale, 'snipes.nemesis_title', { username: osu_userdata.username }),
+            url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
+            iconURL: icon_url
+        })
+        .setColor(embedColor)
+        .setThumbnail(osu_userdata.avatar_url)
+        .addFields(
+            { name: t(locale, 'snipes.nemesis_victims'), value: victimsText, inline: true },
+            { name: t(locale, 'snipes.nemesis_enemies'), value: nemesisText, inline: true },
+            { name: t(locale, 'snipes.nemesis_recent_made'), value: recentMadeText, inline: false },
+            { name: t(locale, 'snipes.nemesis_recent_received'), value: recentReceivedText, inline: false }
+        )
+        .setFooter({ text: 'Sengo • Sistema de Némesis' })
+        .setTimestamp();
+
+    return { embeds: [embed] };
+}
+
 function checkOsuData(osu_userdata) {
     const global_ranking = osu_userdata.statistics.global_rank || 0;
     const peak_ranking = osu_userdata.rank_highest ? osu_userdata.rank_highest.rank : 0;
@@ -1939,6 +2027,7 @@ module.exports = {
     doOsuMapsetEmbed,
     doOsuSnipesEmbed,
     doOsuSnipesProgressEmbed,
+    doOsuSnipesNemesisEmbed,
     doOsuProfileEmbed,
     doOsuReworkMapEmbed,
     doOsuReworkUserEmbed,

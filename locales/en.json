@@ -1045,7 +1045,14 @@
     "detail_stats": "📈 Average Tech Specs",
     "detail_history": "⏳ Temporal Milestones",
     "detail_oldest": "**• Oldest:** [{title} [{version}]]({url}) - <t:{time}:d>",
-    "detail_newest": "**• Newest:** [{title} [{version}]]({url}) - <t:{time}:d>"
+    "detail_newest": "**• Newest:** [{title} [{version}]]({url}) - <t:{time}:d>",
+    "nemesis_title": "⚔️ Nemesis & Rivals - {username}",
+    "nemesis_victims": "⚔️ Sniped Tops (Victims)",
+    "nemesis_enemies": "🛡️ Principal Enemies (Nemesis)",
+    "nemesis_recent_made": "🔥 Latest Sniped Tops",
+    "nemesis_recent_received": "💔 Latest Lost Tops",
+    "nemesis_none": "*None*",
+    "nemesis_err_no_history": "The user `{username}` has no activity recorded in the snipes history (has not sniped or been sniped yet)."
   },
   "mapper": {
     "err_sengo_only": "❌ *The flag `-sengo` is exclusive to the bot administrator.*",

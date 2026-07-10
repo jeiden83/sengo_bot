@@ -12,6 +12,11 @@ const data = new SlashCommandBuilder()
         option.setName("detallado")
             .setDescription("Muestra estadísticas y perfil de habilidad detallado (-d)")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("nemesis")
+            .setDescription("Muestra estadísticas de némesis y rivales del usuario (-nemesis)")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -20,6 +25,11 @@ async function run(interaction, res) {
     const detallado = interaction.options.getBoolean("detallado");
     if (detallado) {
         args.push("-d");
+    }
+
+    const nemesis = interaction.options.getBoolean("nemesis");
+    if (nemesis) {
+        args.push("-nemesis");
     }
 
     return await snipesChatCommand.run(messages, args);

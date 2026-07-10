@@ -1045,7 +1045,14 @@
     "detail_stats": "📈 Promedio de Especificaciones",
     "detail_history": "⏳ Hitos Temporales",
     "detail_oldest": "**• Más antiguo:** [{title} [{version}]]({url}) - <t:{time}:d>",
-    "detail_newest": "**• Más reciente:** [{title} [{version}]]({url}) - <t:{time}:d>"
+    "detail_newest": "**• Más reciente:** [{title} [{version}]]({url}) - <t:{time}:d>",
+    "nemesis_title": "⚔️ Némesis y Rivales - {username}",
+    "nemesis_victims": "⚔️ Tops Arrebatados (Víctimas)",
+    "nemesis_enemies": "🛡️ Enemigos Principales (Némesis)",
+    "nemesis_recent_made": "🔥 Últimos Tops Arrebatados",
+    "nemesis_recent_received": "💔 Últimos Tops Perdidos",
+    "nemesis_none": "*Ninguno*",
+    "nemesis_err_no_history": "El usuario `{username}` no registra actividad en el historial de snipes (aún no ha quitado ni le han quitado ningún top nacional)."
   },
   "mapper": {
     "err_sengo_only": "❌ *El flag `-sengo` es exclusivo para el administrador del bot.*",

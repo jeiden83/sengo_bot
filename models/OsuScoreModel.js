@@ -2264,7 +2264,30 @@ const OsuScoreModel = {
     ensureNoChokeScores,
     getRankedBeatmapsCount,
     getProcessedSnipesCount,
-    getUserNationalTops
+    getUserNationalTops,
+    getUserSnipesHistory
 };
+
+async function getUserSnipesHistory(userId) {
+    const supabase = getSupabaseClient();
+    
+    const { data: made, error: errMade } = await supabase
+        .from('snipes_history')
+        .select('sniped_name, sniped_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
+        .eq('sniper_id', userId.toString())
+        .order('ended_at', { ascending: false });
+        
+    if (errMade) throw errMade;
+
+    const { data: received, error: errRec } = await supabase
+        .from('snipes_history')
+        .select('sniper_name, sniper_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
+        .eq('sniped_id', userId.toString())
+        .order('ended_at', { ascending: false });
+
+    if (errRec) throw errRec;
+
+    return { made: made || [], received: received || [] };
+}
 
 module.exports = OsuScoreModel;

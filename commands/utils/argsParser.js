@@ -442,6 +442,7 @@ function argsParserNoCommand(args, options = {}) {
     let regional = null;
     let nochoke = false;
     let mapset = false;
+    let nemesis = false;
 
     const extractId = str => {
         if (!str) return null;
@@ -802,6 +803,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-d"
         if (arg === "-d") {
             detailed = true;
+            continue;
+        }
+
+        // Si es exactamente "-nemesis" o "-n"
+        if (arg === "-nemesis" || arg === "-n") {
+            nemesis = true;
             continue;
         }
 
@@ -1184,7 +1191,8 @@ function argsParserNoCommand(args, options = {}) {
         'stableMode': stableMode,
         'lazerMode': lazerMode,
         'nochoke': nochoke,
-        'mapset': mapset
+        'mapset': mapset,
+        'nemesis': nemesis
     };
     return parsed_args;
 }
