@@ -357,7 +357,7 @@
     "skin": {
       "header": "Link and show your osu! skin",
       "body": "Allows you to link your custom osu! skin to your Discord account so other users can see and download it.",
-      "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> or colocar <link> : Links your skin.\ns.skin -delete or borrar : Deletes your linked skin."
+      "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> [-nombre <name>] : Links your skin with an optional name.\ns.skin -nombre <name> : Changes or edits the name of your skin.\ns.skin -delete or borrar : Deletes your linked skin."
     }
   },
   "contributors": {
@@ -1504,7 +1504,10 @@
     "embed_description": "Click below to download **{username}**'s skin:",
     "embed_field_name": "Download Link",
     "embed_field_value": "🔗 [Download Skin]({link})",
-    "embed_footer": "Sengo • Community Skins"
+    "embed_field_value_named": "🔗 [Download {name}]({link})",
+    "embed_footer": "Sengo • Community Skins",
+    "name_no_skin": "❌ To change the name, you must first link a skin using `s.skin -set <link>`.",
+    "name_success": "✅ The name of your skin has been updated to: **{name}**."
   }
 }
 

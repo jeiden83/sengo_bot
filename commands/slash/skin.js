@@ -21,6 +21,20 @@ const data = new SlashCommandBuilder()
                     .setDescription("El enlace de descarga directo o público de tu skin")
                     .setRequired(true)
             )
+            .addStringOption(opt =>
+                opt.setName("nombre")
+                    .setDescription("Nombre personalizado para mostrar en tu skin (opcional)")
+                    .setRequired(false)
+            )
+    )
+    .addSubcommand(sub =>
+        sub.setName("nombre")
+            .setDescription("Cambia o edita el nombre de tu skin vinculada")
+            .addStringOption(opt =>
+                opt.setName("nombre")
+                    .setDescription("El nuevo nombre personalizado para tu skin")
+                    .setRequired(true)
+            )
     )
     .addSubcommand(sub =>
         sub.setName("borrar")
@@ -46,7 +60,14 @@ async function run(interaction, res) {
         }
     } else if (subcommand === "colocar") {
         const enlace = interaction.options.getString("enlace");
+        const nombre = interaction.options.getString("nombre");
         args.push("colocar", enlace);
+        if (nombre) {
+            args.push("-nombre", nombre);
+        }
+    } else if (subcommand === "nombre") {
+        const nombre = interaction.options.getString("nombre");
+        args.push("-nombre", nombre);
     } else if (subcommand === "borrar") {
         args.push("borrar");
     }

@@ -357,7 +357,7 @@
     "skin": {
       "header": "Vincula y muestra tu skin de osu!",
       "body": "Permite vincular tu skin propia de osu! a tu cuenta de Discord para que otros usuarios puedan verla y descargarla.",
-      "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> o colocar <enlace> : Vincula tu skin.\ns.skin -delete o borrar : Elimina tu skin vinculada."
+      "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> [-nombre <nombre>] : Vincula tu skin con nombre opcional.\ns.skin -nombre <nombre> : Cambia o edita el nombre de tu skin.\ns.skin -delete o borrar : Elimina tu skin vinculada."
     }
   },
   "contributors": {
@@ -1504,7 +1504,10 @@
     "embed_description": "Haz clic abajo para descargar la skin de **{username}**:",
     "embed_field_name": "Enlace de Descarga",
     "embed_field_value": "🔗 [Descargar Skin]({link})",
-    "embed_footer": "Sengo • Skins de la comunidad"
+    "embed_field_value_named": "🔗 [Descargar {name}]({link})",
+    "embed_footer": "Sengo • Skins de la comunidad",
+    "name_no_skin": "❌ Para cambiar el nombre, primero debes vincular una skin con `s.skin -set <enlace>`.",
+    "name_success": "✅ El nombre de tu skin ha sido actualizado a: **{name}**."
   }
 }
 
