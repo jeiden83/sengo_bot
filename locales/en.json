@@ -1038,7 +1038,14 @@
     "err_db_scores": "Error querying the local user scores.",
     "progress_title": "📊 National Scraping Progress ({country})",
     "progress_desc": "The national leaderboards database is being populated locally in the background.\n\n▸ **Mode:** `{mode}`\n▸ **Current progress:** `{percentage}%` (`{processed}` / `{total}` beatmaps processed)\n\nThe full `s.snipes` command will be automatically available once the initial population for this game mode finishes.",
-    "progress_footer": "Sengo • Snipes System"
+    "progress_footer": "Sengo • Snipes System",
+    "detail_title": "📊 Skill Profile & Details - {username}",
+    "detail_stars": "⭐ Difficulty (Stars)",
+    "detail_mappers": "🛠️ Favorite Creators (Mappers)",
+    "detail_stats": "📈 Average Tech Specs",
+    "detail_history": "⏳ Temporal Milestones",
+    "detail_oldest": "**• Oldest:** [{title} [{version}]]({url}) - <t:{time}:d>",
+    "detail_newest": "**• Newest:** [{title} [{version}]]({url}) - <t:{time}:d>"
   },
   "mapper": {
     "err_sengo_only": "❌ *The flag `-sengo` is exclusive to the bot administrator.*",

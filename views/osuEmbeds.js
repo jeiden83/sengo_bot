@@ -1089,17 +1089,66 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
             url: `https://osu.ppy.sh/users/${osu_userdata.id}`,
             iconURL: icon_url
         })
-        .setDescription(`${t(locale, 'snipes.total', { count: sniped_userdata.count_total })}
-${t(locale, 'snipes.avg_pp', { pp: Math.round(sniped_userdata.average_pp * 100) / 100 })}
-${t(locale, 'snipes.most_used_mod', { mod: mod_mas_usado[0], count: mod_mas_usado[1] })}
-${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSnipes_year[1] })}
-`)
         .setColor(embedColor)
         .setFooter({
             text: "Sengo",
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();
+
+    if (sniped_userdata.is_detailed) {
+        // Estrellas
+        const sr = sniped_userdata.star_ranges || {};
+        const starsText = `\`3★-\`: **${sr['3★-'] || 0}**  |  \`4★\`: **${sr['4★'] || 0}**  |  \`5★\`: **${sr['5★'] || 0}**\n\`6★\`: **${sr['6★'] || 0}**  |  \`7★\`: **${sr['7★'] || 0}**  |  \`8★+\`: **${sr['8★+'] || 0}**`;
+
+        // Mappers
+        const mappersText = (sniped_userdata.top_mappers || [])
+            .map((m, idx) => `**#${idx + 1}** ${m[0]} \`(${m[1]} #1s)\``)
+            .join('\n') || '*Ninguno*';
+
+        // Tech specs
+        const techText = `• **BPM Promedio:** \`${Math.round(sniped_userdata.avg_bpm * 10) / 10}\`
+• **AR:** \`${Math.round(sniped_userdata.avg_ar * 100) / 100}\`  |  **OD:** \`${Math.round(sniped_userdata.avg_od * 100) / 100}\`  |  **CS:** \`${Math.round(sniped_userdata.avg_cs * 100) / 100}\``;
+
+        // Oldest & Newest
+        let historyText = '';
+        if (sniped_userdata.oldest_score) {
+            const os = sniped_userdata.oldest_score;
+            const mapTitle = os.ranked_beatmaps?.title || 'Beatmap';
+            const mapVer = os.ranked_beatmaps?.version || '';
+            const mapUrl = `https://osu.ppy.sh/b/${os.beatmap_id}`;
+            const timeUnix = Math.floor(new Date(os.ended_at).getTime() / 1000);
+            historyText += t(locale, 'snipes.detail_oldest', { title: mapTitle, version: mapVer, url: mapUrl, time: timeUnix });
+        }
+        if (sniped_userdata.newest_score) {
+            const ns = sniped_userdata.newest_score;
+            const mapTitle = ns.ranked_beatmaps?.title || 'Beatmap';
+            const mapVer = ns.ranked_beatmaps?.version || '';
+            const mapUrl = `https://osu.ppy.sh/b/${ns.beatmap_id}`;
+            const timeUnix = Math.floor(new Date(ns.ended_at).getTime() / 1000);
+            if (historyText) historyText += '\n';
+            historyText += t(locale, 'snipes.detail_newest', { title: mapTitle, version: mapVer, url: mapUrl, time: timeUnix });
+        }
+        if (!historyText) historyText = '*Ninguno*';
+
+        embed.setTitle(t(locale, 'snipes.detail_title', { username: osu_userdata.username }))
+            .setDescription(`${t(locale, 'snipes.total', { count: sniped_userdata.count_total })}
+${t(locale, 'snipes.avg_pp', { pp: Math.round(sniped_userdata.average_pp * 100) / 100 })}
+${t(locale, 'snipes.most_used_mod', { mod: mod_mas_usado[0], count: mod_mas_usado[1] })}
+${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSnipes_year[1] })}`)
+            .addFields(
+                { name: t(locale, 'snipes.detail_stars'), value: starsText, inline: false },
+                { name: t(locale, 'snipes.detail_mappers'), value: mappersText, inline: true },
+                { name: t(locale, 'snipes.detail_stats'), value: techText, inline: true },
+                { name: t(locale, 'snipes.detail_history'), value: historyText, inline: false }
+            );
+    } else {
+        embed.setDescription(`${t(locale, 'snipes.total', { count: sniped_userdata.count_total })}
+${t(locale, 'snipes.avg_pp', { pp: Math.round(sniped_userdata.average_pp * 100) / 100 })}
+${t(locale, 'snipes.most_used_mod', { mod: mod_mas_usado[0], count: mod_mas_usado[1] })}
+${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSnipes_year[1] })}
+`);
+    }
 
     return { embeds: [embed] };
 }

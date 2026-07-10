@@ -2228,11 +2228,14 @@ async function getProcessedSnipesCount(mode, country_code = 'VE') {
 /**
  * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país.
  */
-async function getUserNationalTops(userId, mode, country_code = 'VE') {
+async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false) {
     const supabase = getSupabaseClient();
+    const selectFields = detailed
+        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, ranked_beatmaps!inner(mode, title, version, creator, stars, bpm, ar, od, cs)'
+        : 'pp, mods, ended_at, ranked_beatmaps!inner(mode)';
     const { data, error } = await supabase
         .from('top_scores')
-        .select('pp, mods, ended_at, ranked_beatmaps!inner(mode)')
+        .select(selectFields)
         .eq('user_id', userId.toString())
         .eq('ranked_beatmaps.mode', mode)
         .eq('country_code', country_code);
