@@ -130,7 +130,21 @@ function parseSkinArgs(args) {
     const setFlags = ['-set', 'colocar'];
     const nameFlags = ['-nombre', '-name', 'nombre', 'name'];
 
-    const setIndex = args.findIndex(arg => setFlags.includes(arg.toLowerCase()));
+    let setIndex = args.findIndex(arg => setFlags.includes(arg.toLowerCase()));
+    let isPlainSet = false;
+
+    // Detección inteligente si se usó "set" (sin guion) seguido de un enlace
+    if (setIndex === -1) {
+        const plainSetIndex = args.findIndex(arg => arg.toLowerCase() === 'set');
+        if (plainSetIndex !== -1) {
+            const nextArg = args[plainSetIndex + 1];
+            if (nextArg && (nextArg.startsWith('http://') || nextArg.startsWith('https://') || nextArg.includes('.'))) {
+                setIndex = plainSetIndex;
+                isPlainSet = true;
+            }
+        }
+    }
+
     const nameIndex = args.findIndex(arg => nameFlags.includes(arg.toLowerCase()));
 
     // Si se especificó set/colocar
@@ -147,7 +161,7 @@ function parseSkinArgs(args) {
         const nameParts = [];
         for (let i = nameIndex + 1; i < args.length; i++) {
             const currentArgLower = args[i].toLowerCase();
-            if (setFlags.includes(currentArgLower) || nameFlags.includes(currentArgLower)) {
+            if (setFlags.includes(currentArgLower) || nameFlags.includes(currentArgLower) || (isPlainSet && currentArgLower === 'set')) {
                 break;
             }
             nameParts.push(args[i]);
@@ -162,7 +176,7 @@ function parseSkinArgs(args) {
         const queryParts = [];
         for (let i = 0; i < args.length; i++) {
             const currentArgLower = args[i].toLowerCase();
-            if (setFlags.includes(currentArgLower) || nameFlags.includes(currentArgLower)) {
+            if (setFlags.includes(currentArgLower) || nameFlags.includes(currentArgLower) || (isPlainSet && currentArgLower === 'set')) {
                 break;
             }
             queryParts.push(args[i]);
