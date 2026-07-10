@@ -1100,20 +1100,15 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
         // Estrellas
         const sr = sniped_userdata.star_ranges || {};
         const totalScores = sniped_userdata.count_total || 1;
-        const starRangesDef = [
-            { key: '3★-', label: '3★- ' },
-            { key: '4★',  label: '4★  ' },
-            { key: '5★',  label: '5★  ' },
-            { key: '6★',  label: '6★  ' },
-            { key: '7★',  label: '7★  ' },
-            { key: '8★+', label: '8★+ ' }
-        ];
-        const starsText = starRangesDef.map(r => {
-            const count = sr[r.key] || 0;
+        const starsText = Object.entries(sr).map(([key, count]) => {
             const pct = (count / totalScores) * 100;
             const filled = Math.min(10, Math.round(pct / 10));
             const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
-            return `\`${r.label}\` \`${bar}\` **${count}** (${pct.toFixed(1)}%)`;
+            let label = key;
+            while (label.length < 4) {
+                label += ' ';
+            }
+            return `\`${label}\` \`${bar}\` **${count}** (${pct.toFixed(1)}%)`;
         }).join('\n');
 
         // Mappers

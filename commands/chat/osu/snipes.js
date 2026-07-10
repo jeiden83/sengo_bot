@@ -60,14 +60,23 @@ async function run(messages, args){
     let countWithPP = 0;
 
     // Métricas detalladas si isDetailed === true
-    const starRanges = {
-        '3★-': 0,
-        '4★': 0,
-        '5★': 0,
-        '6★': 0,
-        '7★': 0,
-        '8★+': 0
-    };
+    let maxStarsVal = 0;
+    if (isDetailed) {
+        userScores.forEach(s => {
+            const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
+            if (stars > maxStarsVal) maxStarsVal = stars;
+        });
+    }
+
+    const maxRangeStart = Math.max(4, Math.min(8, Math.floor(maxStarsVal)));
+    const starRanges = { '3★-': 0 };
+    for (let stars = 4; stars < maxRangeStart; stars++) {
+        starRanges[`${stars}★`] = 0;
+    }
+    if (maxRangeStart >= 4) {
+        const topKey = maxRangeStart === 8 ? '8★+' : `${maxRangeStart}★+`;
+        starRanges[topKey] = 0;
+    }
     const mappersCount = {};
     let totalBPM = 0, totalAR = 0, totalOD = 0, totalCS = 0;
     let bpmCount = 0, arCount = 0, odCount = 0, csCount = 0;
@@ -119,12 +128,18 @@ async function run(messages, args){
         if (isDetailed) {
             // Estrellas
             const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
-            if (stars < 4) starRanges['3★-']++;
-            else if (stars < 5) starRanges['4★']++;
-            else if (stars < 6) starRanges['5★']++;
-            else if (stars < 7) starRanges['6★']++;
-            else if (stars < 8) starRanges['7★']++;
-            else starRanges['8★+']++;
+            if (stars < 4) {
+                starRanges['3★-']++;
+            } else {
+                const integerStars = Math.floor(stars);
+                if (integerStars >= maxRangeStart) {
+                    const key = maxRangeStart === 8 ? '8★+' : `${maxRangeStart}★+`;
+                    starRanges[key]++;
+                } else {
+                    const key = `${integerStars}★`;
+                    starRanges[key]++;
+                }
+            }
 
             // Mappers
             const creator = s.ranked_beatmaps?.creator;
