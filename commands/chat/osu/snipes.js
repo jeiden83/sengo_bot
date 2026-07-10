@@ -224,7 +224,17 @@ async function run(messages, args){
                     id: dbScore.ranked_beatmaps?.beatmapset_id || 0,
                     title: dbScore.ranked_beatmaps?.title || '',
                     artist: dbScore.ranked_beatmaps?.artist || '',
-                    creator: dbScore.ranked_beatmaps?.creator || ''
+                    creator: dbScore.ranked_beatmaps?.creator || '',
+                    covers: {
+                        cover: `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/cover.jpg`,
+                        "cover@2x": `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/cover@2x.jpg`,
+                        card: `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/card.jpg`,
+                        "card@2x": `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/card@2x.jpg`,
+                        list: `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/list.jpg`,
+                        "list@2x": `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/list@2x.jpg`,
+                        slimcover: `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/slimcover.jpg`,
+                        "slimcover@2x": `https://assets.ppy.sh/beatmaps/${dbScore.ranked_beatmaps?.beatmapset_id || 0}/covers/slimcover@2x.jpg`
+                    }
                 },
                 mods: scoreMods,
                 rank: calculatedRank,
