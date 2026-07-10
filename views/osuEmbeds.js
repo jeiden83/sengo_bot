@@ -1121,7 +1121,7 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
             .map((m, idx) => `**#${idx + 1}** ${m[0]} \`(${m[1]} #1s)\``)
             .join('\n') || '*Ninguno*';
 
-        const makeTextSlider = (min, avg, max, decimals = 1) => {
+        const makeTextSlider = (min, avg, max, minMapId, maxMapId, decimals = 1) => {
             const minStr = decimals === 0 ? Math.round(min).toString() : min.toFixed(decimals);
             const avgStr = decimals === 0 ? Math.round(avg).toString() : avg.toFixed(decimals);
             const maxStr = decimals === 0 ? Math.round(max).toString() : max.toFixed(decimals);
@@ -1139,15 +1139,18 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
             const leftDashes = '─'.repeat(avgPos);
             const rightDashes = '─'.repeat(lineSlots - avgPos);
             
-            return `\`${minStr} ${leftDashes}${avgStr}${rightDashes} ${maxStr}\``;
+            const minLink = minMapId ? `[${minStr}](https://osu.ppy.sh/b/${minMapId})` : minStr;
+            const maxLink = maxMapId ? `[${maxStr}](https://osu.ppy.sh/b/${maxMapId})` : maxStr;
+            
+            return `${minLink} \`${leftDashes}${avgStr}${rightDashes}\` ${maxLink}`;
         };
 
         // Tech specs
-        const techText = `• **BPM**: ${makeTextSlider(sniped_userdata.min_bpm, sniped_userdata.avg_bpm, sniped_userdata.max_bpm, 0)}
-• **AR** : ${makeTextSlider(sniped_userdata.min_ar, sniped_userdata.avg_ar, sniped_userdata.max_ar, 1)}
-• **OD** : ${makeTextSlider(sniped_userdata.min_od, sniped_userdata.avg_od, sniped_userdata.max_od, 1)}
-• **CS** : ${makeTextSlider(sniped_userdata.min_cs, sniped_userdata.avg_cs, sniped_userdata.max_cs, 1)}
-• **PP** : ${makeTextSlider(sniped_userdata.min_pp, sniped_userdata.average_pp, sniped_userdata.max_pp, 0)}`;
+        const techText = `• **BPM**: ${makeTextSlider(sniped_userdata.min_bpm, sniped_userdata.avg_bpm, sniped_userdata.max_bpm, sniped_userdata.min_bpm_mapId, sniped_userdata.max_bpm_mapId, 0)}
+• **AR** : ${makeTextSlider(sniped_userdata.min_ar, sniped_userdata.avg_ar, sniped_userdata.max_ar, sniped_userdata.min_ar_mapId, sniped_userdata.max_ar_mapId, 1)}
+• **OD** : ${makeTextSlider(sniped_userdata.min_od, sniped_userdata.avg_od, sniped_userdata.max_od, sniped_userdata.min_od_mapId, sniped_userdata.max_od_mapId, 1)}
+• **CS** : ${makeTextSlider(sniped_userdata.min_cs, sniped_userdata.avg_cs, sniped_userdata.max_cs, sniped_userdata.min_cs_mapId, sniped_userdata.max_cs_mapId, 1)}
+• **PP** : ${makeTextSlider(sniped_userdata.min_pp, sniped_userdata.average_pp, sniped_userdata.max_pp, sniped_userdata.min_pp_mapId, sniped_userdata.max_pp_mapId, 0)}`;
 
         // Oldest & Newest
         let historyText = '';
