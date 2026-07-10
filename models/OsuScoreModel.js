@@ -2233,14 +2233,29 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
     const selectFields = detailed
         ? 'pp, mods, ended_at, score, accuracy, beatmap_id, ranked_beatmaps!inner(mode, title, version, creator, stars, bpm, ar, od, cs)'
         : 'pp, mods, ended_at, ranked_beatmaps!inner(mode)';
-    const { data, error } = await supabase
-        .from('top_scores')
-        .select(selectFields)
-        .eq('user_id', userId.toString())
-        .eq('ranked_beatmaps.mode', mode)
-        .eq('country_code', country_code);
-    if (error) throw error;
-    return data || [];
+    
+    const allData = [];
+    let from = 0;
+    const PAGE_SIZE = 1000;
+    
+    while (true) {
+        const { data, error } = await supabase
+            .from('top_scores')
+            .select(selectFields)
+            .eq('user_id', userId.toString())
+            .eq('ranked_beatmaps.mode', mode)
+            .eq('country_code', country_code)
+            .range(from, from + PAGE_SIZE - 1);
+            
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        
+        allData.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        from += PAGE_SIZE;
+    }
+    
+    return allData;
 }
 
 const OsuScoreModel = {
@@ -2272,23 +2287,46 @@ const OsuScoreModel = {
 async function getUserSnipesHistory(userId) {
     const supabase = getSupabaseClient();
     
-    const { data: made, error: errMade } = await supabase
-        .from('snipes_history')
-        .select('sniped_name, sniped_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
-        .eq('sniper_id', userId.toString())
-        .order('ended_at', { ascending: false });
+    const made = [];
+    let fromMade = 0;
+    const PAGE_SIZE = 1000;
+    
+    while (true) {
+        const { data, error } = await supabase
+            .from('snipes_history')
+            .select('sniped_name, sniped_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
+            .eq('sniper_id', userId.toString())
+            .order('ended_at', { ascending: false })
+            .range(fromMade, fromMade + PAGE_SIZE - 1);
+            
+        if (error) throw error;
+        if (!data || data.length === 0) break;
         
-    if (errMade) throw errMade;
+        made.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        fromMade += PAGE_SIZE;
+    }
 
-    const { data: received, error: errRec } = await supabase
-        .from('snipes_history')
-        .select('sniper_name, sniper_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
-        .eq('sniped_id', userId.toString())
-        .order('ended_at', { ascending: false });
+    const received = [];
+    let fromRec = 0;
+    
+    while (true) {
+        const { data, error } = await supabase
+            .from('snipes_history')
+            .select('sniper_name, sniper_id, beatmap_id, pp, ended_at, ranked_beatmaps(title, version)')
+            .eq('sniped_id', userId.toString())
+            .order('ended_at', { ascending: false })
+            .range(fromRec, fromRec + PAGE_SIZE - 1);
+            
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        
+        received.push(...data);
+        if (data.length < PAGE_SIZE) break;
+        fromRec += PAGE_SIZE;
+    }
 
-    if (errRec) throw errRec;
-
-    return { made: made || [], received: received || [] };
+    return { made, received };
 }
 
 /**
