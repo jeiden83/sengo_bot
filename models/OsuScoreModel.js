@@ -2265,7 +2265,8 @@ const OsuScoreModel = {
     getRankedBeatmapsCount,
     getProcessedSnipesCount,
     getUserNationalTops,
-    getUserSnipesHistory
+    getUserSnipesHistory,
+    checkAndRecordRealtimeSnipe
 };
 
 async function getUserSnipesHistory(userId) {
@@ -2288,6 +2289,92 @@ async function getUserSnipesHistory(userId) {
     if (errRec) throw errRec;
 
     return { made: made || [], received: received || [] };
+}
+
+/**
+ * Comprueba si una jugada reciente de un usuario es un nuevo #1 nacional.
+ * Si es así, actualiza top_scores y registra un snipe en snipes_history si corresponde.
+ * ponytail: tracking de snipes en tiempo real con comparación de score numérico.
+ */
+async function checkAndRecordRealtimeSnipe(score, osuUsername) {
+    if (!score || !score.beatmap) return;
+    
+    // Solo soportamos standard (mode === 0 / 'osu') por ahora en snipes
+    const isStd = score.beatmap.mode === 'osu' || score.beatmap.mode === 0 || score.beatmap.mode_int === 0;
+    if (!isStd) return;
+    
+    const countryCode = score.user?.country_code || 'VE';
+    if (countryCode !== 'VE') return;
+
+    const supabase = getSupabaseClient();
+    const beatmapId = score.beatmap.id.toString();
+
+    try {
+        const { data: currentTop, error: topErr } = await supabase
+            .from('top_scores')
+            .select('*')
+            .eq('beatmap_id', beatmapId)
+            .eq('country_code', countryCode)
+            .maybeSingle();
+
+        if (topErr) {
+            console.error(`[REALTIME-SNIPE] Error al consultar top score actual para mapa ${beatmapId}:`, topErr);
+            return;
+        }
+
+        const newScoreVal = Number(score.score || 0);
+        const oldScoreVal = currentTop ? Number(currentTop.score || 0) : 0;
+
+        if (!currentTop || newScoreVal > oldScoreVal) {
+            const modsString = (score.mods && score.mods.length > 0) ? score.mods.join('') : 'NM';
+            const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
+
+            if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== sniperId) {
+                // Registrar en el historial de snipes
+                const { error: insertErr } = await supabase
+                    .from('snipes_history')
+                    .insert({
+                        beatmap_id: beatmapId,
+                        sniper_id: sniperId,
+                        sniper_name: osuUsername || score.user?.username || 'Desconocido',
+                        sniped_id: currentTop.user_id,
+                        sniped_name: currentTop.username,
+                        mods: modsString,
+                        pp: score.pp || 0,
+                        accuracy: score.accuracy || 0,
+                        ended_at: score.created_at || new Date().toISOString()
+                    });
+
+                if (insertErr) {
+                    console.error("[REALTIME-SNIPE] Error al insertar en snipes_history:", insertErr);
+                } else {
+                    console.log(`[REALTIME-SNIPE] ¡${osuUsername} snipeó a ${currentTop.username} en el mapa ${beatmapId}!`);
+                }
+            }
+
+            // Actualizar top_scores
+            const { error: upsertErr } = await supabase
+                .from('top_scores')
+                .upsert({
+                    beatmap_id: beatmapId,
+                    country_code: countryCode,
+                    user_id: sniperId,
+                    username: osuUsername || score.user?.username || 'Desconocido',
+                    score: newScoreVal,
+                    pp: score.pp || 0,
+                    accuracy: score.accuracy || 0,
+                    mods: modsString,
+                    ended_at: score.created_at || new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+
+            if (upsertErr) {
+                console.error("[REALTIME-SNIPE] Error al actualizar top_scores:", upsertErr);
+            }
+        }
+    } catch (err) {
+        console.error("[REALTIME-SNIPE] Error crítico en checkAndRecordRealtimeSnipe:", err);
+    }
 }
 
 module.exports = OsuScoreModel;

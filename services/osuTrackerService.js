@@ -1,6 +1,7 @@
 const { getSupabaseClient } = require('../db/database.js');
 const OsuTrackerModel = require('../models/OsuTrackerModel.js');
 const OsuUserModel = require('../models/OsuUserModel.js');
+const OsuScoreModel = require('../models/OsuScoreModel.js');
 const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const { v2 } = require('osu-api-extended');
 const Logger = require('../utils/logger.js');
@@ -378,6 +379,13 @@ async function checkUserRecentScore(client, userObj) {
             // Actualizar en base de datos para todos sus servidores asociados
             for (const srv of userObj.servers) {
                 await OsuTrackerModel.updateTrackedUser(srv.id, { last_score_id: scoreIdStr });
+            }
+
+            // ponytail: Verificar si la jugada es un nuevo #1 nacional para registrar snipes en tiempo real
+            try {
+                await OsuScoreModel.checkAndRecordRealtimeSnipe(score, userObj.osuUsername);
+            } catch (errRealtimeSnipe) {
+                console.error("[TRACKER-SERVICE] Error en checkAndRecordRealtimeSnipe:", errRealtimeSnipe);
             }
 
             // Procesar y ver si entra en el Top 200
