@@ -2228,7 +2228,7 @@ async function getProcessedSnipesCount(mode, country_code = 'VE') {
 /**
  * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país.
  */
-async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false) {
+async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false, onPageLoad = null) {
     const supabase = getSupabaseClient();
     const selectFields = detailed
         ? 'pp, mods, ended_at, score, accuracy, beatmap_id, ranked_beatmaps!inner(mode, title, version, creator, stars, bpm, ar, od, cs)'
@@ -2237,7 +2237,7 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
     const allData = [];
     let from = 0;
     const PAGE_SIZE = 1000;
-    
+ 
     while (true) {
         const { data, error } = await supabase
             .from('top_scores')
@@ -2251,6 +2251,13 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
         if (!data || data.length === 0) break;
         
         allData.push(...data);
+        if (onPageLoad) {
+            try {
+                onPageLoad(allData.length);
+            } catch (err) {
+                console.error("[OsuScoreModel] Error in onPageLoad callback:", err);
+            }
+        }
         if (data.length < PAGE_SIZE) break;
         from += PAGE_SIZE;
     }

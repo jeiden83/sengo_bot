@@ -153,8 +153,10 @@ async function run(messages, args){
     await updateProgress(0, 'loading');
     let userScores = [];
     try {
-        userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code, isDetailed);
-        await updateProgress(0, 'success');
+        userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code, isDetailed, (count) => {
+            updateProgress(0, 'loading', `(${count} cargados...)`);
+        });
+        await updateProgress(0, 'success', `(${userScores.length} cargados)`);
     } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
         await updateProgress(0, 'error', `(${t(locale, 'snipes.err_db_scores')})`);
