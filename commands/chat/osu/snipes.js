@@ -176,6 +176,37 @@ async function run(messages, args){
                 ? [] 
                 : modsString.match(/.{1,2}/g).map(mod => ({ acronym: mod }));
 
+            const hasHiddenOrFlashlight = scoreMods.some(m => m.acronym === 'HD' || m.acronym === 'FL');
+            let calculatedRank = 'D';
+            const acc = dbScore.accuracy || 0;
+            if (acc >= 1.0) {
+                calculatedRank = hasHiddenOrFlashlight ? 'SSH' : 'SS';
+            } else if (acc >= 0.95) {
+                calculatedRank = hasHiddenOrFlashlight ? 'SH' : 'S';
+            } else if (acc >= 0.90) {
+                calculatedRank = 'A';
+            } else if (acc >= 0.85) {
+                calculatedRank = 'B';
+            } else if (acc >= 0.80) {
+                calculatedRank = 'C';
+            }
+
+            const maxCombo = dbScore.ranked_beatmaps?.max_combo || 1000;
+            const mode = dbScore.ranked_beatmaps?.mode || 0;
+
+            let great = maxCombo;
+            let ok = 0;
+            let meh = 0;
+            let miss = 0;
+
+            if (mode === 1) { // Taiko
+                great = Math.max(0, Math.min(maxCombo, Math.round(maxCombo * (2 * acc - 1))));
+                ok = Math.max(0, maxCombo - great);
+            } else { // osu!std, mania, catch
+                great = Math.max(0, Math.min(maxCombo, Math.round(maxCombo * (3 * acc - 1) / 2)));
+                ok = Math.max(0, maxCombo - great);
+            }
+
             return {
                 id: dbScore.beatmap_id,
                 beatmap: {
@@ -196,6 +227,7 @@ async function run(messages, args){
                     creator: dbScore.ranked_beatmaps?.creator || ''
                 },
                 mods: scoreMods,
+                rank: calculatedRank,
                 pp: dbScore.pp || 0,
                 accuracy: dbScore.accuracy || 0,
                 max_combo: dbScore.ranked_beatmaps?.max_combo || 0,
@@ -204,14 +236,14 @@ async function run(messages, args){
                 ended_at: dbScore.ended_at,
                 created_at: dbScore.ended_at,
                 statistics: {
-                    great: 1000,
-                    ok: 0,
-                    meh: 0,
-                    miss: 0,
-                    count_300: 1000,
-                    count_100: 0,
-                    count_50: 0,
-                    count_miss: 0
+                    great: great,
+                    ok: ok,
+                    meh: meh,
+                    miss: miss,
+                    count_300: great,
+                    count_100: ok,
+                    count_50: meh,
+                    count_miss: miss
                 },
                 user: {
                     username: dbScore.username || osu_userdata.fn_response.username,
