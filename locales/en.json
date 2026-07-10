@@ -357,7 +357,7 @@
     "skin": {
       "header": "Link and show your osu! skin",
       "body": "Allows you to link your custom osu! skin to your Discord account so other users can see and download it.",
-      "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> [-nombre <name>] : Links your skin with an optional name.\ns.skin -nombre <name> : Changes or edits the name of your skin.\ns.skin -delete or borrar : Deletes your linked skin."
+      "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> [-nombre <name>] [-osu|-ctb|-taiko|-mania] : Links your skin with optional mode and name.\ns.skin -nombre <name> [-osu|-ctb|-taiko|-mania] : Changes the name of the skin for that mode.\ns.skin -delete or borrar [-osu|-ctb|-taiko|-mania] : Deletes the skin for that mode or all if none is specified."
     }
   },
   "contributors": {
@@ -1498,16 +1498,27 @@
     "not_found_other": "The user {username} does not have a linked skin.",
     "invalid_link": "❌ Please provide a valid and secure download link (must start with http:// or https://).",
     "set_success": "✅ Your skin has been linked successfully:\n<{link}>",
-    "delete_success": "✅ Your linked skin has been deleted.",
+    "set_success_mode": "✅ Your skin for the {mode} mode has been linked successfully:\n<{link}>",
+    "delete_success": "✅ All your linked skins have been deleted.",
+    "delete_success_mode": "✅ Your linked skin for the {mode} mode has been deleted.",
     "user_not_found": "❌ Could not find the specified user.",
     "embed_title": "Skin of {username}",
     "embed_description": "Click below to download **{username}**'s skin:",
+    "embed_description_mode": "Click below to download **{username}**'s skin for **{mode}**:",
     "embed_field_name": "Download Link",
     "embed_field_value": "🔗 [Download Skin]({link})",
     "embed_field_value_named": "🔗 [Download {name}]({link})",
     "embed_footer": "Sengo • Community Skins",
     "name_no_skin": "❌ To change the name, you must first link a skin using `s.skin -set <link>`.",
-    "name_success": "✅ The name of your skin has been updated to: **{name}**."
+    "name_no_skin_mode": "❌ To change the name, you must first link a skin for the {mode} mode using `s.skin -set <link> -{mode}`.",
+    "name_success": "✅ The name of your skin has been updated to: **{name}**.",
+    "name_success_mode": "✅ The name of your skin for the {mode} mode has been updated to: **{name}**.",
+    "modes": {
+      "osu": "osu! Standard",
+      "taiko": "osu!taiko",
+      "fruits": "osu!catch (CtB)",
+      "mania": "osu!mania"
+    }
   }
 }
 

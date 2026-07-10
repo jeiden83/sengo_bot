@@ -2123,37 +2123,70 @@ async function setPreferredScoreMode(discordId, scoreMode) {
     }
 }
 
-async function setSkin(discordId, skinUrl, skinName) {
+async function getSkins(discordId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return {};
+    try {
+        const { data } = await supabase
+            .from('users')
+            .select('skins')
+            .eq('discord_id', discordId)
+            .maybeSingle();
+        return data && data.skins ? data.skins : {};
+    } catch (err) {
+        console.error(`Error al obtener skins para ${discordId}:`, err);
+        return {};
+    }
+}
+
+async function setSkinByMode(discordId, mode, url, name) {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     try {
-        const updateData = { discord_id: discordId };
-        if (skinUrl !== undefined) updateData.skin_url = skinUrl;
-        if (skinName !== undefined) updateData.skin_name = skinName;
+        const skins = await getSkins(discordId) || {};
         
+        if (url === null) {
+            delete skins[mode];
+        } else {
+            if (!skins[mode]) skins[mode] = {};
+            if (url !== undefined) skins[mode].url = url;
+            if (name !== undefined) skins[mode].name = name;
+        }
+
         await supabase
             .from('users')
-            .upsert(updateData, { onConflict: 'discord_id' });
+            .upsert({
+                discord_id: discordId,
+                skins: skins
+            }, { onConflict: 'discord_id' });
     } catch (err) {
-        console.error(`Error al guardar skin para ${discordId}:`, err);
+        console.error(`Error al guardar skin para ${discordId} en modo ${mode}:`, err);
         throw err;
     }
 }
 
-async function getSkin(discordId) {
+async function clearAllSkins(discordId) {
     const supabase = getSupabaseClient();
-    if (!supabase) return null;
+    if (!supabase) return;
     try {
-        const { data } = await supabase
+        await supabase
             .from('users')
-            .select('skin_url, skin_name')
-            .eq('discord_id', discordId)
-            .maybeSingle();
-        return data ? { skinUrl: data.skin_url, skinName: data.skin_name } : null;
+            .update({ skins: null })
+            .eq('discord_id', discordId);
     } catch (err) {
-        console.error(`Error al obtener skin para ${discordId}:`, err);
-        return null;
+        console.error(`Error al borrar todas las skins para ${discordId}:`, err);
+        throw err;
     }
+}
+
+async function setSkin(discordId, skinUrl, skinName) {
+    return setSkinByMode(discordId, 'osu', skinUrl, skinName);
+}
+
+async function getSkin(discordId) {
+    const skins = await getSkins(discordId);
+    const osuSkin = skins && skins.osu ? skins.osu : null;
+    return osuSkin ? { skinUrl: osuSkin.url, skinName: osuSkin.name } : null;
 }
 
 async function setSkinUrl(discordId, skinUrl) {
@@ -2218,6 +2251,9 @@ const OsuUserModel = {
     getSkin,
     setSkinUrl,
     getSkinUrl,
+    getSkins,
+    setSkinByMode,
+    clearAllSkins,
     downloadReplay,
     linkUser,
     unlinkUser,

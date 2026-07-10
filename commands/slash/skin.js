@@ -26,6 +26,17 @@ const data = new SlashCommandBuilder()
                     .setDescription("Nombre personalizado para mostrar en tu skin (opcional)")
                     .setRequired(false)
             )
+            .addStringOption(opt =>
+                opt.setName("modo")
+                    .setDescription("Modo de juego para esta skin (por defecto: osu)")
+                    .setRequired(false)
+                    .addChoices(
+                        { name: "osu! Standard", value: "osu" },
+                        { name: "osu!catch (CtB)", value: "ctb" },
+                        { name: "osu!taiko", value: "taiko" },
+                        { name: "osu!mania", value: "mania" }
+                    )
+            )
     )
     .addSubcommand(sub =>
         sub.setName("nombre")
@@ -35,10 +46,32 @@ const data = new SlashCommandBuilder()
                     .setDescription("El nuevo nombre personalizado para tu skin")
                     .setRequired(true)
             )
+            .addStringOption(opt =>
+                opt.setName("modo")
+                    .setDescription("Modo de juego de la skin a editar (por defecto: osu)")
+                    .setRequired(false)
+                    .addChoices(
+                        { name: "osu! Standard", value: "osu" },
+                        { name: "osu!catch (CtB)", value: "ctb" },
+                        { name: "osu!taiko", value: "taiko" },
+                        { name: "osu!mania", value: "mania" }
+                    )
+            )
     )
     .addSubcommand(sub =>
         sub.setName("borrar")
             .setDescription("Elimina tu skin vinculada de mi base de datos")
+            .addStringOption(opt =>
+                opt.setName("modo")
+                    .setDescription("Modo de juego de la skin a borrar (si no se especifica, borra todas)")
+                    .setRequired(false)
+                    .addChoices(
+                        { name: "osu! Standard", value: "osu" },
+                        { name: "osu!catch (CtB)", value: "ctb" },
+                        { name: "osu!taiko", value: "taiko" },
+                        { name: "osu!mania", value: "mania" }
+                    )
+            )
     );
 
 // Permitir instalación de usuario y contextos
@@ -61,15 +94,27 @@ async function run(interaction, res) {
     } else if (subcommand === "colocar") {
         const enlace = interaction.options.getString("enlace");
         const nombre = interaction.options.getString("nombre");
+        const modo = interaction.options.getString("modo");
         args.push("colocar", enlace);
         if (nombre) {
             args.push("-nombre", nombre);
         }
+        if (modo) {
+            args.push(`-${modo}`);
+        }
     } else if (subcommand === "nombre") {
         const nombre = interaction.options.getString("nombre");
+        const modo = interaction.options.getString("modo");
         args.push("-nombre", nombre);
+        if (modo) {
+            args.push(`-${modo}`);
+        }
     } else if (subcommand === "borrar") {
+        const modo = interaction.options.getString("modo");
         args.push("borrar");
+        if (modo) {
+            args.push(`-${modo}`);
+        }
     }
 
     const messages = {
@@ -78,13 +123,28 @@ async function run(interaction, res) {
             member: interaction.member,
             guild: interaction.guild,
             client: interaction.client,
-            locale: interaction.resolvedLocale || interaction.locale || 'es'
+            locale: interaction.resolvedLocale || interaction.locale || 'es',
+            // Redirigimos el canal de envío virtual a la interacción deferida
+            channel: {
+                send: async (options) => {
+                    return await interaction.editReply(options);
+                },
+                messages: interaction.channel.messages,
+                guild: interaction.guild
+            }
         },
         res: res,
         logger: interaction.logger
     };
 
-    return await skinChatCommand.run(messages, args);
+    const result = await skinChatCommand.run(messages, args);
+
+    if (result) {
+        // Si el comando devolvió una respuesta simple
+        await interaction.editReply(result);
+    }
+
+    return true; // Auto-gestionado
 }
 
 run.description = "Muestra, vincula o borra la skin de osu! de un usuario";

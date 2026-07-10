@@ -357,7 +357,7 @@
     "skin": {
       "header": "Vincula y muestra tu skin de osu!",
       "body": "Permite vincular tu skin propia de osu! a tu cuenta de Discord para que otros usuarios puedan verla y descargarla.",
-      "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> [-nombre <nombre>] : Vincula tu skin con nombre opcional.\ns.skin -nombre <nombre> : Cambia o edita el nombre de tu skin.\ns.skin -delete o borrar : Elimina tu skin vinculada."
+      "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> [-nombre <nombre>] [-osu|-ctb|-taiko|-mania] : Vincula tu skin con modo y nombre opcionales.\ns.skin -nombre <nombre> [-osu|-ctb|-taiko|-mania] : Cambia el nombre de la skin de ese modo.\ns.skin -delete o borrar [-osu|-ctb|-taiko|-mania] : Elimina la skin de ese modo o todas si no se especifica."
     }
   },
   "contributors": {
@@ -1498,16 +1498,27 @@
     "not_found_other": "El usuario {username} no tiene ninguna skin vinculada.",
     "invalid_link": "❌ Por favor, proporciona un enlace de descarga válido y seguro (debe empezar con http:// o https://).",
     "set_success": "✅ Tu skin ha sido vinculada correctamente:\n<{link}>",
-    "delete_success": "✅ Tu skin vinculada ha sido eliminada.",
+    "set_success_mode": "✅ Tu skin para el modo {mode} ha sido vinculada correctamente:\n<{link}>",
+    "delete_success": "✅ Todas tus skins vinculadas han sido eliminadas.",
+    "delete_success_mode": "✅ Tu skin vinculada para el modo {mode} ha sido eliminada.",
     "user_not_found": "❌ No se pudo encontrar al usuario especificado.",
     "embed_title": "Skin de {username}",
     "embed_description": "Haz clic abajo para descargar la skin de **{username}**:",
+    "embed_description_mode": "Haz clic abajo para descargar la skin de **{username}** para **{mode}**:",
     "embed_field_name": "Enlace de Descarga",
     "embed_field_value": "🔗 [Descargar Skin]({link})",
     "embed_field_value_named": "🔗 [Descargar {name}]({link})",
     "embed_footer": "Sengo • Skins de la comunidad",
     "name_no_skin": "❌ Para cambiar el nombre, primero debes vincular una skin con `s.skin -set <enlace>`.",
-    "name_success": "✅ El nombre de tu skin ha sido actualizado a: **{name}**."
+    "name_no_skin_mode": "❌ Para cambiar el nombre, primero debes vincular una skin para el modo {mode} con `s.skin -set <enlace> -{mode}`.",
+    "name_success": "✅ El nombre de tu skin ha sido actualizado a: **{name}**.",
+    "name_success_mode": "✅ El nombre de tu skin para el modo {mode} ha sido actualizado a: **{name}**.",
+    "modes": {
+      "osu": "osu! Standard",
+      "taiko": "osu!taiko",
+      "fruits": "osu!catch (CtB)",
+      "mania": "osu!mania"
+    }
   }
 }
 

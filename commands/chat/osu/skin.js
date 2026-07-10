@@ -1,6 +1,6 @@
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { t } = require("../../../utils/i18n.js");
-const { doSkinEmbed } = require("../../../views/skinViews.js");
+const { doSkinEmbed, buildSkinButtonsRow } = require("../../../views/skinViews.js");
 
 /**
  * Filtra y sanitiza el enlace proporcionado por el usuario.
@@ -78,7 +78,7 @@ async function resolveUser(message, query) {
 }
 
 /**
- * Parsea los argumentos para identificar las intenciones de set, borrar, nombre, o consulta.
+ * Parsea los argumentos para identificar las intenciones de set, borrar, nombre, o consulta, además del modo de juego.
  * @param {string[]} args Lista de argumentos limpios
  * @returns {Object} Argumentos parseados
  */
@@ -89,10 +89,37 @@ function parseSkinArgs(args) {
         isDelete: false,
         isName: false,
         name: null,
+        mode: 'osu',
+        hasExplicitMode: false,
         userQuery: null
     };
 
     if (!args || args.length === 0) return result;
+
+    // Detectar y remover flags de modos de juego
+    const osuFlags = ['-osu', '-std', '-standard'];
+    const ctbFlags = ['-ctb', '-catch', '-fruits', '-fruit'];
+    const taikoFlags = ['-taiko', '-tko'];
+    const maniaFlags = ['-mania', '-man', '-mna'];
+
+    const modeIndex = args.findIndex(arg => {
+        const lower = arg.toLowerCase();
+        return osuFlags.includes(lower) || ctbFlags.includes(lower) || taikoFlags.includes(lower) || maniaFlags.includes(lower);
+    });
+
+    if (modeIndex !== -1) {
+        result.hasExplicitMode = true;
+        const modeFlag = args[modeIndex].toLowerCase();
+        if (osuFlags.includes(modeFlag)) result.mode = 'osu';
+        else if (ctbFlags.includes(modeFlag)) result.mode = 'fruits';
+        else if (taikoFlags.includes(modeFlag)) result.mode = 'taiko';
+        else if (maniaFlags.includes(modeFlag)) result.mode = 'mania';
+        
+        args.splice(modeIndex, 1);
+    }
+
+    // Volver a comprobar la longitud después de remover el modo
+    if (args.length === 0) return result;
 
     const firstArgLower = args[0].toLowerCase();
     if (['-delete', 'borrar', '-borrar', 'delete'].includes(firstArgLower)) {
@@ -158,9 +185,16 @@ async function run(messages, args) {
 
         // 1. Caso de eliminación: -delete / borrar / -borrar / delete
         if (parsed.isDelete) {
-            if (logger) logger.process(`Eliminando skin para el usuario ${message.author.id}`);
-            await OsuUserModel.setSkin(message.author.id, null, null);
-            return t(locale, 'skin.delete_success');
+            if (parsed.hasExplicitMode) {
+                if (logger) logger.process(`Eliminando skin para el modo ${parsed.mode} del usuario ${message.author.id}`);
+                await OsuUserModel.setSkinByMode(message.author.id, parsed.mode, null, null);
+                const modeLabel = t(locale, `skin.modes.${parsed.mode}`);
+                return t(locale, 'skin.delete_success_mode', { mode: modeLabel });
+            } else {
+                if (logger) logger.process(`Eliminando todas las skins para el usuario ${message.author.id}`);
+                await OsuUserModel.clearAllSkins(message.author.id);
+                return t(locale, 'skin.delete_success');
+            }
         }
 
         // 2. Caso de vinculación (con nombre opcional)
@@ -175,24 +209,28 @@ async function run(messages, args) {
                 return t(locale, 'skin.invalid_link');
             }
             
-            if (logger) logger.process(`Guardando skin y nombre para el usuario ${message.author.id}`);
-            await OsuUserModel.setSkin(message.author.id, sanitizedLink, parsed.name || null);
+            if (logger) logger.process(`Guardando skin para el modo ${parsed.mode} del usuario ${message.author.id}`);
+            await OsuUserModel.setSkinByMode(message.author.id, parsed.mode, sanitizedLink, parsed.name || null);
             
-            return t(locale, 'skin.set_success', { link: sanitizedLink });
+            const modeLabel = t(locale, `skin.modes.${parsed.mode}`);
+            return t(locale, 'skin.set_success_mode', { mode: modeLabel, link: sanitizedLink });
         }
 
         // 3. Caso de editar solo el nombre
         if (parsed.isName) {
-            if (logger) logger.process(`Actualizando nombre de skin para el usuario ${message.author.id}`);
+            if (logger) logger.process(`Actualizando nombre de skin para el modo ${parsed.mode} del usuario ${message.author.id}`);
             
-            // Verificar si el usuario ya tiene una skin vinculada
-            const existingSkin = await OsuUserModel.getSkin(message.author.id);
-            if (!existingSkin || !existingSkin.skinUrl) {
-                return t(locale, 'skin.name_no_skin');
+            const skins = await OsuUserModel.getSkins(message.author.id) || {};
+            const existingSkin = skins[parsed.mode];
+            
+            if (!existingSkin || !existingSkin.url) {
+                const modeLabel = t(locale, `skin.modes.${parsed.mode}`);
+                return t(locale, 'skin.name_no_skin_mode', { mode: modeLabel });
             }
 
-            await OsuUserModel.setSkin(message.author.id, undefined, parsed.name || null);
-            return t(locale, 'skin.name_success', { name: parsed.name });
+            await OsuUserModel.setSkinByMode(message.author.id, parsed.mode, undefined, parsed.name || null);
+            const modeLabel = t(locale, `skin.modes.${parsed.mode}`);
+            return t(locale, 'skin.name_success_mode', { mode: modeLabel, name: parsed.name });
         }
         
         // 4. Caso de visualizar skin
@@ -205,10 +243,12 @@ async function run(messages, args) {
             targetUser = resolved;
         }
         
-        if (logger) logger.process(`Consultando skin para el usuario ${targetUser.id}`);
-        const skinData = await OsuUserModel.getSkin(targetUser.id);
+        if (logger) logger.process(`Consultando skins para el usuario ${targetUser.id}`);
+        const skins = await OsuUserModel.getSkins(targetUser.id) || {};
         
-        if (!skinData || !skinData.skinUrl) {
+        const availableModes = Object.keys(skins).filter(m => skins[m] && skins[m].url);
+        
+        if (availableModes.length === 0) {
             if (targetUser.id === message.author.id) {
                 return t(locale, 'skin.not_found');
             } else {
@@ -216,9 +256,72 @@ async function run(messages, args) {
             }
         }
         
-        // Crear el embed de visualización de la skin
-        const embed = doSkinEmbed(targetUser, skinData.skinUrl, skinData.skinName, locale, message);
-        return { embeds: [embed] };
+        if (availableModes.length === 1) {
+            const activeMode = availableModes[0];
+            const skinInfo = skins[activeMode];
+            const embed = doSkinEmbed(targetUser, skinInfo.url, skinInfo.name, activeMode, locale, message);
+            return { embeds: [embed] };
+        }
+        
+        // Múltiples skins: Menú interactivo con botones
+        let activeMode = 'osu';
+        if (!availableModes.includes(activeMode)) {
+            activeMode = availableModes[0];
+        }
+        
+        const linkedUser = await OsuUserModel.getLinkedUser(targetUser.id);
+        if (linkedUser && linkedUser.main_gamemode && availableModes.includes(linkedUser.main_gamemode)) {
+            activeMode = linkedUser.main_gamemode;
+        }
+        
+        const skinInfo = skins[activeMode];
+        const embed = doSkinEmbed(targetUser, skinInfo.url, skinInfo.name, activeMode, locale, message);
+        const row = buildSkinButtonsRow(availableModes, activeMode, locale);
+        
+        const sentMessage = await message.channel.send({
+            embeds: [embed],
+            components: [row]
+        });
+        
+        if (sentMessage) {
+            const collector = sentMessage.createMessageComponentCollector({
+                idle: 60000
+            });
+            
+            collector.on('collect', async i => {
+                if (i.user.id !== message.author.id) {
+                    return i.reply({
+                        content: t(locale, 'about.only_author'),
+                        ephemeral: true
+                    }).catch(() => {});
+                }
+                
+                try {
+                    await i.deferUpdate();
+                    const clickedMode = i.customId.replace('skin_mode_', '');
+                    if (!availableModes.includes(clickedMode)) return;
+                    
+                    const nextSkinInfo = skins[clickedMode];
+                    const nextEmbed = doSkinEmbed(targetUser, nextSkinInfo.url, nextSkinInfo.name, clickedMode, locale, message);
+                    const nextRow = buildSkinButtonsRow(availableModes, clickedMode, locale);
+                    
+                    await i.editReply({
+                        embeds: [nextEmbed],
+                        components: [nextRow]
+                    });
+                } catch (err) {
+                    console.error("Error al navegar skins por botones:", err);
+                }
+            });
+            
+            collector.on('end', async () => {
+                try {
+                    await sentMessage.edit({ components: [] });
+                } catch {}
+            });
+        }
+        
+        return;
         
     } catch (error) {
         console.error('Error en el comando skin:', error);
