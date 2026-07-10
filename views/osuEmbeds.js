@@ -1,4 +1,5 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const { createCanvas } = require('canvas');
 const { t } = require("../utils/i18n.js");
 const {
     getEmbedColor,
@@ -1063,6 +1064,112 @@ function doOsuMapsetEmbed({
 }
 
 /**
+ * Dibuja un gráfico de barras moderno para la distribución de estrellas.
+ */
+function drawStarDistributionChart(sr, totalScores) {
+    const width = 600;
+    const height = 180;
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext('2d');
+
+    // Fondo del gráfico (charcoal dark)
+    ctx.fillStyle = '#181619';
+    ctx.fillRect(0, 0, width, height);
+
+    const padding = { top: 35, right: 20, bottom: 35, left: 45 };
+    const graphWidth = width - padding.left - padding.right;
+    const graphHeight = height - padding.top - padding.bottom;
+
+    // Dibujar fondo de la zona del gráfico con un tono sutilmente más claro
+    ctx.fillStyle = '#1f1d21';
+    ctx.fillRect(padding.left, padding.top, graphWidth, graphHeight);
+
+    const entries = Object.entries(sr);
+    const counts = entries.map(e => e[1]);
+    const maxCount = Math.max(...counts, 1);
+
+    // Cuadrícula horizontal (Grid)
+    ctx.strokeStyle = '#2e2b31';
+    ctx.lineWidth = 1;
+    ctx.fillStyle = '#a5a1a8';
+    ctx.font = 'bold 9px sans-serif';
+    ctx.textAlign = 'right';
+    ctx.textBaseline = 'middle';
+
+    const gridRows = 3;
+    for (let i = 0; i <= gridRows; i++) {
+        const pct = i / gridRows;
+        const val = Math.round(maxCount * pct);
+        const y = padding.top + graphHeight * (1 - pct);
+
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+
+        ctx.fillText(val.toString(), padding.left - 8, y);
+    }
+
+    // Dibujar las barras y etiquetas del eje X
+    const numBars = entries.length;
+    const barWidth = (graphWidth / numBars) * 0.7;
+    const spacing = (graphWidth / numBars) * 0.3;
+
+    ctx.textAlign = 'center';
+    
+    for (let i = 0; i < numBars; i++) {
+        const [label, count] = entries[i];
+        const barHeight = (count / maxCount) * graphHeight;
+
+        const x = padding.left + i * (graphWidth / numBars) + spacing / 2;
+        const y = padding.top + graphHeight - barHeight;
+
+        if (barHeight > 0) {
+            // Gradiente vertical para la barra
+            const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
+            grad.addColorStop(0, '#ff66aa'); // Rosa
+            grad.addColorStop(1, '#aa55ff'); // Violeta
+
+            ctx.fillStyle = grad;
+
+            // Dibujar barra redondeada en el tope
+            const radius = Math.min(4, barHeight);
+            ctx.beginPath();
+            ctx.moveTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.lineTo(x + barWidth - radius, y);
+            ctx.quadraticCurveTo(x + barWidth, y, x + barWidth, y + radius);
+            ctx.lineTo(x + barWidth, y + barHeight);
+            ctx.lineTo(x, y + barHeight);
+            ctx.closePath();
+            ctx.fill();
+
+            // Dibujar cantidad encima de la barra
+            ctx.fillStyle = '#ffffff';
+            ctx.font = 'bold 8px sans-serif';
+            ctx.textBaseline = 'bottom';
+            ctx.fillText(count.toString(), x + barWidth / 2, y - 3);
+        }
+
+        // Etiqueta del eje X (limpiando la estrella '★' para ahorrar espacio si fuera necesario)
+        ctx.fillStyle = '#a5a1a8';
+        ctx.font = '9px sans-serif';
+        ctx.textBaseline = 'top';
+        const cleanLabel = label.replace('★', '');
+        ctx.fillText(cleanLabel, x + barWidth / 2, padding.top + graphHeight + 6);
+    }
+
+    // Título de la sección
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = '#ffffff';
+    ctx.font = 'bold 11px sans-serif';
+    ctx.fillText('Distribución de Estrellas (Star Rating)', padding.left, padding.top - 18);
+
+    return canvas.toBuffer('image/png');
+}
+
+/**
  * Renderiza el embed para el comando s.snipes (tops nacionales / snipe.huismetbenen.nl)
  */
 function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es') {
@@ -1096,21 +1203,21 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
         })
         .setTimestamp();
 
+    const files = [];
+
     if (sniped_userdata.is_detailed) {
-        // Estrellas
+        // Estrellas (Gráfico en Canvas)
         const sr = sniped_userdata.star_ranges || {};
         const totalScores = sniped_userdata.count_total || 1;
-        const maxLabelLen = Math.max(...Object.keys(sr).map(k => k.length), 4);
-        const starsText = Object.entries(sr).map(([key, count]) => {
-            const pct = (count / totalScores) * 100;
-            const filled = Math.min(10, Math.round(pct / 10));
-            const bar = '█'.repeat(filled) + '░'.repeat(10 - filled);
-            let label = key;
-            while (label.length < maxLabelLen) {
-                label += ' ';
-            }
-            return `\`${label}\` \`${bar}\` **${count}** (${pct.toFixed(1)}%)`;
-        }).join('\n');
+        
+        try {
+            const canvasBuffer = drawStarDistributionChart(sr, totalScores);
+            const attachment = new AttachmentBuilder(canvasBuffer, { name: 'star_distribution.png' });
+            files.push(attachment);
+            embed.setImage('attachment://star_distribution.png');
+        } catch (e) {
+            console.error('[SNIPES-CHART] Error generating canvas distribution chart:', e);
+        }
 
         // Mappers
         const mappersText = (sniped_userdata.top_mappers || [])
@@ -1175,7 +1282,6 @@ ${t(locale, 'snipes.avg_pp', { pp: Math.round(sniped_userdata.average_pp * 100) 
 ${t(locale, 'snipes.most_used_mod', { mod: mod_mas_usado[0], count: mod_mas_usado[1] })}
 ${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSnipes_year[1] })}`)
             .addFields(
-                { name: t(locale, 'snipes.detail_stars'), value: starsText, inline: false },
                 { name: t(locale, 'snipes.detail_mappers'), value: mappersText, inline: true },
                 { name: t(locale, 'snipes.detail_stats'), value: techText, inline: true },
                 { name: t(locale, 'snipes.detail_history'), value: historyText, inline: false }
@@ -1188,7 +1294,11 @@ ${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSn
 `);
     }
 
-    return { embeds: [embed] };
+    const response = { embeds: [embed] };
+    if (files.length > 0) {
+        response.files = files;
+    }
+    return response;
 }
 
 /**

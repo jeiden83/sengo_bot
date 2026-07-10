@@ -85,31 +85,29 @@ async function run(messages, args){
         }
     }
 
+    const numBuckets = 10;
     const range = maxStars - minStars;
-    const step = range / 6;
-    const limit1 = minStars + step;
-    const limit2 = minStars + 2 * step;
-    const limit3 = minStars + 3 * step;
-    const limit4 = minStars + 4 * step;
-    const limit5 = minStars + 5 * step;
+    const step = range / numBuckets;
 
-    const buckets = [
-        { key: 'b1', label: `${limit1.toFixed(1)}★-` },
-        { key: 'b2', label: `${limit1.toFixed(1)}-${limit2.toFixed(1)}★` },
-        { key: 'b3', label: `${limit2.toFixed(1)}-${limit3.toFixed(1)}★` },
-        { key: 'b4', label: `${limit3.toFixed(1)}-${limit4.toFixed(1)}★` },
-        { key: 'b5', label: `${limit4.toFixed(1)}-${limit5.toFixed(1)}★` },
-        { key: 'b6', label: `${limit5.toFixed(1)}★+` }
-    ];
+    const buckets = [];
+    const starRanges = {};
+    for (let i = 0; i < numBuckets; i++) {
+        const key = `b${i+1}`;
+        const limitStart = minStars + i * step;
+        const limitEnd = minStars + (i + 1) * step;
 
-    const starRanges = {
-        'b1': 0,
-        'b2': 0,
-        'b3': 0,
-        'b4': 0,
-        'b5': 0,
-        'b6': 0
-    };
+        let label;
+        if (i === 0) {
+            label = `${limitEnd.toFixed(1)}★-`;
+        } else if (i === numBuckets - 1) {
+            label = `${limitStart.toFixed(1)}★+`;
+        } else {
+            label = `${limitStart.toFixed(1)}-${limitEnd.toFixed(1)}★`;
+        }
+
+        buckets.push({ key, label, min: limitStart, max: limitEnd });
+        starRanges[key] = 0;
+    }
     const mappersCount = {};
     let totalBPM = 0, totalAR = 0, totalOD = 0, totalCS = 0;
     let bpmCount = 0, arCount = 0, odCount = 0, csCount = 0;
@@ -162,12 +160,32 @@ async function run(messages, args){
             // Estrellas
             const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
             if (stars > 0) {
-                if (stars < limit1) starRanges['b1']++;
-                else if (stars < limit2) starRanges['b2']++;
-                else if (stars < limit3) starRanges['b3']++;
-                else if (stars < limit4) starRanges['b4']++;
-                else if (stars < limit5) starRanges['b5']++;
-                else starRanges['b6']++;
+                let assigned = false;
+                for (let i = 0; i < numBuckets; i++) {
+                    const b = buckets[i];
+                    if (i === 0) {
+                        if (stars < b.max) {
+                            starRanges[b.key]++;
+                            assigned = true;
+                            break;
+                        }
+                    } else if (i === numBuckets - 1) {
+                        if (stars >= b.min) {
+                            starRanges[b.key]++;
+                            assigned = true;
+                            break;
+                        }
+                    } else {
+                        if (stars >= b.min && stars < b.max) {
+                            starRanges[b.key]++;
+                            assigned = true;
+                            break;
+                        }
+                    }
+                }
+                if (!assigned) {
+                    starRanges[`b${numBuckets}`]++;
+                }
             } else {
                 starRanges['b1']++;
             }
