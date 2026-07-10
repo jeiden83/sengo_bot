@@ -18,12 +18,18 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         Logger.system(`Error al iniciar Webhook Server: ${err.message}`);
     }
 
+    const isDev = config.BOT_PREFIX === 'sd.';
+
     // 2. Anunciador de Cumpleaños
-    try {
-        const { initBirthdayAnnouncer } = require("./birthdayAnnouncer.js");
-        initBirthdayAnnouncer(client);
-    } catch (err) {
-        Logger.system(`Error al iniciar Birthday Announcer: ${err.message}`);
+    if (!isDev) {
+        try {
+            const { initBirthdayAnnouncer } = require("./birthdayAnnouncer.js");
+            initBirthdayAnnouncer(client);
+        } catch (err) {
+            Logger.system(`Error al iniciar Birthday Announcer: ${err.message}`);
+        }
+    } else {
+        Logger.system("Servicio de Anunciador de Cumpleaños omitido (Modo Dev).");
     }
 
     // 3. Sincronizador de Supporter
@@ -105,13 +111,17 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         }
 
         // 8. Servicio de Tracking de osu!
-        try {
-            const { initOsuTracker } = require("./osuTrackerService.js");
-            initOsuTracker(client).catch(err => {
+        if (!isDev) {
+            try {
+                const { initOsuTracker } = require("./osuTrackerService.js");
+                initOsuTracker(client).catch(err => {
+                    Logger.system(`Error al iniciar Osu Tracker Service: ${err.message}`);
+                });
+            } catch (err) {
                 Logger.system(`Error al iniciar Osu Tracker Service: ${err.message}`);
-            });
-        } catch (err) {
-            Logger.system(`Error al iniciar Osu Tracker Service: ${err.message}`);
+            }
+        } else {
+            Logger.system("Servicio de Tracking de osu! omitido (Modo Dev).");
         }
     }
 }
