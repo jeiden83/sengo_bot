@@ -80,6 +80,8 @@ async function main(reload) {
 
     const ReworkModel = require("./models/ReworkModel.js");
     ReworkModel.initClient(client);
+    const ReworkRecalcQueue = require("./models/ReworkRecalcQueue.js");
+    ReworkRecalcQueue.initClient(client);
 
     await load_listeners(res, client, config);
 

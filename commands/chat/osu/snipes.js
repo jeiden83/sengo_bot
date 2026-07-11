@@ -224,16 +224,15 @@ async function run(messages, args){
         return;
     }
 
+    let recalcNotice = null;
+    let shouldEnqueue = false;
+
     if (isTop) {
         const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
         const recalculated = ReworkRecalcQueue.isRecalculated(id, look_gamemode);
         if (!recalculated) {
-            ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id);
-        }
-
-        const qStatus = ReworkRecalcQueue.getQueueStatus(id, look_gamemode);
-        let recalcNotice = null;
-        if (!recalculated) {
+            shouldEnqueue = true;
+            const qStatus = ReworkRecalcQueue.getQueueStatus(id, look_gamemode);
             if (qStatus === 'running') {
                 recalcNotice = locale === 'es'
                     ? "⚠️ *Se están recalculando las jugadas de este usuario en segundo plano debido al rework.*"
@@ -561,6 +560,11 @@ async function run(messages, args){
                 });
             }
 
+            if (shouldEnqueue) {
+                const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
+                ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message.id);
+            }
+
             const filter = btnInt => btnInt.user.id === message.author.id;
             const collector = sent_message.createMessageComponentCollector({
                 filter,
@@ -723,6 +727,11 @@ async function run(messages, args){
                 embeds: [initialListEmbed],
                 components: [getListButtonsRow(startIndex, total_plays)]
             });
+        }
+
+        if (shouldEnqueue) {
+            const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
+            ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message.id);
         }
 
         const filter = btnInt => btnInt.user.id === message.author.id;

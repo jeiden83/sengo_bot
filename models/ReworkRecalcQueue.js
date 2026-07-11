@@ -12,9 +12,15 @@ const REWORK_START_DATE = new Date('2026-07-11T13:20:00.000Z');
 let recalculatedUsers = new Map();
 
 // Cola en memoria de tareas de recalculación
-// Cada tarea: { userId, username, mode, countryCode, channelId }
+// Cada tarea: { userId, username, mode, countryCode, channelId, messageId }
 const queue = [];
 let currentTask = null;
+let clientInstance = null;
+
+// Inicializa el cliente Discord
+function initClient(client) {
+    clientInstance = client;
+}
 
 // Cargar caché de usuarios recalculados
 async function loadRecalculatedUsers() {
@@ -58,7 +64,7 @@ function getQueueStatus(userId, mode) {
 }
 
 // Agrega un usuario a la cola de recalculación si no está ya
-function enqueue(userId, username, mode, countryCode, channelId = null) {
+function enqueue(userId, username, mode, countryCode, channelId = null, messageId = null) {
     if (isRecalculated(userId, mode)) {
         return;
     }
@@ -72,7 +78,8 @@ function enqueue(userId, username, mode, countryCode, channelId = null) {
         username,
         mode,
         countryCode,
-        channelId
+        channelId,
+        messageId
     });
 
     console.log(`[ReworkRecalcQueue] Encolado recalculación de tops para ${username} (${userId}) en modo ${mode}`);
@@ -105,12 +112,84 @@ async function processNext() {
         await saveRecalculatedUsers();
         
         console.log(`[ReworkRecalcQueue] Completada recalculación para ${currentTask.username} (${currentTask.userId}) en modo ${currentTask.mode}`);
+
+        // Intentar actualizar el mensaje de Discord quitando el aviso de recalculación/cola
+        // ponytail: actualizar mensaje de Discord de forma silenciosa para mejorar UX
+        if (currentTask.channelId && currentTask.messageId) {
+            await removeWarningFromMessage(currentTask);
+        }
     } catch (err) {
         console.error(`[ReworkRecalcQueue] Error crítico procesando tarea para ${currentTask.username}:`, err);
     } finally {
         currentTask = null;
         // Continuar con la siguiente tarea
         processNext();
+    }
+}
+
+// Remueve el mensaje de advertencia y actualiza el PP en el embed
+async function removeWarningFromMessage(task) {
+    if (!clientInstance || !task.channelId || !task.messageId) {
+        return;
+    }
+    try {
+        const channel = await clientInstance.channels.fetch(task.channelId).catch(() => null);
+        if (!channel) return;
+        
+        const msg = await channel.messages.fetch(task.messageId).catch(() => null);
+        if (!msg) return;
+
+        const embed = msg.embeds[0];
+        if (embed && embed.description) {
+            let desc = embed.description;
+            // Remover mensajes de advertencia/cola tanto en inglés como en español
+            desc = desc.replace(/⚠️ \*Se están recalculando las jugadas de este usuario en segundo plano debido al rework\.\*\n?\n?/g, "");
+            desc = desc.replace(/⏳ \*Las jugadas de este usuario están en cola para ser recalculadas debido al rework\.\*\n?\n?/g, "");
+            desc = desc.replace(/⚠️ \*This user's plays are being recalculated in the background due to the rework\.\*\n?\n?/g, "");
+            desc = desc.replace(/⏳ \*This user's plays are in queue to be recalculated due to the rework\.\*\n?\n?/g, "");
+
+            // Buscar y actualizar los PPs de los mapas que se muestran en el embed (solo para list mode)
+            const matches = [...desc.matchAll(/https:\/\/osu\.ppy\.sh\/b\/(\d+)/g)];
+            if (matches.length > 0) {
+                const beatmapIds = matches.map(m => parseInt(m[1]));
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    const { data, error } = await supabase
+                        .from('top_scores')
+                        .select('beatmap_id, pp')
+                        .eq('user_id', task.userId.toString())
+                        .in('beatmap_id', beatmapIds)
+                        .eq('country_code', task.countryCode);
+
+                    if (data && data.length > 0) {
+                        const ppMap = new Map(data.map(d => [d.beatmap_id, d.pp]));
+                        const lines = desc.split("\n");
+                        let currentBeatmapId = null;
+                        for (let i = 0; i < lines.length; i++) {
+                            const mapMatch = lines[i].match(/https:\/\/osu\.ppy\.sh\/b\/(\d+)/);
+                            if (mapMatch) {
+                                currentBeatmapId = parseInt(mapMatch[1]);
+                            }
+                            if (currentBeatmapId && lines[i].includes("**") && lines[i].includes("pp**")) {
+                                const newPP = ppMap.get(currentBeatmapId);
+                                if (newPP !== undefined && newPP !== null) {
+                                    lines[i] = lines[i].replace(/\*\*[\d.]+pp\*\*/, `**${newPP.toFixed(2)}pp**`);
+                                }
+                                currentBeatmapId = null; // Limpiar para el siguiente bloque
+                            }
+                        }
+                        desc = lines.join("\n");
+                    }
+                }
+            }
+
+            const { EmbedBuilder } = require("discord.js");
+            const newEmbed = EmbedBuilder.from(embed).setDescription(desc);
+            
+            await msg.edit({ embeds: [newEmbed] }).catch(() => {});
+        }
+    } catch (err) {
+        console.error("[ReworkRecalcQueue] Error al eliminar el mensaje de advertencia:", err);
     }
 }
 
@@ -236,5 +315,6 @@ loadRecalculatedUsers();
 module.exports = {
     isRecalculated,
     getQueueStatus,
-    enqueue
+    enqueue,
+    initClient
 };
