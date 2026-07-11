@@ -211,7 +211,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         }
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -221,7 +221,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}
+        .setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}
 ${ansiBlock}
 		`)
         .setImage(beatmap_cover)
@@ -401,7 +401,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
 
     const authorName = parsed_args.nochoke
         ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
@@ -419,7 +419,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
 ${ansiBlock}
         `)
         .setImage(beatmap_cover)
@@ -637,7 +637,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         prefix_desc += `🔍 *${t(locale, 'compare.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, user_max_combo, beatmap_max_combo);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -647,7 +647,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${disclaimer}${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`${disclaimer}${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
 ${ansiBlock}
         `)
         .setImage(beatmap_cover)
@@ -796,7 +796,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, accuracy, ratio_str, recent_scores.max_combo, pre_calculated.beatmap_max_combo);
+    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, recent_scores.max_combo, pre_calculated.beatmap_max_combo);
 
     let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
     let authorUrl = `https://osu.ppy.sh/users/${user_id}`;
@@ -829,7 +829,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
-        .setDescription(`**${t(locale, 'subir.score_label')}**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used}
+        .setDescription(`**${t(locale, 'subir.score_label')}**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
 ${ansiBlock}
         `)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
