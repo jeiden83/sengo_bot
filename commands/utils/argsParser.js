@@ -990,7 +990,11 @@ function argsParserNoCommand(args, options = {}) {
             const knownFlags = new Set([
                 'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region',
                 'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina',
-                'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke'
+                'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke',
+                // ponytail: flags de skin y modos de juego para evitar falsos positivos
+                'delete', 'set', 'nombre', 'name', 'borrar',
+                'osu', 'std', 'standard', 'ctb', 'catch', 'fruits', 'fruit',
+                'taiko', 'tko', 'mania', 'man', 'mna'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;
