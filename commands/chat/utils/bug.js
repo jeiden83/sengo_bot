@@ -104,7 +104,8 @@ async function run(messages, args) {
             parsedTitle,
             parsedBody,
             repliedMessage,
-            attachmentUrl
+            attachmentUrl,
+            message
         );
 
         const client = message.client;

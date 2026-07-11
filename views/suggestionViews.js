@@ -12,15 +12,15 @@ const { EmbedBuilder } = require("discord.js");
  * @param {string|null} attachmentUrl URL del archivo adjunto (foto)
  * @returns {EmbedBuilder} Embed para enviar al webhook
  */
-function doSuggestionReportEmbed(reporter, guild, channel, timestamp, title, body, replyMessage, attachmentUrl) {
+function doSuggestionReportEmbed(reporter, guild, channel, timestamp, title, body, replyMessage, attachmentUrl, invokingMessage) {
     const embed = new EmbedBuilder()
-        .setTitle(title ? `💡 Sugerencia: ${title}` : "💡 Nueva Sugerencia")
-        .setColor(0x2ECC71) // Verde para sugerencias
-        .setTimestamp(timestamp)
-        .setFooter({
-            text: "Sengo Suggestion Box",
-            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
-        });
+         .setTitle(title ? `💡 Sugerencia: ${title}` : "💡 Nueva Sugerencia")
+         .setColor(0x2ECC71) // Verde para sugerencias
+         .setTimestamp(timestamp)
+         .setFooter({
+             text: "Sengo Suggestion Box",
+             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+         });
 
     if (body) {
         embed.setDescription(body);
@@ -38,6 +38,13 @@ function doSuggestionReportEmbed(reporter, guild, channel, timestamp, title, bod
         { name: "👤 Sugerido por", value: reporterInfo, inline: true },
         { name: "🌐 Servidor / Contexto", value: guildInfo, inline: true }
     );
+
+    // Enlace al comando de invocación (si aplica)
+    if (invokingMessage && invokingMessage.url) {
+        embed.addFields(
+            { name: "🔗 Enlace del Comando", value: `[Ir al mensaje de invocación](${invokingMessage.url})`, inline: false }
+        );
+    }
 
     // Información de reply (si existe)
     if (replyMessage) {

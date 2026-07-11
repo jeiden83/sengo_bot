@@ -2376,10 +2376,22 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     const isStd = score.beatmap.mode === 'osu' || score.beatmap.mode === 0 || score.beatmap.mode_int === 0;
     if (!isStd) return;
     
-    const countryCode = score.user?.country_code || 'VE';
+    let countryCode = score.user?.country_code || (score.user?.country?.code);
+    const supabase = getSupabaseClient();
+    if (!countryCode) {
+        // ponytail: fallback to DB check for non-tracked users' country
+        const userIdStr = (score.user_id || score.user?.id || '').toString();
+        if (userIdStr) {
+            try {
+                const { data: dbUser } = await supabase.from('user_ranked_stats').select('country_code').eq('osu_id', userIdStr).maybeSingle();
+                countryCode = dbUser?.country_code;
+            } catch (dbErr) {
+                console.error("[REALTIME-SNIPE] Error al consultar país en BD:", dbErr);
+            }
+        }
+    }
     if (countryCode !== 'VE') return;
 
-    const supabase = getSupabaseClient();
     const beatmapId = score.beatmap.id.toString();
 
     try {

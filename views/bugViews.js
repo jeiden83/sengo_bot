@@ -12,7 +12,7 @@ const { EmbedBuilder } = require("discord.js");
  * @param {string|null} attachmentUrl URL del archivo adjunto (foto)
  * @returns {EmbedBuilder} Embed para enviar al webhook
  */
-function doBugReportEmbed(reporter, guild, channel, timestamp, title, body, replyMessage, attachmentUrl) {
+function doBugReportEmbed(reporter, guild, channel, timestamp, title, body, replyMessage, attachmentUrl, invokingMessage) {
     const embed = new EmbedBuilder()
         .setTitle(title ? `🐛 Reporte de Bug: ${title}` : "🐛 Nuevo Reporte de Bug")
         .setColor(0xE67E22) // Naranja
@@ -38,6 +38,13 @@ function doBugReportEmbed(reporter, guild, channel, timestamp, title, body, repl
         { name: "👤 Reportado por", value: reporterInfo, inline: true },
         { name: "🌐 Servidor / Contexto", value: guildInfo, inline: true }
     );
+
+    // Enlace al comando de invocación (si aplica)
+    if (invokingMessage && invokingMessage.url) {
+        embed.addFields(
+            { name: "🔗 Enlace del Comando", value: `[Ir al mensaje de invocación](${invokingMessage.url})`, inline: false }
+        );
+    }
 
     // Información de reply (si existe)
     if (replyMessage) {

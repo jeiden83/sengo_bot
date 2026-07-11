@@ -31,6 +31,23 @@ async function run(messages, args) {
         return filterPass ? t(locale, 'recent.err_no_scores_pass') : t(locale, 'recent.err_no_scores');
     }
 
+    // ponytail: check for snipes in the background for Venezuelan players
+    try {
+        const OsuScoreModel = require("../../../models/OsuScoreModel.js");
+        const playsToCheck = parser_res.fn_response.slice(0, 5);
+        for (const play of playsToCheck) {
+            const country = play.user?.country_code || play.user?.country?.code;
+            if (country === 'VE' || !country) {
+                const sniperUsername = play.user?.username || parser_res.parsed_args.username?.[0] || 'Desconocido';
+                OsuScoreModel.checkAndRecordRealtimeSnipe(play, sniperUsername).catch(err => {
+                    console.error("[RS-BACKGROUND-SNIPE] Error al comprobar snipe en segundo plano:", err);
+                });
+            }
+        }
+    } catch (err) {
+        console.error("[RS-BACKGROUND-SNIPE] Error crítico iniciando comprobación de snipes:", err);
+    }
+
     if (parser_res.parsed_args.bestSort && Array.isArray(parser_res.fn_response) && parser_res.fn_response.length > 0) {
         let loading_msg;
         try {
