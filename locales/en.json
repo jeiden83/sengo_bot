@@ -1528,6 +1528,8 @@
     "name_no_skin_mode": "❌ To change the name, you must first link a skin for the {mode} mode using `s.skin -set <link> -{mode}`.",
     "name_success": "✅ The name of your skin has been updated to: **{name}**.",
     "name_success_mode": "✅ The name of your skin for the {mode} mode has been updated to: **{name}**.",
+    "name_delete_success": "✅ Your skin's name has been removed.",
+    "name_delete_success_mode": "✅ Your skin's name for the {mode} mode has been removed.",
     "modes": {
       "osu": "osu! Standard",
       "taiko": "osu!taiko",

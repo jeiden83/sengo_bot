@@ -242,8 +242,12 @@ async function run(messages, args) {
                 return t(locale, 'skin.name_no_skin_mode', { mode: modeLabel });
             }
 
-            await OsuUserModel.setSkinByMode(message.author.id, parsed.mode, undefined, parsed.name || null);
+            const nameToSet = parsed.name || null;
+            await OsuUserModel.setSkinByMode(message.author.id, parsed.mode, undefined, nameToSet);
             const modeLabel = t(locale, `skin.modes.${parsed.mode}`);
+            if (nameToSet === null) {
+                return t(locale, 'skin.name_delete_success_mode', { mode: modeLabel });
+            }
             return t(locale, 'skin.name_success_mode', { mode: modeLabel, name: parsed.name });
         }
         

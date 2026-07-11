@@ -44,7 +44,7 @@ const data = new SlashCommandBuilder()
             .addStringOption(opt =>
                 opt.setName("nombre")
                     .setDescription("El nuevo nombre personalizado para tu skin")
-                    .setRequired(true)
+                    .setRequired(false)
             )
             .addStringOption(opt =>
                 opt.setName("modo")
@@ -105,7 +105,10 @@ async function run(interaction, res) {
     } else if (subcommand === "nombre") {
         const nombre = interaction.options.getString("nombre");
         const modo = interaction.options.getString("modo");
-        args.push("-nombre", nombre);
+        args.push("-nombre");
+        if (nombre) {
+            args.push(nombre);
+        }
         if (modo) {
             args.push(`-${modo}`);
         }

@@ -1528,6 +1528,8 @@
     "name_no_skin_mode": "❌ Para cambiar el nombre, primero debes vincular una skin para el modo {mode} con `s.skin -set <enlace> -{mode}`.",
     "name_success": "✅ El nombre de tu skin ha sido actualizado a: **{name}**.",
     "name_success_mode": "✅ El nombre de tu skin para el modo {mode} ha sido actualizado a: **{name}**.",
+    "name_delete_success": "✅ El nombre de tu skin ha sido eliminado.",
+    "name_delete_success_mode": "✅ El nombre de tu skin para el modo {mode} ha sido eliminado.",
     "modes": {
       "osu": "osu! Standard",
       "taiko": "osu!taiko",
