@@ -233,10 +233,10 @@ async function run(messages, args){
                 : modsString.match(/.{1,2}/g).map(mod => ({ acronym: mod }));
 
             const hasHiddenOrFlashlight = scoreMods.some(m => m.acronym === 'HD' || m.acronym === 'FL');
+            const acc = dbScore.accuracy || 0;
             let calculatedRank = dbScore.rank;
             if (!calculatedRank) {
                 calculatedRank = 'D';
-                const acc = dbScore.accuracy || 0;
                 if (acc >= 1.0) {
                     calculatedRank = hasHiddenOrFlashlight ? 'SSH' : 'SS';
                 } else if (acc >= 0.95) {
