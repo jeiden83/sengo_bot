@@ -14,21 +14,9 @@ async function run(interaction, res) {
     const args = [];
     const messageUrlOrId = interaction.options.getString("mensaje");
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            locale: interaction.locale || 'es',
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            },
-            reference: null
-        },
-        res
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
+    messages.message.reference = null;
 
     if (messageUrlOrId) {
         const idMatch = messageUrlOrId.match(/\d+$/);

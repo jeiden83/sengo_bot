@@ -117,25 +117,8 @@ async function run(interaction, res) {
         }
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            client: interaction.client,
-            locale: interaction.resolvedLocale || interaction.locale || 'es',
-            // Redirigimos el canal de envío virtual a la interacción deferida
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            }
-        },
-        res: res,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     const result = await skinChatCommand.run(messages, args);
 

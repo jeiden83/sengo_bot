@@ -35,6 +35,62 @@ function addServidorOption(option) {
 }
 
 /**
+ * Crea un contexto de mensajes seguro para comandos slash que redirige respuestas
+ * e interactúa usando los tokens de la interacción, compatible con servidores externos.
+ * 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction 
+ * @param {any} res 
+ * @returns {any} Contexto de mensajes simulado para .run()
+ */
+function createSlashMessagesContext(interaction, res) {
+    let interactionUsed = false;
+
+    const replyFn = async (options) => {
+        if (!interaction.replied && !interaction.deferred) {
+            interactionUsed = true;
+            return await interaction.reply(options);
+        }
+        if (interaction.deferred && !interactionUsed) {
+            interactionUsed = true;
+            return await interaction.editReply(options);
+        }
+        try {
+            return await interaction.followUp(options);
+        } catch {
+            return await interaction.channel.send(options);
+        }
+    };
+
+    return {
+        message: {
+            author: interaction.user,
+            member: interaction.member,
+            guild: interaction.guild,
+            locale: interaction.resolvedLocale || interaction.locale || 'es',
+            reply: replyFn,
+            channel: {
+                send: replyFn,
+                sendTyping: async () => {
+                    try {
+                        await interaction.channel.sendTyping();
+                    } catch {}
+                },
+                id: interaction.channelId,
+                isTextBased: () => true,
+                messages: interaction.channel?.messages || {
+                    fetch: async () => new Map()
+                }
+            }
+        },
+        res: res,
+        reply: {
+            reply: replyFn
+        },
+        logger: interaction.logger
+    };
+}
+
+/**
  * Convierte las opciones estándar de un comando slash en el formato de argumentos y contexto
  * que esperan los comandos de chat tradicionales.
  * 
@@ -60,17 +116,7 @@ function parseOsuSlashArgs(interaction, res) {
     if (modo) args.push(`-${modo}`);
     if (servidor) args.push(`-${servidor}`);
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            locale: interaction.resolvedLocale || interaction.locale || 'es'
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const messages = createSlashMessagesContext(interaction, res);
 
     return { args, messages };
 }
@@ -79,5 +125,7 @@ module.exports = {
     addUsuarioOption,
     addModoOption,
     addServidorOption,
+    createSlashMessagesContext,
     parseOsuSlashArgs
 };
+

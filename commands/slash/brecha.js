@@ -6,17 +6,8 @@ const data = new SlashCommandBuilder()
     .setDescription("Calcula la brecha cambiaria en Venezuela (BCV vs Binance P2P)");
 
 async function run(interaction, res) {
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     const result = await brechaChatCommand.run(messages, []);
 

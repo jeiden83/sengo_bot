@@ -36,23 +36,9 @@ async function run(interaction, res) {
     if (modo) args.push(`-${modo}`);
     if (servidor) args.push(`-${servidor}`);
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            },
-            locale: interaction.resolvedLocale || interaction.locale || 'es'
-        },
-        res,
-        interaction
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
+    messages.interaction = interaction;
 
     const result = await entreChatCommand.run(messages, args);
     if (result) {

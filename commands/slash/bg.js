@@ -16,19 +16,11 @@ async function run(interaction, res) {
     const args = [];
     if (mapa) args.push(mapa);
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
-    return await bgChatCommand.run(messages, args);
+    const result = await bgChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Muestra el fondo (background) de un beatmap";

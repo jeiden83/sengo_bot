@@ -42,27 +42,10 @@ async function run(interaction, res) {
 
     const args = [];
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            attachments: attachments,
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                sendTyping: async () => {
-                    // no-op para slash command
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            }
-        },
-        res: res,
-        reply: replyMessage,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
+    messages.message.attachments = attachments;
+    messages.reply = replyMessage;
 
     // Llamamos al comando de chat original
     const result = await subirChatCommand.run(messages, args);

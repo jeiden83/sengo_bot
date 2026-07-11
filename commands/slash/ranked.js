@@ -65,19 +65,11 @@ async function run(interaction, res) {
         args.push("-p", pagina.toString());
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
-    return await rankedChatCommand.run(messages, args);
+    const result = await rankedChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Muestra las estadísticas de Ranked Play (lazer)";

@@ -16,18 +16,6 @@ const data = new SlashCommandBuilder()
     );
 
 async function run(interaction, res) {
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
-
     const bypassOpt = interaction.options.getBoolean("bypass");
     const serverOpt = interaction.options.getString("server");
 
@@ -38,7 +26,11 @@ async function run(interaction, res) {
         args.push(serverOpt);
     }
 
-    return await gapChatCommand.run(messages, args);
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
+
+    const result = await gapChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Muestra el top de puntuaciones del servidor en el último mapa enviado";

@@ -18,28 +18,9 @@ async function run(interaction, res) {
         attachments.set(imagen.id, imagen);
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            attachments: attachments,
-            locale: interaction.locale || interaction.resolvedLocale || 'es',
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                sendTyping: async () => {
-                    // Sin acción en comandos slash
-                },
-                messages: interaction.channel?.messages,
-                guild: interaction.guild
-            }
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
+    messages.message.attachments = attachments;
 
     // Invocar al comando de chat original
     const result = await globoChatCommand.run(messages, []);

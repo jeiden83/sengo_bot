@@ -50,17 +50,8 @@ const data = new SlashCommandBuilder()
     );
 
 async function run(interaction, res) {
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     const tipo = interaction.options.getString("tipo");
     const crypto = interaction.options.getString("crypto");

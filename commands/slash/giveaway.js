@@ -73,32 +73,8 @@ async function run(interaction, res, chat_commands) {
         args.push(mensaje);
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            client: interaction.client,
-            channel: {
-                send: async (options) => {
-                    if (interaction.deferred || interaction.replied) {
-                        return await interaction.editReply(options);
-                    }
-                    return await interaction.reply(options);
-                }
-            }
-        },
-        res: res,
-        reply: {
-            reply: async (options) => {
-                if (interaction.deferred || interaction.replied) {
-                    return await interaction.editReply(options);
-                }
-                return await interaction.reply(options);
-            }
-        },
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     return await giveawayChatCommand.run(messages, args, chat_commands);
 }

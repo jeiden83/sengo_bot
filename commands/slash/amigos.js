@@ -18,23 +18,8 @@ async function run(interaction, res) {
         args.push("-sengo");
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            }
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     const result = await amigosChatCommand.run(messages, args);
 

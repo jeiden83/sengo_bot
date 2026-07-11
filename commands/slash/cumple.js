@@ -94,33 +94,8 @@ async function run(interaction, res) {
         }
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            client: interaction.client,
-            channel: {
-                send: async (options) => {
-                    return await interaction.editReply(options);
-                },
-                sendTyping: async () => {
-                    try {
-                        await interaction.channel.sendTyping();
-                    } catch {}
-                },
-                messages: interaction.channel.messages,
-                guild: interaction.guild
-            }
-        },
-        res: res,
-        reply: {
-            reply: async (options) => {
-                return await interaction.editReply(options);
-            }
-        },
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
     const result = await cumpleChatCommand.run(messages, args);
 

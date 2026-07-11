@@ -6,36 +6,10 @@ const data = new SlashCommandBuilder()
     .setDescription("Muestra información detallada sobre Sengo y qué lo hace sobresalir.");
 
 async function run(interaction, res) {
-    let interactionUsed = false;
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member || (interaction.guild ? interaction.guild.members.cache.get(interaction.user.id) : null),
-            guild: interaction.guild,
-            locale: interaction.resolvedLocale,
-            channel: {
-                send: async (options) => {
-                    interactionUsed = true;
-                    return await interaction.editReply(options);
-                }
-            }
-        },
-        res: res,
-        reply: {
-            reply: async (options) => {
-                interactionUsed = true;
-                return await interaction.editReply(options);
-            }
-        },
-        logger: interaction.logger
-    };
-
-    const result = await acercaChatCommand.run(messages, []);
-
-    if (result && !interactionUsed) {
-        await interaction.editReply(result);
-    }
+    await acercaChatCommand.run(messages, []);
 
     return true;
 }

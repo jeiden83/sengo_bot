@@ -79,19 +79,11 @@ async function run(interaction, res) {
         args.push("-nc");
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            channel: interaction.channel,
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const { createSlashMessagesContext } = require("../utils/slashUtils.js");
+    const messages = createSlashMessagesContext(interaction, res);
 
-    return await reworkChatCommand.run(messages, args);
+    const result = await reworkChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Calcula estimaciones de PP de reworks o muestra perfiles de usuario en reworks";
