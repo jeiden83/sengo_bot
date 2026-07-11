@@ -1066,6 +1066,90 @@ function doOsuMapsetEmbed({
     return { embed, components: [row] };
 }
 
+// Spectrum difficulty colors based on Figma specs
+const difficultySpectrum = [
+    { stars: 0.1, color: '#4290FB' }, // Light Blue
+    { stars: 1.25, color: '#4FC0FF' }, // Cyan
+    { stars: 2.0, color: '#4FFFD5' }, // Teal
+    { stars: 2.5, color: '#7CFF4F' }, // Light Green
+    { stars: 3.3, color: '#F6F05C' }, // Yellow
+    { stars: 4.2, color: '#FF8068' }, // Orange
+    { stars: 4.9, color: '#FF3C71' }, // Pink / Magenta
+    { stars: 5.8, color: '#AA55FF' }, // Purple
+    { stars: 6.7, color: '#6563DE' }, // Violet
+    { stars: 7.7, color: '#18158E' }, // Dark Blue
+    { stars: 9.0, color: '#111111' }  // Black (toned slightly lighter to be visible)
+];
+
+function getDifficultyColor(stars) {
+    if (stars < 0.1) return '#aaaaaa'; // Gray
+    if (stars >= 9.0) return '#111111'; // Toned down black
+    
+    let lower = difficultySpectrum[0];
+    let upper = difficultySpectrum[difficultySpectrum.length - 1];
+    
+    for (let i = 0; i < difficultySpectrum.length - 1; i++) {
+        if (stars >= difficultySpectrum[i].stars && stars <= difficultySpectrum[i+1].stars) {
+            lower = difficultySpectrum[i];
+            upper = difficultySpectrum[i+1];
+            break;
+        }
+    }
+    
+    const r1 = parseInt(lower.color.slice(1, 3), 16);
+    const g1 = parseInt(lower.color.slice(3, 5), 16);
+    const b1 = parseInt(lower.color.slice(5, 7), 16);
+    
+    const r2 = parseInt(upper.color.slice(1, 3), 16);
+    const g2 = parseInt(upper.color.slice(3, 5), 16);
+    const b2 = parseInt(upper.color.slice(5, 7), 16);
+    
+    const range = upper.stars - lower.stars;
+    const factor = range > 0 ? (stars - lower.stars) / range : 0;
+    
+    const r = Math.round(r1 + (r2 - r1) * factor);
+    const g = Math.round(g1 + (g2 - g1) * factor);
+    const b = Math.round(b1 + (b2 - b1) * factor);
+    
+    const hex = (x) => x.toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+function adjustColorBrightness(hex, percent) {
+    let R = parseInt(hex.substring(1, 3), 16);
+    let G = parseInt(hex.substring(3, 5), 16);
+    let B = parseInt(hex.substring(5, 7), 16);
+
+    R = Math.max(0, Math.min(255, R + (R * (percent / 100))));
+    G = Math.max(0, Math.min(255, G + (G * (percent / 100))));
+    B = Math.max(0, Math.min(255, B + (B * (percent / 100))));
+
+    const toHex = (x) => Math.round(x).toString(16).padStart(2, '0');
+    return `#${toHex(R)}${toHex(G)}${toHex(B)}`;
+}
+
+function parseStarsFromLabel(label) {
+    const clean = label.replace('★', '').trim();
+    if (clean.endsWith('-')) {
+        const val = parseFloat(clean);
+        return isNaN(val) ? 1.0 : val * 0.8;
+    }
+    if (clean.endsWith('+')) {
+        const val = parseFloat(clean);
+        return isNaN(val) ? 8.0 : val * 1.1;
+    }
+    if (clean.includes('-')) {
+        const parts = clean.split('-');
+        const minVal = parseFloat(parts[0]);
+        const maxVal = parseFloat(parts[1]);
+        if (!isNaN(minVal) && !isNaN(maxVal)) {
+            return (minVal + maxVal) / 2;
+        }
+    }
+    const singleVal = parseFloat(clean);
+    return isNaN(singleVal) ? 4.0 : singleVal;
+}
+
 /**
  * Dibuja un gráfico de barras moderno para la distribución de estrellas.
  */
@@ -1129,10 +1213,14 @@ function drawStarDistributionChart(sr, totalScores) {
         const y = padding.top + graphHeight - barHeight;
 
         if (barHeight > 0) {
-            // Gradiente vertical para la barra
+            // Obtener el color del espectro de dificultad según las estrellas de la barra
+            const starsVal = parseStarsFromLabel(label);
+            const barColor = getDifficultyColor(starsVal);
+
+            // Gradiente vertical para la barra (de claro/brillante arriba a un 30% más oscuro abajo)
             const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
-            grad.addColorStop(0, '#ff66aa'); // Rosa
-            grad.addColorStop(1, '#aa55ff'); // Violeta
+            grad.addColorStop(0, barColor);
+            grad.addColorStop(1, adjustColorBrightness(barColor, -30));
 
             ctx.fillStyle = grad;
 
