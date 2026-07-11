@@ -703,13 +703,12 @@ async function getPersonalizedRecommendations({
             } else if (style === 'length') {
                 const isDT = candidateMod.includes("DT") || candidateMod.includes("NC");
                 if (isDT) {
-                    // Si es DT/NC, queremos mapas de más de 1 minuto (60 segundos) de duración real
-                    // pero menores de 5 minutos (300 segundos) NoMod.
-                    // 60 segs reales * 1.5 = 90 segs NoMod.
-                    if (c.total_length < 90 || c.total_length >= 300) return false;
+                    // Si es DT/NC, queremos mapas de más de 4 minutos (240 segundos) de duración real.
+                    // 240 segs reales * 1.5 = 360 segs NoMod.
+                    if (c.total_length < 360) return false;
                 } else {
-                    // Si no es DT/NC, mínimo 5 minutos (300 segundos) NoMod.
-                    if (c.total_length < 300) return false;
+                    // Si no es DT/NC, mínimo 4 minutos (240 segundos) NoMod.
+                    if (c.total_length < 240) return false;
                 }
             } else if (style === 'tags') {
                 // Filtrar estrictamente: solo mapas que contengan user_tags
@@ -756,14 +755,14 @@ async function getPersonalizedRecommendations({
                 const isDT = candidateMod.includes("DT") || candidateMod.includes("NC");
                 if (isDT) {
                     score += 25;
-                    reasons.push("Largo con DT (+1m)");
+                    reasons.push("Largo con DT (+4m)");
                 } else {
                     if (c.total_length >= 600) {
                         score += 40;
                         reasons.push("Maratón extra largo (+10m)");
                     } else {
                         score += 25;
-                        reasons.push("Maratón largo (+5m)");
+                        reasons.push("Maratón largo (+4m)");
                     }
                 }
             } else if (lengthScore >= 11) {
