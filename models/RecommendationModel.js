@@ -983,11 +983,15 @@ async function recalculateExactPP(recs, activeMods) {
                 };
                 const map = await BeatmapModel.getBeatmap_osu(rec.beatmapsetId, rec.beatmapId, meta);
                 if (map) {
-                    const ppSS = new rosu.Performance({ mods: activeModsStr }).calculate(map).pp;
+                    const perfAttrs = new rosu.Performance({ mods: activeModsStr }).calculate(map);
+                    const ppSS = perfAttrs.pp;
                     const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
 
                     rec.maxPP = Math.round(ppSS);
                     rec.pp99 = Math.round(pp99);
+                    if (perfAttrs.difficulty && typeof perfAttrs.difficulty.stars === 'number') {
+                        rec.stars = perfAttrs.difficulty.stars;
+                    }
 
                     map.free();
                 }
