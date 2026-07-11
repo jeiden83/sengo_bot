@@ -2375,6 +2375,10 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     // Solo soportamos standard (mode === 0 / 'osu') por ahora en snipes
     const isStd = score.beatmap.mode === 'osu' || score.beatmap.mode === 0 || score.beatmap.mode_int === 0;
     if (!isStd) return;
+
+    // No procesar plays fallidas
+    const isPassed = score.passed !== false && score.rank !== 'F' && score.rank !== 'failed';
+    if (!isPassed) return;
     
     let countryCode = score.user?.country_code || (score.user?.country?.code);
     const supabase = getSupabaseClient();
@@ -2438,9 +2442,85 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
         const oldScoreVal = currentTop ? Number(currentTop.score || 0) : 0;
 
         if (!currentTop || newScoreVal > oldScoreVal) {
+            const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
+
+            // --- VERIFICACIÓN CON LA API EN TIEMPO REAL ---
+            let confirmedScore = score;
+            let verifiedSniperId = sniperId;
+            let verifiedUsername = osuUsername || score.user?.username || 'Desconocido';
+
+            try {
+                // Obtener token supporter de VE
+                const { data: dbTokens } = await supabase
+                    .from('oauth_tokens')
+                    .select('access_token')
+                    .eq('is_supporter', true)
+                    .eq('country_code', 'VE')
+                    .limit(1);
+
+                if (dbTokens && dbTokens.length > 0) {
+                    const token = dbTokens[0].access_token;
+                    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?type=country`;
+                    const apiRes = await axios.get(url, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json',
+                            'User-Agent': 'Mozilla/5.0'
+                        }
+                    });
+
+                    const countryScores = apiRes.data?.scores;
+                    if (Array.isArray(countryScores) && countryScores.length > 0) {
+                        const topApiScore = countryScores[0];
+                        const topApiUserId = topApiScore.user_id.toString();
+
+                        // Si el top 1 real de la API no es nuestro sniper, entonces no hay un nuevo snipe de este jugador.
+                        if (topApiUserId !== sniperId) {
+                            console.log(`[REALTIME-SNIPE] Verificación API: El top 1 real en ${beatmapId} es ${topApiScore.user?.username} (${topApiUserId}), no ${osuUsername || sniperId}. Ignorando snipe.`);
+                            
+                            // Auto-curación de top_scores local si difiere del de la API
+                            if (!currentTop || currentTop.user_id !== topApiUserId || Number(currentTop.score) !== Number(topApiScore.score)) {
+                                normalizeScore(topApiScore);
+                                let apiMods = 'NM';
+                                if (topApiScore.mods && topApiScore.mods.length > 0) {
+                                    apiMods = topApiScore.mods.map(m => (typeof m === 'string' ? m : m.acronym || '')).filter(Boolean).join('');
+                                }
+                                await supabase.from('top_scores').upsert({
+                                    beatmap_id: beatmapId,
+                                    country_code: countryCode,
+                                    user_id: topApiUserId,
+                                    username: topApiScore.user?.username || 'Desconocido',
+                                    score: Number(topApiScore.score || 0),
+                                    pp: topApiScore.pp || 0,
+                                    accuracy: topApiScore.accuracy || 0,
+                                    mods: apiMods.slice(0, 16),
+                                    max_combo: topApiScore.max_combo,
+                                    perfect: topApiScore.perfect || false,
+                                    statistics: topApiScore.statistics,
+                                    rank: topApiScore.rank,
+                                    ended_at: topApiScore.created_at || new Date().toISOString(),
+                                    updated_at: new Date().toISOString()
+                                });
+                                console.log(`[REALTIME-SNIPE] Base de datos auto-curada para mapa ${beatmapId} con el top 1 real de la API (${topApiScore.user?.username}).`);
+                            }
+                            return;
+                        }
+
+                        // Si coincide, usamos el score oficial de la API que es 100% correcto y normalizado
+                        confirmedScore = topApiScore;
+                        normalizeScore(confirmedScore);
+                        verifiedSniperId = topApiUserId;
+                        verifiedUsername = topApiScore.user?.username || verifiedUsername;
+                    }
+                }
+            } catch (apiErr) {
+                console.error(`[REALTIME-SNIPE] Error durante la verificación de la API en el mapa ${beatmapId}:`, apiErr.response?.data || apiErr.message);
+                // Si la API falla por rate limit, fallback a los datos locales
+            }
+
             let modsString = 'NM';
-            if (score.mods && score.mods.length > 0) {
-                const mappedMods = score.mods.map(m => {
+            if (confirmedScore.mods && confirmedScore.mods.length > 0) {
+                const mappedMods = confirmedScore.mods.map(m => {
                     if (typeof m === 'string') return m;
                     if (m && typeof m === 'object' && m.acronym) return m.acronym;
                     return '';
@@ -2450,28 +2530,27 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             if (modsString.length > 16) {
                 modsString = modsString.slice(0, 16);
             }
-            const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
 
-            if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== sniperId) {
+            if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== verifiedSniperId) {
                 // Registrar en el historial de snipes
                 const { error: insertErr } = await supabase
                     .from('snipes_history')
                     .insert({
                         beatmap_id: beatmapId,
-                        sniper_id: sniperId,
-                        sniper_name: osuUsername || score.user?.username || 'Desconocido',
+                        sniper_id: verifiedSniperId,
+                        sniper_name: verifiedUsername,
                         sniped_id: currentTop.user_id,
                         sniped_name: currentTop.username,
                         mods: modsString,
-                        pp: score.pp || 0,
-                        accuracy: score.accuracy || 0,
-                        ended_at: score.created_at || new Date().toISOString()
+                        pp: confirmedScore.pp || 0,
+                        accuracy: confirmedScore.accuracy || 0,
+                        ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString()
                     });
 
                 if (insertErr) {
                     console.error("[REALTIME-SNIPE] Error al insertar en snipes_history:", insertErr);
                 } else {
-                    console.log(`[REALTIME-SNIPE] ¡${osuUsername} snipeó a ${currentTop.username} en el mapa ${beatmapId}!`);
+                    console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${currentTop.username} en el mapa ${beatmapId}!`);
                 }
             }
 
@@ -2481,17 +2560,17 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 .upsert({
                     beatmap_id: beatmapId,
                     country_code: countryCode,
-                    user_id: sniperId,
-                    username: osuUsername || score.user?.username || 'Desconocido',
-                    score: newScoreVal,
-                    pp: score.pp || 0,
-                    accuracy: score.accuracy || 0,
+                    user_id: verifiedSniperId,
+                    username: verifiedUsername,
+                    score: Number(confirmedScore.score || 0),
+                    pp: confirmedScore.pp || 0,
+                    accuracy: confirmedScore.accuracy || 0,
                     mods: modsString,
-                    max_combo: score.max_combo,
-                    perfect: score.perfect || false,
-                    statistics: score.statistics,
-                    rank: score.rank,
-                    ended_at: score.created_at || new Date().toISOString(),
+                    max_combo: confirmedScore.max_combo,
+                    perfect: confirmedScore.perfect || false,
+                    statistics: confirmedScore.statistics,
+                    rank: confirmedScore.rank,
+                    ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 });
 
