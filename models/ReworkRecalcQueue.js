@@ -180,6 +180,8 @@ async function recalculateUserTops(task) {
             const beatmapId = play.beatmap_id;
             const beatmapsetId = play.ranked_beatmaps.beatmapset_id;
 
+            console.log(`[ReworkRecalcQueue] [${task.username}] Procesando jugada ${i + 1}/${plays.length} (Mapa: ${beatmapId})...`);
+
             // 1. Obtener metadatos del mapa
             const beatmap = await BeatmapModel.getBeatmap(beatmapId);
             if (!beatmap) continue;
