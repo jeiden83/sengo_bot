@@ -5,7 +5,8 @@ const { getSupabaseClient } = require('../db/database.js');
 const CACHE_FILE = path.resolve('db/local/recalculated_users.json');
 
 // Fecha de inicio del rework. Cualquier play con updated_at posterior a esta fecha ya fue recalculada.
-const REWORK_START_DATE = new Date('2026-07-10T00:00:00.000Z');
+// ponytail: se actualizó la fecha para forzar el recálculo tras ajustar la fórmula de PP clásico bajo lazer.
+const REWORK_START_DATE = new Date('2026-07-11T13:20:00.000Z');
 
 // Mapa en memoria para los usuarios ya recalculados
 let recalculatedUsers = new Map();
