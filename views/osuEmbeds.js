@@ -1066,19 +1066,18 @@ function doOsuMapsetEmbed({
     return { embed, components: [row] };
 }
 
-// Spectrum difficulty colors based on Figma specs
+// Spectrum difficulty colors based on Figma specs and image reference
 const difficultySpectrum = [
-    { stars: 0.1, color: '#4290FB' }, // Light Blue
-    { stars: 1.25, color: '#4FC0FF' }, // Cyan
-    { stars: 2.0, color: '#4FFFD5' }, // Teal
-    { stars: 2.5, color: '#7CFF4F' }, // Light Green
-    { stars: 3.3, color: '#F6F05C' }, // Yellow
-    { stars: 4.2, color: '#FF8068' }, // Orange
-    { stars: 4.9, color: '#FF3C71' }, // Pink / Magenta
-    { stars: 5.8, color: '#AA55FF' }, // Purple
-    { stars: 6.7, color: '#6563DE' }, // Violet
-    { stars: 7.7, color: '#18158E' }, // Dark Blue
-    { stars: 9.0, color: '#111111' }  // Black (toned slightly lighter to be visible)
+    { stars: 0.0, color: '#3884F7' }, // Light Blue
+    { stars: 1.5, color: '#38BAF7' }, // Cyan
+    { stars: 2.0, color: '#4FFF30' }, // Neon Green (aligns at 2.0)
+    { stars: 2.8, color: '#F7E638' }, // Yellow
+    { stars: 3.8, color: '#F78A38' }, // Orange
+    { stars: 4.7, color: '#F7386C' }, // Pink / Magenta
+    { stars: 5.5, color: '#AF38F7' }, // Purple
+    { stars: 6.5, color: '#5C5BF7' }, // Blue / Violet
+    { stars: 7.5, color: '#1A1899' }, // Dark Blue
+    { stars: 9.0, color: '#111111' }  // Dark Indigo/Black
 ];
 
 function getDifficultyColor(stars) {
