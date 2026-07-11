@@ -2343,6 +2343,7 @@ async function getUserSnipesHistory(userId) {
  */
 async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     if (!score || !score.beatmap) return;
+    normalizeScore(score);
     
     // Solo soportamos standard (mode === 0 / 'osu') por ahora en snipes
     const isStd = score.beatmap.mode === 'osu' || score.beatmap.mode === 0 || score.beatmap.mode_int === 0;
