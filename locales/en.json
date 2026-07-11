@@ -317,8 +317,8 @@
     },
     "snipes": {
       "header": "Number of national #1s",
-      "body": "Uses the page `https://snipe.huismetbenen.nl/` for this. \nTells you how many national #1s you have, the average pp per top, most used mods, and the year you sniped the most people.",
-      "usage": "s.snipes : Gets the snipes of the user linked to the bot.\ns.snipes 'user' : The snipes of the user in the argument."
+      "body": "Shows how many national #1s you have, average PP, most used mods, and the year with the most snipes.\n\n**View modes:**\n• **Normal view** (no flags): General summary with difficulty bar chart.\n• **`-d`** (detailed): Skill profile with star rating distribution, favorite mappers, average tech specs, and temporal milestones.\n• **`-nemesis`**: Shows your rivals (who you sniped the most and who sniped you), and recent activity.\n• **`-top`**: Paginated list of your national #1s with full filter support.\n\n**Available filters (in -top):**\n• `-m <mods>`: Filter by exact mods (e.g. `-m HDHR`).\n• `-mx <mods>`: Filter by contained mods (e.g. `-mx HD`).\n• `-? \"text\"`: Search maps by title/artist/difficulty.\n• `-g <pp>`: Show maps with PP >= threshold.\n• `-sr<op><value>` or `-diff<op><value>`: Filter by star rating (e.g. `-sr>5`, `-sr<=7`, `-sr=6.5`).\n• `-r`: Sort by most recent. `-c`: Sort by combo. `-acc`: Sort by accuracy.\n• `-i <n>`: Show a single detailed embed for the #1 at position n.",
+      "usage": "s.snipes : Summary of your national #1s.\ns.snipes 'user' : The #1s of the specified user.\ns.snipes -d : Detailed skill profile.\ns.snipes -nemesis : Shows rivals and snipe activity.\ns.snipes -top : Paginated list of your #1s.\ns.snipes -top -m HDHR : Filter #1s by exact mods.\ns.snipes -top -sr>5 -sr<8 : Filter by star rating between 5★ and 8★.\ns.snipes -top -? \"freedom dive\" : Search for a specific map in your #1s.\ns.snipes -top -g 300 : Show your #1s with 300pp or more."
     },
     "mapper": {
       "header": "Creator/mapper statistics of a user",
