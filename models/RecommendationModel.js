@@ -60,6 +60,7 @@ async function buildUserProfileAsync(topScores, supabase = null) {
     let ezCount = 0;
     let flCount = 0;
     let nmCount = 0;
+    let hdCount = 0;
 
     top25.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
@@ -67,6 +68,9 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         const hasHR = mods.includes("HR");
         const hasEZ = mods.includes("EZ");
         const hasFL = mods.includes("FL");
+        const hasHD = mods.includes("HD");
+
+        if (hasHD) hdCount++;
 
         if (hasEZ) ezCount++;
         else if (hasFL) flCount++;
@@ -91,12 +95,21 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         }
     });
 
-    // Selección inteligente de preferredMod con soporte para EZ y FL
-    let preferredMod = "NM";
-    if (ezCount >= 3 && ezCount >= flCount) preferredMod = "EZ";
-    else if (flCount >= 3 && flCount > ezCount) preferredMod = "FL";
-    else if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
-    else if (hrCount > nmCount && hrCount > dtCount) preferredMod = "HR";
+    // Selección inteligente de preferredMod con soporte para EZ, FL e inclusión de HD si es predominante
+    let baseMod = "NM";
+    if (ezCount >= 3 && ezCount >= flCount) baseMod = "EZ";
+    else if (flCount >= 3 && flCount > ezCount) baseMod = "FL";
+    else if (dtCount > nmCount && dtCount > hrCount) baseMod = "DT";
+    else if (hrCount > nmCount && hrCount > dtCount) baseMod = "HR";
+
+    let preferredMod = baseMod;
+    if (hdCount >= 10) {
+        if (baseMod === "NM") preferredMod = "HD";
+        else if (baseMod === "DT") preferredMod = "HDDT";
+        else if (baseMod === "HR") preferredMod = "HDHR";
+        else if (baseMod === "EZ") preferredMod = "HDEZ";
+        else if (baseMod === "FL") preferredMod = "HDFL";
+    }
 
     const avgStars = totalStars / top25.length;
     const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
@@ -279,6 +292,7 @@ function buildUserProfile(topScores) {
     let ezCount = 0;
     let flCount = 0;
     let nmCount = 0;
+    let hdCount = 0;
 
     top25.forEach(score => {
         const mods = (score.mods || []).map(m => m?.acronym || m);
@@ -286,6 +300,9 @@ function buildUserProfile(topScores) {
         const hasHR = mods.includes("HR");
         const hasEZ = mods.includes("EZ");
         const hasFL = mods.includes("FL");
+        const hasHD = mods.includes("HD");
+
+        if (hasHD) hdCount++;
 
         if (hasEZ) ezCount++;
         else if (hasFL) flCount++;
@@ -310,11 +327,21 @@ function buildUserProfile(topScores) {
         }
     });
 
-    let preferredMod = "NM";
-    if (ezCount >= 3 && ezCount >= flCount) preferredMod = "EZ";
-    else if (flCount >= 3 && flCount > ezCount) preferredMod = "FL";
-    else if (dtCount > nmCount && dtCount > hrCount) preferredMod = "DT";
-    else if (hrCount > nmCount && hrCount > dtCount) preferredMod = "HR";
+    // Selección inteligente de preferredMod con soporte para EZ, FL e inclusión de HD si es predominante
+    let baseMod = "NM";
+    if (ezCount >= 3 && ezCount >= flCount) baseMod = "EZ";
+    else if (flCount >= 3 && flCount > ezCount) baseMod = "FL";
+    else if (dtCount > nmCount && dtCount > hrCount) baseMod = "DT";
+    else if (hrCount > nmCount && hrCount > dtCount) baseMod = "HR";
+
+    let preferredMod = baseMod;
+    if (hdCount >= 10) {
+        if (baseMod === "NM") preferredMod = "HD";
+        else if (baseMod === "DT") preferredMod = "HDDT";
+        else if (baseMod === "HR") preferredMod = "HDHR";
+        else if (baseMod === "EZ") preferredMod = "HDEZ";
+        else if (baseMod === "FL") preferredMod = "HDFL";
+    }
 
     const avgStars = totalStars / top25.length;
     const avgBpm = validBpmCount > 0 ? (totalBpm / validBpmCount) : 180;
