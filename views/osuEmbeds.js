@@ -1162,6 +1162,23 @@ function toHexColor(color) {
     return '#ff66aa';
 }
 
+function mixColors(color1, color2, weight) {
+    const r1 = parseInt(color1.substring(1, 3), 16);
+    const g1 = parseInt(color1.substring(3, 5), 16);
+    const b1 = parseInt(color1.substring(5, 7), 16);
+
+    const r2 = parseInt(color2.substring(1, 3), 16);
+    const g2 = parseInt(color2.substring(3, 5), 16);
+    const b2 = parseInt(color2.substring(5, 7), 16);
+
+    const r = Math.round(r1 * (1 - weight) + r2 * weight);
+    const g = Math.round(g1 * (1 - weight) + g2 * weight);
+    const b = Math.round(b1 * (1 - weight) + b2 * weight);
+
+    const hex = (x) => Math.max(0, Math.min(255, x)).toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
 /**
  * Dibuja un gráfico de barras moderno para la distribución de estrellas.
  */
@@ -1230,10 +1247,13 @@ function drawStarDistributionChart(sr, totalScores, roleColor) {
             const barColor = getDifficultyColor(starsVal);
             const roleColorHex = toHexColor(roleColor);
 
-            // Gradiente vertical para la barra (de claro/brillante arriba al color del rol del usuario más oscuro abajo)
+            // Mezclar de forma muy sutil (15% color de rol, 85% color de dificultad) y oscurecer para la base
+            const bottomColor = adjustColorBrightness(mixColors(barColor, roleColorHex, 0.15), -30);
+
+            // Gradiente vertical para la barra (de claro/brillante arriba al color mezclado más sutil abajo)
             const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
             grad.addColorStop(0, adjustColorBrightness(barColor, 15));
-            grad.addColorStop(1, adjustColorBrightness(roleColorHex, -30));
+            grad.addColorStop(1, bottomColor);
 
             ctx.fillStyle = grad;
 
