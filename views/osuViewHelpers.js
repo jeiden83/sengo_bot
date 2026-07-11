@@ -106,9 +106,11 @@ function getPlainStatsString(statistics = {}, mode = 'osu') {
 }
 
 function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, accuracy, ratio_str, combo, max_combo) {
-    let pp_fc_str = pp_fc ? ` • ${colorear("if(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` : "";
+    const ppStr = pp_fc 
+        ? `${colorear(user_pp + 'PP')}/${colorear("(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` 
+        : `${colorear(user_pp + 'PP')}/${max_pp.toFixed(2)}PP`;
     const comboStr = combo !== null && combo !== undefined ? `x${combo}` : `x?`;
-    return `\`\`\`ansi\n${stats_str} • ${colorear(user_pp + 'PP')}/${max_pp.toFixed(2)}PP${pp_fc_str} ▸ ${accuracy}%${ratio_str} ${comboStr}/${colorear(max_combo)}\n\`\`\``;
+    return `\`\`\`ansi\n${stats_str} • ${ppStr} ▸ ${accuracy}%${ratio_str} ▸ ${comboStr}/${colorear(max_combo)}\n\`\`\``;
 }
 
 const getFlagEmoji = (countryCode) => {
