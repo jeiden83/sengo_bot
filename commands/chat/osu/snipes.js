@@ -177,18 +177,21 @@ async function run(messages, args){
                 : modsString.match(/.{1,2}/g).map(mod => ({ acronym: mod }));
 
             const hasHiddenOrFlashlight = scoreMods.some(m => m.acronym === 'HD' || m.acronym === 'FL');
-            let calculatedRank = 'D';
-            const acc = dbScore.accuracy || 0;
-            if (acc >= 1.0) {
-                calculatedRank = hasHiddenOrFlashlight ? 'SSH' : 'SS';
-            } else if (acc >= 0.95) {
-                calculatedRank = hasHiddenOrFlashlight ? 'SH' : 'S';
-            } else if (acc >= 0.90) {
-                calculatedRank = 'A';
-            } else if (acc >= 0.85) {
-                calculatedRank = 'B';
-            } else if (acc >= 0.80) {
-                calculatedRank = 'C';
+            let calculatedRank = dbScore.rank;
+            if (!calculatedRank) {
+                calculatedRank = 'D';
+                const acc = dbScore.accuracy || 0;
+                if (acc >= 1.0) {
+                    calculatedRank = hasHiddenOrFlashlight ? 'SSH' : 'SS';
+                } else if (acc >= 0.95) {
+                    calculatedRank = hasHiddenOrFlashlight ? 'SH' : 'S';
+                } else if (acc >= 0.90) {
+                    calculatedRank = 'A';
+                } else if (acc >= 0.85) {
+                    calculatedRank = 'B';
+                } else if (acc >= 0.80) {
+                    calculatedRank = 'C';
+                }
             }
 
             const dbMaxCombo = dbScore.max_combo !== undefined && dbScore.max_combo !== null ? dbScore.max_combo : null;
