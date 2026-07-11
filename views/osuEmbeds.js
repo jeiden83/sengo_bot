@@ -1205,10 +1205,14 @@ function drawStarDistributionChart(sr, totalScores, roleColor) {
     const counts = entries.map(e => e[1]);
     const maxCount = Math.max(...counts, 1);
 
+    const roleColorHex = toHexColor(roleColor);
+    const textColor = mixColors('#a5a1a8', roleColorHex, 0.20);
+    const gridColor = mixColors('#2e2b31', roleColorHex, 0.10);
+
     // Cuadrícula horizontal (Grid)
-    ctx.strokeStyle = '#2e2b31';
+    ctx.strokeStyle = gridColor;
     ctx.lineWidth = 1;
-    ctx.fillStyle = '#a5a1a8';
+    ctx.fillStyle = textColor;
     ctx.font = 'bold 9px sans-serif';
     ctx.textAlign = 'right';
     ctx.textBaseline = 'middle';
@@ -1245,7 +1249,6 @@ function drawStarDistributionChart(sr, totalScores, roleColor) {
             // Obtener el color del espectro de dificultad según las estrellas de la barra
             const starsVal = parseStarsFromLabel(label);
             const barColor = getDifficultyColor(starsVal);
-            const roleColorHex = toHexColor(roleColor);
 
             // Mezclar de forma muy sutil (15% color de rol, 85% color de dificultad) y oscurecer para la base
             const bottomColor = adjustColorBrightness(mixColors(barColor, roleColorHex, 0.15), -30);
@@ -1277,7 +1280,7 @@ function drawStarDistributionChart(sr, totalScores, roleColor) {
         }
 
         // Etiqueta del eje X (limpiando la estrella '★' para ahorrar espacio si fuera necesario)
-        ctx.fillStyle = '#a5a1a8';
+        ctx.fillStyle = textColor;
         ctx.font = '9px sans-serif';
         ctx.textBaseline = 'top';
         const cleanLabel = label.replace('★', '');
