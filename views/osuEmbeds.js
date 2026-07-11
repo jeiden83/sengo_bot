@@ -1149,10 +1149,23 @@ function parseStarsFromLabel(label) {
     return isNaN(singleVal) ? 4.0 : singleVal;
 }
 
+function toHexColor(color) {
+    if (typeof color === 'string') {
+        if (color.startsWith('#')) return color;
+        const num = parseInt(color, 10);
+        if (!isNaN(num)) color = num;
+    }
+    if (typeof color === 'number') {
+        if (color === 0) return '#ff66aa';
+        return `#${color.toString(16).padStart(6, '0')}`;
+    }
+    return '#ff66aa';
+}
+
 /**
  * Dibuja un gráfico de barras moderno para la distribución de estrellas.
  */
-function drawStarDistributionChart(sr, totalScores) {
+function drawStarDistributionChart(sr, totalScores, roleColor) {
     const width = 600;
     const height = 180;
     const canvas = createCanvas(width * 2, height * 2);
@@ -1215,11 +1228,12 @@ function drawStarDistributionChart(sr, totalScores) {
             // Obtener el color del espectro de dificultad según las estrellas de la barra
             const starsVal = parseStarsFromLabel(label);
             const barColor = getDifficultyColor(starsVal);
+            const roleColorHex = toHexColor(roleColor);
 
-            // Gradiente vertical para la barra (de claro/brillante arriba a un 30% más oscuro abajo)
+            // Gradiente vertical para la barra (de claro/brillante arriba al color del rol del usuario más oscuro abajo)
             const grad = ctx.createLinearGradient(x, y, x, y + barHeight);
-            grad.addColorStop(0, barColor);
-            grad.addColorStop(1, adjustColorBrightness(barColor, -30));
+            grad.addColorStop(0, adjustColorBrightness(barColor, 15));
+            grad.addColorStop(1, adjustColorBrightness(roleColorHex, -30));
 
             ctx.fillStyle = grad;
 
@@ -1302,7 +1316,7 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
         const totalScores = sniped_userdata.count_total || 1;
         
         try {
-            const canvasBuffer = drawStarDistributionChart(sr, totalScores);
+            const canvasBuffer = drawStarDistributionChart(sr, totalScores, embedColor);
             const attachment = new AttachmentBuilder(canvasBuffer, { name: 'star_distribution.png' });
             files.push(attachment);
             embed.setImage('attachment://star_distribution.png');
