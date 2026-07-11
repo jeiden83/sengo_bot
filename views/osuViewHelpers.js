@@ -62,6 +62,11 @@ function formatMods(mods, isLazer) {
 }
 
 function getStatsString(statistics = {}, mode = 'osu') {
+    if (!statistics || statistics.is_estimated) {
+        if (mode === 'mania') return `[?/?/?/?/?/?]`;
+        if (mode === 'taiko') return `[?/?/?]`;
+        return `[?/?/?/?]`;
+    }
     const perfect = statistics.perfect !== undefined ? statistics.perfect : (statistics.count_geki || 0);
     const great = statistics.great !== undefined ? statistics.great : (statistics.count_300 || 0);
     const good = statistics.good !== undefined ? statistics.good : (statistics.count_katu || 0);
@@ -79,6 +84,11 @@ function getStatsString(statistics = {}, mode = 'osu') {
 }
 
 function getPlainStatsString(statistics = {}, mode = 'osu') {
+    if (!statistics || statistics.is_estimated) {
+        if (mode === 'mania') return `[?/?/?/?/?/?]`;
+        if (mode === 'taiko') return `[?/?/?]`;
+        return `[?/?/?/?]`;
+    }
     const perfect = statistics.perfect !== undefined ? statistics.perfect : (statistics.count_geki || 0);
     const great = statistics.great !== undefined ? statistics.great : (statistics.count_300 || 0);
     const good = statistics.good !== undefined ? statistics.good : (statistics.count_katu || 0);
@@ -97,7 +107,8 @@ function getPlainStatsString(statistics = {}, mode = 'osu') {
 
 function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, accuracy, ratio_str, combo, max_combo) {
     let pp_fc_str = pp_fc ? ` ${colorear("if(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` : "";
-    return `\`\`\`ansi\n${stats_str} ${colorear(user_pp + 'PP')}/${max_pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} x${combo}/${colorear(max_combo)}\n\`\`\``;
+    const comboStr = combo !== null && combo !== undefined ? `x${combo}` : `x?`;
+    return `\`\`\`ansi\n${stats_str} ${colorear(user_pp + 'PP')}/${max_pp.toFixed(2)}PP${pp_fc_str} ${accuracy}%${ratio_str} ${comboStr}/${colorear(max_combo)}\n\`\`\``;
 }
 
 const getFlagEmoji = (countryCode) => {

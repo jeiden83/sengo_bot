@@ -191,20 +191,32 @@ async function run(messages, args){
                 calculatedRank = 'C';
             }
 
-            const maxCombo = dbScore.ranked_beatmaps?.max_combo || 1000;
-            const mode = dbScore.ranked_beatmaps?.mode || 0;
+            const dbMaxCombo = dbScore.max_combo !== undefined && dbScore.max_combo !== null ? dbScore.max_combo : null;
+            const dbPerfect = dbScore.perfect !== undefined && dbScore.perfect !== null ? dbScore.perfect : false;
+            const isStatsEstimated = !dbScore.statistics;
 
-            let great = maxCombo;
+            const mode = dbScore.ranked_beatmaps?.mode || 0;
+            const limitCombo = dbScore.ranked_beatmaps?.max_combo || 1000;
+
+            let great = limitCombo;
             let ok = 0;
             let meh = 0;
             let miss = 0;
 
-            if (mode === 1) { // Taiko
-                great = Math.max(0, Math.min(maxCombo, Math.round(maxCombo * (2 * acc - 1))));
-                ok = Math.max(0, maxCombo - great);
-            } else { // osu!std, mania, catch
-                great = Math.max(0, Math.min(maxCombo, Math.round(maxCombo * (3 * acc - 1) / 2)));
-                ok = Math.max(0, maxCombo - great);
+            if (dbScore.statistics) {
+                const stats = dbScore.statistics;
+                great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+                ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+                meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+                miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+            } else {
+                if (mode === 1) { // Taiko
+                    great = Math.max(0, Math.min(limitCombo, Math.round(limitCombo * (2 * acc - 1))));
+                    ok = Math.max(0, limitCombo - great);
+                } else { // osu!std, mania, catch
+                    great = Math.max(0, Math.min(limitCombo, Math.round(limitCombo * (3 * acc - 1) / 2)));
+                    ok = Math.max(0, limitCombo - great);
+                }
             }
 
             return {
@@ -240,8 +252,9 @@ async function run(messages, args){
                 rank: calculatedRank,
                 pp: dbScore.pp || 0,
                 accuracy: dbScore.accuracy || 0,
-                max_combo: dbScore.ranked_beatmaps?.max_combo || 0,
-                perfect: true,
+                max_combo: dbMaxCombo,
+                perfect: dbPerfect,
+                isStatsEstimated: isStatsEstimated,
                 passed: true,
                 ended_at: dbScore.ended_at,
                 created_at: dbScore.ended_at,
@@ -253,7 +266,8 @@ async function run(messages, args){
                     count_300: great,
                     count_100: ok,
                     count_50: meh,
-                    count_miss: miss
+                    count_miss: miss,
+                    is_estimated: isStatsEstimated
                 },
                 user: {
                     username: dbScore.username || osu_userdata.fn_response.username,
@@ -411,7 +425,7 @@ async function run(messages, args){
                 const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
 
                 let pp_fc = null;
-                const isFC = score.perfect || (miss === 0 && score.max_combo >= beatmap_max_combo - 2);
+                const isFC = score.perfect || (score.accuracy === 1) || (!score.isStatsEstimated && miss === 0 && score.max_combo !== null && score.max_combo >= beatmap_max_combo - 2);
                 if (!isFC) {
                     try {
                         const fc_statistics = {

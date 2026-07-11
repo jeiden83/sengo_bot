@@ -2231,7 +2231,7 @@ async function getProcessedSnipesCount(mode, country_code = 'VE') {
 async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false, onPageLoad = null) {
     const supabase = getSupabaseClient();
     const selectFields = detailed
-        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
+        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
         : 'pp, mods, ended_at, ranked_beatmaps!inner(mode)';
     
     const allData = [];
@@ -2448,6 +2448,9 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     pp: score.pp || 0,
                     accuracy: score.accuracy || 0,
                     mods: modsString,
+                    max_combo: score.max_combo,
+                    perfect: score.perfect || false,
+                    statistics: score.statistics,
                     ended_at: score.created_at || new Date().toISOString(),
                     updated_at: new Date().toISOString()
                 });

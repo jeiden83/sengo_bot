@@ -471,6 +471,8 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const mods_used = formatMods(score.mods, isLazer);
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
+        const combo_val_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
+        const maxComboStr = max_combo !== null && max_combo !== undefined ? max_combo : '?';
 
         const stats_str = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
         const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
@@ -499,14 +501,14 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
                 const old_stats = `\`${getPlainStatsString(score.originalStats, score.beatmap.mode)}\``;
                 
                 score_line += ` ▸ ${old_grade} ➔ ${grade_emoji} ▸ \`${old_pp}\` ➔ **\`${pp}\`** ▸ \`${old_acc}\` ➔ **\`${accuracy}%\`**\n` +
-                    ` ▸ x${score.originalCombo} ➔ **x${max_combo}/${max_combo}** ▸ ${old_stats} ➔ ${stats_str}\n`;
+                    ` ▸ x${score.originalCombo} ➔ **x${maxComboStr}/${maxComboStr}** ▸ ${old_stats} ➔ ${stats_str}\n`;
             } else {
-                score_line += ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str}\n`;
+                score_line += ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n`;
             }
             score_line += ` ▸ ${time_set}\n\n`;
         } else {
             score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
-                ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ x${max_combo} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
+                ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
         }
 
         embed_description = embed_description.concat(score_line);
@@ -724,7 +726,8 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const formatted_score = isFirst ? `**${legacy_score}**` : `${legacy_score}`;
         const formatted_accuracy = isFirst ? `**${accuracy}%**` : `${accuracy}%`;
         const formatted_pp = isFirst ? `__**${pp}**__` : `__${pp}__`;
-        const formatted_combo = isFirst ? `**x${max_combo}**` : `x${max_combo}`;
+        const combo_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
+        const formatted_combo = isFirst ? `**${combo_str}**` : combo_str;
 
         const score_line = `${rank_pos} ▸ ${playerTag}${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
 
