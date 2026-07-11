@@ -182,9 +182,36 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         }
     }
 
+    // ponytail: se asume que si no hay started_at en la jugada, entonces proviene de osu!stable y se le inyecta el mod CL para calcularlo correctamente con las reglas unificadas de lazer (lazer: true).
+    const isLazerPlay = recent_scores.started_at ? true : false;
+    let finalMods = recent_scores.mods;
+    if (!isLazerPlay) {
+        if (!finalMods) {
+            finalMods = ['CL'];
+        } else if (typeof finalMods === 'string') {
+            if (finalMods === 'NM') {
+                finalMods = 'CL';
+            } else if (!finalMods.includes('CL')) {
+                finalMods = finalMods + 'CL';
+            }
+        } else if (Array.isArray(finalMods)) {
+            const hasCL = finalMods.some(m => (m.acronym || m) === 'CL');
+            if (!hasCL) {
+                const isObjectMod = finalMods.length > 0 && typeof finalMods[0] === 'object';
+                const modsCopy = [...finalMods];
+                if (isObjectMod) {
+                    modsCopy.push({ acronym: 'CL' });
+                } else {
+                    modsCopy.push('CL');
+                }
+                finalMods = modsCopy;
+            }
+        }
+    }
+
     const max_perfomance_constructor = { 
-        mods: recent_scores.mods, 
-        lazer: recent_scores.started_at ? true : false,
+        mods: finalMods, 
+        lazer: true, // Siempre calculamos con el calculador unificado de lazer
     };
 
     const difficulty_constructor = {

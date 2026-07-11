@@ -121,20 +121,38 @@ async function recalculateUserTops(task) {
         return;
     }
 
-    // Obtener todas las jugadas del usuario en el modo y país correspondiente
-    const { data: plays, error } = await supabase
-        .from('top_scores')
-        .select('pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, country_code, updated_at, ranked_beatmaps!inner(mode, beatmapset_id)')
-        .eq('user_id', task.userId.toString())
-        .eq('ranked_beatmaps.mode', task.mode)
-        .eq('country_code', task.countryCode);
+    // Obtener todas las jugadas del usuario en el modo y país correspondiente (paginado de 1000 en 1000)
+    const plays = [];
+    let from = 0;
+    const PAGE_SIZE = 1000;
 
-    if (error) {
-        console.error(`[ReworkRecalcQueue] Error al consultar top_scores de ${task.username}:`, error);
-        return;
+    while (true) {
+        const { data, error } = await supabase
+            .from('top_scores')
+            .select('pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, country_code, updated_at, ranked_beatmaps!inner(mode, beatmapset_id)')
+            .eq('user_id', task.userId.toString())
+            .eq('ranked_beatmaps.mode', task.mode)
+            .eq('country_code', task.countryCode)
+            .range(from, from + PAGE_SIZE - 1);
+
+        if (error) {
+            console.error(`[ReworkRecalcQueue] Error al consultar top_scores de ${task.username}:`, error);
+            return;
+        }
+
+        if (!data || data.length === 0) {
+            break;
+        }
+
+        plays.push(...data);
+
+        if (data.length < PAGE_SIZE) {
+            break;
+        }
+        from += PAGE_SIZE;
     }
 
-    if (!plays || plays.length === 0) {
+    if (plays.length === 0) {
         console.log(`[ReworkRecalcQueue] El usuario ${task.username} no tiene jugadas en top_scores.`);
         return;
     }
