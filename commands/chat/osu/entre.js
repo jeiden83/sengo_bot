@@ -1,5 +1,6 @@
 const { getOsuUser, getUserTopScores, argsParserNoCommand } = require("../../utils/osu.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
+const OsuScoreModel = require("../../../models/OsuScoreModel.js");
 const { doOsuCompareStatsEmbed } = require("../../../views/osuUserViews.js");
 const { t } = require("../../../utils/i18n.js");
 
@@ -104,10 +105,23 @@ async function run(messages, args) {
     const userA = profileA.user;
     const userB = profileB.user;
 
-    // Fetch top scores for both users to get their highest PP plays
-    const [scoresA, scoresB] = await Promise.all([
+    const modeToInt = {
+        'osu': 0,
+        'taiko': 1,
+        'fruits': 2,
+        'mania': 3
+    };
+
+    const isVE_A = userA.country_code?.toUpperCase() === 'VE';
+    const isVE_B = userB.country_code?.toUpperCase() === 'VE';
+    const bothVE = isVE_A && isVE_B;
+
+    // Fetch top scores for both users to get their highest PP plays, and national tops count if both are VE
+    const [scoresA, scoresB, nationalTopsA, nationalTopsB] = await Promise.all([
         getUserTopScores({ username: [userA.id], gamemode, server }).catch(() => null),
-        getUserTopScores({ username: [userB.id], gamemode, server }).catch(() => null)
+        getUserTopScores({ username: [userB.id], gamemode, server }).catch(() => null),
+        bothVE ? OsuScoreModel.getUserNationalTopsCount(userA.id, modeToInt[gamemode] ?? 0, 'VE').catch(() => 0) : Promise.resolve(null),
+        bothVE ? OsuScoreModel.getUserNationalTopsCount(userB.id, modeToInt[gamemode] ?? 0, 'VE').catch(() => 0) : Promise.resolve(null)
     ]);
 
     const topPpA = scoresA && scoresA[0] ? (scoresA[0].pp || 0) : 0;
@@ -175,7 +189,13 @@ async function run(messages, args) {
     if (lvlA > lvlB) winsA++;
     else if (lvlB > lvlA) winsB++;
 
-    const embed = doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale, topPpA, topPpB);
+    // National Tops Count (only if both are VE)
+    if (bothVE && nationalTopsA !== null && nationalTopsB !== null) {
+        if (nationalTopsA > nationalTopsB) winsA++;
+        else if (nationalTopsB > nationalTopsA) winsB++;
+    }
+
+    const embed = doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale, topPpA, topPpB, nationalTopsA, nationalTopsB);
     return { embeds: [embed] };
 }
 

@@ -714,7 +714,7 @@ function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, on
 /**
  * Renderiza el embed para la comparación de estadísticas (s.entre)
  */
-function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale = 'es', topPpA = 0, topPpB = 0) {
+function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale = 'es', topPpA = 0, topPpB = 0, nationalTopsA = null, nationalTopsB = null) {
     const embedColor = getEmbedColor(message);
     const flagA = getFlagEmoji(userA.country_code);
     const flagB = getFlagEmoji(userB.country_code);
@@ -802,6 +802,16 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const lvlAStr = lvlA.toFixed(2);
     const lvlBStr = lvlB.toFixed(2);
 
+    // National Tops (optional)
+    let nationalTopsAStr = '';
+    let nationalTopsBStr = '';
+    let markersNationalTops = { a: '', a_end: '', b: '', b_end: '' };
+    if (nationalTopsA !== null && nationalTopsB !== null) {
+        markersNationalTops = getMarkers(nationalTopsA, nationalTopsB);
+        nationalTopsAStr = nationalTopsA.toLocaleString(locTag);
+        nationalTopsBStr = nationalTopsB.toLocaleString(locTag);
+    }
+
     function getMarkers(valA, valB) {
         if (valA === valB) return { a: '', a_end: '', b: '', b_end: '' };
         return valA > valB
@@ -883,7 +893,7 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         return `${coloredValA}  ${coloredLabel}  ${coloredValB}`;
     };
 
-    const blockRows = [
+    const rows = [
         formatRow(t(locale, 'entre.stat_pp_short'), ppAStr, ppBStr, markersPP, markersPP),
         formatRow(t(locale, 'entre.stat_rank_short'), rankAStr, rankBStr, markersRank, markersRank),
         formatRow(t(locale, 'entre.stat_max_combo_short'), mcAStr, mcBStr, markersMc, markersMc),
@@ -893,7 +903,13 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         formatRow(t(locale, 'entre.stat_playcount_short'), pcAStr, pcBStr, markersPc, markersPc),
         formatRow(t(locale, 'entre.stat_playtime_short'), ptAStr, ptBStr, markersPt, markersPt),
         formatRow(t(locale, 'entre.stat_level_short'), `Lv. ${lvlAStr}`, `Lv. ${lvlBStr}`, markersLvl, markersLvl)
-    ].join('\n');
+    ];
+
+    if (nationalTopsA !== null && nationalTopsB !== null) {
+        rows.push(formatRow(t(locale, 'entre.stat_national_tops_short'), nationalTopsAStr, nationalTopsBStr, markersNationalTops, markersNationalTops));
+    }
+
+    const blockRows = rows.join('\n');
 
     const description = [
         descHeader,

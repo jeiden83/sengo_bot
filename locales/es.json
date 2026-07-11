@@ -1375,6 +1375,7 @@
     "stat_top_play_short": "Top Play",
     "stat_level": "Nivel",
     "stat_level_short": "Nivel",
+    "stat_national_tops_short": "Tops Nac.",
     "winner": "🏆 **{winner}** gana la comparación por **{wins}** a **{losses}**.",
     "tie": "🤝 Es un empate (**{wins}** a **{losses}**).",
     "err_usage": "Uso correcto: `s.entre [jugador1] [jugador2]`. Si solo especificas un jugador, se te comparará a ti (debes estar vinculado).",

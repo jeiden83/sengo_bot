@@ -1375,6 +1375,7 @@
     "stat_top_play_short": "Top Play",
     "stat_level": "Level",
     "stat_level_short": "Level",
+    "stat_national_tops_short": "Nat. Tops",
     "winner": "🏆 **{winner}** wins the comparison by **{wins}** to **{losses}**.",
     "tie": "🤝 It's a tie (**{wins}** to **{losses}**).",
     "err_usage": "Correct usage: `s.entre [player1] [player2]`. If you only specify one player, you will be compared (you must be linked).",

@@ -2292,6 +2292,22 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
     return allData;
 }
 
+async function getUserNationalTopsCount(userId, mode, country_code = 'VE') {
+    const supabase = getSupabaseClient();
+    const { count, error } = await supabase
+        .from('top_scores')
+        .select('ranked_beatmaps!inner(mode)', { count: 'exact', head: true })
+        .eq('user_id', userId.toString())
+        .eq('ranked_beatmaps.mode', mode)
+        .eq('country_code', country_code);
+        
+    if (error) {
+        console.error(`[OsuScoreModel] Error al contar tops nacionales para ${userId}:`, error);
+        return 0;
+    }
+    return count || 0;
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
@@ -2314,6 +2330,7 @@ const OsuScoreModel = {
     getRankedBeatmapsCount,
     getProcessedSnipesCount,
     getUserNationalTops,
+    getUserNationalTopsCount,
     getUserSnipesHistory,
     checkAndRecordRealtimeSnipe
 };
