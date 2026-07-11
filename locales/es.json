@@ -1028,7 +1028,7 @@
     "err_std_only": "> El servicio de snipes solo funciona para **osu!std**",
     "err_no_tops": "**El usuario `{username}` no tiene tops nacionales.**",
     "err_fetch": "❌ Error al obtener los datos de snipes.",
-    "total": "**• Total de #1:** `#{count}`",
+    "total": "**• Total de #1:** `{count}`",
     "avg_pp": "**• PP promedio:** `{pp}`",
     "most_used_mod": "**• Mod más usado:** `[{mod}] = {count}`",
     "most_snipes_year": "**• Año con más snipes:** `[{year}] = {count}`",
