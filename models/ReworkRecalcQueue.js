@@ -4,6 +4,9 @@ const { getSupabaseClient } = require('../db/database.js');
 
 const CACHE_FILE = path.resolve('db/local/recalculated_users.json');
 
+// Fecha de inicio del rework. Cualquier play con updated_at posterior a esta fecha ya fue recalculada.
+const REWORK_START_DATE = new Date('2026-07-10T00:00:00.000Z');
+
 // Mapa en memoria para los usuarios ya recalculados
 let recalculatedUsers = new Map();
 
@@ -121,7 +124,7 @@ async function recalculateUserTops(task) {
     // Obtener todas las jugadas del usuario en el modo y país correspondiente
     const { data: plays, error } = await supabase
         .from('top_scores')
-        .select('pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, country_code, ranked_beatmaps!inner(mode, beatmapset_id)')
+        .select('pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, country_code, updated_at, ranked_beatmaps!inner(mode, beatmapset_id)')
         .eq('user_id', task.userId.toString())
         .eq('ranked_beatmaps.mode', task.mode)
         .eq('country_code', task.countryCode);
@@ -143,6 +146,17 @@ async function recalculateUserTops(task) {
 
     for (let i = 0; i < plays.length; i++) {
         const play = plays[i];
+
+        // Evitar recalcular jugadas con estadísticas nulas (ya que se poblarán/procesarán en segundo plano por el script principal)
+        if (!play.statistics) {
+            continue;
+        }
+
+        // Evitar recalcular jugadas que ya fueron recalculadas post-rework
+        if (play.updated_at && new Date(play.updated_at) > REWORK_START_DATE) {
+            continue;
+        }
+
         try {
             const beatmapId = play.beatmap_id;
             const beatmapsetId = play.ranked_beatmaps.beatmapset_id;
