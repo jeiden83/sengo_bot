@@ -4,6 +4,36 @@ const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEm
 const { buildPaginationRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
 
+function matchCondition(stars, cond) {
+    const { op, val, hasDecimal } = cond;
+    if (hasDecimal) {
+        switch (op) {
+            case '>': return stars > val;
+            case '<': return stars < val;
+            case '>=': return stars >= val;
+            case '<=': return stars <= val;
+            case '=':
+            case '==':
+                return Math.abs(stars - val) < 0.005;
+        }
+    } else {
+        switch (op) {
+            case '>':
+                return stars >= (val + 1);
+            case '<':
+                return stars < val;
+            case '>=':
+                return stars >= val;
+            case '<=':
+                return stars < (val + 1);
+            case '=':
+            case '==':
+                return stars >= val && stars < (val + 1);
+        }
+    }
+    return true;
+}
+
 async function run(messages, args) {
     const { message, res } = messages;
     const locale = message.locale || 'es';
@@ -102,6 +132,15 @@ async function run(messages, args) {
         ppThresholdCount = filtered_scores.length;
     }
 
+    // 4b. Filtrar por Star Rating / Dificultad (-sr / -diff)
+    const srFilters = parser_res.parsed_args.srFilters;
+    if (srFilters && srFilters.length > 0) {
+        filtered_scores = filtered_scores.filter(score => {
+            const stars = score.beatmap?.difficulty_rating ? parseFloat(score.beatmap.difficulty_rating) : 0;
+            return srFilters.every(cond => matchCondition(stars, cond));
+        });
+    }
+
     // 5. Ordenar por fecha/reciente (-r) si se solicita
     if (parser_res.parsed_args.recentSort) {
         filtered_scores.sort((a, b) => new Date(b.ended_at || b.created_at) - new Date(a.ended_at || a.created_at));
@@ -125,6 +164,12 @@ async function run(messages, args) {
         if (parser_res.parsed_args.modContainFilter !== null) errorMsg += t(locale, 'top.filter_contain_mods', { val: parser_res.parsed_args.modContainFilter });
         if (parser_res.parsed_args.searchFilter !== null) errorMsg += t(locale, 'top.filter_search', { val: parser_res.parsed_args.searchFilter });
         if (parser_res.parsed_args.ppThreshold !== null) errorMsg += t(locale, 'top.filter_pp', { val: parser_res.parsed_args.ppThreshold });
+        if (srFilters && srFilters.length > 0) {
+            const filterStrings = srFilters.map(f => `${f.op}${f.valStr}`);
+            errorMsg += locale === 'es'
+                ? `\n- Dificultad: \`${filterStrings.join(' e ')}\``
+                : `\n- Difficulty: \`${filterStrings.join(' and ')}\``;
+        }
         return errorMsg;
     }
 

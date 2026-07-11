@@ -22,6 +22,11 @@ const data = new SlashCommandBuilder()
         option.setName("top")
             .setDescription("Muestra las mejores jugadas de tops nacionales del usuario (-top)")
             .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("dificultad")
+            .setDescription("Filtra por Star Rating (ej: >5, >=5.5, <7, =5)")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -40,6 +45,11 @@ async function run(interaction, res) {
     const top = interaction.options.getBoolean("top");
     if (top) {
         args.push("-top");
+    }
+
+    const dificultad = interaction.options.getString("dificultad");
+    if (dificultad) {
+        args.push("-sr", dificultad);
     }
 
     return await snipesChatCommand.run(messages, args);

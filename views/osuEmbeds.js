@@ -457,6 +457,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
     if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
     if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
+    if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
+        const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
+        active_filters.push(...srTexts);
+    }
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
@@ -1318,6 +1322,10 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
     const mostSnipes_year = Object.entries(sniped_userdata.dates_set ?? {})
         .reduce((max, entry) => entry[1] > max[1] ? entry : max, ['N/A', -1]);
 
+    const footerText = sniped_userdata.active_filters 
+        ? `Sengo • Filtros: ${sniped_userdata.active_filters}`
+        : "Sengo";
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `${osu_userdata.team ? `[${osu_userdata.team.short_name}]` : ""} ${osu_userdata.username}: ${osu_userdata.statistics.pp}pp`,
@@ -1326,7 +1334,7 @@ function doOsuSnipesEmbed(message, sniped_userdata, osu_userdata, locale = 'es')
         })
         .setColor(embedColor)
         .setFooter({
-            text: "Sengo",
+            text: footerText,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

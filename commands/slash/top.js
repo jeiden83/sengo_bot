@@ -45,6 +45,11 @@ const data = new SlashCommandBuilder()
         option.setName("nochoke")
             .setDescription("¿Mostrar el top de PP recalculado como si todas las jugadas fueran Full Combo?")
             .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("dificultad")
+            .setDescription("Filtra por Star Rating (ej: >5, >=5.5, <7, =5)")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -57,6 +62,7 @@ async function run(interaction, res) {
     const umbralPp = interaction.options.getInteger("umbral_pp");
     const ordenarReciente = interaction.options.getBoolean("ordenar_reciente");
     const nochoke = interaction.options.getBoolean("nochoke");
+    const dificultad = interaction.options.getString("dificultad");
 
     if (index) {
         args.push(`-i${index}`);
@@ -78,6 +84,9 @@ async function run(interaction, res) {
     }
     if (nochoke) {
         args.push("-nc");
+    }
+    if (dificultad) {
+        args.push("-sr", dificultad);
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

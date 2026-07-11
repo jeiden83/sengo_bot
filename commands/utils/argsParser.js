@@ -1,3 +1,15 @@
+function parseSrCondition(condStr) {
+    const match = condStr.trim().match(/^(>=|<=|>|<|==|=)?\s*([0-9]+(?:\.[0-9]+)?)$/);
+    if (!match) return null;
+
+    const op = match[1] || '=';
+    const valStr = match[2];
+    const val = parseFloat(valStr);
+    const hasDecimal = valStr.includes('.');
+
+    return { op, val, hasDecimal, valStr };
+}
+
 const OsuUserModel = require("../../models/OsuUserModel.js");
 
 const getGamemodeFromMessage = (msg) => {
@@ -443,6 +455,7 @@ function argsParserNoCommand(args, options = {}) {
     let nochoke = false;
     let mapset = false;
     let nemesis = false;
+    let srFilters = [];
 
     const extractId = str => {
         if (!str) return null;
@@ -576,6 +589,36 @@ function argsParserNoCommand(args, options = {}) {
         }
         let arg = args_list[i].trim();
         if (!arg) continue;
+
+        if (arg.startsWith("-sr") || arg.startsWith("-diff")) {
+            let filterStr = '';
+            
+            if (arg === '-sr' || arg === '-diff') {
+                if (i + 1 < args_list.length) {
+                    const nextArg = args_list[i + 1].trim();
+                    if (/^(>=|<=|>|<|==|=)?\s*[0-9]/.test(nextArg)) {
+                        filterStr = nextArg;
+                        i++;
+                    } else if (/^(>=|<=|>|<|==|=)$/.test(nextArg)) {
+                        if (i + 2 < args_list.length && /^[0-9]/.test(args_list[i + 2].trim())) {
+                            filterStr = nextArg + args_list[i + 2].trim();
+                            i += 2;
+                        }
+                    }
+                }
+            } else {
+                const prefix = arg.startsWith('-sr') ? '-sr' : '-diff';
+                filterStr = arg.slice(prefix.length).trim();
+            }
+            
+            if (filterStr) {
+                const cond = parseSrCondition(filterStr);
+                if (cond) {
+                    srFilters.push(cond);
+                }
+            }
+            continue;
+        }
 
         // Si es un enlace de mensaje de Discord, lo ignoramos para que no se guarde en username y extraemos la ID y link
         const discordLinkRegex = /https?:\/\/(?:ptb\.|canary\.)?discord\.com\/(?:channels\/(\d+|@me)\/(\d+)\/(\d+)|messages\/(\d+)\/(\d+))/i;
@@ -1192,7 +1235,8 @@ function argsParserNoCommand(args, options = {}) {
         'lazerMode': lazerMode,
         'nochoke': nochoke,
         'mapset': mapset,
-        'nemesis': nemesis
+        'nemesis': nemesis,
+        'srFilters': srFilters
     };
     return parsed_args;
 }

@@ -10,6 +10,36 @@ const modeToInt = {
     'mania': 3
 };
 
+function matchCondition(stars, cond) {
+    const { op, val, hasDecimal } = cond;
+    if (hasDecimal) {
+        switch (op) {
+            case '>': return stars > val;
+            case '<': return stars < val;
+            case '>=': return stars >= val;
+            case '<=': return stars <= val;
+            case '=':
+            case '==':
+                return Math.abs(stars - val) < 0.005;
+        }
+    } else {
+        switch (op) {
+            case '>':
+                return stars >= (val + 1);
+            case '<':
+                return stars < val;
+            case '>=':
+                return stars >= val;
+            case '<=':
+                return stars < (val + 1);
+            case '=':
+            case '==':
+                return stars >= val && stars < (val + 1);
+        }
+    }
+    return true;
+}
+
 async function run(messages, args){
     const { message, res, reply } = messages;
     const locale = message.locale || 'es';
@@ -17,6 +47,8 @@ async function run(messages, args){
     // Parseamos argumentos de entrada del usuario
     const osu_userdata = await argsParser(args,
         {"message" : message, "res" : res, "command_function" : getOsuUser, "resolveUserByIndex": true, "ignoreBeatmap": true});  
+
+    const srFilters = osu_userdata.parsed_args?.srFilters || [];
 
     if (!osu_userdata.fn_response || typeof osu_userdata.fn_response === 'string') {
         return osu_userdata.fn_response || t(locale, 'rework.err_user_not_found');
@@ -161,6 +193,30 @@ async function run(messages, args){
         userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code, isDetailedQuery, (count) => {
             updateProgress(0, 'loading', `(${count} cargados...)`);
         });
+
+        if (srFilters && srFilters.length > 0) {
+            userScores = userScores.filter(s => {
+                const stars = s.ranked_beatmaps?.stars ? parseFloat(s.ranked_beatmaps.stars) : 0;
+                return srFilters.every(cond => matchCondition(stars, cond));
+            });
+        }
+
+        if (!userScores || userScores.length === 0) {
+            let errorMsg = t(locale, 'snipes.err_no_tops', { username: osu_userdata.fn_response.username });
+            if (srFilters && srFilters.length > 0) {
+                const filterStrings = srFilters.map(f => `${f.op}${f.valStr}`);
+                errorMsg = locale === 'es'
+                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** con el filtro de dificultad: \`${filterStrings.join(' e ')}\`.`
+                    : `No national tops found for **${osu_userdata.fn_response.username}** matching difficulty filter: \`${filterStrings.join(' and ')}\`.`;
+            }
+
+            if (sentMessage && typeof sentMessage.edit === 'function') {
+                await sentMessage.edit({ content: errorMsg, embeds: [] });
+                return;
+            }
+            return { content: errorMsg };
+        }
+
         await updateProgress(0, 'success', `(${userScores.length} cargados)`);
     } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
@@ -929,6 +985,10 @@ async function run(messages, args){
         dates_set: datesSet,
         is_detailed: isDetailed
     };
+
+    if (srFilters && srFilters.length > 0) {
+        adaptedData.active_filters = srFilters.map(f => `SR${f.op}${f.valStr}`).join(' | ');
+    }
 
     if (isDetailed) {
         adaptedData.star_ranges = {};
