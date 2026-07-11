@@ -55,7 +55,22 @@ function doHelpCommandEmbed(message, mainName, queryName, helpData, locale = 'es
         .setTimestamp();
 
     if (helpData.fields && helpData.fields.length > 0) {
-        embed.addFields(helpData.fields);
+        const safeFields = helpData.fields.map(f => {
+            let safeValue = f.value || "";
+            if (safeValue.length > 1024) {
+                safeValue = safeValue.slice(0, 1021) + "...";
+            }
+            let safeName = f.name || "";
+            if (safeName.length > 256) {
+                safeName = safeName.slice(0, 253) + "...";
+            }
+            return {
+                name: safeName,
+                value: safeValue,
+                inline: !!f.inline
+            };
+        });
+        embed.addFields(safeFields);
     }
 
     return embed;
