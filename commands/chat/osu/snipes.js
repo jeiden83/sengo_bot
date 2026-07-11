@@ -225,6 +225,26 @@ async function run(messages, args){
     }
 
     if (isTop) {
+        const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
+        const recalculated = ReworkRecalcQueue.isRecalculated(id, look_gamemode);
+        if (!recalculated) {
+            ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id);
+        }
+
+        const qStatus = ReworkRecalcQueue.getQueueStatus(id, look_gamemode);
+        let recalcNotice = null;
+        if (!recalculated) {
+            if (qStatus === 'running') {
+                recalcNotice = locale === 'es'
+                    ? "⚠️ *Se están recalculando las jugadas de este usuario en segundo plano debido al rework.*"
+                    : "⚠️ *This user's plays are being recalculated in the background due to the rework.*";
+            } else {
+                recalcNotice = locale === 'es'
+                    ? "⏳ *Las jugadas de este usuario están en cola para ser recalculadas debido al rework.*"
+                    : "⏳ *This user's plays are in queue to be recalculated due to the rework.*";
+            }
+        }
+
         // Mapear DB scores a la estructura de top.js
         const adaptedScores = userScores.map((dbScore) => {
             const modsString = dbScore.mods || 'NM';
@@ -514,6 +534,9 @@ async function run(messages, args){
 
                 const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, osu_userdata.parsed_args, ppThresholdCount, locale, currentScoreMode);
                 map.free();
+                if (recalcNotice) {
+                    embed.setDescription(`${recalcNotice}\n\n${embed.data.description || ""}`);
+                }
                 return embed;
             };
 
@@ -681,6 +704,9 @@ async function run(messages, args){
         const initialChunk = filtered_scores.slice(startIndex, startIndex + 5);
         const initialStars = await getListStars(initialChunk);
         const initialListEmbed = await doOsuTopListEmbed(message, osu_userdata.parsed_args, initialChunk, startIndex, total_plays, ppThresholdCount, initialStars, locale);
+        if (recalcNotice) {
+            initialListEmbed.setDescription(`${recalcNotice}\n\n${initialListEmbed.data.description || ""}`);
+        }
 
         const getListButtonsRow = (start, total) => {
             return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
@@ -722,6 +748,9 @@ async function run(messages, args){
                 const chunk = filtered_scores.slice(startIndex, startIndex + 5);
                 const stars = await getListStars(chunk);
                 const embed = await doOsuTopListEmbed(message, osu_userdata.parsed_args, chunk, startIndex, total_plays, ppThresholdCount, stars, locale);
+                if (recalcNotice) {
+                    embed.setDescription(`${recalcNotice}\n\n${embed.data.description || ""}`);
+                }
 
                 await i.editReply({
                     embeds: [embed],
