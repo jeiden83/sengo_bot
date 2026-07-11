@@ -48,16 +48,16 @@ function isValidDate(dateStr) {
 function normalizeStatistics(stats) {
     stats = stats || {};
     return {
-        great: stats.great !== undefined ? stats.great : (stats.count_300 !== undefined ? stats.count_300 : 0),
-        ok: stats.ok !== undefined ? stats.ok : (stats.count_100 !== undefined ? stats.count_100 : 0),
-        meh: stats.meh !== undefined ? stats.meh : (stats.count_50 !== undefined ? stats.count_50 : 0),
-        miss: stats.miss !== undefined ? stats.miss : (stats.count_miss !== undefined ? stats.count_miss : 0),
-        perfect: stats.perfect !== undefined ? stats.perfect : (stats.count_geki !== undefined ? stats.count_geki : 0),
-        good: stats.good !== undefined ? stats.good : (stats.count_katu !== undefined ? stats.count_katu : 0),
-        large_tick_hit: stats.large_tick_hit !== undefined ? stats.large_tick_hit : 0,
-        slider_tail_hit: stats.slider_tail_hit !== undefined ? stats.slider_tail_hit : 0,
-        ignore_hit: stats.ignore_hit !== undefined ? stats.ignore_hit : 0,
-        small_tick_miss: stats.small_tick_miss !== undefined ? stats.small_tick_miss : 0
+        great: stats.great != null ? stats.great : (stats.count_300 != null ? stats.count_300 : 0),
+        ok: stats.ok != null ? stats.ok : (stats.count_100 != null ? stats.count_100 : 0),
+        meh: stats.meh != null ? stats.meh : (stats.count_50 != null ? stats.count_50 : 0),
+        miss: stats.miss != null ? stats.miss : (stats.count_miss != null ? stats.count_miss : 0),
+        perfect: stats.perfect != null ? stats.perfect : (stats.count_geki != null ? stats.count_geki : 0),
+        good: stats.good != null ? stats.good : (stats.count_katu != null ? stats.count_katu : 0),
+        large_tick_hit: stats.large_tick_hit != null ? stats.large_tick_hit : 0,
+        slider_tail_hit: stats.slider_tail_hit != null ? stats.slider_tail_hit : 0,
+        ignore_hit: stats.ignore_hit != null ? stats.ignore_hit : 0,
+        small_tick_miss: stats.small_tick_miss != null ? stats.small_tick_miss : 0
     };
 }
 
@@ -189,7 +189,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
 
     const difficulty_constructor = {
         ...max_perfomance_constructor,
-        maxCombo: recent_scores.max_combo,
+        maxCombo: (recent_scores.max_combo != null) ? recent_scores.max_combo : undefined,
         misses: miss,
         n300: great,
         n100: ok,
