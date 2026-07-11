@@ -45,19 +45,65 @@ function addServidorOption(option) {
 function createSlashMessagesContext(interaction, res) {
     let interactionUsed = false;
 
+    const wrapMessage = (msg, isFollowUp = false) => {
+        if (!msg) return msg;
+        return new Proxy(msg, {
+            get(target, prop) {
+                if (prop === 'edit') {
+                    return async (options) => {
+                        try {
+                            return await target.edit(options);
+                        } catch (err) {
+                            if (err.name === 'DiscordjsError' || err.code === 'ChannelNotCached' || err.message?.includes('cache')) {
+                                if (!isFollowUp) {
+                                    return await interaction.editReply(options);
+                                } else {
+                                    return await interaction.webhook.editMessage(target.id, options);
+                                }
+                            }
+                            throw err;
+                        }
+                    };
+                }
+                if (prop === 'delete') {
+                    return async () => {
+                        try {
+                            return await target.delete();
+                        } catch (err) {
+                            if (err.name === 'DiscordjsError' || err.code === 'ChannelNotCached' || err.message?.includes('cache')) {
+                                if (!isFollowUp) {
+                                    return await interaction.deleteReply();
+                                } else {
+                                    return await interaction.webhook.deleteMessage(target.id);
+                                }
+                            }
+                            throw err;
+                        }
+                    };
+                }
+                const val = Reflect.get(target, prop);
+                return typeof val === 'function' ? val.bind(target) : val;
+            }
+        });
+    };
+
     const replyFn = async (options) => {
         if (!interaction.replied && !interaction.deferred) {
             interactionUsed = true;
-            return await interaction.reply(options);
+            const msg = await interaction.reply(options);
+            return wrapMessage(msg, false);
         }
         if (interaction.deferred && !interactionUsed) {
             interactionUsed = true;
-            return await interaction.editReply(options);
+            const msg = await interaction.editReply(options);
+            return wrapMessage(msg, false);
         }
         try {
-            return await interaction.followUp(options);
+            const msg = await interaction.followUp(options);
+            return wrapMessage(msg, true);
         } catch {
-            return await interaction.channel.send(options);
+            const msg = await interaction.channel.send(options);
+            return wrapMessage(msg, false);
         }
     };
 
