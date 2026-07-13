@@ -7,6 +7,11 @@ const data = new SlashCommandBuilder()
     .setDescription("Muestra la tabla de clasificación (leaderboard) de osu! en el último mapa enviado")
     .addStringOption(addModoOption)
     .addStringOption(option =>
+        option.setName("mapa")
+            .setDescription("ID o URL del beatmap de osu!")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
         option.setName("pais")
             .setDescription("Filtrar por código de país (ej: CL, VE). Escribe SELF para autodetectar tu país.")
             .setRequired(false)
@@ -41,6 +46,7 @@ const data = new SlashCommandBuilder()
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
 
+    const mapa = interaction.options.getString("mapa");
     const pais = interaction.options.getString("pais");
     const pagina = interaction.options.getInteger("pagina");
     const modsExactos = interaction.options.getString("mods_exactos");
@@ -48,6 +54,9 @@ async function run(interaction, res) {
     const stable = interaction.options.getBoolean("stable");
     const lazer = interaction.options.getBoolean("lazer");
 
+    if (mapa) {
+        args.push(mapa);
+    }
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
     }
