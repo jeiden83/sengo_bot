@@ -2549,18 +2549,41 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             }
 
             if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== verifiedSniperId) {
-                // ponytail: prevent inserting duplicate snipes within the same play characteristics (same beatmap, sniper, accuracy, and pp)
+                // ponytail: prevent inserting duplicate snipes within a 15-minute window on the same beatmap by the same sniper
+                const playTime = new Date(confirmedScore.created_at || confirmedScore.ended_at || new Date()).getTime();
+                const minTime = new Date(playTime - 15 * 60 * 1000).toISOString();
+                const maxTime = new Date(playTime + 15 * 60 * 1000).toISOString();
+
                 const { data: existingSnipe } = await supabase
                     .from('snipes_history')
-                    .select('id')
+                    .select('id, pp')
                     .eq('beatmap_id', beatmapId)
                     .eq('sniper_id', verifiedSniperId)
-                    .eq('accuracy', confirmedScore.accuracy || 0)
-                    .eq('pp', confirmedScore.pp || 0)
+                    .gte('ended_at', minTime)
+                    .lte('ended_at', maxTime)
                     .maybeSingle();
 
                 if (existingSnipe) {
-                    console.log(`[REALTIME-SNIPE] Snipe ya registrado previamente para el mapa ${beatmapId} por ${verifiedUsername}. Ignorando duplicado.`);
+                    const newPP = confirmedScore.pp || 0;
+                    // Si el existente tiene PP 0 y el nuevo tiene un valor de PP real, actualizar el existente
+                    if (Number(existingSnipe.pp || 0) === 0 && Number(newPP) > 0) {
+                        const { error: updateErr } = await supabase
+                            .from('snipes_history')
+                            .update({
+                                pp: newPP,
+                                accuracy: confirmedScore.accuracy || 0,
+                                mods: modsString
+                            })
+                            .eq('id', existingSnipe.id);
+
+                        if (updateErr) {
+                            console.error("[REALTIME-SNIPE] Error al actualizar PP del snipe existente:", updateErr);
+                        } else {
+                            console.log(`[REALTIME-SNIPE] Snipe existente en ${beatmapId} por ${verifiedUsername} actualizado con PP: ${newPP}.`);
+                        }
+                    } else {
+                        console.log(`[REALTIME-SNIPE] Snipe ya registrado previamente para el mapa ${beatmapId} por ${verifiedUsername}. Ignorando duplicado.`);
+                    }
                 } else {
                     // Registrar en el historial de snipes
                     const { error: insertErr } = await supabase
