@@ -28,6 +28,9 @@ async function run(interaction, res) {
             if (linkMatch) {
                 targetMessageId = linkMatch[1];
             }
+            if (!interaction.channel) {
+                throw new Error("Canal no accesible");
+            }
             replyMessage = await interaction.channel.messages.fetch(targetMessageId);
         } catch (err) {
             await interaction.editReply("⚠️ No se pudo encontrar o acceder al mensaje especificado. Asegúrate de que el ID/enlace sea correcto y esté en este canal.");

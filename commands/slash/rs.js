@@ -44,12 +44,8 @@ async function run(interaction, res) {
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida
-    messages.message.channel = {
-        send: async (options) => {
-            return await interaction.editReply(options);
-        },
-        messages: interaction.channel.messages,
-        guild: interaction.guild
+    messages.message.channel.send = async (options) => {
+        return await interaction.editReply(options);
     };
 
     await rsChatCommand.run(messages, args);

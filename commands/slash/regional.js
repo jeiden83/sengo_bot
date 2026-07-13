@@ -40,12 +40,8 @@ async function run(interaction, res) {
         args.push(`-p${pagina}`);
     }
 
-    messages.message.channel = {
-        send: async (options) => {
-            return await interaction.editReply(options);
-        },
-        messages: interaction.channel.messages,
-        guild: interaction.guild
+    messages.message.channel.send = async (options) => {
+        return await interaction.editReply(options);
     };
 
     const result = await regionalChatCommand.run(messages, args);

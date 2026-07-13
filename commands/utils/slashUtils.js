@@ -102,8 +102,10 @@ function createSlashMessagesContext(interaction, res) {
             const msg = await interaction.followUp(options);
             return wrapMessage(msg, true);
         } catch {
-            const msg = await interaction.channel.send(options);
-            return wrapMessage(msg, false);
+            if (interaction.channel) {
+                const msg = await interaction.channel.send(options);
+                return wrapMessage(msg, false);
+            }
         }
     };
 
@@ -118,14 +120,15 @@ function createSlashMessagesContext(interaction, res) {
                 send: replyFn,
                 sendTyping: async () => {
                     try {
-                        await interaction.channel.sendTyping();
+                        await interaction.channel?.sendTyping();
                     } catch {}
                 },
                 id: interaction.channelId,
                 isTextBased: () => true,
                 messages: interaction.channel?.messages || {
                     fetch: async () => new Map()
-                }
+                },
+                guild: interaction.guild
             }
         },
         res: res,
