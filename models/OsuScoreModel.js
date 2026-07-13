@@ -2549,25 +2549,39 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             }
 
             if (currentTop && currentTop.user_id !== '0' && currentTop.user_id !== verifiedSniperId) {
-                // Registrar en el historial de snipes
-                const { error: insertErr } = await supabase
+                // ponytail: prevent inserting duplicate snipes within the same play characteristics (same beatmap, sniper, accuracy, and pp)
+                const { data: existingSnipe } = await supabase
                     .from('snipes_history')
-                    .insert({
-                        beatmap_id: beatmapId,
-                        sniper_id: verifiedSniperId,
-                        sniper_name: verifiedUsername,
-                        sniped_id: currentTop.user_id,
-                        sniped_name: currentTop.username,
-                        mods: modsString,
-                        pp: confirmedScore.pp || 0,
-                        accuracy: confirmedScore.accuracy || 0,
-                        ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString()
-                    });
+                    .select('id')
+                    .eq('beatmap_id', beatmapId)
+                    .eq('sniper_id', verifiedSniperId)
+                    .eq('accuracy', confirmedScore.accuracy || 0)
+                    .eq('pp', confirmedScore.pp || 0)
+                    .maybeSingle();
 
-                if (insertErr) {
-                    console.error("[REALTIME-SNIPE] Error al insertar en snipes_history:", insertErr);
+                if (existingSnipe) {
+                    console.log(`[REALTIME-SNIPE] Snipe ya registrado previamente para el mapa ${beatmapId} por ${verifiedUsername}. Ignorando duplicado.`);
                 } else {
-                    console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${currentTop.username} en el mapa ${beatmapId}!`);
+                    // Registrar en el historial de snipes
+                    const { error: insertErr } = await supabase
+                        .from('snipes_history')
+                        .insert({
+                            beatmap_id: beatmapId,
+                            sniper_id: verifiedSniperId,
+                            sniper_name: verifiedUsername,
+                            sniped_id: currentTop.user_id,
+                            sniped_name: currentTop.username,
+                            mods: modsString,
+                            pp: confirmedScore.pp || 0,
+                            accuracy: confirmedScore.accuracy || 0,
+                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString()
+                        });
+
+                    if (insertErr) {
+                        console.error("[REALTIME-SNIPE] Error al insertar en snipes_history:", insertErr);
+                    } else {
+                        console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${currentTop.username} en el mapa ${beatmapId}!`);
+                    }
                 }
             }
 
