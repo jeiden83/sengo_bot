@@ -624,6 +624,25 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
     const expiresAt = new Date(Date.now() + tokenData.expires_in * 1000).toISOString();
     const isSupporter = !!osuUser.is_supporter;
 
+    // ponytail: eliminar registros previos en oauth_tokens para el mismo osu_id para evitar conflictos de clave única si se vincula con otra cuenta de Discord
+    try {
+        await supabase
+            .from('oauth_tokens')
+            .delete()
+            .eq('osu_id', osuUser.id.toString());
+    } catch (err) {
+        console.error(`[OAuth] Error al limpiar vinculación previa de osu_id ${osuUser.id} en oauth_tokens:`, err);
+    }
+
+    try {
+        await supabase
+            .from('users')
+            .update({ osu_id: null })
+            .eq('osu_id', osuUser.id.toString());
+    } catch (err) {
+        console.error(`[OAuth] Error al desvincular osu_id ${osuUser.id} en la tabla users:`, err);
+    }
+
     // Guardar en oauth_tokens
     const { error: oauthError } = await supabase
         .from('oauth_tokens')
