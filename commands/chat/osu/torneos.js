@@ -9,6 +9,133 @@ async function run(messages, args) {
 
     const cleanArgs = (args || []).map(arg => typeof arg === 'string' ? arg.toLowerCase().trim() : '');
 
+    const canalIdx = cleanArgs.findIndex(a => a === '-canal');
+    if (canalIdx !== -1) {
+        const guild = message.guild;
+        if (!guild) {
+            return "❌ Este comando solo puede ser utilizado en un servidor de Discord.";
+        }
+
+        const config = require("../../../config.js");
+        const isOwner = message.author.id === config.OWNER_ID;
+        const member = message.member || await guild.members.fetch(message.author.id).catch(() => null);
+        const { PermissionFlagsBits, ChannelType } = require("discord.js");
+        const isAdmin = member && member.permissions.has(PermissionFlagsBits.Administrator);
+
+        const subParam = args[canalIdx + 1]?.trim();
+
+        if (!subParam) {
+            const prefix = message.prefix || 's.';
+            const { EmbedBuilder } = require("discord.js");
+            const helpEmbed = new EmbedBuilder()
+                .setTitle("📢 Configuración del Feed de Torneos")
+                .setDescription(
+                    `Permite configurar un canal donde se anunciarán automáticamente los nuevos torneos de osu! obtenidos del foro.\n\n` +
+                    `**Comandos disponibles:**\n` +
+                    `• \`${prefix}torneos -canal <#canal o ID>\` - Configura el canal de anuncios.\n` +
+                    `• \`${prefix}torneos -canal -borrar\` - Desactiva el feed de torneos en el servidor.\n\n` +
+                    `*Nota: Requiere permisos de Administrador.*`
+                )
+                .setColor(0x3498db)
+                .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+                .setTimestamp();
+            return { embeds: [helpEmbed] };
+        }
+
+        if (subParam.toLowerCase() === '-borrar') {
+            if (!isOwner && !isAdmin) {
+                return "❌ Necesitas permisos de Administrador para desactivar el canal de torneos.";
+            }
+
+            const GuildConfigModel = require("../../../models/GuildConfigModel.js");
+            await GuildConfigModel.updateGuildConfig(guild.id, { tournament_feed_channel_id: null });
+
+            return "✅ El feed de torneos ha sido desactivado en este servidor.";
+        }
+
+        if (subParam.toLowerCase() === '-test') {
+            if (!isOwner) {
+                return;
+            }
+
+            const GuildConfigModel = require("../../../models/GuildConfigModel.js");
+            const guildConfig = await GuildConfigModel.getGuildConfig(guild.id);
+            const targetChannelId = guildConfig.tournament_feed_channel_id;
+
+            if (!targetChannelId) {
+                return "❌ No hay un canal configurado para el feed de torneos en este servidor. Usa `s.torneos -canal #canal` primero.";
+            }
+
+            const channel = guild.channels.cache.get(targetChannelId) || await guild.channels.fetch(targetChannelId).catch(() => null);
+            if (!channel || !channel.isTextBased()) {
+                return `❌ El canal configurado (<#${targetChannelId}>) no es válido o no tengo acceso.`;
+            }
+
+            const { getSupabaseClient } = require("../../../db/database.js");
+            const supabase = getSupabaseClient();
+            if (!supabase) return "❌ Error de conexión a la base de datos.";
+
+            const { data: latestTourney, error } = await supabase
+                .from('tournaments')
+                .select('*')
+                .order('created_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+            if (error || !latestTourney) {
+                return "❌ No se encontraron torneos en la base de datos para enviar.";
+            }
+
+            const { doTournamentDetailEmbed } = require("../../../views/osuTournamentViews.js");
+            const embed = doTournamentDetailEmbed(latestTourney, { member: null }, guildConfig.language || 'es');
+
+            await channel.send({
+                content: `📢 **[Prueba de Feed] ¡Nuevo torneo publicado en el foro!**`,
+                embeds: [embed]
+            });
+
+            return `✅ Mensaje de prueba enviado con éxito a <#${targetChannelId}>.`;
+        }
+
+        // Configuración de canal
+        if (!isOwner && !isAdmin) {
+            return "❌ Necesitas permisos de Administrador para configurar el canal de torneos.";
+        }
+
+        let channelId = null;
+        const match = subParam.match(/^<#(\d+)>$/) || subParam.match(/^(\d+)$/);
+        if (match) {
+            channelId = match[1];
+        }
+
+        if (!channelId) {
+            return "❌ Canal inválido. Debes mencionar un canal (ej: `#canal`) o proveer una ID válida.";
+        }
+
+        const targetChannel = guild.channels.cache.get(channelId) || await guild.channels.fetch(channelId).catch(() => null);
+        if (!targetChannel || targetChannel.type !== ChannelType.GuildText) {
+            return "❌ El canal seleccionado debe ser un canal de texto de este servidor.";
+        }
+
+        const botMember = guild.members.me || await guild.members.fetch(message.client.user.id).catch(() => null);
+        if (botMember) {
+            const permissions = targetChannel.permissionsFor(botMember);
+            const missing = [];
+            if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push("Leer Canal");
+            if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push("Enviar Mensajes");
+            if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push("Insertar Enlaces (Embed Links)");
+
+            if (missing.length > 0) {
+                return `❌ Sengo no tiene suficientes permisos en el canal <#${channelId}>:\n` + missing.map(p => `- ${p}`).join("\n");
+            }
+        }
+
+        const GuildConfigModel = require("../../../models/GuildConfigModel.js");
+        await GuildConfigModel.updateGuildConfig(guild.id, { tournament_feed_channel_id: channelId });
+
+        return `✅ El feed de torneos se ha configurado correctamente en <#${channelId}>.`;
+    }
+
     const recIdx = cleanArgs.findIndex(a => a === '-rec' || a === '-recomendar');
     const isRecommendation = recIdx !== -1;
 
