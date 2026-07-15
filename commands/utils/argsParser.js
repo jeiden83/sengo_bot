@@ -994,7 +994,10 @@ function argsParserNoCommand(args, options = {}) {
                 // ponytail: flags de skin y modos de juego para evitar falsos positivos
                 'delete', 'set', 'nombre', 'name', 'borrar',
                 'osu', 'std', 'standard', 'ctb', 'catch', 'fruits', 'fruit',
-                'taiko', 'tko', 'mania', 'man', 'mna'
+                'taiko', 'tko', 'mania', 'man', 'mna',
+                // flags de torneos y comandos generales para evitar falsos positivos de mods
+                'test', 'force', 'canal', 'prueba', 'oauth', 'link', 'unlink',
+                'update', 'discord', 'all', 'bot', 'help', 'info', 'add', 'remove'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;
