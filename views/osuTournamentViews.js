@@ -212,7 +212,31 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
     return embed;
 }
 
+/**
+ * Genera el embed de ayuda para configurar el canal/feed de torneos.
+ * 
+ * @param {string} prefix - Prefijo de comandos (ej: 's.')
+ * @param {string} [locale] - Localización de idioma
+ * @returns {EmbedBuilder}
+ */
+function doTournamentFeedHelpEmbed(prefix, locale = 'es') {
+    const helpEmbed = new EmbedBuilder()
+        .setTitle("📢 Configuración del Feed de Torneos")
+        .setDescription(
+            `Permite configurar un canal donde se anunciarán automáticamente los nuevos torneos de osu! obtenidos del foro.\n\n` +
+            `**Comandos disponibles:**\n` +
+            `• \`${prefix}torneos -canal <#canal o ID>\` - Configura el canal de anuncios.\n` +
+            `• \`${prefix}torneos -canal -borrar\` - Desactiva el feed de torneos en el servidor.\n\n` +
+            `*Nota: Requiere permisos de Administrador.*`
+        )
+        .setColor(0x3498db)
+        .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setTimestamp();
+    return helpEmbed;
+}
+
 module.exports = {
     doTournamentListEmbed,
-    doTournamentDetailEmbed
+    doTournamentDetailEmbed,
+    doTournamentFeedHelpEmbed
 };

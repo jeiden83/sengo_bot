@@ -1,6 +1,6 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const OsuTournamentModel = require("../../../models/OsuTournamentModel.js");
-const { doTournamentListEmbed, doTournamentDetailEmbed } = require("../../../views/osuTournamentViews.js");
+const { doTournamentListEmbed, doTournamentDetailEmbed, doTournamentFeedHelpEmbed } = require("../../../views/osuTournamentViews.js");
 const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
@@ -26,19 +26,7 @@ async function run(messages, args) {
 
         if (!subParam) {
             const prefix = message.prefix || 's.';
-            const { EmbedBuilder } = require("discord.js");
-            const helpEmbed = new EmbedBuilder()
-                .setTitle("📢 Configuración del Feed de Torneos")
-                .setDescription(
-                    `Permite configurar un canal donde se anunciarán automáticamente los nuevos torneos de osu! obtenidos del foro.\n\n` +
-                    `**Comandos disponibles:**\n` +
-                    `• \`${prefix}torneos -canal <#canal o ID>\` - Configura el canal de anuncios.\n` +
-                    `• \`${prefix}torneos -canal -borrar\` - Desactiva el feed de torneos en el servidor.\n\n` +
-                    `*Nota: Requiere permisos de Administrador.*`
-                )
-                .setColor(0x3498db)
-                .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-                .setTimestamp();
+            const helpEmbed = doTournamentFeedHelpEmbed(prefix, locale);
             return { embeds: [helpEmbed] };
         }
 
