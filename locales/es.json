@@ -1079,7 +1079,7 @@
     "avg_pp": "**• PP promedio:** `{pp}`",
     "most_used_mod": "**• Mod más usado:** `[{mod}] = {count}`",
     "most_snipes_year": "**• Año con más snipes:** `[{year}] = {count}`",
-    "err_country_support": "El sistema de snipes y leaderboards nacionales en base de datos local actualmente solo cuenta con soporte para Venezuela (VE) o países con supporter agregados en el bot.",
+    "err_country_support": "Este comando solo está habilitado para venezolanos.",
     "err_db_maps": "Error al conectar a la base de datos para obtener el progreso de mapas.",
     "err_db_progress": "Error al conectar a la base de datos para calcular el progreso de scrapeo.",
     "err_db_scores": "Error al consultar las puntuaciones locales del usuario.",

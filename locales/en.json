@@ -1079,7 +1079,7 @@
     "avg_pp": "**• Average PP:** `{pp}`",
     "most_used_mod": "**• Most used mod:** `[{mod}] = {count}`",
     "most_snipes_year": "**• Year with most snipes:** `[{year}] = {count}`",
-    "err_country_support": "The snipes and national leaderboards system in the local database currently only supports Venezuela (VE) or countries with supporters added in the bot.",
+    "err_country_support": "This command is only enabled for Venezuelans.",
     "err_db_maps": "Error connecting to the database to fetch beatmap progress.",
     "err_db_progress": "Error connecting to the database to calculate scraping progress.",
     "err_db_scores": "Error querying the local user scores.",
