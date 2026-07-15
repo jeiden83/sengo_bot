@@ -123,6 +123,14 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         } else {
             Logger.system("Servicio de Tracking de osu! omitido (Modo Dev).");
         }
+
+        // 9. Servicio de Sincronización de Torneos (Tournament Crawler)
+        try {
+            const { initTournamentCrawler } = require("./tournamentCrawler.js");
+            initTournamentCrawler();
+        } catch (err) {
+            Logger.system(`Error al iniciar Tournament Crawler: ${err.message}`);
+        }
     }
 }
 
