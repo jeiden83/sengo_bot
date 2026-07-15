@@ -16,6 +16,39 @@ async function run(messages, args) {
 
     const cleanArgs = (args || []).map(arg => typeof arg === 'string' ? arg.toLowerCase().trim() : '');
 
+    const forceIdx = cleanArgs.findIndex(a => a === '-force' || a === '-f' || a === '-actualizar' || a === '-sync');
+    if (forceIdx !== -1) {
+        const config = require("../../../config.js");
+        const isOwner = message.author.id === config.OWNER_ID;
+        const guild = message.guild;
+        const member = guild ? (message.member || await guild.members.fetch(message.author.id).catch(() => null)) : null;
+        const { PermissionFlagsBits } = require("discord.js");
+        const isAdmin = member && member.permissions.has(PermissionFlagsBits.Administrator);
+
+        if (!isOwner && !isAdmin) {
+            return "❌ Solo los administradores o el propietario del bot pueden forzar una actualización manual de torneos.";
+        }
+
+        const replyMsg = reply && typeof reply.reply === 'function' 
+            ? await reply.reply("⏳ Iniciando sincronización forzada de torneos de osu! con el foro...")
+            : await message.channel.send("⏳ Sincronizando torneos con el foro...");
+
+        try {
+            const { checkNewTournaments } = require("../../../services/tournamentCrawler.js");
+            await checkNewTournaments();
+            if (replyMsg && typeof replyMsg.edit === 'function') {
+                await replyMsg.edit("✅ Sincronización manual completada exitosamente.");
+            }
+            return;
+        } catch (err) {
+            console.error("Error al forzar actualización de torneos:", err);
+            if (replyMsg && typeof replyMsg.edit === 'function') {
+                await replyMsg.edit("❌ Ocurrió un error al intentar forzar la sincronización de torneos.");
+            }
+            return;
+        }
+    }
+
     const canalIdx = cleanArgs.findIndex(a => a === '-canal');
     if (canalIdx !== -1) {
         const guild = message.guild;

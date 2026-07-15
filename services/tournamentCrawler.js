@@ -70,17 +70,17 @@ async function checkNewTournaments() {
  */
 function initTournamentCrawler(client) {
     discordClient = client;
-    Logger.system("Inicializando worker de torneos (intervalo de 2 minutos)...");
+    Logger.system("Inicializando worker de torneos (intervalo de 10 minutos)...");
 
     // Primera ejecución a los 10 segundos del encendido del bot
     setTimeout(() => {
         checkNewTournaments();
     }, 10000);
 
-    // Intervalo de ejecución cada 2 minutos
+    // Intervalo de ejecución cada 10 minutos
     setInterval(() => {
         checkNewTournaments();
-    }, 2 * 60 * 1000);
+    }, 10 * 60 * 1000);
 }
 
 module.exports = {
