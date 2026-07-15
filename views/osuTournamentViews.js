@@ -83,7 +83,6 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
     else if (tournament.reg_status === 'in_progress') embedColor = 0xf1c40f; // dorado
     else if (tournament.reg_status === 'completed') embedColor = 0x95a5a6; // gris
 
-    const modeEmoji = MODE_EMOJIS[tournament.game_mode] || "❓";
     const status = STATUS_DATA[tournament.reg_status] || STATUS_DATA.unknown;
     const statusText = t(locale, `torneos.${status.textKey}`);
 
@@ -94,22 +93,24 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
         rankStr = `#${minStr} - #${maxStr}`;
     }
 
+    const modeName = tournament.game_mode === 'osu' ? 'std' : tournament.game_mode;
+
     const detailsLines = [
-        `🎮 **${t(locale, 'torneos.mode')}:** ${modeEmoji} \`${tournament.game_mode.toUpperCase()}\``,
-        `👥 **Formato:** \`${tournament.team_format || "1v1"}\``,
-        `📈 **${t(locale, 'torneos.rank')}:** \`${rankStr}\``,
-        `📌 **${t(locale, 'torneos.status')}:** ${status.emoji} **${statusText}**`
+        `**${t(locale, 'torneos.mode')}:** \`${modeName.toUpperCase()}\``,
+        `**Formato:** \`${tournament.team_format || "1v1"}\``,
+        `**${t(locale, 'torneos.rank')}:** \`${rankStr}\``,
+        `**${t(locale, 'torneos.status')}:** **${statusText}**`
     ];
 
     // Enlaces
     const links = [];
-    if (tournament.discord_url) links.push(`[💬 Discord](${tournament.discord_url})`);
-    if (tournament.mainsheet_url) links.push(`[📊 Planilla](${tournament.mainsheet_url})`);
-    if (tournament.registration_url) links.push(`[📝 Registro](${tournament.registration_url})`);
-    if (tournament.rules_url) links.push(`[📜 Reglas](${tournament.rules_url})`);
-    if (tournament.challonge_url) links.push(`[🏆 Bracket](${tournament.challonge_url})`);
-    if (tournament.twitch_url) links.push(`[📺 Twitch](${tournament.twitch_url})`);
-    links.push(`[🔗 ${t(locale, 'torneos.view_forum')}](https://osu.ppy.sh/community/forums/topics/${tournament.id})`);
+    if (tournament.discord_url) links.push(`[Discord](${tournament.discord_url})`);
+    if (tournament.mainsheet_url) links.push(`[Planilla](${tournament.mainsheet_url})`);
+    if (tournament.registration_url) links.push(`[Registro](${tournament.registration_url})`);
+    if (tournament.rules_url) links.push(`[Reglas](${tournament.rules_url})`);
+    if (tournament.challonge_url) links.push(`[Bracket](${tournament.challonge_url})`);
+    if (tournament.twitch_url) links.push(`[Twitch](${tournament.twitch_url})`);
+    links.push(`[${t(locale, 'torneos.view_forum')}](https://osu.ppy.sh/community/forums/topics/${tournament.id})`);
 
     const fields = [
         {
