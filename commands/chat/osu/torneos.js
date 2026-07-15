@@ -8,6 +8,65 @@ async function run(messages, args) {
     const locale = message.locale || 'es';
 
     const cleanArgs = (args || []).map(arg => typeof arg === 'string' ? arg.toLowerCase().trim() : '');
+
+    const recIdx = cleanArgs.findIndex(a => a === '-rec' || a === '-recomendar');
+    const isRecommendation = recIdx !== -1;
+
+    if (isRecommendation) {
+        if (logger) logger.process(`Procesando recomendación de torneo para ${message.author.id}`);
+        try {
+            const OsuUserModel = require("../../../models/OsuUserModel.js");
+            const linkedUser = await OsuUserModel.getLinkedUser(messages.res?.User, message.author.id);
+            if (!linkedUser) {
+                return t(locale, 'torneos.err_not_linked');
+            }
+
+            // Obtener perfil de osu!
+            const userMode = linkedUser.main_gamemode === 'std' ? 'osu' : linkedUser.main_gamemode;
+            const osuUser = await OsuUserModel.getOsuUser({
+                username: [linkedUser.osu_id],
+                gamemode: userMode
+            });
+
+            if (!osuUser || typeof osuUser === 'string') {
+                return "❌ No se pudieron obtener los datos de tu perfil de osu!. Por favor, intenta de nuevo más tarde.";
+            }
+
+            const currentRank = osuUser.statistics.global_rank;
+            const dbMode = linkedUser.main_gamemode; // 'osu', 'mania', 'taiko', 'fruits'
+            
+            // Buscar torneos activos para su modo y rango
+            const matchingTournaments = await OsuTournamentModel.searchTournaments({
+                status: ['open', 'in_progress'],
+                gameMode: dbMode,
+                rank: currentRank
+            });
+
+            if (matchingTournaments.length === 0) {
+                return `🔍 No encontré torneos activos recomendados para tu modo de juego (**${dbMode === 'osu' ? 'std' : dbMode}**) y tu rango global (**#${currentRank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}**) en este momento.`;
+            }
+
+            // Seleccionar uno al azar
+            const recommended = matchingTournaments[Math.floor(Math.random() * matchingTournaments.length)];
+
+            // Generar embed de detalle
+            const embed = doTournamentDetailEmbed(recommended, message, locale);
+
+            // Mensaje de recomendación
+            const recommendationIntro = `🎲 | **¡Torneo recomendado para ti, ${message.author.username}!** (Modo: \`${dbMode === 'osu' ? 'std' : dbMode}\` • Rango: \`#${currentRank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}\`)`;
+
+            if (reply && typeof reply.reply === 'function') {
+                await reply.reply({ content: recommendationIntro, embeds: [embed] });
+            } else {
+                await message.channel.send({ content: recommendationIntro, embeds: [embed] });
+            }
+            return;
+        } catch (err) {
+            console.error("Error al procesar recomendación de torneo:", err);
+            return t(locale, 'torneos.err_db');
+        }
+    }
+
     const tagIdx = cleanArgs.findIndex(a => a === '-tag' || a === '-t' || a === '-tags');
     const isTagsBreakdown = tagIdx !== -1 && (tagIdx === cleanArgs.length - 1 || cleanArgs[tagIdx + 1].startsWith('-'));
 

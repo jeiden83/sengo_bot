@@ -409,6 +409,7 @@
     "no_results_active": "🔍 No active tournaments were found with the indicated filters. Try searching for past ones by adding `-pasados`.",
     "back_to_list": "Back to list",
     "err_db": "❌ An error occurred while searching for tournaments in the database.",
+    "err_not_linked": "❌ You need to link your osu! account first to get a tournament recommendation based on your rank and game mode.",
     "tags_breakdown_title": "🏷️ Tag Counts",
     "modes_breakdown_title": "🎮 Game Mode Counts",
     "status_breakdown_title": "📌 Registration Status Counts",

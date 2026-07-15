@@ -37,6 +37,11 @@ const data = new SlashCommandBuilder()
                 { name: "Finalizados (completed)", value: "completed" },
                 { name: "Todos (all)", value: "all" }
             )
+    )
+    .addBooleanOption(option =>
+        option.setName("recomendar")
+            .setDescription("Te recomienda un torneo según tu rango y modo de juego")
+            .setRequired(false)
     );
 
 async function run(interaction, res, chat_commands) {
@@ -44,8 +49,12 @@ async function run(interaction, res, chat_commands) {
     const rango = interaction.options.getInteger("rango");
     const tag = interaction.options.getString("tag");
     const estado = interaction.options.getString("estado");
+    const recomendar = interaction.options.getBoolean("recomendar");
 
     const args = [];
+    if (recomendar) {
+        args.push("-rec");
+    }
     if (modo) {
         args.push("-modo", modo);
     }

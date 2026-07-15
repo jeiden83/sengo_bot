@@ -409,6 +409,7 @@
     "no_results_active": "🔍 No se encontraron torneos activos con los filtros indicados. Prueba buscando pasados agregando `-pasados`.",
     "back_to_list": "Volver a la lista",
     "err_db": "❌ Ocurrió un error al buscar los torneos en la base de datos.",
+    "err_not_linked": "❌ Necesitas vincular tu cuenta de osu! primero para recomendarte un torneo según tu rango y modo de juego.",
     "tags_breakdown_title": "🏷️ Conteo de Etiquetas",
     "modes_breakdown_title": "🎮 Conteo por Modo de Juego",
     "status_breakdown_title": "📌 Conteo por Estado de Inscripción",
