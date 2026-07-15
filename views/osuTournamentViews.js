@@ -30,10 +30,44 @@ const STATUS_DATA = {
  * @param {string} [options.locale] - Localización de idioma
  * @returns {EmbedBuilder}
  */
-function doTournamentListEmbed({ tournaments, total, page, pageSize, message, locale = 'es' }) {
+function doTournamentListEmbed({ tournaments, total, page, pageSize, message, locale = 'es', filters }) {
     const embedColor = getEmbedColor(message);
     const startIndex = (page - 1) * pageSize;
     const maxPages = Math.ceil(total / pageSize) || 1;
+
+    let filterDescription = "";
+    if (filters) {
+        const activeFilters = [];
+        if (filters.gameMode) {
+            const modeName = filters.gameMode === 'osu' ? 'STD' : filters.gameMode.toUpperCase();
+            activeFilters.push(`**${t(locale, 'torneos.mode')}**: \`${modeName}\``);
+        }
+        if (filters.rank !== null && filters.rank !== undefined) {
+            activeFilters.push(`**${t(locale, 'torneos.rank')}**: \`#${filters.rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}\``);
+        }
+        if (filters.tag) {
+            activeFilters.push(`**${t(locale, 'torneos.tag')}**: \`${filters.tag}\``);
+        }
+        const isDefaultStatus = Array.isArray(filters.status) && filters.status.length === 2 && filters.status.includes('open') && filters.status.includes('in_progress');
+        if (!isDefaultStatus && filters.status) {
+            if (filters.status === 'completed') {
+                activeFilters.push(`**${t(locale, 'torneos.status')}**: \`${t(locale, 'torneos.status_closed')}\``);
+            } else if (Array.isArray(filters.status)) {
+                if (filters.status.length > 2) {
+                    activeFilters.push(`**${t(locale, 'torneos.status')}**: \`Todos\``);
+                } else {
+                    const statusText = filters.status.map(s => t(locale, `torneos.status_${s === 'completed' ? 'closed' : s}`)).join(", ");
+                    activeFilters.push(`**${t(locale, 'torneos.status')}**: \`${statusText}\``);
+                }
+            } else {
+                activeFilters.push(`**${t(locale, 'torneos.status')}**: \`${t(locale, `torneos.status_${filters.status === 'completed' ? 'closed' : filters.status}`)}\``);
+            }
+        }
+        
+        if (activeFilters.length > 0) {
+            filterDescription = `🔍 **${t(locale, 'torneos.filters_applied')}**: ${activeFilters.join("  •  ")}\n\n`;
+        }
+    }
 
     const lines = tournaments.map((tourney, idx) => {
         const itemNumber = startIndex + idx + 1;
@@ -56,7 +90,7 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
 
     const embed = new EmbedBuilder()
         .setTitle(t(locale, 'torneos.embed_title'))
-        .setDescription(lines.length > 0 ? lines.join("\n\n") : t(locale, 'torneos.no_tournaments'))
+        .setDescription(filterDescription + (lines.length > 0 ? lines.join("\n\n") : t(locale, 'torneos.no_tournaments')))
         .setColor(embedColor)
         .setFooter({
             text: t(locale, 'torneos.page_info', { page, totalPages: maxPages }) + " • " + t(locale, 'torneos.showing_info', { start: startIndex + 1, end: startIndex + tournaments.length, total }),

@@ -154,7 +154,7 @@ async function run(messages, args) {
                     const val = parseInt(args[i+1], 10);
                     if (!isNaN(val)) rank = val;
                     i++;
-                } else if (arg === '-tag' || arg === '-t') {
+                } else if (arg === '-tag' || arg === '-t' || arg === '-tags') {
                     tag = args[i+1];
                     i++;
                 } else if (arg === '-pasados' || arg === '-p') {
@@ -278,7 +278,8 @@ async function run(messages, args) {
             page: currentPage,
             pageSize,
             message,
-            locale
+            locale,
+            filters: { gameMode, rank, tag, status }
         });
     };
 
