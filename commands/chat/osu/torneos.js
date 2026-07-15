@@ -118,10 +118,11 @@ async function run(messages, args) {
             }
 
             if (reply && typeof reply.reply === 'function') {
-                return await reply.reply({ embeds: [embed] });
+                await reply.reply({ embeds: [embed] });
             } else {
-                return await message.channel.send({ embeds: [embed] });
+                await message.channel.send({ embeds: [embed] });
             }
+            return;
         } catch (err) {
             console.error("Error al calcular breakdown:", err);
             return t(locale, 'torneos.err_db');
