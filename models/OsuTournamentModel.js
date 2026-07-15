@@ -47,7 +47,8 @@ async function searchTournaments(filters = {}) {
     if (filters.tag) {
         // En PostgreSQL, tags es un array de texto (TEXT[])
         // Usamos overlaps para buscar si contiene el tag (en minúsculas)
-        query = query.overlaps('tags', [filters.tag.toLowerCase().trim()]);
+        const cleanTag = filters.tag.toLowerCase().trim().replace(/[-_]/g, ' ').replace(/\s+/g, ' ');
+        query = query.overlaps('tags', [cleanTag]);
     }
 
     // 5. Ordenar por fecha de creación desc
