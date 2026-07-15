@@ -99,7 +99,7 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
         `**${t(locale, 'torneos.mode')}:** \`${modeName.toUpperCase()}\``,
         `**Formato:** \`${tournament.team_format || "1v1"}\``,
         `**${t(locale, 'torneos.rank')}:** \`${rankStr}\``,
-        `**${t(locale, 'torneos.status')}:** **${statusText}**`
+        `**${t(locale, 'torneos.status')}:** ${status.emoji} **${statusText}**`
     ];
 
     // Enlaces
@@ -110,7 +110,6 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
     if (tournament.rules_url) links.push(`[Reglas](${tournament.rules_url})`);
     if (tournament.challonge_url) links.push(`[Bracket](${tournament.challonge_url})`);
     if (tournament.twitch_url) links.push(`[Twitch](${tournament.twitch_url})`);
-    links.push(`[${t(locale, 'torneos.view_forum')}](https://osu.ppy.sh/community/forums/topics/${tournament.id})`);
 
     const fields = [
         {
@@ -163,7 +162,7 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
         .setURL(`https://osu.ppy.sh/community/forums/topics/${tournament.id}`)
         .addFields(fields)
         .setColor(embedColor)
-        .setFooter({ text: t(locale, 'torneos.ia_footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
     return embed;
