@@ -1,6 +1,13 @@
-const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const OsuTournamentModel = require("../../../models/OsuTournamentModel.js");
-const { doTournamentListEmbed, doTournamentDetailEmbed, doTournamentFeedHelpEmbed } = require("../../../views/osuTournamentViews.js");
+const {
+    doTournamentListEmbed,
+    doTournamentDetailEmbed,
+    doTournamentFeedHelpEmbed,
+    doTournamentBreakdownEmbed,
+    getTournamentPaginationRow,
+    getTournamentSelectionRow,
+    getTournamentBackRow
+} = require("../../../views/osuTournamentViews.js");
 const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
@@ -196,96 +203,13 @@ async function run(messages, args) {
             const allTournaments = await OsuTournamentModel.searchTournaments({
                 status: ['open', 'in_progress', 'completed', 'unknown']
             });
-            const total = allTournaments.length;
 
-            const { EmbedBuilder } = require("discord.js");
-            const embed = new EmbedBuilder()
-                .setColor(0xffffff)
-                .setTimestamp()
-                .setFooter({ text: "Sengo", iconURL: message.author.displayAvatarURL() });
+            let type = 'tags';
+            if (isModoBreakdown) type = 'modo';
+            else if (isEstadoBreakdown) type = 'estado';
+            else if (isPasadosBreakdown) type = 'pasados';
 
-            if (isTagsBreakdown) {
-                const tagCounts = {};
-                for (const t of allTournaments) {
-                    if (t.tags && Array.isArray(t.tags)) {
-                        for (const tag of t.tags) {
-                            const cleanTag = tag.trim().toLowerCase();
-                            if (cleanTag) {
-                                tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
-                            }
-                        }
-                    }
-                }
-                const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
-                const uniqueCount = sortedTags.length;
-
-                embed.setTitle(t(locale, 'torneos.tags_breakdown_title'));
-                
-                const lines = [];
-                for (let i = 0; i < sortedTags.length && i < 30; i++) {
-                    const [tag, count] = sortedTags[i];
-                    lines.push(`\`${tag}\` (${count})`);
-                }
-                
-                let desc = t(locale, 'torneos.total_tournaments', { total }) + "\n" +
-                           t(locale, 'torneos.unique_tags', { count: uniqueCount }) + "\n\n";
-                
-                if (lines.length > 0) {
-                    desc += lines.join("  •  ");
-                } else {
-                    desc += "*No hay etiquetas registradas.*";
-                }
-                embed.setDescription(desc);
-            }
-            else if (isModoBreakdown) {
-                const modeCounts = { osu: 0, mania: 0, taiko: 0, fruits: 0 };
-                for (const t of allTournaments) {
-                    if (modeCounts[t.game_mode] !== undefined) {
-                        modeCounts[t.game_mode]++;
-                    }
-                }
-                embed.setTitle(t(locale, 'torneos.modes_breakdown_title'));
-                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
-                             `• **STD**: ${modeCounts.osu} torneos\n` +
-                             `• **Mania**: ${modeCounts.mania} torneos\n` +
-                             `• **Taiko**: ${modeCounts.taiko} torneos\n` +
-                             `• **Fruits/Catch**: ${modeCounts.fruits} torneos`;
-                embed.setDescription(desc);
-            }
-            else if (isEstadoBreakdown) {
-                const statusCounts = { open: 0, in_progress: 0, completed: 0, unknown: 0 };
-                for (const t of allTournaments) {
-                    const s = t.reg_status || 'unknown';
-                    if (statusCounts[s] !== undefined) {
-                        statusCounts[s]++;
-                    } else {
-                        statusCounts.unknown++;
-                    }
-                }
-                embed.setTitle(t(locale, 'torneos.status_breakdown_title'));
-                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
-                             `• 🟢 **${t(locale, 'torneos.status_open')}**: ${statusCounts.open} torneos\n` +
-                             `• 🟡 **${t(locale, 'torneos.status_in_progress')}**: ${statusCounts.in_progress} torneos\n` +
-                             `• 🔴 **${t(locale, 'torneos.status_closed')}**: ${statusCounts.completed} torneos\n` +
-                             `• ⚪ **${t(locale, 'torneos.status_unknown')}**: ${statusCounts.unknown} torneos`;
-                embed.setDescription(desc);
-            }
-            else if (isPasadosBreakdown) {
-                let activeCount = 0;
-                let completedCount = 0;
-                for (const t of allTournaments) {
-                    if (t.reg_status === 'completed') {
-                        completedCount++;
-                    } else {
-                        activeCount++;
-                    }
-                }
-                embed.setTitle(t(locale, 'torneos.past_breakdown_title'));
-                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
-                             `• 🟢 **${t(locale, 'torneos.active_tournaments')}**: ${activeCount} torneos\n` +
-                             `• 🔴 **${t(locale, 'torneos.past_tournaments')}**: ${completedCount} torneos`;
-                embed.setDescription(desc);
-            }
+            const embed = doTournamentBreakdownEmbed(allTournaments, type, message, locale);
 
             if (reply && typeof reply.reply === 'function') {
                 await reply.reply({ embeds: [embed] });
@@ -384,60 +308,6 @@ async function run(messages, args) {
         return t(locale, 'torneos.no_results_active');
     }
 
-    // Funciones auxiliares para construir filas de componentes
-    const getPaginationRow = (currentPage) => {
-        const maxPages = Math.ceil(total / pageSize) || 1;
-        const row = new ActionRowBuilder();
-        row.addComponents(
-            new ButtonBuilder()
-                .setCustomId('torneos_first')
-                .setEmoji('⏮️')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(currentPage === 1),
-            new ButtonBuilder()
-                .setCustomId('torneos_prev')
-                .setEmoji('◀️')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(currentPage === 1),
-            new ButtonBuilder()
-                .setCustomId('torneos_next')
-                .setEmoji('▶️')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(currentPage === maxPages),
-            new ButtonBuilder()
-                .setCustomId('torneos_last')
-                .setEmoji('⏭️')
-                .setStyle(ButtonStyle.Secondary)
-                .setDisabled(currentPage === maxPages)
-        );
-        return row;
-    };
-
-    const getSelectionRow = (currentPage) => {
-        const start = (currentPage - 1) * pageSize;
-        const pageItems = allTournaments.slice(start, start + pageSize);
-        const row = new ActionRowBuilder();
-        pageItems.forEach((t, index) => {
-            row.addComponents(
-                new ButtonBuilder()
-                    .setCustomId(`torneos_select_${t.id}`)
-                    .setLabel((start + index + 1).toString())
-                    .setStyle(ButtonStyle.Primary)
-            );
-        });
-        return row;
-    };
-
-    const getBackRow = () => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('torneos_back')
-                .setLabel(t(locale, 'torneos.back_to_list'))
-                .setEmoji('🔙')
-                .setStyle(ButtonStyle.Secondary)
-        );
-    };
-
     // Renderizar página actual
     const getPageEmbed = (currentPage) => {
         const start = (currentPage - 1) * pageSize;
@@ -456,9 +326,9 @@ async function run(messages, args) {
     const initialEmbed = getPageEmbed(page);
     const initialComponents = [];
     if (total > pageSize) {
-        initialComponents.push(getPaginationRow(page));
+        initialComponents.push(getTournamentPaginationRow(page, total, pageSize));
     }
-    initialComponents.push(getSelectionRow(page));
+    initialComponents.push(getTournamentSelectionRow(page, pageSize, allTournaments));
 
     let sent_message;
     if (reply) {
@@ -493,9 +363,9 @@ async function run(messages, args) {
                 // Volver a la lista
                 const components = [];
                 if (total > pageSize) {
-                    components.push(getPaginationRow(page));
+                    components.push(getTournamentPaginationRow(page, total, pageSize));
                 }
-                components.push(getSelectionRow(page));
+                components.push(getTournamentSelectionRow(page, pageSize, allTournaments));
                 await i.editReply({
                     embeds: [getPageEmbed(page)],
                     components
@@ -509,7 +379,7 @@ async function run(messages, args) {
                     const detailEmbed = doTournamentDetailEmbed(selected, message, locale);
                     await i.editReply({
                         embeds: [detailEmbed],
-                        components: [getBackRow()]
+                        components: [getTournamentBackRow(locale)]
                     });
                 }
                 return;
@@ -518,9 +388,9 @@ async function run(messages, args) {
             // Actualizar vista de lista
             const components = [];
             if (total > pageSize) {
-                components.push(getPaginationRow(page));
+                components.push(getTournamentPaginationRow(page, total, pageSize));
             }
-            components.push(getSelectionRow(page));
+            components.push(getTournamentSelectionRow(page, pageSize, allTournaments));
 
             await i.editReply({
                 embeds: [getPageEmbed(page)],

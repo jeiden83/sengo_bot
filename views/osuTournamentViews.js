@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
@@ -235,8 +235,176 @@ function doTournamentFeedHelpEmbed(prefix, locale = 'es') {
     return helpEmbed;
 }
 
+/**
+ * Genera el embed de estadísticas/breakdown de los torneos.
+ * 
+ * @param {Array} allTournaments - Lista completa de torneos
+ * @param {string} type - Tipo de breakdown ('tags', 'modo', 'estado', 'pasados')
+ * @param {Object} message - Mensaje original para el color del embed y el footer
+ * @param {string} [locale] - Localización de idioma
+ * @returns {EmbedBuilder}
+ */
+function doTournamentBreakdownEmbed(allTournaments, type, message, locale = 'es') {
+    const total = allTournaments.length;
+    const embed = new EmbedBuilder()
+        .setColor(0xffffff)
+        .setTimestamp()
+        .setFooter({ text: "Sengo", iconURL: message.author.displayAvatarURL() });
+
+    if (type === 'tags') {
+        const tagCounts = {};
+        for (const t of allTournaments) {
+            if (t.tags && Array.isArray(t.tags)) {
+                for (const tag of t.tags) {
+                    const cleanTag = tag.trim().toLowerCase();
+                    if (cleanTag) {
+                        tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
+                    }
+                }
+            }
+        }
+        const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+        const uniqueCount = sortedTags.length;
+
+        embed.setTitle(t(locale, 'torneos.tags_breakdown_title'));
+        
+        const lines = [];
+        for (let i = 0; i < sortedTags.length && i < 30; i++) {
+            const [tag, count] = sortedTags[i];
+            lines.push(`\`${tag}\` (${count})`);
+        }
+        
+        let desc = t(locale, 'torneos.total_tournaments', { total }) + "\n" +
+                   t(locale, 'torneos.unique_tags', { count: uniqueCount }) + "\n\n";
+        
+        if (lines.length > 0) {
+            desc += lines.join("  •  ");
+        } else {
+            desc += "*No hay etiquetas registradas.*";
+        }
+        embed.setDescription(desc);
+    }
+    else if (type === 'modo') {
+        const modeCounts = { osu: 0, mania: 0, taiko: 0, fruits: 0 };
+        for (const t of allTournaments) {
+            if (modeCounts[t.game_mode] !== undefined) {
+                modeCounts[t.game_mode]++;
+            }
+        }
+        embed.setTitle(t(locale, 'torneos.modes_breakdown_title'));
+        const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                     `• **STD**: ${modeCounts.osu} torneos\n` +
+                     `• **Mania**: ${modeCounts.mania} torneos\n` +
+                     `• **Taiko**: ${modeCounts.taiko} torneos\n` +
+                     `• **Fruits/Catch**: ${modeCounts.fruits} torneos`;
+        embed.setDescription(desc);
+    }
+    else if (type === 'estado') {
+        const statusCounts = { open: 0, in_progress: 0, completed: 0, unknown: 0 };
+        for (const t of allTournaments) {
+            const s = t.reg_status || 'unknown';
+            if (statusCounts[s] !== undefined) {
+                statusCounts[s]++;
+            } else {
+                statusCounts.unknown++;
+            }
+        }
+        embed.setTitle(t(locale, 'torneos.status_breakdown_title'));
+        const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                     `• 🟢 **${t(locale, 'torneos.status_open')}**: ${statusCounts.open} torneos\n` +
+                     `• 🟡 **${t(locale, 'torneos.status_in_progress')}**: ${statusCounts.in_progress} torneos\n` +
+                     `• 🔴 **${t(locale, 'torneos.status_closed')}**: ${statusCounts.completed} torneos\n` +
+                     `• ⚪ **${t(locale, 'torneos.status_unknown')}**: ${statusCounts.unknown} torneos`;
+        embed.setDescription(desc);
+    }
+    else if (type === 'pasados') {
+        let activeCount = 0;
+        let completedCount = 0;
+        for (const t of allTournaments) {
+            if (t.reg_status === 'completed') {
+                completedCount++;
+            } else {
+                activeCount++;
+            }
+        }
+        embed.setTitle(t(locale, 'torneos.past_breakdown_title'));
+        const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                     `• 🟢 **${t(locale, 'torneos.active_tournaments')}**: ${activeCount} torneos\n` +
+                     `• 🔴 **${t(locale, 'torneos.past_tournaments')}**: ${completedCount} torneos`;
+        embed.setDescription(desc);
+    }
+
+    return embed;
+}
+
+/**
+ * Genera la fila de paginación de torneos.
+ */
+function getTournamentPaginationRow(currentPage, total, pageSize) {
+    const maxPages = Math.ceil(total / pageSize) || 1;
+    const row = new ActionRowBuilder();
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId('torneos_first')
+            .setEmoji('⏮️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === 1),
+        new ButtonBuilder()
+            .setCustomId('torneos_prev')
+            .setEmoji('◀️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === 1),
+        new ButtonBuilder()
+            .setCustomId('torneos_next')
+            .setEmoji('▶️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === maxPages),
+        new ButtonBuilder()
+            .setCustomId('torneos_last')
+            .setEmoji('⏭️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(currentPage === maxPages)
+    );
+    return row;
+}
+
+/**
+ * Genera la fila de selección numérica de torneos en la página.
+ */
+function getTournamentSelectionRow(currentPage, pageSize, allTournaments) {
+    const start = (currentPage - 1) * pageSize;
+    const pageItems = allTournaments.slice(start, start + pageSize);
+    const row = new ActionRowBuilder();
+    pageItems.forEach((t, index) => {
+        row.addComponents(
+            new ButtonBuilder()
+                .setCustomId(`torneos_select_${t.id}`)
+                .setLabel((start + index + 1).toString())
+                .setStyle(ButtonStyle.Primary)
+        );
+    });
+    return row;
+}
+
+/**
+ * Genera el botón para volver a la lista de torneos.
+ */
+function getTournamentBackRow(locale = 'es') {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('torneos_back')
+            .setLabel(t(locale, 'torneos.back_to_list'))
+            .setEmoji('🔙')
+            .setStyle(ButtonStyle.Secondary)
+    );
+}
+
 module.exports = {
     doTournamentListEmbed,
     doTournamentDetailEmbed,
-    doTournamentFeedHelpEmbed
+    doTournamentFeedHelpEmbed,
+    doTournamentBreakdownEmbed,
+    getTournamentPaginationRow,
+    getTournamentSelectionRow,
+    getTournamentBackRow
 };
