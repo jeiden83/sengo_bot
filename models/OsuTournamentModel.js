@@ -556,7 +556,30 @@ async function syncLatestTournaments(limit = 10) {
     }
 }
 
+/**
+ * Obtiene el último torneo guardado en la base de datos.
+ * @returns {Promise<Object|null>} El torneo más reciente o null.
+ */
+async function getLatestTournament() {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+        .from('tournaments')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+    if (error) {
+        console.error('[DB] Error al obtener el último torneo:', error);
+        throw error;
+    }
+    return data;
+}
+
 module.exports = {
     searchTournaments,
-    syncLatestTournaments
+    syncLatestTournaments,
+    getLatestTournament
 };

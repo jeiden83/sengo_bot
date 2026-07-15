@@ -71,18 +71,14 @@ async function run(messages, args) {
                 return `❌ El canal configurado (<#${targetChannelId}>) no es válido o no tengo acceso.`;
             }
 
-            const { getSupabaseClient } = require("../../../db/database.js");
-            const supabase = getSupabaseClient();
-            if (!supabase) return "❌ Error de conexión a la base de datos.";
+            let latestTourney;
+            try {
+                latestTourney = await OsuTournamentModel.getLatestTournament();
+            } catch (err) {
+                return "❌ Error al obtener el último torneo de la base de datos.";
+            }
 
-            const { data: latestTourney, error } = await supabase
-                .from('tournaments')
-                .select('*')
-                .order('created_at', { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
-            if (error || !latestTourney) {
+            if (!latestTourney) {
                 return "❌ No se encontraron torneos en la base de datos para enviar.";
             }
 
