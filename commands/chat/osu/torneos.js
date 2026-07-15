@@ -251,7 +251,7 @@ async function run(messages, args) {
             row.addComponents(
                 new ButtonBuilder()
                     .setCustomId(`torneos_select_${t.id}`)
-                    .setLabel((index + 1).toString())
+                    .setLabel((start + index + 1).toString())
                     .setStyle(ButtonStyle.Primary)
             );
         });
