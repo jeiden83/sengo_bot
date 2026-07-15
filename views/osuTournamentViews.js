@@ -83,7 +83,8 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
         }
 
         const formatStr = tourney.team_format ? ` • \`${tourney.team_format}\`` : "";
-        const titleLink = `[**${tourney.title}**](https://osu.ppy.sh/community/forums/topics/${tourney.id})`;
+        const safeTitle = tourney.title.replace(/\[/g, '(').replace(/\]/g, ')');
+        const titleLink = `[**${safeTitle}**](https://osu.ppy.sh/community/forums/topics/${tourney.id})`;
 
         return `${itemNumber}. ${status.emoji} ${modeEmoji} ${titleLink}\n   ↳ \`${rankStr}\`${formatStr} • *${statusText}*`;
     });
@@ -135,6 +136,15 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
         `**${t(locale, 'torneos.rank')}:** \`${rankStr}\``,
         `**${t(locale, 'torneos.status')}:** ${status.emoji} **${statusText}**`
     ];
+
+    if (tournament.created_at) {
+        const createdUnix = Math.floor(new Date(tournament.created_at).getTime() / 1000);
+        detailsLines.push(`**${t(locale, 'torneos.created')}:** <t:${createdUnix}:F> (<t:${createdUnix}:R>)`);
+    }
+    if (tournament.updated_at) {
+        const updatedUnix = Math.floor(new Date(tournament.updated_at).getTime() / 1000);
+        detailsLines.push(`**${t(locale, 'torneos.last_update')}:** <t:${updatedUnix}:F> (<t:${updatedUnix}:R>)`);
+    }
 
     // Enlaces
     const links = [];
