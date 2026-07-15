@@ -20,13 +20,9 @@ async function run(messages, args) {
     if (forceIdx !== -1) {
         const config = require("../../../config.js");
         const isOwner = message.author.id === config.OWNER_ID;
-        const guild = message.guild;
-        const member = guild ? (message.member || await guild.members.fetch(message.author.id).catch(() => null)) : null;
-        const { PermissionFlagsBits } = require("discord.js");
-        const isAdmin = member && member.permissions.has(PermissionFlagsBits.Administrator);
 
-        if (!isOwner && !isAdmin) {
-            return "❌ Solo los administradores o el propietario del bot pueden forzar una actualización manual de torneos.";
+        if (!isOwner) {
+            return;
         }
 
         const replyMsg = reply && typeof reply.reply === 'function' 
