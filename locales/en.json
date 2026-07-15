@@ -359,6 +359,11 @@
       "header": "Link and show your osu! skin",
       "body": "Allows you to link your custom osu! skin to your Discord account so other users can see and download it.",
       "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> [-nombre <name>] [-osu|-ctb|-taiko|-mania] : Links your skin with optional mode and name.\ns.skin -nombre <name> [-osu|-ctb|-taiko|-mania] : Changes the name of the skin for that mode.\ns.skin -delete or borrar [-osu|-ctb|-taiko|-mania] : Deletes the skin for that mode or all if none is specified."
+    },
+    "torneos": {
+      "header": "Search and list active or past osu! tournaments",
+      "body": "Filter tournaments by mode, rank, tags/region and status.",
+      "usage": "s.torneos [-modo <mode>] [-rango <rank>] [-tag <tag>] [-pasados] [-estado <status>]"
     }
   },
   "contributors": {
@@ -371,6 +376,38 @@
     "empty": "*There are no users linked via the secure OAuth system yet.*",
     "error": "*An unexpected error occurred while processing the command.*",
     "footer": "Sengo • Page {page}/{total}"
+  },
+  "torneos": {
+    "embed_title": "🏆 osu! Tournament Search",
+    "filters_applied": "Applied Filters",
+    "results_found": "Results found",
+    "page_info": "Page {page} of {totalPages}",
+    "mode": "Mode",
+    "status": "Status",
+    "rank": "Rank",
+    "tag": "Tag",
+    "no_tournaments": "No tournaments were found with the selected filters.",
+    "view_forum": "View Forum",
+    "created": "Created",
+    "last_update": "Last update",
+    "rules": "Rules",
+    "prizes": "Prizes",
+    "dates": "Dates",
+    "tags": "Tags",
+    "status_open": "Open",
+    "status_in_progress": "In Progress",
+    "status_closed": "Closed",
+    "status_unknown": "Unknown",
+    "yes": "Yes",
+    "no": "No",
+    "open_range": "Open Range",
+    "showing_info": "Showing {start}-{end} of {total} tournaments",
+    "general_info": "📋 General Information",
+    "quick_links": "🔗 Quick Links",
+    "no_links": "*No links available*",
+    "ia_footer": "Sengo • Information extracted with AI",
+    "no_results_active": "🔍 No active tournaments were found with the indicated filters. Try searching for past ones by adding `-pasados`.",
+    "back_to_list": "Back to list"
   },
   "yuri": {
     "stats_title": "📊 Yuri Collection Statistics",

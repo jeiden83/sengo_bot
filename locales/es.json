@@ -359,6 +359,11 @@
       "header": "Vincula y muestra tu skin de osu!",
       "body": "Permite vincular tu skin propia de osu! a tu cuenta de Discord para que otros usuarios puedan verla y descargarla.",
       "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> [-nombre <nombre>] [-osu|-ctb|-taiko|-mania] : Vincula tu skin con modo y nombre opcionales.\ns.skin -nombre <nombre> [-osu|-ctb|-taiko|-mania] : Cambia el nombre de la skin de ese modo.\ns.skin -delete o borrar [-osu|-ctb|-taiko|-mania] : Elimina la skin de ese modo o todas si no se especifica."
+    },
+    "torneos": {
+      "header": "Busca y lista torneos activos o pasados de osu!",
+      "body": "Filtra torneos por modo, rango, etiquetas/región y estado.",
+      "usage": "s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]"
     }
   },
   "contributors": {
@@ -371,6 +376,38 @@
     "empty": "*Aún no hay usuarios vinculados a través del sistema seguro de OAuth.*",
     "error": "*Ocurrió un error inesperado al procesar el comando.*",
     "footer": "Sengo • Página {page}/{total}"
+  },
+  "torneos": {
+    "embed_title": "🏆 Búsqueda de Torneos de osu!",
+    "filters_applied": "Filtros Aplicados",
+    "results_found": "Resultados encontrados",
+    "page_info": "Página {page} de {totalPages}",
+    "mode": "Modo",
+    "status": "Estado",
+    "rank": "Rango",
+    "tag": "Etiqueta",
+    "no_tournaments": "No se encontraron torneos con los filtros seleccionados.",
+    "view_forum": "Ver Foro",
+    "created": "Creado",
+    "last_update": "Última act.",
+    "rules": "Reglas",
+    "prizes": "Premios",
+    "dates": "Fechas",
+    "tags": "Tags",
+    "status_open": "Abierto",
+    "status_in_progress": "En Proceso",
+    "status_closed": "Cerrado",
+    "status_unknown": "Desconocido",
+    "yes": "Sí",
+    "no": "No",
+    "open_range": "Rango Abierto",
+    "showing_info": "Mostrando {start}-{end} de {total} torneos",
+    "general_info": "📋 Información General",
+    "quick_links": "🔗 Enlaces Rápidos",
+    "no_links": "*No hay enlaces disponibles*",
+    "ia_footer": "Sengo • Información extraída con IA",
+    "no_results_active": "🔍 No se encontraron torneos activos con los filtros indicados. Prueba buscando pasados agregando `-pasados`.",
+    "back_to_list": "Volver a la lista"
   },
   "yuri": {
     "stats_title": "📊 Estadísticas de la Colección Yuri",
