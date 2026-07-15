@@ -408,7 +408,15 @@
     "ia_footer": "Sengo • Información extraída con IA",
     "no_results_active": "🔍 No se encontraron torneos activos con los filtros indicados. Prueba buscando pasados agregando `-pasados`.",
     "back_to_list": "Volver a la lista",
-    "err_db": "❌ Ocurrió un error al buscar los torneos en la base de datos."
+    "err_db": "❌ Ocurrió un error al buscar los torneos en la base de datos.",
+    "tags_breakdown_title": "🏷️ Conteo de Etiquetas",
+    "modes_breakdown_title": "🎮 Conteo por Modo de Juego",
+    "status_breakdown_title": "📌 Conteo por Estado de Inscripción",
+    "past_breakdown_title": "📊 Conteo de Torneos Activos vs Pasados",
+    "total_tournaments": "Total de torneos registrados: **{total}**",
+    "unique_tags": "Etiquetas únicas encontradas: **{count}**",
+    "active_tournaments": "Activos",
+    "past_tournaments": "Pasados"
   },
   "yuri": {
     "stats_title": "📊 Estadísticas de la Colección Yuri",

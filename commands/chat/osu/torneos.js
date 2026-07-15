@@ -7,6 +7,127 @@ async function run(messages, args) {
     const { message, reply, logger } = messages;
     const locale = message.locale || 'es';
 
+    const cleanArgs = (args || []).map(arg => typeof arg === 'string' ? arg.toLowerCase().trim() : '');
+    const tagIdx = cleanArgs.findIndex(a => a === '-tag' || a === '-t' || a === '-tags');
+    const isTagsBreakdown = tagIdx !== -1 && (tagIdx === cleanArgs.length - 1 || cleanArgs[tagIdx + 1].startsWith('-'));
+
+    const modoIdx = cleanArgs.findIndex(a => a === '-modo' || a === '-m');
+    const isModoBreakdown = modoIdx !== -1 && (modoIdx === cleanArgs.length - 1 || cleanArgs[modoIdx + 1].startsWith('-'));
+
+    const estadoIdx = cleanArgs.findIndex(a => a === '-estado' || a === '-e');
+    const isEstadoBreakdown = estadoIdx !== -1 && (estadoIdx === cleanArgs.length - 1 || cleanArgs[estadoIdx + 1].startsWith('-'));
+
+    const pasadosIdx = cleanArgs.findIndex(a => a === '-pasados' || a === '-p');
+    const isPasadosBreakdown = pasadosIdx !== -1 && cleanArgs.length === 1;
+
+    if (isTagsBreakdown || isModoBreakdown || isEstadoBreakdown || isPasadosBreakdown) {
+        if (logger) logger.process(`Procesando breakdown de torneos: tags=${isTagsBreakdown}, modo=${isModoBreakdown}, estado=${isEstadoBreakdown}, pasados=${isPasadosBreakdown}`);
+        try {
+            const allTournaments = await OsuTournamentModel.searchTournaments({
+                status: ['open', 'in_progress', 'completed', 'unknown']
+            });
+            const total = allTournaments.length;
+
+            const { EmbedBuilder } = require("discord.js");
+            const embed = new EmbedBuilder()
+                .setColor(0xffffff)
+                .setTimestamp()
+                .setFooter({ text: "Sengo", iconURL: message.author.displayAvatarURL() });
+
+            if (isTagsBreakdown) {
+                const tagCounts = {};
+                for (const t of allTournaments) {
+                    if (t.tags && Array.isArray(t.tags)) {
+                        for (const tag of t.tags) {
+                            const cleanTag = tag.trim().toLowerCase();
+                            if (cleanTag) {
+                                tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
+                            }
+                        }
+                    }
+                }
+                const sortedTags = Object.entries(tagCounts).sort((a, b) => b[1] - a[1]);
+                const uniqueCount = sortedTags.length;
+
+                embed.setTitle(t(locale, 'torneos.tags_breakdown_title'));
+                
+                const lines = [];
+                for (let i = 0; i < sortedTags.length && i < 30; i++) {
+                    const [tag, count] = sortedTags[i];
+                    lines.push(`\`${tag}\` (${count})`);
+                }
+                
+                let desc = t(locale, 'torneos.total_tournaments', { total }) + "\n" +
+                           t(locale, 'torneos.unique_tags', { count: uniqueCount }) + "\n\n";
+                
+                if (lines.length > 0) {
+                    desc += lines.join("  •  ");
+                } else {
+                    desc += "*No hay etiquetas registradas.*";
+                }
+                embed.setDescription(desc);
+            }
+            else if (isModoBreakdown) {
+                const modeCounts = { osu: 0, mania: 0, taiko: 0, fruits: 0 };
+                for (const t of allTournaments) {
+                    if (modeCounts[t.game_mode] !== undefined) {
+                        modeCounts[t.game_mode]++;
+                    }
+                }
+                embed.setTitle(t(locale, 'torneos.modes_breakdown_title'));
+                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                             `• **STD**: ${modeCounts.osu} torneos\n` +
+                             `• **Mania**: ${modeCounts.mania} torneos\n` +
+                             `• **Taiko**: ${modeCounts.taiko} torneos\n` +
+                             `• **Fruits/Catch**: ${modeCounts.fruits} torneos`;
+                embed.setDescription(desc);
+            }
+            else if (isEstadoBreakdown) {
+                const statusCounts = { open: 0, in_progress: 0, completed: 0, unknown: 0 };
+                for (const t of allTournaments) {
+                    const s = t.reg_status || 'unknown';
+                    if (statusCounts[s] !== undefined) {
+                        statusCounts[s]++;
+                    } else {
+                        statusCounts.unknown++;
+                    }
+                }
+                embed.setTitle(t(locale, 'torneos.status_breakdown_title'));
+                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                             `• 🟢 **${t(locale, 'torneos.status_open')}**: ${statusCounts.open} torneos\n` +
+                             `• 🟡 **${t(locale, 'torneos.status_in_progress')}**: ${statusCounts.in_progress} torneos\n` +
+                             `• 🔴 **${t(locale, 'torneos.status_closed')}**: ${statusCounts.completed} torneos\n` +
+                             `• ⚪ **${t(locale, 'torneos.status_unknown')}**: ${statusCounts.unknown} torneos`;
+                embed.setDescription(desc);
+            }
+            else if (isPasadosBreakdown) {
+                let activeCount = 0;
+                let completedCount = 0;
+                for (const t of allTournaments) {
+                    if (t.reg_status === 'completed') {
+                        completedCount++;
+                    } else {
+                        activeCount++;
+                    }
+                }
+                embed.setTitle(t(locale, 'torneos.past_breakdown_title'));
+                const desc = t(locale, 'torneos.total_tournaments', { total }) + "\n\n" +
+                             `• 🟢 **${t(locale, 'torneos.active_tournaments')}**: ${activeCount} torneos\n` +
+                             `• 🔴 **${t(locale, 'torneos.past_tournaments')}**: ${completedCount} torneos`;
+                embed.setDescription(desc);
+            }
+
+            if (reply && typeof reply.reply === 'function') {
+                return await reply.reply({ embeds: [embed] });
+            } else {
+                return await message.channel.send({ embeds: [embed] });
+            }
+        } catch (err) {
+            console.error("Error al calcular breakdown:", err);
+            return t(locale, 'torneos.err_db');
+        }
+    }
+
     let gameMode = null;
     let rank = null;
     let tag = null;

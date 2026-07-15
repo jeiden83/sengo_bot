@@ -408,7 +408,15 @@
     "ia_footer": "Sengo • Information extracted with AI",
     "no_results_active": "🔍 No active tournaments were found with the indicated filters. Try searching for past ones by adding `-pasados`.",
     "back_to_list": "Back to list",
-    "err_db": "❌ An error occurred while searching for tournaments in the database."
+    "err_db": "❌ An error occurred while searching for tournaments in the database.",
+    "tags_breakdown_title": "🏷️ Tag Counts",
+    "modes_breakdown_title": "🎮 Game Mode Counts",
+    "status_breakdown_title": "📌 Registration Status Counts",
+    "past_breakdown_title": "📊 Active vs Past Tournaments",
+    "total_tournaments": "Total registered tournaments: **{total}**",
+    "unique_tags": "Unique tags found: **{count}**",
+    "active_tournaments": "Active",
+    "past_tournaments": "Past"
   },
   "yuri": {
     "stats_title": "📊 Yuri Collection Statistics",
