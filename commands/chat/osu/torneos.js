@@ -84,7 +84,7 @@ async function run(messages, args) {
         });
     } catch (err) {
         console.error("Error al buscar torneos en el comando:", err);
-        return "❌ Ocurrió un error al buscar los torneos en la base de datos.";
+        return t(locale, 'torneos.err_db');
     }
 
     const total = allTournaments.length;
@@ -249,9 +249,9 @@ async function run(messages, args) {
 }
 
 run.description = {
-    'header': "Busca y lista torneos activos o pasados de osu!",
-    'body': "Filtra torneos por modo, rango, etiquetas/región y estado.",
-    'usage': "s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]"
+    'header': t('es', 'commands.torneos.header'),
+    'body': t('es', 'commands.torneos.body'),
+    'usage': t('es', 'commands.torneos.usage')
 };
 
 module.exports = { run, description: run.description };

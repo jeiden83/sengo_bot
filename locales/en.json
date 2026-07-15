@@ -407,7 +407,8 @@
     "no_links": "*No links available*",
     "ia_footer": "Sengo • Information extracted with AI",
     "no_results_active": "🔍 No active tournaments were found with the indicated filters. Try searching for past ones by adding `-pasados`.",
-    "back_to_list": "Back to list"
+    "back_to_list": "Back to list",
+    "err_db": "❌ An error occurred while searching for tournaments in the database."
   },
   "yuri": {
     "stats_title": "📊 Yuri Collection Statistics",
