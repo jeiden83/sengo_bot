@@ -446,7 +446,7 @@ async function syncLatestTournaments(limit = 10) {
     const supabase = getSupabaseClient();
     if (!supabase) {
         console.warn('[Tournament Sync] Cliente de Supabase no disponible para sincronizar torneos.');
-        return [];
+        return { newTournaments: [], updatedTournaments: [] };
     }
 
     try {
@@ -455,7 +455,7 @@ async function syncLatestTournaments(limit = 10) {
         // 1. Obtener la lista de temas del foro (sección 55)
         const listResult = await v2.forums.topics.list({ id: 55, limit });
         if (!listResult || !listResult.topics || listResult.topics.length === 0) {
-            return [];
+            return { newTournaments: [], updatedTournaments: [] };
         }
 
         const topicIds = listResult.topics.map(t => t.id);
@@ -463,26 +463,42 @@ async function syncLatestTournaments(limit = 10) {
         // 2. Verificar cuáles ya existen en la base de datos
         const { data: existingTournaments, error: checkError } = await supabase
             .from('tournaments')
-            .select('id')
+            .select('*')
             .in('id', topicIds);
 
         if (checkError) {
             console.error('[Tournament Sync] Error al verificar torneos existentes:', checkError.message);
-            return [];
+            return { newTournaments: [], updatedTournaments: [] };
         }
 
-        const existingIds = new Set(existingTournaments?.map(t => t.id) || []);
-        const newTopics = listResult.topics.filter(t => !existingIds.has(t.id));
-
-        if (newTopics.length === 0) {
-            return [];
+        const existingMap = {};
+        if (existingTournaments) {
+            for (const t of existingTournaments) {
+                existingMap[t.id] = t;
+            }
         }
 
-        console.log(`[Tournament Sync] Se encontraron ${newTopics.length} nuevos torneos en el foro. Procesando...`);
-        const syncedTournaments = [];
+        console.log(`[Tournament Sync] Verificando ${listResult.topics.length} torneos en el foro...`);
+        const syncedNewTournaments = [];
+        const syncedUpdatedTournaments = [];
 
-        for (const topic of newTopics) {
+        for (const topic of listResult.topics) {
             try {
+                const existingRecord = existingMap[topic.id];
+                const isNew = !existingRecord;
+                let shouldProcess = isNew;
+
+                if (!isNew) {
+                    // Si ya existe, comprobamos si la fecha de actualización de la API es diferente
+                    const apiUpdated = new Date(topic.updated_at || topic.created_at).getTime();
+                    const dbUpdated = new Date(existingRecord.updated_at || existingRecord.created_at).getTime();
+                    if (apiUpdated !== dbUpdated) {
+                        shouldProcess = true;
+                    }
+                }
+
+                if (!shouldProcess) continue;
+
                 // Obtener detalles del tema (para el primer post)
                 const details = await v2.forums.topics.details({ id: topic.id });
                 if (!details.posts || details.posts.length === 0) continue;
@@ -531,15 +547,37 @@ async function syncLatestTournaments(limit = 10) {
                     last_synced_at: new Date().toISOString()
                 };
 
-                const { error: insertError } = await supabase
-                    .from('tournaments')
-                    .upsert(tournamentRecord, { onConflict: 'id' });
+                // Si no es nuevo, verificar si realmente cambió algo que afecte al embed/datos
+                let hasChanged = true;
+                if (!isNew) {
+                    hasChanged = hasTournamentChanged(tournamentRecord, existingRecord);
+                }
 
-                if (insertError) {
-                    console.error(`[Tournament Sync] Error al guardar el torneo ${topic.id} en Supabase:`, insertError.message);
+                if (hasChanged) {
+                    const { error: insertError } = await supabase
+                        .from('tournaments')
+                        .upsert(tournamentRecord, { onConflict: 'id' });
+
+                    if (insertError) {
+                        console.error(`[Tournament Sync] Error al guardar el torneo ${topic.id} en Supabase:`, insertError.message);
+                    } else {
+                        console.log(`[Tournament Sync] ✅ Torneo "${topic.title}" (ID: ${topic.id}) guardado/actualizado exitosamente.`);
+                        if (isNew) {
+                            syncedNewTournaments.push(tournamentRecord);
+                        } else {
+                            syncedUpdatedTournaments.push(tournamentRecord);
+                        }
+                    }
                 } else {
-                    console.log(`[Tournament Sync] ✅ Torneo "${topic.title}" (ID: ${topic.id}) guardado exitosamente.`);
-                    syncedTournaments.push(tournamentRecord);
+                    // Si no cambió la información, de todos modos actualizamos la fecha de updated_at y last_synced_at en DB
+                    // para evitar volver a procesarlo inútilmente en la próxima iteración.
+                    await supabase
+                        .from('tournaments')
+                        .update({
+                            updated_at: topic.updated_at || existingRecord.updated_at,
+                            last_synced_at: new Date().toISOString()
+                        })
+                        .eq('id', topic.id);
                 }
 
                 // Pequeña espera para no saturar APIs
@@ -549,11 +587,39 @@ async function syncLatestTournaments(limit = 10) {
             }
         }
 
-        return syncedTournaments;
+        return {
+            newTournaments: syncedNewTournaments,
+            updatedTournaments: syncedUpdatedTournaments
+        };
     } catch (err) {
         console.error('[Tournament Sync] Error general en syncLatestTournaments:', err);
-        return [];
+        return { newTournaments: [], updatedTournaments: [] };
     }
+}
+
+/**
+ * Compara dos registros de torneo para ver si la información relevante ha cambiado.
+ * @param {Object} recordA
+ * @param {Object} recordB
+ * @returns {boolean}
+ */
+function hasTournamentChanged(recordA, recordB) {
+    const fields = [
+        'title', 'game_mode', 'team_format', 'rank_min', 'rank_max', 'is_open_range', 'reg_status',
+        'discord_url', 'mainsheet_url', 'registration_url', 'twitch_url', 'challonge_url', 'rules_url',
+        'prizes', 'schedule', 'rules_summary'
+    ];
+    for (const field of fields) {
+        if (recordA[field] !== recordB[field]) return true;
+    }
+    // Comparar tags
+    const tagsA = recordA.tags || [];
+    const tagsB = recordB.tags || [];
+    if (tagsA.length !== tagsB.length) return true;
+    for (let i = 0; i < tagsA.length; i++) {
+        if (tagsA[i] !== tagsB[i]) return true;
+    }
+    return false;
 }
 
 /**
@@ -578,8 +644,74 @@ async function getLatestTournament() {
     return data;
 }
 
+/**
+ * Guarda o actualiza el registro de un embed de torneo enviado.
+ */
+async function saveSentMessage(tournamentId, guildId, channelId, messageId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+        .from('tournament_feed_messages')
+        .upsert({
+            tournament_id: tournamentId,
+            guild_id: guildId,
+            channel_id: channelId,
+            message_id: messageId,
+            created_at: new Date().toISOString()
+        }, { onConflict: 'tournament_id,guild_id' })
+        .select()
+        .maybeSingle();
+
+    if (error) {
+        console.error('[DB] Error al guardar mensaje de feed de torneo:', error);
+    }
+    return data;
+}
+
+/**
+ * Obtiene todos los mensajes de feed enviados para un torneo específico.
+ */
+async function getSentMessages(tournamentId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+
+    const { data, error } = await supabase
+        .from('tournament_feed_messages')
+        .select('*')
+        .eq('tournament_id', tournamentId);
+
+    if (error) {
+        console.error('[DB] Error al obtener mensajes de feed de torneo:', error);
+        return [];
+    }
+    return data || [];
+}
+
+/**
+ * Elimina el registro de un mensaje de feed de torneo.
+ */
+async function deleteSentMessage(tournamentId, guildId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+
+    const { data, error } = await supabase
+        .from('tournament_feed_messages')
+        .delete()
+        .eq('tournament_id', tournamentId)
+        .eq('guild_id', guildId);
+
+    if (error) {
+        console.error('[DB] Error al eliminar mensaje de feed de torneo:', error);
+    }
+    return data;
+}
+
 module.exports = {
     searchTournaments,
     syncLatestTournaments,
-    getLatestTournament
+    getLatestTournament,
+    saveSentMessage,
+    getSentMessages,
+    deleteSentMessage
 };
