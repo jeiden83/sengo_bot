@@ -386,7 +386,11 @@ async function run(messages, args, initialized_data) {
     if (osrAttachment) {
         console.log(`[S.SUBIR] Archivo .osr detectado. Procesando localmente...`);
         try {
-            await message.channel.sendTyping();
+            try {
+                await message.channel.sendTyping();
+            } catch (err) {
+                console.error("[S.SUBIR] Error al enviar sendTyping:", err.message);
+            }
             const response = await fetch(osrAttachment.url);
             const buffer = Buffer.from(await response.arrayBuffer());
             const replayData = parseOSR(buffer);

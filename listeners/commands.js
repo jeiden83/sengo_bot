@@ -226,7 +226,11 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
-        await message.channel.sendTyping();
+        try {
+            await message.channel.sendTyping();
+        } catch (err) {
+            console.error("[LISTENER] No se pudo enviar el indicador de escritura:", err.message);
+        }
         
         const logger = new Logger(message, message_command, message_args);
         const startTime = logger.startTime;

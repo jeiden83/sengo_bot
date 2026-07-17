@@ -14,7 +14,11 @@ async function run(messages, args) {
     const hasConfigFlag = args.some(arg => arg.toLowerCase() === '-config');
     if (hasConfigFlag) {
         try {
-            await message.channel.sendTyping();
+            try {
+                await message.channel.sendTyping();
+            } catch (err) {
+                console.error("[S.RENDER] Error al enviar sendTyping:", err.message);
+            }
             const preset = await OrdrModel.getUserPreset(message.author.id);
             if (!preset) {
                 return t(locale, 'render.no_preset_found');
@@ -58,7 +62,11 @@ async function run(messages, args) {
     }
 
     try {
-        await message.channel.sendTyping();
+        try {
+            await message.channel.sendTyping();
+        } catch (err) {
+            console.error("[S.RENDER] Error al enviar sendTyping:", err.message);
+        }
 
         // 2. Descargar el buffer del replay
         const response = await fetch(attachment.url);
