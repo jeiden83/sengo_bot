@@ -364,16 +364,28 @@ async function checkUserRecentScore(client, userObj) {
             type: 'user_recent',
             user_id: osuId,
             include_fails: true,
-            limit: 1
+            limit: 5
         }), 0);
 
         if (!scores || scores.length === 0) return false;
 
-        const score = scores[0];
-        const scoreIdStr = score.id.toString();
+        // Buscar hasta qué índice habíamos procesado anteriormente
+        let stopIndex = scores.findIndex(s => s.id.toString() === userObj.lastScoreId);
 
-        if (scoreIdStr !== userObj.lastScoreId) {
-            // ¡Nuevo score detectado!
+        // Si la jugada más reciente ya es la última guardada, no hay novedades
+        if (stopIndex === 0) return false;
+
+        // Obtener solo las jugadas nuevas ocurridas tras el último lastScoreId
+        const newScores = stopIndex === -1 ? scores : scores.slice(0, stopIndex);
+        if (newScores.length === 0) return false;
+
+        // Procesar en orden cronológico (de la más antigua a la más reciente)
+        const chronologicalScores = [...newScores].reverse();
+        let hadNewScore = false;
+
+        for (const score of chronologicalScores) {
+            const scoreIdStr = score.id.toString();
+
             userObj.lastScoreId = scoreIdStr;
 
             // Actualizar en base de datos para todos sus servidores asociados
@@ -388,10 +400,14 @@ async function checkUserRecentScore(client, userObj) {
                 console.error("[TRACKER-SERVICE] Error en checkAndRecordRealtimeSnipe:", errRealtimeSnipe);
             }
 
-            // Procesar y ver si entra en el Top 200
-            await processNewScore(client, userObj, score);
-            return true;
+            // Procesar y ver si entra en el Top 200 (solo jugadas pasadas)
+            if (score.passed) {
+                await processNewScore(client, userObj, score);
+            }
+            hadNewScore = true;
         }
+
+        return hadNewScore;
     } catch (err) {
         console.error(`[TRACKER-SERVICE] Error al chequear scores recientes para ${userObj.osuUsername}:`, err);
     }
