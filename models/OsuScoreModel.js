@@ -2457,8 +2457,8 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
 
         const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
 
-        const newScoreVal = Number(score.score || score.total_score || score.legacy_total_score || 0);
-        const oldScoreVal = currentTop ? Number(currentTop.score || currentTop.total_score || currentTop.legacy_total_score || 0) : 0;
+        const newScoreVal = Number(score.score || score.total_score || score.legacy_total_score || score.classic_total_score || 0);
+        const oldScoreVal = currentTop ? Number(currentTop.score || currentTop.total_score || currentTop.legacy_total_score || currentTop.classic_total_score || 0) : 0;
         const isDifferentUser = currentTop && currentTop.user_id !== sniperId;
 
         if (!currentTop || newScoreVal > oldScoreVal || isDifferentUser) {
@@ -2479,12 +2479,16 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
 
                 if (dbTokens && dbTokens.length > 0) {
                     const token = dbTokens[0].access_token;
-                    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?type=country`;
+                    const isLazerMode = score.legacy_only === 0 || score.legacy_only === false || Boolean(score.build_id);
+                    const legacyOnlyVal = isLazerMode ? 0 : ((score.legacy_only !== undefined && score.legacy_only !== null) ? (score.legacy_only ? 1 : 0) : 0);
+                    const modeParam = score.beatmap?.mode || 'osu';
+                    const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=${modeParam}&type=country&legacy_only=${legacyOnlyVal}`;
                     const apiRes = await axios.get(url, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
                             'Content-Type': 'application/json',
-                            'User-Agent': 'Mozilla/5.0'
+                            'User-Agent': 'Mozilla/5.0',
+                            'x-api-version': '20240728'
                         }
                     });
 
@@ -2592,6 +2596,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             }
 
             // Actualizar top_scores
+            const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
             const { error: upsertErr } = await supabase
                 .from('top_scores')
                 .upsert({
@@ -2599,7 +2604,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     country_code: countryCode,
                     user_id: verifiedSniperId,
                     username: verifiedUsername,
-                    score: Number(confirmedScore.score || 0),
+                    score: finalScoreVal,
                     pp: confirmedScore.pp || 0,
                     accuracy: confirmedScore.accuracy || 0,
                     mods: modsString,

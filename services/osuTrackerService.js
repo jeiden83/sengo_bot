@@ -388,16 +388,18 @@ async function checkUserRecentScore(client, userObj) {
 
             userObj.lastScoreId = scoreIdStr;
 
-            // Actualizar en base de datos para todos sus servidores asociados
-            for (const srv of userObj.servers) {
-                await OsuTrackerModel.updateTrackedUser(srv.id, { last_score_id: scoreIdStr });
-            }
-
             // ponytail: Verificar si la jugada es un nuevo #1 nacional para registrar snipes en tiempo real
             try {
                 await OsuScoreModel.checkAndRecordRealtimeSnipe(score, userObj.osuUsername);
             } catch (errRealtimeSnipe) {
                 console.error("[TRACKER-SERVICE] Error en checkAndRecordRealtimeSnipe:", errRealtimeSnipe);
+            }
+
+            // Actualizar en base de datos para todos sus servidores asociados tras procesar snipe
+            for (const srv of userObj.servers) {
+                await OsuTrackerModel.updateTrackedUser(srv.id, { last_score_id: scoreIdStr }).catch(err => {
+                    console.error("[TRACKER-SERVICE] Error al actualizar last_score_id:", err);
+                });
             }
 
             // Procesar y ver si entra en el Top 200 (solo jugadas pasadas)
