@@ -2396,6 +2396,17 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     // No procesar plays fallidas
     const isPassed = score.passed !== false && score.rank !== 'F' && score.rank !== 'failed';
     if (!isPassed) return;
+
+    // ponytail: Ignorar mapas sin leaderboard (graveyard, wip, pending)
+    const mapStatus = score.beatmap?.status ?? score.beatmapset?.status ?? score.beatmap?.ranked ?? score.beatmapset?.ranked;
+    if (mapStatus !== undefined && mapStatus !== null) {
+        if (typeof mapStatus === 'string') {
+            const validStatuses = ['ranked', 'approved', 'qualified', 'loved'];
+            if (!validStatuses.includes(mapStatus.toLowerCase())) return;
+        } else if (typeof mapStatus === 'number') {
+            if (mapStatus <= 0) return;
+        }
+    }
     
     let countryCode = score.user?.country_code || (score.user?.country?.code);
     const supabase = getSupabaseClient();
@@ -2416,10 +2427,10 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     const beatmapId = score.beatmap.id.toString();
 
     try {
-        // Verificar si el beatmap existe en la base de datos para evitar violación de FK
+        // Verificar si el beatmap existe en la base de datos para evitar violación de FK y verificar estado
         const { data: mapExists, error: mapErr } = await supabase
             .from('ranked_beatmaps')
-            .select('beatmap_id')
+            .select('beatmap_id, ranked_status')
             .eq('beatmap_id', beatmapId)
             .maybeSingle();
 
@@ -2428,11 +2439,24 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             return;
         }
 
+        if (mapExists && mapExists.ranked_status !== undefined && mapExists.ranked_status !== null && mapExists.ranked_status <= 0) {
+            return;
+        }
+
         if (!mapExists) {
             try {
                 const BeatmapModel = require('./BeatmapModel.js');
                 const fullMap = await BeatmapModel.getBeatmap(beatmapId);
                 if (fullMap) {
+                    const fullStatus = fullMap.status ?? fullMap.beatmapset?.status ?? fullMap.beatmapset?.ranked ?? fullMap.ranked;
+                    if (fullStatus !== undefined && fullStatus !== null) {
+                        if (typeof fullStatus === 'string' && !['ranked', 'approved', 'qualified', 'loved'].includes(fullStatus.toLowerCase())) {
+                            return;
+                        }
+                        if (typeof fullStatus === 'number' && fullStatus <= 0) {
+                            return;
+                        }
+                    }
                     await BeatmapModel.saveBeatmapToDB(fullMap, supabase);
                 } else {
                     return;
