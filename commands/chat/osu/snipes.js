@@ -247,9 +247,11 @@ async function run(messages, args){
         // Mapear DB scores a la estructura de top.js
         const adaptedScores = userScores.map((dbScore) => {
             const modsString = dbScore.mods || 'NM';
-            const scoreMods = (modsString === 'NM' || modsString === 'NONE') 
-                ? [] 
-                : modsString.match(/.{1,2}/g).map(mod => ({ acronym: mod }));
+            const scoreMods = (dbScore.mod_settings && Array.isArray(dbScore.mod_settings) && dbScore.mod_settings.length > 0)
+                ? dbScore.mod_settings
+                : ((modsString === 'NM' || modsString === 'NONE') 
+                    ? [] 
+                    : modsString.match(/.{1,2}/g).map(mod => ({ acronym: mod })));
 
             const hasHiddenOrFlashlight = scoreMods.some(m => m.acronym === 'HD' || m.acronym === 'FL');
             const acc = dbScore.accuracy || 0;
@@ -327,6 +329,7 @@ async function run(messages, args){
                     }
                 },
                 mods: scoreMods,
+                build_id: dbScore.build_id ?? null,
                 rank: calculatedRank,
                 pp: dbScore.pp || 0,
                 accuracy: dbScore.accuracy || 0,

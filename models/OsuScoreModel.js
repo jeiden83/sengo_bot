@@ -2258,8 +2258,8 @@ async function getProcessedSnipesCount(mode, country_code = 'VE') {
 async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false, onPageLoad = null) {
     const supabase = getSupabaseClient();
     const selectFields = detailed
-        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
-        : 'pp, mods, ended_at, ranked_beatmaps!inner(mode, stars)';
+        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, build_id, mod_settings, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
+        : 'pp, mods, ended_at, build_id, mod_settings, ranked_beatmaps!inner(mode, stars)';
     
     const allData = [];
     let from = 0;
@@ -2560,6 +2560,9 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 snipedUser = secondPlaceUser;
             }
 
+            const buildIdVal = confirmedScore.build_id || null;
+            const modSettingsVal = (Array.isArray(confirmedScore.mods) && confirmedScore.mods.some(m => typeof m === 'object' && m.settings)) ? confirmedScore.mods : null;
+
             if (snipedUser && snipedUser.user_id !== verifiedSniperId) {
                 // ponytail: prevent inserting duplicate snipes within a 15-minute window on the same beatmap by the same sniper
                 const playTime = new Date(confirmedScore.created_at || confirmedScore.ended_at || new Date()).getTime();
@@ -2583,7 +2586,9 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                             .update({
                                 pp: newPP,
                                 accuracy: confirmedScore.accuracy || 0,
-                                mods: modsString
+                                mods: modsString,
+                                build_id: buildIdVal,
+                                mod_settings: modSettingsVal
                             })
                             .eq('id', existingSnipe.id);
 
@@ -2608,6 +2613,8 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                             mods: modsString,
                             pp: confirmedScore.pp || 0,
                             accuracy: confirmedScore.accuracy || 0,
+                            build_id: buildIdVal,
+                            mod_settings: modSettingsVal,
                             ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString()
                         });
 
@@ -2632,6 +2639,8 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     pp: confirmedScore.pp || 0,
                     accuracy: confirmedScore.accuracy || 0,
                     mods: modsString,
+                    build_id: buildIdVal,
+                    mod_settings: modSettingsVal,
                     max_combo: confirmedScore.max_combo,
                     perfect: confirmedScore.perfect || false,
                     statistics: confirmedScore.statistics,
