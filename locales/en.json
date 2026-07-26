@@ -1584,6 +1584,19 @@
       "fruits": "osu!catch (CtB)",
       "mania": "osu!mania"
     }
+  },
+  "emojis": {
+    "err_owner_only": "❌ Only Sengo's creator can use this command option.",
+    "err_no_attachments": "❌ You must attach at least one image (PNG/JPG/GIF) to the message to upload it as an emoji.\n**Example:** `s.emojis -subir` (with attached images).",
+    "err_invalid_image": "❌ The attached file is not a valid image (must be PNG, JPG, JPEG or GIF).",
+    "title_list": "Sengo Application Emojis",
+    "no_emojis": "There are currently no emojis registered in the Sengo application.",
+    "upload_success": "✅ Successfully uploaded **{count}** emoji(s) to Sengo application:",
+    "upload_partial": "⚠️ Uploaded **{successCount}** emoji(s), but **{failCount}** failed:",
+    "upload_failed": "❌ An error occurred while uploading emojis to Sengo application:",
+    "export_title": "Sengo Emojis Export",
+    "export_description": "Attached you will find the `.txt` file with all application emojis sorted by name and ID.",
+    "export_filename": "sengo_emojis_export.txt"
   }
 }
 

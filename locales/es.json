@@ -1584,6 +1584,19 @@
       "fruits": "osu!catch (CtB)",
       "mania": "osu!mania"
     }
+  },
+  "emojis": {
+    "err_owner_only": "❌ Solo el creador de Sengo puede usar esta opción del comando.",
+    "err_no_attachments": "❌ Debes adjuntar al menos una imagen (PNG/JPG/GIF) al mensaje para subirla como emoji.\n**Ejemplo:** `s.emojis -subir` (con imágenes adjuntas).",
+    "err_invalid_image": "❌ El archivo adjunto no es una imagen válida (debe ser PNG, JPG, JPEG o GIF).",
+    "title_list": "Emojis de la Aplicación Sengo",
+    "no_emojis": "No hay emojis registrados en la aplicación de Sengo actualmente.",
+    "upload_success": "✅ Se han subido correctamente **{count}** emoji(s) a la aplicación de Sengo:",
+    "upload_partial": "⚠️ Se subieron **{successCount}** emoji(s), pero fallaron **{failCount}**:",
+    "upload_failed": "❌ Ocurrió un error al subir los emojis a la aplicación de Sengo:",
+    "export_title": "Exportación de Emojis de Sengo",
+    "export_description": "Adjunto encontrarás el archivo `.txt` con todos los emojis de la aplicación ordenados por nombre e ID.",
+    "export_filename": "sengo_emojis_export.txt"
   }
 }
 
