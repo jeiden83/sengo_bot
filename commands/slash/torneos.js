@@ -29,7 +29,7 @@ const data = new SlashCommandBuilder()
     )
     .addStringOption(option =>
         option.setName("estado")
-            .setDescription("Filtrar por estado del torneo (por defecto: activos)")
+            .setDescription("Filtrar por estado del torneo (por defecto: todos)")
             .setRequired(false)
             .addChoices(
                 { name: "Inscripciones Abiertas (open)", value: "open" },

@@ -255,7 +255,7 @@ async function run(messages, args) {
     let gameMode = null;
     let rank = null;
     let tag = null;
-    let status = ['open', 'in_progress']; // default active
+    let status = ['open', 'in_progress', 'completed', 'unknown']; // default todos los torneos
     let page = 1;
     const pageSize = 5;
 

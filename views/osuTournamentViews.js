@@ -48,7 +48,7 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
         if (filters.tag) {
             activeFilters.push(`**${t(locale, 'torneos.tag')}**: \`${filters.tag}\``);
         }
-        const isDefaultStatus = Array.isArray(filters.status) && filters.status.length === 2 && filters.status.includes('open') && filters.status.includes('in_progress');
+        const isDefaultStatus = Array.isArray(filters.status) && filters.status.length >= 4;
         if (!isDefaultStatus && filters.status) {
             if (filters.status === 'completed') {
                 activeFilters.push(`**${t(locale, 'torneos.status')}**: \`${t(locale, 'torneos.status_closed')}\``);
