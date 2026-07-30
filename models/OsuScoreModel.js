@@ -2254,8 +2254,18 @@ async function getProcessedSnipesCount(mode, country_code = 'VE') {
 
 /**
  * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país.
+ * ponytail: Utiliza Turso como motor primario ultra-rápido con fallback automático a Supabase.
  */
 async function getUserNationalTops(userId, mode, country_code = 'VE', detailed = false, onPageLoad = null) {
+    const TursoDB = require('../db/turso.js');
+    if (TursoDB.isTursoAvailable()) {
+        try {
+            return await TursoDB.getUserNationalTops(userId, mode, country_code, detailed, onPageLoad);
+        } catch (tursoErr) {
+            console.error(`[OsuScoreModel] Fallo en Turso al obtener tops de ${userId}, aplicando fallback a Supabase:`, tursoErr.message);
+        }
+    }
+
     const supabase = getSupabaseClient();
     const selectFields = detailed
         ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, build_id, mod_settings, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
@@ -2293,6 +2303,15 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
 }
 
 async function getUserNationalTopsCount(userId, mode, country_code = 'VE') {
+    const TursoDB = require('../db/turso.js');
+    if (TursoDB.isTursoAvailable()) {
+        try {
+            return await TursoDB.getUserNationalTopsCount(userId, mode, country_code);
+        } catch (tursoErr) {
+            console.error(`[OsuScoreModel] Fallo en Turso al contar tops de ${userId}, aplicando fallback a Supabase:`, tursoErr.message);
+        }
+    }
+
     const supabase = getSupabaseClient();
     const { count, error } = await supabase
         .from('top_scores')
@@ -2336,6 +2355,15 @@ const OsuScoreModel = {
 };
 
 async function getUserSnipesHistory(userId) {
+    const TursoDB = require('../db/turso.js');
+    if (TursoDB.isTursoAvailable()) {
+        try {
+            return await TursoDB.getUserSnipesHistory(userId);
+        } catch (tursoErr) {
+            console.error(`[OsuScoreModel] Fallo en Turso al obtener historial de snipes de ${userId}, aplicando fallback a Supabase:`, tursoErr.message);
+        }
+    }
+
     const supabase = getSupabaseClient();
     
     const made = [];
@@ -2623,10 +2651,29 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     } else {
                         console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${snipedUser.username} en el mapa ${beatmapId}!`);
                     }
+
+                    // Dual-write a Turso si está disponible
+                    const TursoDB = require('../db/turso.js');
+                    if (TursoDB.isTursoAvailable()) {
+                        try {
+                            await TursoDB.recordSnipe({
+                                beatmap_id: beatmapId,
+                                sniper_id: verifiedSniperId,
+                                sniper_name: verifiedUsername,
+                                sniped_id: snipedUser.user_id,
+                                sniped_name: snipedUser.username,
+                                pp: confirmedScore.pp || 0,
+                                ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                                country_code: countryCode
+                            });
+                        } catch (tursoSnipeErr) {
+                            console.error("[REALTIME-SNIPE] Error al registrar snipe en Turso:", tursoSnipeErr.message);
+                        }
+                    }
                 }
             }
 
-            // Actualizar top_scores
+            // Actualizar top_scores en Supabase
             const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
             const { error: upsertErr } = await supabase
                 .from('top_scores')
@@ -2651,6 +2698,32 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
 
             if (upsertErr) {
                 console.error("[REALTIME-SNIPE] Error al actualizar top_scores:", upsertErr);
+            }
+
+            // Dual-write a Turso en top_scores si está disponible
+            const TursoDB = require('../db/turso.js');
+            if (TursoDB.isTursoAvailable()) {
+                try {
+                    await TursoDB.saveTopScore({
+                        beatmap_id: beatmapId,
+                        country_code: countryCode,
+                        user_id: verifiedSniperId,
+                        username: verifiedUsername,
+                        score: finalScoreVal,
+                        pp: confirmedScore.pp || 0,
+                        accuracy: confirmedScore.accuracy || 0,
+                        mods: modsString,
+                        ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                        max_combo: confirmedScore.max_combo,
+                        perfect: confirmedScore.perfect || false,
+                        statistics: confirmedScore.statistics,
+                        rank: confirmedScore.rank,
+                        build_id: buildIdVal,
+                        mod_settings: modSettingsVal
+                    });
+                } catch (tursoTopErr) {
+                    console.error("[REALTIME-SNIPE] Error al guardar top_score en Turso:", tursoTopErr.message);
+                }
             }
         }
     } catch (err) {

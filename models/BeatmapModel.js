@@ -735,6 +735,16 @@ async function saveBeatmapToDB(beatmap, supabase = null) {
         } else {
             console.log(`[BeatmapModel] Beatmap ${beatmap.id} (${set.title}) guardado/actualizado en ranked_beatmaps.`);
         }
+
+        // Dual-write a Turso si está disponible
+        const TursoDB = require('../db/turso.js');
+        if (TursoDB.isTursoAvailable()) {
+            try {
+                await TursoDB.saveBeatmap(beatmapData);
+            } catch (tursoMapErr) {
+                console.error(`[BeatmapModel] Error al guardar beatmap ${beatmap.id} en Turso:`, tursoMapErr.message);
+            }
+        }
     } catch (err) {
         Logger.system(`Excepción al guardar beatmap ${beatmap.id} en la base de datos: ${err.message}`);
     }
