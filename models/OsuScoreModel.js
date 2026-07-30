@@ -2572,12 +2572,69 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 modsString = mappedMods.join('');
             }
 
+            // --- VALIDACIÓN DE REALTIME SNIPE ---
+            // 1. El jugador que acaba de jugar (sniperId) DEBE ser el puesto #1 verificado en la API (verifiedSniperId)
+            if (verifiedSniperId !== sniperId) {
+                // Si el jugador que jugó no obtuvo el #1, no hubo snipe (el #1 actual era un score antiguo de otro usuario)
+                // Solo actualizamos top_scores si es necesario y salimos limpiamente
+                const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
+                if (TursoDB.isTursoAvailable() && confirmedScore) {
+                    try {
+                        await TursoDB.saveTopScore({
+                            beatmap_id: beatmapId,
+                            country_code: countryCode,
+                            user_id: verifiedSniperId,
+                            username: verifiedUsername,
+                            score: finalScoreVal,
+                            pp: confirmedScore.pp || 0,
+                            accuracy: confirmedScore.accuracy || 0,
+                            mods: modsString,
+                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                            max_combo: confirmedScore.max_combo,
+                            perfect: confirmedScore.perfect || false,
+                            statistics: confirmedScore.statistics,
+                            rank: confirmedScore.rank,
+                            build_id: buildIdVal,
+                            mod_settings: modSettingsVal
+                        });
+                    } catch (e) {}
+                }
+                return;
+            }
+
+            // 2. Si el jugador ya era #1 previamente en la BD (currentTop.user_id === sniperId), es solo una mejora de score propio
+            const previousTopUserId = currentTop ? currentTop.user_id.toString() : null;
+            if (previousTopUserId && previousTopUserId === sniperId) {
+                // Actualizar top_score con el nuevo puntaje mejorado
+                const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
+                if (TursoDB.isTursoAvailable()) {
+                    try {
+                        await TursoDB.saveTopScore({
+                            beatmap_id: beatmapId,
+                            country_code: countryCode,
+                            user_id: verifiedSniperId,
+                            username: verifiedUsername,
+                            score: finalScoreVal,
+                            pp: confirmedScore.pp || 0,
+                            accuracy: confirmedScore.accuracy || 0,
+                            mods: modsString,
+                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                            max_combo: confirmedScore.max_combo,
+                            perfect: confirmedScore.perfect || false,
+                            statistics: confirmedScore.statistics,
+                            rank: confirmedScore.rank,
+                            build_id: buildIdVal,
+                            mod_settings: modSettingsVal
+                        });
+                    } catch (e) {}
+                }
+                return;
+            }
+
+            // 3. Determinar a quién desbancó del #1
             const snipedUser = secondPlaceUser || (currentTop ? { user_id: currentTop.user_id, username: currentTop.username } : null);
 
-            const buildIdVal = confirmedScore.build_id || null;
-            const modSettingsVal = (Array.isArray(confirmedScore.mods) && confirmedScore.mods.some(m => typeof m === 'object' && m.settings)) ? confirmedScore.mods : null;
-
-            if (snipedUser && snipedUser.user_id !== verifiedSniperId) {
+            if (snipedUser && snipedUser.user_id.toString() !== verifiedSniperId) {
                 console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${snipedUser.username} en el mapa ${beatmapId}!`);
 
                 // Registrar en Turso snipes_history
@@ -2599,7 +2656,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 }
             }
 
-            // Actualizar top_scores en Turso
+            // Actualizar top_scores en Turso con el nuevo #1
             const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
             if (TursoDB.isTursoAvailable()) {
                 try {
