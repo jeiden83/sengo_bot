@@ -18,7 +18,14 @@ async function executeTurso(sql, args = []) {
     const formattedArgs = args.map(a => {
         if (a === null || a === undefined) return { type: "null" };
         if (typeof a === 'number') {
-            return { type: Number.isInteger(a) ? "integer" : "float", value: String(a) };
+            if (Number.isInteger(a)) {
+                return { type: "integer", value: String(a) };
+            } else {
+                return { type: "float", value: a };
+            }
+        }
+        if (typeof a === 'boolean') {
+            return { type: "integer", value: a ? "1" : "0" };
         }
         return { type: "text", value: String(a) };
     });
