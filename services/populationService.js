@@ -5,10 +5,11 @@ const { getSupabaseClient } = require('../db/database.js');
 const OsuUserModel = require('../models/OsuUserModel.js');
 const TursoDB = require('../db/turso.js');
 
-// Sesiones activas, lista de países permitidos por Owner y llaves de trabajadores en memoria
 const activeSessions = new Map(); // countryCode -> { countryCode, isStopped: false, activeWorkers: Set }
 const activeWorkerKeys = new Map(); // workerKey -> { discordId, username, countryCode, createdAt }
 const allowedCountries = new Set(); // Países expresamente habilitados por el Owner con s.populate -permitir
+const countryScrapedCounts = new Map(); // Contador en RAM para evitar consumo de cuota de Turso
+let lastTursoSyncTime = 0;
 
 class PopulationService {
     /**
@@ -188,6 +189,10 @@ class PopulationService {
             }
         }
 
+        if (savedCount > 0) {
+            countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
+        }
+
         return { saved: savedCount };
     }
 
@@ -253,19 +258,21 @@ class PopulationService {
             }
         }
 
-        // 3. Obtener conteo de mapas desglosados guardados en Turso sengo-db por país
-        const tursoCountMap = new Map();
-        try {
-            const tursoRes = await TursoDB.executeTurso("SELECT country_code, COUNT(*) as count FROM top_scores GROUP BY country_code", []);
-            if (tursoRes.rows) {
-                for (const r of tursoRes.rows) {
-                    if (r.country_code) {
-                        tursoCountMap.set(r.country_code.toUpperCase(), Number(r.count || 0));
+        // 3. Obtener/actualizar conteo de mapas desglosados guardados en Turso sengo-db por país (usando RAM + sincronización cada 10 min)
+        if (countryScrapedCounts.size === 0 || (Date.now() - lastTursoSyncTime) > 600000) {
+            try {
+                const tursoRes = await TursoDB.executeTurso("SELECT country_code, COUNT(*) as count FROM top_scores GROUP BY country_code", []);
+                if (tursoRes.rows) {
+                    for (const r of tursoRes.rows) {
+                        if (r.country_code) {
+                            countryScrapedCounts.set(r.country_code.toUpperCase(), Number(r.count || 0));
+                        }
                     }
                 }
+                lastTursoSyncTime = Date.now();
+            } catch (e) {
+                console.error("Error consultando conteo de top_scores en Turso:", e.message);
             }
-        } catch (e) {
-            console.error("Error consultando conteo de top_scores en Turso:", e.message);
         }
 
         // 4. Obtener países marcados como completados
@@ -293,7 +300,7 @@ class PopulationService {
             const activeWorkers = session ? session.activeWorkers.size : 0;
             const isProcessing = isAllowed && session && !session.isStopped && activeWorkers > 0;
 
-            const scrapedCount = tursoCountMap.get(code) || 0;
+            const scrapedCount = countryScrapedCounts.get(code) || 0;
             const progressPercent = totalRanked > 0 ? ((scrapedCount / totalRanked) * 100).toFixed(1) : '0.0';
 
             // Puestos de trabajo (3 slots por cada supporter token en el pool)
