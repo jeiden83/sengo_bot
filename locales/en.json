@@ -1539,7 +1539,7 @@
     "add_no_channel": "❌ There is no announcement channel configured in this server. Use `{prefix}track canal #channel` first.",
     "add_not_found": "❌ The user `{username}` could not be found on osu!",
     "add_success_title": "✅ User Added to Tracking",
-    "add_success_desc": "The osu! user **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} is now being tracked in this server.\nNew plays in their Top 100 will be announced in <#{channelId}>.",
+    "add_success_desc": "The osu! user **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} is now being tracked in this server.\nNew plays in their Top 200 will be announced in <#{channelId}>.",
     "remove_usage": "❌ Correct usage: `{prefix}track remove <osu_user>`.",
     "remove_not_found": "❌ The user `{username}` is not being tracked in this server.",
     "remove_success_title": "❌ User Removed from Tracking",

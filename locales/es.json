@@ -1539,7 +1539,7 @@
     "add_no_channel": "❌ No hay un canal de anuncios configurado en este servidor. Usa primero `{prefix}track canal #canal`.",
     "add_not_found": "❌ El usuario `{username}` no se pudo encontrar en osu!",
     "add_success_title": "✅ Usuario Añadido al Tracking",
-    "add_success_desc": "El usuario de osu! **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} ahora está siendo seguido en este servidor.\nLas nuevas jugadas de su Top 100 se anunciarán en <#{channelId}>.",
+    "add_success_desc": "El usuario de osu! **[{osuUsername}](https://osu.ppy.sh/users/{osuId})** {userMention} ahora está siendo seguido en este servidor.\nLas nuevas jugadas de su Top 200 se anunciarán en <#{channelId}>.",
     "remove_usage": "❌ Uso correcto: `{prefix}track remove <usuario_osu>`.",
     "remove_not_found": "❌ El usuario `{username}` no está siendo seguido en este servidor.",
     "remove_success_title": "❌ Usuario Removido del Tracking",
