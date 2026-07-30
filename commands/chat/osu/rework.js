@@ -15,7 +15,17 @@ function stripAnsi(str) {
 function parsePlayEmbed(embed) {
     if (!embed) return null;
 
+    const title = embed.title || "";
+    const authorName = embed.author?.name || "";
     const desc = embed.description || "";
+
+    // ponytail: detectar si el embed es una lista o perfil (s.top, s.recentlist, etc.) para no confundirlo con una jugada individual
+    const isListEmbed = /Mejores puntuaciones|Top Scores|Top Plays|Recent Scores|Puntuaciones recientes|Jugadas recientes/i.test(title) ||
+                        /Mejores puntuaciones|Top Scores|Top Plays|Recent Scores|Puntuaciones recientes|Jugadas recientes/i.test(authorName) ||
+                        (/#1\s+[^\n]+/i.test(desc) && /#2\s+[^\n]+/i.test(desc));
+
+    if (isListEmbed) return null;
+
     const fieldsText = (embed.fields || []).map(f => f.value).join(" ");
     const combinedText = desc + " " + fieldsText;
 
@@ -39,13 +49,13 @@ function parsePlayEmbed(embed) {
     if (!beatmapId) return null;
 
     const modMatches = [...combinedText.matchAll(/<:([A-Z0-9]{2,4}):\d+>/g)];
-    let mods = modMatches.map(m => m[1]).filter(m => m !== 'NM');
+    let mods = [...new Set(modMatches.map(m => m[1]).filter(m => m !== 'NM'))];
 
     if (mods.length === 0) {
         const textModMatch = combinedText.match(/\+([A-Z0-9]{2,})/i);
         if (textModMatch) {
             const possibleMods = textModMatch[1].toUpperCase();
-            mods = possibleMods.match(/.{1,2}/g) || [];
+            mods = [...new Set(possibleMods.match(/.{1,2}/g) || [])];
         }
     }
 
@@ -143,14 +153,21 @@ function extractUserFromProfileEmbed(embed) {
         }
     }
 
-    // 2. Intentar por title o author.name usando el patrón de perfil de owo/sengo
+    // 2. Intentar por title o author.name usando el patrón de perfil/top de Sengo y owo
     const title = embed.title || '';
     const authorName = embed.author?.name || '';
-    const profileRegex = /osu!\s+(?:Standard|Taiko|Catch the Beat|Mania|Fruits|Catch)?\s*Profile for\s+(.+)/i;
+    const profileRegexes = [
+        /Mejores puntuaciones de (.+?)(?: en osu!)?$/i,
+        /Top scores for (.+?)(?: in osu!)?$/i,
+        /osu!\s+(?:Standard|Taiko|Catch the Beat|Mania|Fruits|Catch)?\s*Profile for\s+(.+)/i
+    ];
+
     for (const text of [title, authorName]) {
-        const match = text.match(profileRegex);
-        if (match) {
-            return match[1].trim();
+        for (const regex of profileRegexes) {
+            const match = text.match(regex);
+            if (match) {
+                return match[1].trim();
+            }
         }
     }
 
