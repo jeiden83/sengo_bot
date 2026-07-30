@@ -191,6 +191,30 @@ class PopulationService {
 
         if (savedCount > 0) {
             countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
+            // Actualizar conteo liviano en Supabase (scraped_countries) sin tocar la cuota de Turso
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    const { data: currentScraped } = await supabase
+                        .from('scraped_countries')
+                        .select('scraped_count')
+                        .eq('country_code', country)
+                        .maybeSingle();
+
+                    const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
+                    const newCount = currentCount + savedCount;
+
+                    await supabase
+                        .from('scraped_countries')
+                        .upsert({
+                            country_code: country,
+                            scraped_count: newCount,
+                            last_scraped_at: new Date().toISOString()
+                        }, { onConflict: 'country_code' });
+                }
+            } catch (e) {
+                console.error(`Error actualizando conteo en Supabase para ${country}:`, e.message);
+            }
         }
 
         return { saved: savedCount };
@@ -258,32 +282,18 @@ class PopulationService {
             }
         }
 
-        // 3. Obtener/actualizar conteo de mapas desglosados guardados en Turso sengo-db por país (usando RAM + sincronización cada 10 min)
-        if (countryScrapedCounts.size === 0 || (Date.now() - lastTursoSyncTime) > 600000) {
-            try {
-                const tursoRes = await TursoDB.executeTurso("SELECT country_code, COUNT(*) as count FROM top_scores GROUP BY country_code", []);
-                if (tursoRes.rows) {
-                    for (const r of tursoRes.rows) {
-                        if (r.country_code) {
-                            countryScrapedCounts.set(r.country_code.toUpperCase(), Number(r.count || 0));
-                        }
-                    }
-                }
-                lastTursoSyncTime = Date.now();
-            } catch (e) {
-                console.error("Error consultando conteo de top_scores en Turso:", e.message);
-            }
-        }
-
-        // 4. Obtener países marcados como completados
+        // 3. Obtener países y sus conteos de raspado desde la tabla liviana de Supabase (0 lecturas a Turso)
         const { data: scraped } = await supabase
             .from('scraped_countries')
-            .select('country_code, is_scraped');
+            .select('country_code, is_scraped, scraped_count');
 
         const scrapedMap = new Map();
         if (scraped) {
             for (const sc of scraped) {
-                scrapedMap.set(sc.country_code.toUpperCase(), sc.is_scraped);
+                scrapedMap.set(sc.country_code.toUpperCase(), {
+                    is_scraped: sc.is_scraped,
+                    scraped_count: Number(sc.scraped_count || 0)
+                });
             }
         }
 
@@ -292,7 +302,8 @@ class PopulationService {
         const list = [];
 
         for (const code of defaultCountries) {
-            const isScraped = scrapedMap.get(code) || false;
+            const countryMeta = scrapedMap.get(code);
+            const isScraped = countryMeta ? countryMeta.is_scraped : false;
             const supporterCount = supporterCountMap.get(code) || 0;
             const hasSupporter = supporterCount > 0;
             const isAllowed = allowedCountries.has(code);
@@ -300,7 +311,7 @@ class PopulationService {
             const activeWorkers = session ? session.activeWorkers.size : 0;
             const isProcessing = isAllowed && session && !session.isStopped && activeWorkers > 0;
 
-            const scrapedCount = countryScrapedCounts.get(code) || 0;
+            const scrapedCount = countryMeta ? countryMeta.scraped_count : (countryScrapedCounts.get(code) || 0);
             const progressPercent = totalRanked > 0 ? ((scrapedCount / totalRanked) * 100).toFixed(1) : '0.0';
 
             // Puestos de trabajo (3 slots por cada supporter token en el pool)
