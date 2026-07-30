@@ -5,17 +5,50 @@ const { getSupabaseClient } = require('../db/database.js');
 const OsuUserModel = require('../models/OsuUserModel.js');
 const TursoDB = require('../db/turso.js');
 
-// Sesiones activas y llaves de trabajadores en memoria
+// Sesiones activas, lista de países permitidos por Owner y llaves de trabajadores en memoria
 const activeSessions = new Map(); // countryCode -> { countryCode, isStopped: false, activeWorkers: Set }
 const activeWorkerKeys = new Map(); // workerKey -> { discordId, username, countryCode, createdAt }
+const allowedCountries = new Set(); // Países expresamente habilitados por el Owner con s.populate -permitir
 
 class PopulationService {
+    /**
+     * Habilita un país para su poblamiento (Exclusivo de Owner)
+     */
+    static allowCountry(countryCode) {
+        const country = countryCode.toUpperCase();
+        allowedCountries.add(country);
+
+        if (!activeSessions.has(country)) {
+            activeSessions.set(country, { countryCode: country, isStopped: false, activeWorkers: new Set() });
+        } else {
+            const session = activeSessions.get(country);
+            session.isStopped = false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Verifica si un país está permitido por el Owner
+     */
+    static isCountryAllowed(countryCode) {
+        return allowedCountries.has(countryCode.toUpperCase());
+    }
+
     /**
      * Genera o recupera una Worker Key para un colaborador y país
      */
     static async createWorkerSession(discordId, username, countryCode) {
         const country = countryCode.toUpperCase();
         
+        // Verificar si el Owner ha permitido el poblamiento de este país
+        if (!this.isCountryAllowed(country)) {
+            return {
+                error: 'NOT_ALLOWED',
+                message: `🛑 El poblamiento de **${country}** no está permitido actualmente por el Administrador. El propietario debe habilitarlo con \`s.populate -permitir ${country}\`.`
+            };
+        }
+
         // Verificar si el país está 100% completado en Supabase
         const isScraped = await OsuUserModel.isCountryScraped(country);
         if (isScraped) {
@@ -159,10 +192,12 @@ class PopulationService {
     }
 
     /**
-     * Detiene inmediatamente el poblamiento de un país (Kill Switch de Owner)
+     * Detiene e inhabilita inmediatamente el poblamiento de un país (Kill Switch de Owner)
      */
     static stopCountry(countryCode) {
         const country = countryCode.toUpperCase();
+        allowedCountries.delete(country); // Inhabilitar permiso del Owner
+
         if (!activeSessions.has(country)) {
             activeSessions.set(country, { countryCode: country, isStopped: true, activeWorkers: new Set() });
         } else {
@@ -182,7 +217,7 @@ class PopulationService {
     }
 
     /**
-     * Genera la lista completa de estados de países (Poblado, En Proceso, Disponible, Sin Supporter)
+     * Genera la lista completa de estados de países (Poblado, En Proceso, Disponible, Bloqueado, Sin Supporter)
      */
     static async getCountryStatusList() {
         const supabase = getSupabaseClient();
@@ -223,21 +258,25 @@ class PopulationService {
             const isScraped = scrapedMap.get(code) || false;
             const hasSupporter = supporterMap.has(code);
             const supporterUser = supporterMap.get(code) || null;
+            const isAllowed = allowedCountries.has(code);
             const session = activeSessions.get(code);
-            const isProcessing = session && !session.isStopped && session.activeWorkers.size > 0;
+            const isProcessing = isAllowed && session && !session.isStopped && session.activeWorkers.size > 0;
 
             let status = 'NO_SUPPORTER';
             if (isScraped) {
                 status = 'COMPLETED';
             } else if (isProcessing) {
                 status = 'PROCESSING';
-            } else if (hasSupporter) {
+            } else if (isAllowed && hasSupporter) {
                 status = 'AVAILABLE';
+            } else if (!isAllowed) {
+                status = 'LOCKED';
             }
 
             list.push({
                 code,
                 status,
+                isAllowed,
                 hasSupporter,
                 supporterUser,
                 workersCount: session ? session.activeWorkers.size : 0

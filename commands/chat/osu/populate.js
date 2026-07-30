@@ -19,6 +19,7 @@ module.exports = {
             const completed = list.filter(c => c.status === 'COMPLETED');
             const processing = list.filter(c => c.status === 'PROCESSING');
             const available = list.filter(c => c.status === 'AVAILABLE');
+            const locked = list.filter(c => c.status === 'LOCKED');
             const noSupporter = list.filter(c => c.status === 'NO_SUPPORTER');
 
             const embed = new EmbedBuilder()
@@ -35,8 +36,12 @@ module.exports = {
                         value: processing.length > 0 ? processing.map(c => `• **${c.code}** (${c.workersCount} colaborador(es) activo(s))`).join('\n') : '*Ningún país en proceso actualmente*'
                     },
                     {
-                        name: '🔵 Disponibles para Poblar (Supporter en Pool)',
-                        value: available.length > 0 ? available.map(c => `• **${c.code}** *(Supporter: ${c.supporterUser})*`).join('\n') : '*Sin países disponibles pendientes*'
+                        name: '🔵 Habilitados y Disponibles (Supporter en Pool)',
+                        value: available.length > 0 ? available.map(c => `• **${c.code}** *(Supporter: ${c.supporterUser})*`).join('\n') : '*Sin países habilitados pendientes*'
+                    },
+                    {
+                        name: '🔒 Bloqueados por Administrador (Requieren s.populate -permitir)',
+                        value: locked.length > 0 ? locked.map(c => `**${c.code}**`).join(', ') : '*Ningún país bloqueado*'
                     },
                     {
                         name: '⚪ No Disponibles (Sin Supporter)',
@@ -50,7 +55,24 @@ module.exports = {
         }
 
         // ----------------------------------------------------
-        // 2. SUBCOMANDO: -stop / -parar (Kill Switch del Owner)
+        // 2. SUBCOMANDO: -permitir / -allow (Permitir país - Owner)
+        // ----------------------------------------------------
+        if (arg1 === '-permitir' || arg1 === '-allow' || arg1 === 'permitir' || arg1 === 'allow') {
+            if (message.author.id !== ownerId) {
+                return message.reply('❌ Este comando de habilitación es exclusivo del propietario del bot.');
+            }
+
+            const targetCountry = args[1] ? args[1].toUpperCase() : null;
+            if (!targetCountry || targetCountry.length !== 2) {
+                return message.reply('⚠️ Debes especificar el código de país de 2 letras. Ejemplo: `s.populate -permitir MX`');
+            }
+
+            PopulationService.allowCountry(targetCountry);
+            return message.reply(`✅ **PERMISO OTORGADO**: El poblamiento de **${targetCountry}** ha sido habilitado por el Administrador. Los colaboradores ya pueden usar \`s.populate ${targetCountry}\`.`);
+        }
+
+        // ----------------------------------------------------
+        // 3. SUBCOMANDO: -stop / -parar (Kill Switch del Owner)
         // ----------------------------------------------------
         if (arg1 === '-stop' || arg1 === '-parar' || arg1 === 'stop' || arg1 === 'parar') {
             if (message.author.id !== ownerId) {
@@ -58,22 +80,26 @@ module.exports = {
             }
 
             const targetCountry = args[1] ? args[1].toUpperCase() : null;
-            if (!targetCountry) {
+            if (!targetCountry || targetCountry.length !== 2) {
                 return message.reply('⚠️ Debes especificar el código de país a detener. Ejemplo: `s.populate -stop MX`');
             }
 
             PopulationService.stopCountry(targetCountry);
-            return message.reply(`🛑 **KILL SWITCH ACTIVADO**: El poblamiento de **${targetCountry}** ha sido detenido y sus claves de trabajador revocadas.`);
+            return message.reply(`🛑 **POBLAMIENTO INHABILITADO**: El poblamiento de **${targetCountry}** ha sido detenido y su acceso bloqueado hasta que ejecutes \`s.populate -permitir ${targetCountry}\`.`);
         }
 
         // ----------------------------------------------------
-        // 3. SUBCOMANDO: <PAÍS> (Iniciar poblamiento para un país)
+        // 4. SUBCOMANDO: <PAÍS> (Iniciar poblamiento para un país)
         // ----------------------------------------------------
         if (arg1 && arg1.length === 2) {
             const countryCode = arg1.toUpperCase();
 
             // Intentar crear la sesión de trabajo
             const session = await PopulationService.createWorkerSession(message.author.id, message.author.username, countryCode);
+
+            if (session.error === 'NOT_ALLOWED') {
+                return message.reply(session.message);
+            }
 
             if (session.error === 'COMPLETED') {
                 return message.reply(`ℹ️ **${countryCode}** ya ha sido poblado al 100% en la base de datos. No hay mapas pendientes.`);
@@ -114,7 +140,7 @@ module.exports = {
         }
 
         // ----------------------------------------------------
-        // 4. MENU DE AYUDA (s.populate sin argumentos)
+        // 5. MENU DE AYUDA (s.populate sin argumentos)
         // ----------------------------------------------------
         const helpEmbed = new EmbedBuilder()
             .setTitle('📖 Comando `s.populate` - Poblamiento Distribuido')
@@ -127,11 +153,15 @@ module.exports = {
                 },
                 {
                     name: '📋 `s.populate -lista` *(o `-l`)*',
-                    value: 'Muestra la lista de todos los países con su estado actual (Poblado, En Proceso, Disponible o Sin Supporter).'
+                    value: 'Muestra la lista de todos los países con su estado actual (Poblado, En Proceso, Disponible, Bloqueado o Sin Supporter).'
+                },
+                {
+                    name: '✅ `s.populate -permitir <PAÍS>` *(Owner Only)*',
+                    value: 'Habilita formalmente el poblamiento de un país para que los colaboradores puedan solicitar sus claves.'
                 },
                 {
                     name: '🛑 `s.populate -stop <PAÍS>` *(Owner Only)*',
-                    value: 'Detiene inmediatamente las sesiones activas de poblamiento de un país y revoca sus claves de trabajador.'
+                    value: 'Detiene inmediatamente el poblamiento de un país y bloquea su acceso hasta un nuevo permiso.'
                 }
             )
             .setFooter({ text: 'SengoBot • Poblamiento Distribuido' });
