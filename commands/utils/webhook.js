@@ -587,8 +587,46 @@ function startServer(client, dbRes, port, config) {
             }
         }
 
+        const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
+        const pathname = urlObj.pathname;
+
+        // --- ENDPOINTS PARA WORKERS DE POBLAMIENTO POWERSHELL ---
+        const PopulationService = require('../../services/populationService.js');
+
+        if (req.method === 'GET' && pathname === '/worker.ps1') {
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+            res.end(PopulationService.getPowerShellScript());
+            return;
+        }
+
+        if (req.method === 'GET' && pathname === '/api/worker/batch') {
+            const key = urlObj.searchParams.get('key');
+            const country = urlObj.searchParams.get('country') || 'MX';
+            const batchResult = await PopulationService.getNextBatch(key, country);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(batchResult));
+            return;
+        }
+
+        if (req.method === 'POST' && pathname === '/api/worker/submit') {
+            let body = '';
+            req.on('data', chunk => { body += chunk.toString(); });
+            req.on('end', async () => {
+                try {
+                    const data = JSON.parse(body);
+                    const result = await PopulationService.submitBatch(data.key, data.country, data.scores);
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify(result));
+                } catch (err) {
+                    res.writeHead(400, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: 'Payload inválido' }));
+                }
+            });
+            return;
+        }
+
         // Solo aceptamos POST a /github o /webhook
-        if (req.method === 'POST' && (req.url === '/github' || req.url === '/webhook' || req.url === '/')) {
+        if (req.method === 'POST' && (pathname === '/github' || pathname === '/webhook' || pathname === '/')) {
             let body = '';
             req.on('data', chunk => {
                 body += chunk.toString();
