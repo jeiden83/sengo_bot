@@ -223,22 +223,52 @@ class PopulationService {
         const supabase = getSupabaseClient();
         if (!supabase) return [];
 
-        // 1. Obtener todos los tokens Supporters en Supabase
+        // 1. Total beatmaps ranked en la base de datos (con caché en memoria de 1 hora)
+        if (!this.cachedTotalRanked || (Date.now() - (this.lastTotalRankedTime || 0)) > 3600000) {
+            try {
+                const { count } = await supabase
+                    .from('ranked_beatmaps')
+                    .select('*', { count: 'exact', head: true });
+                this.cachedTotalRanked = count || 145000;
+                this.lastTotalRankedTime = Date.now();
+            } catch (e) {
+                this.cachedTotalRanked = this.cachedTotalRanked || 145000;
+            }
+        }
+        const totalRanked = this.cachedTotalRanked;
+
+        // 2. Obtener conteo de tokens Supporters por país en Supabase
         const { data: supporters } = await supabase
             .from('oauth_tokens')
-            .select('country_code, username')
+            .select('country_code')
             .eq('is_supporter', true);
 
-        const supporterMap = new Map();
+        const supporterCountMap = new Map();
         if (supporters) {
             for (const s of supporters) {
                 if (s.country_code) {
-                    supporterMap.set(s.country_code.toUpperCase(), s.username);
+                    const code = s.country_code.toUpperCase();
+                    supporterCountMap.set(code, (supporterCountMap.get(code) || 0) + 1);
                 }
             }
         }
 
-        // 2. Obtener países marcados como completados
+        // 3. Obtener conteo de mapas desglosados guardados en Turso sengo-db por país
+        const tursoCountMap = new Map();
+        try {
+            const tursoRes = await TursoDB.executeTurso("SELECT country_code, COUNT(*) as count FROM top_scores GROUP BY country_code", []);
+            if (tursoRes.rows) {
+                for (const r of tursoRes.rows) {
+                    if (r.country_code) {
+                        tursoCountMap.set(r.country_code.toUpperCase(), Number(r.count || 0));
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error consultando conteo de top_scores en Turso:", e.message);
+        }
+
+        // 4. Obtener países marcados como completados
         const { data: scraped } = await supabase
             .from('scraped_countries')
             .select('country_code, is_scraped');
@@ -256,11 +286,20 @@ class PopulationService {
 
         for (const code of defaultCountries) {
             const isScraped = scrapedMap.get(code) || false;
-            const hasSupporter = supporterMap.has(code);
-            const supporterUser = supporterMap.get(code) || null;
+            const supporterCount = supporterCountMap.get(code) || 0;
+            const hasSupporter = supporterCount > 0;
             const isAllowed = allowedCountries.has(code);
             const session = activeSessions.get(code);
-            const isProcessing = isAllowed && session && !session.isStopped && session.activeWorkers.size > 0;
+            const activeWorkers = session ? session.activeWorkers.size : 0;
+            const isProcessing = isAllowed && session && !session.isStopped && activeWorkers > 0;
+
+            const scrapedCount = tursoCountMap.get(code) || 0;
+            const progressPercent = totalRanked > 0 ? ((scrapedCount / totalRanked) * 100).toFixed(1) : '0.0';
+
+            // Puestos de trabajo (3 slots por cada supporter token en el pool)
+            const totalSlots = supporterCount * 3;
+            const occupiedSlots = activeWorkers;
+            const freeSlots = Math.max(0, totalSlots - occupiedSlots);
 
             let status = 'NO_SUPPORTER';
             if (isScraped) {
@@ -278,8 +317,14 @@ class PopulationService {
                 status,
                 isAllowed,
                 hasSupporter,
-                supporterUser,
-                workersCount: session ? session.activeWorkers.size : 0
+                supporterCount,
+                scrapedCount,
+                totalRanked,
+                progressPercent,
+                totalSlots,
+                occupiedSlots,
+                freeSlots,
+                workersCount: activeWorkers
             });
         }
 

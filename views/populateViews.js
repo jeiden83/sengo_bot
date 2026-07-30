@@ -48,19 +48,19 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
         .addFields(
             {
                 name: t(locale, 'populate.cat_completed'),
-                value: completed.length > 0 ? completed.map(c => `• **${c.code}** (Completado)`).join('\n') : t(locale, 'populate.none_completed')
+                value: completed.length > 0 ? completed.map(c => `• **${c.code}** (100% Completado)`).join('\n') : t(locale, 'populate.none_completed')
             },
             {
                 name: t(locale, 'populate.cat_processing'),
-                value: processing.length > 0 ? processing.map(c => `• **${c.code}** (${c.workersCount} worker(s)`).join('\n') : t(locale, 'populate.none_processing')
+                value: processing.length > 0 ? processing.map(c => `• **${c.code}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos: **${c.occupiedSlots}/${c.totalSlots}** (${c.freeSlots} libres)`).join('\n') : t(locale, 'populate.none_processing')
             },
             {
                 name: t(locale, 'populate.cat_available'),
-                value: available.length > 0 ? available.map(c => `• **${c.code}** *(Supporter: ${c.supporterUser})*`).join('\n') : t(locale, 'populate.none_available')
+                value: available.length > 0 ? available.map(c => `• **${c.code}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos libres: **${c.freeSlots}/${c.totalSlots}**`).join('\n') : t(locale, 'populate.none_available')
             },
             {
                 name: t(locale, 'populate.cat_locked'),
-                value: locked.length > 0 ? locked.map(c => `**${c.code}**`).join(', ') : t(locale, 'populate.none_locked')
+                value: locked.length > 0 ? locked.map(c => `• **${c.code}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()})`).join('\n') : t(locale, 'populate.none_locked')
             },
             {
                 name: t(locale, 'populate.cat_no_supporter'),
