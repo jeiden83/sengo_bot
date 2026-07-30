@@ -2631,7 +2631,41 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 return;
             }
 
-            // 3. Determinar a quién desbancó del #1
+            // 3. Verificación adicional de Fecha/Hora de la jugada #1 (timestamp)
+            const scoreDate = new Date(confirmedScore.created_at || confirmedScore.ended_at || Date.now()).getTime();
+            const currentTopDate = currentTop && currentTop.ended_at ? new Date(currentTop.ended_at).getTime() : 0;
+            const isNewerThanPrevious = !currentTopDate || scoreDate >= currentTopDate;
+            const isRecentPlay = (Date.now() - scoreDate) <= (24 * 60 * 60 * 1000); // Hecha en las últimas 24h
+
+            if (!isNewerThanPrevious && !isRecentPlay) {
+                // La play del #1 en la API es más antigua que la que ya teníamos registrada o es muy antigua (escaneo histórico)
+                // Se actualiza top_scores si es necesario pero NO se anuncia como un snipe en tiempo real
+                const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
+                if (TursoDB.isTursoAvailable()) {
+                    try {
+                        await TursoDB.saveTopScore({
+                            beatmap_id: beatmapId,
+                            country_code: countryCode,
+                            user_id: verifiedSniperId,
+                            username: verifiedUsername,
+                            score: finalScoreVal,
+                            pp: confirmedScore.pp || 0,
+                            accuracy: confirmedScore.accuracy || 0,
+                            mods: modsString,
+                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                            max_combo: confirmedScore.max_combo,
+                            perfect: confirmedScore.perfect || false,
+                            statistics: confirmedScore.statistics,
+                            rank: confirmedScore.rank,
+                            build_id: buildIdVal,
+                            mod_settings: modSettingsVal
+                        });
+                    } catch (e) {}
+                }
+                return;
+            }
+
+            // 4. Determinar a quién desbancó del #1
             const snipedUser = secondPlaceUser || (currentTop ? { user_id: currentTop.user_id, username: currentTop.username } : null);
 
             if (snipedUser && snipedUser.user_id.toString() !== verifiedSniperId) {
