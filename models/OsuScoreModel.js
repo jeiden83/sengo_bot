@@ -2455,16 +2455,14 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
     const beatmapId = score.beatmap.id.toString();
 
     try {
-        // Verificar si el beatmap existe en la base de datos para evitar violación de FK y verificar estado
-        const { data: mapExists, error: mapErr } = await supabase
-            .from('ranked_beatmaps')
-            .select('beatmap_id, ranked_status')
-            .eq('beatmap_id', beatmapId)
-            .maybeSingle();
-
-        if (mapErr) {
-            console.error(`[REALTIME-SNIPE] Error al verificar existencia de mapa ${beatmapId}:`, mapErr);
-            return;
+        const TursoDB = require('../db/turso.js');
+        // Verificar si el beatmap existe en Turso para evitar violación de FK y verificar estado
+        let mapExists = null;
+        if (TursoDB.isTursoAvailable()) {
+            mapExists = await TursoDB.getBeatmapFromTurso(beatmapId);
+        } else {
+            const { data } = await supabase.from('ranked_beatmaps').select('beatmap_id, ranked_status').eq('beatmap_id', beatmapId).maybeSingle();
+            mapExists = data;
         }
 
         if (mapExists && mapExists.ranked_status !== undefined && mapExists.ranked_status !== null && mapExists.ranked_status <= 0) {
@@ -2495,16 +2493,13 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             }
         }
 
-        const { data: currentTop, error: topErr } = await supabase
-            .from('top_scores')
-            .select('*')
-            .eq('beatmap_id', beatmapId)
-            .eq('country_code', countryCode)
-            .maybeSingle();
-
-        if (topErr) {
-            console.error(`[REALTIME-SNIPE] Error al consultar top score actual para mapa ${beatmapId}:`, topErr);
-            return;
+        // Consultar el top score actual en Turso
+        let currentTop = null;
+        if (TursoDB.isTursoAvailable()) {
+            currentTop = await TursoDB.getTopScoreForBeatmap(beatmapId, countryCode);
+        } else {
+            const { data } = await supabase.from('top_scores').select('*').eq('beatmap_id', beatmapId).eq('country_code', countryCode).maybeSingle();
+            currentTop = data;
         }
 
         const sniperId = score.user_id ? score.user_id.toString() : (score.user?.id ? score.user.id.toString() : '0');
@@ -2521,7 +2516,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             let secondPlaceUser = null;
 
             try {
-                // Obtener token supporter de VE
+                // Obtener token supporter de VE desde Supabase (tabla liviana)
                 const { data: dbTokens } = await supabase
                     .from('oauth_tokens')
                     .select('access_token')
@@ -2535,6 +2530,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     const legacyOnlyVal = isLazerMode ? 0 : ((score.legacy_only !== undefined && score.legacy_only !== null) ? (score.legacy_only ? 1 : 0) : 0);
                     const modeParam = score.beatmap?.mode || 'osu';
                     const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=${modeParam}&type=country&legacy_only=${legacyOnlyVal}`;
+                    const axios = require('axios');
                     const apiRes = await axios.get(url, {
                         headers: {
                             'Authorization': `Bearer ${token}`,
@@ -2564,7 +2560,6 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 }
             } catch (apiErr) {
                 console.error(`[REALTIME-SNIPE] Error durante la verificación de la API en el mapa ${beatmapId}:`, apiErr.response?.data || apiErr.message);
-                // Si la API falla por rate limit, fallback a los datos locales
             }
 
             let modsString = 'NM';
@@ -2576,132 +2571,36 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 }).filter(Boolean);
                 modsString = mappedMods.join('');
             }
-            if (modsString.length > 16) {
-                modsString = modsString.slice(0, 16);
-            }
 
-            // Identificar a la víctima del snipe (sniped)
-            let snipedUser = null;
-            if (currentTop && currentTop.user_id && currentTop.user_id !== '0' && currentTop.user_id !== verifiedSniperId) {
-                snipedUser = { user_id: currentTop.user_id, username: currentTop.username };
-            } else if (secondPlaceUser && secondPlaceUser.user_id !== verifiedSniperId) {
-                snipedUser = secondPlaceUser;
-            }
+            const snipedUser = secondPlaceUser || (currentTop ? { user_id: currentTop.user_id, username: currentTop.username } : null);
 
             const buildIdVal = confirmedScore.build_id || null;
             const modSettingsVal = (Array.isArray(confirmedScore.mods) && confirmedScore.mods.some(m => typeof m === 'object' && m.settings)) ? confirmedScore.mods : null;
 
             if (snipedUser && snipedUser.user_id !== verifiedSniperId) {
-                // ponytail: prevent inserting duplicate snipes within a 15-minute window on the same beatmap by the same sniper
-                const playTime = new Date(confirmedScore.created_at || confirmedScore.ended_at || new Date()).getTime();
-                const minTime = new Date(playTime - 15 * 60 * 1000).toISOString();
-                const maxTime = new Date(playTime + 15 * 60 * 1000).toISOString();
+                console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${snipedUser.username} en el mapa ${beatmapId}!`);
 
-                const { data: existingSnipe } = await supabase
-                    .from('snipes_history')
-                    .select('id, pp')
-                    .eq('beatmap_id', beatmapId)
-                    .eq('sniper_id', verifiedSniperId)
-                    .gte('ended_at', minTime)
-                    .lte('ended_at', maxTime)
-                    .maybeSingle();
-
-                if (existingSnipe) {
-                    const newPP = confirmedScore.pp || 0;
-                    if (Number(existingSnipe.pp || 0) === 0 && Number(newPP) > 0) {
-                        const { error: updateErr } = await supabase
-                            .from('snipes_history')
-                            .update({
-                                pp: newPP,
-                                accuracy: confirmedScore.accuracy || 0,
-                                mods: modsString,
-                                build_id: buildIdVal,
-                                mod_settings: modSettingsVal
-                            })
-                            .eq('id', existingSnipe.id);
-
-                        if (updateErr) {
-                            console.error("[REALTIME-SNIPE] Error al actualizar PP del snipe existente:", updateErr);
-                        } else {
-                            console.log(`[REALTIME-SNIPE] Snipe existente en ${beatmapId} por ${verifiedUsername} actualizado con PP: ${newPP}.`);
-                        }
-                    } else {
-                        console.log(`[REALTIME-SNIPE] Snipe ya registrado previamente para el mapa ${beatmapId} por ${verifiedUsername}. Ignorando duplicado.`);
-                    }
-                } else {
-                    // Registrar en el historial de snipes
-                    const { error: insertErr } = await supabase
-                        .from('snipes_history')
-                        .insert({
+                // Registrar en Turso snipes_history
+                if (TursoDB.isTursoAvailable()) {
+                    try {
+                        await TursoDB.recordSnipe({
                             beatmap_id: beatmapId,
                             sniper_id: verifiedSniperId,
                             sniper_name: verifiedUsername,
                             sniped_id: snipedUser.user_id,
                             sniped_name: snipedUser.username,
-                            mods: modsString,
                             pp: confirmedScore.pp || 0,
-                            accuracy: confirmedScore.accuracy || 0,
-                            build_id: buildIdVal,
-                            mod_settings: modSettingsVal,
-                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString()
+                            ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
+                            country_code: countryCode
                         });
-
-                    if (insertErr) {
-                        console.error("[REALTIME-SNIPE] Error al insertar en snipes_history:", insertErr);
-                    } else {
-                        console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${snipedUser.username} en el mapa ${beatmapId}!`);
-                    }
-
-                    // Dual-write a Turso si está disponible
-                    const TursoDB = require('../db/turso.js');
-                    if (TursoDB.isTursoAvailable()) {
-                        try {
-                            await TursoDB.recordSnipe({
-                                beatmap_id: beatmapId,
-                                sniper_id: verifiedSniperId,
-                                sniper_name: verifiedUsername,
-                                sniped_id: snipedUser.user_id,
-                                sniped_name: snipedUser.username,
-                                pp: confirmedScore.pp || 0,
-                                ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
-                                country_code: countryCode
-                            });
-                        } catch (tursoSnipeErr) {
-                            console.error("[REALTIME-SNIPE] Error al registrar snipe en Turso:", tursoSnipeErr.message);
-                        }
+                    } catch (tursoSnipeErr) {
+                        console.error("[REALTIME-SNIPE] Error al registrar snipe en Turso:", tursoSnipeErr.message);
                     }
                 }
             }
 
-            // Actualizar top_scores en Supabase
+            // Actualizar top_scores en Turso
             const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
-            const { error: upsertErr } = await supabase
-                .from('top_scores')
-                .upsert({
-                    beatmap_id: beatmapId,
-                    country_code: countryCode,
-                    user_id: verifiedSniperId,
-                    username: verifiedUsername,
-                    score: finalScoreVal,
-                    pp: confirmedScore.pp || 0,
-                    accuracy: confirmedScore.accuracy || 0,
-                    mods: modsString,
-                    build_id: buildIdVal,
-                    mod_settings: modSettingsVal,
-                    max_combo: confirmedScore.max_combo,
-                    perfect: confirmedScore.perfect || false,
-                    statistics: confirmedScore.statistics,
-                    rank: confirmedScore.rank,
-                    ended_at: confirmedScore.created_at || confirmedScore.ended_at || new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-
-            if (upsertErr) {
-                console.error("[REALTIME-SNIPE] Error al actualizar top_scores:", upsertErr);
-            }
-
-            // Dual-write a Turso en top_scores si está disponible
-            const TursoDB = require('../db/turso.js');
             if (TursoDB.isTursoAvailable()) {
                 try {
                     await TursoDB.saveTopScore({
@@ -2721,6 +2620,7 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                         build_id: buildIdVal,
                         mod_settings: modSettingsVal
                     });
+                    console.log(`[REALTIME-SNIPE] Top score actualizado en Turso para el mapa ${beatmapId}.`);
                 } catch (tursoTopErr) {
                     console.error("[REALTIME-SNIPE] Error al guardar top_score en Turso:", tursoTopErr.message);
                 }

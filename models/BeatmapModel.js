@@ -726,23 +726,23 @@ async function saveBeatmapToDB(beatmap, supabase = null) {
             created_at: new Date().toISOString()
         };
 
-        const { error } = await dbClient
-            .from('ranked_beatmaps')
-            .upsert(beatmapData, { onConflict: 'beatmap_id' });
-
-        if (error) {
-            Logger.system(`Error al guardar beatmap ${beatmap.id} en la base de datos: ${error.message}`);
-        } else {
-            console.log(`[BeatmapModel] Beatmap ${beatmap.id} (${set.title}) guardado/actualizado en ranked_beatmaps.`);
-        }
-
-        // Dual-write a Turso si está disponible
         const TursoDB = require('../db/turso.js');
         if (TursoDB.isTursoAvailable()) {
             try {
                 await TursoDB.saveBeatmap(beatmapData);
+                console.log(`[BeatmapModel] Beatmap ${beatmap.id} (${set.title}) guardado/actualizado en Turso.`);
             } catch (tursoMapErr) {
                 console.error(`[BeatmapModel] Error al guardar beatmap ${beatmap.id} en Turso:`, tursoMapErr.message);
+            }
+        } else if (dbClient) {
+            const { error } = await dbClient
+                .from('ranked_beatmaps')
+                .upsert(beatmapData, { onConflict: 'beatmap_id' });
+
+            if (error) {
+                Logger.system(`Error al guardar beatmap ${beatmap.id} en la base de datos: ${error.message}`);
+            } else {
+                console.log(`[BeatmapModel] Beatmap ${beatmap.id} (${set.title}) guardado/actualizado en ranked_beatmaps.`);
             }
         }
     } catch (err) {

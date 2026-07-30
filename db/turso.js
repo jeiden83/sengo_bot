@@ -56,7 +56,7 @@ async function executeTurso(sql, args = []) {
 }
 
 /**
- * Obtiene los tops nacionales de un usuario formateados idénticamente a Supabase
+ * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país desde Turso
  */
 async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = false, onPageLoad = null) {
     const sql = `
@@ -180,6 +180,24 @@ async function getUserSnipesHistory(userId) {
 }
 
 /**
+ * Obtiene la puntuación #1 actual de un mapa específico en Turso
+ */
+async function getTopScoreForBeatmap(beatmapId, countryCode = 'VE') {
+    const sql = `SELECT * FROM top_scores WHERE beatmap_id = ? AND country_code = ? LIMIT 1`;
+    const rows = await executeTurso(sql, [beatmapId.toString(), countryCode]);
+    return rows[0] || null;
+}
+
+/**
+ * Obtiene metadata de un mapa ranked en Turso
+ */
+async function getBeatmapFromTurso(beatmapId) {
+    const sql = `SELECT * FROM ranked_beatmaps WHERE beatmap_id = ? LIMIT 1`;
+    const rows = await executeTurso(sql, [beatmapId.toString()]);
+    return rows[0] || null;
+}
+
+/**
  * Guarda o actualiza un score en top_scores en Turso
  */
 async function saveTopScore(s) {
@@ -267,6 +285,8 @@ module.exports = {
     getUserNationalTops,
     getUserNationalTopsCount,
     getUserSnipesHistory,
+    getTopScoreForBeatmap,
+    getBeatmapFromTurso,
     saveTopScore,
     recordSnipe,
     saveBeatmap
