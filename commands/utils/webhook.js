@@ -171,7 +171,7 @@ function initWebhookServer(client, dbRes, config) {
 }
 
 function startServer(client, dbRes, port, config) {
-    const server = http.createServer((req, res) => {
+    const server = http.createServer(async (req, res) => {
         const parsedUrl = url.parse(req.url, true);
         const pathname = parsedUrl.pathname;
 
@@ -587,9 +587,6 @@ function startServer(client, dbRes, port, config) {
             }
         }
 
-        const urlObj = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-        const pathname = urlObj.pathname;
-
         // --- ENDPOINTS PARA WORKERS DE POBLAMIENTO POWERSHELL ---
         const PopulationService = require('../../services/populationService.js');
 
@@ -600,8 +597,8 @@ function startServer(client, dbRes, port, config) {
         }
 
         if (req.method === 'GET' && pathname === '/api/worker/batch') {
-            const key = urlObj.searchParams.get('key');
-            const country = urlObj.searchParams.get('country') || 'MX';
+            const key = parsedUrl.query.key;
+            const country = parsedUrl.query.country || 'MX';
             const batchResult = await PopulationService.getNextBatch(key, country);
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(batchResult));
