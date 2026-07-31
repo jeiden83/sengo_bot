@@ -120,6 +120,21 @@ while ($true) {
                     rank = $top1.rank
                 }
                 $scoresToSubmit += [PSCustomObject]$itemObj
+            } else {
+                $noScoreObj = @{
+                    beatmap_id = $bId
+                    user_id = "0"
+                    username = "SYSTEM_NO_SCORE"
+                    score = 0
+                    pp = 0
+                    accuracy = 0
+                    mods = "NM"
+                    ended_at = (Get-Date).ToString("yyyy-MM-ddTHH:mm:ssZ")
+                    max_combo = 0
+                    perfect = $false
+                    rank = ""
+                }
+                $scoresToSubmit += [PSCustomObject]$noScoreObj
             }
             $processed++
             $elapsed = ((Get-Date) - $startTime).TotalSeconds
