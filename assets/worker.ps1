@@ -147,6 +147,8 @@ while ($true) {
     $bodyJson = $payloadObj | ConvertTo-Json -Depth 5
     
     try {
+        $submitCount = $scoresToSubmit.Count
+        Write-Host (" Enviando lote de " + $submitCount + " récords al servidor...") -ForegroundColor Gray
         $submitRes = Invoke-RestMethod -Uri $submitUrl -Method Post -Body $bodyJson -ContentType "application/json" -ErrorAction Stop
         $savedCount = $submitRes.saved
         $totalSaved += $savedCount
