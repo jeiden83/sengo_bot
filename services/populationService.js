@@ -428,122 +428,18 @@ class PopulationService {
     }
 
     /**
-     * Retorna el script de PowerShell en texto plano
+     * Retorna el script de PowerShell en texto plano desde assets/worker.ps1
      */
     static getPowerShellScript(defaultKey = '', defaultCountry = '') {
-        return `param(
-    [string]$Key = "${defaultKey}",
-    [string]$Country = "${defaultCountry}",
-    [string]$Server = "https://sengo-bot.onrender.com"
-)
-
-if (-not $Key) {
-    Write-Host "❌ Error: Se requiere especificar la clave de trabajador (Key)." -ForegroundColor Red
-    exit 1
-}
-
-if (-not $Country) {
-    Write-Host "❌ Error: Se requiere especificar el código de país (Country)." -ForegroundColor Red
-    exit 1
-}
-
-$Host.UI.RawUI.WindowTitle = "Sengo Worker - $Country"
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " 🎮 SENGO BOT - Worker de Poblamiento ($Country)" -ForegroundColor Yellow
-Write-Host "==========================================================" -ForegroundColor Cyan
-Write-Host " 🔑 Key: $Key" -ForegroundColor Gray
-Write-Host " 🌐 Servidor: $Server" -ForegroundColor Gray
-Write-Host "==========================================================" -ForegroundColor Cyan
-
-$processed = 0
-$totalSaved = 0
-$startTime = Get-Date
-
-while ($true) {
-    try {
-        $batchUrl = "$Server/api/worker/batch?key=$Key&country=$Country"
-        $batchRes = Invoke-RestMethod -Uri $batchUrl -Method Get -ErrorAction Stop
-
-        if ($batchRes.status -eq "completed") {
-            Write-Host "🎉 ¡El país $Country ha sido poblado al 100%! No quedan mapas pendientes." -ForegroundColor Green
-            break
+        const filePath = path.join(__dirname, '../assets/worker.ps1');
+        let content = fs.readFileSync(filePath, 'utf8');
+        if (defaultKey) {
+            content = content.replace('__WORKER_KEY__', defaultKey);
         }
-
-        if ($batchRes.status -eq "stopped") {
-            Write-Host "🛑 El poblamiento de $Country ha sido detenido por el Administrador." -ForegroundColor Red
-            break
+        if (defaultCountry) {
+            content = content.replace('__WORKER_COUNTRY__', defaultCountry);
         }
-
-        if ($batchRes.error) {
-            Write-Host "❌ Error del servidor: $($batchRes.error)" -ForegroundColor Red
-            break
-        }
-
-        $maps = $batchRes.maps
-        $token = $batchRes.supporterToken
-        if (-not $maps -or $maps.Count -eq 0) {
-            Write-Host "✅ Sin más mapas pendientes en este momento." -ForegroundColor Green
-            break
-        }
-
-        Write-Host "[$(Get-Date -Format 'HH:mm:ss')] 📥 Lote de $($maps.Count) mapas recibido. Raspando..." -ForegroundColor White
-
-        $scoresToSubmit = @()
-
-        for ($i = 0; $i -lt $maps.Count; $i++) {
-            $bId = $maps[$i]
-            $osuUrl = "https://osu.ppy.sh/api/v2/beatmaps/$bId/scores?mode=osu&type=country"
-            
-            try {
-                $headers = @{
-                    "Authorization" = "Bearer $token"
-                    "x-api-version" = "20220705"
-                    "User-Agent" = "osu-api-extended v3.4.7"
-                }
-                $osuRes = Invoke-RestMethod -Uri $osuUrl -Headers $headers -Method Get -ErrorAction Stop
-                
-                if ($osuRes.scores -and $osuRes.scores.Count -gt 0) {
-                    $top1 = $osuRes.scores[0]
-                    $scoresToSubmit += @{
-                        beatmap_id = $bId
-                        user_id = $top1.user_id
-                        username = $top1.user.username
-                        score = $top1.total_score
-                        pp = if ($top1.pp) { $top1.pp } else { 0 }
-                        accuracy = if ($top1.accuracy) { $top1.accuracy } else { 0 }
-                        mods = if ($top1.mods) { ($top1.mods | ForEach-Object { if ($_.acronym) { $_.acronym } else { $_ } }) -join "" } else { "NM" }
-                        ended_at = if ($top1.ended_at) { $top1.ended_at } else { $top1.created_at }
-                        max_combo = $top1.max_combo
-                        perfect = [bool]$top1.perfect
-                        rank = $top1.rank
-                    }
-                }
-                $processed++
-                $elapsed = ((Get-Date) - $startTime).TotalSeconds
-                $speed = if ($elapsed -gt 0) { [math]::Round($processed / $elapsed, 2) } else { 0 }
-                Write-Host " Progress: $($i+1)/$($maps.Count) | Total Procesados: $processed | Velocidad: $speed mapas/s" -ForegroundColor Green
-            } catch {
-                Write-Host " ⚠️ Error en mapa $bId: $($_.Exception.Message)" -ForegroundColor DarkYellow
-            }
-
-            Start-Sleep -Milliseconds 1800
-        }
-
-        $submitUrl = "$Server/api/worker/submit"
-        $bodyJson = @{ key = $Key; country = $Country; scores = $scoresToSubmit } | ConvertTo-Json -Depth 5
-        $submitRes = Invoke-RestMethod -Uri $submitUrl -Method Post -Body $bodyJson -ContentType "application/json" -ErrorAction Stop
-
-        $totalSaved += $submitRes.saved
-        Write-Host " 💾 Lote enviado a Sengo. Récords guardados: $($submitRes.saved) (Total acumulado: $totalSaved)" -ForegroundColor Cyan
-
-    } catch {
-        Write-Host " ❌ Error de conexión: $($_.Exception.Message). Reintentando en 10s..." -ForegroundColor Red
-        Start-Sleep -Seconds 10
-    }
-}
-`;
+        return content;
     }
 }
 
