@@ -393,8 +393,8 @@ class PopulationService {
             const scrapedCount = countryMeta ? countryMeta.scraped_count : (countryScrapedCounts.get(code) || 0);
             const progressPercent = totalRanked > 0 ? ((scrapedCount / totalRanked) * 100).toFixed(1) : '0.0';
 
-            // Puestos de trabajo (1 slot por cada supporter token en el pool del país)
-            const totalSlots = supporterCount;
+            // Puestos de trabajo (3 slots por cada supporter token en el pool del país)
+            const totalSlots = supporterCount * 3;
             const occupiedSlots = activeWorkers;
             const freeSlots = Math.max(0, totalSlots - occupiedSlots);
 
