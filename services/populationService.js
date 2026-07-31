@@ -352,12 +352,22 @@ class PopulationService {
     /**
      * Retorna el script de PowerShell en texto plano
      */
-    static getPowerShellScript() {
+    static getPowerShellScript(defaultKey = '', defaultCountry = '') {
         return `param(
-    [Parameter(Mandatory=$true)][string]$Key,
-    [Parameter(Mandatory=$true)][string]$Country,
+    [string]$Key = "${defaultKey}",
+    [string]$Country = "${defaultCountry}",
     [string]$Server = "https://sengo-bot.onrender.com"
 )
+
+if (-not $Key) {
+    Write-Host "❌ Error: Se requiere especificar la clave de trabajador (Key)." -ForegroundColor Red
+    exit 1
+}
+
+if (-not $Country) {
+    Write-Host "❌ Error: Se requiere especificar el código de país (Country)." -ForegroundColor Red
+    exit 1
+}
 
 $Host.UI.RawUI.WindowTitle = "Sengo Worker - $Country"
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8

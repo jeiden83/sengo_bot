@@ -591,8 +591,10 @@ function startServer(client, dbRes, port, config) {
         const PopulationService = require('../../services/populationService.js');
 
         if (req.method === 'GET' && pathname === '/worker.ps1') {
+            const key = parsedUrl.query.key || '';
+            const country = parsedUrl.query.country || '';
             res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-            res.end(PopulationService.getPowerShellScript());
+            res.end(PopulationService.getPowerShellScript(key, country));
             return;
         }
 

