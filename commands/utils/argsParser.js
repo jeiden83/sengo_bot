@@ -983,9 +983,13 @@ function argsParserNoCommand(args, options = {}) {
         // Si empieza con "-" y coincide con una combinación de mods válidos, pero no es un flag oficial (ej: "-HDDT")
         if (arg.startsWith("-") && !arg.startsWith("-mods") && !arg.startsWith("-mod")) {
             const potentialMods = arg.slice(1).toUpperCase();
-            const validModChars = new Set(['H', 'D', 'R', 'F', 'E', 'T', 'S', 'N', 'P', 'C', 'L', 'V', 'K', 'M', 'O', 'Z']);
-            const chars = potentialMods.split('');
-            const isAllMods = chars.length >= 2 && chars.length % 2 === 0 && chars.every(c => validModChars.has(c));
+            const validModPairs = new Set([
+                'NF', 'EZ', 'TD', 'HD', 'HR', 'SD', 'DT', 'HT', 'NC', 'FL', 'AT', 'SO', 'AP', 'PF',
+                '4K', '5K', '6K', '7K', '8K', '9K', 'RN', 'CN', 'RD', 'FI', 'MR', 'CL', 'RX', 'NM',
+                'SV', 'TR', 'WG', 'SI', 'GR', 'DF', 'WU', 'WD', 'TC', 'BR', 'AD', 'DC'
+            ]);
+            const pairs = potentialMods.match(/.{2}/g) || [];
+            const isAllMods = potentialMods.length >= 2 && potentialMods.length % 2 === 0 && pairs.every(p => validModPairs.has(p));
 
             const knownFlags = new Set([
                 'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region',
@@ -997,7 +1001,8 @@ function argsParserNoCommand(args, options = {}) {
                 'taiko', 'tko', 'mania', 'man', 'mna',
                 // flags de torneos y comandos generales para evitar falsos positivos de mods
                 'test', 'force', 'canal', 'prueba', 'oauth', 'link', 'unlink',
-                'update', 'discord', 'all', 'bot', 'help', 'info', 'add', 'remove'
+                'update', 'discord', 'all', 'bot', 'help', 'info', 'add', 'remove',
+                'stop', 'parar', 'allow', 'permitir', 'lista', 'l', 'poblar', 'pop', 'populate'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;

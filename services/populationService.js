@@ -165,24 +165,32 @@ class PopulationService {
             console.error(`Error consultando mapas de Turso para ${country}:`, e);
         }
 
-        // Tomar una muestra de ranked_beatmaps en Supabase y filtrar los que no están en Turso
-        const { data: maps } = await supabase
-            .from('ranked_beatmaps')
-            .select('beatmap_id')
-            .gt('beatmap_id', 0)
-            .order('beatmap_id', { ascending: false })
-            .limit(1000);
-
-        if (!maps || maps.length === 0) {
-            return { status: 'completed', maps: [] };
-        }
-
+        // Recorrer las páginas de ranked_beatmaps en Supabase hasta encontrar 100 mapas pendientes o agotar la tabla
         const pendingMapIds = [];
-        for (const m of maps) {
-            if (!scrapedSet.has(Number(m.beatmap_id))) {
-                pendingMapIds.push(m.beatmap_id);
+        const pageSize = 1000;
+        let offset = 0;
+
+        while (pendingMapIds.length < 100) {
+            const { data: maps, error } = await supabase
+                .from('ranked_beatmaps')
+                .select('beatmap_id')
+                .gt('beatmap_id', 0)
+                .order('beatmap_id', { ascending: false })
+                .range(offset, offset + pageSize - 1);
+
+            if (error || !maps || maps.length === 0) {
+                break;
             }
-            if (pendingMapIds.length >= 100) break;
+
+            for (const m of maps) {
+                if (!scrapedSet.has(Number(m.beatmap_id))) {
+                    pendingMapIds.push(m.beatmap_id);
+                    if (pendingMapIds.length >= 100) break;
+                }
+            }
+
+            if (maps.length < pageSize) break;
+            offset += pageSize;
         }
 
         if (pendingMapIds.length === 0) {
