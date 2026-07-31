@@ -13,9 +13,9 @@ let lastTursoSyncTime = 0;
 
 class PopulationService {
     /**
-     * Habilita un país para su poblamiento (Exclusivo de Owner)
+     * Habilita un país para su poblamiento (Exclusivo de Owner - Persistente en DB)
      */
-    static allowCountry(countryCode) {
+    static async allowCountry(countryCode) {
         const country = countryCode.toUpperCase();
         allowedCountries.add(country);
 
@@ -26,14 +26,47 @@ class PopulationService {
             session.isStopped = false;
         }
 
+        // Persistir en Supabase
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                await supabase
+                    .from('scraped_countries')
+                    .upsert({ country_code: country, is_allowed: true }, { onConflict: 'country_code' });
+            }
+        } catch (e) {
+            console.error(`Error guardando permiso para ${country} en Supabase:`, e.message);
+        }
+
         return true;
     }
 
     /**
-     * Verifica si un país está permitido por el Owner
+     * Verifica si un país está permitido por el Owner (RAM + DB Fallback)
      */
-    static isCountryAllowed(countryCode) {
-        return allowedCountries.has(countryCode.toUpperCase());
+    static async isCountryAllowed(countryCode) {
+        const country = countryCode.toUpperCase();
+        if (allowedCountries.has(country)) return true;
+
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data } = await supabase
+                    .from('scraped_countries')
+                    .select('is_allowed')
+                    .eq('country_code', country)
+                    .maybeSingle();
+
+                if (data && data.is_allowed) {
+                    allowedCountries.add(country);
+                    return true;
+                }
+            }
+        } catch (e) {
+            console.error("Error verificando permiso en Supabase:", e.message);
+        }
+
+        return false;
     }
 
     /**
@@ -42,8 +75,8 @@ class PopulationService {
     static async createWorkerSession(discordId, username, countryCode) {
         const country = countryCode.toUpperCase();
         
-        // Verificar si el Owner ha permitido el poblamiento de este país
-        if (!this.isCountryAllowed(country)) {
+        // Verificar si el Owner ha permitido el poblamiento de este país (Persistente en DB)
+        if (!await this.isCountryAllowed(country)) {
             return {
                 error: 'NOT_ALLOWED',
                 message: `🛑 El poblamiento de **${country}** no está permitido actualmente por el Administrador. El propietario debe habilitarlo con \`s.populate -permitir ${country}\`.`
@@ -221,9 +254,9 @@ class PopulationService {
     }
 
     /**
-     * Detiene e inhabilita inmediatamente el poblamiento de un país (Kill Switch de Owner)
+     * Detiene e inhabilita inmediatamente el poblamiento de un país (Kill Switch de Owner - Persistente)
      */
-    static stopCountry(countryCode) {
+    static async stopCountry(countryCode) {
         const country = countryCode.toUpperCase();
         allowedCountries.delete(country); // Inhabilitar permiso del Owner
 
@@ -242,7 +275,44 @@ class PopulationService {
             }
         }
 
+        // Persistir revocación en Supabase
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                await supabase
+                    .from('scraped_countries')
+                    .upsert({ country_code: country, is_allowed: false }, { onConflict: 'country_code' });
+            }
+        } catch (e) {
+            console.error(`Error revocando permiso para ${country} en Supabase:`, e.message);
+        }
+
         return true;
+    }
+
+    /**
+     * Carga de forma segura los permisos de países desde Supabase al iniciar
+     */
+    static async initAllowedCountriesFromDB() {
+        try {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+
+            const { data } = await supabase
+                .from('scraped_countries')
+                .select('country_code, is_allowed')
+                .eq('is_allowed', true);
+
+            if (data) {
+                for (const row of data) {
+                    if (row.country_code) {
+                        allowedCountries.add(row.country_code.toUpperCase());
+                    }
+                }
+            }
+        } catch (e) {
+            console.error("Error inicializando permisos de países desde Supabase:", e.message);
+        }
     }
 
     /**
@@ -251,6 +321,9 @@ class PopulationService {
     static async getCountryStatusList() {
         const supabase = getSupabaseClient();
         if (!supabase) return [];
+
+        // Asegurar que los permisos estén sincronizados con Supabase
+        await this.initAllowedCountriesFromDB();
 
         // 1. Total beatmaps ranked en la base de datos (con caché en memoria de 1 hora)
         if (!this.cachedTotalRanked || (Date.now() - (this.lastTotalRankedTime || 0)) > 3600000) {
@@ -285,15 +358,20 @@ class PopulationService {
         // 3. Obtener países y sus conteos de raspado desde la tabla liviana de Supabase (0 lecturas a Turso)
         const { data: scraped } = await supabase
             .from('scraped_countries')
-            .select('country_code, is_scraped, scraped_count');
+            .select('country_code, is_scraped, scraped_count, is_allowed');
 
         const scrapedMap = new Map();
         if (scraped) {
             for (const sc of scraped) {
-                scrapedMap.set(sc.country_code.toUpperCase(), {
+                const code = sc.country_code.toUpperCase();
+                scrapedMap.set(code, {
                     is_scraped: sc.is_scraped,
-                    scraped_count: Number(sc.scraped_count || 0)
+                    scraped_count: Number(sc.scraped_count || 0),
+                    is_allowed: Boolean(sc.is_allowed)
                 });
+                if (sc.is_allowed) {
+                    allowedCountries.add(code);
+                }
             }
         }
 
