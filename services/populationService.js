@@ -151,35 +151,41 @@ class PopulationService {
             return { error: 'Error de conexión con la base de datos.' };
         }
 
-        // Buscar beatmaps que aún no tienen top_scores registrados para este país en Turso
-        // Primero tomamos una muestra de beatmap_ids de ranked_beatmaps
+        // 1 sola consulta rápida a Turso para obtener todos los beatmap_id ya raspados del país
+        let scrapedSet = new Set();
+        try {
+            const scrapedRows = await TursoDB.executeTurso(
+                "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
+                [country]
+            );
+            if (Array.isArray(scrapedRows)) {
+                scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+            }
+        } catch (e) {
+            console.error(`Error consultando mapas de Turso para ${country}:`, e);
+        }
+
+        // Tomar una muestra de ranked_beatmaps en Supabase y filtrar los que no están en Turso
         const { data: maps } = await supabase
             .from('ranked_beatmaps')
             .select('beatmap_id')
             .gt('beatmap_id', 0)
             .order('beatmap_id', { ascending: false })
-            .limit(300);
+            .limit(1000);
 
         if (!maps || maps.length === 0) {
             return { status: 'completed', maps: [] };
         }
 
-        // Consultar cuáles de estos 300 mapas ya están en Turso para el país
         const pendingMapIds = [];
         for (const m of maps) {
-            try {
-                const existing = await TursoDB.getTopScoreForBeatmap(m.beatmap_id, country);
-                if (!existing) {
-                    pendingMapIds.push(m.beatmap_id);
-                }
-            } catch (e) {
+            if (!scrapedSet.has(Number(m.beatmap_id))) {
                 pendingMapIds.push(m.beatmap_id);
             }
             if (pendingMapIds.length >= 100) break;
         }
 
         if (pendingMapIds.length === 0) {
-            // Si en esta muestra no hay pendientes, marcar país como completado
             await OsuUserModel.setCountryScraped(country, true);
             return { status: 'completed', maps: [] };
         }
