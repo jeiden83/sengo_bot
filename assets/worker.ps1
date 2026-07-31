@@ -29,6 +29,9 @@ $totalSaved = 0
 $startTime = Get-Date
 
 while ($true) {
+    $reqTime = (Get-Date).ToString("HH:mm:ss")
+    Write-Host ("[" + $reqTime + "] Obteniendo lote de mapas desde el servidor...") -ForegroundColor Gray
+
     $batchUrl = $Server + "/api/worker/batch?key=" + $Key + "&country=" + $Country
     
     $batchRes = $null
@@ -127,9 +130,12 @@ while ($true) {
         } catch {
             $errMessage = $_.Exception.Message
             Write-Host (" Error en mapa " + $bId + ": " + $errMessage) -ForegroundColor DarkYellow
+            if ($errMessage -like "*429*") {
+                Start-Sleep -Seconds 3
+            }
         }
 
-        Start-Sleep -Milliseconds 1800
+        Start-Sleep -Milliseconds 2200
     }
 
     $submitUrl = $Server + "/api/worker/submit"
