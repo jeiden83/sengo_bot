@@ -130,12 +130,9 @@ while ($true) {
         } catch {
             $errMessage = $_.Exception.Message
             Write-Host (" Error en mapa " + $bId + ": " + $errMessage) -ForegroundColor DarkYellow
-            if ($errMessage -like "*429*") {
-                Start-Sleep -Seconds 3
-            }
         }
 
-        Start-Sleep -Milliseconds 2200
+        Start-Sleep -Milliseconds 2500
     }
 
     $submitUrl = $Server + "/api/worker/submit"
