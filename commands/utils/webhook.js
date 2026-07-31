@@ -591,10 +591,16 @@ function startServer(client, dbRes, port, config) {
         const PopulationService = require('../../services/populationService.js');
 
         if (req.method === 'GET' && pathname === '/worker.ps1') {
-            const key = parsedUrl.query.key || '';
-            const country = parsedUrl.query.country || '';
-            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-            res.end(PopulationService.getPowerShellScript(key, country));
+            try {
+                const key = parsedUrl.query.key || '';
+                const country = parsedUrl.query.country || '';
+                res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end(PopulationService.getPowerShellScript(key, country));
+            } catch (err) {
+                console.error("Error sirviendo worker.ps1:", err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+            }
             return;
         }
 
