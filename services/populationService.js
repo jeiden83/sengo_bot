@@ -10,6 +10,8 @@ const activeSessions = new Map(); // countryCode -> { countryCode, isStopped: fa
 const activeWorkerKeys = new Map(); // workerKey -> { discordId, username, countryCode, createdAt }
 const allowedCountries = new Set(); // Países expresamente habilitados por el Owner con s.populate -permitir
 const countryScrapedCounts = new Map(); // Contador en RAM para evitar consumo de cuota de Turso
+const scrapedBeatmapSets = new Map(); // country -> Set<number>
+const scrapedSetTTL = new Map(); // country -> timestamp
 let lastTursoSyncTime = 0;
 
 class PopulationService {
@@ -161,18 +163,28 @@ class PopulationService {
             return { error: 'Error de conexión con la base de datos.' };
         }
 
-        // 1 sola consulta rápida a Turso para obtener todos los beatmap_id ya raspados del país
-        let scrapedSet = new Set();
-        try {
-            const scrapedRows = await TursoDB.executeTurso(
-                "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
-                [country]
-            );
-            if (Array.isArray(scrapedRows)) {
-                scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+        // Caché en memoria para los beatmaps ya raspados por país (TTL 1 hora, actualizado en tiempo real con submitBatch)
+        const countryKey = country.toUpperCase();
+        const now = Date.now();
+
+        let scrapedSet = scrapedBeatmapSets.get(countryKey);
+        const lastFetch = scrapedSetTTL.get(countryKey) || 0;
+
+        if (!scrapedSet || (now - lastFetch) > 3600000) {
+            scrapedSet = new Set();
+            try {
+                const scrapedRows = await TursoDB.executeTurso(
+                    "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
+                    [countryKey]
+                );
+                if (Array.isArray(scrapedRows)) {
+                    scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+                }
+            } catch (e) {
+                console.error(`Error consultando mapas de Turso para ${countryKey}:`, e);
             }
-        } catch (e) {
-            console.error(`Error consultando mapas de Turso para ${country}:`, e);
+            scrapedBeatmapSets.set(countryKey, scrapedSet);
+            scrapedSetTTL.set(countryKey, now);
         }
 
         // Recorrer las páginas de ranked_beatmaps en Supabase hasta encontrar 100 mapas pendientes o agotar la tabla
@@ -242,6 +254,11 @@ class PopulationService {
                     rank: s.rank || ''
                 });
                 savedCount++;
+
+                const cachedSet = scrapedBeatmapSets.get(country);
+                if (cachedSet && s.beatmap_id) {
+                    cachedSet.add(Number(s.beatmap_id));
+                }
 
                 // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
                 if (s.sniped_user_id && String(s.user_id) !== '0' && String(s.sniped_user_id) !== '0' && String(s.user_id) !== String(s.sniped_user_id)) {

@@ -62,10 +62,38 @@ async function executeTurso(sql, args = []) {
     });
 }
 
+const topsCache = new Map();
+const countCache = new Map();
+const snipesCache = new Map();
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
+
+function getCachedItem(cacheMap, key) {
+    const item = cacheMap.get(key);
+    if (item && (Date.now() - item.timestamp) < CACHE_TTL_MS) {
+        return item.data;
+    }
+    return null;
+}
+
+function setCachedItem(cacheMap, key, data) {
+    cacheMap.set(key, { data, timestamp: Date.now() });
+    if (cacheMap.size > 100) {
+        const firstKey = cacheMap.keys().next().value;
+        cacheMap.delete(firstKey);
+    }
+}
+
 /**
  * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país desde Turso
  */
 async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = false, onPageLoad = null) {
+    const cacheKey = `${userId}:${mode}:${countryCode}:${detailed}`;
+    const cached = getCachedItem(topsCache, cacheKey);
+    if (cached) {
+        if (onPageLoad) onPageLoad(cached.length);
+        return cached;
+    }
+
     const sql = `
         SELECT 
             t.pp, t.mods, t.ended_at, t.score, t.accuracy, t.beatmap_id, t.max_combo, t.perfect, 
@@ -119,6 +147,8 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
         };
     });
 
+    setCachedItem(topsCache, cacheKey, formatted);
+
     if (onPageLoad) {
         onPageLoad(formatted.length);
     }
@@ -130,6 +160,12 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
  * Conteo de tops nacionales en Turso
  */
 async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
+    const cacheKey = `${userId}:${mode}:${countryCode}`;
+    const cached = getCachedItem(countCache, cacheKey);
+    if (cached !== null) {
+        return cached;
+    }
+
     const sql = `
         SELECT COUNT(*) as count
         FROM top_scores t
@@ -137,13 +173,21 @@ async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
         WHERE t.user_id = ? AND b.mode = ? AND t.country_code = ?
     `;
     const rows = await executeTurso(sql, [userId.toString(), mode, countryCode]);
-    return rows[0]?.count || 0;
+    const cnt = rows[0]?.count || 0;
+    setCachedItem(countCache, cacheKey, cnt);
+    return cnt;
 }
 
 /**
  * Historial de snipes hecho y recibido en Turso
  */
 async function getUserSnipesHistory(userId) {
+    const cacheKey = userId.toString();
+    const cached = getCachedItem(snipesCache, cacheKey);
+    if (cached) {
+        return cached;
+    }
+
     const sqlMade = `
         SELECT s.sniped_name, s.sniped_id, s.beatmap_id, s.pp, s.ended_at, b.title, b.version
         FROM snipes_history s
@@ -183,7 +227,9 @@ async function getUserSnipesHistory(userId) {
         ranked_beatmaps: { title: r.title, version: r.version }
     }));
 
-    return { made, received };
+    const res = { made, received };
+    setCachedItem(snipesCache, cacheKey, res);
+    return res;
 }
 
 /**
@@ -232,6 +278,16 @@ async function saveTopScore(s) {
         typeof s.mod_settings === 'object' ? JSON.stringify(s.mod_settings) : (s.mod_settings || '')
     ];
     await executeTurso(sql, args);
+
+    if (s.user_id) {
+        const uStr = s.user_id.toString();
+        for (const k of topsCache.keys()) {
+            if (k.startsWith(uStr + ':')) topsCache.delete(k);
+        }
+        for (const k of countCache.keys()) {
+            if (k.startsWith(uStr + ':')) countCache.delete(k);
+        }
+    }
 }
 
 /**
@@ -268,6 +324,9 @@ async function recordSnipe(sh) {
         sh.country_code || 'VE'
     ];
     await executeTurso(sql, args);
+
+    if (sh.sniper_id) snipesCache.delete(sh.sniper_id.toString());
+    if (sh.sniped_id) snipesCache.delete(sh.sniped_id.toString());
 }
 
 /**
