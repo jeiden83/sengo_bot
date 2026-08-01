@@ -238,16 +238,22 @@ async function saveTopScore(s) {
  * Registra un snipe en snipes_history en Turso
  */
 async function recordSnipe(sh) {
+    const endedAt = sh.ended_at || new Date().toISOString();
     try {
-        const checkSql = `SELECT id FROM snipes_history WHERE beatmap_id = ? AND sniper_id = ? AND sniped_id = ? LIMIT 1`;
-        const existing = await executeTurso(checkSql, [sh.beatmap_id.toString(), sh.sniper_id.toString(), sh.sniped_id.toString()]);
+        const checkSql = `SELECT id FROM snipes_history WHERE beatmap_id = ? AND sniper_id = ? AND sniped_id = ? AND ended_at = ? LIMIT 1`;
+        const existing = await executeTurso(checkSql, [
+            sh.beatmap_id.toString(),
+            sh.sniper_id.toString(),
+            sh.sniped_id.toString(),
+            endedAt
+        ]);
         if (existing && existing.length > 0) return;
     } catch (e) {
-        // Si no se puede verificar o la tabla no tiene id, continuar con el insert de forma segura
+        // Si falla la verificación, la restricción UNIQUE de la base de datos lo protegerá
     }
 
     const sql = `
-        INSERT INTO snipes_history 
+        INSERT OR IGNORE INTO snipes_history 
         (beatmap_id, sniper_id, sniper_name, sniped_id, sniped_name, pp, ended_at, country_code) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `;
@@ -258,7 +264,7 @@ async function recordSnipe(sh) {
         sh.sniped_id,
         sh.sniped_name,
         sh.pp || 0,
-        sh.ended_at || new Date().toISOString(),
+        endedAt,
         sh.country_code || 'VE'
     ];
     await executeTurso(sql, args);
