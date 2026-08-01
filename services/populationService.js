@@ -172,17 +172,44 @@ class PopulationService {
 
         if (!scrapedSet || (now - lastFetch) > 3600000) {
             scrapedSet = new Set();
+            
+            // 1. Intentar cargar desde Supabase primero (0 cuota de lecturas consumida en Turso)
             try {
-                const scrapedRows = await TursoDB.executeTurso(
-                    "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
-                    [countryKey]
-                );
-                if (Array.isArray(scrapedRows)) {
-                    scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+                let from = 0;
+                const PAGE_SIZE = 1000;
+                while (true) {
+                    const { data: pageData, error: pageErr } = await supabase
+                        .from('top_scores')
+                        .select('beatmap_id')
+                        .eq('country_code', countryKey)
+                        .range(from, from + PAGE_SIZE - 1);
+
+                    if (pageErr || !pageData || pageData.length === 0) break;
+                    for (const row of pageData) {
+                        if (row.beatmap_id) scrapedSet.add(Number(row.beatmap_id));
+                    }
+                    if (pageData.length < PAGE_SIZE) break;
+                    from += PAGE_SIZE;
                 }
-            } catch (e) {
-                console.error(`Error consultando mapas de Turso para ${countryKey}:`, e);
+            } catch (supaErr) {
+                console.error(`Error consultando mapas de Supabase para ${countryKey}:`, supaErr.message);
             }
+
+            // 2. Fallback a Turso solo si Supabase no devolvió mapas y Turso está disponible
+            if (scrapedSet.size === 0) {
+                try {
+                    const scrapedRows = await TursoDB.executeTurso(
+                        "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
+                        [countryKey]
+                    );
+                    if (Array.isArray(scrapedRows)) {
+                        scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+                    }
+                } catch (e) {
+                    console.error(`Error consultando mapas de Turso para ${countryKey}:`, e.message);
+                }
+            }
+
             scrapedBeatmapSets.set(countryKey, scrapedSet);
             scrapedSetTTL.set(countryKey, now);
         }
