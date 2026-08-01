@@ -87,14 +87,14 @@ async function addTrackedUserInMemory(record) {
             });
         }
         // Si el registro de la DB tenía un lastScoreId configurado, lo actualizamos si es mayor
-        if (record.last_score_id && (!userObj.lastScoreId || record.last_score_id > userObj.lastScoreId)) {
-            userObj.lastScoreId = record.last_score_id;
+        if (record.last_score_id && (!userObj.lastScoreId || String(record.last_score_id) > String(userObj.lastScoreId))) {
+            userObj.lastScoreId = String(record.last_score_id);
         }
         return;
     }
 
     // Si es un usuario nuevo en memoria, inicializamos su lastScoreId si es null
-    let lastScoreId = record.last_score_id;
+    let lastScoreId = record.last_score_id ? String(record.last_score_id) : null;
     if (!lastScoreId) {
         Logger.system(`[TRACKER-SERVICE] Inicializando lastScoreId para el nuevo usuario trackeado ${record.osu_username} (${osuId})...`);
         lastScoreId = await fetchLatestScoreIdForUser(osuId);
@@ -370,7 +370,7 @@ async function checkUserRecentScore(client, userObj) {
         if (!scores || scores.length === 0) return false;
 
         // Buscar hasta qué índice habíamos procesado anteriormente
-        let stopIndex = scores.findIndex(s => s.id.toString() === userObj.lastScoreId);
+        let stopIndex = scores.findIndex(s => String(s.id) === String(userObj.lastScoreId));
 
         // Si la jugada más reciente ya es la última guardada, no hay novedades
         if (stopIndex === 0) return false;
