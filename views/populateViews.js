@@ -20,6 +20,10 @@ function buildPopulateHelpEmbed(locale = 'es') {
                 value: t(locale, 'populate.cmd_list_desc')
             },
             {
+                name: t(locale, 'populate.cmd_top_title'),
+                value: t(locale, 'populate.cmd_top_desc')
+            },
+            {
                 name: t(locale, 'populate.cmd_allow_title'),
                 value: t(locale, 'populate.cmd_allow_desc')
             },
@@ -101,14 +105,14 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es') 
 }
 
 /**
- * Genera el embed con la información detallada de los workers activos (Owner Only)
+ * Genera el embed con la información compacta de los workers activos (Owner Only)
  */
 function buildPopulateWorkersEmbed(workersList, locale = 'es') {
     const embed = new EmbedBuilder()
         .setTitle(t(locale, 'populate.workers_embed_title'))
         .setColor(CONFIG.colors?.primary || 0x3498db)
         .setDescription(t(locale, 'populate.workers_embed_desc', { count: workersList.length }))
-        .setFooter({ text: 'SengoBot • Monitor de Poblamiento Distribuido' })
+        .setFooter({ text: 'Sengo • Monitor de Poblamiento' })
         .setTimestamp();
 
     if (!workersList || workersList.length === 0) {
@@ -124,21 +128,56 @@ function buildPopulateWorkersEmbed(workersList, locale = 'es') {
         const activeUnix = Math.floor(w.lastActiveAt / 1000);
         const userMention = w.discordId ? `<@${w.discordId}>` : `@${w.username}`;
 
+        const fieldTitle = `👷 ${w.username} [${w.countryCode}]`;
         const infoLines = [
-            `👤 **Usuario:** ${userMention} (\`${w.username}\`)`,
-            `🚩 **País:** **${w.countryCode}**`,
-            `🔑 **Worker Key:** \`${w.key}\``,
-            `📦 **Lotes Pedidos:** \`${w.batchesRequested}\` (~${(w.batchesRequested * 100).toLocaleString()} mapas)`,
-            `💾 **Récords Guardados:** \`${w.scoresSubmitted.toLocaleString()}\``,
-            `⏱️ **Iniciado:** <t:${createdUnix}:R>`,
-            `🔄 **Última Actividad:** <t:${activeUnix}:R>`
+            `👤 ${userMention}`,
+            `🔑 \`${w.key}\``,
+            `💾 **${w.scoresSubmitted.toLocaleString()}** récords (\`${w.batchesRequested}\` lotes)`,
+            `⏱️ <t:${createdUnix}:R> (Activo <t:${activeUnix}:R>)`
         ];
 
         embed.addFields({
-            name: `👷 Worker \`${w.key}\` [${w.countryCode}]`,
-            value: infoLines.join('\n')
+            name: fieldTitle,
+            value: infoLines.join('\n'),
+            inline: true
         });
     }
+
+    return embed;
+}
+
+/**
+ * Genera el embed de tabla de clasificación de top colaboradores (s.populate -top)
+ */
+function buildPopulateTopEmbed(topList, locale = 'es') {
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'populate.top_embed_title'))
+        .setColor(CONFIG.colors?.gold || 0xf1c40f)
+        .setDescription(t(locale, 'populate.top_embed_desc'))
+        .setFooter({ text: 'Sengo • Historial de Colaboradores' })
+        .setTimestamp();
+
+    if (!topList || topList.length === 0) {
+        embed.addFields({
+            name: t(locale, 'populate.top_none_title'),
+            value: t(locale, 'populate.top_none_desc')
+        });
+        return embed;
+    }
+
+    const medals = ['🥇', '🥈', '🥉'];
+    const lines = topList.map((item, index) => {
+        const rankIcon = medals[index] || `\`#${index + 1}\``;
+        const userMention = item.discord_id && !isNaN(item.discord_id) ? `<@${item.discord_id}>` : `**${item.username}**`;
+        const scores = Number(item.scores_submitted || 0).toLocaleString();
+        const batches = Number(item.batches_requested || 0).toLocaleString();
+        return `${rankIcon} ${userMention} — **${scores}** récords guardados (\`${batches}\` lotes)`;
+    });
+
+    embed.addFields({
+        name: t(locale, 'populate.top_leaderboard_title'),
+        value: lines.join('\n')
+    });
 
     return embed;
 }
@@ -147,5 +186,6 @@ module.exports = {
     buildPopulateHelpEmbed,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
-    buildPopulateWorkersEmbed
+    buildPopulateWorkersEmbed,
+    buildPopulateTopEmbed
 };

@@ -270,6 +270,7 @@ class PopulationService {
                 const worker = activeWorkerKeys.get(key);
                 worker.lastActiveAt = Date.now();
                 worker.scoresSubmitted = (worker.scoresSubmitted || 0) + savedCount;
+                await this.recordUserContribution(worker.discordId, worker.username, savedCount, 1);
             }
 
             countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
@@ -300,6 +301,62 @@ class PopulationService {
         }
 
         return { saved: savedCount };
+    }
+
+    /**
+     * Registra o actualiza las contribuciones acumuladas de un usuario en Supabase (population_contributors)
+     */
+    static async recordUserContribution(discordId, username, scoresCount = 0, batchCount = 1) {
+        const idKey = discordId ? String(discordId) : username;
+        if (!idKey) return;
+
+        try {
+            const supabase = getSupabaseClient();
+            if (!supabase) return;
+
+            const { data: existing } = await supabase
+                .from('population_contributors')
+                .select('scores_submitted, batches_requested')
+                .eq('discord_id', idKey)
+                .maybeSingle();
+
+            const prevScores = existing ? Number(existing.scores_submitted || 0) : 0;
+            const prevBatches = existing ? Number(existing.batches_requested || 0) : 0;
+
+            await supabase
+                .from('population_contributors')
+                .upsert({
+                    discord_id: idKey,
+                    username: username || 'Colaborador',
+                    scores_submitted: prevScores + scoresCount,
+                    batches_requested: prevBatches + batchCount,
+                    last_submitted_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }, { onConflict: 'discord_id' });
+        } catch (e) {
+            console.error(`Error guardando contribución de ${username} en Supabase:`, e.message);
+        }
+    }
+
+    /**
+     * Obtiene el ranking de principales colaboradores de poblamiento desde Supabase
+     */
+    static async getTopContributors(limit = 10) {
+        try {
+            const supabase = getSupabaseClient();
+            if (!supabase) return [];
+
+            const { data } = await supabase
+                .from('population_contributors')
+                .select('*')
+                .order('scores_submitted', { ascending: false })
+                .limit(limit);
+
+            return data || [];
+        } catch (e) {
+            console.error("Error obteniendo colaboradores de poblamiento:", e.message);
+            return [];
+        }
     }
 
     /**

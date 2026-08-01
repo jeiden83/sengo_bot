@@ -5,7 +5,8 @@ const {
     buildPopulateHelpEmbed,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
-    buildPopulateWorkersEmbed
+    buildPopulateWorkersEmbed,
+    buildPopulateTopEmbed
 } = require('../../../views/populateViews.js');
 
 async function run({ message, res, reply, logger }, args) {
@@ -19,6 +20,15 @@ async function run({ message, res, reply, logger }, args) {
     if (arg1 === '-lista' || arg1 === '-l' || arg1 === 'lista') {
         const list = await PopulationService.getCountryStatusList();
         const embed = buildPopulateStatusEmbed(list, locale);
+        return { embeds: [embed] };
+    }
+
+    // ----------------------------------------------------
+    // 2. SUBCOMANDO: -top / -ranking (Ranking de Colaboradores)
+    // ----------------------------------------------------
+    if (arg1 === '-top' || arg1 === '-ranking' || arg1 === 'top' || arg1 === 'ranking') {
+        const topList = await PopulationService.getTopContributors(10);
+        const embed = buildPopulateTopEmbed(topList, locale);
         return { embeds: [embed] };
     }
 

@@ -185,6 +185,13 @@ async function getWebhookChannels(Webhook) {
 }
 
 function getSupabaseClient() {
+    if (!supabase) {
+        const url = CONFIG.SUPABASE_URL || process.env.SUPABASE_URL;
+        const key = CONFIG.SUPABASE_KEY || process.env.SUPABASE_KEY;
+        if (url && key) {
+            supabase = createClient(url, key);
+        }
+    }
     return supabase;
 }
 
