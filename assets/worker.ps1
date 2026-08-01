@@ -106,6 +106,18 @@ while ($true) {
                 $scoreEndedAt = $top1.created_at
                 if ($top1.ended_at) { $scoreEndedAt = $top1.ended_at }
 
+                $snipedUserId = $null
+                $snipedUsername = $null
+                $snipedEndedAt = $null
+
+                if ($osuRes.scores.Count -gt 1) {
+                    $top2 = $osuRes.scores[1]
+                    $snipedUserId = $top2.user_id
+                    if ($top2.user -and $top2.user.username) { $snipedUsername = $top2.user.username }
+                    $snipedEndedAt = $top2.created_at
+                    if ($top2.ended_at) { $snipedEndedAt = $top2.ended_at }
+                }
+
                 $itemObj = @{
                     beatmap_id = $bId
                     user_id = $top1.user_id
@@ -118,6 +130,9 @@ while ($true) {
                     max_combo = $top1.max_combo
                     perfect = ([bool]$top1.perfect)
                     rank = $top1.rank
+                    sniped_user_id = $snipedUserId
+                    sniped_username = $snipedUsername
+                    sniped_ended_at = $snipedEndedAt
                 }
                 $scoresToSubmit += [PSCustomObject]$itemObj
             } else {

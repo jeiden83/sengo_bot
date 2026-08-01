@@ -242,6 +242,24 @@ class PopulationService {
                     rank: s.rank || ''
                 });
                 savedCount++;
+
+                // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
+                if (s.sniped_user_id && String(s.user_id) !== '0' && String(s.sniped_user_id) !== '0' && String(s.user_id) !== String(s.sniped_user_id)) {
+                    const date1 = new Date(s.ended_at).getTime();
+                    const date2 = new Date(s.sniped_ended_at).getTime();
+                    if (!isNaN(date1) && !isNaN(date2) && date1 > date2) {
+                        await TursoDB.recordSnipe({
+                            beatmap_id: s.beatmap_id,
+                            sniper_id: s.user_id,
+                            sniper_name: s.username,
+                            sniped_id: s.sniped_user_id,
+                            sniped_name: s.sniped_username || 'Jugador',
+                            pp: s.pp || 0,
+                            ended_at: s.ended_at,
+                            country_code: country
+                        });
+                    }
+                }
             } catch (e) {
                 console.error(`Error guardando mapa ${s.beatmap_id} en Turso:`, e.message);
             }
