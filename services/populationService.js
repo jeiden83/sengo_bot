@@ -102,7 +102,10 @@ class PopulationService {
             discordId,
             username,
             countryCode: country,
-            createdAt: Date.now()
+            createdAt: Date.now(),
+            lastActiveAt: Date.now(),
+            batchesRequested: 0,
+            scoresSubmitted: 0
         });
 
         if (!activeSessions.has(country)) {
@@ -129,6 +132,13 @@ class PopulationService {
      */
     static async getNextBatch(key, countryCode) {
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
+        
+        if (key && activeWorkerKeys.has(key)) {
+            const worker = activeWorkerKeys.get(key);
+            worker.lastActiveAt = Date.now();
+            worker.batchesRequested = (worker.batchesRequested || 0) + 1;
+        }
+
         const session = activeSessions.get(country);
 
         if (session && session.isStopped) {
@@ -238,6 +248,12 @@ class PopulationService {
         }
 
         if (savedCount > 0) {
+            if (key && activeWorkerKeys.has(key)) {
+                const worker = activeWorkerKeys.get(key);
+                worker.lastActiveAt = Date.now();
+                worker.scoresSubmitted = (worker.scoresSubmitted || 0) + savedCount;
+            }
+
             countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
             // Actualizar conteo liviano en Supabase (scraped_countries) sin tocar la cuota de Turso
             try {
@@ -455,6 +471,26 @@ class PopulationService {
             content = content.replace('__WORKER_COUNTRY__', defaultCountry);
         }
         return content;
+    }
+
+    /**
+     * Devuelve la lista detallada de workers activos registrados
+     */
+    static getActiveWorkersList() {
+        const list = [];
+        for (const [key, w] of activeWorkerKeys.entries()) {
+            list.push({
+                key,
+                discordId: w.discordId,
+                username: w.username,
+                countryCode: w.countryCode,
+                createdAt: w.createdAt,
+                lastActiveAt: w.lastActiveAt || w.createdAt,
+                batchesRequested: w.batchesRequested || 0,
+                scoresSubmitted: w.scoresSubmitted || 0
+            });
+        }
+        return list;
     }
 }
 

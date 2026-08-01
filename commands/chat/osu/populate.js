@@ -4,7 +4,8 @@ const CONFIG = require('../../../config.js');
 const {
     buildPopulateHelpEmbed,
     buildPopulateStatusEmbed,
-    buildPopulateDmEmbed
+    buildPopulateDmEmbed,
+    buildPopulateWorkersEmbed
 } = require('../../../views/populateViews.js');
 
 async function run({ message, res, reply, logger }, args) {
@@ -53,6 +54,25 @@ async function run({ message, res, reply, logger }, args) {
 
         PopulationService.stopCountry(targetCountry);
         return t(locale, 'populate.stop_success', { country: targetCountry });
+    }
+
+    // ----------------------------------------------------
+    // 4. SUBCOMANDO: -worker / -workers (Monitor de Workers del Owner)
+    // ----------------------------------------------------
+    if (arg1 === '-worker' || arg1 === '-workers' || arg1 === 'worker' || arg1 === 'workers') {
+        if (message.author.id !== ownerId) {
+            return t(locale, 'populate.err_owner_only_workers');
+        }
+
+        const workers = PopulationService.getActiveWorkersList();
+        const embed = buildPopulateWorkersEmbed(workers, locale);
+
+        try {
+            await message.author.send({ embeds: [embed] });
+            return t(locale, 'populate.workers_dm_sent_reply');
+        } catch (err) {
+            return t(locale, 'populate.err_dm_failed');
+        }
     }
 
     // ----------------------------------------------------

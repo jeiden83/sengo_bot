@@ -26,6 +26,10 @@ function buildPopulateHelpEmbed(locale = 'es') {
             {
                 name: t(locale, 'populate.cmd_stop_title'),
                 value: t(locale, 'populate.cmd_stop_desc')
+            },
+            {
+                name: t(locale, 'populate.cmd_worker_title'),
+                value: t(locale, 'populate.cmd_worker_desc')
             }
         )
         .setFooter({ text: 'SengoBot • Poblamiento Distribuido' });
@@ -96,8 +100,52 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es') 
         .setFooter({ text: t(locale, 'populate.dm_footer') });
 }
 
+/**
+ * Genera el embed con la información detallada de los workers activos (Owner Only)
+ */
+function buildPopulateWorkersEmbed(workersList, locale = 'es') {
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'populate.workers_embed_title'))
+        .setColor(CONFIG.colors?.primary || 0x3498db)
+        .setDescription(t(locale, 'populate.workers_embed_desc', { count: workersList.length }))
+        .setFooter({ text: 'SengoBot • Monitor de Poblamiento Distribuido' })
+        .setTimestamp();
+
+    if (!workersList || workersList.length === 0) {
+        embed.addFields({
+            name: t(locale, 'populate.workers_none_title'),
+            value: t(locale, 'populate.workers_none_desc')
+        });
+        return embed;
+    }
+
+    for (const w of workersList) {
+        const createdUnix = Math.floor(w.createdAt / 1000);
+        const activeUnix = Math.floor(w.lastActiveAt / 1000);
+        const userMention = w.discordId ? `<@${w.discordId}>` : `@${w.username}`;
+
+        const infoLines = [
+            `👤 **Usuario:** ${userMention} (\`${w.username}\`)`,
+            `🚩 **País:** **${w.countryCode}**`,
+            `🔑 **Worker Key:** \`${w.key}\``,
+            `📦 **Lotes Pedidos:** \`${w.batchesRequested}\` (~${(w.batchesRequested * 100).toLocaleString()} mapas)`,
+            `💾 **Récords Guardados:** \`${w.scoresSubmitted.toLocaleString()}\``,
+            `⏱️ **Iniciado:** <t:${createdUnix}:R>`,
+            `🔄 **Última Actividad:** <t:${activeUnix}:R>`
+        ];
+
+        embed.addFields({
+            name: `👷 Worker \`${w.key}\` [${w.countryCode}]`,
+            value: infoLines.join('\n')
+        });
+    }
+
+    return embed;
+}
+
 module.exports = {
     buildPopulateHelpEmbed,
     buildPopulateStatusEmbed,
-    buildPopulateDmEmbed
+    buildPopulateDmEmbed,
+    buildPopulateWorkersEmbed
 };

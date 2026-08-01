@@ -1609,6 +1609,8 @@
     "cmd_allow_desc": "Formally enables population for a country so collaborators can request worker keys.",
     "cmd_stop_title": "🛑 `s.populate -stop <COUNTRY>` *(Owner Only)*",
     "cmd_stop_desc": "Immediately stops population for a country and locks access until explicit future permission.",
+    "cmd_worker_title": "👷 `s.populate -worker` *(Owner Only)*",
+    "cmd_worker_desc": "Sends a detailed DM report with active worker keys, progress, and status.",
     "status_title": "🌍 Global Country Population Status",
     "status_desc": "Check country snipe population status in `sengo-db` database.\n\nTo collaborate populating an available country, run: `s.populate <COUNTRY>`",
     "cat_completed": "🟢 100% Completed",
@@ -1623,6 +1625,7 @@
     "all_have_supporter": "*All countries have supporters*",
     "err_owner_only_allow": "❌ This enabling command is exclusive to the bot owner.",
     "err_owner_only_stop": "❌ This stopping command is exclusive to the bot owner.",
+    "err_owner_only_workers": "❌ Active worker monitoring is exclusive to the bot owner.",
     "err_country_code_required": "⚠️ You must specify a 2-letter country code. Example: `s.populate MX`",
     "allow_success": "✅ **PERMISSION GRANTED**: Population of **{country}** has been enabled by the Administrator. Collaborators can now run `s.populate {country}`.",
     "stop_success": "🛑 **POPULATION DISABLED**: Population of **{country}** has been stopped and locked until you run `s.populate -permitir {country}`.",
@@ -1638,6 +1641,11 @@
     "dm_how_val": "The script will download pending maps in batches of **100** into memory and use your clean residential connection at 1.8s per map to send scores to `sengo-db`.",
     "dm_footer": "You can close the console whenever you want to pause cleanly.",
     "dm_sent_reply": "📩 **Instructions sent to your DM!** Check your private messages to copy the PowerShell command for **{country}**.",
+    "workers_dm_sent_reply": "📩 **Worker Panel sent to your DM!** Check your private messages to see active workers and their keys.",
+    "workers_embed_title": "👷 Active Distributed Population Workers",
+    "workers_embed_desc": "Currently there are **{count}** active worker(s) running scraping sessions.",
+    "workers_none_title": "⚪ No Active Workers",
+    "workers_none_desc": "There are currently no active worker sessions running population commands.",
     "err_dm_failed": "⚠️ Could not send you a private message. Please enable Direct Messages (DMs) in the server to receive your worker key."
   }
 }
