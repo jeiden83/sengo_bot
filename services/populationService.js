@@ -634,6 +634,7 @@ class PopulationService {
             }
 
             list.push({
+                code,
                 countryCode: code,
                 status,
                 isScraped,
