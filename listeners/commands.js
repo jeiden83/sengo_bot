@@ -495,7 +495,7 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
 
             const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
-            if (slash_result === true) {
+            if (slash_result === true || (slash_result && slash_result.id)) {
                 logger.success(`/${message_command} completado con éxito.`);
                 return;
             }

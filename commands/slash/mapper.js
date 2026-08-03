@@ -93,7 +93,9 @@ async function run(interaction, res) {
     if (bn) args.push("-bn");
     if (bnActivo) args.push("-activo");
 
-    return await mapperChatCommand.run(messages, args);
+    const result = await mapperChatCommand.run(messages, args);
+    if (result && result.id) return true;
+    return result || true;
 }
 
 run.description = "Muestra las estadísticas de creador/mapper de un usuario en osu!";
