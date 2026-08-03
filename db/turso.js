@@ -184,8 +184,11 @@ async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
 async function getUserSnipesHistory(userId) {
     const cacheKey = userId.toString();
     const cached = getCachedItem(snipesCache, cacheKey);
-    if (cached) {
-        return cached;
+    if (cached && cached.made && cached.received) {
+        const hasMissing = cached.made.some(m => !m.ranked_beatmaps?.title) || cached.received.some(r => !r.ranked_beatmaps?.title);
+        if (!hasMissing) {
+            return cached;
+        }
     }
 
     const sqlMade = `
@@ -226,6 +229,56 @@ async function getUserSnipesHistory(userId) {
         ended_at: r.ended_at,
         ranked_beatmaps: { title: r.title, version: r.version }
     }));
+
+    // Enriquecer mapas a los que les falte título consultando Supabase y sincronizando a Turso
+    const missingIds = Array.from(new Set([
+        ...made.filter(m => !m.ranked_beatmaps?.title).map(m => m.beatmap_id),
+        ...received.filter(r => !r.ranked_beatmaps?.title).map(r => r.beatmap_id)
+    ]));
+
+    if (missingIds.length > 0) {
+        try {
+            const { getSupabaseClient } = require('./database.js');
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data: supaMaps } = await supabase
+                    .from('ranked_beatmaps')
+                    .select('beatmap_id, beatmapset_id, mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, max_combo, status')
+                    .in('beatmap_id', missingIds.map(id => Number(id)));
+
+                if (supaMaps && supaMaps.length > 0) {
+                    const mapDict = {};
+                    await Promise.all(supaMaps.map(async (bm) => {
+                        mapDict[String(bm.beatmap_id)] = bm;
+                        try {
+                            await saveBeatmap(bm);
+                        } catch (e) {}
+                    }));
+
+                    for (const m of made) {
+                        const bm = mapDict[String(m.beatmap_id)];
+                        if (bm) {
+                            m.ranked_beatmaps = {
+                                title: bm.title,
+                                version: bm.version
+                            };
+                        }
+                    }
+                    for (const r of received) {
+                        const bm = mapDict[String(r.beatmap_id)];
+                        if (bm) {
+                            r.ranked_beatmaps = {
+                                title: bm.title,
+                                version: bm.version
+                            };
+                        }
+                    }
+                }
+            }
+        } catch (enrichErr) {
+            console.error('[Turso] Error enriqueciendo metadata de mapas en getUserSnipesHistory:', enrichErr);
+        }
+    }
 
     const res = { made, received };
     setCachedItem(snipesCache, cacheKey, res);
