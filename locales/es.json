@@ -1612,6 +1612,13 @@
   "populate": {
     "help_header": "📖 Comando `s.populate` - Poblamiento Distribuido",
     "help_body": "Sistema distribuido para colaborar poblando mapas #1 por país a la base de datos `sengo-db`.",
+    "help_owner_header": "👑 s.populate - Administración (Owner)",
+    "help_owner_body": "Comandos de control y monitoreo administrativo del sistema de poblamiento distribuido.",
+    "only_author": "❌ Solo la persona que ejecutó el comando puede usar esta navegación.",
+    "buttons": {
+      "public": "Comandos Generales",
+      "owner": "Comandos de Owner"
+    },
     "cmd_start_title": "🚀 `s.populate <PAÍS>`",
     "cmd_start_desc": "Genera tu clave de trabajador y te envía por DM el comando de 1 línea de PowerShell para poblar ese país.\n*Ejemplo:* `s.populate MX`",
     "cmd_list_title": "📋 `s.populate -lista` *(o `-l`)*",

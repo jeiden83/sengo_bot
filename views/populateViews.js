@@ -1,51 +1,77 @@
-const { EmbedBuilder } = require('discord.js');
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const { t } = require('../utils/i18n.js');
 const CONFIG = require('../config.js');
 
 /**
- * Genera el embed de ayuda para s.populate
+ * Genera el embed de ayuda para s.populate según el índice de página
  * @param {string} locale Código de idioma
- * @param {boolean} isOwner Indica si el usuario que ejecuta el comando es el Owner del bot
+ * @param {number} pageIndex 0 para Comandos Generales, 1 para Comandos de Owner
  */
-function buildPopulateHelpEmbed(locale = 'es', isOwner = false) {
-    const fields = [
-        {
-            name: t(locale, 'populate.cmd_start_title'),
-            value: t(locale, 'populate.cmd_start_desc')
-        },
-        {
-            name: t(locale, 'populate.cmd_list_title'),
-            value: t(locale, 'populate.cmd_list_desc')
-        },
-        {
-            name: t(locale, 'populate.cmd_top_title'),
-            value: t(locale, 'populate.cmd_top_desc')
-        }
-    ];
+function buildPopulateHelpEmbed(locale = 'es', pageIndex = 0) {
+    const embed = new EmbedBuilder()
+        .setColor(CONFIG.colors?.primary || 0x3498db)
+        .setFooter({ text: 'SengoBot • Poblamiento Distribuido' });
 
-    if (isOwner) {
-        fields.push(
-            {
-                name: t(locale, 'populate.cmd_allow_title'),
-                value: t(locale, 'populate.cmd_allow_desc')
-            },
-            {
-                name: t(locale, 'populate.cmd_stop_title'),
-                value: t(locale, 'populate.cmd_stop_desc')
-            },
-            {
-                name: t(locale, 'populate.cmd_worker_title'),
-                value: t(locale, 'populate.cmd_worker_desc')
-            }
-        );
+    if (pageIndex === 1) {
+        embed
+            .setTitle(t(locale, 'populate.help_owner_header'))
+            .setDescription(t(locale, 'populate.help_owner_body'))
+            .addFields(
+                {
+                    name: t(locale, 'populate.cmd_allow_title'),
+                    value: t(locale, 'populate.cmd_allow_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_stop_title'),
+                    value: t(locale, 'populate.cmd_stop_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_worker_title'),
+                    value: t(locale, 'populate.cmd_worker_desc')
+                }
+            );
+    } else {
+        embed
+            .setTitle(t(locale, 'populate.help_header'))
+            .setDescription(t(locale, 'populate.help_body'))
+            .addFields(
+                {
+                    name: t(locale, 'populate.cmd_start_title'),
+                    value: t(locale, 'populate.cmd_start_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_list_title'),
+                    value: t(locale, 'populate.cmd_list_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_top_title'),
+                    value: t(locale, 'populate.cmd_top_desc')
+                }
+            );
     }
 
-    return new EmbedBuilder()
-        .setTitle(t(locale, 'populate.help_header'))
-        .setColor(CONFIG.colors?.primary || 0x3498db)
-        .setDescription(t(locale, 'populate.help_body'))
-        .addFields(fields)
-        .setFooter({ text: 'SengoBot • Poblamiento Distribuido' });
+    return embed;
+}
+
+/**
+ * Crea la fila de botones de navegación para la ayuda de s.populate (Solo para Owner)
+ * @param {number} currentPageIndex Índice de la página activa (0 o 1)
+ * @param {string} locale Idioma del contexto
+ * @returns {ActionRowBuilder} Fila de botones
+ */
+function buildPopulateHelpNavigationRow(currentPageIndex = 0, locale = 'es') {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("pop_help_page_0")
+            .setLabel(t(locale, 'populate.buttons.public'))
+            .setEmoji("🌐")
+            .setStyle(currentPageIndex === 0 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("pop_help_page_1")
+            .setLabel(t(locale, 'populate.buttons.owner'))
+            .setEmoji("👑")
+            .setStyle(currentPageIndex === 1 ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
 }
 
 /**
@@ -193,6 +219,7 @@ function buildPopulateTopEmbed(topList, locale = 'es') {
 
 module.exports = {
     buildPopulateHelpEmbed,
+    buildPopulateHelpNavigationRow,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateWorkersEmbed,

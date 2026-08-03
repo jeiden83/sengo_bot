@@ -1612,6 +1612,13 @@
   "populate": {
     "help_header": "📖 Command `s.populate` - Distributed Population",
     "help_body": "Distributed system to collaborate populating #1 beatmap scores by country into `sengo-db` database.",
+    "help_owner_header": "👑 s.populate - Administration (Owner)",
+    "help_owner_body": "Administrative control and monitoring commands for the distributed population system.",
+    "only_author": "❌ Only the person who ran the command can use this navigation.",
+    "buttons": {
+      "public": "General Commands",
+      "owner": "Owner Commands"
+    },
     "cmd_start_title": "🚀 `s.populate <COUNTRY>`",
     "cmd_start_desc": "Generates your worker key and sends you via DM the 1-line PowerShell script to populate that country.\n*Example:* `s.populate MX`",
     "cmd_list_title": "📋 `s.populate -lista` *(or `-l`)*",

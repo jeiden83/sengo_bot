@@ -3,6 +3,7 @@ const { t } = require('../../../utils/i18n.js');
 const CONFIG = require('../../../config.js');
 const {
     buildPopulateHelpEmbed,
+    buildPopulateHelpNavigationRow,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateWorkersEmbed,
@@ -119,8 +120,60 @@ async function run({ message, res, reply, logger }, args) {
     // 5. MENU DE AYUDA (s.populate sin argumentos)
     // ----------------------------------------------------
     const isOwner = message.author.id === ownerId;
-    const helpEmbed = buildPopulateHelpEmbed(locale, isOwner);
-    return { embeds: [helpEmbed] };
+    const initialEmbed = buildPopulateHelpEmbed(locale, 0);
+    const initialRows = isOwner ? [buildPopulateHelpNavigationRow(0, locale)] : [];
+
+    const sendOptions = {
+        embeds: [initialEmbed],
+        components: initialRows
+    };
+
+    let sentMessage;
+    if (reply) {
+        sentMessage = await reply.reply(sendOptions);
+    } else if (message && message.channel) {
+        sentMessage = await message.channel.send(sendOptions);
+    }
+
+    if (!sentMessage || !isOwner) return;
+
+    const collector = sentMessage.createMessageComponentCollector({
+        idle: 60000 // 60s inactividad
+    });
+
+    collector.on('collect', async i => {
+        if (i.user.id !== message.author.id) {
+            return i.reply({
+                content: t(locale, 'populate.only_author'),
+                ephemeral: true
+            }).catch(() => {});
+        }
+
+        try {
+            await i.deferUpdate();
+
+            const pageIndex = parseInt(i.customId.replace("pop_help_page_", ""), 10);
+            if (isNaN(pageIndex)) return;
+
+            const nextEmbed = buildPopulateHelpEmbed(locale, pageIndex);
+            const nextRows = [buildPopulateHelpNavigationRow(pageIndex, locale)];
+
+            await i.editReply({
+                embeds: [nextEmbed],
+                components: nextRows
+            });
+        } catch (err) {
+            console.error("Error en navegación de s.populate:", err);
+        }
+    });
+
+    collector.on('end', async () => {
+        try {
+            await sentMessage.edit({ components: [] });
+        } catch (e) {}
+    });
+
+    return;
 }
 
 run.alias = {
