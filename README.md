@@ -167,8 +167,8 @@ El bot responde tanto a comandos de chat clásicos (usando el prefijo configurad
                 *   `-server` o `-servidor`: Muestra solo los mappers del servidor de Discord actual.
                 *   `-std` / `-taiko` / `-ctb` / `-mania` o `-mode <modo>`: Filtra por su modo de juego principal.
                 *   `-kudosus` / `-gd` / `-ranked` / `-wip` / `-loved` / `-followers` / `-graveyard` / `-recent`: Cambia el criterio de ordenamiento de la tabla.
-*   **`s.link [-oauth]`**
-    Vincula tu cuenta de osu! a tu Discord. El uso de `-oauth` te enviará un mensaje privado con un enlace web seguro de autorización oficial.
+*   **`s.link`**
+    Vincula tu cuenta de osu! a tu Discord de forma oficial y segura mediante OAuth 2.0. Te enviará un mensaje privado con el enlace web de autorización.
 *   **`s.bg`**
     Muestra la imagen de fondo (background) del último mapa enviado en el chat.
 *   **`s.replay`**

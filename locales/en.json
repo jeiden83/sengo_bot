@@ -83,7 +83,7 @@
       },
       "1": {
         "title": "🔒 Secure OAuth 2.0",
-        "description": "**Secure Linking with OAuth 2.0**\n\nForget about changing your profile page or using tedious methods. Link your account officially in seconds with `{prefix}link -oauth`.\n\n**Details and Usage:**\n• **Auto-detection**: Upon authorizing via OAuth, Sengo automatically detects your avatar, country flag, and your **osu! Supporter** status 💖.\n• **Security**: We do not need your password or sensitive data. Everything is managed through official osu! servers.\n• **Support Pool**: If you have supporter, your account will safely help retrieve national rankings for the whole server."
+        "description": "**Secure Linking with OAuth 2.0**\n\nForget about changing your profile page or using tedious methods. Link your account officially in seconds with `{prefix}link`.\n\n**Details and Usage:**\n• **Auto-detection**: Upon authorizing via OAuth, Sengo automatically detects your avatar, country flag, and your **osu! Supporter** status 💖.\n• **Security**: We do not need your password or sensitive data. Everything is managed through official osu! servers.\n• **Support Pool**: If you have supporter, your account will safely help retrieve national rankings for the whole server."
       },
       "2": {
         "title": "⚡ Latency & Cache",
@@ -103,7 +103,7 @@
       },
       "6": {
         "title": "🛠️ Command List",
-        "description": "**Other Sengo Commands**\n\nHere is a quick guide to other essential bot commands:\n\n• **osu! Commands**:\n  ▸ `s.r` / `s.rs`: Shows your most recent play. Supports `-l` to list the last 10 and `-b` to sort by PP.\n  ▸ `s.c`: Compares your score on the channel's last beatmap.\n  ▸ `s.lb`: Shows the beatmap's global leaderboard.\n  ▸ `s.osu`: Shows your osu! profile or another player's (supports detailed mode).\n  ▸ `s.top`: Shows your top PP scores.\n  ▸ `s.daily`: Shows details and ranking of the current osu! Daily Challenge.\n  ▸ `s.subir`: Manually saves/uploads a score to the bot's system.\n• **Utility & Community Commands**:\n  ▸ `s.link`: Links your Discord account with osu!.\n  ▸ `s.amigos`: Manages and audits your osu! friends list within the bot.\n  ▸ `s.contribuidores`: Meet the developers and contributors behind Sengo.\n  ▸ `s.sorteo`: Creates and manages advanced giveaways with role, booster, and nitro filters.\n• **Fun**:\n  ▸ `s.fumo`: Entertainment command with Fumo images."
+        "description": "**Other Sengo Commands**\n\nHere is a quick guide to other essential bot commands:\n\n• **osu! Commands**:\n  ▸ `s.r` / `s.rs`: Displays your most recent play. Supports `-l` to list last 10 and `-b` to sort by PP.\n  ▸ `s.c`: Compares your score on the last channel beatmap.\n  ▸ `s.lb`: Displays global beatmap leaderboard.\n  ▸ `s.osu`: Displays your osu! profile or another player's profile (supports detailed mode).\n  ▸ `s.top`: Displays your best PP scores.\n  ▸ `s.snipes`: Displays your national #1s, skill profile, rivals (`-nemesis`), and #1s leaderboard (`-top`).\n  ▸ `s.daily`: Displays current Osu! Daily Challenge details and leaderboard.\n  ▸ `s.subir`: Saves/uploads a score manually to the bot system.\n  ▸ `s.pop`: Allows collaborating in the distributed map database population by downloading maps in the background.\n• **Utility & Community Commands**:\n  ▸ `s.link`: Links your Discord account with osu! officially and securely.\n  ▸ `s.amigos`: Manages and audits your osu! friends list inside the bot.\n  ▸ `s.contribuidores`: Meet the developer and contributor team behind Sengo.\n  ▸ `s.sorteo`: Creates and manages advanced giveaways with role, booster, and nitro filters.\n• **Fun**:\n  ▸ `s.fumo`: Entertainment command with Fumo images."
       }
     }
   },
@@ -710,10 +710,10 @@
   },
   "amigos": {
     "err_owner_only": "❌ This flag is for the exclusive use of the creator of Sengo.",
-    "err_auth_403": "❌ **Authorization Error (403):** Your osu! link does not have the necessary permission (`friends.read`) or you do not have active **osu!supporter** (required by the osu! API to query the friends list).\n\n💡 **Solution:** Make sure you have active **osu!supporter** on your osu! account and then link your account with `s.link -oauth` authorizing all requested permissions.",
-    "err_need_oauth": "❌ You must link your account with OAuth first using `s.link -oauth` and make sure your link has not expired to perform this query.",
+    "err_auth_403": "❌ **Authorization Error (403):** Your osu! link does not have the necessary permission (`friends.read`) or you do not have active **osu!supporter** (required by the osu! API to query the friends list).\n\n💡 **Solution:** Make sure you have active **osu!supporter** on your osu! account and then link your account with `s.link` authorizing all requested permissions.",
+    "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` and make sure your link has not expired to perform this query.",
     "err_no_linked_users": "❌ No linked users were found in the database.",
-    "err_need_oauth_general": "❌ You must link your account with OAuth first using `s.link -oauth` to use this command.",
+    "err_need_oauth_general": "❌ You must link your account with OAuth first using `s.link` to use this command.",
     "err_fetch_failed": "❌ Error querying your osu! friends. Make sure your link has not expired and try again.",
     "empty_title": "👥 osu! Friends List",
     "empty_desc": "You do not have any friends added on your osu! account yet.",
@@ -724,7 +724,7 @@
     "missing_more": "\n*...and **{count}** more linked users.*",
     "list_header": "Total friends on osu!: **{total}**\n\n",
     "list_header_country": "Friends from {country}: **{count}** (out of {total} total friends)\n\n",
-    "list_legend": "\n**Legend:**\n• **Supporter**: Whether the user has active osu! supporter.\n• **Mutual**: ✅ Yes, ❌ No, ❓ Linked but missing `friends.read` scope (requires `s.link -oauth`).\n• **Sengo**: Linked account to Sengo.",
+    "list_legend": "\n**Legend:**\n• **Supporter**: Whether the user has active osu! supporter.\n• **Mutual**: ✅ Yes, ❌ No, ❓ Linked but missing `friends.read` scope (requires `s.link`).\n• **Sengo**: Linked account to Sengo.",
     "list_title": "👥 osu! Friends List",
     "list_title_country": "👥 osu! Friends List - {country}",
     "empty_desc_country": "You do not have any friends from {country} added on your osu! account.",
@@ -764,7 +764,7 @@
     "err_guild_only": "This command can only be used in a server.",
     "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
     "err_not_linked": "To use this command, you must first link your account to the bot.",
-    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link` to link securely and privately.",
     "err_already_has_role": "You already have a {digits}-digit role assigned.",
     "err_seven_digits": "Bro. Climb a bit more in the ranking and I will assign you the 6-digit role.",
     "one_digit": "Truly incredible to be global Top rank.",
@@ -776,7 +776,7 @@
     "err_guild_only": "This command can only be used in a server.",
     "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
     "err_not_linked": "To use this command, you must first link your account to the bot.",
-    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link` to link securely and privately.",
     "err_already_has_role": "You already have a country role assigned.",
     "success_assign": "Country role successfully assigned.",
     "err_assign": "There was an error assigning the role.",
@@ -788,7 +788,7 @@
     "err_guild_only": "This command can only be used in a server.",
     "err_wrong_guild": "This is not Osu! latam. Ask Jeiden first.",
     "err_not_linked": "To use this command, you must first link your account to the bot.",
-    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link -oauth` to link securely and privately.",
+    "err_not_oauth": "❌ To use this command, you must be linked via OAuth.\nUse `s.link` to link securely and privately.",
     "status_title": "Osu! Identity Cards for {username}",
     "country_section": "🌎 **Country**: ",
     "digits_section": "🔢 **Digits**: ",
@@ -822,7 +822,7 @@
   },
   "nacional": {
     "err_no_subdivisions": "❌ No subdivisions/regions found for country **{country}** in the ISO 3166-2 database.",
-    "err_not_linked": "❌ No linked osu! account found for your Discord.\nUse `s.link -oauth` to link it first.",
+    "err_not_linked": "❌ No linked osu! account found for your Discord.\nUse `s.link` to link it first.",
     "err_no_osuworld_region": "❌ Your osu! account does not have a region configured in osu!World.\nConfigure it by logging in at https://osuworld.octo.moe/ with your osu! account and try again.",
     "err_region_not_found": "❌ No region matching \"{query}\" was found in **{country}**. Use `.regional list` to see available options.",
     "err_fetch_regional": "❌ There was an error fetching the regional ranking for **{region}** from osu!World.",
@@ -947,12 +947,12 @@
   },
   "leaderboard": {
     "err_oauth_required": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth. **I have sent you a private message with the linking link.** 🔒",
-    "err_oauth_required_dm_failed": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth.\n**I could not send you a private message.** Please enable the option to receive direct messages in this server and try again with `s.link -oauth`.",
+    "err_oauth_required_dm_failed": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth.\n**I could not send you a private message.** Please enable the option to receive direct messages in this server and try again with `s.link`.",
     "err_session_validation": "❌ There was an error validating your osu! session due to a temporary connection issue. Please try running the command again in a few moments.",
     "err_no_leaderboard_online": "❌ This map does not have an online leaderboard because it is in status **{status}**.",
     "err_user_not_found": "❌ No linked user found with the name or Discord ID **{filter}** in the database.",
     "err_no_supporter": "❌ User **{username}** does not have active osu! supporter on their linked account, which is required by the osu! API to query the friends ranking.",
-    "err_auth_403": "❌ **Authorization Error (403):** **{username}**'s osu! link does not have the necessary permission (`friends.read`) to query the friends ranking.\n\n💡 **Solution:** Re-link your account with `s.link -oauth` making sure to authorize all requested permissions.",
+    "err_auth_403": "❌ **Authorization Error (403):** **{username}**'s osu! link does not have the necessary permission (`friends.read`) to query the friends ranking.\n\n💡 **Solution:** Re-link your account with `s.link` making sure to authorize all requested permissions.",
     "err_friends_api": "❌ Error querying the osu! API using **{username}**'s friends token.",
     "err_no_supporter_pool": "❌ There is no user from **{country}** with osu! supporter linked to the bot in the database via OAuth to perform this query.",
     "err_country_api": "❌ Error querying the osu! API using the supporter credentials from the pool.",

@@ -83,7 +83,7 @@
       },
       "1": {
         "title": "🔒 OAuth 2.0 Seguro",
-        "description": "**Vinculación Segura con OAuth 2.0**\n\nOlvídate de cambiar tu perfil o usar métodos tediosos. Con `{prefix}link -oauth` vinculas tu cuenta en segundos de forma oficial.\n\n**Detalle y Uso:**\n• **Detección Automática**: Al autorizar mediante OAuth, Sengo detecta automáticamente tu avatar, bandera del país y tu estado de **osu! Supporter** 💖.\n• **Seguridad**: No necesitamos tu contraseña ni datos sensibles. Todo se gestiona a través de los servidores oficiales de osu!.\n• **Pool de Soporte**: Si tienes supporter, tu cuenta ayudará de forma segura a consultar rankings nacionales para todo el servidor."
+        "description": "**Vinculación Segura con OAuth 2.0**\n\nOlvídate de cambiar tu perfil o usar métodos tediosos. Con `{prefix}link` vinculas tu cuenta en segundos de forma oficial.\n\n**Detalle y Uso:**\n• **Detección Automática**: Al autorizar mediante OAuth, Sengo detecta automáticamente tu avatar, bandera del país y tu estado de **osu! Supporter** 💖.\n• **Seguridad**: No necesitamos tu contraseña ni datos sensibles. Todo se gestiona a través de los servidores oficiales de osu!.\n• **Pool de Soporte**: Si tienes supporter, tu cuenta ayudará de forma segura a consultar rankings nacionales para todo el servidor."
       },
       "2": {
         "title": "⚡ Latencia & Caché",
@@ -103,7 +103,7 @@
       },
       "6": {
         "title": "🛠️ Lista de Comandos",
-        "description": "**Otros Comandos de Sengo**\n\nAquí tienes una guía rápida de otros comandos esenciales del bot:\n\n• **Comandos de osu!**:\n  ▸ `s.r` / `s.rs`: Muestra tu jugada reciente más reciente. Admite `-l` para listar las últimas 10 y `-b` para ordenar por PP.\n  ▸ `s.c`: Compara tu puntuación en el último beatmap del canal.\n  ▸ `s.lb`: Muestra la tabla de clasificación global del beatmap.\n  ▸ `s.osu`: Muestra tu perfil de osu! o de otro jugador (admite modo detallado).\n  ▸ `s.top`: Muestra tus mejores puntuaciones de PP.\n  ▸ `s.daily`: Muestra los detalles y clasificación del Osu! Daily Challenge actual.\n  ▸ `s.subir`: Guarda/sube una puntuación manualmente al sistema del bot.\n• **Comandos de Utilidad & Comunidad**:\n  ▸ `s.link`: Vincula tu cuenta de Discord con la de osu!.\n  ▸ `s.amigos`: Gestiona y audita tu lista de amigos de osu! dentro del bot.\n  ▸ `s.contribuidores`: Conoce al equipo de desarrolladores y colaboradores detrás de Sengo.\n  ▸ `s.sorteo`: Crea y gestiona sorteos/giveaways avanzados con filtros de rol, booster y nitro.\n• **Diversión**:\n  ▸ `s.fumo`: Comando de entretenimiento con imágenes de Fumos."
+        "description": "**Otros Comandos de Sengo**\n\nAquí tienes una guía rápida de otros comandos esenciales del bot:\n\n• **Comandos de osu!**:\n  ▸ `s.r` / `s.rs`: Muestra tu jugada reciente más reciente. Admite `-l` para listar las últimas 10 y `-b` para ordenar por PP.\n  ▸ `s.c`: Compara tu puntuación en el último beatmap del canal.\n  ▸ `s.lb`: Muestra la tabla de clasificación global del beatmap.\n  ▸ `s.osu`: Muestra tu perfil de osu! o de otro jugador (admite modo detallado).\n  ▸ `s.top`: Muestra tus mejores puntuaciones de PP.\n  ▸ `s.snipes`: Muestra tus #1s nacionales, perfil de habilidad, rivales (`-nemesis`) y tabla de #1s (`-top`).\n  ▸ `s.daily`: Muestra los detalles y clasificación del Osu! Daily Challenge actual.\n  ▸ `s.subir`: Guarda/sube una puntuación manualmente al sistema del bot.\n  ▸ `s.pop`: Permite colaborar en el poblamiento distribuido de la base de datos descargando mapas en segundo plano.\n• **Comandos de Utilidad & Comunidad**:\n  ▸ `s.link`: Vincula tu cuenta de Discord con la de osu! de forma oficial y segura.\n  ▸ `s.amigos`: Gestiona y audita tu lista de amigos de osu! dentro del bot.\n  ▸ `s.contribuidores`: Conoce al equipo de desarrolladores y colaboradores detrás de Sengo.\n  ▸ `s.sorteo`: Crea y gestiona sorteos/giveaways avanzados con filtros de rol, booster y nitro.\n• **Diversión**:\n  ▸ `s.fumo`: Comando de entretenimiento con imágenes de Fumos."
       }
     }
   },
@@ -710,10 +710,10 @@
   },
   "amigos": {
     "err_owner_only": "❌ Este flag es de uso exclusivo para el creador del Sengo.",
-    "err_auth_403": "❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (`friends.read`) o no cuentas con **osu!supporter** activo (requerido por la API de osu! para consultar la lista de amigos).\n\n💡 **Solución:** Asegúrate de tener **osu!supporter** activo en tu cuenta de osu! y luego vincula tu cuenta con `s.link -oauth` autorizando todos los permisos solicitados.",
-    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link -oauth` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.",
+    "err_auth_403": "❌ **Error de autorización (403):** Tu vinculación de osu! no tiene el permiso necesario (`friends.read`) o no cuentas con **osu!supporter** activo (requerido por la API de osu! para consultar la lista de amigos).\n\n💡 **Solución:** Asegúrate de tener **osu!supporter** activo en tu cuenta de osu! y luego vincula tu cuenta con `s.link` autorizando todos los permisos solicitados.",
+    "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` y asegurarte de que tu vinculación no haya expirado para poder realizar esta consulta.",
     "err_no_linked_users": "❌ No se encontraron usuarios vinculados de la base de datos.",
-    "err_need_oauth_general": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link -oauth` para poder utilizar este comando.",
+    "err_need_oauth_general": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando.",
     "err_fetch_failed": "❌ Error al consultar tus amigos de osu!. Asegúrate de que tu vinculación no haya expirado y vuelve a intentarlo.",
     "empty_title": "👥 Lista de Amigos en osu!",
     "empty_desc": "Aún no tienes amigos agregados en tu cuenta de osu!.",
@@ -724,7 +724,7 @@
     "missing_more": "\n*...y **{count}** usuarios vinculados más.*",
     "list_header": "Total de amigos en osu!: **{total}**\n\n",
     "list_header_country": "Amigos de {country}: **{count}** (de {total} amigos en total)\n\n",
-    "list_legend": "\n**Leyenda:**\n• **Supporter**: Si el usuario tiene supporter en osu! activo.\n• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope `friends.read` (se requiere `s.link -oauth`).\n• **Sengo**: Cuenta vinculada a Sengo.",
+    "list_legend": "\n**Leyenda:**\n• **Supporter**: Si el usuario tiene supporter en osu! activo.\n• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope `friends.read` (se requiere `s.link`).\n• **Sengo**: Cuenta vinculada a Sengo.",
     "list_title": "👥 Lista de Amigos en osu!",
     "list_title_country": "👥 Amigos en osu! - {country}",
     "empty_desc_country": "No tienes ningún amigo de {country} agregado en tu cuenta de osu!.",
@@ -764,7 +764,7 @@
     "err_guild_only": "Este comando solo se puede usar en un servidor.",
     "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
     "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
-    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link` para vincularte de forma segura y privada.",
     "err_already_has_role": "Ya tienes un rol de {digits} dígitos asignado.",
     "err_seven_digits": "Bro. Sube un poco más en el ranking y te asigno el rol de 6 dígitos.",
     "one_digit": "Verdaderamente increíble para ser Top global.",
@@ -776,7 +776,7 @@
     "err_guild_only": "Este comando solo se puede usar en un servidor.",
     "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
     "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
-    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link` para vincularte de forma segura y privada.",
     "err_already_has_role": "Ya tienes un rol de país asignado.",
     "success_assign": "Rol de país asignado exitosamente.",
     "err_assign": "Hubo un error al asignar el rol.",
@@ -788,7 +788,7 @@
     "err_guild_only": "Este comando solo se puede usar en un servidor.",
     "err_wrong_guild": "Esto no es Osu! latam. Pregúntele a Jeiden primero.",
     "err_not_linked": "Para usar el comando primero tiene que linkearse al bot.",
-    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link -oauth` para vincularte de forma segura y privada.",
+    "err_not_oauth": "❌ Para usar este comando debes estar vinculado mediante OAuth.\nUsa `s.link` para vincularte de forma segura y privada.",
     "status_title": "Tarjetas de Identidad de Osu! de {username}",
     "country_section": "🌎 **País**: ",
     "digits_section": "🔢 **Dígitos**: ",
@@ -822,7 +822,7 @@
   },
   "nacional": {
     "err_no_subdivisions": "❌ No se encontraron subdivisiones/regiones para el país **{country}** en la base de datos ISO 3166-2.",
-    "err_not_linked": "❌ No se encontró una cuenta de osu! vinculada a tu Discord.\nUsa `s.link -oauth` para vincularla primero.",
+    "err_not_linked": "❌ No se encontró una cuenta de osu! vinculada a tu Discord.\nUsa `s.link` para vincularla primero.",
     "err_no_osuworld_region": "❌ Tu cuenta de osu! no tiene una región configurada en osu!World.\nConfigúrala entrando a https://osuworld.octo.moe/ con tu cuenta de osu! y luego reintenta.",
     "err_region_not_found": "❌ No se encontró ninguna región que coincida con \"{query}\" en **{country}**. Usa `.regional lista` para ver las opciones disponibles.",
     "err_fetch_regional": "❌ Hubo un error al consultar el ranking regional de **{region}** en osu!World.",
@@ -947,12 +947,12 @@
   },
   "leaderboard": {
     "err_oauth_required": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒",
-    "err_oauth_required_dm_failed": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con `s.link -oauth`.",
+    "err_oauth_required_dm_failed": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con `s.link`.",
     "err_session_validation": "❌ Hubo un error al validar tu sesión de osu! debido a un problema de conexión temporal. Por favor, intenta ejecutar el comando nuevamente en unos instantes.",
     "err_no_leaderboard_online": "❌ Este mapa no tiene tabla de clasificación (leaderboard) online porque está en estado **{status}**.",
     "err_user_not_found": "❌ No se encontró ningún usuario vinculado con el nombre o Discord ID **{filter}** en la base de datos.",
     "err_no_supporter": "❌ El usuario **{username}** no tiene osu! supporter activo en su cuenta vinculada, lo cual es requerido por la API de osu! para consultar el ranking de amigos.",
-    "err_auth_403": "❌ **Error de autorización (403):** La vinculación de osu! de **{username}** no tiene el permiso necesario (`friends.read`) para consultar el ranking de amigos.\n\n💡 **Solución:** Vuelve a vincular tu cuenta con `s.link -oauth` asegurándote de autorizar todos los permisos solicitados.",
+    "err_auth_403": "❌ **Error de autorización (403):** La vinculación de osu! de **{username}** no tiene el permiso necesario (`friends.read`) para consultar el ranking de amigos.\n\n💡 **Solución:** Vuelve a vincular tu cuenta con `s.link` asegurándote de autorizar todos los permisos solicitados.",
     "err_friends_api": "❌ Error al consultar la API de osu! usando el token de amigos de **{username}**.",
     "err_no_supporter_pool": "❌ No hay ningún usuario de **{country}** con osu! supporter vinculado al bot en la base de datos por oAuth para poder realizar esta consulta.",
     "err_country_api": "❌ Error al consultar la API de osu! usando las credenciales del supporter de la pool.",

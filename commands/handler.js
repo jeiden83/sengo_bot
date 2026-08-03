@@ -24,7 +24,7 @@ async function handleOAuthFailure(author, logger) {
         return `❌ Para utilizar este comando, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒`;
     } catch (dmError) {
         console.error("Error al enviar DM de vinculación segura:", dmError);
-        return `❌ Para utilizar este comando, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link -oauth\`.`;
+        return `❌ Para utilizar este comando, necesitas vincular tu cuenta de osu! con OAuth de forma segura.\n**No he podido enviarte un mensaje privado.** Por favor, activa la opción de recibir mensajes directos en este servidor e inténtalo de nuevo con \`s.link\`.`;
     }
 }
 
@@ -165,7 +165,7 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
             return lowerArg === '-oauth' || lowerArg === '--oauth';
         });
         if (hasOAuth) {
-            return `❌ **El parámetro** \`-oauth\` solo es válido en el comando \`.link -oauth\` para vincular tu cuenta de osu! de forma privada y segura.`;
+            return `❌ **El parámetro** \`-oauth\` solo es válido en el comando \`.link\` para vincular tu cuenta de osu! de forma privada y segura.`;
         }
     }
 
@@ -493,7 +493,7 @@ async function chatCommand(intialized_data, command_data) {
 	
 	const commandLower = command.toLowerCase();
 	if (['oauth', 'auth', 'vincular', 'linkear', 'linkeo', 'conectar', 'oauth2'].includes(commandLower)) {
-		return `❌ El comando \`s.${command}\` no existe. Si deseas vincular tu cuenta de osu! de forma segura mediante OAuth, por favor utiliza **\`s.link -oauth\`** o el comando slash **\`/link\`**. 🔒`;
+		return `❌ El comando \`s.${command}\` no existe. Si deseas vincular tu cuenta de osu! de forma segura mediante OAuth, por favor utiliza **\`s.link\`** o el comando slash **\`/link\`**. 🔒`;
 	}
 		
 	const not_found_responses = [
