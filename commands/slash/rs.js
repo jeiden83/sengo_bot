@@ -24,6 +24,11 @@ const data = new SlashCommandBuilder()
         option.setName("mejor")
             .setDescription("¿Ordenar las jugadas recientes por PP y mostrar la mejor?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("rework")
+            .setDescription("¿Evaluar la jugada reciente bajo el sistema de Rework (PP por estilo)?")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -32,6 +37,7 @@ async function run(interaction, res) {
     const index = interaction.options.getInteger("index");
     const lista = interaction.options.getBoolean("lista");
     const mejor = interaction.options.getBoolean("mejor");
+    const rework = interaction.options.getBoolean("rework");
 
     if (index) {
         args.push(`-i${index}`);
@@ -41,6 +47,9 @@ async function run(interaction, res) {
     }
     if (mejor) {
         args.push("-b");
+    }
+    if (rework) {
+        args.push("-rework");
     }
 
     // Redirigimos el canal de envío virtual a la interacción deferida

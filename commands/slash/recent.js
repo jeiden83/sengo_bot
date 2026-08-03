@@ -19,6 +19,11 @@ const data = new SlashCommandBuilder()
         option.setName("lista")
             .setDescription("¿Mostrar una lista paginada de las jugadas más recientes?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("rework")
+            .setDescription("¿Evaluar la jugada reciente bajo el sistema de Rework (PP por estilo)?")
+            .setRequired(false)
     );
 
 module.exports = { data, run: rsSlash.run, description: rsSlash.description };
