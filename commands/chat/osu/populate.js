@@ -6,7 +6,6 @@ const {
     buildPopulateHelpNavigationRow,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
-    buildPopulateWorkersEmbed,
     buildPopulateTopEmbed,
     buildPopulateKeysEmbed
 } = require('../../../views/populateViews.js');
@@ -68,24 +67,6 @@ async function run({ message, res, reply, logger }, args) {
         return t(locale, 'populate.stop_success', { country: targetCountry });
     }
 
-    // ----------------------------------------------------
-    // 5. SUBCOMANDO: -worker / -workers (Monitor de Workers del Owner)
-    // ----------------------------------------------------
-    if (arg1 === '-worker' || arg1 === '-workers' || arg1 === 'worker' || arg1 === 'workers') {
-        if (message.author.id !== ownerId) {
-            return t(locale, 'bug.err_owner_only');
-        }
-
-        const workers = await PopulationService.getActiveWorkersList();
-        const embed = buildPopulateWorkersEmbed(workers, locale);
-
-        try {
-            await message.author.send({ embeds: [embed] });
-            return t(locale, 'populate.workers_dm_sent_reply');
-        } catch (err) {
-            return t(locale, 'populate.err_dm_failed');
-        }
-    }
 
     // ----------------------------------------------------
     // 6. SUBCOMANDO: -keys / -k (Listar Worker Keys del Owner)

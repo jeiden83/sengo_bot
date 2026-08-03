@@ -26,10 +26,6 @@ function buildPopulateHelpEmbed(locale = 'es', pageIndex = 0) {
                     value: t(locale, 'populate.cmd_stop_desc')
                 },
                 {
-                    name: t(locale, 'populate.cmd_worker_title'),
-                    value: t(locale, 'populate.cmd_worker_desc')
-                },
-                {
                     name: t(locale, 'populate.cmd_keys_title'),
                     value: t(locale, 'populate.cmd_keys_desc')
                 },
@@ -171,47 +167,6 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es') 
         .setFooter({ text: t(locale, 'populate.dm_footer') });
 }
 
-/**
- * Genera el embed con la información compacta de los workers activos (Owner Only)
- */
-function buildPopulateWorkersEmbed(workersList, locale = 'es') {
-    const embed = new EmbedBuilder()
-        .setTitle(t(locale, 'populate.workers_embed_title'))
-        .setColor(CONFIG.colors?.primary || 0x3498db)
-        .setDescription(t(locale, 'populate.workers_embed_desc', { count: workersList.length }))
-        .setFooter({ text: 'Sengo • Monitor de Poblamiento' })
-        .setTimestamp();
-
-    if (!workersList || workersList.length === 0) {
-        embed.addFields({
-            name: t(locale, 'populate.workers_none_title'),
-            value: t(locale, 'populate.workers_none_desc')
-        });
-        return embed;
-    }
-
-    for (const w of workersList) {
-        const createdUnix = Math.floor(w.createdAt / 1000);
-        const activeUnix = Math.floor(w.lastActiveAt / 1000);
-        const userMention = w.discordId ? `<@${w.discordId}>` : `@${w.username}`;
-
-        const fieldTitle = `👷 ${w.username} [${w.countryCode}]`;
-        const infoLines = [
-            `👤 ${userMention}`,
-            `🔑 \`${w.key}\``,
-            `💾 **${w.scoresSubmitted.toLocaleString()}** récords (\`${w.batchesRequested}\` lotes)`,
-            `⏱️ <t:${createdUnix}:R> (Activo <t:${activeUnix}:R>)`
-        ];
-
-        embed.addFields({
-            name: fieldTitle,
-            value: infoLines.join('\n'),
-            inline: true
-        });
-    }
-
-    return embed;
-}
 
 /**
  * Genera el embed de tabla de clasificación de top colaboradores (s.populate -top)
@@ -299,7 +254,6 @@ module.exports = {
     buildPopulateHelpNavigationRow,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
-    buildPopulateWorkersEmbed,
     buildPopulateTopEmbed,
     buildPopulateKeysEmbed
 };
