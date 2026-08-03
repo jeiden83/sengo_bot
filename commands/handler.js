@@ -32,6 +32,11 @@ async function handleOAuthFailure(author, logger) {
 async function smartErrorSuggester(command, args, message, res, errorTextOrResult, isOsuCommand = false) {
     if (!args || args.length === 0) return null;
 
+    const commandLower = command.toLowerCase();
+    if (['bug', 'sugerencia', 'say', 'sayembed', 'help', 'about', 'acerca', 'language', 'idioma', 'ping'].includes(commandLower)) {
+        return null;
+    }
+
     // Caso 0: Sintaxis de mods inválida o incorrecta
     if (isOsuCommand) {
         try {
@@ -44,9 +49,6 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
             console.error("Error al verificar sintaxis de mods en smartErrorSuggester:", err);
         }
     }
-
-    const commandLower = command.toLowerCase();
-
     // Caso 0.1: El usuario busca ayuda del comando
     const hasHelpWord = args.some(arg => {
         if (typeof arg !== 'string') return false;
@@ -158,14 +160,14 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
         }
     }
 
-    // Caso 4: El usuario intenta usar -oauth en un comando que no es link/vincular
-    if (!['link', 'vincular'].includes(commandLower)) {
+    // Caso 4: El usuario intenta usar -oauth en un comando de osu! que no es link/vincular
+    if (isOsuCommand && !['link', 'vincular'].includes(commandLower)) {
         const hasOAuth = args.some(arg => {
             const lowerArg = arg.toLowerCase();
             return lowerArg === '-oauth' || lowerArg === '--oauth';
         });
         if (hasOAuth) {
-            return `❌ **El parámetro** \`-oauth\` solo es válido en el comando \`.link\` para vincular tu cuenta de osu! de forma privada y segura.`;
+            return `❌ **El parámetro** \`-oauth\` ya no es necesario. Usa simplemente \`.link\` para vincular tu cuenta de osu! de forma privada y segura.`;
         }
     }
 
