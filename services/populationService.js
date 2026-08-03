@@ -378,14 +378,52 @@ class PopulationService {
             }
         }
 
-        if (savedCount > 0) {
-            if (key && activeWorkerKeys.has(key)) {
+        if (key) {
+            let discordId = null;
+            let username = null;
+
+            if (activeWorkerKeys.has(key)) {
                 const worker = activeWorkerKeys.get(key);
                 worker.lastActiveAt = Date.now();
                 worker.scoresSubmitted = (worker.scoresSubmitted || 0) + savedCount;
-                await this.recordUserContribution(worker.discordId, worker.username, savedCount, 1);
+                discordId = worker.discordId;
+                username = worker.username;
             }
 
+            // Sincronizar recuento de scores_submitted en la tabla population_workers de Supabase
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    const { data: dbW } = await supabase
+                        .from('population_workers')
+                        .select('scores_submitted, discord_id, username')
+                        .eq('worker_key', key)
+                        .maybeSingle();
+
+                    if (dbW) {
+                        if (!discordId) discordId = dbW.discord_id;
+                        if (!username) username = dbW.username;
+                        const currentScores = Number(dbW.scores_submitted || 0);
+
+                        await supabase
+                            .from('population_workers')
+                            .update({
+                                scores_submitted: currentScores + savedCount,
+                                last_active_at: new Date().toISOString()
+                            })
+                            .eq('worker_key', key);
+                    }
+                }
+            } catch (e) {
+                console.error(`Error actualizando scores_submitted en Supabase para key ${key}:`, e.message);
+            }
+
+            if (savedCount > 0 && (discordId || username)) {
+                await this.recordUserContribution(discordId, username, savedCount, 1);
+            }
+        }
+
+        if (savedCount > 0) {
             countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
             // Actualizar conteo liviano en Supabase (scraped_countries) sin tocar la cuota de Turso
             try {
@@ -679,16 +717,19 @@ class PopulationService {
                     .order('last_active_at', { ascending: false });
 
                 if (dbWorkers && dbWorkers.length > 0) {
-                    return dbWorkers.map(w => ({
-                        key: w.worker_key,
-                        discordId: w.discord_id,
-                        username: w.username,
-                        countryCode: w.country_code,
-                        createdAt: new Date(w.created_at).getTime(),
-                        lastActiveAt: new Date(w.last_active_at).getTime(),
-                        batchesRequested: Number(w.batches_requested || 0),
-                        scoresSubmitted: Number(w.scores_submitted || 0)
-                    }));
+                    return dbWorkers.map(w => {
+                        const memWorker = activeWorkerKeys.get(w.worker_key);
+                        return {
+                            key: w.worker_key,
+                            discordId: w.discord_id,
+                            username: w.username,
+                            countryCode: w.country_code,
+                            createdAt: new Date(w.created_at).getTime(),
+                            lastActiveAt: memWorker?.lastActiveAt || new Date(w.last_active_at).getTime(),
+                            batchesRequested: Math.max(Number(w.batches_requested || 0), memWorker?.batchesRequested || 0),
+                            scoresSubmitted: Math.max(Number(w.scores_submitted || 0), memWorker?.scoresSubmitted || 0)
+                        };
+                    });
                 }
             }
         } catch (e) {
