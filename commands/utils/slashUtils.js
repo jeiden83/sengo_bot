@@ -137,10 +137,20 @@ function createSlashMessagesContext(interaction, res) {
         }
     };
 
+    const replyWrapper = targetMsg ? new Proxy(targetMsg, {
+        get(target, prop) {
+            if (prop === 'reply') {
+                return replyFn;
+            }
+            const val = Reflect.get(target, prop);
+            return typeof val === 'function' ? val.bind(target) : val;
+        }
+    }) : { reply: replyFn };
+
     return {
         message: messageObj,
         res: res,
-        reply: targetMsg || { reply: replyFn },
+        reply: replyWrapper,
         logger: interaction.logger
     };
 }
