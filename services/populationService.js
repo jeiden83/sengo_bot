@@ -536,9 +536,11 @@ class PopulationService {
             // 2. Si Supabase no devolvió mapas (ej. tabla aún vacía o fallo), respaldo a Turso
             if (scrapedSet.size === 0) {
                 try {
-                    const dbScraped = await TursoDB.getScrapedBeatmapIds(countryKey);
-                    for (const id of dbScraped) {
-                        scrapedSet.add(Number(id));
+                    const dbScraped = await TursoDB.executeTurso("SELECT beatmap_id FROM top_scores WHERE country_code = ?", [countryKey]);
+                    if (Array.isArray(dbScraped)) {
+                        for (const r of dbScraped) {
+                            if (r.beatmap_id) scrapedSet.add(Number(r.beatmap_id));
+                        }
                     }
 
                     // Sincronizar en segundo plano hacia Supabase si Turso tiene mapas raspados
