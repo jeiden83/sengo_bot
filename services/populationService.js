@@ -334,49 +334,63 @@ class PopulationService {
     }
 
     /**
+     * Valida y recupera (si es necesario desde Supabase) una Worker Key.
+     */
+    static async isWorkerKeyValid(key) {
+        if (!key || typeof key !== 'string' || key.trim() === '') return false;
+        const cleanKey = key.trim();
+
+        if (activeWorkerKeys.has(cleanKey)) return true;
+
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data: dbWorker } = await supabase
+                    .from('population_workers')
+                    .select('*')
+                    .eq('worker_key', cleanKey)
+                    .maybeSingle();
+
+                if (dbWorker) {
+                    activeWorkerKeys.set(cleanKey, {
+                        discordId: dbWorker.discord_id,
+                        username: dbWorker.username,
+                        countryCode: dbWorker.country_code,
+                        createdAt: new Date(dbWorker.created_at).getTime(),
+                        lastActiveAt: new Date(dbWorker.last_active_at).getTime(),
+                        batchesRequested: Number(dbWorker.batches_requested || 0),
+                        scoresSubmitted: Number(dbWorker.scores_submitted || 0)
+                    });
+
+                    if (!activeSessions.has(dbWorker.country_code)) {
+                        activeSessions.set(dbWorker.country_code, {
+                            countryCode: dbWorker.country_code,
+                            isStopped: false,
+                            activeWorkers: new Set()
+                        });
+                    }
+                    activeSessions.get(dbWorker.country_code).activeWorkers.add(dbWorker.username);
+                    return true;
+                }
+            }
+        } catch (errRecov) {
+            console.error(`Error al recuperar worker key ${cleanKey} de Supabase:`, errRecov.message);
+        }
+
+        return false;
+    }
+
+    /**
      * Entrega el siguiente lote de 100 beatmaps no poblados para el país
      */
     static async getNextBatch(key, countryCode) {
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
-        
-        // Recuperar worker key desde Supabase si la memoria RAM se reinició
-        if (key && !activeWorkerKeys.has(key)) {
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase) {
-                    const { data: dbWorker } = await supabase
-                        .from('population_workers')
-                        .select('*')
-                        .eq('worker_key', key)
-                        .maybeSingle();
 
-                    if (dbWorker) {
-                        activeWorkerKeys.set(key, {
-                            discordId: dbWorker.discord_id,
-                            username: dbWorker.username,
-                            countryCode: dbWorker.country_code,
-                            createdAt: new Date(dbWorker.created_at).getTime(),
-                            lastActiveAt: new Date(dbWorker.last_active_at).getTime(),
-                            batchesRequested: Number(dbWorker.batches_requested || 0),
-                            scoresSubmitted: Number(dbWorker.scores_submitted || 0)
-                        });
-
-                        if (!activeSessions.has(dbWorker.country_code)) {
-                            activeSessions.set(dbWorker.country_code, {
-                                countryCode: dbWorker.country_code,
-                                isStopped: false,
-                                activeWorkers: new Set()
-                            });
-                        }
-                        activeSessions.get(dbWorker.country_code).activeWorkers.add(dbWorker.username);
-                    }
-                }
-            } catch (errRecov) {
-                console.error(`Error al recuperar worker key ${key} de Supabase:`, errRecov.message);
-            }
+        if (!key || !(await this.isWorkerKeyValid(key))) {
+            return { error: 'UNAUTHORIZED', message: 'Clave de trabajador inválida o expirada.' };
         }
 
-        if (key && activeWorkerKeys.has(key)) {
+        if (activeWorkerKeys.has(key)) {
             const worker = activeWorkerKeys.get(key);
             worker.lastActiveAt = Date.now();
             worker.batchesRequested = (worker.batchesRequested || 0) + 1;
@@ -428,37 +442,56 @@ class PopulationService {
             // 1. Intentar cargar desde Supabase primero (0 cuota de lecturas consumida en Turso)
             try {
                 let from = 0;
-                const PAGE_SIZE = 1000;
-                while (true) {
-                    const { data: pageData, error: pageErr } = await supabase
-                        .from('top_scores')
+                const limit = 1000;
+                let hasMore = true;
+
+                while (hasMore) {
+                    const { data: scrapedRows, error: supabaseErr } = await supabase
+                        .from('scraped_beatmaps')
                         .select('beatmap_id')
                         .eq('country_code', countryKey)
-                        .range(from, from + PAGE_SIZE - 1);
+                        .range(from, from + limit - 1);
 
-                    if (pageErr || !pageData || pageData.length === 0) break;
-                    for (const row of pageData) {
-                        if (row.beatmap_id) scrapedSet.add(Number(row.beatmap_id));
+                    if (supabaseErr) break;
+
+                    if (scrapedRows && scrapedRows.length > 0) {
+                        for (const r of scrapedRows) {
+                            scrapedSet.add(Number(r.beatmap_id));
+                        }
+                        if (scrapedRows.length < limit) {
+                            hasMore = false;
+                        } else {
+                            from += limit;
+                        }
+                    } else {
+                        hasMore = false;
                     }
-                    if (pageData.length < PAGE_SIZE) break;
-                    from += PAGE_SIZE;
                 }
-            } catch (supaErr) {
-                console.error(`Error consultando mapas de Supabase para ${countryKey}:`, supaErr.message);
+            } catch (eSupabase) {
+                console.error(`Error cargando scraped_beatmaps desde Supabase para ${countryKey}:`, eSupabase.message);
             }
 
-            // 2. Fallback a Turso solo si Supabase no devolvió mapas y Turso está disponible
+            // 2. Si Supabase no devolvió mapas (ej. tabla aún vacía o fallo), respaldo a Turso
             if (scrapedSet.size === 0) {
                 try {
-                    const scrapedRows = await TursoDB.executeTurso(
-                        "SELECT beatmap_id FROM top_scores WHERE country_code = ?",
-                        [countryKey]
-                    );
-                    if (Array.isArray(scrapedRows)) {
-                        scrapedSet = new Set(scrapedRows.map(r => Number(r.beatmap_id)));
+                    const dbScraped = await TursoDB.getScrapedBeatmapIds(countryKey);
+                    for (const id of dbScraped) {
+                        scrapedSet.add(Number(id));
                     }
-                } catch (e) {
-                    console.error(`Error consultando mapas de Turso para ${countryKey}:`, e.message);
+
+                    // Sincronizar en segundo plano hacia Supabase si Turso tiene mapas raspados
+                    if (scrapedSet.size > 0) {
+                        const rowsToInsert = Array.from(scrapedSet).map(id => ({
+                            beatmap_id: id,
+                            country_code: countryKey
+                        }));
+                        for (let i = 0; i < rowsToInsert.length; i += 500) {
+                            const chunk = rowsToInsert.slice(i, i + 500);
+                            supabase.from('scraped_beatmaps').upsert(chunk, { onConflict: 'beatmap_id,country_code' }).then(() => {}).catch(() => {});
+                        }
+                    }
+                } catch (eTurso) {
+                    console.error(`Error cargando beatmaps raspados desde Turso para ${countryKey}:`, eTurso.message);
                 }
             }
 
@@ -466,43 +499,35 @@ class PopulationService {
             scrapedSetTTL.set(countryKey, now);
         }
 
-        // Recorrer las páginas de ranked_beatmaps en Supabase hasta encontrar 100 mapas pendientes o agotar la tabla
-        const pendingMapIds = [];
-        const pageSize = 1000;
-        let offset = 0;
+        // Obtener la lista general de beatmaps aprobados en Supabase
+        const { data: allBeatmaps, error: bErr } = await supabase
+            .from('beatmaps')
+            .select('beatmap_id')
+            .order('beatmap_id', { ascending: true });
 
-        while (pendingMapIds.length < 100) {
-            const { data: maps, error } = await supabase
-                .from('ranked_beatmaps')
-                .select('beatmap_id')
-                .gt('beatmap_id', 0)
-                .order('beatmap_id', { ascending: false })
-                .range(offset, offset + pageSize - 1);
-
-            if (error || !maps || maps.length === 0) {
-                break;
-            }
-
-            for (const m of maps) {
-                if (!scrapedSet.has(Number(m.beatmap_id))) {
-                    pendingMapIds.push(m.beatmap_id);
-                    if (pendingMapIds.length >= 100) break;
-                }
-            }
-
-            if (maps.length < pageSize) break;
-            offset += pageSize;
+        if (bErr || !allBeatmaps) {
+            return { error: 'Error al consultar la lista general de beatmaps.' };
         }
 
-        if (pendingMapIds.length === 0) {
-            await OsuUserModel.setCountryScraped(country, true);
-            return { status: 'completed', maps: [] };
+        // Filtrar aquellos que aún no estén en el conjunto raspado
+        const pendingMaps = [];
+        for (const b of allBeatmaps) {
+            const bId = Number(b.beatmap_id);
+            if (!scrapedSet.has(bId)) {
+                pendingMaps.push(bId);
+                if (pendingMaps.length >= 100) break; // Lote máximo de 100
+            }
+        }
+
+        if (pendingMaps.length === 0) {
+            await OsuUserModel.markCountryAsScraped(country);
+            return { status: 'completed', message: 'Poblamiento finalizado al 100% para este país.' };
         }
 
         return {
             status: 'ok',
-            supporterToken: supporterData.token,
-            maps: pendingMapIds
+            maps: pendingMaps,
+            supporterToken: supporterData.token
         };
     }
 
@@ -511,99 +536,121 @@ class PopulationService {
      */
     static async submitBatch(key, countryCode, scores) {
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
+
+        // 1. Validar autenticación por Worker Key previa a cualquier procesamiento
+        if (!key || !(await this.isWorkerKeyValid(key))) {
+            return { error: 'UNAUTHORIZED', message: 'Clave de trabajador inválida o expirada.', saved: 0 };
+        }
+
+        // 2. Validar estructura del arreglo de scores
         if (!Array.isArray(scores)) {
-            return { saved: 0 };
+            return { error: 'INVALID_PAYLOAD', message: 'El campo scores debe ser un arreglo.', saved: 0 };
+        }
+
+        // 3. Límite estricto de máximo 100 scores por petición
+        if (scores.length > 100) {
+            return { error: 'PAYLOAD_TOO_LARGE', message: 'Se permite un máximo de 100 scores por petición.', saved: 0 };
         }
 
         let savedCount = 0;
         for (const s of scores) {
+            // Validar que cada score sea un objeto con campos obligatorios numéricos válidos
+            if (!s || typeof s !== 'object') continue;
+
+            const bId = Number(s.beatmap_id);
+            const uId = Number(s.user_id);
+
+            // beatmap_id debe ser un entero positivo válido
+            if (isNaN(bId) || bId <= 0 || !Number.isInteger(bId)) continue;
+            // user_id debe ser un entero no negativo (0 representa SYSTEM_NO_SCORE)
+            if (isNaN(uId) || uId < 0 || !Number.isInteger(uId)) continue;
+
             try {
                 await TursoDB.saveTopScore({
-                    beatmap_id: s.beatmap_id,
+                    beatmap_id: bId,
                     country_code: country,
-                    user_id: s.user_id,
-                    username: s.username,
-                    score: s.score || 0,
-                    pp: s.pp || 0,
-                    accuracy: s.accuracy || 0,
-                    mods: s.mods || 'NM',
+                    user_id: uId,
+                    username: String(s.username || '').slice(0, 100),
+                    score: Number(s.score) || 0,
+                    pp: Number(s.pp) || 0,
+                    accuracy: Number(s.accuracy) || 0,
+                    mods: String(s.mods || 'NM').slice(0, 50),
                     ended_at: s.ended_at || new Date().toISOString(),
-                    max_combo: s.max_combo || 0,
-                    perfect: s.perfect || false,
-                    rank: s.rank || ''
+                    max_combo: Number(s.max_combo) || 0,
+                    perfect: Boolean(s.perfect),
+                    rank: String(s.rank || '').slice(0, 10)
                 });
                 savedCount++;
 
                 const cachedSet = scrapedBeatmapSets.get(country);
-                if (cachedSet && s.beatmap_id) {
-                    cachedSet.add(Number(s.beatmap_id));
+                if (cachedSet) {
+                    cachedSet.add(bId);
                 }
 
                 // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
-                if (s.sniped_user_id && String(s.user_id) !== '0' && String(s.sniped_user_id) !== '0' && String(s.user_id) !== String(s.sniped_user_id)) {
+                const snipedUId = Number(s.sniped_user_id);
+                if (snipedUId && uId > 0 && snipedUId > 0 && uId !== snipedUId) {
                     const date1 = new Date(s.ended_at).getTime();
                     const date2 = new Date(s.sniped_ended_at).getTime();
                     if (!isNaN(date1) && !isNaN(date2) && date1 > date2) {
                         await TursoDB.recordSnipe({
-                            beatmap_id: s.beatmap_id,
-                            sniper_id: s.user_id,
+                            beatmap_id: bId,
+                            sniper_id: uId,
                             sniper_name: s.username,
-                            sniped_id: s.sniped_user_id,
+                            sniped_id: snipedUId,
                             sniped_name: s.sniped_username || 'Jugador',
-                            pp: s.pp || 0,
+                            pp: Number(s.pp) || 0,
                             ended_at: s.ended_at,
                             country_code: country
                         });
                     }
                 }
             } catch (e) {
-                console.error(`Error guardando mapa ${s.beatmap_id} en Turso:`, e.message);
+                console.error(`Error guardando mapa ${bId} en Turso:`, e.message);
             }
         }
 
-        if (key) {
-            let discordId = null;
-            let username = null;
+        let discordId = null;
+        let username = null;
 
-            if (activeWorkerKeys.has(key)) {
-                const worker = activeWorkerKeys.get(key);
-                worker.lastActiveAt = Date.now();
-                worker.scoresSubmitted = (worker.scoresSubmitted || 0) + savedCount;
-                discordId = worker.discordId;
-                username = worker.username;
-            }
+        if (activeWorkerKeys.has(key)) {
+            const worker = activeWorkerKeys.get(key);
+            worker.lastActiveAt = Date.now();
+            worker.scoresSubmitted = (worker.scoresSubmitted || 0) + savedCount;
+            discordId = worker.discordId;
+            username = worker.username;
+        }
 
-            // Sincronizar recuento de scores_submitted en la tabla population_workers de Supabase
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase) {
-                    const { data: dbW } = await supabase
+        // Sincronizar recuento de scores_submitted en la tabla population_workers de Supabase
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data: dbW } = await supabase
+                    .from('population_workers')
+                    .select('scores_submitted, discord_id, username')
+                    .eq('worker_key', key)
+                    .maybeSingle();
+
+                if (dbW) {
+                    if (!discordId) discordId = dbW.discord_id;
+                    if (!username) username = dbW.username;
+                    const currentScores = Number(dbW.scores_submitted || 0);
+
+                    await supabase
                         .from('population_workers')
-                        .select('scores_submitted, discord_id, username')
-                        .eq('worker_key', key)
-                        .maybeSingle();
-
-                    if (dbW) {
-                        if (!discordId) discordId = dbW.discord_id;
-                        if (!username) username = dbW.username;
-                        const currentScores = Number(dbW.scores_submitted || 0);
-
-                        await supabase
-                            .from('population_workers')
-                            .update({
-                                scores_submitted: currentScores + savedCount,
-                                last_active_at: new Date().toISOString()
-                            })
-                            .eq('worker_key', key);
-                    }
+                        .update({
+                            scores_submitted: currentScores + savedCount,
+                            last_active_at: new Date().toISOString()
+                        })
+                        .eq('worker_key', key);
                 }
-            } catch (e) {
-                console.error(`Error actualizando scores_submitted en Supabase para key ${key}:`, e.message);
             }
+        } catch (e) {
+            console.error(`Error actualizando scores_submitted en Supabase para key ${key}:`, e.message);
+        }
 
-            if (savedCount > 0 && (discordId || username)) {
-                await this.recordUserContribution(discordId, username, savedCount, 1);
-            }
+        if (savedCount > 0 && (discordId || username)) {
+            await this.recordUserContribution(discordId, username, savedCount, 1);
         }
 
         if (savedCount > 0) {
