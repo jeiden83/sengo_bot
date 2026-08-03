@@ -1681,6 +1681,10 @@
     "dm_how_val": "The script will download pending maps in batches of **100** into memory and use your clean residential connection at 1.8s per map to send scores to `sengo-db`.",
     "dm_footer": "You can close the console whenever you want to pause cleanly.",
     "dm_sent_reply": "📩 **Instructions sent to your DM!** Check your private messages to copy the PowerShell command for **{country}**.",
+    "dm_sent_mobile_reply": "📩 **Mobile instructions sent to your DM!** Check your private messages to copy the Bash command for **{country}**.",
+    "dm_desc_mobile": "Hello **{username}**! Thank you for contributing to **{country}** population from your mobile device.\n\nFollow these steps on your phone (Android / iPhone):",
+    "dm_step1_mobile_title": "📱 1️⃣ Zero installations required",
+    "dm_step1_mobile_val": "You don't need to download or install any app. The worker runs directly in Chrome, Safari or any mobile browser.",
     "err_dm_failed": "⚠️ Could not send you a private message. Please enable Direct Messages (DMs) in the server to receive your worker key."
   }
 }

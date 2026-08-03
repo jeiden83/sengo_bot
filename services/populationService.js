@@ -935,6 +935,36 @@ class PopulationService {
     }
 
     /**
+     * Retorna el script de Bash en texto plano desde assets/worker.sh para dispositivos móviles (Termux)
+     */
+    static getBashScript(defaultKey = '', defaultCountry = '') {
+        const filePath = path.join(__dirname, '../assets/worker.sh');
+        let content = fs.readFileSync(filePath, 'utf8');
+        if (defaultKey) {
+            content = content.replace(/__WORKER_KEY__/g, defaultKey);
+        }
+        if (defaultCountry) {
+            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
+        }
+        return content;
+    }
+
+    /**
+     * Retorna la página HTML interactiva de Worker Web desde assets/worker.html para móviles (Chrome/Safari)
+     */
+    static getWebWorkerHtml(defaultKey = '', defaultCountry = '') {
+        const filePath = path.join(__dirname, '../assets/worker.html');
+        let content = fs.readFileSync(filePath, 'utf8');
+        if (defaultKey) {
+            content = content.replace(/__WORKER_KEY__/g, defaultKey);
+        }
+        if (defaultCountry) {
+            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
+        }
+        return content;
+    }
+
+    /**
      * Devuelve la lista detallada de workers activos registrados (Persistente desde Supabase)
      */
     static async getActiveWorkersList() {

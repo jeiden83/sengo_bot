@@ -143,9 +143,32 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
 }
 
 /**
- * Genera el embed enviado al DM del colaborador con las instrucciones de PowerShell
+ * Genera el embed enviado al DM del colaborador con las instrucciones de PowerShell o Worker Web (Móvil)
  */
-function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es') {
+function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', isMobile = false) {
+    if (isMobile) {
+        const webUrl = `https://sengo-bot.onrender.com/worker?key=${sessionKey}&country=${countryCode}`;
+        return new EmbedBuilder()
+            .setTitle(t(locale, 'populate.dm_title', { country: countryCode }))
+            .setColor(0x38bdf8)
+            .setDescription(t(locale, 'populate.dm_desc_mobile', { username, country: countryCode }))
+            .addFields(
+                {
+                    name: t(locale, 'populate.dm_step1_mobile_title'),
+                    value: t(locale, 'populate.dm_step1_mobile_val')
+                },
+                {
+                    name: '📱 2️⃣ Toca este enlace para abrir el Worker Web:',
+                    value: `👉 [**Iniciar Sengo Worker Web para ${countryCode}**](${webUrl})\n\`${webUrl}\``
+                },
+                {
+                    name: t(locale, 'populate.dm_how_title'),
+                    value: t(locale, 'populate.dm_how_val')
+                }
+            )
+            .setFooter({ text: t(locale, 'populate.dm_footer') });
+    }
+
     return new EmbedBuilder()
         .setTitle(t(locale, 'populate.dm_title', { country: countryCode }))
         .setColor(0x2ecc71)

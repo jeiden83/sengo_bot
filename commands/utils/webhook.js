@@ -604,6 +604,34 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
+        if (req.method === 'GET' && pathname === '/worker.sh') {
+            try {
+                const key = parsedUrl.query.key || '';
+                const country = parsedUrl.query.country || '';
+                res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                res.end(PopulationService.getBashScript(key, country));
+            } catch (err) {
+                console.error("Error sirviendo worker.sh:", err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+            }
+            return;
+        }
+
+        if (req.method === 'GET' && (pathname === '/worker' || pathname === '/worker.html')) {
+            try {
+                const key = parsedUrl.query.key || '';
+                const country = parsedUrl.query.country || '';
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(PopulationService.getWebWorkerHtml(key, country));
+            } catch (err) {
+                console.error("Error sirviendo worker.html:", err);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+            }
+            return;
+        }
+
         if (req.method === 'GET' && pathname === '/api/worker/batch') {
             const key = parsedUrl.query.key;
             const country = parsedUrl.query.country || 'MX';

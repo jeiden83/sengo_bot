@@ -130,6 +130,11 @@ async function run({ message, res, reply, logger }, args) {
     if (arg1 && arg1.length === 2) {
         const countryCode = arg1.toUpperCase();
 
+        const isMobile = args.some(a => {
+            const clean = a.toLowerCase().replace(/^-+/, '');
+            return clean === 'movil' || clean === 'mobile' || clean === 'm';
+        });
+
         const session = await PopulationService.createWorkerSession(message.author.id, message.author.username, countryCode);
 
         if (session.error === 'NOT_ALLOWED') {
@@ -150,9 +155,10 @@ async function run({ message, res, reply, logger }, args) {
 
         // Enviar mensaje al DM del colaborador
         try {
-            const dmEmbed = buildPopulateDmEmbed(session.key, countryCode, message.author.username, locale);
+            const dmEmbed = buildPopulateDmEmbed(session.key, countryCode, message.author.username, locale, isMobile);
             await message.author.send({ embeds: [dmEmbed] });
-            return t(locale, 'populate.dm_sent_reply', { country: countryCode });
+            const replyKey = isMobile ? 'populate.dm_sent_mobile_reply' : 'populate.dm_sent_reply';
+            return t(locale, replyKey, { country: countryCode });
         } catch (err) {
             return t(locale, 'populate.err_dm_failed');
         }
