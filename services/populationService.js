@@ -100,8 +100,10 @@ class PopulationService {
 
         // Crear clave única
         const key = `sengo_wk_${crypto.randomBytes(4).toString('hex')}`;
+        const nowIso = new Date().toISOString();
+
         activeWorkerKeys.set(key, {
-            discordId,
+            discordId: String(discordId),
             username,
             countryCode: country,
             createdAt: Date.now(),
@@ -109,6 +111,25 @@ class PopulationService {
             batchesRequested: 0,
             scoresSubmitted: 0
         });
+
+        // Persistir la worker key en Supabase
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                await supabase.from('population_workers').upsert({
+                    worker_key: key,
+                    discord_id: String(discordId),
+                    username: username,
+                    country_code: country,
+                    batches_requested: 0,
+                    scores_submitted: 0,
+                    created_at: nowIso,
+                    last_active_at: nowIso
+                }, { onConflict: 'worker_key' });
+            }
+        } catch (supaErr) {
+            console.error(`Error guardando worker key ${key} en Supabase:`, supaErr.message);
+        }
 
         if (!activeSessions.has(country)) {
             activeSessions.set(country, {
@@ -135,10 +156,58 @@ class PopulationService {
     static async getNextBatch(key, countryCode) {
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
         
+        // Recuperar worker key desde Supabase si la memoria RAM se reinició
+        if (key && !activeWorkerKeys.has(key)) {
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    const { data: dbWorker } = await supabase
+                        .from('population_workers')
+                        .select('*')
+                        .eq('worker_key', key)
+                        .maybeSingle();
+
+                    if (dbWorker) {
+                        activeWorkerKeys.set(key, {
+                            discordId: dbWorker.discord_id,
+                            username: dbWorker.username,
+                            countryCode: dbWorker.country_code,
+                            createdAt: new Date(dbWorker.created_at).getTime(),
+                            lastActiveAt: new Date(dbWorker.last_active_at).getTime(),
+                            batchesRequested: Number(dbWorker.batches_requested || 0),
+                            scoresSubmitted: Number(dbWorker.scores_submitted || 0)
+                        });
+
+                        if (!activeSessions.has(dbWorker.country_code)) {
+                            activeSessions.set(dbWorker.country_code, {
+                                countryCode: dbWorker.country_code,
+                                isStopped: false,
+                                activeWorkers: new Set()
+                            });
+                        }
+                        activeSessions.get(dbWorker.country_code).activeWorkers.add(dbWorker.username);
+                    }
+                }
+            } catch (errRecov) {
+                console.error(`Error al recuperar worker key ${key} de Supabase:`, errRecov.message);
+            }
+        }
+
         if (key && activeWorkerKeys.has(key)) {
             const worker = activeWorkerKeys.get(key);
             worker.lastActiveAt = Date.now();
             worker.batchesRequested = (worker.batchesRequested || 0) + 1;
+
+            // Sincronizar asíncronamente en Supabase
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    supabase.from('population_workers').update({
+                        batches_requested: worker.batchesRequested,
+                        last_active_at: new Date().toISOString()
+                    }).eq('worker_key', key).then(() => {}).catch(() => {});
+                }
+            } catch (e) {}
         }
 
         const session = activeSessions.get(country);
@@ -425,13 +494,18 @@ class PopulationService {
             }
         }
 
-        // Persistir revocación en Supabase
+        // Persistir revocación en Supabase y eliminar worker keys de ese país
         try {
             const supabase = getSupabaseClient();
             if (supabase) {
                 await supabase
                     .from('scraped_countries')
                     .upsert({ country_code: country, is_allowed: false }, { onConflict: 'country_code' });
+
+                await supabase
+                    .from('population_workers')
+                    .delete()
+                    .eq('country_code', country);
             }
         } catch (e) {
             console.error(`Error revocando permiso para ${country} en Supabase:`, e.message);
@@ -560,18 +634,16 @@ class PopulationService {
             }
 
             list.push({
-                code,
+                countryCode: code,
                 status,
-                isAllowed,
-                hasSupporter,
-                supporterCount,
+                isScraped,
                 scrapedCount,
                 totalRanked,
                 progressPercent,
+                supporterCount,
                 totalSlots,
                 occupiedSlots,
-                freeSlots,
-                workersCount: activeWorkers
+                freeSlots
             });
         }
 
@@ -594,9 +666,34 @@ class PopulationService {
     }
 
     /**
-     * Devuelve la lista detallada de workers activos registrados
+     * Devuelve la lista detallada de workers activos registrados (Persistente desde Supabase)
      */
-    static getActiveWorkersList() {
+    static async getActiveWorkersList() {
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data: dbWorkers } = await supabase
+                    .from('population_workers')
+                    .select('*')
+                    .order('last_active_at', { ascending: false });
+
+                if (dbWorkers && dbWorkers.length > 0) {
+                    return dbWorkers.map(w => ({
+                        key: w.worker_key,
+                        discordId: w.discord_id,
+                        username: w.username,
+                        countryCode: w.country_code,
+                        createdAt: new Date(w.created_at).getTime(),
+                        lastActiveAt: new Date(w.last_active_at).getTime(),
+                        batchesRequested: Number(w.batches_requested || 0),
+                        scoresSubmitted: Number(w.scores_submitted || 0)
+                    }));
+                }
+            }
+        } catch (e) {
+            console.error("Error consultando workers en Supabase:", e.message);
+        }
+
         const list = [];
         for (const [key, w] of activeWorkerKeys.entries()) {
             list.push({

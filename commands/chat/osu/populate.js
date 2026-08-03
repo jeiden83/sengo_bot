@@ -74,7 +74,7 @@ async function run({ message, res, reply, logger }, args) {
             return t(locale, 'populate.err_owner_only_workers');
         }
 
-        const workers = PopulationService.getActiveWorkersList();
+        const workers = await PopulationService.getActiveWorkersList();
         const embed = buildPopulateWorkersEmbed(workers, locale);
 
         try {
