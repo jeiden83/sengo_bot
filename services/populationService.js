@@ -719,6 +719,9 @@ class PopulationService {
                 if (dbWorkers && dbWorkers.length > 0) {
                     return dbWorkers.map(w => {
                         const memWorker = activeWorkerKeys.get(w.worker_key);
+                        const batches = Math.max(Number(w.batches_requested || 0), memWorker?.batchesRequested || 0);
+                        const rawScores = Math.max(Number(w.scores_submitted || 0), memWorker?.scoresSubmitted || 0);
+                        const computedScores = Math.max(rawScores, batches * 10);
                         return {
                             key: w.worker_key,
                             discordId: w.discord_id,
@@ -726,8 +729,8 @@ class PopulationService {
                             countryCode: w.country_code,
                             createdAt: new Date(w.created_at).getTime(),
                             lastActiveAt: memWorker?.lastActiveAt || new Date(w.last_active_at).getTime(),
-                            batchesRequested: Math.max(Number(w.batches_requested || 0), memWorker?.batchesRequested || 0),
-                            scoresSubmitted: Math.max(Number(w.scores_submitted || 0), memWorker?.scoresSubmitted || 0)
+                            batchesRequested: batches,
+                            scoresSubmitted: computedScores
                         };
                     });
                 }
