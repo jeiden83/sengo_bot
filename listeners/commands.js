@@ -380,15 +380,17 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
 async function slash_command_listener(chat_commands, slash_commands, client, res) {
     client.on('interactionCreate', async (interaction) => {
-        if (!interaction.isCommand()) return;
+        if (!interaction.isCommand() && !interaction.isContextMenuCommand?.()) return;
 
         const message_command = interaction.commandName;
         const args = [];
-        interaction.options.data.forEach(opt => {
-            if (opt.value !== undefined) {
-                args.push(`${opt.name}:${opt.value}`);
-            }
-        });
+        if (interaction.options && Array.isArray(interaction.options.data)) {
+            interaction.options.data.forEach(opt => {
+                if (opt.value !== undefined) {
+                    args.push(`${opt.name}:${opt.value}`);
+                }
+            });
+        }
 
         let resolvedLocale = interaction.locale;
         if (resolvedLocale) {

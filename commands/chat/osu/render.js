@@ -51,29 +51,51 @@ async function run(messages, args) {
         }
     }
 
-    // 1. Buscar el archivo adjunto .osr en el mensaje o en el mensaje respondido
-    let attachment = message.attachments.find(a => a.name.endsWith('.osr'));
-    if (!attachment && reply && reply.attachments) {
-        attachment = reply.attachments.find(a => a.name.endsWith('.osr'));
-    }
-
-    if (!attachment) {
-        return t(locale, 'render.err_no_attachment');
-    }
-
     try {
-        try {
-            await message.channel.sendTyping();
-        } catch (err) {
-            console.error("[S.RENDER] Error al enviar sendTyping:", err.message);
-        }
+        let attachment = message.attachments?.find(a => a.name?.endsWith('.osr'));
+    if (!attachment && reply && reply.attachments) {
+        attachment = reply.attachments.find(a => a.name?.endsWith('.osr'));
+    }
 
-        // 2. Descargar el buffer del replay
+    let replayBuffer = null;
+    let fileName = "replay.osr";
+
+    if (attachment) {
+        fileName = attachment.name;
         const response = await fetch(attachment.url);
         if (!response.ok) {
             throw new Error(`Failed to fetch attachment: ${response.statusText}`);
         }
-        const replayBuffer = Buffer.from(await response.arrayBuffer());
+        replayBuffer = Buffer.from(await response.arrayBuffer());
+    } else {
+        // Fallback: Si se seleccionó un embed (.rs / score), intentar extraer la ID de la score y descargar la replay oficial (Top Global)
+        const targetMsg = reply || message;
+        const combinedText = (targetMsg.content || '') + ' ' + (targetMsg.embeds?.[0]?.description || '') + ' ' + (targetMsg.embeds?.[0]?.url || '') + ' ' + (targetMsg.embeds?.[0]?.author?.url || '');
+        const scoreIdMatch = combinedText.match(/osu\.ppy\.sh\/scores\/(?:osu\/)?(\d+)/i);
+        
+        if (scoreIdMatch) {
+            const scoreId = scoreIdMatch[1];
+            try {
+                const OsuUserModel = require("../../../models/OsuUserModel.js");
+                const token = await OsuUserModel.getValidTokenForUser(message.author?.id) || process.env.OSU_BEARER_TOKEN;
+                if (token) {
+                    const downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/osu/${scoreId}/download`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (downloadRes.ok) {
+                        replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
+                        fileName = `score_${scoreId}.osr`;
+                    }
+                }
+            } catch (dlErr) {
+                console.error("[S.RENDER] Error intentando descargar replay Top Global:", dlErr.message);
+            }
+        }
+    }
+
+    if (!replayBuffer) {
+        return t(locale, 'render.err_no_attachment');
+    }
 
         // 3. Parsear el replay para validar que sea de osu!standard (modo 0)
         const replayData = parseOSR(replayBuffer);
@@ -104,7 +126,7 @@ async function run(messages, args) {
         }
 
         // 5. Iniciar el flujo de renderizado asíncronamente
-        await startRenderFlow(messages, replayBuffer, attachment.name, { skin, resolution, skinSpecified }, locale);
+        await startRenderFlow(messages, replayBuffer, fileName, { skin, resolution, skinSpecified }, locale);
         return;
 
     } catch (err) {

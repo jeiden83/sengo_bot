@@ -109,32 +109,38 @@ function createSlashMessagesContext(interaction, res) {
         }
     };
 
+    const targetMsg = interaction.targetMessage || null;
+
+    const messageObj = {
+        author: interaction.user,
+        member: interaction.member,
+        guild: interaction.guild,
+        locale: interaction.resolvedLocale || interaction.locale || 'es',
+        reply: replyFn,
+        content: targetMsg ? targetMsg.content : '',
+        embeds: targetMsg ? targetMsg.embeds : [],
+        attachments: targetMsg ? targetMsg.attachments : (interaction.options?.getAttachment ? (interaction.options.getAttachment('replay') ? new Map([['replay', interaction.options.getAttachment('replay')]]) : new Map()) : new Map()),
+        reference: targetMsg ? { messageId: targetMsg.id } : null,
+        channel: {
+            send: replyFn,
+            sendTyping: async () => {
+                try {
+                    await interaction.channel?.sendTyping();
+                } catch {}
+            },
+            id: interaction.channelId,
+            isTextBased: () => true,
+            messages: interaction.channel?.messages || {
+                fetch: async () => new Map()
+            },
+            guild: interaction.guild
+        }
+    };
+
     return {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            locale: interaction.resolvedLocale || interaction.locale || 'es',
-            reply: replyFn,
-            channel: {
-                send: replyFn,
-                sendTyping: async () => {
-                    try {
-                        await interaction.channel?.sendTyping();
-                    } catch {}
-                },
-                id: interaction.channelId,
-                isTextBased: () => true,
-                messages: interaction.channel?.messages || {
-                    fetch: async () => new Map()
-                },
-                guild: interaction.guild
-            }
-        },
+        message: messageObj,
         res: res,
-        reply: {
-            reply: replyFn
-        },
+        reply: targetMsg || { reply: replyFn },
         logger: interaction.logger
     };
 }

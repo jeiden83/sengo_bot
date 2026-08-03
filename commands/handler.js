@@ -1,4 +1,4 @@
-const { SlashCommandBuilder, REST, Routes, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { SlashCommandBuilder, ContextMenuCommandBuilder, ApplicationCommandType, REST, Routes, Collection, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const fs = require('fs');
 const path = require('path');
 const { t } = require("../utils/i18n.js");
@@ -508,7 +508,30 @@ async function chatCommand(intialized_data, command_data) {
 	return not_found_responses[Math.floor(Math.random() * not_found_responses.length)];
 }
 async function slashCommand(chat_commands, slash_commands, interaction, res) {
-	const { commandName } = interaction;
+	let { commandName } = interaction;
+
+    const CONTEXT_COMMAND_MAP = {
+        "Calcular Rework": "rework",
+        "Calculate Rework": "rework",
+        "Comparar Mi Score": "c",
+        "Compare My Score": "c",
+        "Leaderboard del Mapa": "lb",
+        "Map Leaderboard": "lb",
+        "Información del Mapa": "m",
+        "Map Info": "m",
+        "Subir Score a Sengo": "subir",
+        "Upload Score to Sengo": "subir",
+        "Brecha de Scores": "gap",
+        "Score Gap": "gap",
+        "Renderizar Replay": "render",
+        "Render Replay": "render",
+        "Descargar Fondo": "bg",
+        "Download Background": "bg"
+    };
+
+    if (CONTEXT_COMMAND_MAP[commandName]) {
+        commandName = CONTEXT_COMMAND_MAP[commandName];
+    }
 
     // Verificar blacklist primero
     const { isUserBlacklisted } = require("../models/BlacklistModel.js");
@@ -767,6 +790,59 @@ async function loadSlashCommands(chat_commands, config) {
 
 		return default_command.toJSON();
 	});
+
+	// Agregar comandos de menú contextual de mensaje (Message Context Menu Commands)
+	const contextCommandsData = [
+		{
+			name: "Calcular Rework",
+			nameLocalizations: { 'en-US': 'Calculate Rework', 'en-GB': 'Calculate Rework', 'es-ES': 'Calcular Rework', 'es-419': 'Calcular Rework' }
+		},
+		{
+			name: "Comparar Mi Score",
+			nameLocalizations: { 'en-US': 'Compare My Score', 'en-GB': 'Compare My Score', 'es-ES': 'Comparar Mi Score', 'es-419': 'Comparar Mi Score' }
+		},
+		{
+			name: "Leaderboard del Mapa",
+			nameLocalizations: { 'en-US': 'Map Leaderboard', 'en-GB': 'Map Leaderboard', 'es-ES': 'Leaderboard del Mapa', 'es-419': 'Leaderboard del Mapa' }
+		},
+		{
+			name: "Información del Mapa",
+			nameLocalizations: { 'en-US': 'Map Info', 'en-GB': 'Map Info', 'es-ES': 'Información del Mapa', 'es-419': 'Información del Mapa' }
+		},
+		{
+			name: "Subir Score a Sengo",
+			nameLocalizations: { 'en-US': 'Upload Score to Sengo', 'en-GB': 'Upload Score to Sengo', 'es-ES': 'Subir Score a Sengo', 'es-419': 'Subir Score a Sengo' }
+		},
+		{
+			name: "Brecha de Scores",
+			nameLocalizations: { 'en-US': 'Score Gap', 'en-GB': 'Score Gap', 'es-ES': 'Brecha de Scores', 'es-419': 'Brecha de Scores' }
+		},
+		{
+			name: "Renderizar Replay",
+			nameLocalizations: { 'en-US': 'Render Replay', 'en-GB': 'Render Replay', 'es-ES': 'Renderizar Replay', 'es-419': 'Renderizar Replay' }
+		},
+		{
+			name: "Descargar Fondo",
+			nameLocalizations: { 'en-US': 'Download Background', 'en-GB': 'Download Background', 'es-ES': 'Descargar Fondo', 'es-419': 'Descargar Fondo' }
+		}
+	];
+
+	for (const ctxCmd of contextCommandsData) {
+		const builder = new ContextMenuCommandBuilder()
+			.setName(ctxCmd.name)
+			.setType(ApplicationCommandType.Message);
+
+		if (typeof builder.setNameLocalizations === 'function' && ctxCmd.nameLocalizations) {
+			builder.setNameLocalizations(ctxCmd.nameLocalizations);
+		}
+		if (typeof builder.setIntegrationTypes === 'function') {
+			builder.setIntegrationTypes([0, 1]);
+		}
+		if (typeof builder.setContexts === 'function') {
+			builder.setContexts([0, 1, 2]);
+		}
+		commands.push(builder.toJSON());
+	}
 
 	// Registrar los comandos con la API de Discord
 	const rest = new REST({ version: '10' }).setToken(config.TOKEN);
