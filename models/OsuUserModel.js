@@ -2109,18 +2109,32 @@ async function backgroundUpdateMappers(mappersList) {
     })();
 }
 
+const scrapedCountriesCache = new Map();
+const SCRAPED_CACHE_TTL = 10 * 60 * 1000; // 10 minutos en RAM (0 peso en DB)
+
 async function isCountryScraped(countryCode) {
+    const code = (countryCode || '').toUpperCase();
+    if (!code) return false;
+
+    const cached = scrapedCountriesCache.get(code);
+    if (cached && (Date.now() - cached.timestamp) < SCRAPED_CACHE_TTL) {
+        return cached.isScraped;
+    }
+
     const supabase = getSupabaseClient();
     if (!supabase) return false;
     try {
         const { data } = await supabase
             .from('scraped_countries')
             .select('is_scraped')
-            .eq('country_code', countryCode.toUpperCase())
+            .eq('country_code', code)
             .maybeSingle();
-        return data ? data.is_scraped : false;
+
+        const isScraped = data ? Boolean(data.is_scraped) : false;
+        scrapedCountriesCache.set(code, { isScraped, timestamp: Date.now() });
+        return isScraped;
     } catch (err) {
-        console.error(`Error al verificar estado de scrapeo para ${countryCode}:`, err);
+        console.error(`Error al verificar estado de scrapeo para ${code}:`, err);
         return false;
     }
 }

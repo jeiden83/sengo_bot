@@ -540,7 +540,8 @@ class PopulationService {
             const isProcessing = isAllowed && session && !session.isStopped && activeWorkers > 0;
 
             const scrapedCount = countryMeta ? countryMeta.scraped_count : (countryScrapedCounts.get(code) || 0);
-            const progressPercent = totalRanked > 0 ? ((scrapedCount / totalRanked) * 100).toFixed(1) : '0.0';
+            const rawPercent = totalRanked > 0 ? (scrapedCount / totalRanked) * 100 : 0;
+            const progressPercent = Math.min(100.0, rawPercent).toFixed(1);
 
             // Puestos de trabajo (3 slots por cada supporter token en el pool del país)
             const totalSlots = supporterCount * 3;

@@ -1,6 +1,7 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 const OsuScoreModel = require("../../../models/OsuScoreModel.js");
+const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuSnipesEmbed, doOsuSnipesNemesisEmbed } = require("../../../views/osuEmbeds.js");
 
 const modeToInt = {
@@ -58,8 +59,9 @@ async function run(messages, args){
     const playmode = osu_userdata.fn_response.playmode || 'osu';
     const look_gamemode = modeToInt[playmode] ?? 0;
 
-    // Solo soportamos Venezuela (VE) por ahora mientras se raspa la base de datos nacional
-    if (country_code !== 'VE') {
+    // Verificar dinámicamente en RAM si el país ya ha sido poblado
+    const isScraped = await OsuUserModel.isCountryScraped(country_code);
+    if (!isScraped) {
         return t(locale, 'snipes.err_country_support');
     }
 
