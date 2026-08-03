@@ -70,7 +70,6 @@
     "buttons": {
       "home": "Home",
       "snipes": "Snipes",
-      "pop": "Population",
       "cache": "Cache",
       "country_lb": "Country LB",
       "gap": "Gap",
@@ -83,30 +82,26 @@
         "description": "Sengo is a high-performance Discord bot specialized for the **osu!** community, designed with an extreme focus on speed, automation, and social integration.\n\nBelow are the advanced features that make it stand out from traditional alternatives. Use the buttons below to explore each section with details and examples of use:"
       },
       "1": {
-        "title": "🎯 Snipes System (.snipes)",
-        "description": "**National #1s Tracking & Competition (.snipes)**\n\nTrack your dominance in the national rankings, compete for #1 spots on maps, and analyze your biggest rivals.\n\n**Details and Usage:**\n• **Command `.snipes`**: Displays your total #1s in your country, maps where you hold top 1, and your sniper profile.\n• **Rivalry (`-nemesis`)**: Use `{prefix}snipes -nemesis` to find out who your main rival is fighting for national #1s.\n• **National Leaderboard (`-top`)**: Check `{prefix}snipes -top` to view the leaderboard of players with the most #1s in your country."
+        "title": "🎯 Snipes System & Population (.snipes / .pop)",
+        "description": "**National #1s Tracking & Distributed Population (.snipes / .pop)**\n\nTrack your dominance in national rankings, compete for #1 spots on maps, analyze your biggest rivals, and collaborate by populating your country's database.\n\n**Details and Usage:**\n• **Command `.snipes`**: Displays your total #1s in your country, maps where you hold top 1, and your sniper profile.\n• **Rivalry (`-nemesis`)**: Use `{prefix}snipes -nemesis` to find out who your main rival is fighting for national #1s.\n• **National Leaderboard (`-top`)**: Check `{prefix}snipes -top` to view the leaderboard of players with the most #1s in your country.\n• **Distributed Population (`.pop`)**: Help download and process metadata in the background with `{prefix}pop` to speed up and update your country's snipes database."
       },
       "2": {
-        "title": "📦 Distributed Population (.pop)",
-        "description": "**Distributed Database Population (.pop)**\n\nHelp enrich Sengo's global beatmap database by downloading metadata in the background while using the bot.\n\n**Details and Usage:**\n• **Command `.pop`**: Starts a collaborative beatmap processing and storage process.\n• **Community Contribution**: Every user running `.pop` speeds up map searches, leaderboards, and recommendations for the entire community."
-      },
-      "3": {
         "title": "⚡ Latency & Cache",
         "description": "**Sub-Millisecond Response Times (Cache)**\n\nSengo is optimized to respond instantly. When you query your recent play with `.r`, the bot initiates a background predictive process.\n\n**Details and Usage:**\n• **Smart Preload**: Preloads local cache with compare (`.c`), profile, and beatmap metadata.\n• **Extreme Speed**: When running `.c` immediately after, the bot responds in **under 1ms**, avoiding redundant requests to the osu! API and eliminating wait latency."
       },
-      "4": {
+      "3": {
         "title": "🗺️ National Leaderboards",
         "description": "**Smart National Leaderboards**\n\nCheck who has the best score from your country on any map quickly and easily.\n\n**Details and Usage:**\n• **Command**: Use `.lb -pais` to view the national leaderboard for the map.\n• **Auto-detection**: If linked via OAuth, Sengo will automatically detect your flag and nationality without needing to specify the country code (e.g. `MX`, `ES`, `VE`, `AR`).\n• **Flexibility**: You can also search manually by specifying the code (e.g. `.lb -pais cl`)."
       },
-      "5": {
+      "4": {
         "title": "👥 Score Gap (.gap)",
         "description": "**Score Gap (.gap / -friends)**\n\nCompare and analyze how you stand against your friends and server members in the blink of an eye.\n\n**Details and Usage:**\n• **Command `.gap`**: Shows the gap and exact difference in score, accuracy, and PP of server users on the queried map.\n• **Filter `-friends`**: Add the `-friends` flag to your commands (such as `.lb -friends`) to isolate the leaderboard and compete only against your osu! friends."
       },
-      "6": {
+      "5": {
         "title": "🎯 Farm Recommender (.rec)",
         "description": "**Smart and Personalized Recommendations (.recommend / .rec)**\n\nLooking for maps to farm PP? Sengo analyzes your Top 100 and creates customized recommendations in real time.\n\n**Details and Usage:**\n• **Dynamic Profiling**: The bot studies your accuracy, preferred BPM, favorite mods, and mappers in your top plays.\n• **Button Filters**: Instantly switch between playstyles like **Jumps**, **Streams**, **Marathons**, **Loved** maps, or **Tag Affinity**.\n• **Advanced Search**: Customize your target range with flags (e.g. `s.rec -pp 250-300 -mods HDDT`).\n• **User Tags**: The bot connects with osu! community tags to recommend maps with the exact patterns of your current skillset."
       },
-      "7": {
+      "6": {
         "title": "🛠️ Command List",
         "description": "**Other Sengo Commands**\n\nHere is a quick guide to other essential bot commands:\n\n• **osu! Commands**:\n  ▸ `s.r` / `s.rs`: Displays your most recent play. Supports `-l` to list last 10 and `-b` to sort by PP.\n  ▸ `s.c`: Compares your score on the last channel beatmap.\n  ▸ `s.lb`: Displays global beatmap leaderboard.\n  ▸ `s.osu`: Displays your osu! profile or another player's profile (supports detailed mode).\n  ▸ `s.top`: Displays your best PP scores.\n  ▸ `s.daily`: Displays current Osu! Daily Challenge details and leaderboard.\n  ▸ `s.subir`: Saves/uploads a score manually to the bot system.\n• **Utility & Community Commands**:\n  ▸ `s.link`: Links your Discord account with osu! officially and securely.\n  ▸ `s.amigos`: Manages and audits your osu! friends list inside the bot.\n  ▸ `s.contribuidores`: Meet the developer and contributor team behind Sengo.\n  ▸ `s.sorteo`: Creates and manages advanced giveaways with role, booster, and nitro filters.\n• **Fun**:\n  ▸ `s.fumo`: Entertainment command with Fumo images."
       }
