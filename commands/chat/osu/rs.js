@@ -31,52 +31,8 @@ async function run(messages, args) {
         return filterPass ? t(locale, 'recent.err_no_scores_pass') : t(locale, 'recent.err_no_scores');
     }
 
-    // Interceptar flag de -rework / -rew en s.rs
+    // Detectar flag de -rework / -rew en s.rs
     const isRework = parser_res.parsed_args.reworkMode || parser_res.parsed_args.reworkQuery !== null || args.some(arg => typeof arg === 'string' && (arg.toLowerCase().startsWith('-rework') || arg.toLowerCase().startsWith('-rew')));
-
-    if (isRework) {
-        const targetIndex = (parser_res.parsed_args.explicitIndex && parser_res.parsed_args.index) ? parser_res.parsed_args.index : 1;
-        const targetScore = parser_res.fn_response[targetIndex - 1] || parser_res.fn_response[0];
-
-        if (!targetScore) {
-            return t(locale, 'recent.err_no_scores');
-        }
-
-        const stats = targetScore.statistics || {};
-        const count_300 = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const count_100 = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-        const count_50 = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-        const misses = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-
-        let modsList = [];
-        if (targetScore.mods && Array.isArray(targetScore.mods)) {
-            modsList = targetScore.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).filter(m => m !== 'NM');
-        }
-
-        const rawAcc = targetScore.accuracy;
-        const accuracy = (rawAcc !== undefined && rawAcc !== null)
-            ? (rawAcc > 1 ? rawAcc : rawAcc * 100)
-            : null;
-
-        const parsedPlay = {
-            beatmapId: String(targetScore.beatmap.id),
-            mods: modsList,
-            accuracy: accuracy,
-            combo: targetScore.max_combo,
-            maxCombo: targetScore.beatmap?.max_combo || null,
-            count_300: count_300,
-            count_100: count_100,
-            count_50: count_50,
-            misses: misses,
-            livePP: targetScore.pp || 0,
-            username: targetScore.user?.username || parser_res.parsed_args.username?.[0] || message.author.username,
-            isFailed: targetScore.passed === false || targetScore.rank === 'F'
-        };
-
-        const reworkQuery = parser_res.parsed_args.reworkQuery || "";
-        const { executePlayRework } = require("./rework.js");
-        return await executePlayRework(messages, parsedPlay, reworkQuery);
-    }
 
     // ponytail: check for snipes in the background for Venezuelan players
     try {
@@ -334,7 +290,33 @@ async function run(messages, args) {
         const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
         const maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
 
-        const user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
+        let user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
+
+        if (isRework) {
+            try {
+                const ReworkModel = require("../../../models/ReworkModel.js");
+                const activeModsStr = recent_scores.mods ? (Array.isArray(recent_scores.mods) ? recent_scores.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).join('') : recent_scores.mods) : '';
+                const reworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
+                    recent_scores.beatmap.id,
+                    activeModsStr,
+                    {
+                        accuracy: (recent_scores.accuracy > 1 ? recent_scores.accuracy : recent_scores.accuracy * 100),
+                        combo: recent_scores.max_combo,
+                        count_100: ok,
+                        count_50: meh,
+                        misses: miss
+                    },
+                    recent_scores.beatmap.mode || 'osu',
+                    'spotlight_2026'
+                );
+                if (reworkCalc && reworkCalc.pp) {
+                    user_pp = reworkCalc.pp;
+                }
+            } catch (reworkErr) {
+                console.error("Error al calcular Rework PP para rs -rework:", reworkErr.message);
+            }
+        }
+
         const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
 
         let pp_fc = null;
@@ -363,7 +345,8 @@ async function run(messages, args) {
             "maxAttrs": maxAttrs,
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,
-            "pp_fc": pp_fc
+            "pp_fc": pp_fc,
+            "isRework": isRework
         };
 
         saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));

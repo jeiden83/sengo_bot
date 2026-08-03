@@ -199,8 +199,13 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         }
     }
 
+    let authorName = t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode });
     let footerText = t(locale, 'recent.embed_footer_default');
-    if (recent_scores.beatmap.mode === 'mania') {
+
+    if (pre_calculated.isRework) {
+        authorName = `👑 Jugada Reciente (Rework) para ${username}`;
+        footerText = `Sengo • Rework PP (spotlight_2026)`;
+    } else if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null) {
             if (ratioVal < 1) {
@@ -215,7 +220,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode }),
+            name: authorName,
             url: user_url,
             iconURL: `${avatar_url}`,
         })
