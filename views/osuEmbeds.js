@@ -1504,23 +1504,30 @@ function doOsuSnipesNemesisEmbed(message, made, received, osu_userdata, locale =
         ? sortedNemesis.map((n, idx) => `**#${idx + 1}** ${n[0]} \`(${n[1]} #1s)\``).join('\n')
         : `*${t(locale, 'snipes.nemesis_none')}*`;
 
+    const formatMapDisplay = (item) => {
+        const title = item.ranked_beatmaps?.title;
+        const version = item.ranked_beatmaps?.version;
+        if (title && version) return `${title} [${version}]`;
+        if (title) return title;
+        if (item.beatmap_id) return `Beatmap #${item.beatmap_id}`;
+        return 'Beatmap';
+    };
+
     const recentMadeText = recentMade.length > 0
         ? recentMade.map(item => {
-            const mapTitle = item.ranked_beatmaps?.title || 'Beatmap';
-            const mapVer = item.ranked_beatmaps?.version || '';
+            const mapDisplay = formatMapDisplay(item);
             const ppStr = item.pp ? ` (${Math.round(item.pp)}pp)` : '';
             const timeUnix = Math.floor(new Date(item.ended_at).getTime() / 1000);
-            return `• A **${item.sniped_name || 'Desconocido'}** en [${mapTitle} [${mapVer}]](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
+            return `• A **${item.sniped_name || 'Desconocido'}** en [${mapDisplay}](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
         }).join('\n')
         : `*${t(locale, 'snipes.nemesis_none')}*`;
 
     const recentReceivedText = recentReceived.length > 0
         ? recentReceived.map(item => {
-            const mapTitle = item.ranked_beatmaps?.title || 'Beatmap';
-            const mapVer = item.ranked_beatmaps?.version || '';
+            const mapDisplay = formatMapDisplay(item);
             const ppStr = item.pp ? ` (${Math.round(item.pp)}pp)` : '';
             const timeUnix = Math.floor(new Date(item.ended_at).getTime() / 1000);
-            return `• Por **${item.sniper_name || 'Desconocido'}** en [${mapTitle} [${mapVer}]](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
+            return `• Por **${item.sniper_name || 'Desconocido'}** en [${mapDisplay}](https://osu.ppy.sh/b/${item.beatmap_id})${ppStr} <t:${timeUnix}:R>`;
         }).join('\n')
         : `*${t(locale, 'snipes.nemesis_none')}*`;
 
