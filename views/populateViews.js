@@ -143,9 +143,12 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
 }
 
 /**
- * Genera el embed enviado al DM del colaborador con las instrucciones de PowerShell o Worker Web (Móvil)
+ * Genera el embed enviado al DM del colaborador según el modo (PowerShell, Worker Web Móvil o Bash)
  */
-function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', isMobile = false) {
+function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', modeOption = 'ps') {
+    const isMobile = modeOption === true || modeOption === 'web' || modeOption === 'movil' || modeOption === 'mobile';
+    const isBash = modeOption === 'bash' || modeOption === 'sh' || modeOption === 'linux';
+
     if (isMobile) {
         const webUrl = `https://sengo-bot.onrender.com/worker?key=${sessionKey}&country=${countryCode}`;
         return new EmbedBuilder()
@@ -160,6 +163,29 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', 
                 {
                     name: '📱 2️⃣ Toca este enlace para abrir el Worker Web:',
                     value: `👉 [**Iniciar Sengo Worker Web para ${countryCode}**](${webUrl})\n\`${webUrl}\``
+                },
+                {
+                    name: t(locale, 'populate.dm_how_title'),
+                    value: t(locale, 'populate.dm_how_val')
+                }
+            )
+            .setFooter({ text: t(locale, 'populate.dm_footer') });
+    }
+
+    if (isBash) {
+        const bashCmd = `curl -sSL "https://sengo-bot.onrender.com/worker.sh?key=${sessionKey}&country=${countryCode}" | bash`;
+        return new EmbedBuilder()
+            .setTitle(t(locale, 'populate.dm_title', { country: countryCode }))
+            .setColor(0xe67e22)
+            .setDescription(t(locale, 'populate.dm_desc_bash', { username, country: countryCode }))
+            .addFields(
+                {
+                    name: t(locale, 'populate.dm_step1_bash_title'),
+                    value: t(locale, 'populate.dm_step1_bash_val')
+                },
+                {
+                    name: t(locale, 'populate.dm_step2_title'),
+                    value: `\`\`\`bash\n${bashCmd}\n\`\`\``
                 },
                 {
                     name: t(locale, 'populate.dm_how_title'),

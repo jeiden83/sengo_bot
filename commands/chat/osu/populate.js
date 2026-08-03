@@ -130,10 +130,18 @@ async function run({ message, res, reply, logger }, args) {
     if (arg1 && arg1.length === 2) {
         const countryCode = arg1.toUpperCase();
 
-        const isMobile = args.some(a => {
+        let workerMode = 'ps';
+        if (args.some(a => {
             const clean = a.toLowerCase().replace(/^-+/, '');
-            return clean === 'movil' || clean === 'mobile' || clean === 'm';
-        });
+            return clean === 'movil' || clean === 'mobile' || clean === 'm' || clean === 'web';
+        })) {
+            workerMode = 'web';
+        } else if (args.some(a => {
+            const clean = a.toLowerCase().replace(/^-+/, '');
+            return clean === 'bash' || clean === 'sh' || clean === 'linux';
+        })) {
+            workerMode = 'bash';
+        }
 
         const session = await PopulationService.createWorkerSession(message.author.id, message.author.username, countryCode);
 
@@ -155,9 +163,13 @@ async function run({ message, res, reply, logger }, args) {
 
         // Enviar mensaje al DM del colaborador
         try {
-            const dmEmbed = buildPopulateDmEmbed(session.key, countryCode, message.author.username, locale, isMobile);
+            const dmEmbed = buildPopulateDmEmbed(session.key, countryCode, message.author.username, locale, workerMode);
             await message.author.send({ embeds: [dmEmbed] });
-            const replyKey = isMobile ? 'populate.dm_sent_mobile_reply' : 'populate.dm_sent_reply';
+            
+            let replyKey = 'populate.dm_sent_reply';
+            if (workerMode === 'web') replyKey = 'populate.dm_sent_mobile_reply';
+            if (workerMode === 'bash') replyKey = 'populate.dm_sent_bash_reply';
+
             return t(locale, replyKey, { country: countryCode });
         } catch (err) {
             return t(locale, 'populate.err_dm_failed');

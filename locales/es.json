@@ -1619,8 +1619,8 @@
       "public": "Comandos Generales",
       "owner": "Comandos de Owner"
     },
-    "cmd_start_title": "🚀 `s.populate <PAÍS> [-movil]`",
-    "cmd_start_desc": "Genera tu clave de trabajador y te envía por DM el comando de 1 línea para poblar ese país. Usa `-movil` para obtener el script de Bash para Termux.\n*Ejemplos:* `s.populate MX` o `s.populate MX -movil`",
+    "cmd_start_title": "🚀 `s.populate <PAÍS> [-movil | -bash]`",
+    "cmd_start_desc": "Genera tu clave de trabajador y te envía por DM las instrucciones para poblar ese país.\n• `s.populate MX` ➔ PowerShell (Windows)\n• `s.populate MX -movil` ➔ Worker Web (Navegador Móvil)\n• `s.populate MX -bash` ➔ Script Bash (Linux / Mac / Termux)",
     "cmd_list_title": "📋 `s.populate -lista` *(o `-l`)*",
     "cmd_list_desc": "Muestra la lista de todos los países con su estado actual (Poblado, En Proceso, Disponible, Bloqueado o Sin Supporter).",
     "cmd_top_title": "🏆 `s.populate -top` *(o `-ranking`)*",
@@ -1681,10 +1681,14 @@
     "dm_how_val": "El script descargará en memoria los mapas pendientes de **100 en 100** y usará tu conexión residencial limpia a 1.8s por mapa para enviar los récords a la base de datos `sengo-db`.",
     "dm_footer": "Puedes cerrar la consola cuando quieras para pausar limpiamente.",
     "dm_sent_reply": "📩 **¡Instrucciones enviadas a tu DM!** Revisa tus mensajes privados para copiar el comando de PowerShell para **{country}**.",
-    "dm_sent_mobile_reply": "📩 **¡Instrucciones para Móvil enviadas a tu DM!** Revisa tus mensajes privados para copiar el comando de Bash para **{country}**.",
+    "dm_sent_mobile_reply": "📩 **¡Instrucciones para Móvil enviadas a tu DM!** Revisa tus mensajes privados para abrir el Worker Web para **{country}**.",
+    "dm_sent_bash_reply": "📩 **¡Instrucciones de Bash enviadas a tu DM!** Revisa tus mensajes privados para copiar el comando de Bash para **{country}**.",
     "dm_desc_mobile": "¡Hola **{username}**! Gracias por colaborar en el poblamiento de **{country}** desde tu dispositivo móvil.\n\nSigue estos pasos en tu teléfono (Android / iPhone):",
     "dm_step1_mobile_title": "📱 1️⃣ Cero instalaciones necesarias",
     "dm_step1_mobile_val": "No necesitas descargar ni instalar ninguna aplicación. El worker funciona directamente en Chrome, Safari o cualquier navegador móvil.",
+    "dm_desc_bash": "¡Hola **{username}**! Gracias por colaborar en el poblamiento de **{country}** desde tu terminal Linux / Mac / Termux.\n\nSigue estos pasos en tu consola:",
+    "dm_step1_bash_title": "🐧 1️⃣ Abre tu Terminal (Linux / Mac / Termux)",
+    "dm_step1_bash_val": "Asegúrate de tener instalados `curl` y `python3`.",
     "err_dm_failed": "⚠️ No pude enviarte el mensaje privado. Por favor activa los mensajes directos (DM) en el servidor para recibir tu clave de trabajador."
   }
 }
