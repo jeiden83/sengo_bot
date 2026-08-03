@@ -1654,6 +1654,18 @@
     "workers_none_title": "⚪ No Active Workers",
     "workers_none_desc": "There are currently no active worker sessions running population commands.",
     "err_dm_failed": "⚠️ Could not send you a private message. Please enable Direct Messages (DMs) in the server to receive your worker key."
+  },
+  "rework": {
+    "step_metadata": "Fetching beatmap metadata...",
+    "step_download": "Downloading .osu file...",
+    "step_local": "Calculating local values...",
+    "step_config": "Fetching rework configuration...",
+    "step_query_exact": "Querying exact rework to pp.huismetbenen.nl...",
+    "step_query_play": "Querying play rework to pp.huismetbenen.nl...",
+    "step_estimating": "Calculating estimation...",
+    "step_estimating_avg": "Calculating average estimation...",
+    "progress_title": "Calculating Rework...",
+    "progress_footer": "Sengo • Elapsed time: {elapsed}s"
   }
 }
 

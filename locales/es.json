@@ -1654,6 +1654,18 @@
     "workers_none_title": "⚪ Sin Workers Activos",
     "workers_none_desc": "En este momento no hay ninguna sesión de worker activa o ejecutando comandos de poblamiento.",
     "err_dm_failed": "⚠️ No pude enviarte el mensaje privado. Por favor activa los mensajes directos (DM) en el servidor para recibir tu clave de trabajador."
+  },
+  "rework": {
+    "step_metadata": "Obteniendo metadatos del mapa...",
+    "step_download": "Descargando archivo .osu...",
+    "step_local": "Calculando valores en local...",
+    "step_config": "Obteniendo configuración del rework...",
+    "step_query_exact": "Consultando rework exacto a pp.huismetbenen.nl...",
+    "step_query_play": "Consultando rework de la jugada a pp.huismetbenen.nl...",
+    "step_estimating": "Calculando estimación...",
+    "step_estimating_avg": "Calculando estimación por promedio...",
+    "progress_title": "Calculando Rework...",
+    "progress_footer": "Sengo • Tiempo transcurrido: {elapsed}s"
   }
 }
 

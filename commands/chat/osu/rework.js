@@ -851,18 +851,12 @@ async function run(messages, args) {
     const processStartTime = Date.now();
     let stepStartTime = Date.now();
 
-    const stepTemplates = locale === 'es' ? [
-        "Obteniendo metadatos del mapa...",
-        "Descargando archivo .osu...",
-        "Calculando valores en local...",
-        "Obteniendo configuración del rework...",
-        parsedPlay ? "Consultando rework de la jugada a pp.huismetbenen.nl..." : "Consultando rework exacto a pp.huismetbenen.nl..."
-    ] : [
-        "Fetching beatmap metadata...",
-        "Downloading .osu file...",
-        "Calculating local values...",
-        "Fetching rework configuration...",
-        parsedPlay ? "Querying play rework to pp.huismetbenen.nl..." : "Querying exact rework to pp.huismetbenen.nl..."
+    const stepTemplates = [
+        t(locale, 'rework.step_metadata'),
+        t(locale, 'rework.step_download'),
+        t(locale, 'rework.step_local'),
+        t(locale, 'rework.step_config'),
+        parsedPlay ? t(locale, 'rework.step_query_play') : t(locale, 'rework.step_query_exact')
     ];
 
     const activeSteps = [];
@@ -912,13 +906,11 @@ async function run(messages, args) {
 
         const totalElapsed = Date.now() - processStartTime;
         const progressEmbed = new EmbedBuilder()
-            .setTitle(locale === 'es' ? "Calculando Rework..." : "Calculating Rework...")
+            .setTitle(t(locale, 'rework.progress_title'))
             .setDescription(descriptionLines.join('\n'))
             .setColor(embedColor)
             .setFooter({
-                text: locale === 'es'
-                    ? `Sengo • Tiempo transcurrido: ${(totalElapsed / 1000).toFixed(2)}s`
-                    : `Sengo • Elapsed time: ${(totalElapsed / 1000).toFixed(2)}s`
+                text: t(locale, 'rework.progress_footer', { elapsed: (totalElapsed / 1000).toFixed(2) })
             });
 
         try {
@@ -1078,7 +1070,7 @@ async function run(messages, args) {
 
         if (!reworkPP) {
             await updateProgress(4, 'warning', `(No disponible, estimando...)`);
-            stepTemplates.push(locale === 'es' ? "Calculando estimación..." : "Calculating estimation...");
+            stepTemplates.push(t(locale, 'rework.step_estimating'));
             await updateProgress(5, 'loading');
 
             let beatmapScores = [];
@@ -1147,7 +1139,7 @@ async function run(messages, args) {
     if (!reworkResult) {
         await updateProgress(4, 'warning', `(No disponible, estimando por promedio...)`);
 
-        stepTemplates.push(locale === 'es' ? "Calculando estimación por promedio..." : "Calculating average estimation...");
+        stepTemplates.push(t(locale, 'rework.step_estimating_avg'));
         await updateProgress(5, 'loading');
 
         if (logger) logger.process(`Consultando puntuaciones recalculadas en Rework para beatmap ID: ${beatmap.id} (Promedio)`);
@@ -1178,10 +1170,229 @@ async function run(messages, args) {
     return { embeds: [embed] };
 }
 
+/**
+ * Ejecuta el cálculo e interfaz de Rework directamente sobre un objeto parsedPlay
+ */
+async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
+    const { message, reply, logger } = messages;
+    const locale = message.locale || 'es';
+
+    let sentMessage = null;
+    const processStartTime = Date.now();
+    let stepStartTime = Date.now();
+
+    const beatmap_id = parsedPlay.beatmapId;
+
+    const stepTemplates = [
+        t(locale, 'rework.step_metadata'),
+        t(locale, 'rework.step_download'),
+        t(locale, 'rework.step_local'),
+        t(locale, 'rework.step_config'),
+        t(locale, 'rework.step_query_play')
+    ];
+
+    const activeSteps = [];
+
+    const updateProgress = async (stepIndex, status, extra = "") => {
+        const embedColor = getEmbedColor(message);
+
+        if (activeSteps.length <= stepIndex) {
+            for (let i = activeSteps.length; i < stepIndex; i++) {
+                if (activeSteps[i]) {
+                    activeSteps[i].status = 'success';
+                    if (activeSteps[i].duration === null) {
+                        activeSteps[i].duration = 0;
+                    }
+                }
+            }
+            activeSteps.push({
+                text: stepTemplates[stepIndex],
+                status: 'loading',
+                duration: null,
+                extra: ""
+            });
+            stepStartTime = Date.now();
+        }
+
+        const step = activeSteps[stepIndex];
+        step.status = status;
+        step.extra = extra;
+
+        if (status === 'success' || status === 'error' || status === 'warning') {
+            if (step.duration === null) {
+                step.duration = Date.now() - stepStartTime;
+            }
+        }
+
+        const descriptionLines = activeSteps.map((s) => {
+            let emoji = '⏳';
+            if (s.status === 'success') emoji = '✅';
+            else if (s.status === 'error') emoji = '❌';
+            else if (s.status === 'warning') emoji = '⚠️';
+            else if (s.status === 'retry') emoji = '🔄';
+
+            let durationText = s.duration !== null ? ` - **${s.duration}ms**` : "";
+            let extraText = s.extra ? ` ${s.extra}` : "";
+            return `${emoji} ${s.text}${durationText}${extraText}`;
+        });
+
+        const totalElapsed = Date.now() - processStartTime;
+        const progressEmbed = new EmbedBuilder()
+            .setTitle(t(locale, 'rework.progress_title'))
+            .setDescription(descriptionLines.join('\n'))
+            .setColor(embedColor)
+            .setFooter({
+                text: t(locale, 'rework.progress_footer', { elapsed: (totalElapsed / 1000).toFixed(2) })
+            });
+
+        try {
+            if (!sentMessage) {
+                if (reply) {
+                    sentMessage = await reply.reply({ embeds: [progressEmbed] });
+                } else {
+                    sentMessage = await message.channel.send({ embeds: [progressEmbed] });
+                }
+            } else if (typeof sentMessage.edit === 'function') {
+                await sentMessage.edit({ embeds: [progressEmbed] });
+            }
+        } catch (e) {
+            // Ignorar
+        }
+    };
+
+    await updateProgress(0, 'loading');
+
+    let beatmap;
+    try {
+        beatmap = await getBeatmap(beatmap_id);
+        await updateProgress(0, 'success');
+    } catch (e) {
+        const errText = t(locale, 'rework.err_map_metadata', { mapId: beatmap_id });
+        await updateProgress(0, 'error', `(${errText})`);
+        return;
+    }
+
+    let map;
+    await updateProgress(1, 'loading');
+    try {
+        map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
+        await updateProgress(1, 'success');
+        if (parsedPlay.accuracy === null || parsedPlay.accuracy === undefined) {
+            const misses = parsedPlay.misses || 0;
+            const c100 = parsedPlay.count_100 || 0;
+            const c50 = parsedPlay.count_50 || 0;
+            const totalObjects = map.nObjects || 0;
+            if (totalObjects > 0) {
+                const c300 = Math.max(0, totalObjects - c100 - c50 - misses);
+                parsedPlay.count_300 = c300;
+                parsedPlay.count_100 = c100;
+                parsedPlay.count_50 = c50;
+                parsedPlay.accuracy = ((c300 * 300 + c100 * 100 + c50 * 50) / (totalObjects * 300)) * 100;
+            } else {
+                parsedPlay.accuracy = 100.0;
+            }
+        }
+    } catch (e) {
+        const errText = t(locale, 'rework.err_map_parse', { mapId: beatmap_id });
+        await updateProgress(1, 'error', `(${errText})`);
+        return;
+    }
+
+    await updateProgress(2, 'loading');
+    let modsStr = (parsedPlay.mods || []).join("").replace(/CL/g, "");
+    const activeModsStr = modsStr;
+    let activeMode = beatmap.mode;
+
+    const baseStarsPerf = new rosu.Performance({ mods: [] });
+    const baseStarsAttrs = baseStarsPerf.calculate(map);
+    const modStarsPerf = new rosu.Performance({ mods: activeModsStr });
+    const modStarsAttrs = modStarsPerf.calculate(map);
+    const liveModStars = modStarsAttrs.difficulty.stars;
+
+    parsedPlay.liveModStars = liveModStars;
+    parsedPlay.maxCombo = baseStarsAttrs.difficulty.maxCombo;
+    if (!parsedPlay.combo) {
+        parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
+    }
+
+    if (parsedPlay.isMock || !parsedPlay.livePP) {
+        try {
+            const livePerf = new rosu.Performance({
+                mods: activeModsStr,
+                accuracy: parsedPlay.accuracy,
+                combo: parsedPlay.combo || undefined,
+                n300: parsedPlay.count_300,
+                n100: parsedPlay.count_100,
+                n50: parsedPlay.count_50,
+                misses: parsedPlay.misses
+            });
+            const liveAttrs = livePerf.calculate(map);
+            parsedPlay.livePP = liveAttrs.pp;
+        } catch (err) {
+            console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
+        }
+    }
+
+    map.free();
+    await updateProgress(2, 'success');
+
+    await updateProgress(3, 'loading');
+    const rework = await ReworkModel.getReworkByQuery(reworkQuery, activeMode);
+    if (!rework) {
+        const errText = t(locale, 'rework.err_rework_not_found_mode', { query: reworkQuery, mode: activeMode });
+        await updateProgress(3, 'error', `(${errText})`);
+        return;
+    }
+    await updateProgress(3, 'success');
+
+    await updateProgress(4, 'loading');
+
+    let reworkPP = null;
+    let reworkStars = null;
+    try {
+        const res = await ReworkModel.calculateReworkPPForScoreExact(beatmap.id, modsStr, parsedPlay, activeMode, rework.code);
+        reworkPP = res.pp;
+        reworkStars = res.stars;
+        await updateProgress(4, 'success');
+    } catch (err) {
+        console.warn(`[Rework] No se pudo realizar el cálculo exacto de score: ${err.message}`);
+    }
+
+    if (!reworkPP) {
+        await updateProgress(4, 'warning', `(No disponible, estimando...)`);
+        stepTemplates.push(t(locale, 'rework.step_estimating'));
+        await updateProgress(5, 'loading');
+
+        let beatmapScores = [];
+        try {
+            beatmapScores = await ReworkModel.getBeatmapReworkScores(beatmap.id, rework.id);
+        } catch (e) {
+            console.error("Error al obtener scores de beatmap en Rework:", e);
+        }
+
+        const est = ReworkModel.calculateReworkPPForScore(beatmapScores, modsStr, parsedPlay.livePP);
+        reworkPP = est.pp;
+        const liveSR = parsedPlay.liveModStars || beatmap.difficulty_rating || 0;
+        reworkStars = liveSR * est.srRatio;
+        await updateProgress(5, 'success');
+    }
+
+    const embed = await doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, reworkStars, rework, locale);
+    if (sentMessage && typeof sentMessage.edit === 'function') {
+        await sentMessage.edit({ content: null, embeds: [embed] });
+        return;
+    }
+    if (reply) {
+        reply.reply({ embeds: [embed] });
+        return;
+    }
+    return { embeds: [embed] };
+}
+
 run.description = {
     'header': t('es', 'commands.rework.header'),
     'body': t('es', 'commands.rework.body'),
     'usage': t('es', 'commands.rework.usage')
 };
 
-module.exports = { run, parsePlayEmbed, "description": run.description };
+module.exports = { run, parsePlayEmbed, executePlayRework, "description": run.description };

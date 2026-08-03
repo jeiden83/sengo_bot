@@ -31,6 +31,53 @@ async function run(messages, args) {
         return filterPass ? t(locale, 'recent.err_no_scores_pass') : t(locale, 'recent.err_no_scores');
     }
 
+    // Interceptar flag de -rework / -rew en s.rs
+    const isRework = parser_res.parsed_args.reworkMode || parser_res.parsed_args.reworkQuery !== null || args.some(arg => typeof arg === 'string' && (arg.toLowerCase().startsWith('-rework') || arg.toLowerCase().startsWith('-rew')));
+
+    if (isRework) {
+        const targetIndex = (parser_res.parsed_args.explicitIndex && parser_res.parsed_args.index) ? parser_res.parsed_args.index : 1;
+        const targetScore = parser_res.fn_response[targetIndex - 1] || parser_res.fn_response[0];
+
+        if (!targetScore) {
+            return t(locale, 'recent.err_no_scores');
+        }
+
+        const stats = targetScore.statistics || {};
+        const count_300 = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+        const count_100 = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+        const count_50 = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+        const misses = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+
+        let modsList = [];
+        if (targetScore.mods && Array.isArray(targetScore.mods)) {
+            modsList = targetScore.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).filter(m => m !== 'NM');
+        }
+
+        const rawAcc = targetScore.accuracy;
+        const accuracy = (rawAcc !== undefined && rawAcc !== null)
+            ? (rawAcc > 1 ? rawAcc : rawAcc * 100)
+            : null;
+
+        const parsedPlay = {
+            beatmapId: String(targetScore.beatmap.id),
+            mods: modsList,
+            accuracy: accuracy,
+            combo: targetScore.max_combo,
+            maxCombo: targetScore.beatmap?.max_combo || null,
+            count_300: count_300,
+            count_100: count_100,
+            count_50: count_50,
+            misses: misses,
+            livePP: targetScore.pp || 0,
+            username: targetScore.user?.username || parser_res.parsed_args.username?.[0] || message.author.username,
+            isFailed: targetScore.passed === false || targetScore.rank === 'F'
+        };
+
+        const reworkQuery = parser_res.parsed_args.reworkQuery || "";
+        const { executePlayRework } = require("./rework.js");
+        return await executePlayRework(messages, parsedPlay, reworkQuery);
+    }
+
     // ponytail: check for snipes in the background for Venezuelan players
     try {
         const OsuScoreModel = require("../../../models/OsuScoreModel.js");

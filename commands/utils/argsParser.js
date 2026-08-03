@@ -446,6 +446,7 @@ function argsParserNoCommand(args, options = {}) {
     let discordMessageLink = null;
     let args_aux = new String(args);
     let reworkQuery = null;
+    let reworkMode = false;
     let reworkCompare = false;
     let reworkTop = false;
     let sortByPPChange = false;
@@ -1181,16 +1182,23 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es exactamente "-rework"
-        if (arg === "-rework") {
+        // Si es exactamente "-rework" o "-rew"
+        if (arg === "-rework" || arg === "-rew") {
+            reworkMode = true;
             if (i + 1 < args_list.length) {
-                reworkQuery = args_list[i + 1].trim();
-                skip_next = true;
-                continue;
+                let next_arg = args_list[i + 1].trim();
+                if (!next_arg.startsWith("-") && !next_arg.startsWith("+") && !isBeatmapUrlOrId(next_arg)) {
+                    reworkQuery = next_arg;
+                    skip_next = true;
+                    continue;
+                }
             }
+            continue;
         }
-        if (arg.startsWith("-rework")) {
-            let next = arg.slice(7).trim();
+        if (arg.startsWith("-rework") || arg.startsWith("-rew")) {
+            reworkMode = true;
+            let prefixLen = arg.startsWith("-rework") ? 7 : 4;
+            let next = arg.slice(prefixLen).trim();
             if (next.length > 0) {
                 reworkQuery = next.startsWith("=") ? next.slice(1).trim() : next;
                 continue;
@@ -1238,6 +1246,7 @@ function argsParserNoCommand(args, options = {}) {
         'beatmap_url': beatmap_url,
         'discordMessageId': discordMessageId,
         'discordMessageLink': discordMessageLink,
+        'reworkMode': reworkMode,
         'reworkQuery': reworkQuery,
         'reworkCompare': reworkCompare,
         'reworkTop': reworkTop,
