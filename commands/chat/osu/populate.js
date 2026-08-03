@@ -7,7 +7,8 @@ const {
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateWorkersEmbed,
-    buildPopulateTopEmbed
+    buildPopulateTopEmbed,
+    buildPopulateKeysEmbed
 } = require('../../../views/populateViews.js');
 
 async function run({ message, res, reply, logger }, args) {
@@ -34,11 +35,11 @@ async function run({ message, res, reply, logger }, args) {
     }
 
     // ----------------------------------------------------
-    // 2. SUBCOMANDO: -permitir / -allow (Permitir país - Owner)
+    // 3. SUBCOMANDO: -permitir / -allow (Permitir país - Owner)
     // ----------------------------------------------------
     if (arg1 === '-permitir' || arg1 === '-allow' || arg1 === 'permitir' || arg1 === 'allow') {
         if (message.author.id !== ownerId) {
-            return t(locale, 'populate.err_owner_only_allow');
+            return t(locale, 'bug.err_owner_only');
         }
 
         const targetCountry = args[1] ? args[1].toUpperCase() : null;
@@ -51,11 +52,11 @@ async function run({ message, res, reply, logger }, args) {
     }
 
     // ----------------------------------------------------
-    // 3. SUBCOMANDO: -stop / -parar (Kill Switch del Owner)
+    // 4. SUBCOMANDO: -stop / -parar (Kill Switch del Owner)
     // ----------------------------------------------------
     if (arg1 === '-stop' || arg1 === '-parar' || arg1 === 'stop' || arg1 === 'parar') {
         if (message.author.id !== ownerId) {
-            return t(locale, 'populate.err_owner_only_stop');
+            return t(locale, 'bug.err_owner_only');
         }
 
         const targetCountry = args[1] ? args[1].toUpperCase() : null;
@@ -68,11 +69,11 @@ async function run({ message, res, reply, logger }, args) {
     }
 
     // ----------------------------------------------------
-    // 4. SUBCOMANDO: -worker / -workers (Monitor de Workers del Owner)
+    // 5. SUBCOMANDO: -worker / -workers (Monitor de Workers del Owner)
     // ----------------------------------------------------
     if (arg1 === '-worker' || arg1 === '-workers' || arg1 === 'worker' || arg1 === 'workers') {
         if (message.author.id !== ownerId) {
-            return t(locale, 'populate.err_owner_only_workers');
+            return t(locale, 'bug.err_owner_only');
         }
 
         const workers = await PopulationService.getActiveWorkersList();
@@ -87,7 +88,63 @@ async function run({ message, res, reply, logger }, args) {
     }
 
     // ----------------------------------------------------
-    // 4. SUBCOMANDO: <PAÍS> (Iniciar poblamiento para un país)
+    // 6. SUBCOMANDO: -keys / -k (Listar Worker Keys del Owner)
+    // ----------------------------------------------------
+    if (arg1 === '-keys' || arg1 === '-k' || arg1 === 'keys') {
+        if (message.author.id !== ownerId) {
+            return t(locale, 'bug.err_owner_only');
+        }
+
+        await PopulationService.cleanupInactiveWorkerKeys(30 * 60 * 1000);
+        const workers = await PopulationService.getActiveWorkersList();
+        const embed = buildPopulateKeysEmbed(workers, locale);
+        return { embeds: [embed] };
+    }
+
+    // ----------------------------------------------------
+    // 7. SUBCOMANDO: -delkey / -borrarkey (Eliminar/Liberar Key del Owner)
+    // ----------------------------------------------------
+    if (arg1 === '-delkey' || arg1 === '-borrarkey' || arg1 === '-delk' || arg1 === 'delkey' || arg1 === 'borrarkey') {
+        if (message.author.id !== ownerId) {
+            return t(locale, 'bug.err_owner_only');
+        }
+
+        const target = args[1];
+        if (!target) {
+            return `⚠️ Especifica la Key, el código de País o "inactivos".\n*Ejemplo:* \`s.populate -delkey sengo_wk_1234abcd\` o \`s.populate -delkey AR\`.`;
+        }
+
+        const result = await PopulationService.deleteWorkerKey(target);
+
+        if (result.mode === 'inactivos') {
+            return t(locale, 'populate.delkey_success_inactive', { count: result.deleted });
+        }
+        if (result.mode === 'country') {
+            if (result.deleted === 0) return t(locale, 'populate.delkey_none_found');
+            return t(locale, 'populate.delkey_success_country', { count: result.deleted, country: result.country });
+        }
+        if (result.mode === 'key') {
+            if (result.deleted === 0) return t(locale, 'populate.delkey_none_found');
+            return t(locale, 'populate.delkey_success_key', { key: result.key });
+        }
+
+        return t(locale, 'populate.delkey_none_found');
+    }
+
+    // ----------------------------------------------------
+    // 8. SUBCOMANDO: -limpiar / -clean (Limpiar keys inactivas > 30 min)
+    // ----------------------------------------------------
+    if (arg1 === '-limpiar' || arg1 === '-clean' || arg1 === 'limpiar' || arg1 === 'clean') {
+        if (message.author.id !== ownerId) {
+            return t(locale, 'bug.err_owner_only');
+        }
+
+        const count = await PopulationService.cleanupInactiveWorkerKeys(30 * 60 * 1000);
+        return t(locale, 'populate.delkey_success_inactive', { count });
+    }
+
+    // ----------------------------------------------------
+    // 9. SUBCOMANDO: <PAÍS> (Iniciar poblamiento para un país)
     // ----------------------------------------------------
     if (arg1 && arg1.length === 2) {
         const countryCode = arg1.toUpperCase();
@@ -104,6 +161,10 @@ async function run({ message, res, reply, logger }, args) {
 
         if (session.error === 'NO_SUPPORTER') {
             return t(locale, 'populate.err_no_supporter', { country: countryCode });
+        }
+
+        if (session.error === 'SLOTS_FULL') {
+            return t(locale, 'populate.err_slots_full', { country: countryCode, totalSlots: session.totalSlots });
         }
 
         // Enviar mensaje al DM del colaborador

@@ -73,12 +73,159 @@ class PopulationService {
     }
 
     /**
+     * Limpia automáticamente las Worker Keys inactivas por más de maxInactiveMs (por defecto 30 minutos).
+     * Preserva intactas las contribuciones acumuladas en population_contributors (puntos e historial de s.populate -top).
+     */
+    static async cleanupInactiveWorkerKeys(maxInactiveMs = 30 * 60 * 1000) {
+        const now = Date.now();
+        const cutoffTime = now - maxInactiveMs;
+        const cutoffIso = new Date(cutoffTime).toISOString();
+        let deletedCount = 0;
+
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            try {
+                const { data: dbDeleted } = await supabase
+                    .from('population_workers')
+                    .delete()
+                    .lt('last_active_at', cutoffIso)
+                    .select('worker_key, country_code, username');
+
+                if (dbDeleted && dbDeleted.length > 0) {
+                    deletedCount += dbDeleted.length;
+                    for (const w of dbDeleted) {
+                        activeWorkerKeys.delete(w.worker_key);
+                        const session = activeSessions.get(w.country_code);
+                        if (session && session.activeWorkers) {
+                            session.activeWorkers.delete(w.username);
+                        }
+                    }
+                }
+            } catch (e) {
+                console.error("Error limpiando worker keys inactivas en Supabase:", e.message);
+            }
+        }
+
+        // Sincronizar en memoria RAM
+        for (const [key, w] of activeWorkerKeys.entries()) {
+            const lastActive = w.lastActiveAt || w.createdAt || 0;
+            if ((now - lastActive) > maxInactiveMs) {
+                activeWorkerKeys.delete(key);
+                const session = activeSessions.get(w.countryCode);
+                if (session && session.activeWorkers) {
+                    session.activeWorkers.delete(w.username);
+                }
+                deletedCount++;
+            }
+        }
+
+        return deletedCount;
+    }
+
+    /**
+     * Elimina manualmente una o varias Worker Keys para liberar espacio (Exclusivo de Owner).
+     * Solo remueve la sesión de trabajo activa (population_workers/RAM); no elimina récords ni puntos en population_contributors.
+     * @param {string} target Key específica (sengo_wk_...), Código de País (ej: AR), o "inactivos"
+     */
+    static async deleteWorkerKey(target) {
+        if (!target) return { deleted: 0, mode: 'none' };
+        const strTarget = String(target).trim();
+        const supabase = getSupabaseClient();
+        let deletedCount = 0;
+
+        if (strTarget.toLowerCase() === 'inactivos' || strTarget.toLowerCase() === 'inactive') {
+            const count = await this.cleanupInactiveWorkerKeys(30 * 60 * 1000);
+            return { deleted: count, mode: 'inactivos' };
+        }
+
+        // 1. Caso código de país (2 letras)
+        if (strTarget.length === 2) {
+            const country = strTarget.toUpperCase();
+            if (supabase) {
+                try {
+                    const { data } = await supabase
+                        .from('population_workers')
+                        .delete()
+                        .eq('country_code', country)
+                        .select('worker_key, username');
+
+                    if (data && data.length > 0) {
+                        deletedCount += data.length;
+                        for (const row of data) {
+                            activeWorkerKeys.delete(row.worker_key);
+                        }
+                    }
+                } catch (e) {
+                    console.error(`Error eliminando keys de ${country} en Supabase:`, e.message);
+                }
+            }
+
+            for (const [key, w] of activeWorkerKeys.entries()) {
+                if (w.countryCode === country) {
+                    activeWorkerKeys.delete(key);
+                    deletedCount++;
+                }
+            }
+
+            const session = activeSessions.get(country);
+            if (session && session.activeWorkers) {
+                session.activeWorkers.clear();
+            }
+
+            return { deleted: deletedCount, mode: 'country', country };
+        }
+
+        // 2. Caso key específica (sengo_wk_...)
+        const key = strTarget;
+        let keyCountry = null;
+        let keyUsername = null;
+
+        if (activeWorkerKeys.has(key)) {
+            const w = activeWorkerKeys.get(key);
+            keyCountry = w.countryCode;
+            keyUsername = w.username;
+            activeWorkerKeys.delete(key);
+            deletedCount = 1;
+        }
+
+        if (supabase) {
+            try {
+                const { data } = await supabase
+                    .from('population_workers')
+                    .delete()
+                    .eq('worker_key', key)
+                    .select('country_code, username');
+
+                if (data && data.length > 0) {
+                    deletedCount = Math.max(deletedCount, data.length);
+                    if (!keyCountry) keyCountry = data[0].country_code;
+                    if (!keyUsername) keyUsername = data[0].username;
+                }
+            } catch (e) {
+                console.error(`Error eliminando key ${key} en Supabase:`, e.message);
+            }
+        }
+
+        if (keyCountry && keyUsername) {
+            const session = activeSessions.get(keyCountry);
+            if (session && session.activeWorkers) {
+                session.activeWorkers.delete(keyUsername);
+            }
+        }
+
+        return { deleted: deletedCount, mode: 'key', key };
+    }
+
+    /**
      * Genera o recupera una Worker Key para un colaborador y país
      */
     static async createWorkerSession(discordId, username, countryCode) {
         const country = countryCode.toUpperCase();
         
-        // Verificar si el Owner ha permitido el poblamiento de este país (Persistente en DB)
+        // 1. Limpieza de claves inactivas (>30 minutos)
+        await this.cleanupInactiveWorkerKeys(30 * 60 * 1000);
+
+        // 2. Verificar si el Owner ha permitido el poblamiento de este país (Persistente en DB)
         if (!await this.isCountryAllowed(country)) {
             return {
                 error: 'NOT_ALLOWED',
@@ -86,16 +233,53 @@ class PopulationService {
             };
         }
 
-        // Verificar si el país está 100% completado en Supabase
+        // 3. Verificar si el país está 100% completado en Supabase
         const isScraped = await OsuUserModel.isCountryScraped(country);
         if (isScraped) {
             return { error: 'COMPLETED', message: `El país **${country}** ya ha sido poblado al 100%.` };
         }
 
-        // Verificar si hay token Supporter disponible para ese país
+        // 4. Verificar si hay token Supporter disponible para ese país
         const supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
         if (!supporterData || !supporterData.token) {
             return { error: 'NO_SUPPORTER', message: `No hay ningún usuario **Supporter** de ${country} registrado en el pool del bot.` };
+        }
+
+        // 5. Reutilizar clave activa del mismo usuario si ya existe para este país (evita consumir varios puestos)
+        const strId = String(discordId);
+        for (const [existingKey, worker] of activeWorkerKeys.entries()) {
+            if ((worker.discordId === strId || worker.username === username) && worker.countryCode === country) {
+                worker.lastActiveAt = Date.now();
+                return {
+                    key: existingKey,
+                    countryCode: country,
+                    supporterUser: supporterData.username
+                };
+            }
+        }
+
+        // 6. Verificar si los puestos de trabajo para el país están llenos (3 por cada supporter)
+        const supabase = getSupabaseClient();
+        let supporterCount = 1;
+        if (supabase) {
+            try {
+                const { data: supporters } = await supabase
+                    .from('oauth_tokens')
+                    .select('country_code')
+                    .eq('is_supporter', true)
+                    .eq('country_code', country);
+                if (supporters && supporters.length > 0) supporterCount = supporters.length;
+            } catch (e) {}
+        }
+        const totalSlots = supporterCount * 3;
+        const currentSession = activeSessions.get(country);
+        const activeWorkersCount = currentSession ? currentSession.activeWorkers.size : 0;
+
+        if (activeWorkersCount >= totalSlots) {
+            return {
+                error: 'SLOTS_FULL',
+                totalSlots
+            };
         }
 
         // Crear clave única
@@ -103,7 +287,7 @@ class PopulationService {
         const nowIso = new Date().toISOString();
 
         activeWorkerKeys.set(key, {
-            discordId: String(discordId),
+            discordId: strId,
             username,
             countryCode: country,
             createdAt: Date.now(),
@@ -114,11 +298,10 @@ class PopulationService {
 
         // Persistir la worker key en Supabase
         try {
-            const supabase = getSupabaseClient();
             if (supabase) {
                 await supabase.from('population_workers').upsert({
                     worker_key: key,
-                    discord_id: String(discordId),
+                    discord_id: strId,
                     username: username,
                     country_code: country,
                     batches_requested: 0,

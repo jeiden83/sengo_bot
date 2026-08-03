@@ -28,6 +28,18 @@ function buildPopulateHelpEmbed(locale = 'es', pageIndex = 0) {
                 {
                     name: t(locale, 'populate.cmd_worker_title'),
                     value: t(locale, 'populate.cmd_worker_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_keys_title'),
+                    value: t(locale, 'populate.cmd_keys_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_delkey_title'),
+                    value: t(locale, 'populate.cmd_delkey_desc')
+                },
+                {
+                    name: t(locale, 'populate.cmd_clean_title'),
+                    value: t(locale, 'populate.cmd_clean_desc')
                 }
             );
     } else {
@@ -84,6 +96,26 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
     const locked = list.filter(c => c.status === 'LOCKED');
     const noSupporter = list.filter(c => c.status === 'NO_SUPPORTER');
 
+    const lockedWithProgress = locked.filter(c => Number(c.scrapedCount || 0) > 0);
+    const lockedZeroProgress = locked.filter(c => Number(c.scrapedCount || 0) === 0);
+
+    let lockedValue = t(locale, 'populate.none_locked');
+    if (locked.length > 0) {
+        const parts = [];
+        if (lockedWithProgress.length > 0) {
+            parts.push(lockedWithProgress.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()})`).join('\n'));
+        }
+        if (lockedZeroProgress.length > 0) {
+            const zeroList = lockedZeroProgress.map(c => `**${c.code || c.countryCode}**`).join(', ');
+            if (lockedWithProgress.length > 0) {
+                parts.push(`• Sin avance: ${zeroList}`);
+            } else {
+                parts.push(zeroList);
+            }
+        }
+        lockedValue = parts.join('\n');
+    }
+
     return new EmbedBuilder()
         .setTitle(t(locale, 'populate.status_title'))
         .setColor(CONFIG.colors?.primary || 0x3498db)
@@ -103,7 +135,7 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
             },
             {
                 name: t(locale, 'populate.cat_locked'),
-                value: locked.length > 0 ? locked.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()})`).join('\n') : t(locale, 'populate.none_locked')
+                value: lockedValue
             },
             {
                 name: t(locale, 'populate.cat_no_supporter'),
@@ -217,11 +249,57 @@ function buildPopulateTopEmbed(topList, locale = 'es') {
     return embed;
 }
 
+/**
+ * Genera el embed con la lista de Worker Keys registradas (Owner Only)
+ */
+function buildPopulateKeysEmbed(workersList, locale = 'es') {
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'populate.keys_embed_title'))
+        .setColor(CONFIG.colors?.primary || 0x3498db)
+        .setDescription(t(locale, 'populate.keys_embed_desc', { count: workersList ? workersList.length : 0 }))
+        .setFooter({ text: 'Sengo • Gestión de Keys de Poblamiento' })
+        .setTimestamp();
+
+    if (!workersList || workersList.length === 0) {
+        embed.addFields({
+            name: t(locale, 'populate.keys_none_title'),
+            value: t(locale, 'populate.keys_none_desc')
+        });
+        return embed;
+    }
+
+    const now = Date.now();
+    for (const w of workersList) {
+        const lastActiveMs = w.lastActiveAt || w.createdAt;
+        const inactiveMin = Math.floor((now - lastActiveMs) / (1000 * 60));
+        const statusEmoji = inactiveMin > 30 ? '🔴' : (inactiveMin > 10 ? '🟡' : '🟢');
+        const activeUnix = Math.floor(lastActiveMs / 1000);
+        const userMention = w.discordId ? `<@${w.discordId}>` : `@${w.username}`;
+
+        const fieldTitle = `${statusEmoji} ${w.username} [${w.countryCode}]`;
+        const infoLines = [
+            `🔑 \`${w.key}\``,
+            `👤 ${userMention}`,
+            `💾 **${(w.scoresSubmitted || 0).toLocaleString()}** récords (\`${w.batchesRequested || 0}\` lotes)`,
+            `⏱️ Última actividad: <t:${activeUnix}:R> (${inactiveMin} min inactivo)`
+        ];
+
+        embed.addFields({
+            name: fieldTitle,
+            value: infoLines.join('\n'),
+            inline: true
+        });
+    }
+
+    return embed;
+}
+
 module.exports = {
     buildPopulateHelpEmbed,
     buildPopulateHelpNavigationRow,
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateWorkersEmbed,
-    buildPopulateTopEmbed
+    buildPopulateTopEmbed,
+    buildPopulateKeysEmbed
 };
