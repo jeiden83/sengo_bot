@@ -561,24 +561,33 @@ class PopulationService {
             scrapedSetTTL.set(countryKey, now);
         }
 
-        // Obtener la lista general de beatmaps aprobados en Supabase
-        const { data: allBeatmaps, error: bErr } = await supabase
-            .from('beatmaps')
-            .select('beatmap_id')
-            .order('beatmap_id', { ascending: true });
-
-        if (bErr || !allBeatmaps) {
-            return { error: 'Error al consultar la lista general de beatmaps.' };
-        }
-
-        // Filtrar aquellos que aún no estén en el conjunto raspado
+        // Recorrer las páginas de ranked_beatmaps en Supabase hasta encontrar 100 mapas pendientes o agotar la tabla
         const pendingMaps = [];
-        for (const b of allBeatmaps) {
-            const bId = Number(b.beatmap_id);
-            if (!scrapedSet.has(bId)) {
-                pendingMaps.push(bId);
-                if (pendingMaps.length >= 100) break; // Lote máximo de 100
+        const pageSize = 1000;
+        let offset = 0;
+
+        while (pendingMaps.length < 100) {
+            const { data: maps, error: bErr } = await supabase
+                .from('ranked_beatmaps')
+                .select('beatmap_id')
+                .gt('beatmap_id', 0)
+                .order('beatmap_id', { ascending: false })
+                .range(offset, offset + pageSize - 1);
+
+            if (bErr || !maps || maps.length === 0) {
+                break;
             }
+
+            for (const m of maps) {
+                const bId = Number(m.beatmap_id);
+                if (!scrapedSet.has(bId)) {
+                    pendingMaps.push(bId);
+                    if (pendingMaps.length >= 100) break;
+                }
+            }
+
+            if (maps.length < pageSize) break;
+            offset += pageSize;
         }
 
         if (pendingMaps.length === 0) {
