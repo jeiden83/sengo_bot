@@ -118,7 +118,8 @@ async function run({ message, res, reply, logger }, args) {
     // ----------------------------------------------------
     // 5. MENU DE AYUDA (s.populate sin argumentos)
     // ----------------------------------------------------
-    const helpEmbed = buildPopulateHelpEmbed(locale);
+    const isOwner = message.author.id === ownerId;
+    const helpEmbed = buildPopulateHelpEmbed(locale, isOwner);
     return { embeds: [helpEmbed] };
 }
 

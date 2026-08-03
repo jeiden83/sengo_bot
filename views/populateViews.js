@@ -4,25 +4,27 @@ const CONFIG = require('../config.js');
 
 /**
  * Genera el embed de ayuda para s.populate
+ * @param {string} locale Código de idioma
+ * @param {boolean} isOwner Indica si el usuario que ejecuta el comando es el Owner del bot
  */
-function buildPopulateHelpEmbed(locale = 'es') {
-    return new EmbedBuilder()
-        .setTitle(t(locale, 'populate.help_header'))
-        .setColor(CONFIG.colors?.primary || 0x3498db)
-        .setDescription(t(locale, 'populate.help_body'))
-        .addFields(
-            {
-                name: t(locale, 'populate.cmd_start_title'),
-                value: t(locale, 'populate.cmd_start_desc')
-            },
-            {
-                name: t(locale, 'populate.cmd_list_title'),
-                value: t(locale, 'populate.cmd_list_desc')
-            },
-            {
-                name: t(locale, 'populate.cmd_top_title'),
-                value: t(locale, 'populate.cmd_top_desc')
-            },
+function buildPopulateHelpEmbed(locale = 'es', isOwner = false) {
+    const fields = [
+        {
+            name: t(locale, 'populate.cmd_start_title'),
+            value: t(locale, 'populate.cmd_start_desc')
+        },
+        {
+            name: t(locale, 'populate.cmd_list_title'),
+            value: t(locale, 'populate.cmd_list_desc')
+        },
+        {
+            name: t(locale, 'populate.cmd_top_title'),
+            value: t(locale, 'populate.cmd_top_desc')
+        }
+    ];
+
+    if (isOwner) {
+        fields.push(
             {
                 name: t(locale, 'populate.cmd_allow_title'),
                 value: t(locale, 'populate.cmd_allow_desc')
@@ -35,7 +37,14 @@ function buildPopulateHelpEmbed(locale = 'es') {
                 name: t(locale, 'populate.cmd_worker_title'),
                 value: t(locale, 'populate.cmd_worker_desc')
             }
-        )
+        );
+    }
+
+    return new EmbedBuilder()
+        .setTitle(t(locale, 'populate.help_header'))
+        .setColor(CONFIG.colors?.primary || 0x3498db)
+        .setDescription(t(locale, 'populate.help_body'))
+        .addFields(fields)
         .setFooter({ text: 'SengoBot • Poblamiento Distribuido' });
 }
 
