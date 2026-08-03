@@ -706,53 +706,62 @@ async function calculateReworkPPForScoreExact(beatmapId, modsStr, scoreStats, ga
         modsArray = matches.filter(m => !ignored.has(m));
     }
 
-    const session = await loadSession();
-    if (!session.accessToken) {
-        throw new Error("No access token available");
-    }
+    try {
+        const session = await loadSession();
+        if (session && session.accessToken) {
+            const url = 'https://api.pp.huismetbenen.nl/calculate-score';
+            const headers = {
+                'Content-Type': 'application/json',
+                'User-Agent': 'Sengo',
+                'Connection': 'close',
+                'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
+            };
 
-    const url = 'https://api.pp.huismetbenen.nl/calculate-score';
-    const headers = {
-        'Content-Type': 'application/json',
-        'User-Agent': 'Sengo',
-        'Connection': 'close',
-        'Cookie': `HUISMETBENEN_ACCESS_TOKEN=${session.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${session.refreshToken}`
-    };
+            const payload = {
+                map_id: Number(beatmapId),
+                mods: modsArray,
+                gamemode: modeNum,
+                rework: reworkCode || 'master',
+                accuracy: scoreStats.accuracy,
+                combo: scoreStats.combo || null,
+                ok: scoreStats.count_100 !== undefined ? scoreStats.count_100 : null,
+                meh: scoreStats.count_50 !== undefined ? scoreStats.count_50 : null,
+                miss: scoreStats.misses !== undefined ? scoreStats.misses : 0
+            };
 
-    const payload = {
-        map_id: Number(beatmapId),
-        mods: modsArray,
-        gamemode: modeNum,
-        rework: reworkCode,
-        accuracy: scoreStats.accuracy,
-        combo: scoreStats.combo || null,
-        ok: scoreStats.count_100 !== undefined ? scoreStats.count_100 : null,
-        meh: scoreStats.count_50 !== undefined ? scoreStats.count_50 : null,
-        miss: scoreStats.misses !== undefined ? scoreStats.misses : 0
-    };
-
-    let attempts = 3;
-    for (let i = 0; i < attempts; i++) {
-        try {
-            const response = await axios.post(url, payload, { headers, timeout: 8000 });
-            if (response.headers['set-cookie']) {
+            const response = await axios.post(url, payload, { headers, timeout: 6000 });
+            if (response.headers && response.headers['set-cookie']) {
                 await updateCookiesFromHeaders(response.headers['set-cookie']);
             }
-            return {
-                pp: response.data.performance_attributes ? response.data.performance_attributes.pp : 0,
-                stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : 0
-            };
-        } catch (err) {
-            const isNetworkError = err.code === 'ECONNRESET' || err.message.includes('socket hang up') || err.code === 'ETIMEDOUT';
-            if (isNetworkError && i < attempts - 1) {
-                await new Promise(resolve => setTimeout(resolve, 300));
-                const updatedSession = await loadSession();
-                headers.Cookie = `HUISMETBENEN_ACCESS_TOKEN=${updatedSession.accessToken}; HUISMETBENEN_REFRESH_TOKEN=${updatedSession.refreshToken}`;
-                continue;
+            if (response.data && response.data.performance_attributes) {
+                return {
+                    pp: response.data.performance_attributes.pp || 0,
+                    stars: response.data.difficulty_attributes ? response.data.difficulty_attributes.star_rating : 0
+                };
             }
-            throw err;
         }
+    } catch (apiErr) {
+        console.warn(`[ReworkModel] API exact calculate-score no disponible (${apiErr.message}). Usando fallback público de scores.`);
     }
+
+    // Fallback público por ratio de mapas
+    try {
+        const reworkObj = await getReworkByQuery(reworkCode, gamemode);
+        const reworkId = reworkObj ? reworkObj.id : 14;
+        const beatmapScores = await getBeatmapReworkScores(beatmapId, reworkId);
+        if (beatmapScores && beatmapScores.length > 0) {
+            const livePP = scoreStats.livePP || 100;
+            const estimated = calculateReworkPPForScore(beatmapScores, modsStr, livePP);
+            return {
+                pp: estimated.pp || 0,
+                stars: 0
+            };
+        }
+    } catch (fallbackErr) {
+        console.error("[ReworkModel] Fallback de recalculación falló:", fallbackErr.message);
+    }
+
+    return { pp: 0, stars: 0 };
 }
 
 // Calcular estimación de PP para un score en base al promedio/ratio de scores del mapa

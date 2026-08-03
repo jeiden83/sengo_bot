@@ -296,6 +296,10 @@ async function run(messages, args) {
             try {
                 const ReworkModel = require("../../../models/ReworkModel.js");
                 const activeModsStr = recent_scores.mods ? (Array.isArray(recent_scores.mods) ? recent_scores.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).join('') : recent_scores.mods) : '';
+                const reworkQuery = parser_res.parsed_args.reworkQuery || "";
+                const reworkObj = await ReworkModel.getReworkByQuery(reworkQuery, recent_scores.beatmap.mode || 'osu');
+                const reworkCode = reworkObj ? reworkObj.code : 'master';
+
                 const reworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
                     recent_scores.beatmap.id,
                     activeModsStr,
@@ -304,10 +308,11 @@ async function run(messages, args) {
                         combo: recent_scores.max_combo,
                         count_100: ok,
                         count_50: meh,
-                        misses: miss
+                        misses: miss,
+                        livePP: user_pp
                     },
                     recent_scores.beatmap.mode || 'osu',
-                    'spotlight_2026'
+                    reworkCode
                 );
                 if (reworkCalc && reworkCalc.pp) {
                     user_pp = reworkCalc.pp;
