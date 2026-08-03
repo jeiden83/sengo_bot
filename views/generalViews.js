@@ -129,7 +129,7 @@ function doAboutEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
         .setFooter({
-            text: t(locale, 'about.footer', { page: pageIndex + 1, total: 7 }),
+            text: t(locale, 'about.footer', { page: pageIndex + 1, total: 8 }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
@@ -160,37 +160,42 @@ function buildAboutNavigationRows(currentPageIndex, locale = 'es') {
             .setStyle(currentPageIndex === 0 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("about_page_1")
-            .setLabel(t(locale, 'about.buttons.oauth'))
-            .setEmoji("🔒")
+            .setLabel(t(locale, 'about.buttons.snipes'))
+            .setEmoji("🎯")
             .setStyle(currentPageIndex === 1 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("about_page_2")
-            .setLabel(t(locale, 'about.buttons.cache'))
-            .setEmoji("⚡")
+            .setLabel(t(locale, 'about.buttons.pop'))
+            .setEmoji("📦")
             .setStyle(currentPageIndex === 2 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("about_page_3")
-            .setLabel(t(locale, 'about.buttons.country_lb'))
-            .setEmoji("🗺️")
+            .setLabel(t(locale, 'about.buttons.cache'))
+            .setEmoji("⚡")
             .setStyle(currentPageIndex === 3 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("about_page_4")
-            .setLabel(t(locale, 'about.buttons.gap'))
-            .setEmoji("👥")
+            .setLabel(t(locale, 'about.buttons.country_lb'))
+            .setEmoji("🗺️")
             .setStyle(currentPageIndex === 4 ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     const row2 = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
             .setCustomId("about_page_5")
-            .setLabel(t(locale, 'about.buttons.recommender'))
-            .setEmoji("🎯")
+            .setLabel(t(locale, 'about.buttons.gap'))
+            .setEmoji("👥")
             .setStyle(currentPageIndex === 5 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("about_page_6")
+            .setLabel(t(locale, 'about.buttons.recommender'))
+            .setEmoji("🎯")
+            .setStyle(currentPageIndex === 6 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("about_page_7")
             .setLabel(t(locale, 'about.buttons.other_commands'))
             .setEmoji("🛠️")
-            .setStyle(currentPageIndex === 6 ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setStyle(currentPageIndex === 7 ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 
     return [row1, row2];
