@@ -1665,7 +1665,22 @@
     "step_estimating": "Calculating estimation...",
     "step_estimating_avg": "Calculating average estimation...",
     "progress_title": "Calculating Rework...",
-    "progress_footer": "Sengo • Elapsed time: {elapsed}s"
+    "progress_footer": "Sengo • Elapsed time: {elapsed}s",
+    "calc_mods": "Mods",
+    "calc_diff": "Difficulty (SR)",
+    "calc_rework": "Rework System",
+    "calc_values_header": "Calculated PP Values",
+    "user_comp_header": "PP Comparison",
+    "user_comp_live": "Live PP",
+    "user_comp_rework": "Rework PP",
+    "user_comp_change": "Difference",
+    "top_single_precision": "Accuracy",
+    "top_single_rank": "Top Rank Change",
+    "top_single_author": "Top Play #{index} in Rework for {username}{chokeSuffix}",
+    "play_author": "Rework Play Comparison for {username}",
+    "user_breakdown_weighted": "Skill Breakdown",
+    "user_breakdown_mods": "Mod Breakdown",
+    "user_loading_mods": "Loading play details..."
   }
 }
 

@@ -1665,7 +1665,22 @@
     "step_estimating": "Calculando estimación...",
     "step_estimating_avg": "Calculando estimación por promedio...",
     "progress_title": "Calculando Rework...",
-    "progress_footer": "Sengo • Tiempo transcurrido: {elapsed}s"
+    "progress_footer": "Sengo • Tiempo transcurrido: {elapsed}s",
+    "calc_mods": "Mods",
+    "calc_diff": "Dificultad (SR)",
+    "calc_rework": "Sistema de Rework",
+    "calc_values_header": "Valores de PP Calculados",
+    "user_comp_header": "Comparación de PP",
+    "user_comp_live": "PP en Live",
+    "user_comp_rework": "PP en Rework",
+    "user_comp_change": "Diferencia",
+    "top_single_precision": "Precisión",
+    "top_single_rank": "Cambio de Rango Top",
+    "top_single_author": "Top Play #{index} en Rework para {username}{chokeSuffix}",
+    "play_author": "Comparación de Jugada Rework para {username}",
+    "user_breakdown_weighted": "Estadísticas por Habilidad",
+    "user_breakdown_mods": "Desglose por Mods",
+    "user_loading_mods": "Cargando detalles de jugadas..."
   }
 }
 

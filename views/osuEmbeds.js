@@ -2225,9 +2225,7 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: locale === 'es' 
-                ? `Comparación de Jugada Rework para ${parsedPlay.username}`
-                : `Rework Play Comparison for ${parsedPlay.username}`,
+            name: t(locale, 'rework.play_author', { username: parsedPlay.username }),
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTitle(mapName)
