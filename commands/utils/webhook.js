@@ -636,8 +636,7 @@ function startServer(client, dbRes, port, config) {
             const key = parsedUrl.query.key;
             const country = parsedUrl.query.country || 'MX';
             const batchResult = await PopulationService.getNextBatch(key, country);
-            const statusCode = batchResult.error === 'UNAUTHORIZED' ? 401 : (batchResult.error ? 400 : 200);
-            res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+            res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(batchResult));
             return;
         }
@@ -649,8 +648,7 @@ function startServer(client, dbRes, port, config) {
                 try {
                     const data = JSON.parse(body);
                     const result = await PopulationService.submitBatch(data.key, data.country, data.scores);
-                    const statusCode = result.error === 'UNAUTHORIZED' ? 401 : (result.error ? 400 : 200);
-                    res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
                 } catch (err) {
                     res.writeHead(400, { 'Content-Type': 'application/json' });

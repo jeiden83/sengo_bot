@@ -245,8 +245,11 @@ class PopulationService {
             return { error: 'NO_SUPPORTER', message: `No hay ningún usuario **Supporter** de ${country} registrado en el pool del bot.` };
         }
 
-        // 5. Reutilizar clave activa del mismo usuario si ya existe para este país (evita consumir varios puestos)
+        // 5. Reutilizar clave activa del mismo usuario si ya existe para este país (RAM o Supabase)
         const strId = String(discordId);
+        const supabase = getSupabaseClient();
+
+        // 5.1 Buscar primero en memoria RAM
         for (const [existingKey, worker] of activeWorkerKeys.entries()) {
             if ((worker.discordId === strId || worker.username === username) && worker.countryCode === country) {
                 worker.lastActiveAt = Date.now();
@@ -258,8 +261,56 @@ class PopulationService {
             }
         }
 
+        // 5.2 Si el servidor se reinició, buscar en Supabase para rehidratar la clave existente
+        if (supabase) {
+            try {
+                const { data: dbExistingWorker } = await supabase
+                    .from('population_workers')
+                    .select('*')
+                    .or(`discord_id.eq.${strId},username.eq.${username}`)
+                    .eq('country_code', country)
+                    .order('last_active_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                if (dbExistingWorker) {
+                    const existingKey = dbExistingWorker.worker_key;
+                    activeWorkerKeys.set(existingKey, {
+                        discordId: dbExistingWorker.discord_id,
+                        username: dbExistingWorker.username,
+                        countryCode: dbExistingWorker.country_code,
+                        createdAt: new Date(dbExistingWorker.created_at).getTime(),
+                        lastActiveAt: Date.now(),
+                        batchesRequested: Number(dbExistingWorker.batches_requested || 0),
+                        scoresSubmitted: Number(dbExistingWorker.scores_submitted || 0)
+                    });
+
+                    if (!activeSessions.has(country)) {
+                        activeSessions.set(country, {
+                            countryCode: country,
+                            isStopped: false,
+                            activeWorkers: new Set()
+                        });
+                    }
+                    activeSessions.get(country).activeWorkers.add(dbExistingWorker.username);
+
+                    // Actualizar tiempo de actividad en Supabase
+                    supabase.from('population_workers').update({
+                        last_active_at: new Date().toISOString()
+                    }).eq('worker_key', existingKey).then(() => {}).catch(() => {});
+
+                    return {
+                        key: existingKey,
+                        countryCode: country,
+                        supporterUser: supporterData.username
+                    };
+                }
+            } catch (eCheck) {
+                console.error(`Error verificando worker key de ${username} en Supabase:`, eCheck.message);
+            }
+        }
+
         // 6. Verificar si los puestos de trabajo para el país están llenos (3 por cada supporter)
-        const supabase = getSupabaseClient();
         let supporterCount = 1;
         if (supabase) {
             try {
@@ -280,6 +331,17 @@ class PopulationService {
                 error: 'SLOTS_FULL',
                 totalSlots
             };
+        }
+
+        // Limpiar cualquier registro duplicado previo en Supabase si se va a generar una nueva clave
+        if (supabase) {
+            try {
+                await supabase
+                    .from('population_workers')
+                    .delete()
+                    .or(`discord_id.eq.${strId},username.eq.${username}`)
+                    .eq('country_code', country);
+            } catch (eDel) {}
         }
 
         // Crear clave única
