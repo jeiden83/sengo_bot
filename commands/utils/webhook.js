@@ -643,16 +643,18 @@ function startServer(client, dbRes, port, config) {
 
         if (req.method === 'POST' && pathname === '/api/worker/submit') {
             let body = '';
-            req.on('data', chunk => { body += chunk.toString(); });
+            req.on('data', chunk => { body += chunk.toString('utf8'); });
             req.on('end', async () => {
                 try {
-                    const data = JSON.parse(body);
+                    const cleanBody = body.replace(/^\uFEFF/, '');
+                    const data = JSON.parse(cleanBody);
                     const result = await PopulationService.submitBatch(data.key, data.country, data.scores);
                     res.writeHead(200, { 'Content-Type': 'application/json' });
                     res.end(JSON.stringify(result));
                 } catch (err) {
+                    console.error("Error al procesar payload de worker submit:", err.message);
                     res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Payload inválido' }));
+                    res.end(JSON.stringify({ error: 'Payload inválido: ' + err.message }));
                 }
             });
             return;

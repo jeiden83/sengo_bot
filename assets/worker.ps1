@@ -176,7 +176,8 @@ while ($true) {
     try {
         $submitCount = $scoresToSubmit.Count
         Write-Host (" Enviando lote de " + $submitCount + " récords al servidor...") -ForegroundColor Gray
-        $submitRes = Invoke-RestMethod -Uri $submitUrl -Method Post -Body $bodyJson -ContentType "application/json" -ErrorAction Stop
+        $bodyBytes = [System.Text.Encoding]::UTF8.GetBytes($bodyJson)
+        $submitRes = Invoke-RestMethod -Uri $submitUrl -Method Post -Body $bodyBytes -ContentType "application/json; charset=utf-8" -ErrorAction Stop
         $savedCount = $submitRes.saved
         $totalSaved += $savedCount
         Write-Host (" Lote enviado a Sengo. Records guardados: " + $savedCount + " (Total acumulado: " + $totalSaved + ")") -ForegroundColor Cyan
