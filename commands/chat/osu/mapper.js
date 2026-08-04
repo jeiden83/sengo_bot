@@ -258,10 +258,6 @@ async function run(messages, args) {
             }
         }
 
-        if (isSengoMode && message.author.id !== CONFIG.OWNER_ID) {
-            return message.reply(t(locale, 'mapper.err_sengo_only'));
-        }
-
         if (forceUpdate && message.author.id !== CONFIG.OWNER_ID) {
             return message.reply(t(locale, 'mapper.err_refresh_only'));
         }
@@ -282,26 +278,6 @@ async function run(messages, args) {
             // Por defecto, si no hay filtro de país pero tampoco global/server/sengo, asumimos país del autor o VE
             const userRecord = await OsuUserModel.getLinkedUser(message.author.id);
             countryFilter = (userRecord && userRecord.country_code) ? userRecord.country_code.toUpperCase() : 'VE';
-        }
-
-        // Verificación de habilitación dinámica para usuarios comunes
-        if (message.author.id !== CONFIG.OWNER_ID) {
-            if (mode === 'national') {
-                const scraped = await OsuUserModel.isCountryScraped(countryFilter);
-                if (!scraped) {
-                    return message.reply(t(locale, 'mapper.err_country_disabled', { country: countryFilter }));
-                }
-            } else if (mode === 'global') {
-                const scraped = await OsuUserModel.isCountryScraped('GLOBAL');
-                if (!scraped) {
-                    return message.reply(t(locale, 'mapper.err_global_disabled'));
-                }
-            } else if (mode === 'sengo' || mode === 'server') {
-                const scraped = await OsuUserModel.isCountryScraped('SENGO');
-                if (!scraped) {
-                    return message.reply(t(locale, 'mapper.err_sengo_disabled'));
-                }
-            }
         }
 
         let statusMessage = null;
