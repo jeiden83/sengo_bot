@@ -625,6 +625,7 @@ class PopulationService {
             return { error: 'PAYLOAD_TOO_LARGE', message: 'Se permite un máximo de 100 scores por petición.', saved: 0 };
         }
 
+        let savedCount = 0;
         let newUniqueCount = 0;
         const cachedSet = scrapedBeatmapSets.get(country);
 
