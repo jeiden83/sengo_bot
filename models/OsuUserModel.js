@@ -1638,7 +1638,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    const totalPages = 20;
+    // ponytail: paginación dinámica — la API devuelve cursor:null cuando no hay más páginas
     let allPlayers = [];
     
     const fetchPage = async (page) => {
@@ -1650,28 +1650,33 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                     'Content-Type': 'application/json',
                     'x-api-version': '20240728'
                 },
-                timeout: 5000
+                timeout: 10000
             });
             return res.data;
         });
     };
     
-    for (let p = 1; p <= totalPages; p++) {
+    let page = 1;
+    while (true) {
         if (onProgress && typeof onProgress === 'function') {
-            await onProgress(p, totalPages + 1, `Obteniendo ranking nacional pág ${p}...`);
+            await onProgress(page, page + 1, `Obteniendo ranking nacional pág ${page}...`);
         }
         try {
-            const data = await fetchPage(p);
+            const data = await fetchPage(page);
             if (data.ranking && data.ranking.length > 0) {
                 allPlayers = allPlayers.concat(data.ranking);
             } else {
                 break;
             }
+            // Si no hay cursor de siguiente página, terminamos
+            if (!data.cursor || data.cursor.page === null) break;
+            page++;
         } catch (err) {
-            console.error(`Error al obtener pág ${p} de ranking de ${countryFilter}:`, err.message);
+            console.error(`Error al obtener pág ${page} de ranking de ${countryFilter}:`, err.message);
             break;
         }
     }
+    const totalPages = page;
     
     const playerIds = allPlayers.filter(p => p.user && p.user.id).map(p => String(p.user.id));
     let dbMappersMap = new Map();
