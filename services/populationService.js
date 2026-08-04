@@ -625,7 +625,9 @@ class PopulationService {
             return { error: 'PAYLOAD_TOO_LARGE', message: 'Se permite un máximo de 100 scores por petición.', saved: 0 };
         }
 
-        let savedCount = 0;
+        let newUniqueCount = 0;
+        const cachedSet = scrapedBeatmapSets.get(country);
+
         for (const s of scores) {
             // Validar que cada score sea un objeto con campos obligatorios numéricos válidos
             if (!s || typeof s !== 'object') continue;
@@ -655,9 +657,11 @@ class PopulationService {
                 });
                 savedCount++;
 
-                const cachedSet = scrapedBeatmapSets.get(country);
                 if (cachedSet) {
-                    cachedSet.add(bId);
+                    if (!cachedSet.has(bId)) {
+                        newUniqueCount++;
+                        cachedSet.add(bId);
+                    }
                 }
 
                 // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
@@ -727,19 +731,25 @@ class PopulationService {
         }
 
         if (savedCount > 0) {
-            countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + savedCount);
+            const updateCount = newUniqueCount > 0 ? newUniqueCount : savedCount;
+            countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + updateCount);
             // Actualizar conteo liviano en Supabase (scraped_countries) sin tocar la cuota de Turso
             try {
                 const supabase = getSupabaseClient();
                 if (supabase) {
-                    const { data: currentScraped } = await supabase
-                        .from('scraped_countries')
-                        .select('scraped_count')
-                        .eq('country_code', country)
-                        .maybeSingle();
+                    let newCount;
+                    if (cachedSet && cachedSet.size > 0) {
+                        newCount = cachedSet.size;
+                    } else {
+                        const { data: currentScraped } = await supabase
+                            .from('scraped_countries')
+                            .select('scraped_count')
+                            .eq('country_code', country)
+                            .maybeSingle();
 
-                    const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
-                    const newCount = currentCount + savedCount;
+                        const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
+                        newCount = currentCount + newUniqueCount;
+                    }
 
                     await supabase
                         .from('scraped_countries')
