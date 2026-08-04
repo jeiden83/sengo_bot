@@ -593,7 +593,7 @@ class PopulationService {
         }
 
         if (pendingMaps.length === 0) {
-            await OsuUserModel.markCountryAsScraped(country);
+            await OsuUserModel.setCountryScraped(country);
             return { status: 'completed', message: 'Poblamiento finalizado al 100% para este país.' };
         }
 
