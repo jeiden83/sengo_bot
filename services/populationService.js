@@ -12,7 +12,7 @@ const allowedCountries = new Set(); // Países expresamente habilitados por el O
 const countryScrapedCounts = new Map(); // Contador en RAM para evitar consumo de cuota de Turso
 const scrapedBeatmapSets = new Map(); // country -> Set<number>
 const scrapedSetTTL = new Map(); // country -> timestamp
-let lastTursoSyncTime = 0;
+const countryLastOffset = new Map(); // country -> offset cursor for fast batch fetching
 
 class PopulationService {
     /**
@@ -500,73 +500,27 @@ class PopulationService {
 
         if (!scrapedSet || (now - lastFetch) > 3600000) {
             scrapedSet = new Set();
-            
-            // 1. Intentar cargar desde Supabase primero (0 cuota de lecturas consumida en Turso)
             try {
-                let from = 0;
-                const limit = 1000;
-                let hasMore = true;
-
-                while (hasMore) {
-                    const { data: scrapedRows, error: supabaseErr } = await supabase
-                        .from('scraped_beatmaps')
-                        .select('beatmap_id')
-                        .eq('country_code', countryKey)
-                        .range(from, from + limit - 1);
-
-                    if (supabaseErr) break;
-
-                    if (scrapedRows && scrapedRows.length > 0) {
-                        for (const r of scrapedRows) {
-                            scrapedSet.add(Number(r.beatmap_id));
-                        }
-                        if (scrapedRows.length < limit) {
-                            hasMore = false;
-                        } else {
-                            from += limit;
-                        }
-                    } else {
-                        hasMore = false;
+                const dbScraped = await TursoDB.executeTurso("SELECT beatmap_id FROM top_scores WHERE country_code = ?", [countryKey]);
+                if (Array.isArray(dbScraped)) {
+                    for (const r of dbScraped) {
+                        if (r.beatmap_id) scrapedSet.add(Number(r.beatmap_id));
                     }
                 }
-            } catch (eSupabase) {
-                console.error(`Error cargando scraped_beatmaps desde Supabase para ${countryKey}:`, eSupabase.message);
-            }
-
-            // 2. Si Supabase no devolvió mapas (ej. tabla aún vacía o fallo), respaldo a Turso
-            if (scrapedSet.size === 0) {
-                try {
-                    const dbScraped = await TursoDB.executeTurso("SELECT beatmap_id FROM top_scores WHERE country_code = ?", [countryKey]);
-                    if (Array.isArray(dbScraped)) {
-                        for (const r of dbScraped) {
-                            if (r.beatmap_id) scrapedSet.add(Number(r.beatmap_id));
-                        }
-                    }
-
-                    // Sincronizar en segundo plano hacia Supabase si Turso tiene mapas raspados
-                    if (scrapedSet.size > 0) {
-                        const rowsToInsert = Array.from(scrapedSet).map(id => ({
-                            beatmap_id: id,
-                            country_code: countryKey
-                        }));
-                        for (let i = 0; i < rowsToInsert.length; i += 500) {
-                            const chunk = rowsToInsert.slice(i, i + 500);
-                            supabase.from('scraped_beatmaps').upsert(chunk, { onConflict: 'beatmap_id,country_code' }).then(() => {}).catch(() => {});
-                        }
-                    }
-                } catch (eTurso) {
-                    console.error(`Error cargando beatmaps raspados desde Turso para ${countryKey}:`, eTurso.message);
-                }
+            } catch (eTurso) {
+                console.error(`Error cargando beatmaps raspados desde Turso para ${countryKey}:`, eTurso.message);
             }
 
             scrapedBeatmapSets.set(countryKey, scrapedSet);
             scrapedSetTTL.set(countryKey, now);
         }
 
-        // Recorrer las páginas de ranked_beatmaps en Supabase hasta encontrar 100 mapas pendientes o agotar la tabla
+        // Recorrer las páginas de ranked_beatmaps en Supabase usando cursor de offset en memoria
         const pendingMaps = [];
         const pageSize = 1000;
-        let offset = 0;
+        let offset = countryLastOffset.get(countryKey) || 0;
+        let wrapped = false;
+        let startOffset = offset;
 
         while (pendingMaps.length < 100) {
             const { data: maps, error: bErr } = await supabase
@@ -577,6 +531,11 @@ class PopulationService {
                 .range(offset, offset + pageSize - 1);
 
             if (bErr || !maps || maps.length === 0) {
+                if (!wrapped && startOffset > 0) {
+                    offset = 0;
+                    wrapped = true;
+                    continue;
+                }
                 break;
             }
 
@@ -588,8 +547,21 @@ class PopulationService {
                 }
             }
 
-            if (maps.length < pageSize) break;
+            if (maps.length < pageSize) {
+                if (!wrapped && startOffset > 0) {
+                    offset = 0;
+                    wrapped = true;
+                    continue;
+                }
+                break;
+            }
+
             offset += pageSize;
+        }
+
+        if (pendingMaps.length > 0) {
+            // Guardar el offset actual para la próxima solicitud (menos 1000 por si quedan mapas en la página actual)
+            countryLastOffset.set(countryKey, Math.max(0, offset - pageSize));
         }
 
         if (pendingMaps.length === 0) {
