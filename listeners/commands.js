@@ -171,11 +171,13 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
         if (message.guild) {
             trackUserGuild(message.author.id, message.guild.id, res);
-            const botMember = message.guild.members.cache.get(client.user.id);
-            const botPermissions = message.channel.permissionsFor(botMember);
-            if (!botPermissions || !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
-                console.error("El bot no tiene permisos para enviar mensajes en este canal.");
-                return;
+            const botMember = message.guild.members.me || message.guild.members.cache.get(client.user.id);
+            if (botMember && message.channel.permissionsFor) {
+                const botPermissions = message.channel.permissionsFor(botMember);
+                if (botPermissions && !botPermissions.has(PermissionsBitField.Flags.SendMessages)) {
+                    console.error("El bot no tiene permisos para enviar mensajes en este canal.");
+                    return;
+                }
             }
         }
 
