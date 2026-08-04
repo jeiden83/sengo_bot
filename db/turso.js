@@ -62,6 +62,35 @@ async function executeTurso(sql, args = []) {
     });
 }
 
+async function executeTursoBatch(statements) {
+    if (!isTursoAvailable() || !statements || statements.length === 0) return [];
+
+    const formattedRequests = statements.map(s => {
+        const formattedArgs = (s.args || []).map(a => {
+            if (a === null || a === undefined) return { type: "null" };
+            if (typeof a === 'number') {
+                if (Number.isInteger(a)) return { type: "integer", value: String(a) };
+                return { type: "float", value: a };
+            }
+            if (typeof a === 'boolean') return { type: "integer", value: a ? "1" : "0" };
+            return { type: "text", value: String(a) };
+        });
+        return { type: "execute", stmt: { sql: s.sql, args: formattedArgs } };
+    });
+
+    const response = await axios.post(`https://${dbHostname}/v2/pipeline`, {
+        requests: formattedRequests
+    }, {
+        headers: {
+            'Authorization': `Bearer ${authToken}`,
+            'Content-Type': 'application/json'
+        },
+        timeout: 15000
+    });
+
+    return response.data?.results || [];
+}
+
 const topsCache = new Map();
 const countCache = new Map();
 const snipesCache = new Map();
@@ -412,9 +441,91 @@ async function saveBeatmap(b) {
     await executeTurso(sql, args);
 }
 
+/**
+ * Guarda un lote de scores y snipes en una sola llamada masiva HTTP a Turso
+ */
+async function saveBatchScoresAndSnipes(scoresToSave = [], snipesToRecord = []) {
+    if (!isTursoAvailable()) return 0;
+    
+    const statements = [];
+    const nowIso = new Date().toISOString();
+
+    for (const s of scoresToSave) {
+        statements.push({
+            sql: `
+                INSERT OR REPLACE INTO top_scores 
+                (beatmap_id, country_code, user_id, username, score, pp, accuracy, mods, ended_at, updated_at, max_combo, perfect, statistics, rank, build_id, mod_settings) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+                s.beatmap_id,
+                s.country_code || 'VE',
+                s.user_id,
+                s.username || '',
+                s.score || 0,
+                s.pp || 0,
+                s.accuracy || 0,
+                s.mods || 'NM',
+                s.ended_at || nowIso,
+                nowIso,
+                s.max_combo || 0,
+                s.perfect ? 1 : 0,
+                typeof s.statistics === 'object' ? JSON.stringify(s.statistics) : (s.statistics || ''),
+                s.rank || '',
+                s.build_id || 0,
+                typeof s.mod_settings === 'object' ? JSON.stringify(s.mod_settings) : (s.mod_settings || '')
+            ]
+        });
+
+        if (s.user_id) {
+            const uStr = s.user_id.toString();
+            for (const k of topsCache.keys()) {
+                if (k.startsWith(uStr + ':')) topsCache.delete(k);
+            }
+            for (const k of countCache.keys()) {
+                if (k.startsWith(uStr + ':')) countCache.delete(k);
+            }
+        }
+    }
+
+    for (const sh of snipesToRecord) {
+        const endedAt = sh.ended_at || nowIso;
+        statements.push({
+            sql: `
+                INSERT OR IGNORE INTO snipes_history 
+                (beatmap_id, sniper_id, sniper_name, sniped_id, sniped_name, pp, ended_at, country_code) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            `,
+            args: [
+                sh.beatmap_id,
+                sh.sniper_id,
+                sh.sniper_name,
+                sh.sniper_name || sh.sniper_name, // sniper_name
+                sh.sniped_name || 'Jugador',
+                sh.pp || 0,
+                endedAt,
+                sh.country_code || 'VE'
+            ]
+        });
+
+        if (sh.sniper_id) snipesCache.delete(sh.sniper_id.toString());
+        if (sh.sniped_id) snipesCache.delete(sh.sniped_id.toString());
+    }
+
+    if (statements.length === 0) return 0;
+
+    for (let i = 0; i < statements.length; i += 100) {
+        const chunk = statements.slice(i, i + 100);
+        await executeTursoBatch(chunk);
+    }
+
+    return scoresToSave.length;
+}
+
 module.exports = {
     isTursoAvailable,
     executeTurso,
+    executeTursoBatch,
     getUserNationalTops,
     getUserNationalTopsCount,
     getUserSnipesHistory,
@@ -422,5 +533,6 @@ module.exports = {
     getBeatmapFromTurso,
     saveTopScore,
     recordSnipe,
-    saveBeatmap
+    saveBeatmap,
+    saveBatchScoresAndSnipes
 };

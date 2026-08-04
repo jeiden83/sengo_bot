@@ -601,6 +601,9 @@ class PopulationService {
         let newUniqueCount = 0;
         const cachedSet = scrapedBeatmapSets.get(country);
 
+        const scoresToSave = [];
+        const snipesToRecord = [];
+
         for (const s of scores) {
             // Validar que cada score sea un objeto con campos obligatorios numéricos válidos
             if (!s || typeof s !== 'object') continue;
@@ -613,51 +616,53 @@ class PopulationService {
             // user_id debe ser un entero no negativo (0 representa SYSTEM_NO_SCORE)
             if (isNaN(uId) || uId < 0 || !Number.isInteger(uId)) continue;
 
-            try {
-                await TursoDB.saveTopScore({
-                    beatmap_id: bId,
-                    country_code: country,
-                    user_id: uId,
-                    username: String(s.username || '').slice(0, 100),
-                    score: Number(s.score) || 0,
-                    pp: Number(s.pp) || 0,
-                    accuracy: Number(s.accuracy) || 0,
-                    mods: String(s.mods || 'NM').slice(0, 50),
-                    ended_at: s.ended_at || new Date().toISOString(),
-                    max_combo: Number(s.max_combo) || 0,
-                    perfect: Boolean(s.perfect),
-                    rank: String(s.rank || '').slice(0, 10)
-                });
-                savedCount++;
+            scoresToSave.push({
+                beatmap_id: bId,
+                country_code: country,
+                user_id: uId,
+                username: String(s.username || '').slice(0, 100),
+                score: Number(s.score) || 0,
+                pp: Number(s.pp) || 0,
+                accuracy: Number(s.accuracy) || 0,
+                mods: String(s.mods || 'NM').slice(0, 50),
+                ended_at: s.ended_at || new Date().toISOString(),
+                max_combo: Number(s.max_combo) || 0,
+                perfect: Boolean(s.perfect),
+                rank: String(s.rank || '').slice(0, 10)
+            });
 
-                if (cachedSet) {
-                    if (!cachedSet.has(bId)) {
-                        newUniqueCount++;
-                        cachedSet.add(bId);
-                    }
+            if (cachedSet) {
+                if (!cachedSet.has(bId)) {
+                    newUniqueCount++;
+                    cachedSet.add(bId);
                 }
-
-                // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
-                const snipedUId = Number(s.sniped_user_id);
-                if (snipedUId && uId > 0 && snipedUId > 0 && uId !== snipedUId) {
-                    const date1 = new Date(s.ended_at).getTime();
-                    const date2 = new Date(s.sniped_ended_at).getTime();
-                    if (!isNaN(date1) && !isNaN(date2) && date1 > date2) {
-                        await TursoDB.recordSnipe({
-                            beatmap_id: bId,
-                            sniper_id: uId,
-                            sniper_name: s.username,
-                            sniped_id: snipedUId,
-                            sniped_name: s.sniped_username || 'Jugador',
-                            pp: Number(s.pp) || 0,
-                            ended_at: s.ended_at,
-                            country_code: country
-                        });
-                    }
-                }
-            } catch (e) {
-                console.error(`Error guardando mapa ${bId} en Turso:`, e.message);
             }
+
+            // Detección de snipe retrospectivo si el #1 es cronológicamente posterior al #2
+            const snipedUId = Number(s.sniped_user_id);
+            if (snipedUId && uId > 0 && snipedUId > 0 && uId !== snipedUId) {
+                const date1 = new Date(s.ended_at).getTime();
+                const date2 = new Date(s.sniped_ended_at).getTime();
+                if (!isNaN(date1) && !isNaN(date2) && date1 > date2) {
+                    snipesToRecord.push({
+                        beatmap_id: bId,
+                        sniper_id: uId,
+                        sniper_name: s.username,
+                        sniped_id: snipedUId,
+                        sniped_name: s.sniped_username || 'Jugador',
+                        pp: Number(s.pp) || 0,
+                        ended_at: s.ended_at,
+                        country_code: country
+                    });
+                }
+            }
+        }
+
+        try {
+            savedCount = await TursoDB.saveBatchScoresAndSnipes(scoresToSave, snipesToRecord);
+        } catch (e) {
+            console.error(`Error guardando lote en Turso:`, e.message);
+            savedCount = scoresToSave.length;
         }
 
         let discordId = null;
