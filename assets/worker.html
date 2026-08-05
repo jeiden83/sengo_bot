@@ -449,19 +449,15 @@
                         if (isStopped) break;
 
                         const bId = maps[i];
-                        const osuUrl = `https://osu.ppy.sh/api/v2/beatmaps/${bId}/scores?mode=osu&type=country`;
+                        const proxyUrl = `${SERVER}/api/worker/osu-scores?key=${encodeURIComponent(KEY)}&country=${encodeURIComponent(COUNTRY)}&beatmap_id=${bId}`;
 
                         try {
-                            const osuRes = await fetch(osuUrl, {
-                                headers: {
-                                    'Authorization': `Bearer ${token}`,
-                                    'x-api-version': '20220705',
-                                    'User-Agent': 'osu-api-extended v3.4.7'
-                                }
-                            });
+                            const osuRes = await fetch(proxyUrl);
+                            const scoreData = await osuRes.json();
 
-                            if (osuRes.ok) {
-                                const scoreData = await osuRes.json();
+                            if (scoreData.error) {
+                                log(`Error en mapa ${bId}: ${scoreData.error}`, 'warn');
+                            } else {
                                 const scores = scoreData.scores || [];
 
                                 if (scores.length > 0) {

@@ -981,6 +981,45 @@ class PopulationService {
     }
 
     /**
+     * Proxy para consultas de scores de osu! API desde el Worker Web (evita CORS del navegador)
+     */
+    static async proxyOsuScores(key, countryCode, beatmapId) {
+        if (!key || !(await this.isWorkerKeyValid(key))) {
+            return { error: 'UNAUTHORIZED', scores: [] };
+        }
+
+        const country = countryCode ? countryCode.toUpperCase() : 'MX';
+        const supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
+        if (!supporterData || !supporterData.token) {
+            return { error: 'Sin supporter token disponible.', scores: [] };
+        }
+
+        // Mantener vivo el worker
+        if (activeWorkerKeys.has(key)) {
+            activeWorkerKeys.get(key).lastActiveAt = Date.now();
+        }
+
+        try {
+            const osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
+                headers: {
+                    'Authorization': `Bearer ${supporterData.token}`,
+                    'x-api-version': '20220705',
+                    'User-Agent': 'osu-api-extended v3.4.7'
+                }
+            });
+
+            if (!osuRes.ok) {
+                return { error: `osu API: ${osuRes.status}`, scores: [] };
+            }
+
+            const data = await osuRes.json();
+            return { scores: data.scores || [] };
+        } catch (err) {
+            return { error: err.message, scores: [] };
+        }
+    }
+
+    /**
      * Retorna el script de PowerShell en texto plano desde assets/worker.ps1
      */
     static getPowerShellScript(defaultKey = '', defaultCountry = '') {

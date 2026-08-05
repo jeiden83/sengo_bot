@@ -641,6 +641,21 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
+        if (req.method === 'GET' && pathname === '/api/worker/osu-scores') {
+            const key = parsedUrl.query.key;
+            const country = parsedUrl.query.country || 'MX';
+            const beatmapId = parsedUrl.query.beatmap_id;
+            if (!key || !beatmapId) {
+                res.writeHead(400, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Faltan parámetros requeridos.' }));
+                return;
+            }
+            const result = await PopulationService.proxyOsuScores(key, country, beatmapId);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify(result));
+            return;
+        }
+
         if (req.method === 'POST' && pathname === '/api/worker/submit') {
             let body = '';
             req.on('data', chunk => { body += chunk.toString('utf8'); });
