@@ -292,13 +292,16 @@ async function run(messages, args) {
 
         let user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
 
+        let reworkCodeUsed = 'master';
+        let reworkStarsUsed = null;
+
         if (isRework) {
             try {
                 const ReworkModel = require("../../../models/ReworkModel.js");
                 const activeModsStr = recent_scores.mods ? (Array.isArray(recent_scores.mods) ? recent_scores.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).join('') : recent_scores.mods) : '';
                 const reworkQuery = parser_res.parsed_args.reworkQuery || "";
                 const reworkObj = await ReworkModel.getReworkByQuery(reworkQuery, recent_scores.beatmap.mode || 'osu');
-                const reworkCode = reworkObj ? reworkObj.code : 'master';
+                reworkCodeUsed = reworkObj ? reworkObj.code : 'master';
 
                 const reworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
                     recent_scores.beatmap.id,
@@ -312,10 +315,13 @@ async function run(messages, args) {
                         livePP: user_pp
                     },
                     recent_scores.beatmap.mode || 'osu',
-                    reworkCode
+                    reworkCodeUsed
                 );
                 if (reworkCalc && reworkCalc.pp) {
                     user_pp = reworkCalc.pp;
+                }
+                if (reworkCalc && reworkCalc.stars) {
+                    reworkStarsUsed = reworkCalc.stars;
                 }
             } catch (reworkErr) {
                 console.error("Error al calcular Rework PP para rs -rework:", reworkErr.message);
@@ -351,7 +357,9 @@ async function run(messages, args) {
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,
             "pp_fc": pp_fc,
-            "isRework": isRework
+            "isRework": isRework,
+            "reworkCode": reworkCodeUsed,
+            "reworkStars": reworkStarsUsed
         };
 
         saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));

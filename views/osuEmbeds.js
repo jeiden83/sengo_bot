@@ -45,7 +45,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const difficulty = (pre_calculated.reworkStars || pre_calculated.maxAttrs.difficulty.stars).toFixed(2);
     const embedColor = getEmbedColor(message);
 
     const stats = recent_scores.statistics || {};
@@ -204,7 +204,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
 
     if (pre_calculated.isRework) {
         authorName = `👑 Jugada Reciente (Rework) para ${username}`;
-        footerText = `Sengo • Rework PP (spotlight_2026)`;
+        footerText = `Sengo • Rework PP (${pre_calculated.reworkCode || 'master'})`;
     } else if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null) {
