@@ -514,7 +514,7 @@
 
                         totalProcessed++;
                         updateStats(i + 1, maps.length);
-                        await new Promise(r => setTimeout(r, 1800)); // 1.8s entre peticiones
+                        await new Promise(r => setTimeout(r, 3200)); // 3.2s entre peticiones
                     }
 
                     if (scoresToSubmit.length > 0 && !isStopped) {
