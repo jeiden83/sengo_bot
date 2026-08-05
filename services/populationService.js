@@ -783,19 +783,14 @@ class PopulationService {
             try {
                 const supabase = getSupabaseClient();
                 if (supabase) {
-                    let newCount;
-                    if (cachedSet && cachedSet.size > 0) {
-                        newCount = cachedSet.size;
-                    } else {
-                        const { data: currentScraped } = await supabase
-                            .from('scraped_countries')
-                            .select('scraped_count')
-                            .eq('country_code', country)
-                            .maybeSingle();
+                    const { data: currentScraped } = await supabase
+                        .from('scraped_countries')
+                        .select('scraped_count')
+                        .eq('country_code', country)
+                        .maybeSingle();
 
-                        const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
-                        newCount = currentCount + newUniqueCount;
-                    }
+                    const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
+                    const newCount = currentCount + updateCount;
 
                     await supabase
                         .from('scraped_countries')
