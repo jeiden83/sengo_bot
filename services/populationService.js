@@ -783,7 +783,7 @@ class PopulationService {
     /**
      * Obtiene el ranking de principales colaboradores de poblamiento desde Supabase
      */
-    static async getTopContributors(limit = 10) {
+    static async getTopContributors(limit = 100) {
         try {
             const supabase = getSupabaseClient();
             if (!supabase) return [];

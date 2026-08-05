@@ -7,6 +7,7 @@ const {
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateTopEmbed,
+    buildPopulateTopNavigationRow,
     buildPopulateKeysEmbed
 } = require('../../../views/populateViews.js');
 
@@ -28,9 +29,68 @@ async function run({ message, res, reply, logger }, args) {
     // 2. SUBCOMANDO: -top / -ranking (Ranking de Colaboradores)
     // ----------------------------------------------------
     if (arg1 === '-top' || arg1 === '-ranking' || arg1 === 'top' || arg1 === 'ranking') {
-        const topList = await PopulationService.getTopContributors(10);
-        const embed = buildPopulateTopEmbed(topList, locale);
-        return { embeds: [embed] };
+        const topList = await PopulationService.getTopContributors(100);
+        const pageSize = 10;
+        const totalPages = Math.max(1, Math.ceil(topList.length / pageSize));
+        let currentPage = 0;
+
+        const embed = buildPopulateTopEmbed(topList, locale, currentPage, pageSize);
+
+        if (totalPages <= 1) {
+            return { embeds: [embed] };
+        }
+
+        const row = buildPopulateTopNavigationRow(currentPage, totalPages);
+        const sendOptions = { embeds: [embed], components: [row] };
+
+        let sentMessage;
+        if (reply) {
+            sentMessage = await reply.reply(sendOptions);
+        } else if (message && message.channel) {
+            sentMessage = await message.channel.send(sendOptions);
+        }
+
+        if (!sentMessage) return;
+
+        const collector = sentMessage.createMessageComponentCollector({
+            idle: 60000 // 60s inactividad
+        });
+
+        collector.on('collect', async i => {
+            if (i.user.id !== message.author.id) {
+                return i.reply({
+                    content: t(locale, 'populate.only_author'),
+                    ephemeral: true
+                }).catch(() => {});
+            }
+
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === 'pop_top_first') currentPage = 0;
+                else if (i.customId === 'pop_top_prev') currentPage = Math.max(0, currentPage - 1);
+                else if (i.customId === 'pop_top_next') currentPage = Math.min(totalPages - 1, currentPage + 1);
+                else if (i.customId === 'pop_top_last') currentPage = totalPages - 1;
+
+                const nextEmbed = buildPopulateTopEmbed(topList, locale, currentPage, pageSize);
+                const nextRow = buildPopulateTopNavigationRow(currentPage, totalPages);
+
+                await i.editReply({
+                    embeds: [nextEmbed],
+                    components: [nextRow]
+                });
+            } catch (err) {
+                console.error("Error en navegación de s.populate -top:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sentMessage.edit({ components: [] });
+            } catch (e) {}
+        });
+
+        return;
     }
 
     // ----------------------------------------------------

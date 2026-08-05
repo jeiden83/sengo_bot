@@ -220,12 +220,16 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', 
 /**
  * Genera el embed de tabla de clasificación de top colaboradores (s.populate -top)
  */
-function buildPopulateTopEmbed(topList, locale = 'es') {
+function buildPopulateTopEmbed(topList, locale = 'es', page = 0, pageSize = 10) {
+    const totalItems = topList ? topList.length : 0;
+    const totalPages = Math.max(1, Math.ceil(totalItems / pageSize));
+    const currentPage = Math.min(Math.max(0, page), totalPages - 1);
+
     const embed = new EmbedBuilder()
         .setTitle(t(locale, 'populate.top_embed_title'))
         .setColor(CONFIG.colors?.gold || 0xf1c40f)
         .setDescription(t(locale, 'populate.top_embed_desc'))
-        .setFooter({ text: 'Sengo • Historial de Colaboradores' })
+        .setFooter({ text: `Sengo • Historial de Colaboradores • Página ${currentPage + 1}/${totalPages}` })
         .setTimestamp();
 
     if (!topList || topList.length === 0) {
@@ -237,8 +241,10 @@ function buildPopulateTopEmbed(topList, locale = 'es') {
     }
 
     const medals = ['🥇', '🥈', '🥉'];
-    const lines = topList.map((item, index) => {
-        const rankIcon = medals[index] || `\`#${index + 1}\``;
+    const pageItems = topList.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+    const lines = pageItems.map((item, idx) => {
+        const globalIndex = currentPage * pageSize + idx;
+        const rankIcon = medals[globalIndex] || `\`#${globalIndex + 1}\``;
         const userMention = item.discord_id && !isNaN(item.discord_id) ? `<@${item.discord_id}>` : `**${item.username}**`;
         const scores = Number(item.scores_submitted || 0).toLocaleString();
         const batches = Number(item.batches_requested || 0).toLocaleString();
@@ -251,6 +257,37 @@ function buildPopulateTopEmbed(topList, locale = 'es') {
     });
 
     return embed;
+}
+
+/**
+ * Genera la fila de botones de navegación para la tabla de clasificación de colaboradores (s.populate -top)
+ */
+function buildPopulateTopNavigationRow(page = 0, totalPages = 1) {
+    const disablePrev = page <= 0;
+    const disableNext = page >= totalPages - 1;
+
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("pop_top_first")
+            .setLabel("<<")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disablePrev),
+        new ButtonBuilder()
+            .setCustomId("pop_top_prev")
+            .setLabel("<")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disablePrev),
+        new ButtonBuilder()
+            .setCustomId("pop_top_next")
+            .setLabel(">")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disableNext),
+        new ButtonBuilder()
+            .setCustomId("pop_top_last")
+            .setLabel(">>")
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(disableNext)
+    );
 }
 
 /**
@@ -304,5 +341,6 @@ module.exports = {
     buildPopulateStatusEmbed,
     buildPopulateDmEmbed,
     buildPopulateTopEmbed,
+    buildPopulateTopNavigationRow,
     buildPopulateKeysEmbed
 };
