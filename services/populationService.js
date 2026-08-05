@@ -13,6 +13,23 @@ const countryScrapedCounts = new Map(); // Contador en RAM para evitar consumo d
 const scrapedBeatmapSets = new Map(); // country -> Set<number>
 const scrapedSetTTL = new Map(); // country -> timestamp
 const countryLastOffset = new Map(); // country -> offset cursor for fast batch fetching
+const assignedInFlightBeatmaps = new Map(); // country -> Map<beatmapId, timestamp>
+
+function getInFlightSet(countryKey) {
+    let map = assignedInFlightBeatmaps.get(countryKey);
+    if (!map) {
+        map = new Map();
+        assignedInFlightBeatmaps.set(countryKey, map);
+    }
+    const now = Date.now();
+    const TTL_MS = 15 * 60 * 1000; // Expira a los 15 minutos en caso de desconexión del worker
+    for (const [bId, ts] of map.entries()) {
+        if (now - ts > TTL_MS) {
+            map.delete(bId);
+        }
+    }
+    return map;
+}
 
 class PopulationService {
     /**
@@ -491,36 +508,42 @@ class PopulationService {
             return { error: 'Error de conexión con la base de datos.' };
         }
 
-        // Caché en memoria para los beatmaps ya raspados por país (TTL 1 hora, actualizado en tiempo real con submitBatch)
+        // Caché en memoria para los beatmaps ya raspados por país
         const countryKey = country.toUpperCase();
         const now = Date.now();
 
-        let scrapedSet = scrapedBeatmapSets.get(countryKey);
-        const lastFetch = scrapedSetTTL.get(countryKey) || 0;
-
-        if (!scrapedSet || (now - lastFetch) > 3600000) {
-            scrapedSet = new Set();
+        // 1. Inicialización inteligente de countryLastOffset desde Supabase (si no está cargado)
+        if (!countryLastOffset.has(countryKey)) {
+            let initialOffset = 0;
             try {
-                const dbScraped = await TursoDB.executeTurso("SELECT beatmap_id FROM top_scores WHERE country_code = ?", [countryKey]);
-                if (Array.isArray(dbScraped)) {
-                    for (const r of dbScraped) {
-                        if (r.beatmap_id) scrapedSet.add(Number(r.beatmap_id));
-                    }
-                }
-            } catch (eTurso) {
-                console.error(`Error cargando beatmaps raspados desde Turso para ${countryKey}:`, eTurso.message);
-            }
+                const { data: scData } = await supabase
+                    .from('scraped_countries')
+                    .select('scraped_count')
+                    .eq('country_code', countryKey)
+                    .maybeSingle();
 
-            scrapedBeatmapSets.set(countryKey, scrapedSet);
-            scrapedSetTTL.set(countryKey, now);
+                const currentScrapedCount = scData?.scraped_count || 0;
+                // Iniciar 2,000 mapas antes del conteo raspado actual para evitar saltearse cualquier mapa
+                initialOffset = Math.max(0, currentScrapedCount - 2000);
+            } catch (errOffset) {
+                initialOffset = 0;
+            }
+            countryLastOffset.set(countryKey, initialOffset);
         }
 
-        // Recorrer las páginas de ranked_beatmaps en Supabase usando cursor de offset en memoria
+        const inFlightMap = getInFlightSet(countryKey);
+        let sessionScrapedSet = scrapedBeatmapSets.get(countryKey);
+        if (!sessionScrapedSet) {
+            sessionScrapedSet = new Set();
+            scrapedBeatmapSets.set(countryKey, sessionScrapedSet);
+        }
+
+        // 2. Recorrer páginas de candidatos desde Supabase y consultar Turso solo para los candidatos (búsqueda por IN)
         const pendingMaps = [];
-        const pageSize = 1000;
+        const candidatePageSize = 300;
         let offset = countryLastOffset.get(countryKey) || 0;
         let wrapped = false;
-        let startOffset = offset;
+        const startOffset = offset;
 
         while (pendingMaps.length < 100) {
             const { data: maps, error: bErr } = await supabase
@@ -528,7 +551,7 @@ class PopulationService {
                 .select('beatmap_id')
                 .gt('beatmap_id', 0)
                 .order('beatmap_id', { ascending: false })
-                .range(offset, offset + pageSize - 1);
+                .range(offset, offset + candidatePageSize - 1);
 
             if (bErr || !maps || maps.length === 0) {
                 if (!wrapped && startOffset > 0) {
@@ -539,15 +562,45 @@ class PopulationService {
                 break;
             }
 
+            // Filtrar en memoria mapas que ya tenemos en caché local de sesión o asignados a otro worker en vuelo
+            const candidateIds = [];
             for (const m of maps) {
                 const bId = Number(m.beatmap_id);
-                if (!scrapedSet.has(bId)) {
+                if (!sessionScrapedSet.has(bId) && !inFlightMap.has(bId)) {
+                    candidateIds.push(bId);
+                }
+            }
+
+            // De los candidatos, consultar en Turso únicamente por sus IDs con WHERE beatmap_id IN (...) (Ultra eficiente: ~300 lecturas max por lote)
+            const alreadyScrapedInTurso = new Set();
+            if (candidateIds.length > 0) {
+                try {
+                    const placeholders = candidateIds.map(() => '?').join(',');
+                    const sql = `SELECT beatmap_id FROM top_scores WHERE country_code = ? AND beatmap_id IN (${placeholders})`;
+                    const rows = await TursoDB.executeTurso(sql, [countryKey, ...candidateIds]);
+                    if (Array.isArray(rows)) {
+                        for (const r of rows) {
+                            if (r.beatmap_id) {
+                                const bIdNum = Number(r.beatmap_id);
+                                alreadyScrapedInTurso.add(bIdNum);
+                                sessionScrapedSet.add(bIdNum); // Guardar en caché de sesión para no repetir la consulta
+                            }
+                        }
+                    }
+                } catch (eTurso) {
+                    console.error(`[PopulationService] Error en consulta reducida de Turso para ${countryKey}:`, eTurso.message);
+                }
+            }
+
+            for (const bId of candidateIds) {
+                if (!alreadyScrapedInTurso.has(bId)) {
                     pendingMaps.push(bId);
+                    inFlightMap.set(bId, now); // Marcar como en vuelo para otros workers
                     if (pendingMaps.length >= 100) break;
                 }
             }
 
-            if (maps.length < pageSize) {
+            if (maps.length < candidatePageSize) {
                 if (!wrapped && startOffset > 0) {
                     offset = 0;
                     wrapped = true;
@@ -556,12 +609,11 @@ class PopulationService {
                 break;
             }
 
-            offset += pageSize;
+            offset += candidatePageSize;
         }
 
         if (pendingMaps.length > 0) {
-            // Guardar el offset actual para la próxima solicitud (menos 1000 por si quedan mapas en la página actual)
-            countryLastOffset.set(countryKey, Math.max(0, offset - pageSize));
+            countryLastOffset.set(countryKey, Math.max(0, offset - candidatePageSize));
         }
 
         if (pendingMaps.length === 0) {
@@ -663,6 +715,22 @@ class PopulationService {
         } catch (e) {
             console.error(`Error guardando lote en Turso:`, e.message);
             savedCount = scoresToSave.length;
+        }
+
+        // Liberar mapas en vuelo y registrar en caché de sesión local
+        const inFlightMap = assignedInFlightBeatmaps.get(country);
+        let sessionScrapedSet = scrapedBeatmapSets.get(country);
+        if (!sessionScrapedSet) {
+            sessionScrapedSet = new Set();
+            scrapedBeatmapSets.set(country, sessionScrapedSet);
+        }
+
+        for (const s of scores) {
+            if (s && s.beatmap_id) {
+                const bIdNum = Number(s.beatmap_id);
+                if (inFlightMap) inFlightMap.delete(bIdNum);
+                sessionScrapedSet.add(bIdNum);
+            }
         }
 
         let discordId = null;
