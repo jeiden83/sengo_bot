@@ -297,10 +297,10 @@
         let rawKey = "__WORKER_KEY__";
         let rawCountry = "__WORKER_COUNTRY__";
 
-        if (!rawKey || rawKey === "__WORKER_KEY__") {
+        if (!rawKey || rawKey === "__WORKER_" + "KEY__") {
             rawKey = urlParams.get('key') || '';
         }
-        if (!rawCountry || rawCountry === "__WORKER_COUNTRY__") {
+        if (!rawCountry || rawCountry === "__WORKER_" + "COUNTRY__") {
             rawCountry = urlParams.get('country') || 'MX';
         }
 
@@ -386,7 +386,7 @@
         }
 
         async function runWorkerLoop() {
-            if (!KEY || KEY === '__WORKER_KEY__') {
+            if (!KEY || KEY === '__WORKER_' + 'KEY__') {
                 log('Error: Clave de trabajador no especificada o inválida.', 'error');
                 return;
             }
