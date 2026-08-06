@@ -2235,6 +2235,8 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
         hitsText = ` [${parsedPlay.hits.join("/")}]`;
     }
 
+    const failedNote = parsedPlay.isFailed ? `\n\n${t(locale, 'rework.failed_play_note')}` : '';
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: t(locale, 'rework.play_author', { username: parsedPlay.username }),
@@ -2254,7 +2256,7 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
 ▸ **${t(locale, 'rework.user_comp_rework') || 'PP en Rework'}:** \`${reworkPP.toFixed(2)} pp\`
 ▸ **${t(locale, 'rework.user_comp_change') || 'Cambio'}:** \`${diffString}\`
 ▸ **${t(locale, 'rework.top_single_precision') || 'Precisión'}:** \`${parsedPlay.accuracy.toFixed(2)}%\`${hitsText}
-▸ **Combo:** \`x${parsedPlay.combo || '?'}/${parsedPlay.maxCombo || beatmap.max_combo || '?'}\`
+▸ **Combo:** \`x${parsedPlay.combo || '?'}/${parsedPlay.maxCombo || beatmap.max_combo || '?'}\`${failedNote}
         `)
         .setFooter({
             text: `Sengo • PP Rework Play Comparison`,

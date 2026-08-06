@@ -777,10 +777,6 @@ async function run(messages, args) {
     const hitsFormatRegex = /^(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)\/(?:x|\d+)$/i;
     const hitsArg = args.find(arg => typeof arg === 'string' && hitsFormatRegex.test(arg));
 
-    if (parsedPlay && parsedPlay.isFailed && overrideAcc === null && overrideMisses === null && overrideCombo === null && !hitsArg) {
-        return t(locale, 'rework.err_failed_play');
-    }
-
     // Aplicar overrides a parsedPlay si existe
     if (parsedPlay) {
         if (overrideMods) {
@@ -1019,8 +1015,8 @@ async function run(messages, args) {
             parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
         }
 
-        // Recalcular livePP usando rosu-pp-js si hubo overrides o es mock
-        if (parsedPlay.isMock || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null) {
+        // Recalcular livePP usando rosu-pp-js si hubo overrides, es mock o es play fallida
+        if (parsedPlay.isMock || parsedPlay.isFailed || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null) {
             try {
                 const livePerf = new rosu.Performance({
                     mods: activeModsStr,
@@ -1315,7 +1311,7 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
         parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
     }
 
-    if (parsedPlay.isMock || !parsedPlay.livePP) {
+    if (parsedPlay.isMock || parsedPlay.isFailed || !parsedPlay.livePP) {
         try {
             const livePerf = new rosu.Performance({
                 mods: activeModsStr,
