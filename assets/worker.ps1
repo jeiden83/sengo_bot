@@ -172,7 +172,7 @@ while ($true) {
             Write-Host (" Error en mapa " + $bId + ": " + $errMessage) -ForegroundColor DarkYellow
         }
 
-        Start-Sleep -Milliseconds 500
+        Start-Sleep -Seconds 3.5
     }
 
     $submitUrl = $Server + "/api/worker/submit"
