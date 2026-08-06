@@ -72,6 +72,7 @@ while ($true) {
     Write-Host ("[" + $timeStr + "] Lote de " + $mapsCount + " mapas recibido. Raspando...") -ForegroundColor White
 
     $scoresToSubmit = @()
+    $consecutive429 = 0
 
     for ($i = 0; $i -lt $maps.Count; $i++) {
         $bId = $maps[$i]
@@ -156,12 +157,15 @@ while ($true) {
             $speed = 0
             if ($elapsed -gt 0) { $speed = [math]::Round($processed / $elapsed, 2) }
             $currIdx = $i + 1
+            $consecutive429 = 0
             Write-Host (" Progress: " + $currIdx + "/" + $mapsCount + " | Total Procesados: " + $processed + " | Velocidad: " + $speed + " mapas/s") -ForegroundColor Green
         } catch {
             $errMessage = $_.Exception.Message
             if ($errMessage -like "*429*" -or ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 429)) {
-                Write-Host " [429 Rate Limit] La IP/API de osu! esta pausada. Esperando 10s antes de reintentar..." -ForegroundColor Yellow
-                Start-Sleep -Seconds 10
+                $consecutive429++
+                $waitSecs = [math]::Min(60, 10 * $consecutive429)
+                Write-Host (" [429 Rate Limit] IP/API pausada. Esperando " + $waitSecs + "s antes de reintentar (Intento #" + $consecutive429 + ")...") -ForegroundColor Yellow
+                Start-Sleep -Seconds $waitSecs
                 $i--
                 continue
             }
