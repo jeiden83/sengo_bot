@@ -159,10 +159,16 @@ while ($true) {
             Write-Host (" Progress: " + $currIdx + "/" + $mapsCount + " | Total Procesados: " + $processed + " | Velocidad: " + $speed + " mapas/s") -ForegroundColor Green
         } catch {
             $errMessage = $_.Exception.Message
+            if ($errMessage -like "*429*" -or ($_.Exception.Response -and [int]$_.Exception.Response.StatusCode -eq 429)) {
+                Write-Host " [429 Rate Limit] La IP/API de osu! esta pausada. Esperando 10s antes de reintentar..." -ForegroundColor Yellow
+                Start-Sleep -Seconds 10
+                $i--
+                continue
+            }
             Write-Host (" Error en mapa " + $bId + ": " + $errMessage) -ForegroundColor DarkYellow
         }
 
-        Start-Sleep -Seconds 3
+        Start-Sleep -Milliseconds 500
     }
 
     $submitUrl = $Server + "/api/worker/submit"
