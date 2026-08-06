@@ -2122,7 +2122,10 @@ async function isCountryScraped(countryCode) {
     if (!code) return false;
 
     const cached = scrapedCountriesCache.get(code);
-    if (cached && (Date.now() - cached.timestamp) < SCRAPED_CACHE_TTL) {
+    // Si el país ya fue confirmado como completado (isScraped === true), usamos caché de 10 min.
+    // Si es false (aún poblándose), usamos caché corta de 10 segundos para actualizar inmediatamente al llegar al 100%.
+    const ttl = (cached && cached.isScraped) ? SCRAPED_CACHE_TTL : 10 * 1000;
+    if (cached && (Date.now() - cached.timestamp) < ttl) {
         return cached.isScraped;
     }
 
@@ -2145,18 +2148,24 @@ async function isCountryScraped(countryCode) {
 }
 
 async function setCountryScraped(countryCode, isScraped = true) {
+    const code = (countryCode || '').toUpperCase();
+    if (!code) return;
+
+    // Actualizar la caché en RAM de inmediato para reflejar el estado sin demoras
+    scrapedCountriesCache.set(code, { isScraped, timestamp: Date.now() });
+
     const supabase = getSupabaseClient();
     if (!supabase) return;
     try {
         await supabase
             .from('scraped_countries')
             .upsert({
-                country_code: countryCode.toUpperCase(),
+                country_code: code,
                 is_scraped: isScraped,
                 last_scraped_at: new Date().toISOString()
             }, { onConflict: 'country_code' });
     } catch (err) {
-        console.error(`Error al establecer estado de scrapeo para ${countryCode}:`, err);
+        console.error(`Error al establecer estado de scrapeo para ${code}:`, err);
     }
 }
 
