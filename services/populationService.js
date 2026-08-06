@@ -1052,7 +1052,7 @@ class PopulationService {
         }
 
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
-        const supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
+        let supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
         if (!supporterData || !supporterData.token) {
             return { error: 'Sin supporter token disponible.', scores: [] };
         }
@@ -1063,13 +1063,28 @@ class PopulationService {
         }
 
         try {
-            const osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
+            let osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
                 headers: {
                     'Authorization': `Bearer ${supporterData.token}`,
                     'x-api-version': '20220705',
                     'User-Agent': 'osu-api-extended v3.4.7'
                 }
             });
+
+            // Si la API responde con 429 (Demasiadas peticiones), esperar 1.5s y reintentar con otro token del pool
+            if (osuRes.status === 429) {
+                await new Promise(r => setTimeout(r, 1500));
+                supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
+                if (supporterData && supporterData.token) {
+                    osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
+                        headers: {
+                            'Authorization': `Bearer ${supporterData.token}`,
+                            'x-api-version': '20220705',
+                            'User-Agent': 'osu-api-extended v3.4.7'
+                        }
+                    });
+                }
+            }
 
             if (!osuRes.ok) {
                 return { error: `osu API: ${osuRes.status}`, scores: [] };

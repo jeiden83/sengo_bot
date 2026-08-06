@@ -841,24 +841,8 @@ async function getSupporterTokenForCountry(countryCode) {
             const shuffled = countryUsers.sort(() => 0.5 - Math.random());
             for (const tokenData of shuffled) {
                 const token = await getValidTokenForUser(tokenData.discord_id);
-                if (!token) continue;
-                // Verificar que el token todavía corresponde a un usuario con supporter activo
-                try {
-                    const me = await osuApiQueue.add(() => fetchOsuMe(token));
-                    if (me && me.is_supporter) {
-                        // Actualizar registro en caso de que el flag haya cambiado
-                        await supabase.from('oauth_tokens')
-                            .update({ is_supporter: true })
-                            .eq('discord_id', tokenData.discord_id);
-                        return { token, username: tokenData.username, country: countryCode.toUpperCase(), fallback: false };
-                    } else {
-                        // Marca como no supporter para evitar futuros usos
-                        await supabase.from('oauth_tokens')
-                            .update({ is_supporter: false })
-                            .eq('discord_id', tokenData.discord_id);
-                    }
-                } catch (_) {
-                    // Si falla la verificación, seguir con el siguiente candidato
+                if (token) {
+                    return { token, username: tokenData.username, country: countryCode.toUpperCase(), fallback: false };
                 }
             }
         }
