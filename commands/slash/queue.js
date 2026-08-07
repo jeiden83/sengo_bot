@@ -20,6 +20,11 @@ const data = new SlashCommandBuilder()
             .setRequired(false)
     )
     .addStringOption(option =>
+        option.setName("linkname")
+            .setDescription("Nombre personalizado para el enlace (ej: Mi Perfil de osu!, Formulario)")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
         option.setName("estado")
             .setDescription("Cambia el estado de tu queue de mapper")
             .setRequired(false)
@@ -43,6 +48,7 @@ async function run(interaction, res) {
     const usuario = interaction.options.getUser("usuario");
     const setMsg = interaction.options.getString("set");
     const linkUrl = interaction.options.getString("link");
+    const linkName = interaction.options.getString("linkname");
     const estado = interaction.options.getString("estado");
     const modo = interaction.options.getString("modo");
     const borrar = interaction.options.getBoolean("borrar");
@@ -61,10 +67,13 @@ async function run(interaction, res) {
     if (linkUrl) {
         args.push("-link", linkUrl);
     }
+    if (linkName) {
+        args.push("-linkname", linkName);
+    }
     if (setMsg) {
         args.push("-set", setMsg);
     }
-    if (usuario && !borrar && !setMsg && !linkUrl && !estado && !modo) {
+    if (usuario && !borrar && !setMsg && !linkUrl && !linkName && !estado && !modo) {
         args.push(usuario.id);
     }
 

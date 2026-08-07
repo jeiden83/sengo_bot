@@ -120,6 +120,7 @@ function parseQueueArgs(args) {
 
     const setFlags = ['-set', 'colocar', '-colocar'];
     const linkFlags = ['-link', 'link'];
+    const linkNameFlags = ['-linkname', '-linknombre', 'linkname', 'linknombre'];
     const openFlags = ['-abrir', 'aceptar', '-aceptar', 'open', '-open', 'abrir'];
     const closeFlags = ['-cerrar', 'negar', '-negar', 'close', '-close', 'cerrar'];
     const deleteFlags = ['-delete', 'borrar', '-borrar', 'delete'];
@@ -160,6 +161,35 @@ function parseQueueArgs(args) {
             continue;
         }
 
+        if (linkNameFlags.includes(lowerArg)) {
+            result.isLinkName = true;
+            const nameTokens = [];
+            i++;
+            while (i < args.length) {
+                const peekLower = args[i].toLowerCase().trim();
+                if (
+                    setFlags.includes(peekLower) ||
+                    linkFlags.includes(peekLower) ||
+                    linkNameFlags.includes(peekLower) ||
+                    openFlags.includes(peekLower) ||
+                    closeFlags.includes(peekLower) ||
+                    deleteFlags.includes(peekLower) ||
+                    modeFlags.includes(peekLower)
+                ) {
+                    break;
+                }
+                nameTokens.push(args[i]);
+                i++;
+            }
+            const nameStr = nameTokens.join(' ').trim();
+            if (['borrar', 'none', '-borrar', 'quitar', 'delete'].includes(nameStr.toLowerCase())) {
+                result.removeLinkName = true;
+            } else {
+                result.linkNameText = nameStr || null;
+            }
+            continue;
+        }
+
         if (linkFlags.includes(lowerArg)) {
             result.isLink = true;
             const nextArg = args[i + 1];
@@ -185,6 +215,7 @@ function parseQueueArgs(args) {
                 if (
                     setFlags.includes(peekLower) ||
                     linkFlags.includes(peekLower) ||
+                    linkNameFlags.includes(peekLower) ||
                     openFlags.includes(peekLower) ||
                     closeFlags.includes(peekLower) ||
                     deleteFlags.includes(peekLower) ||
@@ -226,7 +257,7 @@ async function run(messages, args) {
         }
 
         // 2. Verificar si se especificaron cambios/configuraciones en la queue
-        const hasManagementFlags = parsed.isSet || parsed.isLink || parsed.removeLink || parsed.status !== null || parsed.modes !== null;
+        const hasManagementFlags = parsed.isSet || parsed.isLink || parsed.removeLink || parsed.isLinkName || parsed.removeLinkName || parsed.status !== null || parsed.modes !== null;
 
         if (hasManagementFlags) {
             if (logger) logger.process(`Actualizando queue de mapper para el usuario ${message.author.id}`);
@@ -234,6 +265,7 @@ async function run(messages, args) {
             let currentQueue = await OsuUserModel.getQueue(message.author.id) || {
                 message: null,
                 link: null,
+                linkName: null,
                 status: 'open',
                 modes: ['osu'],
                 updatedAt: Date.now()
@@ -259,6 +291,18 @@ async function run(messages, args) {
                         return t(locale, 'queue.invalid_link');
                     }
                     currentQueue.link = sanitized;
+                }
+            }
+
+            if (parsed.isLinkName) {
+                if (parsed.removeLinkName || !parsed.linkNameText) {
+                    currentQueue.linkName = null;
+                } else {
+                    let nameToSet = parsed.linkNameText;
+                    if (nameToSet.startsWith('"') && nameToSet.endsWith('"') && nameToSet.length >= 2) {
+                        nameToSet = nameToSet.slice(1, -1);
+                    }
+                    currentQueue.linkName = nameToSet.trim() || null;
                 }
             }
 

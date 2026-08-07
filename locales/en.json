@@ -363,7 +363,7 @@
     "queue": {
       "header": "Mapper Queue Command",
       "body": "Display or manage your mapping request queue, open/closed status, accepted playmodes, and detail link.",
-      "usage": "s.queue : Display your mapper queue.\ns.queue 'user' : Display another mapper's queue.\ns.queue -set <message> : Set your queue message.\ns.queue -link <url> : Add a form or detail link.\ns.queue -abrir / -cerrar : Toggle open/closed status.\ns.queue -modo STD/MANIA : Specify accepted playmodes.\ns.queue -borrar : Delete your queue."
+      "usage": "s.queue : Display your mapper queue.\ns.queue 'user' : Display another mapper's queue.\ns.queue -set <message> : Set your queue message.\ns.queue -link <url> : Add a form or detail link.\ns.queue -linkname <name> : Set custom text for the detail link.\ns.queue -abrir / -cerrar : Toggle open/closed status.\ns.queue -modo STD/MANIA : Specify accepted playmodes.\ns.queue -borrar : Delete your queue."
     },
     "torneos": {
       "header": "Search and list active or past osu! tournaments",

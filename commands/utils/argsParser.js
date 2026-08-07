@@ -1004,7 +1004,7 @@ function argsParserNoCommand(args, options = {}) {
                 'test', 'force', 'canal', 'prueba', 'oauth', 'link', 'unlink',
                 'update', 'discord', 'all', 'bot', 'help', 'info', 'add', 'remove',
                 'stop', 'parar', 'allow', 'permitir', 'lista', 'l', 'poblar', 'pop', 'populate',
-                'modo', 'mode', 'abrir', 'cerrar', 'aceptar', 'negar', 'colocar', 'queue'
+                'modo', 'mode', 'abrir', 'cerrar', 'aceptar', 'negar', 'colocar', 'queue', 'linkname', 'linknombre'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;

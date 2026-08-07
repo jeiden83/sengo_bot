@@ -363,7 +363,7 @@
     "queue": {
       "header": "Comando de Queue de Mappers",
       "body": "Muestra o gestiona tu lista de solicitudes (queue) de mapeo, estado de apertura, modos aceptados y enlace de formulario.",
-      "usage": "s.queue : Muestra tu queue de mapper.\ns.queue 'usuario' : Muestra la queue de otro mapper.\ns.queue -set <mensaje> : Configura tu mensaje de queue.\ns.queue -link <url> : Agrega un enlace de formulario o detalles.\ns.queue -abrir / -cerrar : Cambia el estado de tu queue (abierta/cerrada).\ns.queue -modo STD/MANIA : Define los modos de juego que aceptas.\ns.queue -borrar : Elimina tu queue."
+      "usage": "s.queue : Muestra tu queue de mapper.\ns.queue 'usuario' : Muestra la queue de otro mapper.\ns.queue -set <mensaje> : Configura tu mensaje de queue.\ns.queue -link <url> : Agrega un enlace de formulario o detalles.\ns.queue -linkname <nombre> : Define un texto personalizado para el enlace.\ns.queue -abrir / -cerrar : Cambia el estado de tu queue (abierta/cerrada).\ns.queue -modo STD/MANIA : Define los modos de juego que aceptas.\ns.queue -borrar : Elimina tu queue."
     },
     "torneos": {
       "header": "Busca y lista torneos activos o pasados de osu!",

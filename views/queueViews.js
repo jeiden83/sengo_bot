@@ -57,9 +57,12 @@ function doQueueEmbed(user, queueData, locale = 'es', message) {
         });
 
     if (queueData.link) {
+        const linkLabel = (queueData.linkName && queueData.linkName.trim()) 
+            ? queueData.linkName.trim() 
+            : t(locale, "queue.embed_link_text");
         embed.addFields({
             name: t(locale, "queue.embed_field_link"),
-            value: `[${t(locale, "queue.embed_link_text")}](${queueData.link})`,
+            value: `[${linkLabel}](${queueData.link})`,
             inline: false
         });
     }
