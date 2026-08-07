@@ -124,15 +124,15 @@ function doServerQueuesEmbed(titleName, items, page, totalPages, totalCount, loc
             linkPart = ` • [${label}](${item.queue.link})`;
         }
 
-        let msgSnippet = "";
-        if (item.queue.message && item.queue.message.trim()) {
-            const cleanMsg = item.queue.message.replace(/[\r\n]+/g, ' ').trim();
-            const snippet = cleanMsg.length > 70 ? cleanMsg.slice(0, 67) + '...' : cleanMsg;
-            msgSnippet = `\n   ↳ *"${snippet}"*`;
+        let timestampPart = "";
+        if (item.queue.updatedAt) {
+            const unixSec = Math.floor(new Date(item.queue.updatedAt).getTime() / 1000);
+            if (!isNaN(unixSec) && unixSec > 0) {
+                timestampPart = `\n   ↳ 🕒 *Actualizado <t:${unixSec}:R>*`;
+            }
         }
 
-        const username = item.user ? item.user.username : `ID: ${item.discordId}`;
-        return `**${globalIndex}.** ${statusEmoji} **${username}** (${modesDisplay})${linkPart}${msgSnippet}`;
+        return `**${globalIndex}.** ${statusEmoji} <@${item.discordId}> (${modesDisplay})${linkPart}${timestampPart}`;
     });
 
     embed.setDescription(lines.join('\n\n'));

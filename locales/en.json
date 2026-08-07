@@ -1617,6 +1617,8 @@
     "embed_footer": "Sengo • Mapper Queue",
     "no_message": "*This mapper hasn't set a queue message yet.*",
     "mode_all": "All modes",
+    "server_embed_title": "📋 Mapper Queues in {name}",
+    "server_no_mappers": "ℹ️ No mappers with a queue were found in this server.",
     "modes": {
       "osu": "<:osu:1535098503213355099> Standard",
       "taiko": "<:taiko:1535098499824091136> Taiko",
