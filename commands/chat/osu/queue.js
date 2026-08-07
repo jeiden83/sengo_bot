@@ -1,6 +1,6 @@
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { t } = require("../../../utils/i18n.js");
-const { doQueueEmbed } = require("../../../views/queueViews.js");
+const { doQueueEmbed, doServerQueuesEmbed, buildQueuePaginationRow } = require("../../../views/queueViews.js");
 
 /**
  * Sanitiza y valida un enlace HTTP/HTTPS.
@@ -111,6 +111,7 @@ function parseQueueArgs(args) {
         isLink: false,
         linkUrl: null,
         removeLink: false,
+        isServer: false,
         status: null, // 'open' | 'closed' | null
         modes: null, // string[] | null
         userQuery: null
@@ -125,6 +126,7 @@ function parseQueueArgs(args) {
     const closeFlags = ['-cerrar', 'negar', '-negar', 'close', '-close', 'cerrar'];
     const deleteFlags = ['-delete', 'borrar', '-borrar', 'delete'];
     const modeFlags = ['-modo', '-mode', 'modo', 'mode'];
+    const serverFlags = ['-server', '-servidor', 'server', 'servidor'];
 
     let i = 0;
     const userQueryParts = [];
@@ -132,6 +134,12 @@ function parseQueueArgs(args) {
     while (i < args.length) {
         const arg = args[i];
         const lowerArg = arg.toLowerCase().trim();
+
+        if (serverFlags.includes(lowerArg)) {
+            result.isServer = true;
+            i++;
+            continue;
+        }
 
         if (deleteFlags.includes(lowerArg)) {
             result.isDelete = true;
@@ -325,7 +333,111 @@ async function run(messages, args) {
             };
         }
 
-        // 3. Visualizar la queue de un usuario (propia o de otro)
+        // 3. Caso de lista del servidor / global: -server
+        if (parsed.isServer) {
+            if (logger) logger.process(`Consultando lista de queues del servidor/global`);
+            const allQueues = await OsuUserModel.getAllQueues();
+
+            let guildMembers = null;
+            if (message.guild) {
+                guildMembers = await message.guild.members.fetch().catch(() => message.guild.members.cache);
+            }
+
+            let mapperList = [];
+            for (const item of allQueues) {
+                let userObj = null;
+                if (guildMembers && guildMembers.has(item.discordId)) {
+                    userObj = guildMembers.get(item.discordId).user;
+                } else if (!message.guild) {
+                    try {
+                        userObj = await message.client.users.fetch(item.discordId).catch(() => null);
+                    } catch {}
+                }
+
+                if (userObj || !message.guild) {
+                    mapperList.push({
+                        discordId: item.discordId,
+                        user: userObj,
+                        queue: item.queue
+                    });
+                }
+            }
+
+            // Filtrar por modo si se especificó
+            let modeFilterName = null;
+            if (parsed.modes && parsed.modes.length > 0) {
+                mapperList = mapperList.filter(item => {
+                    const qModes = Array.isArray(item.queue.modes) ? item.queue.modes : ['osu'];
+                    return parsed.modes.some(m => qModes.includes(m));
+                });
+                modeFilterName = parsed.modes.map(m => m.toUpperCase()).join('/');
+            }
+
+            // Ordenar: Abiertas primero (status === 'open'), luego por updatedAt descendente
+            mapperList.sort((a, b) => {
+                const aOpen = a.queue.status === 'open' ? 1 : 0;
+                const bOpen = b.queue.status === 'open' ? 1 : 0;
+                if (aOpen !== bOpen) return bOpen - aOpen;
+                return (b.queue.updatedAt || 0) - (a.queue.updatedAt || 0);
+            });
+
+            const titleName = message.guild ? message.guild.name : 'Globales';
+            const totalCount = mapperList.length;
+            const pageSize = 5;
+            const totalPages = Math.ceil(totalCount / pageSize) || 1;
+
+            let currentPage = 1;
+            const getPageItems = (p) => mapperList.slice((p - 1) * pageSize, p * pageSize);
+
+            const initialEmbed = doServerQueuesEmbed(titleName, getPageItems(currentPage), currentPage, totalPages, totalCount, locale, modeFilterName);
+
+            if (totalPages <= 1) {
+                return { embeds: [initialEmbed] };
+            }
+
+            const initialRow = buildQueuePaginationRow(currentPage, totalPages);
+            const responsePayload = { embeds: [initialEmbed], components: [initialRow] };
+
+            let sentMsg = null;
+            if (message.reply) {
+                sentMsg = await message.reply(responsePayload).catch(() => null);
+            }
+            if (!sentMsg && message.channel && message.channel.send) {
+                sentMsg = await message.channel.send(responsePayload).catch(() => null);
+            }
+
+            if (sentMsg) {
+                const collector = sentMsg.createMessageComponentCollector({ time: 60000 });
+
+                collector.on('collect', async (interaction) => {
+                    if (interaction.user.id !== message.author.id) {
+                        return interaction.reply({ content: '❌ No puedes controlar este menú.', flags: 64 });
+                    }
+
+                    if (interaction.customId === 'queue_page_first') currentPage = 1;
+                    else if (interaction.customId === 'queue_page_prev') currentPage = Math.max(1, currentPage - 1);
+                    else if (interaction.customId === 'queue_page_next') currentPage = Math.min(totalPages, currentPage + 1);
+                    else if (interaction.customId === 'queue_page_last') currentPage = totalPages;
+
+                    const newEmbed = doServerQueuesEmbed(titleName, getPageItems(currentPage), currentPage, totalPages, totalCount, locale, modeFilterName);
+                    const newRow = buildQueuePaginationRow(currentPage, totalPages);
+
+                    await interaction.update({ embeds: [newEmbed], components: [newRow] });
+                });
+
+                collector.on('end', () => {
+                    const disabledRow = buildQueuePaginationRow(currentPage, totalPages);
+                    disabledRow.components.forEach(c => c.setDisabled(true));
+                    sentMsg.edit({ components: [disabledRow] }).catch(() => {});
+                });
+
+                return null;
+            }
+
+            return responsePayload;
+        }
+
+        // 4. Visualizar la queue de un usuario (propia o de otro)
         let targetUser = message.author;
         if (parsed.userQuery) {
             const resolved = await resolveUser(message, parsed.userQuery);

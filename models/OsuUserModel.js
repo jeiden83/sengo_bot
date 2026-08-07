@@ -2228,12 +2228,22 @@ async function getQueue(discordId) {
     const supabase = getSupabaseClient();
     if (!supabase) return null;
     try {
-        const { data } = await supabase
-            .from('users')
-            .select('skins')
+        const { data, error } = await supabase
+            .from('mapper_queues')
+            .select('message, link, link_name, status, modes, updated_at')
             .eq('discord_id', discordId)
             .maybeSingle();
-        return data && data.skins && data.skins.mapper_queue ? data.skins.mapper_queue : null;
+
+        if (error || !data) return null;
+
+        return {
+            message: data.message,
+            link: data.link,
+            linkName: data.link_name,
+            status: data.status,
+            modes: data.modes || ['osu'],
+            updatedAt: data.updated_at ? new Date(data.updated_at).getTime() : Date.now()
+        };
     } catch (err) {
         console.error(`Error al obtener queue para ${discordId}:`, err);
         return null;
@@ -2244,23 +2254,54 @@ async function setQueue(discordId, queueData) {
     const supabase = getSupabaseClient();
     if (!supabase) return;
     try {
-        const skins = await getSkins(discordId) || {};
-        
         if (queueData === null) {
-            delete skins.mapper_queue;
+            await supabase
+                .from('mapper_queues')
+                .delete()
+                .eq('discord_id', discordId);
         } else {
-            skins.mapper_queue = queueData;
+            await supabase
+                .from('mapper_queues')
+                .upsert({
+                    discord_id: discordId,
+                    message: queueData.message || null,
+                    link: queueData.link || null,
+                    link_name: queueData.linkName || null,
+                    status: queueData.status || 'open',
+                    modes: queueData.modes || ['osu'],
+                    updated_at: new Date(queueData.updatedAt || Date.now()).toISOString()
+                }, { onConflict: 'discord_id' });
         }
-
-        await supabase
-            .from('users')
-            .upsert({
-                discord_id: discordId,
-                skins: skins
-            }, { onConflict: 'discord_id' });
     } catch (err) {
         console.error(`Error al guardar queue para ${discordId}:`, err);
         throw err;
+    }
+}
+
+async function getAllQueues() {
+    const supabase = getSupabaseClient();
+    if (!supabase) return [];
+    try {
+        const { data, error } = await supabase
+            .from('mapper_queues')
+            .select('discord_id, message, link, link_name, status, modes, updated_at');
+
+        if (error || !data) return [];
+
+        return data.map(row => ({
+            discordId: row.discord_id,
+            queue: {
+                message: row.message,
+                link: row.link,
+                linkName: row.link_name,
+                status: row.status,
+                modes: row.modes || ['osu'],
+                updatedAt: row.updated_at ? new Date(row.updated_at).getTime() : Date.now()
+            }
+        }));
+    } catch (err) {
+        console.error('Error al obtener todas las queues:', err);
+        return [];
     }
 }
 
@@ -2341,6 +2382,7 @@ const OsuUserModel = {
     clearAllSkins,
     getQueue,
     setQueue,
+    getAllQueues,
     downloadReplay,
     linkUser,
     unlinkUser,

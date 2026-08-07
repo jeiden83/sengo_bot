@@ -76,6 +76,111 @@ function doQueueEmbed(user, queueData, locale = 'es', message) {
     return embed;
 }
 
+/**
+ * Crea un embed compacto para listar las queues de mappers de un servidor o globales.
+ * @param {string} titleName Nombre del servidor o 'Globales'
+ * @param {Array<{user: import('discord.js').User|null, queue: Object}>} items Lista de mappers de la página actual
+ * @param {number} page Número de página actual
+ * @param {number} totalPages Total de páginas
+ * @param {number} totalCount Total de mappers
+ * @param {string} locale Idioma
+ * @param {string|null} modeFilter Nombre del filtro de modos aplicado (opcional)
+ * @returns {EmbedBuilder} Embed formateado
+ */
+function doServerQueuesEmbed(titleName, items, page, totalPages, totalCount, locale = 'es', modeFilter = null) {
+    const modeEmojis = {
+        osu: "<:osu:1535098503213355099>",
+        taiko: "<:taiko:1535098499824091136>",
+        fruits: "<:catch:1535098500822470706>",
+        mania: "<:mania:1535098502206595102>"
+    };
+
+    let title = t(locale, "queue.server_embed_title", { name: titleName });
+    if (modeFilter) {
+        title += ` [${modeFilter}]`;
+    }
+
+    const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setColor(0x3498DB);
+
+    if (!items || items.length === 0) {
+        embed.setDescription(t(locale, "queue.server_no_mappers"));
+        return embed;
+    }
+
+    const lines = items.map((item, index) => {
+        const globalIndex = (page - 1) * 5 + index + 1;
+        const statusEmoji = item.queue.status === 'closed' ? '🔴' : '🟢';
+        
+        const modes = Array.isArray(item.queue.modes) ? item.queue.modes : ['osu'];
+        const modesDisplay = modes.map(m => modeEmojis[m] || '⚪').join(' ');
+
+        let linkPart = "";
+        if (item.queue.link) {
+            const label = (item.queue.linkName && item.queue.linkName.trim()) 
+                ? item.queue.linkName.trim() 
+                : t(locale, "queue.embed_link_text");
+            linkPart = ` • [${label}](${item.queue.link})`;
+        }
+
+        let msgSnippet = "";
+        if (item.queue.message && item.queue.message.trim()) {
+            const cleanMsg = item.queue.message.replace(/[\r\n]+/g, ' ').trim();
+            const snippet = cleanMsg.length > 70 ? cleanMsg.slice(0, 67) + '...' : cleanMsg;
+            msgSnippet = `\n   ↳ *"${snippet}"*`;
+        }
+
+        const username = item.user ? item.user.username : `ID: ${item.discordId}`;
+        return `**${globalIndex}.** ${statusEmoji} **${username}** (${modesDisplay})${linkPart}${msgSnippet}`;
+    });
+
+    embed.setDescription(lines.join('\n\n'));
+    embed.setFooter({
+        text: `Página ${page}/${totalPages} • Total: ${totalCount} Mappers • Sengo Bot`
+    });
+
+    return embed;
+}
+
+/**
+ * Crea la fila de botones de paginación para la lista de queues del servidor.
+ * @param {number} page Página actual
+ * @param {number} totalPages Total de páginas
+ * @returns {import('discord.js').ActionRowBuilder} Fila de botones
+ */
+function buildQueuePaginationRow(page, totalPages) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
+    const row = new ActionRowBuilder();
+
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId('queue_page_first')
+            .setLabel('⏮️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page <= 1),
+        new ButtonBuilder()
+            .setCustomId('queue_page_prev')
+            .setLabel('◀️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page <= 1),
+        new ButtonBuilder()
+            .setCustomId('queue_page_next')
+            .setLabel('▶️')
+            .setStyle(ButtonStyle.Primary)
+            .setDisabled(page >= totalPages),
+        new ButtonBuilder()
+            .setCustomId('queue_page_last')
+            .setLabel('⏭️')
+            .setStyle(ButtonStyle.Secondary)
+            .setDisabled(page >= totalPages)
+    );
+
+    return row;
+}
+
 module.exports = {
-    doQueueEmbed
+    doQueueEmbed,
+    doServerQueuesEmbed,
+    buildQueuePaginationRow
 };
