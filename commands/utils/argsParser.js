@@ -1000,10 +1000,11 @@ function argsParserNoCommand(args, options = {}) {
                 'delete', 'set', 'nombre', 'name', 'borrar',
                 'osu', 'std', 'standard', 'ctb', 'catch', 'fruits', 'fruit',
                 'taiko', 'tko', 'mania', 'man', 'mna',
-                // flags de torneos y comandos generales para evitar falsos positivos de mods
+                // flags de torneos, queue y comandos generales para evitar falsos positivos de mods
                 'test', 'force', 'canal', 'prueba', 'oauth', 'link', 'unlink',
                 'update', 'discord', 'all', 'bot', 'help', 'info', 'add', 'remove',
-                'stop', 'parar', 'allow', 'permitir', 'lista', 'l', 'poblar', 'pop', 'populate'
+                'stop', 'parar', 'allow', 'permitir', 'lista', 'l', 'poblar', 'pop', 'populate',
+                'modo', 'mode', 'abrir', 'cerrar', 'aceptar', 'negar', 'colocar', 'queue'
             ]);
             if (isAllMods && !knownFlags.has(potentialMods.toLowerCase())) {
                 invalidModsWarning = true;

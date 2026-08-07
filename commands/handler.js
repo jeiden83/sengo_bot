@@ -33,7 +33,7 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
     if (!args || args.length === 0) return null;
 
     const commandLower = command.toLowerCase();
-    if (['bug', 'sugerencia', 'say', 'sayembed', 'help', 'about', 'acerca', 'language', 'idioma', 'ping'].includes(commandLower)) {
+    if (['bug', 'sugerencia', 'say', 'sayembed', 'help', 'about', 'acerca', 'language', 'idioma', 'ping', 'queue', 'skin', 'daily', 'blacklist', 'emojis', 'bcv', 'link', 'unlink'].includes(commandLower)) {
         return null;
     }
 
