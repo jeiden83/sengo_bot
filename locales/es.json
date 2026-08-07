@@ -1618,10 +1618,10 @@
     "no_message": "*Este mapper no ha escrito un mensaje de queue aún.*",
     "mode_all": "Todos los modos",
     "modes": {
-      "osu": "⚪ Standard",
-      "taiko": "🥁 Taiko",
-      "fruits": "🍎 Catch",
-      "mania": "🎹 Mania"
+      "osu": "<:osu:1535098503213355099> Standard",
+      "taiko": "<:taiko:1535098499824091136> Taiko",
+      "fruits": "<:catch:1535098500822470706> Catch",
+      "mania": "<:mania:1535098502206595102> Mania"
     }
   },
   "emojis": {

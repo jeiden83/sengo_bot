@@ -54,10 +54,10 @@ function buildSkinButtonsRow(availableModes, activeMode, locale) {
     const row = new ActionRowBuilder();
     
     const emojiMap = {
-        osu: '⚪',
-        taiko: '🥁',
-        fruits: '🍎',
-        mania: '🎹'
+        osu: '1535098503213355099',
+        taiko: '1535098499824091136',
+        fruits: '1535098500822470706',
+        mania: '1535098502206595102'
     };
 
     for (const mode of availableModes) {
