@@ -360,6 +360,11 @@
       "body": "Allows you to link your custom osu! skin to your Discord account so other users can see and download it.",
       "usage": "s.skin : Shows your linked skin.\ns.skin @user : Shows another user's skin.\ns.skin -set <link> [-nombre <name>] [-osu|-ctb|-taiko|-mania] : Links your skin with optional mode and name.\ns.skin -nombre <name> [-osu|-ctb|-taiko|-mania] : Changes the name of the skin for that mode.\ns.skin -delete or borrar [-osu|-ctb|-taiko|-mania] : Deletes the skin for that mode or all if none is specified."
     },
+    "queue": {
+      "header": "Mapper Queue Command",
+      "body": "Display or manage your mapping request queue, open/closed status, accepted playmodes, and detail link.",
+      "usage": "s.queue : Display your mapper queue.\ns.queue 'user' : Display another mapper's queue.\ns.queue -set <message> : Set your queue message.\ns.queue -link <url> : Add a form or detail link.\ns.queue -abrir / -cerrar : Toggle open/closed status.\ns.queue -modo STD/MANIA : Specify accepted playmodes.\ns.queue -borrar : Delete your queue."
+    },
     "torneos": {
       "header": "Search and list active or past osu! tournaments",
       "body": "Filter tournaments by mode, rank, tags/region and status.",
@@ -1595,6 +1600,28 @@
       "taiko": "osu!taiko",
       "fruits": "osu!catch (CtB)",
       "mania": "osu!mania"
+    }
+  },
+  "queue": {
+    "not_found": "ℹ️ You don't have a mapper queue configured. Use `s.queue -set <message>` to create one.",
+    "not_found_other": "ℹ️ **{username}** does not have a mapper queue configured.",
+    "invalid_link": "❌ Invalid link. Please make sure to provide a valid URL starting with `http://` or `https://`.",
+    "delete_success": "✅ Your mapper queue has been deleted successfully.",
+    "update_success": "✅ **Your mapper queue has been updated!**",
+    "user_not_found": "❌ Specified user could not be found.",
+    "embed_title_open": "🟢 Queue Open",
+    "embed_title_closed": "🔴 Queue Closed",
+    "embed_field_modes": "🎮 Accepted Modes",
+    "embed_field_link": "🔗 Link & Details",
+    "embed_link_text": "View queue details",
+    "embed_footer": "Sengo • Mapper Queue",
+    "no_message": "*This mapper hasn't set a queue message yet.*",
+    "mode_all": "All modes",
+    "modes": {
+      "osu": "⚪ Standard",
+      "taiko": "🥁 Taiko",
+      "fruits": "🍎 Catch",
+      "mania": "🎹 Mania"
     }
   },
   "emojis": {

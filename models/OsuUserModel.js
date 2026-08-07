@@ -2224,6 +2224,46 @@ async function clearAllSkins(discordId) {
     }
 }
 
+async function getQueue(discordId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return null;
+    try {
+        const { data } = await supabase
+            .from('users')
+            .select('skins')
+            .eq('discord_id', discordId)
+            .maybeSingle();
+        return data && data.skins && data.skins.mapper_queue ? data.skins.mapper_queue : null;
+    } catch (err) {
+        console.error(`Error al obtener queue para ${discordId}:`, err);
+        return null;
+    }
+}
+
+async function setQueue(discordId, queueData) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return;
+    try {
+        const skins = await getSkins(discordId) || {};
+        
+        if (queueData === null) {
+            delete skins.mapper_queue;
+        } else {
+            skins.mapper_queue = queueData;
+        }
+
+        await supabase
+            .from('users')
+            .upsert({
+                discord_id: discordId,
+                skins: skins
+            }, { onConflict: 'discord_id' });
+    } catch (err) {
+        console.error(`Error al guardar queue para ${discordId}:`, err);
+        throw err;
+    }
+}
+
 async function setSkin(discordId, skinUrl, skinName) {
     return setSkinByMode(discordId, 'osu', skinUrl, skinName);
 }
@@ -2299,6 +2339,8 @@ const OsuUserModel = {
     getSkins,
     setSkinByMode,
     clearAllSkins,
+    getQueue,
+    setQueue,
     downloadReplay,
     linkUser,
     unlinkUser,

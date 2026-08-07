@@ -360,6 +360,11 @@
       "body": "Permite vincular tu skin propia de osu! a tu cuenta de Discord para que otros usuarios puedan verla y descargarla.",
       "usage": "s.skin : Muestra tu skin vinculada.\ns.skin @usuario : Muestra la skin de otro usuario.\ns.skin -set <enlace> [-nombre <nombre>] [-osu|-ctb|-taiko|-mania] : Vincula tu skin con modo y nombre opcionales.\ns.skin -nombre <nombre> [-osu|-ctb|-taiko|-mania] : Cambia el nombre de la skin de ese modo.\ns.skin -delete o borrar [-osu|-ctb|-taiko|-mania] : Elimina la skin de ese modo o todas si no se especifica."
     },
+    "queue": {
+      "header": "Comando de Queue de Mappers",
+      "body": "Muestra o gestiona tu lista de solicitudes (queue) de mapeo, estado de apertura, modos aceptados y enlace de formulario.",
+      "usage": "s.queue : Muestra tu queue de mapper.\ns.queue 'usuario' : Muestra la queue de otro mapper.\ns.queue -set <mensaje> : Configura tu mensaje de queue.\ns.queue -link <url> : Agrega un enlace de formulario o detalles.\ns.queue -abrir / -cerrar : Cambia el estado de tu queue (abierta/cerrada).\ns.queue -modo STD/MANIA : Define los modos de juego que aceptas.\ns.queue -borrar : Elimina tu queue."
+    },
     "torneos": {
       "header": "Busca y lista torneos activos o pasados de osu!",
       "body": "Filtra torneos por modo, rango, etiquetas/región y estado.",
@@ -1595,6 +1600,28 @@
       "taiko": "osu!taiko",
       "fruits": "osu!catch (CtB)",
       "mania": "osu!mania"
+    }
+  },
+  "queue": {
+    "not_found": "ℹ️ No tienes una queue configurada. Usa `s.queue -set <mensaje>` para crear tu queue de mapper.",
+    "not_found_other": "ℹ️ **{username}** no tiene una queue de mapper configurada.",
+    "invalid_link": "❌ Enlace inválido. Asegúrate de proporcionar una URL válida que empiece por `http://` o `https://`.",
+    "delete_success": "✅ Tu queue de mapper ha sido eliminada correctamente.",
+    "update_success": "✅ **¡Tu queue de mapper ha sido actualizada!**",
+    "user_not_found": "❌ No se encontró al usuario especificado.",
+    "embed_title_open": "🟢 Queue Abierta",
+    "embed_title_closed": "🔴 Queue Cerrada",
+    "embed_field_modes": "🎮 Modos Aceptados",
+    "embed_field_link": "🔗 Enlace & Detalles",
+    "embed_link_text": "Ver detalles de la queue",
+    "embed_footer": "Sengo • Mapper Queue",
+    "no_message": "*Este mapper no ha escrito un mensaje de queue aún.*",
+    "mode_all": "Todos los modos",
+    "modes": {
+      "osu": "⚪ Standard",
+      "taiko": "🥁 Taiko",
+      "fruits": "🍎 Catch",
+      "mania": "🎹 Mania"
     }
   },
   "emojis": {
