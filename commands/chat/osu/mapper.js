@@ -378,7 +378,12 @@ async function run(messages, args) {
         } else if (sortBy === 'gd') {
             filteredMappers.sort((a, b) => (b.guest_count || 0) - (a.guest_count || 0));
         } else if (sortBy === 'ranked') {
-            filteredMappers.sort((a, b) => (b.ranked_count || 0) - (a.ranked_count || 0));
+            // ponytail: desempate multicriterio: rankeds -> gds -> loveds
+            filteredMappers.sort((a, b) => 
+                (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                (b.guest_count || 0) - (a.guest_count || 0) ||
+                (b.loved_count || 0) - (a.loved_count || 0)
+            );
         } else if (sortBy === 'wip') {
             filteredMappers.sort((a, b) => (b.pending_count || 0) - (a.pending_count || 0));
         } else if (sortBy === 'loved') {
