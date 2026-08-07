@@ -1015,24 +1015,47 @@ async function run(messages, args) {
             parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
         }
 
-        // Recalcular livePP usando rosu-pp-js si hubo overrides, es mock o es play fallida
-        if (parsedPlay.isMock || parsedPlay.isFailed || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null) {
-            try {
-                const livePerf = new rosu.Performance({
-                    mods: activeModsStr,
-                    accuracy: parsedPlay.accuracy,
-                    combo: parsedPlay.combo || undefined,
-                    n300: parsedPlay.count_300,
-                    n100: parsedPlay.count_100,
-                    n50: parsedPlay.count_50,
-                    misses: parsedPlay.misses
-                });
-                const liveAttrs = livePerf.calculate(map);
-                parsedPlay.livePP = liveAttrs.pp;
-            } catch (err) {
-                console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
+        let fullLivePP = 0;
+        try {
+            const livePerf = new rosu.Performance({
+                mods: activeModsStr,
+                accuracy: parsedPlay.accuracy,
+                combo: parsedPlay.combo || undefined,
+                n300: parsedPlay.count_300,
+                n100: parsedPlay.count_100,
+                n50: parsedPlay.count_50,
+                misses: parsedPlay.misses
+            });
+            const liveAttrs = livePerf.calculate(map);
+            fullLivePP = liveAttrs.pp;
+
+            if (parsedPlay.isFailed) {
+                if (!parsedPlay.livePP || parsedPlay.isMock) {
+                    const total_hits = (parsedPlay.count_300 || 0) + (parsedPlay.count_100 || 0) + (parsedPlay.count_50 || 0) + (parsedPlay.misses || 0);
+                    if (total_hits > 0) {
+                        try {
+                            const difficulty = new rosu.Difficulty({ mods: activeModsStr });
+                            parsedPlay.livePP = difficulty.gradualPerformance(map).nth({
+                                maxCombo: parsedPlay.combo || undefined,
+                                misses: parsedPlay.misses,
+                                n300: parsedPlay.count_300,
+                                n100: parsedPlay.count_100,
+                                n50: parsedPlay.count_50
+                            }, total_hits).pp;
+                        } catch (errGradual) {
+                            parsedPlay.livePP = fullLivePP;
+                        }
+                    } else {
+                        parsedPlay.livePP = fullLivePP;
+                    }
+                }
+            } else if (parsedPlay.isMock || overrideAcc !== null || overrideMisses !== null || overrideCombo !== null || hitsArg || overrideMods !== null || !parsedPlay.livePP) {
+                parsedPlay.livePP = fullLivePP;
             }
+        } catch (err) {
+            console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
         }
+        parsedPlay.fullLivePP = fullLivePP;
     }
 
     map.free();
@@ -1081,6 +1104,13 @@ async function run(messages, args) {
             const liveSR = parsedPlay.liveModStars || beatmap.difficulty_rating || 0;
             reworkStars = liveSR * est.srRatio;
             await updateProgress(5, 'success');
+        }
+
+        if (parsedPlay.isFailed && reworkPP) {
+            const baseLive = parsedPlay.fullLivePP || parsedPlay.livePP || 1;
+            const ratio = baseLive > 0 ? (reworkPP / baseLive) : 1.0;
+            parsedPlay.reworkRatio = ratio;
+            reworkPP = (parsedPlay.livePP || 0) * ratio;
         }
 
         const embed = await doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, reworkStars, rework, locale);
@@ -1311,23 +1341,47 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
         parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
     }
 
-    if (parsedPlay.isMock || parsedPlay.isFailed || !parsedPlay.livePP) {
-        try {
-            const livePerf = new rosu.Performance({
-                mods: activeModsStr,
-                accuracy: parsedPlay.accuracy,
-                combo: parsedPlay.combo || undefined,
-                n300: parsedPlay.count_300,
-                n100: parsedPlay.count_100,
-                n50: parsedPlay.count_50,
-                misses: parsedPlay.misses
-            });
-            const liveAttrs = livePerf.calculate(map);
-            parsedPlay.livePP = liveAttrs.pp;
-        } catch (err) {
-            console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
+    let fullLivePP = 0;
+    try {
+        const livePerf = new rosu.Performance({
+            mods: activeModsStr,
+            accuracy: parsedPlay.accuracy,
+            combo: parsedPlay.combo || undefined,
+            n300: parsedPlay.count_300,
+            n100: parsedPlay.count_100,
+            n50: parsedPlay.count_50,
+            misses: parsedPlay.misses
+        });
+        const liveAttrs = livePerf.calculate(map);
+        fullLivePP = liveAttrs.pp;
+
+        if (parsedPlay.isFailed) {
+            if (!parsedPlay.livePP || parsedPlay.isMock) {
+                const total_hits = (parsedPlay.count_300 || 0) + (parsedPlay.count_100 || 0) + (parsedPlay.count_50 || 0) + (parsedPlay.misses || 0);
+                if (total_hits > 0) {
+                    try {
+                        const difficulty = new rosu.Difficulty({ mods: activeModsStr });
+                        parsedPlay.livePP = difficulty.gradualPerformance(map).nth({
+                            maxCombo: parsedPlay.combo || undefined,
+                            misses: parsedPlay.misses,
+                            n300: parsedPlay.count_300,
+                            n100: parsedPlay.count_100,
+                            n50: parsedPlay.count_50
+                        }, total_hits).pp;
+                    } catch (errGradual) {
+                        parsedPlay.livePP = fullLivePP;
+                    }
+                } else {
+                    parsedPlay.livePP = fullLivePP;
+                }
+            }
+        } else if (parsedPlay.isMock || !parsedPlay.livePP) {
+            parsedPlay.livePP = fullLivePP;
         }
+    } catch (err) {
+        console.warn(`[Rework] No se pudo calcular PP local para live play: ${err.message}`);
     }
+    parsedPlay.fullLivePP = fullLivePP;
 
     map.free();
     await updateProgress(2, 'success');
@@ -1371,6 +1425,13 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
         const liveSR = parsedPlay.liveModStars || beatmap.difficulty_rating || 0;
         reworkStars = liveSR * est.srRatio;
         await updateProgress(5, 'success');
+    }
+
+    if (parsedPlay.isFailed && reworkPP) {
+        const baseLive = parsedPlay.fullLivePP || parsedPlay.livePP || 1;
+        const ratio = baseLive > 0 ? (reworkPP / baseLive) : 1.0;
+        parsedPlay.reworkRatio = ratio;
+        reworkPP = (parsedPlay.livePP || 0) * ratio;
     }
 
     const embed = await doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, reworkStars, rework, locale);

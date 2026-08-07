@@ -2235,7 +2235,13 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
         hitsText = ` [${parsedPlay.hits.join("/")}]`;
     }
 
-    const failedNote = parsedPlay.isFailed ? `\n\n${t(locale, 'rework.failed_play_note')}` : '';
+    let failedNote = '';
+    if (parsedPlay.isFailed) {
+        const ratioPercent = parsedPlay.reworkRatio ? ((parsedPlay.reworkRatio - 1) * 100) : 0;
+        const ratioSign = ratioPercent >= 0 ? '+' : '';
+        const ratioStr = `${ratioSign}${ratioPercent.toFixed(1)}%`;
+        failedNote = `\n\n${t(locale, 'rework.failed_play_note', { ratio: ratioStr })}`;
+    }
 
     const embed = new EmbedBuilder()
         .setAuthor({
