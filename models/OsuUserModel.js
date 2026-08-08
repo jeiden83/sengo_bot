@@ -1604,7 +1604,10 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         const { data: dbMappers } = await supabase
             .from('mapper_statistics')
             .select('*')
-            .eq('country_code', countryFilter.toUpperCase());
+            .eq('country_code', countryFilter.toUpperCase())
+            .order('ranked_count', { ascending: false })
+            .order('kudosu_total', { ascending: false })
+            .range(0, 4999);
             
         if (dbMappers && dbMappers.length > 0) {
             return dbMappers
