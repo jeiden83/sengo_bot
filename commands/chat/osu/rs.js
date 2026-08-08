@@ -292,8 +292,9 @@ async function run(messages, args) {
 
         let user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
 
-        let reworkCodeUsed = 'master';
-        let reworkStarsUsed = null;
+        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+        let pp_fc = null;
+        const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
 
         if (isRework) {
             try {
@@ -303,11 +304,14 @@ async function run(messages, args) {
                 const reworkObj = await ReworkModel.getReworkByQuery(reworkQuery, recent_scores.beatmap.mode || 'osu');
                 reworkCodeUsed = reworkObj ? reworkObj.code : 'master';
 
+                const rawAcc = recent_scores.accuracy > 1 ? recent_scores.accuracy : recent_scores.accuracy * 100;
+
+                // 1. PP del score jugado en Rework
                 const reworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
                     recent_scores.beatmap.id,
                     activeModsStr,
                     {
-                        accuracy: (recent_scores.accuracy > 1 ? recent_scores.accuracy : recent_scores.accuracy * 100),
+                        accuracy: rawAcc,
                         combo: recent_scores.max_combo,
                         count_100: ok,
                         count_50: meh,
@@ -323,30 +327,79 @@ async function run(messages, args) {
                 if (reworkCalc && reworkCalc.stars) {
                     reworkStarsUsed = reworkCalc.stars;
                 }
+
+                // 2. Max PP (100% SS) en Rework
+                try {
+                    const ssReworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
+                        recent_scores.beatmap.id,
+                        activeModsStr,
+                        {
+                            accuracy: 100.0,
+                            combo: beatmap_max_combo,
+                            count_100: 0,
+                            count_50: 0,
+                            misses: 0,
+                            livePP: maxAttrs ? maxAttrs.pp : 0
+                        },
+                        recent_scores.beatmap.mode || 'osu',
+                        reworkCodeUsed
+                    );
+                    if (ssReworkCalc && ssReworkCalc.pp) {
+                        maxAttrs = {
+                            ...maxAttrs,
+                            pp: ssReworkCalc.pp
+                        };
+                    }
+                } catch (ssErr) {
+                    console.error("Error calculando Rework Max PP:", ssErr.message);
+                }
+
+                // 3. If FC PP en Rework (si no fue FC)
+                if (!isFC) {
+                    try {
+                        const totalHits = great + ok + meh + miss;
+                        const fcAcc = Math.min(100.0, rawAcc + (totalHits > 0 ? (miss / totalHits) * 100 : 0));
+                        const fcReworkCalc = await ReworkModel.calculateReworkPPForScoreExact(
+                            recent_scores.beatmap.id,
+                            activeModsStr,
+                            {
+                                accuracy: fcAcc,
+                                combo: beatmap_max_combo,
+                                count_100: ok,
+                                count_50: meh,
+                                misses: 0,
+                                livePP: user_pp
+                            },
+                            recent_scores.beatmap.mode || 'osu',
+                            reworkCodeUsed
+                        );
+                        if (fcReworkCalc && fcReworkCalc.pp) {
+                            pp_fc = fcReworkCalc.pp;
+                        }
+                    } catch (fcErr) {
+                        console.error("Error calculando Rework If FC PP:", fcErr.message);
+                    }
+                }
             } catch (reworkErr) {
                 console.error("Error al calcular Rework PP para rs -rework:", reworkErr.message);
             }
-        }
-
-        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
-
-        let pp_fc = null;
-        const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
-        if (!isFC) {
-            try {
-                const fc_statistics = {
-                    ...recent_scores.statistics,
-                    great: (recent_scores.statistics.great || 0) + miss,
-                    miss: 0
-                };
-                const fc_score = {
-                    ...recent_scores,
-                    max_combo: beatmap_max_combo,
-                    statistics: fc_statistics
-                };
-                pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
-            } catch (err) {
-                console.error("Error calculating pp_fc:", err);
+        } else {
+            if (!isFC) {
+                try {
+                    const fc_statistics = {
+                        ...recent_scores.statistics,
+                        great: (recent_scores.statistics.great || 0) + miss,
+                        miss: 0
+                    };
+                    const fc_score = {
+                        ...recent_scores,
+                        max_combo: beatmap_max_combo,
+                        statistics: fc_statistics
+                    };
+                    pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
+                } catch (err) {
+                    console.error("Error calculating pp_fc:", err);
+                }
             }
         }
 
