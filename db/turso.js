@@ -37,7 +37,7 @@ async function executeTurso(sql, args = []) {
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
         },
-        timeout: 10000
+        timeout: 30000
     });
 
     const result = response.data?.results?.[0]?.response?.result;
@@ -85,7 +85,7 @@ async function executeTursoBatch(statements) {
             'Authorization': `Bearer ${authToken}`,
             'Content-Type': 'application/json'
         },
-        timeout: 15000
+        timeout: 30000
     });
 
     return response.data?.results || [];
@@ -500,7 +500,7 @@ async function saveBatchScoresAndSnipes(scoresToSave = [], snipesToRecord = []) 
                 sh.beatmap_id,
                 sh.sniper_id,
                 sh.sniper_name,
-                sh.sniper_name || sh.sniper_name, // sniper_name
+                sh.sniped_id,
                 sh.sniped_name || 'Jugador',
                 sh.pp || 0,
                 endedAt,
