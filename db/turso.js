@@ -333,13 +333,31 @@ async function getBeatmapFromTurso(beatmapId) {
 }
 
 /**
- * Guarda o actualiza un score en top_scores en Turso
+ * Guarda un score #1 en top_scores en Turso (optimizado para evitar escrituras si no cambió)
  */
 async function saveTopScore(s) {
     const sql = `
-        INSERT OR REPLACE INTO top_scores 
+        INSERT INTO top_scores 
         (beatmap_id, country_code, user_id, username, score, pp, accuracy, mods, ended_at, updated_at, max_combo, perfect, statistics, rank, build_id, mod_settings) 
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(beatmap_id, country_code) DO UPDATE SET 
+            user_id = excluded.user_id,
+            username = excluded.username,
+            score = excluded.score,
+            pp = excluded.pp,
+            accuracy = excluded.accuracy,
+            mods = excluded.mods,
+            ended_at = excluded.ended_at,
+            updated_at = excluded.updated_at,
+            max_combo = excluded.max_combo,
+            perfect = excluded.perfect,
+            statistics = excluded.statistics,
+            rank = excluded.rank,
+            build_id = excluded.build_id,
+            mod_settings = excluded.mod_settings
+        WHERE top_scores.score != excluded.score 
+           OR top_scores.user_id != excluded.user_id 
+           OR top_scores.pp != excluded.pp
     `;
     const args = [
         s.beatmap_id,
@@ -453,9 +471,27 @@ async function saveBatchScoresAndSnipes(scoresToSave = [], snipesToRecord = []) 
     for (const s of scoresToSave) {
         statements.push({
             sql: `
-                INSERT OR REPLACE INTO top_scores 
+                INSERT INTO top_scores 
                 (beatmap_id, country_code, user_id, username, score, pp, accuracy, mods, ended_at, updated_at, max_combo, perfect, statistics, rank, build_id, mod_settings) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(beatmap_id, country_code) DO UPDATE SET 
+                    user_id = excluded.user_id,
+                    username = excluded.username,
+                    score = excluded.score,
+                    pp = excluded.pp,
+                    accuracy = excluded.accuracy,
+                    mods = excluded.mods,
+                    ended_at = excluded.ended_at,
+                    updated_at = excluded.updated_at,
+                    max_combo = excluded.max_combo,
+                    perfect = excluded.perfect,
+                    statistics = excluded.statistics,
+                    rank = excluded.rank,
+                    build_id = excluded.build_id,
+                    mod_settings = excluded.mod_settings
+                WHERE top_scores.score != excluded.score 
+                   OR top_scores.user_id != excluded.user_id 
+                   OR top_scores.pp != excluded.pp
             `,
             args: [
                 s.beatmap_id,
