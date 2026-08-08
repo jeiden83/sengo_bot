@@ -745,8 +745,18 @@ async function run(messages, args) {
     if (accIdx !== -1 && accIdx + 1 < args.length) {
         const rawAcc = args[accIdx + 1].replace('%', '');
         const num = parseFloat(rawAcc);
-        if (!isNaN(num)) {
-            overrideAcc = num;
+        if (!isNaN(num)) overrideAcc = num;
+    } else {
+        const pctArg = args.find(arg => typeof arg === 'string' && /^\d+(?:\.\d+)?%$/.test(arg.trim()));
+        if (pctArg) {
+            const num = parseFloat(pctArg.replace('%', ''));
+            if (!isNaN(num)) overrideAcc = num;
+        } else {
+            const floatArg = args.find(arg => typeof arg === 'string' && /^\d{1,2}\.\d+%?$/.test(arg.trim()));
+            if (floatArg) {
+                const num = parseFloat(floatArg.replace('%', ''));
+                if (!isNaN(num)) overrideAcc = num;
+            }
         }
     }
 
@@ -757,8 +767,12 @@ async function run(messages, args) {
     ));
     if (missIdx !== -1 && missIdx + 1 < args.length) {
         const num = parseInt(args[missIdx + 1]);
-        if (!isNaN(num)) {
-            overrideMisses = num;
+        if (!isNaN(num)) overrideMisses = num;
+    } else {
+        const mArg = args.find(arg => typeof arg === 'string' && (/^\d+m$/i.test(arg.trim()) || /^m\d+$/i.test(arg.trim())));
+        if (mArg) {
+            const num = parseInt(mArg.replace(/m/gi, ''));
+            if (!isNaN(num)) overrideMisses = num;
         }
     }
 
@@ -769,8 +783,12 @@ async function run(messages, args) {
     ));
     if (comboIdx !== -1 && comboIdx + 1 < args.length) {
         const num = parseInt(args[comboIdx + 1]);
-        if (!isNaN(num)) {
-            overrideCombo = num;
+        if (!isNaN(num)) overrideCombo = num;
+    } else {
+        const cArg = args.find(arg => typeof arg === 'string' && (/^[xc]\d+$/i.test(arg.trim()) || /^\d+x$/i.test(arg.trim())));
+        if (cArg) {
+            const num = parseInt(cArg.replace(/[xc]/gi, ''));
+            if (!isNaN(num)) overrideCombo = num;
         }
     }
 
@@ -779,13 +797,28 @@ async function run(messages, args) {
 
     // Aplicar overrides a parsedPlay si existe
     if (parsedPlay) {
-        if (overrideMods) {
+        if (overrideMods !== null) {
             const cleanOverride = overrideMods === 'NM' || overrideMods === 'NOMOD' ? '' : overrideMods;
             parsedPlay.mods = cleanOverride ? cleanOverride.match(/.{1,2}/g) || [] : [];
         }
-        if (overrideAcc !== null) parsedPlay.accuracy = overrideAcc;
-        if (overrideMisses !== null) parsedPlay.misses = overrideMisses;
-        if (overrideCombo !== null) parsedPlay.combo = overrideCombo;
+        if (overrideAcc !== null) {
+            parsedPlay.accuracy = overrideAcc;
+            if (!hitsArg) {
+                parsedPlay.count_300 = undefined;
+                parsedPlay.count_100 = undefined;
+                parsedPlay.count_50 = undefined;
+                parsedPlay.hits = null;
+            }
+        }
+        if (overrideMisses !== null) {
+            parsedPlay.misses = overrideMisses;
+            if (!hitsArg) {
+                parsedPlay.hits = null;
+            }
+        }
+        if (overrideCombo !== null) {
+            parsedPlay.combo = overrideCombo;
+        }
         
         if (hitsArg) {
             const parts = hitsArg.split('/');
@@ -793,6 +826,12 @@ async function run(messages, args) {
             parsedPlay.count_100 = parts[1].toLowerCase() === 'x' ? undefined : parseInt(parts[1]);
             parsedPlay.count_50 = parts[2].toLowerCase() === 'x' ? undefined : parseInt(parts[2]);
             parsedPlay.misses = parts[3].toLowerCase() === 'x' ? undefined : parseInt(parts[3]);
+            parsedPlay.hits = [
+                parsedPlay.count_300 !== undefined ? parsedPlay.count_300 : 'x',
+                parsedPlay.count_100 !== undefined ? parsedPlay.count_100 : 'x',
+                parsedPlay.count_50 !== undefined ? parsedPlay.count_50 : 'x',
+                parsedPlay.misses !== undefined ? parsedPlay.misses : 'x'
+            ];
         }
     }
 
