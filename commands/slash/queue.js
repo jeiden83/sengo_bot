@@ -39,6 +39,11 @@ const data = new SlashCommandBuilder()
             .setRequired(false)
     )
     .addBooleanOption(option =>
+        option.setName("servidor")
+            .setDescription("Muestra la lista de queues de mappers en este servidor")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
         option.setName("borrar")
             .setDescription("Elimina tu queue de mapper por completo")
             .setRequired(false)
@@ -51,10 +56,14 @@ async function run(interaction, res) {
     const linkName = interaction.options.getString("linkname");
     const estado = interaction.options.getString("estado");
     const modo = interaction.options.getString("modo");
+    const servidor = interaction.options.getBoolean("servidor");
     const borrar = interaction.options.getBoolean("borrar");
 
     const args = [];
 
+    if (servidor) {
+        args.push("-server");
+    }
     if (borrar) {
         args.push("-delete");
     }
@@ -73,7 +82,7 @@ async function run(interaction, res) {
     if (setMsg) {
         args.push("-set", setMsg);
     }
-    if (usuario && !borrar && !setMsg && !linkUrl && !linkName && !estado && !modo) {
+    if (usuario && !borrar && !setMsg && !linkUrl && !linkName && !estado && !modo && !servidor) {
         args.push(usuario.id);
     }
 
