@@ -958,15 +958,18 @@ class PopulationService {
         // 2. Obtener conteo de tokens Supporters por país en Supabase
         const { data: supporters } = await supabase
             .from('oauth_tokens')
-            .select('country_code')
-            .eq('is_supporter', true);
+            .select('country_code, is_supporter');
 
         const supporterCountMap = new Map();
+        const oauthCountriesSet = new Set();
         if (supporters) {
             for (const s of supporters) {
                 if (s.country_code) {
                     const code = s.country_code.toUpperCase();
-                    supporterCountMap.set(code, (supporterCountMap.get(code) || 0) + 1);
+                    oauthCountriesSet.add(code);
+                    if (s.is_supporter) {
+                        supporterCountMap.set(code, (supporterCountMap.get(code) || 0) + 1);
+                    }
                 }
             }
         }
@@ -991,10 +994,11 @@ class PopulationService {
             }
         }
 
-        // Países principales soportados por Sengo (incluyendo CR)
-        const defaultCountries = ['MX', 'VE', 'AR', 'CO', 'CL', 'EC', 'PE', 'PR', 'BO', 'CA', 'DO', 'BR', 'ES', 'CR'];
+        // Países principales soportados por Sengo (incluyendo CR y US)
+        const defaultCountries = ['MX', 'VE', 'AR', 'CO', 'CL', 'EC', 'PE', 'PR', 'BO', 'CA', 'DO', 'BR', 'ES', 'CR', 'US'];
         const targetCountries = new Set([
             ...defaultCountries,
+            ...oauthCountriesSet,
             ...allowedCountries
         ]);
 
@@ -1019,13 +1023,13 @@ class PopulationService {
             const occupiedSlots = activeWorkers;
             const freeSlots = Math.max(0, totalSlots - occupiedSlots);
 
-            let status = 'NO_SUPPORTER';
+            let status = 'AVAILABLE';
             if (isScraped) {
                 status = 'COMPLETED';
             } else if (isProcessing) {
                 status = 'PROCESSING';
-            } else if (isAllowed && hasSupporter) {
-                status = 'AVAILABLE';
+            } else if (!hasSupporter) {
+                status = 'NO_SUPPORTER';
             } else if (!isAllowed) {
                 status = 'LOCKED';
             }
