@@ -288,13 +288,31 @@ async function run(messages, args) {
         const total_hits = great + ok + meh + miss;
         const beatmap = await getBeatmap(recent_scores.beatmap.id);
         const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
-        const maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
+        let maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
 
         let user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
 
         const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
         let pp_fc = null;
         const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
+
+        if (!isFC) {
+            try {
+                const fc_statistics = {
+                    ...recent_scores.statistics,
+                    great: (recent_scores.statistics.great || 0) + miss,
+                    miss: 0
+                };
+                const fc_score = {
+                    ...recent_scores,
+                    max_combo: beatmap_max_combo,
+                    statistics: fc_statistics
+                };
+                pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
+            } catch (err) {
+                console.error("Error calculating pp_fc:", err);
+            }
+        }
 
         let reworkCodeUsed = 'master';
         let reworkStarsUsed = null;
@@ -371,7 +389,7 @@ async function run(messages, args) {
                                 count_100: ok,
                                 count_50: meh,
                                 misses: 0,
-                                livePP: user_pp
+                                livePP: pp_fc || user_pp
                             },
                             recent_scores.beatmap.mode || 'osu',
                             reworkCodeUsed
@@ -385,24 +403,6 @@ async function run(messages, args) {
                 }
             } catch (reworkErr) {
                 console.error("Error al calcular Rework PP para rs -rework:", reworkErr.message);
-            }
-        } else {
-            if (!isFC) {
-                try {
-                    const fc_statistics = {
-                        ...recent_scores.statistics,
-                        great: (recent_scores.statistics.great || 0) + miss,
-                        miss: 0
-                    };
-                    const fc_score = {
-                        ...recent_scores,
-                        max_combo: beatmap_max_combo,
-                        statistics: fc_statistics
-                    };
-                    pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
-                } catch (err) {
-                    console.error("Error calculating pp_fc:", err);
-                }
             }
         }
 
