@@ -296,6 +296,9 @@ async function run(messages, args) {
         let pp_fc = null;
         const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
 
+        let reworkCodeUsed = 'master';
+        let reworkStarsUsed = null;
+
         if (isRework) {
             try {
                 const ReworkModel = require("../../../models/ReworkModel.js");
