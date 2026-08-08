@@ -264,8 +264,8 @@ async function run(messages, args) {
             return t(locale, 'queue.delete_success');
         }
 
-        // 2. Verificar si se especificaron cambios/configuraciones en la queue
-        const hasManagementFlags = parsed.isSet || parsed.isLink || parsed.removeLink || parsed.isLinkName || parsed.removeLinkName || parsed.status !== null || parsed.modes !== null;
+        // 2. Verificar si se especificaron cambios/configuraciones en la queue propia (solo cuando NO es consulta de servidor)
+        const hasManagementFlags = !parsed.isServer && (parsed.isSet || parsed.isLink || parsed.removeLink || parsed.isLinkName || parsed.removeLinkName || parsed.status !== null || parsed.modes !== null);
 
         if (hasManagementFlags) {
             if (logger) logger.process(`Actualizando queue de mapper para el usuario ${message.author.id}`);
@@ -361,6 +361,11 @@ async function run(messages, args) {
                         queue: item.queue
                     });
                 }
+            }
+
+            // Filtrar por estado (open / closed) si se especificó
+            if (parsed.status) {
+                mapperList = mapperList.filter(item => item.queue.status === parsed.status);
             }
 
             // Filtrar por modo si se especificó
