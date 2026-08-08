@@ -125,11 +125,15 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         }
 
         // 9. Servicio de Sincronización de Torneos (Tournament Crawler)
-        try {
-            const { initTournamentCrawler } = require("./tournamentCrawler.js");
-            initTournamentCrawler(client);
-        } catch (err) {
-            Logger.system(`Error al iniciar Tournament Crawler: ${err.message}`);
+        if (!isDev) {
+            try {
+                const { initTournamentCrawler } = require("./tournamentCrawler.js");
+                initTournamentCrawler(client);
+            } catch (err) {
+                Logger.system(`Error al iniciar Tournament Crawler: ${err.message}`);
+            }
+        } else {
+            Logger.system("Servicio de Sincronización de Torneos omitido (Modo Dev).");
         }
     }
 }
