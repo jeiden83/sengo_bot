@@ -1596,7 +1596,7 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
         });
 }
 
-async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgress = null) {
+async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgress = null, startPage = 1, endPage = null) {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
     
@@ -1622,7 +1622,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
     const token = await loadToken();
     const client = new Client(token.access_token);
     
-    // ponytail: paginación dinámica — la API devuelve cursor:null cuando no hay más páginas
+    // ponytail: paginación dinámica — soporta rangos de páginas especificados o hasta cursor:null
     let allPlayers = [];
     
     const fetchPage = async (page) => {
@@ -1640,10 +1640,11 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
         });
     };
     
-    let page = 1;
+    let page = Math.max(1, startPage || 1);
     while (true) {
+        if (endPage && page > endPage) break;
         if (onProgress && typeof onProgress === 'function') {
-            await onProgress(page, page + 1, `Obteniendo ranking nacional pág ${page}...`);
+            await onProgress(page, endPage || (page + 1), `Obteniendo ranking nacional pág ${page}...`);
         }
         try {
             const data = await fetchPage(page);
@@ -1660,7 +1661,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
             break;
         }
     }
-    const totalPages = page;
+    const totalPages = page - Math.max(1, startPage || 1) + 1;
     
     const playerIds = allPlayers.filter(p => p.user && p.user.id).map(p => String(p.user.id));
     let dbMappersMap = new Map();

@@ -119,7 +119,7 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
         .addFields(
             {
                 name: t(locale, 'populate.cat_completed'),
-                value: completed.length > 0 ? completed.map(c => `• **${c.code || c.countryCode}** (100% Completado)`).join('\n') : t(locale, 'populate.none_completed')
+                value: completed.length > 0 ? completed.map(c => `**${c.code || c.countryCode}**`).join(', ') : t(locale, 'populate.none_completed')
             },
             {
                 name: t(locale, 'populate.cat_processing'),
