@@ -139,7 +139,13 @@ async function run({ message, res, reply, logger }, args) {
         await PopulationService.cleanupInactiveWorkerKeys(30 * 60 * 1000);
         const workers = await PopulationService.getActiveWorkersList();
         const embed = buildPopulateKeysEmbed(workers, locale);
-        return { embeds: [embed] };
+
+        try {
+            await message.author.send({ embeds: [embed] });
+            return t(locale, 'populate.keys_dm_sent_reply');
+        } catch (err) {
+            return t(locale, 'populate.err_dm_failed');
+        }
     }
 
     // ----------------------------------------------------

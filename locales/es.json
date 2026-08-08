@@ -1713,6 +1713,7 @@
     "dm_sent_reply": "📩 **¡Instrucciones enviadas a tu DM!** Revisa tus mensajes privados para copiar el comando de PowerShell para **{country}**.",
     "dm_sent_mobile_reply": "📩 **¡Instrucciones para Móvil enviadas a tu DM!** Revisa tus mensajes privados para abrir el Worker Web para **{country}**.",
     "dm_sent_bash_reply": "📩 **¡Instrucciones de Bash enviadas a tu DM!** Revisa tus mensajes privados para copiar el comando de Bash para **{country}**.",
+    "keys_dm_sent_reply": "📩 **¡Lista de Worker Keys enviada a tu DM!** Revisa tus mensajes privados para consultar las claves activas.",
     "dm_desc_mobile": "¡Hola **{username}**! Gracias por colaborar en el poblamiento de **{country}** desde tu dispositivo móvil.\n\nSigue estos pasos en tu teléfono (Android / iPhone):",
     "dm_step1_mobile_title": "📱 1️⃣ Cero instalaciones necesarias",
     "dm_step1_mobile_val": "No necesitas descargar ni instalar ninguna aplicación. El worker funciona directamente en Chrome, Safari o cualquier navegador móvil.",

@@ -1712,6 +1712,7 @@
     "dm_footer": "You can close the console whenever you want to pause cleanly.",
     "dm_sent_reply": "📩 **Instructions sent to your DM!** Check your private messages to copy the PowerShell command for **{country}**.",
     "dm_sent_mobile_reply": "📩 **Mobile instructions sent to your DM!** Check your private messages to copy the Bash command for **{country}**.",
+    "keys_dm_sent_reply": "📩 **Worker Keys list sent to your DM!** Check your private messages to view active keys.",
     "dm_desc_mobile": "Hello **{username}**! Thank you for contributing to **{country}** population from your mobile device.\n\nFollow these steps on your phone (Android / iPhone):",
     "dm_step1_mobile_title": "📱 1️⃣ Zero installations required",
     "dm_step1_mobile_val": "You don't need to download or install any app. The worker runs directly in Chrome, Safari or any mobile browser.",
