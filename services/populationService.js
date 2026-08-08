@@ -1002,7 +1002,6 @@ class PopulationService {
 
         for (const code of targetCountries) {
             const countryMeta = scrapedMap.get(code);
-            const isScraped = countryMeta ? countryMeta.is_scraped : false;
             const supporterCount = supporterCountMap.get(code) || 0;
             const hasSupporter = supporterCount > 0;
             const isAllowed = allowedCountries.has(code);
@@ -1010,7 +1009,8 @@ class PopulationService {
             const activeWorkers = session ? session.activeWorkers.size : 0;
             const isProcessing = isAllowed && session && !session.isStopped && activeWorkers > 0;
 
-            const scrapedCount = countryMeta ? countryMeta.scraped_count : (countryScrapedCounts.get(code) || 0);
+            const scrapedCount = countryMeta ? Number(countryMeta.scraped_count || 0) : (countryScrapedCounts.get(code) || 0);
+            const isScraped = countryMeta ? Boolean(countryMeta.is_scraped && scrapedCount > 0) : false;
             const rawPercent = totalRanked > 0 ? (scrapedCount / totalRanked) * 100 : 0;
             const progressPercent = Math.min(100.0, rawPercent).toFixed(1);
 
