@@ -994,13 +994,20 @@ class PopulationService {
             }
         }
 
-        // Países principales soportados por Sengo (incluyendo CR y US)
-        const defaultCountries = ['MX', 'VE', 'AR', 'CO', 'CL', 'EC', 'PE', 'PR', 'BO', 'CA', 'DO', 'BR', 'ES', 'CR', 'US'];
+        // Determinar países 100% dinámicamente según oauth_tokens, permisos y avance de scrapeo
         const targetCountries = new Set([
-            ...defaultCountries,
             ...oauthCountriesSet,
             ...allowedCountries
         ]);
+
+        if (scraped) {
+            for (const sc of scraped) {
+                const code = sc.country_code.toUpperCase();
+                if (sc.is_allowed || Number(sc.scraped_count || 0) > 0) {
+                    targetCountries.add(code);
+                }
+            }
+        }
 
         const list = [];
 
