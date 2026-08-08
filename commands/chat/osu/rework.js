@@ -29,6 +29,13 @@ function parsePlayEmbed(embed) {
     const fieldsText = (embed.fields || []).map(f => f.value).join(" ");
     const combinedText = desc + " " + fieldsText;
 
+    // ponytail: detectar si el embed es de información de mapa (s.m, s.map, etc.) para no confundirlo con una jugada individual
+    const isMapInfoEmbed = /Creado por|Created by/i.test(authorName) ||
+                           /Valores de PP por acc|PP values|Recommended PP|Submiteado:|Submitted:|Objetos:\s*Círculos|Objects:\s*Circles|Etiquetas:|Tags:/i.test(combinedText) ||
+                           (embed.fields || []).some(f => /Valores de PP por acc|PP values|Recommended PP|Objetos|Objects/i.test(f.name || "") || /Valores de PP por acc|PP values|Recommended PP|Objetos|Objects/i.test(f.value || ""));
+
+    if (isMapInfoEmbed) return null;
+
     let beatmapId = null;
     if (embed.url) {
         const match = embed.url.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
