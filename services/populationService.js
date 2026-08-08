@@ -993,15 +993,14 @@ class PopulationService {
 
         // Países principales soportados por Sengo (incluyendo CR)
         const defaultCountries = ['MX', 'VE', 'AR', 'CO', 'CL', 'EC', 'PE', 'PR', 'BO', 'CA', 'DO', 'BR', 'ES', 'CR'];
-        const allCountryCodes = new Set([
+        const targetCountries = new Set([
             ...defaultCountries,
-            ...scrapedMap.keys(),
-            ...supporterCountMap.keys(),
             ...allowedCountries
         ]);
+
         const list = [];
 
-        for (const code of allCountryCodes) {
+        for (const code of targetCountries) {
             const countryMeta = scrapedMap.get(code);
             const isScraped = countryMeta ? countryMeta.is_scraped : false;
             const supporterCount = supporterCountMap.get(code) || 0;

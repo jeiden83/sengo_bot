@@ -112,6 +112,11 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
         lockedValue = parts.join('\n');
     }
 
+    const safeVal = (str) => {
+        if (!str) return 'N/A';
+        return str.length > 1024 ? str.substring(0, 1020) + '...' : str;
+    };
+
     return new EmbedBuilder()
         .setTitle(t(locale, 'populate.status_title'))
         .setColor(CONFIG.colors?.primary || 0x3498db)
@@ -119,23 +124,23 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
         .addFields(
             {
                 name: t(locale, 'populate.cat_completed'),
-                value: completed.length > 0 ? completed.map(c => `**${c.code || c.countryCode}**`).join(', ') : t(locale, 'populate.none_completed')
+                value: safeVal(completed.length > 0 ? completed.map(c => `**${c.code || c.countryCode}**`).join(', ') : t(locale, 'populate.none_completed'))
             },
             {
                 name: t(locale, 'populate.cat_processing'),
-                value: processing.length > 0 ? processing.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos: **${c.occupiedSlots}/${c.totalSlots}** (${c.freeSlots} libres)`).join('\n') : t(locale, 'populate.none_processing')
+                value: safeVal(processing.length > 0 ? processing.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos: **${c.occupiedSlots}/${c.totalSlots}** (${c.freeSlots} libres)`).join('\n') : t(locale, 'populate.none_processing'))
             },
             {
                 name: t(locale, 'populate.cat_available'),
-                value: available.length > 0 ? available.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos libres: **${c.freeSlots}/${c.totalSlots}**`).join('\n') : t(locale, 'populate.none_available')
+                value: safeVal(available.length > 0 ? available.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos libres: **${c.freeSlots}/${c.totalSlots}**`).join('\n') : t(locale, 'populate.none_available'))
             },
             {
                 name: t(locale, 'populate.cat_locked'),
-                value: lockedValue
+                value: safeVal(lockedValue)
             },
             {
                 name: t(locale, 'populate.cat_no_supporter'),
-                value: noSupporter.length > 0 ? noSupporter.map(c => `**${c.code || c.countryCode}**`).join(', ') : t(locale, 'populate.all_have_supporter')
+                value: safeVal(noSupporter.length > 0 ? noSupporter.map(c => `**${c.code || c.countryCode}**`).join(', ') : t(locale, 'populate.all_have_supporter'))
             }
         )
         .setFooter({ text: 'SengoBot • Poblamiento Distribuido' })
