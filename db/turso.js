@@ -441,7 +441,7 @@ async function saveBeatmap(b) {
     const args = [
         b.beatmap_id || b.id,
         b.beatmapset_id || b.set_id || 0,
-        b.mode || 0,
+        b.mode !== undefined ? b.mode : 0,
         b.title || '',
         b.artist || '',
         b.version || '',
@@ -449,14 +449,49 @@ async function saveBeatmap(b) {
         b.stars || b.difficulty_rating || 0,
         b.bpm || 0,
         b.ar || 0,
-        b.od || b.accuracy || 0,
+        b.od !== undefined ? b.od : (b.accuracy || 0),
         b.cs || 0,
-        b.hp || b.drain || 0,
+        b.hp !== undefined ? b.hp : (b.drain || 0),
         b.max_combo || 0,
-        b.status || '',
+        b.status || b.ranked_status || '',
         new Date().toISOString()
     ];
     await executeTurso(sql, args);
+}
+
+async function saveBeatmapsBatch(beatmaps = []) {
+    if (!isTursoAvailable() || beatmaps.length === 0) return 0;
+    const statements = beatmaps.map(b => ({
+        sql: `
+            INSERT OR REPLACE INTO ranked_beatmaps 
+            (beatmap_id, beatmapset_id, mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, max_combo, status, updated_at) 
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `,
+        args: [
+            b.beatmap_id || b.id,
+            b.beatmapset_id || b.set_id || 0,
+            b.mode !== undefined ? b.mode : 0,
+            b.title || '',
+            b.artist || '',
+            b.version || '',
+            b.creator || '',
+            b.stars || b.difficulty_rating || 0,
+            b.bpm || 0,
+            b.ar || 0,
+            b.od !== undefined ? b.od : (b.accuracy || 0),
+            b.cs || 0,
+            b.hp !== undefined ? b.hp : (b.drain || 0),
+            b.max_combo || 0,
+            b.status || b.ranked_status || '',
+            new Date().toISOString()
+        ]
+    }));
+
+    for (let i = 0; i < statements.length; i += 100) {
+        const chunk = statements.slice(i, i + 100);
+        await executeTursoBatch(chunk);
+    }
+    return statements.length;
 }
 
 /**
@@ -570,5 +605,6 @@ module.exports = {
     saveTopScore,
     recordSnipe,
     saveBeatmap,
+    saveBeatmapsBatch,
     saveBatchScoresAndSnipes
 };
