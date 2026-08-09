@@ -247,9 +247,23 @@ async function run(messages, args) {
         }
     }
 
-    // Si aún no tenemos ID de mapa, buscar en el canal
+    // Si aún no tenemos ID de mapa, buscar en el canal o mensaje referenciado
     if (!targetBeatmapId) {
-        targetBeatmapId = await findBeatmapInChannel(message, reply);
+        const channelResult = reply
+            ? await findBeatmapInChannel(reply, true)
+            : await findBeatmapInChannel(message, false);
+
+        if (channelResult && channelResult.beatmap_url) {
+            const rawUrl = String(channelResult.beatmap_url);
+            const match = rawUrl.match(/b(?:eatmaps)?\/(\d+)/) ||
+                          rawUrl.match(/#(?:\w+)\/(\d+)/) ||
+                          rawUrl.match(/^(\d+)$/);
+            if (match) {
+                targetBeatmapId = match[1];
+            } else if (!rawUrl.startsWith('set/')) {
+                targetBeatmapId = rawUrl;
+            }
+        }
     }
 
     if (!targetBeatmapId) {
