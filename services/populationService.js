@@ -777,31 +777,32 @@ class PopulationService {
         }
 
         if (savedCount > 0) {
-            const updateCount = newUniqueCount > 0 ? newUniqueCount : savedCount;
-            countryScrapedCounts.set(country, (countryScrapedCounts.get(country) || 0) + updateCount);
-            // Actualizar conteo liviano en Supabase (scraped_countries) sin tocar la cuota de Turso
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase) {
-                    const { data: currentScraped } = await supabase
-                        .from('scraped_countries')
-                        .select('scraped_count')
-                        .eq('country_code', country)
-                        .maybeSingle();
+            const updateCount = newUniqueCount;
+            if (updateCount > 0) {
+                try {
+                    const supabase = getSupabaseClient();
+                    if (supabase) {
+                        const { data: currentScraped } = await supabase
+                            .from('scraped_countries')
+                            .select('scraped_count')
+                            .eq('country_code', country)
+                            .maybeSingle();
 
-                    const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
-                    const newCount = currentCount + updateCount;
+                        const currentCount = currentScraped ? Number(currentScraped.scraped_count || 0) : 0;
+                        const finalCount = currentCount + updateCount;
+                        countryScrapedCounts.set(country, finalCount);
 
-                    await supabase
-                        .from('scraped_countries')
-                        .upsert({
-                            country_code: country,
-                            scraped_count: newCount,
-                            last_scraped_at: new Date().toISOString()
-                        }, { onConflict: 'country_code' });
+                        await supabase
+                            .from('scraped_countries')
+                            .upsert({
+                                country_code: country,
+                                scraped_count: finalCount,
+                                last_scraped_at: new Date().toISOString()
+                            }, { onConflict: 'country_code' });
+                    }
+                } catch (e) {
+                    console.error(`Error actualizando conteo en Supabase para ${country}:`, e.message);
                 }
-            } catch (e) {
-                console.error(`Error actualizando conteo en Supabase para ${country}:`, e.message);
             }
         }
 
