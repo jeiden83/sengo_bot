@@ -219,7 +219,19 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         }
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
+    const map = recent_scores.beatmap || {};
+    const cs = map.cs !== undefined ? map.cs : 0;
+    const ar = map.ar !== undefined ? map.ar : (map.accuracy !== undefined ? map.accuracy : 0);
+    const od = map.accuracy !== undefined ? map.accuracy : (map.ar !== undefined ? map.ar : 0);
+    const hp = map.drain !== undefined ? map.drain : (map.hp !== undefined ? map.hp : 0);
+    const bpm = map.bpm || 0;
+
+    const playDate = recent_scores.ended_at || recent_scores.created_at || new Date();
+    const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
+    const line2 = `**${score}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}`;
+    const line3 = `\`CS ${cs} | AR ${ar} | OD ${od} | HP ${hp} | BPM ${bpm}\``;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -229,9 +241,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`**Puntuación**: \`${score}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}
-${ansiBlock}
-		`)
+        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
@@ -409,7 +419,19 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
+    const map = score.beatmap || {};
+    const cs = map.cs !== undefined ? map.cs : 0;
+    const ar = map.ar !== undefined ? map.ar : (map.accuracy !== undefined ? map.accuracy : 0);
+    const od = map.accuracy !== undefined ? map.accuracy : (map.ar !== undefined ? map.ar : 0);
+    const hp = map.drain !== undefined ? map.drain : (map.hp !== undefined ? map.hp : 0);
+    const bpm = map.bpm || 0;
+
+    const playDate = score.ended_at || score.created_at || new Date();
+    const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
+    const line2 = `${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
+    const line3 = `\`CS ${cs} | AR ${ar} | OD ${od} | HP ${hp} | BPM ${bpm}\``;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
 
     const authorName = parsed_args.nochoke
         ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
@@ -427,9 +449,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
-${ansiBlock}
-        `)
+        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
@@ -645,7 +665,19 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         prefix_desc += `🔍 *${t(locale, 'compare.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, user_max_combo, beatmap_max_combo);
+    const map = score.beatmap || {};
+    const cs = map.cs !== undefined ? map.cs : 0;
+    const ar = map.ar !== undefined ? map.ar : (map.accuracy !== undefined ? map.accuracy : 0);
+    const od = map.accuracy !== undefined ? map.accuracy : (map.ar !== undefined ? map.ar : 0);
+    const hp = map.drain !== undefined ? map.drain : (map.hp !== undefined ? map.hp : 0);
+    const bpm = map.bpm || 0;
+
+    const playDate = score.ended_at || score.created_at || new Date();
+    const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
+    const line2 = `${disclaimer}${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
+    const line3 = `\`CS ${cs} | AR ${ar} | OD ${od} | HP ${hp} | BPM ${bpm}\``;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -655,9 +687,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${disclaimer}${prefix_desc}**Puntuación**: \`${score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
-${ansiBlock}
-        `)
+        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
@@ -804,7 +834,19 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
-    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, recent_scores.max_combo, pre_calculated.beatmap_max_combo);
+    const map = recent_scores.beatmap || {};
+    const cs = map.cs !== undefined ? map.cs : 0;
+    const ar = map.ar !== undefined ? map.ar : (map.accuracy !== undefined ? map.accuracy : 0);
+    const od = map.accuracy !== undefined ? map.accuracy : (map.ar !== undefined ? map.ar : 0);
+    const hp = map.drain !== undefined ? map.drain : (map.hp !== undefined ? map.hp : 0);
+    const bpm = map.bpm || 0;
+
+    const playDate = recent_scores.ended_at || recent_scores.created_at || new Date();
+    const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
+    const line2 = `**${formatted_score_val}** **▸** **\`${recent_scores.max_combo || 0}x\`**/*\`${pre_calculated.beatmap_max_combo ? pre_calculated.beatmap_max_combo + 'x' : '?'}\`*`;
+    const line3 = `\`CS ${cs} | AR ${ar} | OD ${od} | HP ${hp} | BPM ${bpm}\``;
+    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
 
     let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
     let authorUrl = `https://osu.ppy.sh/users/${user_id}`;
@@ -837,9 +879,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         })
         .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
-        .setDescription(`**${t(locale, 'subir.score_label')}**: \`${formatted_score_val}\` **▸** ${grade_emoji} ${map_completion} **▸** ${mods_used} **▸** ${accuracy}%${ratio_str}
-${ansiBlock}
-        `)
+        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
