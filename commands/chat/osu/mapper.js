@@ -786,12 +786,13 @@ async function handleMappingTrackerCommand(messages, args) {
     }
 
     const activeConfig = await MappingTrackerModel.getTrackerChannel(guildId);
-    if (!activeConfig || !activeConfig.channel_id) {
-        return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
-    }
 
     // 3. s.mapper -track -usuario -server (Solo Admins)
     if (isUsuario && isServer) {
+        if (!activeConfig || !activeConfig.channel_id) {
+            return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
+        }
+
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
         if (linkedMap.size === 0) {
             return { content: t(locale, 'mapping_tracker.err_no_linked_db') };
@@ -825,6 +826,9 @@ async function handleMappingTrackerCommand(messages, args) {
 
     // 4. s.mapper -track -usuario <ID/mención/username>
     if (isUsuario) {
+        if (!activeConfig || !activeConfig.channel_id) {
+            return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
+        }
         let userInput = null;
         for (let i = 0; i < args.length; i++) {
             if (args[i].toLowerCase() === '-usuario' && i + 1 < args.length && !args[i + 1].startsWith('-')) {
