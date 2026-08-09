@@ -384,7 +384,13 @@ async function run(messages, args) {
             id: beatmapData.id,
             version: beatmapData.version,
             mode: requestedModeStr,
-            status: beatmapData.status
+            status: beatmapData.status,
+            cs: beatmapData.cs !== undefined ? beatmapData.cs : 0,
+            ar: beatmapData.ar !== undefined ? beatmapData.ar : (beatmapData.accuracy !== undefined ? beatmapData.accuracy : 0),
+            accuracy: beatmapData.accuracy !== undefined ? beatmapData.accuracy : (beatmapData.ar !== undefined ? beatmapData.ar : 0),
+            drain: beatmapData.drain !== undefined ? beatmapData.drain : (beatmapData.hp !== undefined ? beatmapData.hp : 0),
+            hp: beatmapData.hp !== undefined ? beatmapData.hp : (beatmapData.drain !== undefined ? beatmapData.drain : 0),
+            bpm: beatmapData.bpm || 0
         },
         accuracy: hitsResult.accuracy / 100,
         max_combo: combo,
