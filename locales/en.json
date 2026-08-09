@@ -1779,6 +1779,8 @@
     "field_bpm_diffs": "🥁 BPM / Diffs",
     "test_title_prefix": "🧪 [TEST] ",
     "test_footer": "Sengo • Mapping Tracker (Test Mode -test)",
+    "test_sent_channel": "✅ **Mapping Tracker notification test sent to <#{channelId}>**.",
+    "err_test_send_channel": "❌ Could not send test message to <#{channelId}>. Make sure Sengo has permissions to view and send messages in that channel.",
     "footer": "Sengo • Mapping Tracker"
   }
 }

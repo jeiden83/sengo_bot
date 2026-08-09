@@ -726,7 +726,7 @@ async function handleMappingTrackerCommand(messages, args) {
 
     const finalEvents = eventFlags.length > 0 ? eventFlags : ['all'];
 
-    // 1. s.mapper -track -test (Prueba de notificación)
+    // 1. s.mapper -track -test (Prueba de notificación enviada al canal de tracking)
     if (isTest) {
         const config = await MappingTrackerModel.getTrackerChannel(guildId);
         if (!config || !config.channel_id) {
@@ -738,20 +738,65 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
-        const mockMapset = {
-            id: 21329,
-            title: "Crystal Lattice",
-            artist: "sakuzyo",
-            status: "qualified",
-            bpm: 180,
-            user_id: tracked[0].osu_id,
-            creator: "Mapper",
-            beatmaps: [{ difficulty_rating: 5.42 }, { difficulty_rating: 6.88 }],
-            covers: { cover: "https://assets.ppy.sh/beatmaps/pack-default.jpg" }
-        };
-        const mockUser = { id: tracked[0].osu_id, username: `Mapper #${tracked[0].osu_id}` };
+        const { fetchUserBeatmapsets } = require("../../../services/mappingTrackerService.js");
+        const linkedMap = await OsuUserModel.getLinkedUsersMap();
 
-        return doMappingTrackerTestEmbed(mockMapset, mockUser, locale);
+        let realMapset = null;
+        let realUser = null;
+
+        for (const tRow of tracked) {
+            const osuId = tRow.osu_id;
+            const mapsets = await fetchUserBeatmapsets(osuId);
+            if (mapsets && mapsets.length > 0) {
+                // Ordenar por fecha de envío/última actualización descendente
+                mapsets.sort((a, b) => new Date(b.submitted_date || b.last_updated || 0) - new Date(a.submitted_date || a.last_updated || 0));
+                realMapset = mapsets[0];
+
+                const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
+                realUser = {
+                    id: osuId,
+                    username: linked?.username || realMapset.creator || `Mapper #${osuId}`,
+                    avatar_url: `https://a.ppy.sh/${osuId}`
+                };
+                break;
+            }
+        }
+
+        if (!realMapset) {
+            realMapset = {
+                id: 21329,
+                title: "Crystal Lattice",
+                artist: "sakuzyo",
+                status: "qualified",
+                bpm: 180,
+                user_id: tracked[0].osu_id,
+                creator: "Mapper",
+                beatmaps: [{ difficulty_rating: 5.42 }, { difficulty_rating: 6.88 }],
+                covers: { cover: "https://assets.ppy.sh/beatmaps/pack-default.jpg" }
+            };
+            realUser = { id: tracked[0].osu_id, username: `Mapper #${tracked[0].osu_id}` };
+        }
+
+        const testEmbedPayload = doMappingTrackerTestEmbed(realMapset, realUser, locale);
+
+        const targetChannel = message.client?.channels?.cache?.get(config.channel_id)
+            || (message.client?.channels?.fetch ? await message.client.channels.fetch(config.channel_id).catch(() => null) : null);
+
+        if (!targetChannel) {
+            return { content: t(locale, 'mapping_tracker.err_test_send_channel', { channelId: config.channel_id }) };
+        }
+
+        try {
+            await targetChannel.send(testEmbedPayload);
+        } catch (e) {
+            return { content: t(locale, 'mapping_tracker.err_test_send_channel', { channelId: config.channel_id }) };
+        }
+
+        if (message.channel.id !== config.channel_id) {
+            return { content: t(locale, 'mapping_tracker.test_sent_channel', { channelId: config.channel_id }) };
+        }
+
+        return {};
     }
 
     // Requiere verificación de permisos de administrador para cambios de configuración

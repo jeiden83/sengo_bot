@@ -162,5 +162,6 @@ function initMappingTracker(client) {
 
 module.exports = {
     initMappingTracker,
-    runMappingTrackerScan
+    runMappingTrackerScan,
+    fetchUserBeatmapsets
 };
