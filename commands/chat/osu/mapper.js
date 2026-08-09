@@ -874,13 +874,36 @@ async function handleMappingTrackerCommand(messages, args) {
         return { content: `✅ **Mapper [${targetUsername}](https://osu.ppy.sh/users/${targetOsuId}) (#${targetOsuId}) añadido al tracking**.\n📢 Canal: <#${activeConfig.channel_id}>\n📌 Eventos: \`${eventsStr}\`` };
     }
 
-    // 5. Estado actual de tracking en el servidor
+    // 5. Estado actual de tracking en el servidor y guía explicativa completa entre cada elemento
     const trackedList = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
-    const channelMention = activeConfig.channel_id ? `<#${activeConfig.channel_id}>` : '`Ninguno`';
+    const channelMention = activeConfig && activeConfig.channel_id ? `<#${activeConfig.channel_id}>` : '`Ninguno (usar s.mapper -track -canal #canal)`';
 
     let desc = `📢 **Canal de Notificaciones**: ${channelMention}\n👥 **Mappers Rastreados**: **${trackedList.length}**\n\n`;
+
+    desc += `### ⚙️ Configurar Canal de Notificaciones (Admins)\n`;
+    desc += `▸ \`s.mapper -track -canal #canal\` : Asigna el canal de alertas del servidor.\n`;
+    desc += `▸ \`s.mapper -track -canal\` : Deshabilita el tracking y elimina las suscripciones de mappers asociadas.\n\n`;
+
+    desc += `### 👤 Añadir Mappers Rastreados (Admins)\n`;
+    desc += `▸ \`s.mapper -track -usuario <ID/mención>\` : Añade un usuario vinculado a Sengo (\`Sengo: ✅\`).\n`;
+    desc += `▸ \`s.mapper -track -usuario -server\` : Añade masivamente a todos los miembros vinculados del servidor.\n\n`;
+
+    desc += `### 📌 Flags de Filtro de Eventos (Concatenables)\n`;
+    desc += `▸ \`-ranked\` / \`-rk\` : Notifica mapas recién pasados a Ranked o Approved.\n`;
+    desc += `▸ \`-qualified\` / \`-qf\` : Notifica mapas ingresados a Qualified.\n`;
+    desc += `▸ \`-loved\` / \`-lv\` : Notifica mapas ingresados a Loved.\n`;
+    desc += `▸ \`-pending\` / \`-wip\` : Notifica nuevos mapas subidos o actualizaciones WIP.\n`;
+    desc += `▸ \`-graveyard\` / \`-gy\` : Notifica mapas movidos a Graveyard.\n`;
+    desc += `▸ \`-revive\` / \`-rv\` : Notifica mapas revividos de Graveyard.\n`;
+    desc += `▸ \`-nomination\` / \`-nom\` : Notifica nominaciones de BNs.\n`;
+    desc += `▸ \`-todos\` / \`-all\` : Notifica todos los eventos (por defecto).\n`;
+    desc += `*Ejemplo:* \`s.mapper -track -usuario @mencion -ranked -qualified\`\n\n`;
+
+    desc += `### 🧪 Prueba de Notificación\n`;
+    desc += `▸ \`s.mapper -track -test\` : Envía un mensaje de prueba con la última actividad en el canal.\n\n`;
+
+    desc += `### 📋 Mappers Rastreados en este Servidor\n`;
     if (trackedList.length > 0) {
-        desc += `**Lista de Mappers**:\n`;
         trackedList.slice(0, 15).forEach((t, i) => {
             const evs = (t.event_types || ['all']).join(', ');
             desc += `\`#${i + 1}\` ▸ [Mapper #${t.osu_id}](https://osu.ppy.sh/users/${t.osu_id}) (\`${evs}\`)\n`;
@@ -889,14 +912,14 @@ async function handleMappingTrackerCommand(messages, args) {
             desc += `*... y ${trackedList.length - 15} mappers más.*\n`;
         }
     } else {
-        desc += `*No hay mappers agregados al tracking de este servidor.*`;
+        desc += `*No hay mappers agregados al tracking de este servidor aún.*`;
     }
 
     const embed = new EmbedBuilder()
-        .setTitle("🗺️ Mapping Tracker • Estado del Servidor")
+        .setTitle("🗺️ Mapping Tracker • Estado y Guía de Uso")
         .setDescription(desc)
         .setColor(getEmbedColor(message))
-        .setFooter({ text: "Sengo • s.mapper -track" })
+        .setFooter({ text: "Sengo • s.mapper / s.mappers -track" })
         .setTimestamp();
 
     return { embeds: [embed] };
