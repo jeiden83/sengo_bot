@@ -1717,5 +1717,11 @@
     "dm_step1_mobile_title": "📱 1️⃣ Zero installations required",
     "dm_step1_mobile_val": "You don't need to download or install any app. The worker runs directly in Chrome, Safari or any mobile browser.",
     "err_dm_failed": "⚠️ Could not send you a private message. Please enable Direct Messages (DMs) in the server to receive your worker key."
+  },
+  "sim": {
+    "embed_author": "🎮 Simulated Play for {username}",
+    "embed_footer": "Sengo • Simulated Play",
+    "err_no_map": "❌ No beatmap found to simulate. Please specify a map link/ID or reply to a message containing a map.",
+    "err_fetch_map": "❌ An error occurred while fetching beatmap data for simulation."
   }
 }

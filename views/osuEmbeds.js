@@ -202,7 +202,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     let authorName = t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode });
     let footerText = t(locale, 'recent.embed_footer_default');
 
-    if (pre_calculated.isRework) {
+    if (recent_scores.isSimulated) {
+        authorName = t(locale, 'sim.embed_author', { username });
+        footerText = t(locale, 'sim.embed_footer');
+    } else if (pre_calculated.isRework) {
         authorName = `👑 Jugada Reciente (Rework) para ${username}`;
         footerText = `Sengo • Rework PP (${pre_calculated.reworkCode || 'master'})`;
     } else if (recent_scores.beatmap.mode === 'mania') {

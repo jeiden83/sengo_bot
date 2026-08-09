@@ -1721,5 +1721,11 @@
     "dm_step1_bash_title": "🐧 1️⃣ Abre tu Terminal (Linux / Mac / Termux)",
     "dm_step1_bash_val": "Asegúrate de tener instalados `curl` y `python3`.",
     "err_dm_failed": "⚠️ No pude enviarte el mensaje privado. Por favor activa los mensajes directos (DM) en el servidor para recibir tu clave de trabajador."
+  },
+  "sim": {
+    "embed_author": "🎮 Jugada Simulada para {username}",
+    "embed_footer": "Sengo • Simulación de Jugada",
+    "err_no_map": "❌ No se encontró ningún mapa para simular. Por favor especifica un link/ID de mapa o responde a un mensaje con un mapa.",
+    "err_fetch_map": "❌ Ocurrió un error al obtener la información del mapa para simular."
   }
 }
