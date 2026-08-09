@@ -276,8 +276,13 @@ async function run(messages, args) {
     try {
         beatmapData = await BeatmapModel.getBeatmap(targetBeatmapId);
     } catch (e) {
-        console.error("Error al obtener mapa para s.sim:", e.message);
-        return t(locale, 'sim.err_fetch_map');
+        try {
+            const setDetails = await BeatmapModel.getBeatmapset(targetBeatmapId);
+            if (setDetails && setDetails.beatmaps && setDetails.beatmaps.length > 0) {
+                targetBeatmapId = setDetails.beatmaps[0].id;
+                beatmapData = await BeatmapModel.getBeatmap(targetBeatmapId);
+            }
+        } catch (e2) {}
     }
 
     if (!beatmapData || !beatmapData.id) {
