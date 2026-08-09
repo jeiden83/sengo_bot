@@ -1,4 +1,4 @@
-const { getSupabaseClient } = require("../db/supabase.js");
+const { getSupabaseClient } = require("../db/database.js");
 
 /**
  * Modelo de datos para el módulo Mapping Tracker

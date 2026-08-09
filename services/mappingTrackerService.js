@@ -11,7 +11,7 @@ let discordClient = null;
  */
 async function getOsuApiToken() {
     try {
-        const { getSupabaseClient } = require("../db/supabase.js");
+        const { getSupabaseClient } = require("../db/database.js");
         const supabase = getSupabaseClient();
         if (supabase) {
             const { data } = await supabase.from('oauth_tokens').select('access_token').limit(1);
