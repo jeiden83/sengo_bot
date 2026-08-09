@@ -75,6 +75,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
     chunk.forEach((friend, idx) => {
         const globalIndex = startIndex + idx + 1;
         const indexStr = `\`#${globalIndex.toString().padEnd(2, ' ')}\``;
+        const flag = getFlagEmoji(friend.country_code);
         const paddedName = (friend.username || '').padEnd(maxUsernameLength, ' ');
         const nameLink = `[\`${paddedName}\`](https://osu.ppy.sh/users/${friend.id})`;
 
@@ -82,7 +83,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         const suppSymbol = friend.is_supporter ? '💖' : '';
         const mutualSymbol = friend.mutual === 'yes' ? '👥' : '';
 
-        let line = `${indexStr} ▸ ${nameLink}   ${onlineSymbol}`;
+        let line = `${indexStr} ▸ ${flag} ${nameLink}   ${onlineSymbol}`;
         if (suppSymbol) {
             line += `   ${suppSymbol}`;
         }
