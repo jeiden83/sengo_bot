@@ -1516,13 +1516,17 @@ function doOsuSnipesNemesisEmbed(message, made, received, osu_userdata, locale =
     const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
     const icon_url = osu_userdata.team ? osu_userdata.team.flag_url : osu_userdata.avatar_url;
 
-    if (made.length === 0 && received.length === 0) {
+    // Filtrar usuarios dummy (SYSTEM_NO_SCORE o ID 0)
+    const validMade = made.filter(item => item.sniped_id && item.sniped_id.toString() !== '0' && item.sniped_name !== 'SYSTEM_NO_SCORE');
+    const validReceived = received.filter(item => item.sniper_id && item.sniper_id.toString() !== '0' && item.sniper_name !== 'SYSTEM_NO_SCORE');
+
+    if (validMade.length === 0 && validReceived.length === 0) {
         return t(locale, 'snipes.nemesis_err_no_history', { username: osu_userdata.username });
     }
 
     // 1. Tops Arrebatados (Víctimas)
     const victimsMap = {};
-    made.forEach(item => {
+    validMade.forEach(item => {
         const name = item.sniped_name || 'Desconocido';
         victimsMap[name] = (victimsMap[name] || 0) + 1;
     });
@@ -1532,7 +1536,7 @@ function doOsuSnipesNemesisEmbed(message, made, received, osu_userdata, locale =
 
     // 2. Enemigos Principales (Némesis)
     const nemesisMap = {};
-    received.forEach(item => {
+    validReceived.forEach(item => {
         const name = item.sniper_name || 'Desconocido';
         nemesisMap[name] = (nemesisMap[name] || 0) + 1;
     });
@@ -1541,8 +1545,8 @@ function doOsuSnipesNemesisEmbed(message, made, received, osu_userdata, locale =
         .slice(0, 5);
 
     // 3. Recientes
-    const recentMade = made.slice(0, 3);
-    const recentReceived = received.slice(0, 3);
+    const recentMade = validMade.slice(0, 3);
+    const recentReceived = validReceived.slice(0, 3);
 
     const victimsText = sortedVictims.length > 0
         ? sortedVictims.map((v, idx) => `**#${idx + 1}** ${v[0]} \`(${v[1]} #1s)\``).join('\n')

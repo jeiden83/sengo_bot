@@ -2665,10 +2665,15 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 return;
             }
 
-            // 4. Determinar a quién desbancó del #1
+            // 4. Determinar a quién desbancó del #1 (no registrar snipes contra usuarios dummy como SYSTEM_NO_SCORE)
             const snipedUser = secondPlaceUser || (currentTop ? { user_id: currentTop.user_id, username: currentTop.username } : null);
+            const isDummyUser = !snipedUser || 
+                                !snipedUser.user_id || 
+                                snipedUser.user_id.toString() === '0' || 
+                                snipedUser.username === 'SYSTEM_NO_SCORE' || 
+                                !snipedUser.username;
 
-            if (snipedUser && snipedUser.user_id.toString() !== verifiedSniperId) {
+            if (!isDummyUser && snipedUser.user_id.toString() !== verifiedSniperId) {
                 console.log(`[REALTIME-SNIPE] ¡${verifiedUsername} snipeó a ${snipedUser.username} en el mapa ${beatmapId}!`);
 
                 // Registrar en Turso snipes_history

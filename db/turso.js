@@ -224,7 +224,7 @@ async function getUserSnipesHistory(userId) {
         SELECT s.sniped_name, s.sniped_id, s.beatmap_id, s.pp, s.ended_at, b.title, b.version
         FROM snipes_history s
         LEFT JOIN ranked_beatmaps b ON s.beatmap_id = b.beatmap_id
-        WHERE s.sniper_id = ?
+        WHERE s.sniper_id = ? AND s.sniped_id != '0' AND s.sniped_name != 'SYSTEM_NO_SCORE'
         ORDER BY s.ended_at DESC
     `;
 
@@ -232,7 +232,7 @@ async function getUserSnipesHistory(userId) {
         SELECT s.sniper_name, s.sniper_id, s.beatmap_id, s.pp, s.ended_at, b.title, b.version
         FROM snipes_history s
         LEFT JOIN ranked_beatmaps b ON s.beatmap_id = b.beatmap_id
-        WHERE s.sniped_id = ?
+        WHERE s.sniped_id = ? AND s.sniper_id != '0' AND s.sniper_name != 'SYSTEM_NO_SCORE'
         ORDER BY s.ended_at DESC
     `;
 
@@ -394,6 +394,9 @@ async function saveTopScore(s) {
  * Registra un snipe en snipes_history en Turso
  */
 async function recordSnipe(sh) {
+    if (!sh || !sh.sniped_id || sh.sniped_id.toString() === '0' || sh.sniped_name === 'SYSTEM_NO_SCORE' || !sh.sniper_id || sh.sniper_id.toString() === '0' || sh.sniper_name === 'SYSTEM_NO_SCORE') {
+        return;
+    }
     const endedAt = sh.ended_at || new Date().toISOString();
     try {
         const checkSql = `SELECT id FROM snipes_history WHERE beatmap_id = ? AND sniper_id = ? AND sniped_id = ? AND ended_at = ? LIMIT 1`;
