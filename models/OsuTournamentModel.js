@@ -76,7 +76,7 @@ async function searchTournaments(filters = {}) {
 function parseRankNumber(str) {
     if (!str) return null;
     let clean = str.toLowerCase().trim();
-    if (clean === 'open' || clean === 'inf' || clean === 'infinity' || clean === 'any') {
+    if (clean === 'open' || clean === 'inf' || clean === 'infinity' || clean === 'any' || clean === '∞') {
         return Infinity;
     }
     
@@ -86,9 +86,124 @@ function parseRankNumber(str) {
         clean = clean.slice(0, -1);
     }
     
-    clean = clean.replace(/[,.]/g, '');
-    let num = parseInt(clean, 10);
-    return isNaN(num) ? null : num * multiplier;
+    if (multiplier === 1000) {
+        clean = clean.replace(',', '.');
+        let num = parseFloat(clean);
+        return isNaN(num) ? null : Math.round(num * multiplier);
+    } else {
+        clean = clean.replace(/[,.]/g, '');
+        let num = parseInt(clean, 10);
+        return isNaN(num) ? null : num;
+    }
+}
+
+/**
+ * Parsea rangos especificados por dígitos en osu! (ej: "6 Digit", "4-5 digit", "5digit+", "6-digit").
+ */
+function parseDigitRankFromText(text) {
+    if (!text) return null;
+    
+    // 1. Rango de dígitos compuesto: ej. "4-5 digit", "5-6 digit", "4/5 digit", "4 to 5 digit", "4 & 5 digit", "4-5digit"
+    const digitRangeRegex = /\b([1-7])\s*(?:-|to|\/|and|&)\s*([1-7])\s*[-\s]?digits?\b/i;
+    const rangeMatch = text.match(digitRangeRegex);
+    if (rangeMatch) {
+        const d1 = parseInt(rangeMatch[1], 10);
+        const d2 = parseInt(rangeMatch[2], 10);
+        const minD = Math.min(d1, d2);
+        const maxD = Math.max(d1, d2);
+        const rankMin = minD === 1 ? 1 : Math.pow(10, minD - 1);
+        const rankMax = maxD >= 6 ? Infinity : Math.pow(10, maxD) - 1;
+        return { rankMin, rankMax, isOpen: false };
+    }
+
+    // 2. Dígito único: ej. "6 digit", "6-digit", "6digit", "6digit+", "5 digit", "4digit"
+    const singleDigitRegex = /\b([1-7])\s*[-\s]?digits?(\+)?\b/i;
+    const singleMatch = text.match(singleDigitRegex);
+    if (singleMatch) {
+        const d = parseInt(singleMatch[1], 10);
+        const hasPlus = !!singleMatch[2] || /\b(plus|and above|and lower|and higher|and under|\+)\b/i.test(text);
+
+        let rankMin = null;
+        let rankMax = null;
+
+        if (d === 1) {
+            rankMin = 1;
+            rankMax = hasPlus ? Infinity : 9;
+        } else if (d === 2) {
+            rankMin = 10;
+            rankMax = hasPlus ? Infinity : 99;
+        } else if (d === 3) {
+            rankMin = 100;
+            rankMax = hasPlus ? Infinity : 999;
+        } else if (d === 4) {
+            rankMin = 1000;
+            rankMax = hasPlus ? Infinity : 9999;
+        } else if (d === 5) {
+            rankMin = 10000;
+            rankMax = hasPlus ? Infinity : 99999;
+        } else if (d === 6) {
+            rankMin = 100000;
+            rankMax = Infinity; // Para 6 dígitos, comprende desde 100.000 hasta ∞ (#100.000 - #∞)
+        } else if (d === 7) {
+            rankMin = 1000000;
+            rankMax = Infinity;
+        }
+
+        if (rankMin !== null) {
+            return { rankMin, rankMax, isOpen: false };
+        }
+    }
+
+    return null;
+}
+
+/**
+ * Parsea rangos numéricos explícitos en texto (ej: "#10k - #50k", "100k+", "under 50k", "< 50k", "6.5k-∞").
+ */
+function parseNumericRankFromText(text) {
+    if (!text) return null;
+
+    // A) Rango numérico explícito: #10k - #50k, 100k - inf, 10.000 - 50.000, 100k-500k, 6.5k-∞
+    const rangeRegex = /#?([0-9.,]+[kK]?)\s*(?:-|to|und)\s*#?([0-9.,]+[kK]?|inf|infinity|∞)/i;
+    const match = text.match(rangeRegex);
+    if (match) {
+        const minVal = parseRankNumber(match[1]);
+        let maxVal = parseRankNumber(match[2]);
+        if (match[2].toLowerCase() === '999k') maxVal = 999999;
+        else if (match[2].toLowerCase() === '99k') maxVal = 99999;
+        else if (match[2].toLowerCase() === '9k') maxVal = 9999;
+
+        if (minVal !== null && maxVal !== null && minVal < 2000000 && maxVal <= Infinity) {
+            if (match[1].includes('k') || match[2].includes('k') || 
+                match[0].includes('#') || match[1].includes('.') || 
+                match[1].includes(',') || match[2].includes('.') || 
+                match[2].includes(',') || match[2].toLowerCase().includes('inf') ||
+                match[2].includes('∞')) {
+                return { rankMin: minVal, rankMax: maxVal, isOpen: false };
+            }
+        }
+    }
+
+    // B) Límite inferior abierto con + (ej. 100k+, #100k+, 100k and above)
+    const plusMatch = text.match(/#?([0-9.,]+[kK]?)\s*(?:\+|and above|and lower|>)\b/i);
+    if (plusMatch) {
+        const val = parseRankNumber(plusMatch[1]);
+        if (val !== null && val < 2000000 && (plusMatch[1].includes('k') || plusMatch[0].includes('#') || plusMatch[1].includes('.') || plusMatch[1].includes(','))) {
+            return { rankMin: val, rankMax: Infinity, isOpen: false };
+        }
+    }
+
+    // C) Límite superior (ej. under 50k, < 50k, top 50k, #50k and under) -> Rango de 1 a 50.000
+    const underMatch = text.match(/(?:top|<|under)\s*#?([0-9.,]+[kK]?)\b|#?([0-9.,]+[kK]?)\s*(?:and better|and higher|and under|& under|and below)\b/i);
+    if (underMatch) {
+        const valStr = underMatch[1] || underMatch[2];
+        const val = parseRankNumber(valStr);
+        if (val !== null && val < 2000000 && (valStr.includes('k') || underMatch[0].includes('#') || valStr.includes('.') || valStr.includes(','))) {
+            return { rankMin: 1, rankMax: val, isOpen: false };
+        }
+    }
+
+    return null;
 }
 
 /**
@@ -137,85 +252,85 @@ function parseRegexMetadata(title, rawBody) {
     let rankMax = null;
     let isOpen = false;
     
-    if (/\b(open rank|open-rank|no rank limit|open division)\b/i.test(titleLower) || 
-        /\b(open rank|open-rank|no rank limit|open division)\b/i.test(bodyLower)) {
+    // Prioridad 1: Título del torneo
+    if (/\b(open rank|open-rank|no rank limit|open division)\b/i.test(titleLower)) {
         isOpen = true;
         rankMin = 1;
         rankMax = Infinity;
     }
-    
-    if (!isOpen) {
-        const rangeRegex = /#?([0-9.,]+[kK]?)\s*(?:-|to|und)\s*#?([0-9.,]+[kK]?|inf|infinity)/i;
-        const titleMatch = title.match(rangeRegex);
-        if (titleMatch) {
-            const minVal = parseRankNumber(titleMatch[1]);
-            const maxVal = parseRankNumber(titleMatch[2]);
-            if (minVal !== null && maxVal !== null && minVal < 2000000 && maxVal < 2000000) {
-                if (titleMatch[1].includes('k') || titleMatch[2].includes('k') || 
-                    titleMatch[0].includes('#') || titleMatch[1].includes('.') || 
-                    titleMatch[1].includes(',') || titleMatch[2].includes('.') || 
-                    titleMatch[2].includes(',')) {
-                    rankMin = minVal;
-                    rankMax = maxVal;
+
+    if (!isOpen && rankMin === null) {
+        const titleNumeric = parseNumericRankFromText(title);
+        if (titleNumeric) {
+            rankMin = titleNumeric.rankMin;
+            rankMax = titleNumeric.rankMax;
+            isOpen = titleNumeric.isOpen;
+        }
+    }
+
+    if (!isOpen && rankMin === null) {
+        const titleDigit = parseDigitRankFromText(title);
+        if (titleDigit) {
+            rankMin = titleDigit.rankMin;
+            rankMax = titleDigit.rankMax;
+            isOpen = titleDigit.isOpen;
+        }
+    }
+
+    // Prioridad 2: Cuerpo del post
+    if (!isOpen && rankMin === null) {
+        if (/\b(open rank|open-rank|no rank limit|open division)\b/i.test(bodyLower)) {
+            isOpen = true;
+            rankMin = 1;
+            rankMax = Infinity;
+        }
+    }
+
+    if (!isOpen && rankMin === null) {
+        const lines = rawBody.split('\n');
+        const rankKeywords = ['rank', 'rango', 'limit', 'bws', 'ceil', 'ceiling', 'digit', 'digits', 'range', 'restriction', 'eligibility'];
+        for (const line of lines) {
+            const lineLower = line.toLowerCase();
+            if (rankKeywords.some(kw => lineLower.includes(kw))) {
+                const lineNumeric = parseNumericRankFromText(line);
+                if (lineNumeric) {
+                    rankMin = lineNumeric.rankMin;
+                    rankMax = lineNumeric.rankMax;
+                    isOpen = lineNumeric.isOpen;
+                    break;
+                }
+                const lineDigit = parseDigitRankFromText(line);
+                if (lineDigit) {
+                    rankMin = lineDigit.rankMin;
+                    rankMax = lineDigit.rankMax;
+                    isOpen = lineDigit.isOpen;
+                    break;
                 }
             }
         }
-        
-        if (rankMin === null) {
-            const underMatch = title.match(/#?([0-9.,]+[kK]?)\s*(?:and under|& under|and below|and lower|under|<)\b/i);
-            if (underMatch) {
-                const val = parseRankNumber(underMatch[1]);
-                if (val !== null) {
-                    rankMin = val;
-                    rankMax = Infinity;
-                }
+    }
+
+    if (!isOpen && rankMin === null) {
+        const bodyNumeric = parseNumericRankFromText(rawBody);
+        if (bodyNumeric) {
+            rankMin = bodyNumeric.rankMin;
+            rankMax = bodyNumeric.rankMax;
+            isOpen = bodyNumeric.isOpen;
+        } else {
+            const bodyDigit = parseDigitRankFromText(rawBody);
+            if (bodyDigit) {
+                rankMin = bodyDigit.rankMin;
+                rankMax = bodyDigit.rankMax;
+                isOpen = bodyDigit.isOpen;
             }
         }
-        
-        if (rankMin === null) {
-            const lines = rawBody.split('\n');
-            const rankKeywords = ['rank', 'rango', 'limit', 'bws', 'ceil', 'ceiling'];
-            for (const line of lines) {
-                const lineLower = line.toLowerCase();
-                if (rankKeywords.some(kw => lineLower.includes(kw))) {
-                    const lineMatch = line.match(rangeRegex);
-                    if (lineMatch) {
-                        const minVal = parseRankNumber(lineMatch[1]);
-                        const maxVal = parseRankNumber(lineMatch[2]);
-                        if (minVal !== null && maxVal !== null && minVal < 2000000 && maxVal < 2000000) {
-                            rankMin = minVal;
-                            rankMax = maxVal;
-                            break;
-                        }
-                    }
-                    const lineUnderMatch = line.match(/#?([0-9.,]+[kK]?)\s*(?:and under|& under|and below|and lower|under|<)\b/i);
-                    if (lineUnderMatch) {
-                        const val = parseRankNumber(lineUnderMatch[1]);
-                        if (val !== null) {
-                            rankMin = val;
-                            rankMax = Infinity;
-                            break;
-                        }
-                    }
-                    const infMatch = line.match(/#?([0-9.,]+[kK]?)\s*-\s*(?:inf|infinity)\b/i);
-                    if (infMatch) {
-                        const val = parseRankNumber(infMatch[1]);
-                        if (val !== null) {
-                            rankMin = val;
-                            rankMax = Infinity;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        
-        if (rankMin === null) {
-            if (/\b(open)\b/i.test(titleLower) && !titleLower.includes('regs open') && !titleLower.includes('reg open')) {
-                isOpen = true;
-                rankMin = 1;
-                rankMax = Infinity;
-            }
+    }
+
+    if (!isOpen && rankMin === null) {
+        if (/\b(open)\b/i.test(titleLower) && !titleLower.includes('regs open') && !titleLower.includes('reg open')) {
+            isOpen = true;
+            rankMin = 1;
+            rankMax = Infinity;
         }
     }
     
@@ -713,5 +828,6 @@ module.exports = {
     getLatestTournament,
     saveSentMessage,
     getSentMessages,
-    deleteSentMessage
+    deleteSentMessage,
+    parseRegexMetadata
 };
