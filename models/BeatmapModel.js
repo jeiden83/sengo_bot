@@ -324,6 +324,40 @@ async function getBeatmap(beatmap_id, priority = 2) {
             id: cleanId
         }), priority);
         setWithLimit(beatmapCache, cleanId, { data: result, timestamp: Date.now() });
+
+        if (result && result.id) {
+            try {
+                const mapObj = {
+                    beatmap_id: result.id,
+                    beatmapset_id: result.beatmapset_id,
+                    title: result.beatmapset?.title || '',
+                    artist: result.beatmapset?.artist || '',
+                    creator: result.beatmapset?.creator || '',
+                    version: result.version || '',
+                    stars: result.difficulty_rating || 0,
+                    mode: result.mode_int !== undefined ? result.mode_int : 0,
+                    bpm: result.bpm || 0,
+                    ar: result.ar || 0,
+                    od: result.accuracy || 0,
+                    cs: result.cs || 0,
+                    hp: result.drain || 0,
+                    max_combo: result.max_combo || 0,
+                    status: result.status || 'ranked',
+                    updated_at: new Date().toISOString()
+                };
+                const TursoDB = require('../db/turso.js');
+                await TursoDB.saveBeatmap(mapObj).catch(() => {});
+                const { getSupabaseClient } = require('../db/database.js');
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    await supabase.from('ranked_beatmaps').upsert({
+                        ...mapObj,
+                        ranked_status: result.status === 'ranked' ? 1 : (result.status === 'approved' ? 2 : 0)
+                    }, { onConflict: 'beatmap_id' }).catch(() => {});
+                }
+            } catch (e) {}
+        }
+
         return result;
     })();
 
