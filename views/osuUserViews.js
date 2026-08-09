@@ -69,20 +69,29 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         desc = t(locale, 'amigos.list_header', { total: totalFriends });
     }
 
+    // Calcular la longitud máxima del nombre en la página actual para alineación perfecta en columna
+    const maxUsernameLength = Math.max(10, ...chunk.map(f => (f.username || '').length));
+
     chunk.forEach((friend, idx) => {
         const globalIndex = startIndex + idx + 1;
-        const flag = getFlagEmoji(friend.country_code);
-        const SuppIcon = friend.is_supporter ? '💖' : '❌';
-        const SengoIcon = friend.sengo ? '✅' : '❌';
+        const indexStr = `\`#${globalIndex.toString().padEnd(2, ' ')}\``;
+        const paddedName = (friend.username || '').padEnd(maxUsernameLength, ' ');
+        const nameLink = `[\`${paddedName}\`](https://osu.ppy.sh/users/${friend.id})`;
 
-        let mutualIcon = '❌';
-        if (friend.mutual === 'yes') mutualIcon = '✅';
-        else if (friend.mutual === 'unknown') mutualIcon = '❓';
+        const onlineSymbol = friend.is_online ? '🟢' : '⚫';
+        const suppSymbol = friend.is_supporter ? '💖' : '';
+        const mutualSymbol = friend.mutual === 'yes' ? '👥' : '';
 
-        desc += `\`#${globalIndex.toString().padEnd(2, ' ')}\` ▸ ${flag} [**${friend.username}**](https://osu.ppy.sh/users/${friend.id}) ▸ Supporter: ${SuppIcon} ▸ Mutual: ${mutualIcon} ▸ Sengo: ${SengoIcon}\n`;
+        let line = `${indexStr} ▸ ${nameLink}   ${onlineSymbol}`;
+        if (suppSymbol) {
+            line += `   ${suppSymbol}`;
+        }
+        if (mutualSymbol) {
+            line += `   ${mutualSymbol}`;
+        }
+
+        desc += `${line}\n`;
     });
-
-    desc += t(locale, 'amigos.list_legend');
 
     const title = filterCountryCode ? t(locale, 'amigos.list_title_country', { country: filterCountryCode }) : t(locale, 'amigos.list_title');
 

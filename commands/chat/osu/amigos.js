@@ -150,8 +150,15 @@ async function run(messages, args) {
     if (logger) logger.process(t(locale, 'amigos.log_check_bot_linked'));
     const linkedMap = await OsuUserModel.getLinkedUsersMap();
 
-    // Ordenar amigos alfabéticamente por username
-    friends.sort((a, b) => (a.username || '').localeCompare(b.username || ''));
+    // Ordenar amigos: 1. Conectado (is_online), 2. Supporter (is_supporter), 3. Mutual (mutual), 4. Username alfabético
+    friends.sort((a, b) => {
+        if (!!a.is_online !== !!b.is_online) return b.is_online ? 1 : -1;
+        if (!!a.is_supporter !== !!b.is_supporter) return b.is_supporter ? 1 : -1;
+        const mutualA = a.mutual === 'yes' ? 1 : 0;
+        const mutualB = b.mutual === 'yes' ? 1 : 0;
+        if (mutualA !== mutualB) return mutualB - mutualA;
+        return (a.username || '').localeCompare(b.username || '');
+    });
 
     const totalFriends = friends.length;
 
