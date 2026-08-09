@@ -227,8 +227,8 @@
     },
     "amigos": {
       "header": "osu! Friends List",
-      "body": "Displays the player's friends list by pages, detailing their supporter status, Sengo linking, and mutual state.",
-      "usage": "s.amigos : Displays your friends by pages.\ns.amigos -sengo : Compares your friends against the users linked to the bot (OWNER only)."
+      "body": "Displays your osu! friends list by pages ordered by status (online 🟢, supporter 💖, and mutual 👥). Note: Mutual status (👥) can only be determined if the friend is also linked to Sengo.",
+      "usage": "s.amigos : Displays your organized friends list.\ns.amigos -pais <CODE|self> : Filters your friends by country code (e.g., CL, AR, or self)."
     },
     "bg": {
       "header": "Displays the high-resolution background of a beatmap",

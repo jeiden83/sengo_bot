@@ -4,18 +4,18 @@ const amigosChatCommand = require("../chat/osu/amigos.js");
 const data = new SlashCommandBuilder()
     .setName("amigos")
     .setDescription("Muestra tu lista de amigos de osu! por páginas")
-    .addBooleanOption(option =>
-        option.setName("sengo")
-            .setDescription("Compara tus amigos contra los vinculados al bot (solo OWNER)")
+    .addStringOption(option =>
+        option.setName("pais")
+            .setDescription("Filtra amigos por código de país (ej. CL, AR) o 'self'")
             .setRequired(false)
     );
 
 async function run(interaction, res) {
     const args = [];
-    const sengo = interaction.options.getBoolean("sengo");
+    const pais = interaction.options.getString("pais");
 
-    if (sengo) {
-        args.push("-sengo");
+    if (pais) {
+        args.push("-pais", pais);
     }
 
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");

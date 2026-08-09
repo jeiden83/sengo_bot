@@ -227,8 +227,8 @@
     },
     "amigos": {
       "header": "Lista de amigos en osu!",
-      "body": "Muestra la lista de amigos del jugador por páginas, detallando su supporter, vinculación a Sengo y estado de mutual.",
-      "usage": "s.amigos : Muestra tus amigos por páginas.\ns.amigos -sengo : Compara tus amigos contra los vinculados al bot (solo OWNER)."
+      "body": "Muestra tu lista de amigos de osu! por páginas ordenados por estado (conectado 🟢, supporter 💖 y mutual 👥). Nota: El estado de mutual (👥) solo se puede determinar si el amigo también tiene su cuenta vinculada en Sengo.",
+      "usage": "s.amigos : Muestra tu lista de amigos organizada.\ns.amigos -pais <CÓDIGO|self> : Filtra tus amigos por código de país (ej: CL, AR o self)."
     },
     "bg": {
       "header": "Muestra el fondo en alta resolución de un beatmap",
