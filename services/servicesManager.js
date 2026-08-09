@@ -135,6 +135,14 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         } else {
             Logger.system("Servicio de Sincronización de Torneos omitido (Modo Dev).");
         }
+
+        // 10. Servicio de Mapping Tracker
+        try {
+            const { initMappingTracker } = require("./mappingTrackerService.js");
+            initMappingTracker(client);
+        } catch (err) {
+            Logger.system(`Error al iniciar Mapping Tracker Service: ${err.message}`);
+        }
     }
 }
 
