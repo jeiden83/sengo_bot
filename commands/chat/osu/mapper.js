@@ -696,7 +696,7 @@ async function handleMappingTrackerCommand(messages, args) {
 
     const guildId = message.guild?.id;
     if (!guildId) {
-        return { content: "⚠️ Este comando solo se puede usar dentro de un servidor de Discord." };
+        return { content: t(locale, 'mapping_tracker.err_guild_only') };
     }
 
     // Helper de verificación de permisos de admin del canal/servidor
@@ -730,12 +730,12 @@ async function handleMappingTrackerCommand(messages, args) {
     if (isTest) {
         const config = await MappingTrackerModel.getTrackerChannel(guildId);
         if (!config || !config.channel_id) {
-            return { content: "⚠️ No hay un canal de tracking configurado en este servidor. Usa `s.mapper -track -canal #canal` primero." };
+            return { content: t(locale, 'mapping_tracker.err_no_channel') };
         }
 
         const tracked = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
         if (tracked.length === 0) {
-            return { content: "⚠️ No hay mappers rastreados en este servidor. Usa `s.mapper -track -usuario <ID>` o `s.mapper -track -usuario -server`." };
+            return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
         const mockMapset = {
@@ -756,7 +756,7 @@ async function handleMappingTrackerCommand(messages, args) {
 
     // Requiere verificación de permisos de administrador para cambios de configuración
     if (!isAdmin()) {
-        return { content: "❌ Necesitas permisos de **Administrar Canal** o **Administrador** para configurar el Mapping Tracker." };
+        return { content: t(locale, 'mapping_tracker.err_no_perms') };
     }
 
     // 2. s.mapper -track -canal
@@ -775,26 +775,26 @@ async function handleMappingTrackerCommand(messages, args) {
         if (targetChannelId) {
             const resSet = await MappingTrackerModel.setTrackerChannel(guildId, targetChannelId, message.author.id);
             if (!resSet.success) {
-                return { content: `❌ Error al guardar canal: ${resSet.error}` };
+                return { content: t(locale, 'mapping_tracker.err_save_channel', { error: resSet.error }) };
             }
-            return { content: `✅ **Canal de Mapping Tracker configurado correctamente en <#${targetChannelId}>**.\n\nAhora puedes añadir mappers usando:\n• \`s.mapper -track -usuario <ID/mención>\`\n• \`s.mapper -track -usuario -server\` (añade a todos los miembros vinculados).` };
+            return { content: t(locale, 'mapping_tracker.success_set_channel', { channelId: targetChannelId }) };
         } else {
             // Deshabilitar y borrar suscripciones asociadas
             await MappingTrackerModel.deleteTrackerChannel(guildId);
-            return { content: `🗑️ **Mapping Tracker deshabilitado en este servidor**.\nSe ha eliminado la configuración del canal y se han borrado automáticamente todas las suscripciones de mappers asociadas a este servidor.` };
+            return { content: t(locale, 'mapping_tracker.success_delete_channel') };
         }
     }
 
     const activeConfig = await MappingTrackerModel.getTrackerChannel(guildId);
     if (!activeConfig || !activeConfig.channel_id) {
-        return { content: "⚠️ Primero debes configurar un canal para notificaciones usando `s.mapper -track -canal #canal`." };
+        return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
     }
 
     // 3. s.mapper -track -usuario -server (Solo Admins)
     if (isUsuario && isServer) {
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
         if (linkedMap.size === 0) {
-            return { content: "⚠️ No hay usuarios vinculados a Sengo en la base de datos." };
+            return { content: t(locale, 'mapping_tracker.err_no_linked_db') };
         }
 
         let members;
@@ -815,12 +815,12 @@ async function handleMappingTrackerCommand(messages, args) {
         });
 
         if (serverLinkedOsuIds.length === 0) {
-            return { content: "⚠️ Ningún miembro actual de este servidor tiene su cuenta vinculada a **Sengo** (`Sengo: ❌`). Usa `s.link` para vincular cuentas." };
+            return { content: t(locale, 'mapping_tracker.err_no_linked_members') };
         }
 
         const resBulk = await MappingTrackerModel.addServerUsersToTracker(guildId, activeConfig.channel_id, serverLinkedOsuIds, finalEvents, message.author.id);
         const eventsStr = finalEvents.join(', ');
-        return { content: `✅ **Se han añadido ${resBulk.count} mappers del servidor vinculados a Sengo al tracking**.\n📢 Canal: <#${activeConfig.channel_id}>\n📌 Eventos: \`${eventsStr}\`` };
+        return { content: t(locale, 'mapping_tracker.success_add_server', { count: resBulk.count, channelId: activeConfig.channel_id, events: eventsStr }) };
     }
 
     // 4. s.mapper -track -usuario <ID/mención/username>
@@ -834,7 +834,7 @@ async function handleMappingTrackerCommand(messages, args) {
         }
 
         if (!userInput) {
-            return { content: "⚠️ Especifica un usuario. Ejemplo: `s.mapper -track -usuario @mencion` o `s.mapper -track -usuario -server`." };
+            return { content: t(locale, 'mapping_tracker.err_specify_user') };
         }
 
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
@@ -862,64 +862,64 @@ async function handleMappingTrackerCommand(messages, args) {
         }
 
         if (!targetOsuId) {
-            return { content: `❌ El usuario **${userInput}** no tiene su cuenta vinculada a **Sengo** (\`Sengo: ❌\`). Para ser rastreado, el usuario debe estar registrado en el bot con \`s.link\`.` };
+            return { content: t(locale, 'mapping_tracker.err_user_not_linked', { user: userInput }) };
         }
 
         const resSub = await MappingTrackerModel.addTrackedUser(guildId, activeConfig.channel_id, targetOsuId, finalEvents, message.author.id);
         if (!resSub.success) {
-            return { content: `❌ Error al agregar usuario al tracking: ${resSub.error}` };
+            return { content: t(locale, 'mapping_tracker.err_add_user', { error: resSub.error }) };
         }
 
         const eventsStr = finalEvents.join(', ');
-        return { content: `✅ **Mapper [${targetUsername}](https://osu.ppy.sh/users/${targetOsuId}) (#${targetOsuId}) añadido al tracking**.\n📢 Canal: <#${activeConfig.channel_id}>\n📌 Eventos: \`${eventsStr}\`` };
+        return { content: t(locale, 'mapping_tracker.success_add_user', { username: targetUsername, osuId: targetOsuId, channelId: activeConfig.channel_id, events: eventsStr }) };
     }
 
     // 5. Estado actual de tracking en el servidor y guía explicativa completa entre cada elemento
     const trackedList = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
-    const channelMention = activeConfig && activeConfig.channel_id ? `<#${activeConfig.channel_id}>` : '`Ninguno (usar s.mapper -track -canal #canal)`';
+    const channelMention = activeConfig && activeConfig.channel_id ? `<#${activeConfig.channel_id}>` : t(locale, 'mapping_tracker.guide_channel_none');
 
-    let desc = `📢 **Canal de Notificaciones**: ${channelMention}\n👥 **Mappers Rastreados**: **${trackedList.length}**\n\n`;
+    let desc = t(locale, 'mapping_tracker.guide_channel_label', { channel: channelMention, count: trackedList.length });
 
-    desc += `### ⚙️ Configurar Canal de Notificaciones (Admins)\n`;
-    desc += `▸ \`s.mapper -track -canal #canal\` : Asigna el canal de alertas del servidor.\n`;
-    desc += `▸ \`s.mapper -track -canal\` : Deshabilita el tracking y elimina las suscripciones de mappers asociadas.\n\n`;
+    desc += t(locale, 'mapping_tracker.guide_header_channel');
+    desc += t(locale, 'mapping_tracker.guide_line_channel_set');
+    desc += t(locale, 'mapping_tracker.guide_line_channel_del');
 
-    desc += `### 👤 Añadir Mappers Rastreados (Admins)\n`;
-    desc += `▸ \`s.mapper -track -usuario <ID/mención>\` : Añade un usuario vinculado a Sengo (\`Sengo: ✅\`).\n`;
-    desc += `▸ \`s.mapper -track -usuario -server\` : Añade masivamente a todos los miembros vinculados del servidor.\n\n`;
+    desc += t(locale, 'mapping_tracker.guide_header_users');
+    desc += t(locale, 'mapping_tracker.guide_line_user_add');
+    desc += t(locale, 'mapping_tracker.guide_line_user_server');
 
-    desc += `### 📌 Flags de Filtro de Eventos (Concatenables)\n`;
-    desc += `▸ \`-ranked\` / \`-rk\` : Notifica mapas recién pasados a Ranked o Approved.\n`;
-    desc += `▸ \`-qualified\` / \`-qf\` : Notifica mapas ingresados a Qualified.\n`;
-    desc += `▸ \`-loved\` / \`-lv\` : Notifica mapas ingresados a Loved.\n`;
-    desc += `▸ \`-pending\` / \`-wip\` : Notifica nuevos mapas subidos o actualizaciones WIP.\n`;
-    desc += `▸ \`-graveyard\` / \`-gy\` : Notifica mapas movidos a Graveyard.\n`;
-    desc += `▸ \`-revive\` / \`-rv\` : Notifica mapas revividos de Graveyard.\n`;
-    desc += `▸ \`-nomination\` / \`-nom\` : Notifica nominaciones de BNs.\n`;
-    desc += `▸ \`-todos\` / \`-all\` : Notifica todos los eventos (por defecto).\n`;
-    desc += `*Ejemplo:* \`s.mapper -track -usuario @mencion -ranked -qualified\`\n\n`;
+    desc += t(locale, 'mapping_tracker.guide_header_flags');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_rk');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_qf');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_lv');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_wip');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_gy');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_rv');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_nom');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_all');
+    desc += t(locale, 'mapping_tracker.guide_flag_example');
 
-    desc += `### 🧪 Prueba de Notificación\n`;
-    desc += `▸ \`s.mapper -track -test\` : Envía un mensaje de prueba con la última actividad en el canal.\n\n`;
+    desc += t(locale, 'mapping_tracker.guide_header_test');
+    desc += t(locale, 'mapping_tracker.guide_line_test');
 
-    desc += `### 📋 Mappers Rastreados en este Servidor\n`;
+    desc += t(locale, 'mapping_tracker.guide_header_list');
     if (trackedList.length > 0) {
-        trackedList.slice(0, 15).forEach((t, i) => {
-            const evs = (t.event_types || ['all']).join(', ');
-            desc += `\`#${i + 1}\` ▸ [Mapper #${t.osu_id}](https://osu.ppy.sh/users/${t.osu_id}) (\`${evs}\`)\n`;
+        trackedList.slice(0, 15).forEach((tRow, i) => {
+            const evs = (tRow.event_types || ['all']).join(', ');
+            desc += `\`#${i + 1}\` ▸ [Mapper #${tRow.osu_id}](https://osu.ppy.sh/users/${tRow.osu_id}) (\`${evs}\`)\n`;
         });
         if (trackedList.length > 15) {
-            desc += `*... y ${trackedList.length - 15} mappers más.*\n`;
+            desc += t(locale, 'mapping_tracker.guide_more_mappers', { count: trackedList.length - 15 });
         }
     } else {
-        desc += `*No hay mappers agregados al tracking de este servidor aún.*`;
+        desc += t(locale, 'mapping_tracker.guide_empty_list');
     }
 
     const embed = new EmbedBuilder()
-        .setTitle("🗺️ Mapping Tracker • Estado y Guía de Uso")
+        .setTitle(t(locale, 'mapping_tracker.guide_title'))
         .setDescription(desc)
         .setColor(getEmbedColor(message))
-        .setFooter({ text: "Sengo • s.mapper / s.mappers -track" })
+        .setFooter({ text: t(locale, 'mapping_tracker.guide_footer') })
         .setTimestamp();
 
     return { embeds: [embed] };

@@ -1,24 +1,38 @@
 const { EmbedBuilder } = require("discord.js");
 const { t } = require("../utils/i18n.js");
 
+const STATUS_KEYS = {
+    ranked: 'mapping_tracker.status_ranked',
+    approved: 'mapping_tracker.status_approved',
+    qualified: 'mapping_tracker.status_qualified',
+    loved: 'mapping_tracker.status_loved',
+    pending: 'mapping_tracker.status_pending',
+    wip: 'mapping_tracker.status_wip',
+    graveyard: 'mapping_tracker.status_graveyard',
+    revive: 'mapping_tracker.status_revive',
+    nomination: 'mapping_tracker.status_nomination'
+};
+
 const STATUS_CONFIGS = {
-    ranked: { title: "🎉 ¡Mapa Ranked!", color: "#4ee44e", emoji: "🎉" },
-    approved: { title: "🎉 ¡Mapa Aprobado!", color: "#4ee44e", emoji: "🎉" },
-    qualified: { title: "✨ ¡Mapa Qualificado!", color: "#4ee4e4", emoji: "✨" },
-    loved: { title: "💖 ¡Mapa Loved!", color: "#ff66aa", emoji: "💖" },
-    pending: { title: "🚀 ¡Nuevo Mapa / Actualización!", color: "#e4e44e", emoji: "🚀" },
-    wip: { title: "🚀 ¡Mapa en Trabajo (WIP)!", color: "#e4e44e", emoji: "🚀" },
-    graveyard: { title: "🪦 Mapa a Graveyard", color: "#777777", emoji: "🪦" },
-    revive: { title: "🔥 ¡Mapa Revivido!", color: "#ff9933", emoji: "🔥" },
-    nomination: { title: "📌 ¡Nueva Nominación!", color: "#9966ff", emoji: "📌" }
+    ranked: { color: "#4ee44e", emoji: "🎉" },
+    approved: { color: "#4ee44e", emoji: "🎉" },
+    qualified: { color: "#4ee4e4", emoji: "✨" },
+    loved: { color: "#ff66aa", emoji: "💖" },
+    pending: { color: "#e4e44e", emoji: "🚀" },
+    wip: { color: "#e4e44e", emoji: "🚀" },
+    graveyard: { color: "#777777", emoji: "🪦" },
+    revive: { color: "#ff9933", emoji: "🔥" },
+    nomination: { color: "#9966ff", emoji: "📌" }
 };
 
 /**
- * Renderiza el embed de notificación para un evento de Mapping Tracker.
+ * Renderiza el embed de notificación para un evento de Mapping Tracker con i18n completo.
  */
 function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es') {
     const statusCfg = STATUS_CONFIGS[eventType.toLowerCase()] || STATUS_CONFIGS.pending;
-    
+    const statusKey = STATUS_KEYS[eventType.toLowerCase()] || STATUS_KEYS.pending;
+    const statusTitle = t(locale, statusKey);
+
     const coverUrl = beatmapset.covers?.cover
         || beatmapset.covers?.['cover@2x']
         || beatmapset.covers?.card
@@ -39,7 +53,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     }
 
     const bpm = beatmapset.bpm ? `${Math.round(beatmapset.bpm)}` : 'N/A';
-    const diffCount = diffs.length > 0 ? `${diffs.length} dificultad${diffs.length === 1 ? '' : 'es'}` : 'N/A';
+    const diffCount = diffs.length > 0 ? `${diffs.length} diffs` : 'N/A';
     const statusText = (beatmapset.status || eventType).toUpperCase();
 
     const titleStr = `${beatmapset.artist} - ${beatmapset.title}`;
@@ -56,11 +70,11 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         .setColor(statusCfg.color)
         .setImage(coverUrl)
         .addFields(
-            { name: "📌 Estado", value: `\`${statusCfg.title}\` (${statusText})`, inline: true },
-            { name: "⭐ Estrellas", value: `\`${srStr}\``, inline: true },
-            { name: "🥁 BPM / Diffs", value: `\`${bpm} BPM\` • \`${diffCount}\``, inline: true }
+            { name: t(locale, 'mapping_tracker.field_status'), value: `\`${statusTitle}\` (${statusText})`, inline: true },
+            { name: t(locale, 'mapping_tracker.field_stars'), value: `\`${srStr}\``, inline: true },
+            { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `\`${bpm} BPM\` • \`${diffCount}\``, inline: true }
         )
-        .setFooter({ text: "Sengo • Mapping Tracker", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
+        .setFooter({ text: t(locale, 'mapping_tracker.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
     return { embeds: [embed] };
@@ -73,8 +87,9 @@ function doMappingTrackerTestEmbed(beatmapset, mapperUser, locale = 'es') {
     const embedResult = doMappingTrackerNotificationEmbed(beatmapset, mapperUser, beatmapset.status || 'pending', locale);
     const embed = embedResult.embeds[0];
     
-    embed.setTitle(`🧪 [PRUEBA] ${embed.data.title}`);
-    embed.setFooter({ text: "Sengo • Mapping Tracker (Modo de Prueba -test)", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" });
+    const prefixStr = t(locale, 'mapping_tracker.test_title_prefix');
+    embed.setTitle(`${prefixStr}${embed.data.title}`);
+    embed.setFooter({ text: t(locale, 'mapping_tracker.test_footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" });
 
     return { embeds: [embed] };
 }
