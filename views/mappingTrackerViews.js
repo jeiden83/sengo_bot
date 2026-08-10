@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { t } = require("../utils/i18n.js");
-const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
 
 const STATUS_KEYS = {
     ranked: 'mapping_tracker.status_ranked',
@@ -94,7 +94,11 @@ function doMappingTrackerListEmbed(message, trackedList, page = 1, locale = 'es'
         pageItems.forEach((tRow, i) => {
             const indexNum = startIndex + i + 1;
             const evs = (tRow.event_types || ['all']).join(', ');
-            listDesc += `\`#${indexNum}\` ▸ [Mapper #${tRow.osu_id}](https://osu.ppy.sh/users/${tRow.osu_id}) (\`${evs}\`)\n`;
+            const flag = tRow.country_code ? `${getFlagEmoji(tRow.country_code)} ` : '';
+            const countryTag = tRow.country_code ? `\`${tRow.country_code.toUpperCase()}\` ` : '';
+            const mapperName = tRow.username || `Mapper #${tRow.osu_id}`;
+
+            listDesc += `\`#${indexNum}\` ▸ ${flag}[**${mapperName}**](https://osu.ppy.sh/users/${tRow.osu_id}) ${countryTag}(\`${evs}\`)\n`;
         });
     } else {
         listDesc += t(locale, 'mapping_tracker.guide_empty_list');

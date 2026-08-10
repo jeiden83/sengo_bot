@@ -175,17 +175,76 @@ async function getTrackedUsersForGuild(guildId) {
     const supabase = getSupabaseClient();
     if (!supabase) return [];
 
-    const { data, error } = await supabase
+    const { data: subs, error } = await supabase
         .from('mapping_tracker_subscriptions')
         .select('*')
         .eq('guild_id', guildId.toString());
 
-    if (error) {
-        console.error('[MAPPING-TRACKER] Error al consultar mappers del servidor:', error);
+    if (error || !subs || subs.length === 0) {
+        if (error) console.error('[MAPPING-TRACKER] Error al consultar mappers del servidor:', error);
         return [];
     }
 
-    return data || [];
+    const osuIds = subs.map(s => Number(s.osu_id));
+    const userMetaMap = new Map();
+
+    try {
+        const { data: dbTokens } = await supabase
+            .from('oauth_tokens')
+            .select('osu_id, username')
+            .in('osu_id', osuIds);
+
+        if (dbTokens) {
+            dbTokens.forEach(t => {
+                if (t.osu_id) userMetaMap.set(Number(t.osu_id), { username: t.username, country_code: null });
+            });
+        }
+
+        const { data: dbStats } = await supabase
+            .from('mapper_statistics')
+            .select('osu_id, username, country_code')
+            .in('osu_id', osuIds);
+
+        if (dbStats) {
+            dbStats.forEach(m => {
+                if (m.osu_id) {
+                    const existing = userMetaMap.get(Number(m.osu_id)) || {};
+                    userMetaMap.set(Number(m.osu_id), {
+                        username: m.username || existing.username,
+                        country_code: m.country_code || existing.country_code
+                    });
+                }
+            });
+        }
+
+        const { data: dbUsers } = await supabase
+            .from('users')
+            .select('osu_id, country_code')
+            .in('osu_id', osuIds);
+
+        if (dbUsers) {
+            dbUsers.forEach(u => {
+                if (u.osu_id) {
+                    const existing = userMetaMap.get(Number(u.osu_id)) || {};
+                    userMetaMap.set(Number(u.osu_id), {
+                        username: existing.username,
+                        country_code: u.country_code || existing.country_code
+                    });
+                }
+            });
+        }
+    } catch (e) {
+        console.error('[MAPPING-TRACKER] Error al obtener metadatos de mappers:', e);
+    }
+
+    return subs.map(sub => {
+        const meta = userMetaMap.get(Number(sub.osu_id)) || {};
+        return {
+            ...sub,
+            username: meta.username || `Mapper #${sub.osu_id}`,
+            country_code: meta.country_code || null
+        };
+    });
 }
 
 /**
