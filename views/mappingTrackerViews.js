@@ -59,6 +59,29 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     const titleStr = `${beatmapset.artist} - ${beatmapset.title}`;
     const mapUrl = `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
 
+    const fields = [
+        { name: t(locale, 'mapping_tracker.field_status'), value: `**\`${statusTitle}\`**`, inline: true },
+        { name: t(locale, 'mapping_tracker.field_stars'), value: `**\`${srStr}\`**`, inline: true },
+        { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `**\`${bpm} BPM\`** • **\`${diffCount}\`**`, inline: true }
+    ];
+
+    const subDateStr = beatmapset.submitted_date || beatmapset.submitted_at;
+    const updDateStr = beatmapset.last_updated || beatmapset.updated_at;
+
+    const subDate = subDateStr ? new Date(subDateStr) : null;
+    const updDate = updDateStr ? new Date(updDateStr) : subDate;
+
+    if (subDate && !isNaN(subDate.getTime())) {
+        const subUnix = Math.floor(subDate.getTime() / 1000);
+        const updUnix = updDate && !isNaN(updDate.getTime()) ? Math.floor(updDate.getTime() / 1000) : subUnix;
+
+        let dateVal = `📅 **${t(locale, 'mapping_tracker.date_submitted')}**: <t:${subUnix}:R>`;
+        if (updUnix && Math.abs(updUnix - subUnix) > 60) {
+            dateVal += ` • ✏️ **${t(locale, 'mapping_tracker.date_updated')}**: <t:${updUnix}:R>`;
+        }
+        fields.push({ name: t(locale, 'mapping_tracker.field_dates'), value: dateVal, inline: false });
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: `${statusCfg.emoji} ${mapperName} • Mapping Tracker`,
@@ -69,11 +92,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         .setURL(mapUrl)
         .setColor(statusCfg.color)
         .setImage(coverUrl)
-        .addFields(
-            { name: t(locale, 'mapping_tracker.field_status'), value: `**\`${statusTitle}\`**`, inline: true },
-            { name: t(locale, 'mapping_tracker.field_stars'), value: `**\`${srStr}\`**`, inline: true },
-            { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `**\`${bpm} BPM\`** • **\`${diffCount}\`**`, inline: true }
-        )
+        .addFields(fields)
         .setFooter({ text: t(locale, 'mapping_tracker.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 
