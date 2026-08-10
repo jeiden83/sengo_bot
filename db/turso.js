@@ -127,7 +127,7 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
         SELECT 
             t.pp, t.mods, t.ended_at, t.score, t.accuracy, t.beatmap_id, t.max_combo, t.perfect, 
             t.statistics, t.rank, t.build_id, t.mod_settings,
-            b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo, b.ranked_status
+            b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo, b.status
         FROM top_scores t
         INNER JOIN ranked_beatmaps b ON t.beatmap_id = b.beatmap_id
         WHERE t.user_id = ? AND b.mode = ? AND t.country_code = ?
@@ -172,8 +172,8 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
                 hp: r.hp,
                 beatmapset_id: r.beatmapset_id,
                 max_combo: r.b_max_combo,
-                ranked_status: r.ranked_status,
-                status: r.ranked_status === 4 ? 'loved' : (r.ranked_status === 1 ? 'ranked' : (r.ranked_status === 2 ? 'approved' : (r.ranked_status === 3 ? 'qualified' : null)))
+                status: r.status,
+                ranked_status: r.status === 'loved' ? 4 : (r.status === 'ranked' ? 1 : (r.status === 'approved' ? 2 : (r.status === 'qualified' ? 3 : null)))
             }
         };
     });
