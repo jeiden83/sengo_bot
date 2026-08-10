@@ -193,9 +193,6 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         if (ranksInfo.serverRank) {
             rankParts.push(`🏠 **\`#${ranksInfo.serverRank}\`** ${t(locale, 'mapping_tracker.rank_server_suffix')}`);
         }
-        if (ranksInfo.globalRank) {
-            rankParts.push(`🌐 **\`#${ranksInfo.globalRank}\`** ${t(locale, 'mapping_tracker.rank_global_suffix')}`);
-        }
 
         if (rankParts.length > 0) {
             fields.push({

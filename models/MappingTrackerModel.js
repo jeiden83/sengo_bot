@@ -410,29 +410,11 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null) {
                 }
             }
         }
-
-        // 4. Ranking Global
-        const { data: globMappers } = await supabase
-            .from('mapper_statistics')
-            .select('osu_id, ranked_count, guest_count, loved_count');
-
-        if (globMappers && globMappers.length > 0) {
-            globMappers.sort((a, b) => 
-                (b.ranked_count || 0) - (a.ranked_count || 0) ||
-                (b.guest_count || 0) - (a.guest_count || 0) ||
-                (b.loved_count || 0) - (a.loved_count || 0)
-            );
-
-            const idx = globMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
-            if (idx !== -1) {
-                globalRank = idx + 1;
-            }
-        }
     } catch (err) {
         console.error('[MAPPING-TRACKER] Error al calcular posiciones de mapper ranking:', err);
     }
 
-    return { nationalRank, serverRank, globalRank, countryCode: resolvedCountryCode };
+    return { nationalRank, serverRank, countryCode: resolvedCountryCode };
 }
 
 module.exports = {
