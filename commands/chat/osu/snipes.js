@@ -169,7 +169,7 @@ async function run(messages, args){
         }
     };
 
-    if (isNemesis) {
+    if (isNemesis && !isTop) {
         await updateProgress(0, 'loading');
         let history;
         try {
@@ -594,7 +594,7 @@ async function run(messages, args){
 
             if (shouldEnqueue) {
                 const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
-                ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message.id);
+                ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message?.id);
             }
 
             const filter = btnInt => btnInt.user.id === message.author.id;
@@ -763,7 +763,11 @@ async function run(messages, args){
 
         if (shouldEnqueue) {
             const ReworkRecalcQueue = require("../../../models/ReworkRecalcQueue.js");
-            ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message.id);
+            ReworkRecalcQueue.enqueue(id, osu_userdata.fn_response.username, look_gamemode, country_code, message.channel?.id, sent_message?.id);
+        }
+
+        if (!sent_message || typeof sent_message.createMessageComponentCollector !== 'function') {
+            return;
         }
 
         const filter = btnInt => btnInt.user.id === message.author.id;
