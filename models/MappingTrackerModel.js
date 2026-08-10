@@ -334,6 +334,107 @@ async function saveLastEventsForOsuId(osuId, lastBeatmapsetId, statusSnapshot = 
     return true;
 }
 
+/**
+ * Obtiene la posición del mapper en los rankings de Mapper Top (País, Servidor y Global).
+ */
+async function getMapperRankings(osuId, countryCode = null, guildId = null) {
+    const supabase = getSupabaseClient();
+    if (!supabase || !osuId) return { nationalRank: null, serverRank: null, globalRank: null, countryCode: null };
+
+    const targetOsuId = Number(osuId);
+    let nationalRank = null;
+    let serverRank = null;
+    let globalRank = null;
+    let resolvedCountryCode = countryCode ? countryCode.toUpperCase() : null;
+
+    try {
+        // 1. Obtener datos del mapper objetivo si no tenemos el país
+        if (!resolvedCountryCode) {
+            const { data: targetStat } = await supabase
+                .from('mapper_statistics')
+                .select('country_code')
+                .eq('osu_id', targetOsuId)
+                .maybeSingle();
+
+            if (targetStat && targetStat.country_code) {
+                resolvedCountryCode = targetStat.country_code.toUpperCase();
+            }
+        }
+
+        // 2. Ranking Nacional (País)
+        if (resolvedCountryCode) {
+            const { data: natMappers } = await supabase
+                .from('mapper_statistics')
+                .select('osu_id, ranked_count, guest_count, loved_count')
+                .ilike('country_code', resolvedCountryCode);
+
+            if (natMappers && natMappers.length > 0) {
+                natMappers.sort((a, b) => 
+                    (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                    (b.guest_count || 0) - (a.guest_count || 0) ||
+                    (b.loved_count || 0) - (a.loved_count || 0)
+                );
+
+                const idx = natMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
+                if (idx !== -1) {
+                    nationalRank = idx + 1;
+                }
+            }
+        }
+
+        // 3. Ranking del Servidor
+        if (guildId) {
+            const { data: guildSubs } = await supabase
+                .from('mapping_tracker_subscriptions')
+                .select('osu_id')
+                .eq('guild_id', guildId.toString());
+
+            if (guildSubs && guildSubs.length > 0) {
+                const sOsuIds = guildSubs.map(s => Number(s.osu_id));
+                const { data: sMappers } = await supabase
+                    .from('mapper_statistics')
+                    .select('osu_id, ranked_count, guest_count, loved_count')
+                    .in('osu_id', sOsuIds);
+
+                if (sMappers && sMappers.length > 0) {
+                    sMappers.sort((a, b) => 
+                        (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                        (b.guest_count || 0) - (a.guest_count || 0) ||
+                        (b.loved_count || 0) - (a.loved_count || 0)
+                    );
+
+                    const idx = sMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
+                    if (idx !== -1) {
+                        serverRank = idx + 1;
+                    }
+                }
+            }
+        }
+
+        // 4. Ranking Global
+        const { data: globMappers } = await supabase
+            .from('mapper_statistics')
+            .select('osu_id, ranked_count, guest_count, loved_count');
+
+        if (globMappers && globMappers.length > 0) {
+            globMappers.sort((a, b) => 
+                (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                (b.guest_count || 0) - (a.guest_count || 0) ||
+                (b.loved_count || 0) - (a.loved_count || 0)
+            );
+
+            const idx = globMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
+            if (idx !== -1) {
+                globalRank = idx + 1;
+            }
+        }
+    } catch (err) {
+        console.error('[MAPPING-TRACKER] Error al calcular posiciones de mapper ranking:', err);
+    }
+
+    return { nationalRank, serverRank, globalRank, countryCode: resolvedCountryCode };
+}
+
 module.exports = {
     setTrackerChannel,
     deleteTrackerChannel,
@@ -345,5 +446,6 @@ module.exports = {
     getAllTrackedOsuIds,
     getSubscriptionsForOsuId,
     getLastEventsForOsuId,
-    saveLastEventsForOsuId
+    saveLastEventsForOsuId,
+    getMapperRankings
 };

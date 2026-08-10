@@ -144,9 +144,9 @@ function buildTrackerListRow(currentPage, totalPages, locale = 'es') {
 }
 
 /**
- * Renderiza el embed de notificación para un evento de Mapping Tracker con i18n completo.
+ * Renderiza el embed de notificación para un evento de Mapping Tracker con i18n completo y rankings (País, Servidor, Global).
  */
-function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es') {
+function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es', ranksInfo = null) {
     const statusCfg = STATUS_CONFIGS[eventType.toLowerCase()] || STATUS_CONFIGS.pending;
     const statusKey = STATUS_KEYS[eventType.toLowerCase()] || STATUS_KEYS.pending;
     const statusTitle = t(locale, statusKey);
@@ -181,6 +181,30 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         { name: t(locale, 'mapping_tracker.field_stars'), value: `**\`${srStr}\`**`, inline: true },
         { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `**\`${bpm} BPM\`** • **\`${diffCount}\`**`, inline: true }
     ];
+
+    if (ranksInfo) {
+        const rankParts = [];
+        const countryCode = ranksInfo.countryCode || mapperUser.country_code || beatmapset.user?.country_code;
+        const flag = countryCode ? getFlagEmoji(countryCode) : '🌐';
+
+        if (ranksInfo.nationalRank) {
+            rankParts.push(`${flag} **\`#${ranksInfo.nationalRank}\`** ${t(locale, 'mapping_tracker.rank_country_suffix', { country: countryCode ? countryCode.toUpperCase() : '' })}`);
+        }
+        if (ranksInfo.serverRank) {
+            rankParts.push(`🏠 **\`#${ranksInfo.serverRank}\`** ${t(locale, 'mapping_tracker.rank_server_suffix')}`);
+        }
+        if (ranksInfo.globalRank) {
+            rankParts.push(`🌐 **\`#${ranksInfo.globalRank}\`** ${t(locale, 'mapping_tracker.rank_global_suffix')}`);
+        }
+
+        if (rankParts.length > 0) {
+            fields.push({
+                name: t(locale, 'mapping_tracker.field_mapper_rank'),
+                value: rankParts.join(' • '),
+                inline: false
+            });
+        }
+    }
 
     const subDateStr = beatmapset.submitted_date || beatmapset.submitted_at;
     const updDateStr = beatmapset.ranked_date || beatmapset.last_updated || beatmapset.updated_at;
@@ -219,8 +243,8 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
 /**
  * Renderiza el embed de prueba (-track -test).
  */
-function doMappingTrackerTestEmbed(beatmapset, mapperUser, locale = 'es') {
-    const embedResult = doMappingTrackerNotificationEmbed(beatmapset, mapperUser, beatmapset.status || 'pending', locale);
+function doMappingTrackerTestEmbed(beatmapset, mapperUser, locale = 'es', ranksInfo = null) {
+    const embedResult = doMappingTrackerNotificationEmbed(beatmapset, mapperUser, beatmapset.status || 'pending', locale, ranksInfo);
     const embed = embedResult.embeds[0];
     
     const prefixStr = t(locale, 'mapping_tracker.test_title_prefix');

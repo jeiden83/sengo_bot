@@ -117,10 +117,9 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions) {
     const mapperUser = {
         id: osuId,
         username: mapset.creator || 'Mapper',
-        avatar_url: `https://a.ppy.sh/${osuId}`
+        avatar_url: `https://a.ppy.sh/${osuId}`,
+        country_code: mapset.user?.country_code || null
     };
-
-    const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType);
 
     for (const sub of subscriptions) {
         const types = sub.event_types || ['all'];
@@ -128,6 +127,9 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions) {
         if (!isMatch) continue;
 
         try {
+            const ranksInfo = await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id);
+            const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo);
+
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);
             if (channel && typeof channel.send === 'function') {
                 await channel.send(embedResult);

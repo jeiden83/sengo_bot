@@ -783,7 +783,8 @@ async function handleMappingTrackerCommand(messages, args) {
             realUser = { id: tracked[0].osu_id, username: `Mapper #${tracked[0].osu_id}` };
         }
 
-        const testEmbedPayload = doMappingTrackerTestEmbed(realMapset, realUser, locale);
+        const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId);
+        const testEmbedPayload = doMappingTrackerTestEmbed(realMapset, realUser, locale, ranksInfo);
 
         const targetChannel = message.client?.channels?.cache?.get(config.channel_id)
             || (message.client?.channels?.fetch ? await message.client.channels.fetch(config.channel_id).catch(() => null) : null);

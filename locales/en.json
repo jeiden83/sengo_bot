@@ -1788,6 +1788,10 @@
     "btn_prev": "◀️ Previous",
     "btn_next": "▶️ Next",
     "list_page_footer": "Sengo • Page {current}/{total} • s.mapper -track",
+    "field_mapper_rank": "🏆 Mapper Rank",
+    "rank_country_suffix": "({country})",
+    "rank_server_suffix": "(Server)",
+    "rank_global_suffix": "(Global)",
     "footer": "Sengo • Mapping Tracker"
   }
 }
