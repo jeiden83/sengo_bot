@@ -70,9 +70,9 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         .setColor(statusCfg.color)
         .setImage(coverUrl)
         .addFields(
-            { name: t(locale, 'mapping_tracker.field_status'), value: `\`${statusTitle}\` (${statusText})`, inline: true },
-            { name: t(locale, 'mapping_tracker.field_stars'), value: `\`${srStr}\``, inline: true },
-            { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `\`${bpm} BPM\` • \`${diffCount}\``, inline: true }
+            { name: t(locale, 'mapping_tracker.field_status'), value: `**\`${statusTitle}\`**`, inline: true },
+            { name: t(locale, 'mapping_tracker.field_stars'), value: `**\`${srStr}\`**`, inline: true },
+            { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `**\`${bpm} BPM\`** • **\`${diffCount}\`**`, inline: true }
         )
         .setFooter({ text: t(locale, 'mapping_tracker.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
