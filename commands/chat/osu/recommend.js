@@ -370,7 +370,7 @@ async function run(messages, args) {
 
             if (error || !tags || tags.length === 0) {
                 const errorMsg = t(locale, 'recommend.usertags_err_empty');
-                if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
+                if (isSlash) return interaction.editReply({ content: errorMsg });
                 return message.channel.send(errorMsg);
             }
 
@@ -418,7 +418,7 @@ async function run(messages, args) {
             }
 
             if (isSlash) {
-                await interaction.reply({ embeds: [embed] });
+                await interaction.editReply({ embeds: [embed] });
             } else {
                 await message.channel.send({ embeds: [embed] });
             }
@@ -426,7 +426,7 @@ async function run(messages, args) {
         } catch (err) {
             console.error("Error al listar user tags:", err);
             const errorMsg = t(locale, 'recommend.usertags_err_failed');
-            if (isSlash) return interaction.reply({ content: errorMsg, ephemeral: true });
+            if (isSlash) return interaction.editReply({ content: errorMsg });
             return message.channel.send(errorMsg);
         }
     }
