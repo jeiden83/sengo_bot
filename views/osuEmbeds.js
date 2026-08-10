@@ -524,8 +524,8 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
-        const isLoved = isLovedScore(score);
-        let pp = (isLoved && (!score.pp || score.pp === 0)) ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        const isLoved = isLovedScore(score) || (!score.pp || score.pp === 0);
+        let pp = isLoved ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         const snipedPrefixList = score.sniped_name
