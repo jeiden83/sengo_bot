@@ -413,7 +413,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
     if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
     if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
-    if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
+    if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
 
     if (active_filters.length > 0) {
         prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
@@ -489,6 +489,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
     if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
     if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
+    if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
     if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
         const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
         active_filters.push(...srTexts);

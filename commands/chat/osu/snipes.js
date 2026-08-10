@@ -45,9 +45,36 @@ async function run(messages, args){
     const { message, res, reply } = messages;
     const locale = message.locale || 'es';
 
+    // Extraer filtro de víctima (-user / -u / -victima)
+    let targetVictimFilter = null;
+    const cleanArgs = [];
+    for (let i = 0; i < args.length; i++) {
+        const arg = args[i];
+        const lowerArg = arg.toLowerCase();
+
+        if (['-user', '-u', '-victima', '-v', '-target'].includes(lowerArg)) {
+            if (i + 1 < args.length && !args[i + 1].startsWith('-')) {
+                targetVictimFilter = args[i + 1];
+                i++;
+                continue;
+            }
+        } else if (lowerArg.startsWith('-user=') || lowerArg.startsWith('-u=') || lowerArg.startsWith('-victima=') || lowerArg.startsWith('-v=') || lowerArg.startsWith('-target=')) {
+            const parts = arg.split('=');
+            if (parts.length > 1 && parts[1].trim()) {
+                targetVictimFilter = parts.slice(1).join('=').trim();
+                continue;
+            }
+        }
+        cleanArgs.push(arg);
+    }
+
     // Parseamos argumentos de entrada del usuario
-    const osu_userdata = await argsParser(args,
+    const osu_userdata = await argsParser(cleanArgs,
         {"message" : message, "res" : res, "command_function" : getOsuUser, "resolveUserByIndex": true, "ignoreBeatmap": true});  
+
+    if (osu_userdata.parsed_args) {
+        osu_userdata.parsed_args.targetVictimFilter = targetVictimFilter;
+    }
 
     const srFilters = osu_userdata.parsed_args?.srFilters || [];
 
@@ -66,8 +93,8 @@ async function run(messages, args){
     }
 
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
-    const isNemesis = osu_userdata.parsed_args?.nemesis === true || args.some(a => a.toLowerCase() === '-nemesis');
-    const isTop = osu_userdata.parsed_args?.reworkTop === true || args.some(a => a.toLowerCase() === '-top');
+    const isNemesis = osu_userdata.parsed_args?.nemesis === true || cleanArgs.some(a => a.toLowerCase() === '-nemesis') || Boolean(targetVictimFilter);
+    const isTop = osu_userdata.parsed_args?.reworkTop === true || cleanArgs.some(a => a.toLowerCase() === '-top');
     const isDetailedQuery = isDetailed || isTop;
  
     // Inicializar barra de progreso
@@ -199,8 +226,21 @@ async function run(messages, args){
             if (history && history.made && Array.isArray(history.made)) {
                 history.made.forEach(h => {
                     const bId = Number(h.beatmap_id);
-                    if (bId && h.sniped_name && !snipedMap.has(bId)) {
-                        snipedMap.set(bId, h.sniped_name);
+                    if (bId && h.sniped_name) {
+                        if (targetVictimFilter) {
+                            const filterLower = targetVictimFilter.toLowerCase();
+                            const victimNameLower = h.sniped_name.toLowerCase();
+                            const victimIdStr = (h.sniped_id || '').toString();
+                            if (victimNameLower === filterLower || victimNameLower.includes(filterLower) || victimIdStr === filterLower) {
+                                if (!snipedMap.has(bId)) {
+                                    snipedMap.set(bId, h.sniped_name);
+                                }
+                            }
+                        } else {
+                            if (!snipedMap.has(bId)) {
+                                snipedMap.set(bId, h.sniped_name);
+                            }
+                        }
                     }
                 });
             }
@@ -227,7 +267,11 @@ async function run(messages, args){
 
         if (!userScores || userScores.length === 0) {
             let errorMsg = t(locale, 'snipes.err_no_tops', { username: osu_userdata.fn_response.username });
-            if (isNemesis) {
+            if (targetVictimFilter) {
+                errorMsg = locale === 'es'
+                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** robados a **${targetVictimFilter}**.`
+                    : `No national tops found for **${osu_userdata.fn_response.username}** sniped from **${targetVictimFilter}**.`;
+            } else if (isNemesis) {
                 errorMsg = locale === 'es'
                     ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** registrados en el historial de snipes.`
                     : `No national tops found for **${osu_userdata.fn_response.username}** in snipes history.`;
