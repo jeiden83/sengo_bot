@@ -1782,7 +1782,12 @@
     "test_title_prefix": "🧪 [TEST] ",
     "test_footer": "Sengo • Mapping Tracker (Test Mode -test)",
     "test_sent_channel": "✅ **Mapping Tracker notification test sent to <#{channelId}>**.",
-    "err_test_send_channel": "❌ Could not send test message to <#{channelId}>. Make sure Sengo has permissions to view and send messages in that channel.",
+    "btn_view_list": "📋 View Tracked Mappers ({count})",
+    "btn_view_guide": "📖 Usage Guide",
+    "list_title": "📋 Mapping Tracker • Tracked Mappers",
+    "btn_prev": "◀️ Previous",
+    "btn_next": "▶️ Next",
+    "list_page_footer": "Sengo • Page {current}/{total} • s.mapper -track",
     "footer": "Sengo • Mapping Tracker"
   }
 }
