@@ -66,8 +66,8 @@ async function run(messages, args){
     }
 
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
-    const isNemesis = osu_userdata.parsed_args?.nemesis === true;
-    const isTop = osu_userdata.parsed_args?.reworkTop === true;
+    const isNemesis = osu_userdata.parsed_args?.nemesis === true || args.some(a => a.toLowerCase() === '-nemesis');
+    const isTop = osu_userdata.parsed_args?.reworkTop === true || args.some(a => a.toLowerCase() === '-top');
     const isDetailedQuery = isDetailed || isTop;
  
     // Inicializar barra de progreso
@@ -76,7 +76,7 @@ async function run(messages, args){
     let stepStartTime = Date.now();
     const activeSteps = [];
  
-    const stepTemplates = isNemesis
+    const stepTemplates = (isNemesis && !isTop)
         ? (locale === 'es' ? ["Obteniendo historial de snipes..."] : ["Fetching snipes history..."])
         : (isTop
             ? (locale === 'es' ? ["Obteniendo tops nacionales..."] : ["Fetching national tops..."])
@@ -191,10 +191,32 @@ async function run(messages, args){
 
     await updateProgress(0, 'loading');
     let userScores = [];
+    const snipedMap = new Map();
+
+    if (isNemesis) {
+        try {
+            const history = await OsuScoreModel.getUserSnipesHistory(id);
+            if (history && history.made && Array.isArray(history.made)) {
+                history.made.forEach(h => {
+                    const bId = Number(h.beatmap_id);
+                    if (bId && h.sniped_name && !snipedMap.has(bId)) {
+                        snipedMap.set(bId, h.sniped_name);
+                    }
+                });
+            }
+        } catch (errHist) {
+            console.error("Error al obtener historial de snipes para -top -nemesis:", errHist);
+        }
+    }
+
     try {
         userScores = await OsuScoreModel.getUserNationalTops(id, look_gamemode, country_code, isDetailedQuery, (count) => {
             updateProgress(0, 'loading', `(${count} cargados...)`);
         });
+
+        if (isNemesis && userScores) {
+            userScores = userScores.filter(s => snipedMap.has(Number(s.beatmap_id)));
+        }
 
         if (srFilters && srFilters.length > 0) {
             userScores = userScores.filter(s => {
@@ -205,7 +227,11 @@ async function run(messages, args){
 
         if (!userScores || userScores.length === 0) {
             let errorMsg = t(locale, 'snipes.err_no_tops', { username: osu_userdata.fn_response.username });
-            if (srFilters && srFilters.length > 0) {
+            if (isNemesis) {
+                errorMsg = locale === 'es'
+                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** registrados en el historial de snipes.`
+                    : `No national tops found for **${osu_userdata.fn_response.username}** in snipes history.`;
+            } else if (srFilters && srFilters.length > 0) {
                 const filterStrings = srFilters.map(f => `${f.op}${f.valStr}`);
                 errorMsg = locale === 'es'
                     ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** con el filtro de dificultad: \`${filterStrings.join(' e ')}\`.`
@@ -352,6 +378,7 @@ async function run(messages, args){
                     count_miss: miss,
                     is_estimated: isStatsEstimated
                 },
+                sniped_name: snipedMap.get(Number(dbScore.beatmap_id)) || dbScore.sniped_name || null,
                 user: {
                     username: dbScore.username || osu_userdata.fn_response.username,
                     avatar_url: osu_userdata.fn_response.avatar_url || ''

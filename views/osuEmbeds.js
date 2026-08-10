@@ -427,7 +427,11 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const bpm = map.bpm || 0;
 
     const playDate = score.ended_at || score.created_at || new Date();
-    const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const time_relative_val = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
+    const snipedPrefixSingle = score.sniped_name
+        ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
+        : '';
+    const time_relative = `${snipedPrefixSingle}${time_relative_val}`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
     const line3 = `\`CS ${cs} | AR ${ar} | OD ${od} | HP ${hp} | BPM ${bpm}\``;
@@ -520,7 +524,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
-        let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
+        const snipedPrefixList = score.sniped_name
+            ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
+            : '';
+        let time_set = `${snipedPrefixList}<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
         let score_line = "";
