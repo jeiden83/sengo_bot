@@ -691,8 +691,14 @@ async function handleMappingTrackerCommand(messages, args) {
     const { message, res, logger, reply } = messages;
     const locale = message.locale || 'es';
     const MappingTrackerModel = require("../../../models/MappingTrackerModel.js");
-    const { doMappingTrackerTestEmbed } = require("../../../views/mappingTrackerViews.js");
-    const { PermissionFlagsBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+    const { 
+        doMappingTrackerGuideEmbed, 
+        buildTrackerGuideRow, 
+        doMappingTrackerListEmbed, 
+        buildTrackerListRow, 
+        doMappingTrackerTestEmbed 
+    } = require("../../../views/mappingTrackerViews.js");
+    const { PermissionFlagsBits } = require("discord.js");
 
     const guildId = message.guild?.id;
     if (!guildId) {
@@ -923,109 +929,11 @@ async function handleMappingTrackerCommand(messages, args) {
         return { content: t(locale, 'mapping_tracker.success_add_user', { username: targetUsername, osuId: targetOsuId, channelId: activeConfig.channel_id, events: eventsStr }) };
     }
 
-    // Helpers de componentes interactivos para Mapping Tracker
-    const buildTrackerGuideRow = (trackedCount) => {
-        return new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('mptrack_view_list')
-                .setLabel(t(locale, 'mapping_tracker.btn_view_list', { count: trackedCount }))
-                .setStyle(ButtonStyle.Primary)
-                .setEmoji('📋')
-        );
-    };
-
-    const buildTrackerListRow = (currentPage, totalPages) => {
-        const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder()
-                .setCustomId('mptrack_view_guide')
-                .setLabel(t(locale, 'mapping_tracker.btn_view_guide'))
-                .setStyle(ButtonStyle.Secondary)
-                .setEmoji('📖')
-        );
-
-        if (totalPages > 1) {
-            row.addComponents(
-                new ButtonBuilder()
-                    .setCustomId('mptrack_prev')
-                    .setLabel(t(locale, 'mapping_tracker.btn_prev'))
-                    .setStyle(ButtonStyle.Primary)
-                    .setDisabled(currentPage <= 1),
-                new ButtonBuilder()
-                    .setCustomId('mptrack_next')
-                    .setLabel(t(locale, 'mapping_tracker.btn_next'))
-                    .setStyle(ButtonStyle.Primary)
-                    .setDisabled(currentPage >= totalPages)
-            );
-        }
-        return row;
-    };
-
-    const buildTrackerListEmbed = (page = 1) => {
-        const itemsPerPage = 15;
-        const totalPages = Math.max(1, Math.ceil(trackedList.length / itemsPerPage));
-        const currentPage = Math.min(Math.max(1, page), totalPages);
-
-        const startIndex = (currentPage - 1) * itemsPerPage;
-        const pageItems = trackedList.slice(startIndex, startIndex + itemsPerPage);
-
-        let listDesc = `📢 **${t(locale, 'mapping_tracker.field_status')}**: **${trackedList.length}** mappers rastreados\n\n`;
-
-        if (pageItems.length > 0) {
-            pageItems.forEach((tRow, i) => {
-                const indexNum = startIndex + i + 1;
-                const evs = (tRow.event_types || ['all']).join(', ');
-                listDesc += `\`#${indexNum}\` ▸ [Mapper #${tRow.osu_id}](https://osu.ppy.sh/users/${tRow.osu_id}) (\`${evs}\`)\n`;
-            });
-        } else {
-            listDesc += t(locale, 'mapping_tracker.guide_empty_list');
-        }
-
-        const embed = new EmbedBuilder()
-            .setTitle(t(locale, 'mapping_tracker.list_title'))
-            .setDescription(listDesc)
-            .setColor(getEmbedColor(message))
-            .setFooter({ text: t(locale, 'mapping_tracker.list_page_footer', { current: currentPage, total: totalPages }) })
-            .setTimestamp();
-
-        return { embed, totalPages, currentPage };
-    };
-
-    // 5. Estado actual de tracking en el servidor y guía explicativa interactiva
+    // 5. Estado actual de tracking en el servidor y guía explicativa interactiva (MVC)
     const trackedList = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
-    const channelMention = activeConfig && activeConfig.channel_id ? `<#${activeConfig.channel_id}>` : t(locale, 'mapping_tracker.guide_channel_none');
 
-    let desc = t(locale, 'mapping_tracker.guide_channel_label', { channel: channelMention, count: trackedList.length });
-
-    desc += t(locale, 'mapping_tracker.guide_header_channel');
-    desc += t(locale, 'mapping_tracker.guide_line_channel_set');
-    desc += t(locale, 'mapping_tracker.guide_line_channel_del');
-
-    desc += t(locale, 'mapping_tracker.guide_header_users');
-    desc += t(locale, 'mapping_tracker.guide_line_user_add');
-    desc += t(locale, 'mapping_tracker.guide_line_user_server');
-
-    desc += t(locale, 'mapping_tracker.guide_header_flags');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_rk');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_qf');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_lv');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_wip');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_gy');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_rv');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_nom');
-    desc += t(locale, 'mapping_tracker.guide_line_flag_all');
-    desc += t(locale, 'mapping_tracker.guide_flag_example');
-
-    desc += t(locale, 'mapping_tracker.guide_header_test');
-    desc += t(locale, 'mapping_tracker.guide_line_test');
-
-    const guideEmbed = new EmbedBuilder()
-        .setTitle(t(locale, 'mapping_tracker.guide_title'))
-        .setDescription(desc)
-        .setColor(getEmbedColor(message))
-        .setFooter({ text: t(locale, 'mapping_tracker.guide_footer') })
-        .setTimestamp();
-
-    const guideRow = buildTrackerGuideRow(trackedList.length);
+    const guideEmbed = doMappingTrackerGuideEmbed(message, activeConfig, trackedList.length, locale);
+    const guideRow = buildTrackerGuideRow(trackedList.length, locale);
 
     const sentMessage = await message.channel.send({
         embeds: [guideEmbed],
@@ -1058,13 +966,13 @@ async function handleMappingTrackerCommand(messages, args) {
 
             if (currentView === 'guide') {
                 await i.editReply({
-                    embeds: [guideEmbed],
-                    components: [buildTrackerGuideRow(trackedList.length)]
+                    embeds: [doMappingTrackerGuideEmbed(message, activeConfig, trackedList.length, locale)],
+                    components: [buildTrackerGuideRow(trackedList.length, locale)]
                 });
             } else {
-                const { embed: listEmbed, totalPages, currentPage } = buildTrackerListEmbed(currentListPage);
+                const { embed: listEmbed, totalPages, currentPage } = doMappingTrackerListEmbed(message, trackedList, currentListPage, locale);
                 currentListPage = currentPage;
-                const listRow = buildTrackerListRow(currentListPage, totalPages);
+                const listRow = buildTrackerListRow(currentListPage, totalPages, locale);
                 await i.editReply({
                     embeds: [listEmbed],
                     components: [listRow]
