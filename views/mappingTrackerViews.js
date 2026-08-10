@@ -66,7 +66,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     ];
 
     const subDateStr = beatmapset.submitted_date || beatmapset.submitted_at;
-    const updDateStr = beatmapset.last_updated || beatmapset.updated_at;
+    const updDateStr = beatmapset.ranked_date || beatmapset.last_updated || beatmapset.updated_at;
 
     const subDate = subDateStr ? new Date(subDateStr) : null;
     const updDate = updDateStr ? new Date(updDateStr) : subDate;
@@ -79,7 +79,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         if (updUnix && Math.abs(updUnix - subUnix) > 60) {
             dateVal += ` • ✏️ **${t(locale, 'mapping_tracker.date_updated')}**: <t:${updUnix}:R>`;
         }
-        fields.push({ name: t(locale, 'mapping_tracker.field_dates'), value: dateVal, inline: false });
+        fields.push({ name: '\u200b', value: dateVal, inline: false });
     }
 
     const embed = new EmbedBuilder()
