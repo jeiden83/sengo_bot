@@ -802,7 +802,7 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.test_sent_channel', { channelId: config.channel_id }) };
         }
 
-        return {};
+        return null;
     }
 
     // Requiere verificación de permisos de administrador para cambios de configuración
@@ -989,7 +989,7 @@ async function handleMappingTrackerCommand(messages, args) {
         } catch {}
     });
 
-    return {};
+    return null;
 }
 
 run.alias = {
