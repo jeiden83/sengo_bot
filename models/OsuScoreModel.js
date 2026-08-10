@@ -2268,8 +2268,8 @@ async function getUserNationalTops(userId, mode, country_code = 'VE', detailed =
 
     const supabase = getSupabaseClient();
     const selectFields = detailed
-        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, build_id, mod_settings, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo)'
-        : 'pp, mods, ended_at, build_id, mod_settings, ranked_beatmaps!inner(mode, stars)';
+        ? 'pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, build_id, mod_settings, ranked_beatmaps!inner(mode, title, artist, version, creator, stars, bpm, ar, od, cs, hp, beatmapset_id, max_combo, ranked_status)'
+        : 'pp, mods, ended_at, build_id, mod_settings, ranked_beatmaps!inner(mode, stars, ranked_status)';
     
     const allData = [];
     let from = 0;

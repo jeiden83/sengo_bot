@@ -382,7 +382,9 @@ async function run(messages, args){
                     od: dbScore.ranked_beatmaps?.od ? parseFloat(dbScore.ranked_beatmaps.od) : 0,
                     cs: dbScore.ranked_beatmaps?.cs ? parseFloat(dbScore.ranked_beatmaps.cs) : 0,
                     hp: dbScore.ranked_beatmaps?.hp ? parseFloat(dbScore.ranked_beatmaps.hp) : 0,
-                    max_combo: dbScore.ranked_beatmaps?.max_combo || 0
+                    max_combo: dbScore.ranked_beatmaps?.max_combo || 0,
+                    ranked_status: dbScore.ranked_beatmaps?.ranked_status ?? null,
+                    status: dbScore.ranked_beatmaps?.status || (dbScore.ranked_beatmaps?.ranked_status === 4 ? 'loved' : null)
                 },
                 beatmapset: {
                     id: dbScore.ranked_beatmaps?.beatmapset_id || 0,

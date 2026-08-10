@@ -105,6 +105,16 @@ function getPlainStatsString(statistics = {}, mode = 'osu') {
     }
 }
 
+function isLovedScore(score) {
+    if (!score) return false;
+    const b = score.beatmap || {};
+    const bs = score.beatmapset || {};
+    const status = b.status ?? bs.status ?? b.ranked_status ?? bs.ranked_status ?? b.ranked ?? bs.ranked ?? score.beatmap_status ?? score.status;
+    if (typeof status === 'string' && status.toLowerCase() === 'loved') return true;
+    if (status === 4) return true;
+    return false;
+}
+
 function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc) {
     const maxPpStr = (max_pp !== null && max_pp !== undefined) ? `${max_pp.toFixed(2)}PP` : '';
     const ppStr = pp_fc 
@@ -308,6 +318,7 @@ module.exports = {
     buildRecentButtonsRow,
     buildCompareSingleButtonsRow,
     buildTopSingleButtonsRow,
-    getDifficultyEmoji
+    getDifficultyEmoji,
+    isLovedScore
 };
 

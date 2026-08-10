@@ -9,7 +9,8 @@ const {
     getStatsString,
     getPlainStatsString,
     buildAnsiBlock,
-    getDifficultyEmoji
+    getDifficultyEmoji,
+    isLovedScore
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -308,7 +309,8 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         }
 
         let ppVal = score.calculatedPP !== undefined ? score.calculatedPP : score.pp;
-        let pp = `${ppVal ? ppVal.toFixed(2) + "pp" : "⏳ pp"}`;
+        const isLoved = isLovedScore(score);
+        let pp = (isLoved && (!ppVal || ppVal === 0)) ? "💖" : `${ppVal ? ppVal.toFixed(2) + "pp" : "⏳ pp"}`;
 
         let starsVal = score.calculatedStars !== undefined ? score.calculatedStars : score.beatmap.difficulty_rating;
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
@@ -522,7 +524,8 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
-        let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        const isLoved = isLovedScore(score);
+        let pp = (isLoved && (!score.pp || score.pp === 0)) ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let starsVal = calculated_stars[i];
         const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
         const snipedPrefixList = score.sniped_name
@@ -752,7 +755,8 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
-        let pp = `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        const isLoved = isLovedScore(score) || (beatmap_metadata?.status === 'loved' || beatmap_metadata?.status === 4 || beatmap_metadata?.ranked_status === 4);
+        let pp = (isLoved && (!score.pp || score.pp === 0)) ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const OsuUserModel = require("../models/OsuUserModel.js");

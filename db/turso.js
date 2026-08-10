@@ -127,7 +127,7 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
         SELECT 
             t.pp, t.mods, t.ended_at, t.score, t.accuracy, t.beatmap_id, t.max_combo, t.perfect, 
             t.statistics, t.rank, t.build_id, t.mod_settings,
-            b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo
+            b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo, b.ranked_status
         FROM top_scores t
         INNER JOIN ranked_beatmaps b ON t.beatmap_id = b.beatmap_id
         WHERE t.user_id = ? AND b.mode = ? AND t.country_code = ?
@@ -171,7 +171,9 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
                 cs: r.cs,
                 hp: r.hp,
                 beatmapset_id: r.beatmapset_id,
-                max_combo: r.b_max_combo
+                max_combo: r.b_max_combo,
+                ranked_status: r.ranked_status,
+                status: r.ranked_status === 4 ? 'loved' : (r.ranked_status === 1 ? 'ranked' : (r.ranked_status === 2 ? 'approved' : (r.ranked_status === 3 ? 'qualified' : null)))
             }
         };
     });
