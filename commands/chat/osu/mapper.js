@@ -780,7 +780,7 @@ async function handleMappingTrackerCommand(messages, args) {
 
         const allMapsets = [];
         const batchSize = 15;
-        const maxMappers = Math.min(mappersToCheck.length, 60);
+        const maxMappers = mappersToCheck.length;
 
         for (let i = 0; i < maxMappers; i += batchSize) {
             const batch = mappersToCheck.slice(i, i + batchSize);
