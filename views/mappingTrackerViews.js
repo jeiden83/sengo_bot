@@ -199,7 +199,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
             desc += `*... (+${sortedDiffs.length - 6} diffs)*\n`;
         }
         const bpmVal = beatmapset.bpm ? Math.round(beatmapset.bpm) : 0;
-        desc += `\n🥁 **${t(locale, 'mapping_tracker.bpm_label')}**\n${bpmVal}\n`;
+        desc += `\n🥁 **${t(locale, 'mapping_tracker.bpm_label')}**\n**\`${bpmVal}\`**\n`;
     } else if (!statusCfg.showDiffs) {
         const commentText = extraInfo?.comment || beatmapset.comment;
         if (commentText) {

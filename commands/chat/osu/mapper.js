@@ -779,7 +779,7 @@ async function handleMappingTrackerCommand(messages, args) {
         let matchedEventType = targetTestStatus || null;
 
         const allMapsets = [];
-        const batchSize = 15;
+        const batchSize = 5;
         const maxMappers = mappersToCheck.length;
 
         for (let i = 0; i < maxMappers; i += batchSize) {
@@ -830,6 +830,10 @@ async function handleMappingTrackerCommand(messages, args) {
                 if (resList && resList.length > 0) {
                     allMapsets.push(...resList);
                 }
+            }
+
+            if (i + batchSize < maxMappers) {
+                await new Promise(resolve => setTimeout(resolve, 80));
             }
         }
 
