@@ -778,39 +778,60 @@ async function handleMappingTrackerCommand(messages, args) {
         let realUser = null;
 
         const allMapsets = [];
-        for (const tRow of mappersToCheck) {
-            const osuId = tRow.osu_id;
-            try {
-                const mapsets = await fetchUserBeatmapsets(osuId, targetTestStatus);
-                if (mapsets && mapsets.length > 0) {
-                    const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
-                    for (const ms of mapsets) {
-                        const msStatus = (ms.status || '').toLowerCase();
-                        let isMatch = true;
+        const batchSize = 5;
+        const maxMappers = Math.min(mappersToCheck.length, 30);
 
-                        if (targetTestStatus) {
-                            if (targetTestStatus === 'ranked') isMatch = (msStatus === 'ranked' || msStatus === 'approved');
-                            else if (targetTestStatus === 'qualified') isMatch = (msStatus === 'qualified');
-                            else if (targetTestStatus === 'loved') isMatch = (msStatus === 'loved');
-                            else if (targetTestStatus === 'pending') isMatch = (msStatus === 'pending' || msStatus === 'wip');
-                            else if (targetTestStatus === 'graveyard') isMatch = (msStatus === 'graveyard');
-                        }
+        for (let i = 0; i < maxMappers; i += batchSize) {
+            const batch = mappersToCheck.slice(i, i + batchSize);
+            const batchResults = await Promise.all(
+                batch.map(async (tRow) => {
+                    const osuId = tRow.osu_id;
+                    try {
+                        const mapsets = await fetchUserBeatmapsets(osuId, targetTestStatus);
+                        if (!mapsets || mapsets.length === 0) return [];
+                        const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
+                        const matches = [];
+                        for (const ms of mapsets) {
+                            const msStatus = (ms.status || '').toLowerCase();
+                            let isMatch = true;
 
-                        if (isMatch) {
-                            allMapsets.push({
-                                mapset: ms,
-                                osuId,
-                                user: {
-                                    id: osuId,
-                                    username: linked?.username || tRow.username || ms.creator || `Mapper #${osuId}`,
-                                    avatar_url: `https://a.ppy.sh/${osuId}`
-                                },
-                                updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
-                            });
+                            if (targetTestStatus) {
+                                if (targetTestStatus === 'ranked') isMatch = (msStatus === 'ranked' || msStatus === 'approved');
+                                else if (targetTestStatus === 'qualified') isMatch = (msStatus === 'qualified');
+                                else if (targetTestStatus === 'loved') isMatch = (msStatus === 'loved');
+                                else if (targetTestStatus === 'pending') isMatch = (msStatus === 'pending' || msStatus === 'wip');
+                                else if (targetTestStatus === 'graveyard') isMatch = (msStatus === 'graveyard');
+                            }
+
+                            if (isMatch) {
+                                matches.push({
+                                    mapset: ms,
+                                    osuId,
+                                    user: {
+                                        id: osuId,
+                                        username: linked?.username || tRow.username || ms.creator || `Mapper #${osuId}`,
+                                        avatar_url: `https://a.ppy.sh/${osuId}`
+                                    },
+                                    updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
+                                });
+                            }
                         }
+                        return matches;
+                    } catch (e) {
+                        return [];
                     }
+                })
+            );
+
+            for (const resList of batchResults) {
+                if (resList && resList.length > 0) {
+                    allMapsets.push(...resList);
                 }
-            } catch (e) {}
+            }
+
+            if (allMapsets.length > 0) {
+                break;
+            }
         }
 
         if (allMapsets.length > 0) {
