@@ -779,8 +779,8 @@ async function handleMappingTrackerCommand(messages, args) {
         let matchedEventType = targetTestStatus || null;
 
         const allMapsets = [];
-        const batchSize = 5;
-        const maxMappers = Math.min(mappersToCheck.length, 30);
+        const batchSize = 15;
+        const maxMappers = Math.min(mappersToCheck.length, 60);
 
         for (let i = 0; i < maxMappers; i += batchSize) {
             const batch = mappersToCheck.slice(i, i + batchSize);
@@ -805,6 +805,7 @@ async function handleMappingTrackerCommand(messages, args) {
                             }
 
                             if (isMatch) {
+                                const updateDate = ms.ranked_date || ms.last_updated || ms.submitted_date || ms.submitted_at || 0;
                                 matches.push({
                                     mapset: ms,
                                     osuId,
@@ -813,7 +814,7 @@ async function handleMappingTrackerCommand(messages, args) {
                                         username: linked?.username || tRow.username || ms.creator || `Mapper #${osuId}`,
                                         avatar_url: `https://a.ppy.sh/${osuId}`
                                     },
-                                    updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
+                                    updatedAt: new Date(updateDate).getTime()
                                 });
                             }
                         }
@@ -828,10 +829,6 @@ async function handleMappingTrackerCommand(messages, args) {
                 if (resList && resList.length > 0) {
                     allMapsets.push(...resList);
                 }
-            }
-
-            if (allMapsets.length > 0) {
-                break;
             }
         }
 
