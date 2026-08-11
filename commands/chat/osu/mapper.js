@@ -696,6 +696,7 @@ async function handleMappingTrackerCommand(messages, args) {
         buildTrackerGuideRow, 
         doMappingTrackerListEmbed, 
         buildTrackerListRow, 
+        doMappingTrackerNotificationEmbed,
         doMappingTrackerTestEmbed 
     } = require("../../../views/mappingTrackerViews.js");
     const { PermissionFlagsBits } = require("discord.js");
@@ -739,35 +740,74 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_channel') };
         }
 
-        const tracked = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
-        if (tracked.length === 0) {
+        // Verificar si se especificó una flag de estado específica para probar el embed correspondiente
+        let targetTestStatus = null;
+        if (args.some(a => ['-ranked', '-rk'].includes(a.toLowerCase()))) targetTestStatus = 'ranked';
+        else if (args.some(a => ['-qualified', '-qf'].includes(a.toLowerCase()))) targetTestStatus = 'qualified';
+        else if (args.some(a => ['-loved', '-lv'].includes(a.toLowerCase()))) targetTestStatus = 'loved';
+        else if (args.some(a => ['-pending', '-wip', '-nuevo', '-new'].includes(a.toLowerCase()))) targetTestStatus = 'pending';
+        else if (args.some(a => ['-graveyard', '-gy'].includes(a.toLowerCase()))) targetTestStatus = 'graveyard';
+        else if (args.some(a => ['-revive', '-rv'].includes(a.toLowerCase()))) targetTestStatus = 'revive';
+        else if (args.some(a => ['-nomination', '-nom'].includes(a.toLowerCase()))) targetTestStatus = 'nomination';
+
+        const linkedMap = await OsuUserModel.getLinkedUsersMap();
+
+        // Si se ejecuta en el servidor owner (o por el owner), revisa todos los mappers vinculados a Sengo
+        const isOwnerGuild = (message.guild && (message.guild.id === process.env.SENGOBOT_GUILD_ID || message.guild.id === process.env.OWNER_GUILD_ID))
+            || message.author?.id === process.env.OWNER_ID;
+
+        let mappersToCheck = [];
+        if (isOwnerGuild) {
+            for (const [osuIdStr, uData] of linkedMap.entries()) {
+                mappersToCheck.push({
+                    osu_id: Number(osuIdStr),
+                    username: uData.username || `Mapper #${osuIdStr}`
+                });
+            }
+        } else {
+            mappersToCheck = await MappingTrackerModel.getTrackedUsersForGuild(guildId);
+        }
+
+        if (mappersToCheck.length === 0) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
         const { fetchUserBeatmapsets } = require("../../../services/mappingTrackerService.js");
-        const linkedMap = await OsuUserModel.getLinkedUsersMap();
 
         let realMapset = null;
         let realUser = null;
 
         const allMapsets = [];
-        for (const tRow of tracked) {
+        for (const tRow of mappersToCheck) {
             const osuId = tRow.osu_id;
             try {
-                const mapsets = await fetchUserBeatmapsets(osuId);
+                const mapsets = await fetchUserBeatmapsets(osuId, targetTestStatus);
                 if (mapsets && mapsets.length > 0) {
                     const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
                     for (const ms of mapsets) {
-                        allMapsets.push({
-                            mapset: ms,
-                            osuId,
-                            user: {
-                                id: osuId,
-                                username: linked?.username || ms.creator || `Mapper #${osuId}`,
-                                avatar_url: `https://a.ppy.sh/${osuId}`
-                            },
-                            updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
-                        });
+                        const msStatus = (ms.status || '').toLowerCase();
+                        let isMatch = true;
+
+                        if (targetTestStatus) {
+                            if (targetTestStatus === 'ranked') isMatch = (msStatus === 'ranked' || msStatus === 'approved');
+                            else if (targetTestStatus === 'qualified') isMatch = (msStatus === 'qualified');
+                            else if (targetTestStatus === 'loved') isMatch = (msStatus === 'loved');
+                            else if (targetTestStatus === 'pending') isMatch = (msStatus === 'pending' || msStatus === 'wip');
+                            else if (targetTestStatus === 'graveyard') isMatch = (msStatus === 'graveyard');
+                        }
+
+                        if (isMatch) {
+                            allMapsets.push({
+                                mapset: ms,
+                                osuId,
+                                user: {
+                                    id: osuId,
+                                    username: linked?.username || tRow.username || ms.creator || `Mapper #${osuId}`,
+                                    avatar_url: `https://a.ppy.sh/${osuId}`
+                                },
+                                updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
+                            });
+                        }
                     }
                 }
             } catch (e) {}
@@ -779,23 +819,50 @@ async function handleMappingTrackerCommand(messages, args) {
             realUser = allMapsets[0].user;
         }
 
+        const effectiveEventType = targetTestStatus || realMapset?.status || 'pending';
+
         if (!realMapset) {
             realMapset = {
-                id: 21329,
-                title: "Crystal Lattice",
-                artist: "sakuzyo",
-                status: "qualified",
-                bpm: 180,
-                user_id: tracked[0].osu_id,
-                creator: "Mapper",
-                beatmaps: [{ difficulty_rating: 5.42 }, { difficulty_rating: 6.88 }],
-                covers: { cover: "https://assets.ppy.sh/beatmaps/pack-default.jpg" }
+                id: 2357272,
+                title: "Take this all away",
+                artist: "Okame-P",
+                status: effectiveEventType,
+                bpm: 190,
+                user_id: mappersToCheck[0].osu_id,
+                creator: mappersToCheck[0].username || "Mapper",
+                beatmaps: [
+                    { id: 5264520, version: "Easy", difficulty_rating: 1.2 },
+                    { id: 5264521, version: "Normal", difficulty_rating: 2.1 },
+                    { id: 5264522, version: "Hard", difficulty_rating: 3.5 },
+                    { id: 5264523, version: "Chris", difficulty_rating: 4.8 }
+                ],
+                covers: { list: "https://assets.ppy.sh/beatmaps/2357272/covers/list.jpg?1757773827" }
             };
-            realUser = { id: tracked[0].osu_id, username: `Mapper #${tracked[0].osu_id}` };
+            realUser = { id: mappersToCheck[0].osu_id, username: mappersToCheck[0].username || `Mapper #${mappersToCheck[0].osu_id}` };
+        } else if (targetTestStatus) {
+            realMapset.status = effectiveEventType;
+        }
+
+        let extraInfo = null;
+        if (effectiveEventType === 'nomination' || effectiveEventType === 'qualified') {
+            extraInfo = {
+                nominator: {
+                    id: 12469536,
+                    username: "Momoyo",
+                    avatar_url: "https://a.ppy.sh/12469536?1786023379.jpeg"
+                },
+                comment: "Comentario..."
+            };
         }
 
         const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId);
-        const testEmbedPayload = doMappingTrackerTestEmbed(realMapset, realUser, locale, ranksInfo);
+        const testEmbedResult = doMappingTrackerNotificationEmbed(realMapset, realUser, effectiveEventType, locale, ranksInfo, extraInfo);
+        const testEmbed = testEmbedResult.embeds[0];
+        testEmbed.setFooter({
+            text: t(locale, 'mapping_tracker.test_footer'),
+            iconURL: testEmbed.data.footer?.icon_url
+        });
+        const testEmbedPayload = { embeds: [testEmbed] };
 
         const targetChannel = message.client?.channels?.cache?.get(config.channel_id)
             || (message.client?.channels?.fetch ? await message.client.channels.fetch(config.channel_id).catch(() => null) : null);

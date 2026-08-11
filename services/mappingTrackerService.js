@@ -32,11 +32,24 @@ async function getOsuApiToken() {
 /**
  * Consulta los beatmapsets de un usuario mediante la API v2 de osu!
  */
-async function fetchUserBeatmapsets(osuId) {
+async function fetchUserBeatmapsets(osuId, type = null) {
     const token = await getOsuApiToken();
     if (!token) return [];
 
     try {
+        if (type && ['loved', 'graveyard', 'ranked', 'pending'].includes(type.toLowerCase())) {
+            const reqType = type.toLowerCase() === 'pending' ? 'unranked' : type.toLowerCase();
+            const url = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/${reqType}?limit=25`;
+            const res = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'SengoBot/2.0'
+                }
+            });
+            return Array.isArray(res.data) ? res.data : [];
+        }
+
         const url = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/unranked?limit=50`;
         const res = await axios.get(url, {
             headers: {
