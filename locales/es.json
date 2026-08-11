@@ -365,6 +365,11 @@
       "body": "Muestra o gestiona tu lista de solicitudes (queue) de mapeo, estado de apertura, modos aceptados y enlace de formulario.",
       "usage": "s.queue : Muestra tu queue de mapper.\ns.queue 'usuario' : Muestra la queue de otro mapper.\ns.queue -set <mensaje> : Configura tu mensaje de queue.\ns.queue -link <url> : Agrega un enlace de formulario o detalles.\ns.queue -linkname <nombre> : Define un texto personalizado para el enlace.\ns.queue -abrir / -cerrar : Cambia el estado de tu queue (abierta/cerrada).\ns.queue -modo STD/MANIA : Define los modos de juego que aceptas.\ns.queue -server : Muestra la lista de mappers con queue en este servidor.\ns.queue -borrar : Elimina tu queue."
     },
+    "populate": {
+      "header": "Gestiona e inicia sesiones distribuidas de poblamiento para países.",
+      "body": "Sistema distribuido para colaborar poblando mapas #1 por país a la base de datos `sengo-db`.\n\n**Opciones:**\n• `s.populate <PAÍS>` : Solicita una clave de trabajador para poblar ese país.\n• `s.populate <PAÍS> -movil` : Instrucciones para navegador móvil.\n• `s.populate <PAÍS> -bash` : Instrucciones para Linux/Mac/Termux.\n• `s.populate -lista` : Muestra el estado global de todos los países.\n• `s.populate -top` : Muestra la tabla de clasificación de colaboradores.",
+      "usage": "s.populate <PAÍS> [-movil | -bash]\ns.populate -lista\ns.populate -top"
+    },
     "torneos": {
       "header": "Busca y lista torneos activos o pasados de osu!",
       "body": "Filtra torneos por modo, rango, etiquetas/región y estado.",

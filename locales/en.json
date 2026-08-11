@@ -365,6 +365,11 @@
       "body": "Display or manage your mapping request queue, open/closed status, accepted playmodes, and detail link.",
       "usage": "s.queue : Display your mapper queue.\ns.queue 'user' : Display another mapper's queue.\ns.queue -set <message> : Set your queue message.\ns.queue -link <url> : Add a form or detail link.\ns.queue -linkname <name> : Set custom text for the detail link.\ns.queue -abrir / -cerrar : Toggle open/closed status.\ns.queue -modo STD/MANIA : Specify accepted playmodes.\ns.queue -server : List all mappers with a queue in this server.\ns.queue -borrar : Delete your queue."
     },
+    "populate": {
+      "header": "Manage and start distributed population sessions for countries.",
+      "body": "Distributed system to collaborate populating #1 maps per country into `sengo-db`.\n\n**Options:**\n• `s.populate <COUNTRY>` : Request a worker key to populate that country.\n• `s.populate <COUNTRY> -movil` : Mobile browser instructions.\n• `s.populate <COUNTRY> -bash` : Linux/Mac/Termux instructions.\n• `s.populate -lista` : View global status for all countries.\n• `s.populate -top` : View contributor leaderboard.",
+      "usage": "s.populate <COUNTRY> [-movil | -bash]\ns.populate -lista\ns.populate -top"
+    },
     "torneos": {
       "header": "Search and list active or past osu! tournaments",
       "body": "Filter tournaments by mode, rank, tags/region and status.",
