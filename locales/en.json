@@ -1733,6 +1733,7 @@
     "err_guild_only": "⚠️ This command can only be used inside a Discord server.",
     "err_no_channel": "⚠️ No tracking channel configured in this server. Use `s.mapper -track -canal #channel` first.",
     "err_no_tracked_users": "⚠️ No mappers are being tracked in this server. Use `s.mapper -track -usuario <ID>` or `s.mapper -track -usuario -server`.",
+    "err_no_map_status": "❌ No real beatmap matching status **{status}** was found for the tracked mappers.",
     "err_no_perms": "❌ You need **Manage Channels** or **Administrator** permissions to configure Mapping Tracker.",
     "err_save_channel": "❌ Error saving channel: {error}",
     "success_set_channel": "✅ **Mapping Tracker channel successfully set to <#{channelId}>**.\n\nYou can now add mappers using:\n• `s.mapper -track -usuario <ID/mention>`\n• `s.mapper -track -usuario -server` (adds all linked members).",

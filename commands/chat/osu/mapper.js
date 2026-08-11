@@ -772,10 +772,11 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
-        const { fetchUserBeatmapsets } = require("../../../services/mappingTrackerService.js");
+        const { fetchUserBeatmapsets, fetchBeatmapsetEvents } = require("../../../services/mappingTrackerService.js");
 
         let realMapset = null;
         let realUser = null;
+        let matchedEventType = targetTestStatus || null;
 
         const allMapsets = [];
         const batchSize = 5;
@@ -838,30 +839,15 @@ async function handleMappingTrackerCommand(messages, args) {
             allMapsets.sort((a, b) => b.updatedAt - a.updatedAt);
             realMapset = allMapsets[0].mapset;
             realUser = allMapsets[0].user;
+            if (!matchedEventType) {
+                matchedEventType = (realMapset.status || 'pending').toLowerCase();
+            }
         }
 
-        const effectiveEventType = targetTestStatus || realMapset?.status || 'pending';
-
+        // Si no se encuentra ningún mapa real que coincida con la solicitud, notificar error sin inventar objetos mock
         if (!realMapset) {
-            realMapset = {
-                id: 2357272,
-                title: "Take this all away",
-                artist: "Okame-P",
-                status: effectiveEventType,
-                bpm: 190,
-                user_id: mappersToCheck[0].osu_id,
-                creator: mappersToCheck[0].username || "Mapper",
-                beatmaps: [
-                    { id: 5264520, version: "Easy", difficulty_rating: 1.2 },
-                    { id: 5264521, version: "Normal", difficulty_rating: 2.1 },
-                    { id: 5264522, version: "Hard", difficulty_rating: 3.5 },
-                    { id: 5264523, version: "Chris", difficulty_rating: 4.8 }
-                ],
-                covers: { list: "https://assets.ppy.sh/beatmaps/2357272/covers/list.jpg?1757773827" }
-            };
-            realUser = { id: mappersToCheck[0].osu_id, username: mappersToCheck[0].username || `Mapper #${mappersToCheck[0].osu_id}` };
-        } else if (targetTestStatus) {
-            realMapset.status = effectiveEventType;
+            const statusLabel = targetTestStatus ? targetTestStatus.toUpperCase() : 'TODOS';
+            return { content: t(locale, 'mapping_tracker.err_no_map_status', { status: statusLabel }) };
         }
 
         // Extraer comentario personalizado opcional de las flags (-comment <texto> o -comentario <texto>)
@@ -871,20 +857,34 @@ async function handleMappingTrackerCommand(messages, args) {
             customComment = args.slice(commentFlagIdx + 1).join(" ");
         }
 
+        // Obtener eventos reales del mapa desde la API de osu! para extraer el BN nominador y comentario real
         let extraInfo = null;
-        if (effectiveEventType === 'nomination' || effectiveEventType === 'qualified') {
-            extraInfo = {
-                nominator: {
-                    id: 12469536,
-                    username: "Momoyo",
-                    avatar_url: "https://a.ppy.sh/12469536?1786023379.jpeg"
-                },
-                comment: customComment || realMapset?.comment?.text || (typeof realMapset?.comment === 'string' ? realMapset.comment : null)
-            };
+        if (matchedEventType === 'nomination' || matchedEventType === 'qualified') {
+            try {
+                const events = await fetchBeatmapsetEvents(realMapset.id);
+                const nomEvent = events.find(e => ['nominate', 'qualify'].includes((e.type || '').toLowerCase()));
+                if (nomEvent) {
+                    const nomUser = nomEvent.user ? {
+                        id: nomEvent.user.id || nomEvent.user_id,
+                        username: nomEvent.user.username || `BN #${nomEvent.user_id}`,
+                        avatar_url: nomEvent.user.avatar_url || `https://a.ppy.sh/${nomEvent.user_id}`,
+                        url: `https://osu.ppy.sh/users/${nomEvent.user.id || nomEvent.user_id}`
+                    } : null;
+
+                    extraInfo = {
+                        nominator: nomUser,
+                        comment: customComment || nomEvent.comment?.text || (typeof nomEvent.comment === 'string' ? nomEvent.comment : null)
+                    };
+                }
+            } catch (e) {}
+
+            if (!extraInfo && customComment) {
+                extraInfo = { comment: customComment };
+            }
         }
 
         const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId);
-        const testEmbedResult = doMappingTrackerNotificationEmbed(realMapset, realUser, effectiveEventType, locale, ranksInfo, extraInfo);
+        const testEmbedResult = doMappingTrackerNotificationEmbed(realMapset, realUser, matchedEventType, locale, ranksInfo, extraInfo);
         const testEmbed = testEmbedResult.embeds[0];
         testEmbed.setFooter({
             text: t(locale, 'mapping_tracker.test_footer'),

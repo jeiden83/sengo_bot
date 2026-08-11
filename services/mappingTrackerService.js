@@ -321,10 +321,33 @@ function initMappingTracker(client) {
     }, 5 * 60 * 1000);
 }
 
+/**
+ * Consulta los eventos específicos de un beatmapset mediante la API v2 de osu!
+ */
+async function fetchBeatmapsetEvents(beatmapsetId) {
+    const token = await getOsuApiToken();
+    if (!token || !beatmapsetId) return [];
+
+    try {
+        const url = `https://osu.ppy.sh/api/v2/beatmapsets/events?beatmapset_id=${beatmapsetId}`;
+        const res = await axios.get(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'SengoBot/2.0'
+            }
+        });
+        return Array.isArray(res.data?.events) ? res.data.events : [];
+    } catch (err) {
+        return [];
+    }
+}
+
 module.exports = {
     initMappingTracker,
     runMappingTrackerScan,
     runGlobalEventsScan,
     fetchUserBeatmapsets,
-    fetchGlobalBeatmapEvents
+    fetchGlobalBeatmapEvents,
+    fetchBeatmapsetEvents
 };
