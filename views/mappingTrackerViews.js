@@ -163,7 +163,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     // Construcción de la descripción
     const titleMarkdown = `### [**${beatmapset.artist} - ${beatmapset.title}**](${mapUrl})`;
     const mapperMarkdown = t(locale, 'mapping_tracker.mapped_by', {
-        mapper: `[${mapperName}](https://osu.ppy.sh/users/${mapperId})`
+        mapper: `[**${mapperName}**](https://osu.ppy.sh/users/${mapperId})`
     });
 
     let desc = `${titleMarkdown}\n${mapperMarkdown}\n\n`;
@@ -171,7 +171,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     const diffs = beatmapset.beatmaps || [];
     if (statusCfg.showDiffs && diffs.length > 0) {
         desc += ` **${t(locale, 'mapping_tracker.diffs_label')}**\n`;
-        const sortedDiffs = [...diffs].sort((a, b) => (Number(a.difficulty_rating || a.sr || 0)) - (Number(b.difficulty_rating || b.sr || 0)));
+        const sortedDiffs = [...diffs].sort((a, b) => (Number(a.difficulty_rating || a.sr || 0)) - (Number(b.difficulty_rating || a.sr || 0)));
         const displayedDiffs = sortedDiffs.slice(0, 6);
         const maxLen = Math.max(...displayedDiffs.map(d => (d.version || d.name || 'Diff').length));
 
@@ -184,7 +184,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
             const diffId = d.id || d.beatmap_id;
             const diffUrl = diffId ? `https://osu.ppy.sh/b/${diffId}` : `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
 
-            desc += `o ${srEmoji} [\`${paddedName}\`](${diffUrl}) **|** **${srFormatted} ⭐**\n`;
+            desc += `o ${srEmoji} [**\`${paddedName}\`**](${diffUrl}) **|** **${srFormatted} ⭐**\n`;
         }
         if (sortedDiffs.length > 6) {
             desc += `*... (+${sortedDiffs.length - 6} diffs)*\n`;
