@@ -802,6 +802,7 @@ async function handleMappingTrackerCommand(messages, args) {
                                 else if (targetTestStatus === 'loved') isMatch = (msStatus === 'loved');
                                 else if (targetTestStatus === 'pending') isMatch = (msStatus === 'pending' || msStatus === 'wip');
                                 else if (targetTestStatus === 'graveyard') isMatch = (msStatus === 'graveyard');
+                                else if (targetTestStatus === 'nomination') isMatch = (msStatus === 'qualified' || msStatus === 'pending' || msStatus === 'wip');
                             }
 
                             if (isMatch) {
@@ -857,27 +858,57 @@ async function handleMappingTrackerCommand(messages, args) {
         // Obtener eventos reales del mapa desde la API de osu! para extraer el BN nominador y comentario real
         let extraInfo = null;
         if (matchedEventType === 'nomination' || matchedEventType === 'qualified') {
+            let nomUser = null;
+            let nomComment = customComment || null;
+
+            // 1. Probar desde las nominaciones del objeto beatmapset
+            const currNoms = realMapset.current_nominations || realMapset.recent_nominations || [];
+            if (currNoms.length > 0 && (currNoms[0].user || currNoms[0].user_id)) {
+                const u = currNoms[0].user || {};
+                const uId = u.id || currNoms[0].user_id;
+                nomUser = {
+                    id: uId,
+                    username: u.username || `BN #${uId}`,
+                    avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
+                    url: `https://osu.ppy.sh/users/${uId}`
+                };
+            }
+
+            // 2. Probar desde el feed de eventos de la API de osu!
             try {
                 const events = await fetchBeatmapsetEvents(realMapset.id);
-                const nomEvent = events.find(e => ['nominate', 'qualify'].includes((e.type || '').toLowerCase()));
+                const nomEvent = events.find(e => ['nominate', 'qualify', 'approve'].includes((e.type || '').toLowerCase()));
                 if (nomEvent) {
-                    const nomUser = nomEvent.user ? {
-                        id: nomEvent.user.id || nomEvent.user_id,
-                        username: nomEvent.user.username || `BN #${nomEvent.user_id}`,
-                        avatar_url: nomEvent.user.avatar_url || `https://a.ppy.sh/${nomEvent.user_id}`,
-                        url: `https://osu.ppy.sh/users/${nomEvent.user.id || nomEvent.user_id}`
-                    } : null;
-
-                    extraInfo = {
-                        nominator: nomUser,
-                        comment: customComment || nomEvent.comment?.text || (typeof nomEvent.comment === 'string' ? nomEvent.comment : null)
-                    };
+                    if (!nomUser && (nomEvent.user || nomEvent.user_id)) {
+                        const u = nomEvent.user || {};
+                        const uId = u.id || nomEvent.user_id;
+                        nomUser = {
+                            id: uId,
+                            username: u.username || `BN #${uId}`,
+                            avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
+                            url: `https://osu.ppy.sh/users/${uId}`
+                        };
+                    }
+                    if (!nomComment && nomEvent.comment) {
+                        nomComment = nomEvent.comment?.text || (typeof nomEvent.comment === 'string' ? nomEvent.comment : null);
+                    }
                 }
             } catch (e) {}
 
-            if (!extraInfo && customComment) {
-                extraInfo = { comment: customComment };
+            // 3. Fallback de usuario para asegurar que el header del embed de autor siempre se renderice en las pruebas de nominación/calificado
+            if (!nomUser) {
+                nomUser = {
+                    id: realUser.id,
+                    username: realUser.username,
+                    avatar_url: realUser.avatar_url,
+                    url: `https://osu.ppy.sh/users/${realUser.id}`
+                };
             }
+
+            extraInfo = {
+                nominator: nomUser,
+                comment: nomComment
+            };
         }
 
         const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId);
