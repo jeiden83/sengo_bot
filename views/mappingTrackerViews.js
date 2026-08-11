@@ -174,7 +174,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         const sortedDiffs = [...diffs].sort((a, b) => (Number(a.difficulty_rating || a.sr || 0)) - (Number(b.difficulty_rating || a.sr || 0)));
         const displayedDiffs = sortedDiffs.slice(0, 6);
 
-        const MAX_DIFF_NAME_LEN = 22;
+        const MAX_DIFF_NAME_LEN = 32;
         const processedDiffs = displayedDiffs.map(d => {
             let name = d.version || d.name || 'Diff';
             if (name.length > MAX_DIFF_NAME_LEN) {
@@ -193,7 +193,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
             const diffId = d.id || d.beatmap_id;
             const diffUrl = diffId ? `https://osu.ppy.sh/b/${diffId}` : `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
 
-            desc += `o ${srEmoji} [**\`${paddedName}\`**](${diffUrl}) **|** **${srFormatted} ⭐**\n`;
+            desc += `o ${srEmoji} [\`${paddedName}\`](${diffUrl}) **|** **${srFormatted} ⭐**\n`;
         }
         if (sortedDiffs.length > 6) {
             desc += `*... (+${sortedDiffs.length - 6} diffs)*\n`;
