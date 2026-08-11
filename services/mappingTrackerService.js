@@ -54,7 +54,9 @@ async function fetchUserBeatmapsets(osuId) {
 
         return [...ranked, ...unranked];
     } catch (err) {
-        console.error(`[MAPPING-TRACKER-SERVICE] Error al consultar beatmapsets de osu_id ${osuId}:`, err.message);
+        if (err.response?.status !== 404) {
+            console.error(`[MAPPING-TRACKER-SERVICE] Error al consultar beatmapsets de osu_id ${osuId}:`, err.message);
+        }
         return [];
     }
 }
@@ -83,13 +85,20 @@ async function runMappingTrackerScan() {
             for (const mapset of mapsets) {
                 const mapsetIdStr = mapset.id.toString();
                 const currentStatus = (mapset.status || 'pending').toLowerCase();
-                const prevStatus = prevSnapshot[mapsetIdStr];
-                newSnapshot[mapsetIdStr] = currentStatus;
+                const currentUpdated = mapset.last_updated || mapset.submitted_date || null;
+
+                const prevEntry = prevSnapshot[mapsetIdStr];
+                const prevStatus = typeof prevEntry === 'object' ? prevEntry.status : prevEntry;
+                const prevUpdated = typeof prevEntry === 'object' ? prevEntry.last_updated : null;
+
+                newSnapshot[mapsetIdStr] = {
+                    status: currentStatus,
+                    last_updated: currentUpdated
+                };
 
                 if (!prevStatus) {
                     // Primer registro o nuevo mapa subido
                     if (lastEvents) {
-                        // Notificar como nuevo mapa subido
                         await notifyEvent(mapset, osuId, currentStatus, subscriptions);
                     }
                 } else if (prevStatus !== currentStatus) {
@@ -99,6 +108,9 @@ async function runMappingTrackerScan() {
                         eventType = 'revive';
                     }
                     await notifyEvent(mapset, osuId, eventType, subscriptions);
+                } else if (prevUpdated && currentUpdated && prevUpdated !== currentUpdated) {
+                    // Notificación de actualización de mapa (BSB / Update)
+                    await notifyEvent(mapset, osuId, currentStatus, subscriptions);
                 }
             }
 

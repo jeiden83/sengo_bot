@@ -750,22 +750,33 @@ async function handleMappingTrackerCommand(messages, args) {
         let realMapset = null;
         let realUser = null;
 
+        const allMapsets = [];
         for (const tRow of tracked) {
             const osuId = tRow.osu_id;
-            const mapsets = await fetchUserBeatmapsets(osuId);
-            if (mapsets && mapsets.length > 0) {
-                // Ordenar por fecha de envío/última actualización descendente
-                mapsets.sort((a, b) => new Date(b.submitted_date || b.last_updated || 0) - new Date(a.submitted_date || a.last_updated || 0));
-                realMapset = mapsets[0];
+            try {
+                const mapsets = await fetchUserBeatmapsets(osuId);
+                if (mapsets && mapsets.length > 0) {
+                    const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
+                    for (const ms of mapsets) {
+                        allMapsets.push({
+                            mapset: ms,
+                            osuId,
+                            user: {
+                                id: osuId,
+                                username: linked?.username || ms.creator || `Mapper #${osuId}`,
+                                avatar_url: `https://a.ppy.sh/${osuId}`
+                            },
+                            updatedAt: new Date(ms.last_updated || ms.submitted_date || 0).getTime()
+                        });
+                    }
+                }
+            } catch (e) {}
+        }
 
-                const linked = linkedMap.get(osuId.toString()) || linkedMap.get(Number(osuId));
-                realUser = {
-                    id: osuId,
-                    username: linked?.username || realMapset.creator || `Mapper #${osuId}`,
-                    avatar_url: `https://a.ppy.sh/${osuId}`
-                };
-                break;
-            }
+        if (allMapsets.length > 0) {
+            allMapsets.sort((a, b) => b.updatedAt - a.updatedAt);
+            realMapset = allMapsets[0].mapset;
+            realUser = allMapsets[0].user;
         }
 
         if (!realMapset) {
