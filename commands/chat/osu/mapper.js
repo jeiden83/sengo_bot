@@ -864,6 +864,13 @@ async function handleMappingTrackerCommand(messages, args) {
             realMapset.status = effectiveEventType;
         }
 
+        // Extraer comentario personalizado opcional de las flags (-comment <texto> o -comentario <texto>)
+        let customComment = null;
+        const commentFlagIdx = args.findIndex(a => ['-comment', '-comentario', '-c'].includes(a.toLowerCase()));
+        if (commentFlagIdx !== -1 && commentFlagIdx + 1 < args.length) {
+            customComment = args.slice(commentFlagIdx + 1).join(" ");
+        }
+
         let extraInfo = null;
         if (effectiveEventType === 'nomination' || effectiveEventType === 'qualified') {
             extraInfo = {
@@ -872,7 +879,7 @@ async function handleMappingTrackerCommand(messages, args) {
                     username: "Momoyo",
                     avatar_url: "https://a.ppy.sh/12469536?1786023379.jpeg"
                 },
-                comment: "Comentario..."
+                comment: customComment || realMapset?.comment?.text || realMapset?.comment || "¡Excelente mapa! Aprobado para calificación."
             };
         }
 
