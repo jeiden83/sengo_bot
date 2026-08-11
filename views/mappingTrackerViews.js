@@ -204,7 +204,19 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     }
 
     const subDateStr = beatmapset.submitted_date || beatmapset.submitted_at;
-    const updDateStr = beatmapset.ranked_date || beatmapset.last_updated || beatmapset.updated_at;
+    const statusLower = (beatmapset.status || '').toLowerCase();
+    const eventLower = (eventType || '').toLowerCase();
+
+    let updDateStr = beatmapset.last_updated || beatmapset.updated_at;
+    let dateLabelKey = 'mapping_tracker.date_updated'; // Editado / Updated
+
+    if ((statusLower === 'ranked' || statusLower === 'approved' || eventLower === 'ranked' || eventLower === 'approved') && beatmapset.ranked_date) {
+        updDateStr = beatmapset.ranked_date;
+        dateLabelKey = 'mapping_tracker.date_ranked';
+    } else if ((statusLower === 'qualified' || eventLower === 'qualified') && beatmapset.ranked_date) {
+        updDateStr = beatmapset.ranked_date;
+        dateLabelKey = 'mapping_tracker.date_qualified';
+    }
 
     const subDate = subDateStr ? new Date(subDateStr) : null;
     const updDate = updDateStr ? new Date(updDateStr) : subDate;
@@ -215,7 +227,7 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
 
         let dateVal = `📅 **${t(locale, 'mapping_tracker.date_submitted')}**: <t:${subUnix}:R>`;
         if (updUnix && Math.abs(updUnix - subUnix) > 60) {
-            dateVal += ` • ✏️ **${t(locale, 'mapping_tracker.date_updated')}**: <t:${updUnix}:R>`;
+            dateVal += ` • ✏️ **${t(locale, dateLabelKey)}**: <t:${updUnix}:R>`;
         }
         fields.push({ name: '\u200b', value: dateVal, inline: false });
     }

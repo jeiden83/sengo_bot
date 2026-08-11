@@ -4,7 +4,13 @@ const { doMappingTrackerNotificationEmbed } = require("../views/mappingTrackerVi
 const axios = require("axios");
 
 let trackerInterval = null;
+let eventsInterval = null;
 let discordClient = null;
+
+let isScanningDeep = false;
+let isScanningEvents = false;
+// ponytail: lastProcessedEventId guardado en memoria volatil para escaneo rapido de eventos a 30s; si el bot se reinicia, el escaneo profundo de 5m reconcilia cualquier estado omitido
+let lastProcessedEventId = 0;
 
 /**
  * Obtiene token Oauth cliente o del bot para peticiones a la API v2 de osu!
@@ -62,14 +68,117 @@ async function fetchUserBeatmapsets(osuId) {
 }
 
 /**
- * Ejecuta un ciclo de escaneo para todos los usuarios rastreados.
+ * Consulta los eventos globales de beatmapsets desde la API v2 de osu!
  */
-async function runMappingTrackerScan() {
-    if (!discordClient) return;
+async function fetchGlobalBeatmapEvents() {
+    const token = await getOsuApiToken();
+    if (!token) return [];
+
+    try {
+        const res = await axios.get("https://osu.ppy.sh/api/v2/beatmapsets/events", {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'SengoBot/2.0'
+            }
+        });
+        return Array.isArray(res.data?.events) ? res.data.events : [];
+    } catch (err) {
+        console.error('[MAPPING-TRACKER-SERVICE] Error al consultar eventos globales de beatmapsets:', err.message);
+        return [];
+    }
+}
+
+/**
+ * Escaneo rápido (cada 30s): Consulta el feed global de eventos de osu! y notifica al instante cambios mayores.
+ */
+async function runGlobalEventsScan() {
+    if (!discordClient || isScanningEvents) return;
+    isScanningEvents = true;
 
     try {
         const trackedIds = await MappingTrackerModel.getAllTrackedOsuIds();
-        if (trackedIds.length === 0) return;
+        if (trackedIds.length === 0) {
+            isScanningEvents = false;
+            return;
+        }
+
+        const trackedSet = new Set(trackedIds.map(id => Number(id)));
+        const events = await fetchGlobalBeatmapEvents();
+        if (events.length === 0) {
+            isScanningEvents = false;
+            return;
+        }
+
+        // Ordenar eventos de más antiguo a más reciente para notificar en orden cronológico
+        events.sort((a, b) => a.id - b.id);
+
+        let maxSeenId = lastProcessedEventId;
+
+        for (const event of events) {
+            if (event.id <= lastProcessedEventId) continue;
+            if (event.id > maxSeenId) maxSeenId = event.id;
+
+            const mapset = event.beatmapset;
+            if (!mapset) continue;
+
+            const mapperOsuId = mapset.user_id || (mapset.user ? mapset.user.id : null);
+            if (!mapperOsuId || !trackedSet.has(Number(mapperOsuId))) continue;
+
+            // Determinar tipo de evento relevante para Mapping Tracker
+            let eventType = null;
+            switch (event.type) {
+                case 'nominate':
+                    eventType = 'nomination';
+                    break;
+                case 'qualify':
+                    eventType = 'qualified';
+                    break;
+                case 'disqualify':
+                    eventType = 'pending';
+                    break;
+                case 'approve':
+                    eventType = 'approved';
+                    break;
+                case 'rank':
+                    eventType = 'ranked';
+                    break;
+                case 'love':
+                    eventType = 'loved';
+                    break;
+            }
+
+            if (!eventType) continue;
+
+            const subscriptions = await MappingTrackerModel.getSubscriptionsForOsuId(mapperOsuId);
+            if (subscriptions.length > 0) {
+                await notifyEvent(mapset, mapperOsuId, eventType, subscriptions);
+            }
+        }
+
+        if (maxSeenId > lastProcessedEventId) {
+            lastProcessedEventId = maxSeenId;
+        }
+    } catch (err) {
+        console.error('[MAPPING-TRACKER-SERVICE] Error en escaneo rápido de eventos:', err.message);
+    } finally {
+        isScanningEvents = false;
+    }
+}
+
+/**
+ * Escaneo profundo (cada 5m): Ejecuta un ciclo completo para todos los mappers rastreados (WIP/Pending/Updates).
+ */
+async function runMappingTrackerScan() {
+    if (!discordClient || isScanningDeep) return;
+    isScanningDeep = true;
+
+    try {
+        const trackedIds = await MappingTrackerModel.getAllTrackedOsuIds();
+        if (trackedIds.length === 0) {
+            isScanningDeep = false;
+            return;
+        }
 
         for (const osuId of trackedIds) {
             const mapsets = await fetchUserBeatmapsets(osuId);
@@ -118,7 +227,9 @@ async function runMappingTrackerScan() {
             await MappingTrackerModel.saveLastEventsForOsuId(osuId, latestMapsetId, newSnapshot);
         }
     } catch (scanErr) {
-        console.error('[MAPPING-TRACKER-SERVICE] Error durante el ciclo de escaneo:', scanErr.message);
+        console.error('[MAPPING-TRACKER-SERVICE] Error durante el ciclo de escaneo profundo:', scanErr.message);
+    } finally {
+        isScanningDeep = false;
     }
 }
 
@@ -157,19 +268,31 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions) {
  */
 function initMappingTracker(client) {
     discordClient = client;
-    Logger.system("Inicializando servicio de Mapping Tracker (intervalo: 5 minutos)...");
+    Logger.system("Inicializando servicio de Mapping Tracker (Eventos rápidos: 30s | Escaneo profundo: 5m)...");
 
-    // Ejecutar primera verificación tras 30 segundos
+    // 1. Escaneo rápido de eventos globales (cada 30s)
+    setTimeout(() => {
+        runGlobalEventsScan().catch(err => {
+            Logger.system(`Error en primera ejecución de eventos globales: ${err.message}`);
+        });
+    }, 10000);
+
+    eventsInterval = setInterval(() => {
+        runGlobalEventsScan().catch(err => {
+            Logger.system(`Error en escaneo rápido de eventos: ${err.message}`);
+        });
+    }, 30 * 1000);
+
+    // 2. Escaneo profundo de mappers individuales (cada 5m)
     setTimeout(() => {
         runMappingTrackerScan().catch(err => {
-            Logger.system(`Error en primera ejecución de Mapping Tracker: ${err.message}`);
+            Logger.system(`Error en primera ejecución de escaneo profundo: ${err.message}`);
         });
     }, 30000);
 
-    // Repetir cada 5 minutos
     trackerInterval = setInterval(() => {
         runMappingTrackerScan().catch(err => {
-            Logger.system(`Error en escaneo periódico de Mapping Tracker: ${err.message}`);
+            Logger.system(`Error en escaneo profundo de Mapping Tracker: ${err.message}`);
         });
     }, 5 * 60 * 1000);
 }
@@ -177,5 +300,7 @@ function initMappingTracker(client) {
 module.exports = {
     initMappingTracker,
     runMappingTrackerScan,
-    fetchUserBeatmapsets
+    runGlobalEventsScan,
+    fetchUserBeatmapsets,
+    fetchGlobalBeatmapEvents
 };
