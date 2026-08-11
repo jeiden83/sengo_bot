@@ -1,6 +1,6 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { t } = require("../utils/i18n.js");
-const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
+const { getEmbedColor, getFlagEmoji, getDifficultyEmoji } = require("./osuViewHelpers.js");
 
 const STATUS_KEYS = {
     ranked: 'mapping_tracker.status_ranked',
@@ -15,15 +15,16 @@ const STATUS_KEYS = {
 };
 
 const STATUS_CONFIGS = {
-    ranked: { color: "#4ee44e", emoji: "🎉" },
-    approved: { color: "#4ee44e", emoji: "🎉" },
-    qualified: { color: "#4ee4e4", emoji: "✨" },
-    loved: { color: "#ff66aa", emoji: "💖" },
-    pending: { color: "#e4e44e", emoji: "🚀" },
-    wip: { color: "#e4e44e", emoji: "🚀" },
-    graveyard: { color: "#777777", emoji: "🪦" },
-    revive: { color: "#ff9933", emoji: "🔥" },
-    nomination: { color: "#9966ff", emoji: "📌" }
+    new: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
+    pending: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
+    wip: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
+    revive: { color: 8034423, titleKey: 'mapping_tracker.title_revive', showDiffs: true },
+    nomination: { color: 12970478, titleKey: 'mapping_tracker.title_nomination', showDiffs: false },
+    qualified: { color: 16723295, titleKey: 'mapping_tracker.title_qualified', showDiffs: false },
+    ranked: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true },
+    approved: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true },
+    loved: { color: 16737962, titleKey: 'mapping_tracker.title_loved', showDiffs: true },
+    graveyard: { color: 7829367, titleKey: 'mapping_tracker.title_graveyard', showDiffs: true }
 };
 
 /**
@@ -144,107 +145,110 @@ function buildTrackerListRow(currentPage, totalPages, locale = 'es') {
 }
 
 /**
- * Renderiza el embed de notificación para un evento de Mapping Tracker con i18n completo y rankings (País, Servidor, Global).
+ * Renderiza el embed de notificación para un evento de Mapping Tracker.
  */
-function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es', ranksInfo = null) {
-    const statusCfg = STATUS_CONFIGS[eventType.toLowerCase()] || STATUS_CONFIGS.pending;
-    const statusKey = STATUS_KEYS[eventType.toLowerCase()] || STATUS_KEYS.pending;
-    const statusTitle = t(locale, statusKey);
+function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es', ranksInfo = null, extraInfo = null) {
+    const statusKey = (eventType || 'pending').toLowerCase();
+    const statusCfg = STATUS_CONFIGS[statusKey] || STATUS_CONFIGS.pending;
+    const titleText = t(locale, statusCfg.titleKey);
 
-    const coverUrl = beatmapset.covers?.cover
-        || beatmapset.covers?.['cover@2x']
-        || beatmapset.covers?.card
-        || 'https://assets.ppy.sh/beatmaps/pack-default.jpg';
+    const firstBeatmapId = beatmapset.beatmaps && beatmapset.beatmaps.length > 0 ? beatmapset.beatmaps[0].id : null;
+    const mapUrl = firstBeatmapId
+        ? `https://osu.ppy.sh/beatmapsets/${beatmapset.id}#osu/${firstBeatmapId}`
+        : `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
 
-    const mapperName = mapperUser.username || beatmapset.creator || 'Mapper';
-    const mapperAvatar = mapperUser.avatar_url || `https://a.ppy.sh/${beatmapset.user_id}`;
+    const mapperName = mapperUser?.username || beatmapset.creator || 'Mapper';
+    const mapperId = mapperUser?.id || beatmapset.user_id;
+
+    // Construcción de la descripción
+    const titleMarkdown = `### [**${beatmapset.artist} - ${beatmapset.title}**](${mapUrl})`;
+    const mapperMarkdown = t(locale, 'mapping_tracker.mapped_by', {
+        mapper: `[${mapperName}](https://osu.ppy.sh/users/${mapperId})`
+    });
+
+    let desc = `${titleMarkdown}\n${mapperMarkdown}\n\n`;
 
     const diffs = beatmapset.beatmaps || [];
-    let srStr = 'N/A';
-    if (diffs.length > 0) {
-        const srs = diffs.map(d => Number(d.difficulty_rating || d.sr || 0)).filter(s => s > 0);
-        if (srs.length > 0) {
-            const minSr = Math.min(...srs).toFixed(2);
-            const maxSr = Math.max(...srs).toFixed(2);
-            srStr = minSr === maxSr ? `${minSr}★` : `${minSr}★ - ${maxSr}★`;
+    if (statusCfg.showDiffs && diffs.length > 0) {
+        desc += ` **${t(locale, 'mapping_tracker.diffs_label')}**\n`;
+        const sortedDiffs = [...diffs].sort((a, b) => (Number(a.difficulty_rating || a.sr || 0)) - (Number(b.difficulty_rating || b.sr || 0)));
+        const displayedDiffs = sortedDiffs.slice(0, 6);
+        for (const d of displayedDiffs) {
+            const srVal = Number(d.difficulty_rating || d.sr || 0);
+            const srFormatted = Number.isInteger(srVal) ? srVal : parseFloat(srVal.toFixed(2));
+            const srEmoji = getDifficultyEmoji(srVal);
+            const diffName = d.version || d.name || 'Diff';
+            desc += `o ${srEmoji} **${diffName} |** ${srFormatted} ⭐\n`;
+        }
+        if (sortedDiffs.length > 6) {
+            desc += `*... (+${sortedDiffs.length - 6} diffs)*\n`;
+        }
+        const bpmVal = beatmapset.bpm ? Math.round(beatmapset.bpm) : 0;
+        desc += `\n🥁 **${t(locale, 'mapping_tracker.bpm_label')}**\n${bpmVal}\n`;
+    } else if (!statusCfg.showDiffs) {
+        const commentText = extraInfo?.comment || beatmapset.comment;
+        if (commentText) {
+            desc += `-# ${commentText}\n`;
+        } else {
+            desc += `-# ${t(locale, 'mapping_tracker.comment_placeholder')}\n`;
         }
     }
 
-    const bpm = beatmapset.bpm ? `${Math.round(beatmapset.bpm)}` : 'N/A';
-    const diffCount = diffs.length > 0 ? `${diffs.length} diffs` : 'N/A';
+    const embed = new EmbedBuilder()
+        .setTitle(titleText)
+        .setDescription(desc)
+        .setColor(statusCfg.color);
 
-    const titleStr = `${beatmapset.artist} - ${beatmapset.title}`;
-    const mapUrl = `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
+    // Configurar author si se trata de nominación o calificación con un nominador conocido
+    const nominator = extraInfo?.nominator || beatmapset.nominator;
+    if (nominator && (statusKey === 'nomination' || statusKey === 'qualified')) {
+        const nomName = nominator.username || nominator.name || 'BN';
+        const nomAvatar = nominator.avatar_url || nominator.icon_url || `https://a.ppy.sh/${nominator.id}`;
+        const nomUrl = nominator.url || `https://osu.ppy.sh/users/${nominator.id}`;
+        embed.setAuthor({
+            name: nomName,
+            iconURL: nomAvatar,
+            url: nomUrl
+        });
+    }
 
-    const fields = [
-        { name: t(locale, 'mapping_tracker.field_status'), value: `**\`${statusTitle}\`**`, inline: true },
-        { name: t(locale, 'mapping_tracker.field_stars'), value: `**\`${srStr}\`**`, inline: true },
-        { name: t(locale, 'mapping_tracker.field_bpm_diffs'), value: `**\`${bpm} BPM\`** • **\`${diffCount}\`**`, inline: true }
-    ];
+    // Configurar thumbnail (carátula lista/cuadrada del mapa)
+    const thumbnailUrl = beatmapset.covers?.list
+        || beatmapset.covers?.['list@2x']
+        || beatmapset.covers?.card
+        || `https://assets.ppy.sh/beatmaps/${beatmapset.id}/covers/list.jpg`;
+    embed.setThumbnail(thumbnailUrl);
 
+    // Campos de Ranking si están disponibles
     if (ranksInfo) {
         const rankParts = [];
-        const countryCode = ranksInfo.countryCode || mapperUser.country_code || beatmapset.user?.country_code;
+        const countryCode = ranksInfo.countryCode || mapperUser?.country_code || beatmapset.user?.country_code;
         const flag = countryCode ? getFlagEmoji(countryCode) : '🌐';
 
         if (ranksInfo.nationalRank) {
-            rankParts.push(`${flag} **\`#${ranksInfo.nationalRank}\`** ${t(locale, 'mapping_tracker.rank_country_suffix', { country: countryCode ? countryCode.toUpperCase() : '' })}`);
+            rankParts.push(`${flag} **#${ranksInfo.nationalRank} (${countryCode ? countryCode.toUpperCase() : ''})**`);
         }
         if (ranksInfo.serverRank) {
-            rankParts.push(`🏠 **\`#${ranksInfo.serverRank}\`** ${t(locale, 'mapping_tracker.rank_server_suffix')}`);
+            const serverLabel = t(locale, 'mapping_tracker.rank_server_suffix').replace(/[()]/g, '');
+            rankParts.push(`🏠 **#${ranksInfo.serverRank} (${serverLabel})**`);
         }
 
         if (rankParts.length > 0) {
-            fields.push({
-                name: t(locale, 'mapping_tracker.field_mapper_rank'),
+            const fieldName = t(locale, 'mapping_tracker.field_mapper_rank').replace(/^🏆\s*/, '');
+            embed.addFields({
+                name: `🏆 ${fieldName} `,
                 value: rankParts.join(' • '),
                 inline: false
             });
         }
     }
 
-    const subDateStr = beatmapset.submitted_date || beatmapset.submitted_at;
-    const statusLower = (beatmapset.status || '').toLowerCase();
-    const eventLower = (eventType || '').toLowerCase();
-
-    let updDateStr = beatmapset.last_updated || beatmapset.updated_at;
-    let dateLabelKey = 'mapping_tracker.date_updated'; // Editado / Updated
-
-    if ((statusLower === 'ranked' || statusLower === 'approved' || eventLower === 'ranked' || eventLower === 'approved') && beatmapset.ranked_date) {
-        updDateStr = beatmapset.ranked_date;
-        dateLabelKey = 'mapping_tracker.date_ranked';
-    } else if ((statusLower === 'qualified' || eventLower === 'qualified') && beatmapset.ranked_date) {
-        updDateStr = beatmapset.ranked_date;
-        dateLabelKey = 'mapping_tracker.date_qualified';
-    }
-
-    const subDate = subDateStr ? new Date(subDateStr) : null;
-    const updDate = updDateStr ? new Date(updDateStr) : subDate;
-
-    if (subDate && !isNaN(subDate.getTime())) {
-        const subUnix = Math.floor(subDate.getTime() / 1000);
-        const updUnix = updDate && !isNaN(updDate.getTime()) ? Math.floor(updDate.getTime() / 1000) : subUnix;
-
-        let dateVal = `📅 **${t(locale, 'mapping_tracker.date_submitted')}**: <t:${subUnix}:R>`;
-        if (updUnix && Math.abs(updUnix - subUnix) > 60) {
-            dateVal += ` • ✏️ **${t(locale, dateLabelKey)}**: <t:${updUnix}:R>`;
-        }
-        fields.push({ name: '\u200b', value: dateVal, inline: false });
-    }
-
-    const embed = new EmbedBuilder()
-        .setAuthor({
-            name: `${statusCfg.emoji} ${mapperName} • Mapping Tracker`,
-            iconURL: mapperAvatar,
-            url: `https://osu.ppy.sh/users/${mapperUser.id || beatmapset.user_id}`
-        })
-        .setTitle(titleStr)
-        .setURL(mapUrl)
-        .setColor(statusCfg.color)
-        .setImage(coverUrl)
-        .addFields(fields)
-        .setFooter({ text: t(locale, 'mapping_tracker.footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
-        .setTimestamp();
+    // Footer
+    embed.setFooter({
+        text: t(locale, 'mapping_tracker.footer'),
+        iconURL: "https://images-ext-1.discordapp.net/external/HICVv7z-LIJOfhJCn2bVIRKfJE2wgNUUk3uSI2DIsT8/https/cdn.discordapp.com/avatars/1064201701210468454/78f4bd4f093e75a0a501e9aaeaa6d205.png?format=webp&quality=lossless"
+    });
+    embed.setTimestamp();
 
     return { embeds: [embed] };
 }
@@ -252,13 +256,14 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
 /**
  * Renderiza el embed de prueba (-track -test).
  */
-function doMappingTrackerTestEmbed(beatmapset, mapperUser, locale = 'es', ranksInfo = null) {
-    const embedResult = doMappingTrackerNotificationEmbed(beatmapset, mapperUser, beatmapset.status || 'pending', locale, ranksInfo);
+function doMappingTrackerTestEmbed(beatmapset, mapperUser, locale = 'es', ranksInfo = null, extraInfo = null) {
+    const embedResult = doMappingTrackerNotificationEmbed(beatmapset, mapperUser, beatmapset.status || 'pending', locale, ranksInfo, extraInfo);
     const embed = embedResult.embeds[0];
     
-    const prefixStr = t(locale, 'mapping_tracker.test_title_prefix');
-    embed.setTitle(`${prefixStr}${embed.data.title}`);
-    embed.setFooter({ text: t(locale, 'mapping_tracker.test_footer'), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" });
+    embed.setFooter({
+        text: t(locale, 'mapping_tracker.test_footer'),
+        iconURL: embed.data.footer?.icon_url
+    });
 
     return { embeds: [embed] };
 }

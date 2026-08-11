@@ -152,7 +152,18 @@ async function runGlobalEventsScan() {
 
             const subscriptions = await MappingTrackerModel.getSubscriptionsForOsuId(mapperOsuId);
             if (subscriptions.length > 0) {
-                await notifyEvent(mapset, mapperOsuId, eventType, subscriptions);
+                const nominatorUser = event.user ? {
+                    id: event.user.id || event.user_id,
+                    username: event.user.username || `BN #${event.user_id}`,
+                    avatar_url: event.user.avatar_url || `https://a.ppy.sh/${event.user_id}`
+                } : (event.user_id ? { id: event.user_id, username: `BN #${event.user_id}`, avatar_url: `https://a.ppy.sh/${event.user_id}` } : null);
+
+                const extraInfo = {
+                    nominator: nominatorUser,
+                    comment: event.comment?.text || (typeof event.comment === 'string' ? event.comment : null)
+                };
+
+                await notifyEvent(mapset, mapperOsuId, eventType, subscriptions, extraInfo);
             }
         }
 
@@ -236,7 +247,7 @@ async function runMappingTrackerScan() {
 /**
  * Envía las notificaciones de eventos a los canales de Discord suscritos.
  */
-async function notifyEvent(mapset, osuId, eventType, subscriptions) {
+async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = null) {
     const mapperUser = {
         id: osuId,
         username: mapset.creator || 'Mapper',
@@ -251,7 +262,7 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions) {
 
         try {
             const ranksInfo = await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id);
-            const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo);
+            const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo, extraInfo);
 
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);
             if (channel && typeof channel.send === 'function') {
