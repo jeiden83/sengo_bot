@@ -879,7 +879,7 @@ async function handleMappingTrackerCommand(messages, args) {
                     username: "Momoyo",
                     avatar_url: "https://a.ppy.sh/12469536?1786023379.jpeg"
                 },
-                comment: customComment || realMapset?.comment?.text || realMapset?.comment || "¡Excelente mapa! Aprobado para calificación."
+                comment: customComment || realMapset?.comment?.text || (typeof realMapset?.comment === 'string' ? realMapset.comment : null)
             };
         }
 

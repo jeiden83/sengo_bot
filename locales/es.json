@@ -1793,7 +1793,7 @@
     "mapped_by": "Mapeado por {mapper}",
     "diffs_label": "Diffs:",
     "bpm_label": "BPM:",
-    "comment_placeholder": "Comentario...",
+    "comment_placeholder": "Sin comentario del nominador",
     "field_status": "📌 Estado",
     "field_stars": "⭐ Estrellas",
     "field_bpm_diffs": "🥁 BPM / Diffs",
