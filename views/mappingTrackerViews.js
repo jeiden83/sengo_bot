@@ -173,12 +173,18 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         desc += ` **${t(locale, 'mapping_tracker.diffs_label')}**\n`;
         const sortedDiffs = [...diffs].sort((a, b) => (Number(a.difficulty_rating || a.sr || 0)) - (Number(b.difficulty_rating || b.sr || 0)));
         const displayedDiffs = sortedDiffs.slice(0, 6);
+        const maxLen = Math.max(...displayedDiffs.map(d => (d.version || d.name || 'Diff').length));
+
         for (const d of displayedDiffs) {
             const srVal = Number(d.difficulty_rating || d.sr || 0);
             const srFormatted = Number.isInteger(srVal) ? srVal : parseFloat(srVal.toFixed(2));
             const srEmoji = getDifficultyEmoji(srVal);
-            const diffName = d.version || d.name || 'Diff';
-            desc += `o ${srEmoji} **${diffName} |** ${srFormatted} ⭐\n`;
+            const rawDiffName = d.version || d.name || 'Diff';
+            const paddedName = rawDiffName.padEnd(maxLen, ' ');
+            const diffId = d.id || d.beatmap_id;
+            const diffUrl = diffId ? `https://osu.ppy.sh/b/${diffId}` : `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;
+
+            desc += `o ${srEmoji} [\`${paddedName}\`](${diffUrl}) **|** **${srFormatted} ⭐**\n`;
         }
         if (sortedDiffs.length > 6) {
             desc += `*... (+${sortedDiffs.length - 6} diffs)*\n`;
