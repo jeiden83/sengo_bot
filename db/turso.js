@@ -1,94 +1,47 @@
-const axios = require('axios');
+const { createClient } = require('@libsql/client');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '../.env') });
 
-const dbUrl = process.env.TURSO_DATABASE_URL;
-const authToken = process.env.TURSO_AUTH_TOKEN;
-const dbHostname = dbUrl ? dbUrl.replace(/^libsql:\/\//, '').replace(/\/$/, '') : null;
+let tursoClient = null;
+let currentDbUrl = null;
+let currentAuthToken = null;
+
+function getClient() {
+    const rawDbUrl = process.env.TURSO_DATABASE_URL || '';
+    const rawAuthToken = process.env.TURSO_AUTH_TOKEN || '';
+    const dbUrl = rawDbUrl.replace(/^["']|["']$/g, '').trim();
+    const authToken = rawAuthToken.replace(/^["']|["']$/g, '').trim();
+
+    if (!dbUrl || !authToken) return null;
+
+    if (!tursoClient || currentDbUrl !== dbUrl || currentAuthToken !== authToken) {
+        currentDbUrl = dbUrl;
+        currentAuthToken = authToken;
+        tursoClient = createClient({ url: dbUrl, authToken: authToken });
+    }
+    return tursoClient;
+}
 
 function isTursoAvailable() {
-    return Boolean(dbHostname && authToken);
+    return Boolean(getClient());
 }
 
 async function executeTurso(sql, args = []) {
-    if (!isTursoAvailable()) {
+    const client = getClient();
+    if (!client) {
         throw new Error("Turso no está configurado (faltan TURSO_DATABASE_URL o TURSO_AUTH_TOKEN)");
     }
-
-    const formattedArgs = args.map(a => {
-        if (a === null || a === undefined) return { type: "null" };
-        if (typeof a === 'number') {
-            if (Number.isInteger(a)) {
-                return { type: "integer", value: String(a) };
-            } else {
-                return { type: "float", value: a };
-            }
-        }
-        if (typeof a === 'boolean') {
-            return { type: "integer", value: a ? "1" : "0" };
-        }
-        return { type: "text", value: String(a) };
-    });
-
-    const response = await axios.post(`https://${dbHostname}/v2/pipeline`, {
-        requests: [{ type: "execute", stmt: { sql, args: formattedArgs } }]
-    }, {
-        headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-        },
-        timeout: 30000
-    });
-
-    const result = response.data?.results?.[0]?.response?.result;
-    if (!result) return [];
-
-    const cols = result.cols.map(c => c.name);
-    return result.rows.map(row => {
-        const obj = {};
-        row.forEach((cell, idx) => {
-            const colName = cols[idx];
-            if (cell.type === 'null') {
-                obj[colName] = null;
-            } else if (cell.type === 'integer') {
-                obj[colName] = parseInt(cell.value, 10);
-            } else if (cell.type === 'float') {
-                obj[colName] = parseFloat(cell.value);
-            } else {
-                obj[colName] = cell.value;
-            }
-        });
-        return obj;
-    });
+    const result = await client.execute({ sql, args });
+    return result.rows || [];
 }
 
 async function executeTursoBatch(statements) {
-    if (!isTursoAvailable() || !statements || statements.length === 0) return [];
+    const client = getClient();
+    if (!client || !statements || statements.length === 0) return [];
 
-    const formattedRequests = statements.map(s => {
-        const formattedArgs = (s.args || []).map(a => {
-            if (a === null || a === undefined) return { type: "null" };
-            if (typeof a === 'number') {
-                if (Number.isInteger(a)) return { type: "integer", value: String(a) };
-                return { type: "float", value: a };
-            }
-            if (typeof a === 'boolean') return { type: "integer", value: a ? "1" : "0" };
-            return { type: "text", value: String(a) };
-        });
-        return { type: "execute", stmt: { sql: s.sql, args: formattedArgs } };
-    });
-
-    const response = await axios.post(`https://${dbHostname}/v2/pipeline`, {
-        requests: formattedRequests
-    }, {
-        headers: {
-            'Authorization': `Bearer ${authToken}`,
-            'Content-Type': 'application/json'
-        },
-        timeout: 30000
-    });
-
-    return response.data?.results || [];
+    const stmts = statements.map(s => ({ sql: s.sql, args: s.args || [] }));
+    const results = await client.batch(stmts, "write");
+    return results || [];
 }
 
 const topsCache = new Map();
