@@ -367,7 +367,7 @@
     },
     "populate": {
       "header": "Manage and start distributed population sessions for countries.",
-      "body": "Distributed system to collaborate populating #1 maps per country into `sengo-db`.\n\n**Options:**\n• `s.populate <COUNTRY>` : Request a worker key to populate that country.\n• `s.populate <COUNTRY> -movil` : Mobile browser instructions.\n• `s.populate <COUNTRY> -bash` : Linux/Mac/Termux instructions.\n• `s.populate -lista` : View global status for all countries.\n• `s.populate -top` : View contributor leaderboard.",
+      "body": "Distributed system to collaborate populating #1 maps per country into `sengo-db`.\n\n**Options & Flags:**\n• `s.populate <COUNTRY>` : Request a worker key and instructions for PowerShell (Windows).\n• `s.populate <COUNTRY> -movil` *(or `-mobile`, `-web`, `-m`)* : Interactive Web Worker session (Mobile/PC Browser).\n• `s.populate <COUNTRY> -bash` *(or `-sh`, `-linux`)* : Instructions for Bash script (Linux/Mac/Termux).\n• `s.populate -lista` *(or `-l`)* : View status, free slots, and supporters per country.\n• `s.populate -top` *(or `-ranking`)* : View contributor leaderboard.",
       "usage": "s.populate <COUNTRY> [-movil | -bash]\ns.populate -lista\ns.populate -top"
     },
     "torneos": {
@@ -1654,8 +1654,8 @@
       "public": "General Commands",
       "owner": "Owner Commands"
     },
-    "cmd_start_title": "🚀 `s.populate <COUNTRY>`",
-    "cmd_start_desc": "Generates your worker key and sends you via DM the 1-line PowerShell script to populate that country.\n*Example:* `s.populate MX`",
+    "cmd_start_title": "🚀 `s.populate <COUNTRY> [-movil | -bash]`",
+    "cmd_start_desc": "Generates your worker key and sends you via DM the instructions to populate that country.\n• `s.populate MX` ➔ PowerShell (Windows)\n• `s.populate MX -movil` *(or `-mobile`, `-web`, `-m`)* ➔ Web Worker (Mobile/PC Browser)\n• `s.populate MX -bash` *(or `-sh`, `-linux`)* ➔ Bash Script (Linux / Mac / Termux)",
     "cmd_list_title": "📋 `s.populate -lista` *(or `-l`)*",
     "cmd_list_desc": "Displays the list of all countries with their current status (Completed, In Progress, Available, Locked, or No Supporter).",
     "cmd_top_title": "🏆 `s.populate -top` *(or `-ranking`)*",

@@ -367,7 +367,7 @@
     },
     "populate": {
       "header": "Gestiona e inicia sesiones distribuidas de poblamiento para países.",
-      "body": "Sistema distribuido para colaborar poblando mapas #1 por país a la base de datos `sengo-db`.\n\n**Opciones:**\n• `s.populate <PAÍS>` : Solicita una clave de trabajador para poblar ese país.\n• `s.populate <PAÍS> -movil` : Instrucciones para navegador móvil.\n• `s.populate <PAÍS> -bash` : Instrucciones para Linux/Mac/Termux.\n• `s.populate -lista` : Muestra el estado global de todos los países.\n• `s.populate -top` : Muestra la tabla de clasificación de colaboradores.",
+      "body": "Sistema distribuido para colaborar poblando mapas #1 por país a la base de datos `sengo-db`.\n\n**Opciones y Flags:**\n• `s.populate <PAÍS>` : Solicita una Worker Key e instrucciones para PowerShell (Windows).\n• `s.populate <PAÍS> -movil` *(o `-mobile`, `-web`, `-m`)* : Genera sesión para el Worker Web interactivo (Navegador Móvil/PC).\n• `s.populate <PAÍS> -bash` *(o `-sh`, `-linux`)* : Genera las instrucciones para ejecutor Bash (Linux/Mac/Termux).\n• `s.populate -lista` *(o `-l`)* : Muestra el estado de avance, puestos libres y supporters por país.\n• `s.populate -top` *(o `-ranking`)* : Muestra la tabla de clasificación de colaboradores de Sengo.",
       "usage": "s.populate <PAÍS> [-movil | -bash]\ns.populate -lista\ns.populate -top"
     },
     "torneos": {
@@ -1655,7 +1655,7 @@
       "owner": "Comandos de Owner"
     },
     "cmd_start_title": "🚀 `s.populate <PAÍS> [-movil | -bash]`",
-    "cmd_start_desc": "Genera tu clave de trabajador y te envía por DM las instrucciones para poblar ese país.\n• `s.populate MX` ➔ PowerShell (Windows)\n• `s.populate MX -movil` ➔ Worker Web (Navegador Móvil)\n• `s.populate MX -bash` ➔ Script Bash (Linux / Mac / Termux)",
+    "cmd_start_desc": "Genera tu clave de trabajador y te envía por DM las instrucciones para poblar ese país.\n• `s.populate MX` ➔ PowerShell (Windows)\n• `s.populate MX -movil` *(o `-mobile`, `-web`, `-m`)* ➔ Worker Web (Navegador Móvil/PC)\n• `s.populate MX -bash` *(o `-sh`, `-linux`)* ➔ Script Bash (Linux / Mac / Termux)",
     "cmd_list_title": "📋 `s.populate -lista` *(o `-l`)*",
     "cmd_list_desc": "Muestra la lista de todos los países con su estado actual (Poblado, En Proceso, Disponible, Bloqueado o Sin Supporter).",
     "cmd_top_title": "🏆 `s.populate -top` *(o `-ranking`)*",
