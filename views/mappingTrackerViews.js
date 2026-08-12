@@ -9,6 +9,8 @@ const STATUS_KEYS = {
     loved: 'mapping_tracker.status_loved',
     pending: 'mapping_tracker.status_pending',
     wip: 'mapping_tracker.status_wip',
+    upload: 'mapping_tracker.status_upload',
+    disqualified: 'mapping_tracker.status_disqualified',
     graveyard: 'mapping_tracker.status_graveyard',
     revive: 'mapping_tracker.status_revive',
     nomination: 'mapping_tracker.status_nomination'
@@ -18,6 +20,8 @@ const STATUS_CONFIGS = {
     new: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
     pending: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
     wip: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
+    upload: { color: 3066993, titleKey: 'mapping_tracker.title_upload', showDiffs: true },
+    disqualified: { color: 15548997, titleKey: 'mapping_tracker.title_disqualified', showDiffs: true },
     revive: { color: 8034423, titleKey: 'mapping_tracker.title_revive', showDiffs: true },
     nomination: { color: 12970478, titleKey: 'mapping_tracker.title_nomination', showDiffs: false },
     qualified: { color: 16723295, titleKey: 'mapping_tracker.title_qualified', showDiffs: false },
@@ -48,6 +52,8 @@ function doMappingTrackerGuideEmbed(message, activeConfig, trackedCount, locale 
     desc += t(locale, 'mapping_tracker.guide_line_flag_qf');
     desc += t(locale, 'mapping_tracker.guide_line_flag_lv');
     desc += t(locale, 'mapping_tracker.guide_line_flag_wip');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_up');
+    desc += t(locale, 'mapping_tracker.guide_line_flag_dq');
     desc += t(locale, 'mapping_tracker.guide_line_flag_gy');
     desc += t(locale, 'mapping_tracker.guide_line_flag_rv');
     desc += t(locale, 'mapping_tracker.guide_line_flag_nom');

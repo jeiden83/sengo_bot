@@ -148,7 +148,7 @@ async function runGlobalEventsScan() {
                     eventType = 'qualified';
                     break;
                 case 'disqualify':
-                    eventType = 'pending';
+                    eventType = 'disqualified';
                     break;
                 case 'approve':
                     eventType = 'approved';
@@ -230,20 +230,22 @@ async function runMappingTrackerScan() {
                 };
 
                 if (!prevStatus) {
-                    // Primer registro o nuevo mapa subido
+                    // Primer registro o nuevo mapa subido por primera vez
                     if (lastEvents) {
-                        await notifyEvent(mapset, osuId, currentStatus, subscriptions);
+                        await notifyEvent(mapset, osuId, 'upload', subscriptions);
                     }
                 } else if (prevStatus !== currentStatus) {
-                    // Cambio de estado (ej: pending -> qualified, qualified -> ranked, graveyard -> revive)
+                    // Cambio de estado (ej: pending -> qualified, qualified -> ranked, graveyard -> revive, qualified -> disqualified)
                     let eventType = currentStatus;
                     if (prevStatus === 'graveyard' && currentStatus !== 'graveyard') {
                         eventType = 'revive';
+                    } else if (prevStatus === 'qualified' && (currentStatus === 'pending' || currentStatus === 'wip')) {
+                        eventType = 'disqualified';
                     }
                     await notifyEvent(mapset, osuId, eventType, subscriptions);
                 } else if (prevUpdated && currentUpdated && prevUpdated !== currentUpdated) {
                     // Notificación de actualización de mapa (BSB / Update)
-                    await notifyEvent(mapset, osuId, currentStatus, subscriptions);
+                    await notifyEvent(mapset, osuId, 'pending', subscriptions);
                 }
             }
 
@@ -270,7 +272,7 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
 
     for (const sub of subscriptions) {
         const types = sub.event_types || ['all'];
-        const isMatch = types.includes('all') || types.includes(eventType);
+        const isMatch = types.includes('all') || types.includes(eventType) || (eventType === 'upload' && types.includes('pending'));
         if (!isMatch) continue;
 
         try {

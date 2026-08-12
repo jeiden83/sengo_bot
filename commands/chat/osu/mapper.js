@@ -727,6 +727,8 @@ async function handleMappingTrackerCommand(messages, args) {
     if (args.some(a => ['-qualified', '-qf'].includes(a.toLowerCase()))) eventFlags.push('qualified');
     if (args.some(a => ['-loved', '-lv'].includes(a.toLowerCase()))) eventFlags.push('loved');
     if (args.some(a => ['-pending', '-wip'].includes(a.toLowerCase()))) eventFlags.push('pending');
+    if (args.some(a => ['-upload', '-up', '-subida', '-nuevo', '-new'].includes(a.toLowerCase()))) eventFlags.push('upload');
+    if (args.some(a => ['-disqualified', '-dq', '-descalificado', '-descalificar'].includes(a.toLowerCase()))) eventFlags.push('disqualified');
     if (args.some(a => ['-graveyard', '-gy'].includes(a.toLowerCase()))) eventFlags.push('graveyard');
     if (args.some(a => ['-revive', '-rv'].includes(a.toLowerCase()))) eventFlags.push('revive');
     if (args.some(a => ['-nomination', '-nom'].includes(a.toLowerCase()))) eventFlags.push('nomination');
@@ -745,7 +747,9 @@ async function handleMappingTrackerCommand(messages, args) {
         if (args.some(a => ['-ranked', '-rk'].includes(a.toLowerCase()))) targetTestStatus = 'ranked';
         else if (args.some(a => ['-qualified', '-qf'].includes(a.toLowerCase()))) targetTestStatus = 'qualified';
         else if (args.some(a => ['-loved', '-lv'].includes(a.toLowerCase()))) targetTestStatus = 'loved';
-        else if (args.some(a => ['-pending', '-wip', '-nuevo', '-new'].includes(a.toLowerCase()))) targetTestStatus = 'pending';
+        else if (args.some(a => ['-upload', '-up', '-subida', '-nuevo', '-new'].includes(a.toLowerCase()))) targetTestStatus = 'upload';
+        else if (args.some(a => ['-disqualified', '-dq', '-descalificado', '-descalificar'].includes(a.toLowerCase()))) targetTestStatus = 'disqualified';
+        else if (args.some(a => ['-pending', '-wip'].includes(a.toLowerCase()))) targetTestStatus = 'pending';
         else if (args.some(a => ['-graveyard', '-gy'].includes(a.toLowerCase()))) targetTestStatus = 'graveyard';
         else if (args.some(a => ['-revive', '-rv'].includes(a.toLowerCase()))) targetTestStatus = 'revive';
         else if (args.some(a => ['-nomination', '-nom'].includes(a.toLowerCase()))) targetTestStatus = 'nomination';
@@ -800,6 +804,8 @@ async function handleMappingTrackerCommand(messages, args) {
                                 if (targetTestStatus === 'ranked') isMatch = (msStatus === 'ranked' || msStatus === 'approved');
                                 else if (targetTestStatus === 'qualified') isMatch = (msStatus === 'qualified');
                                 else if (targetTestStatus === 'loved') isMatch = (msStatus === 'loved');
+                                else if (targetTestStatus === 'upload') isMatch = (msStatus === 'pending' || msStatus === 'wip' || msStatus === 'graveyard' || msStatus === 'qualified' || msStatus === 'ranked');
+                                else if (targetTestStatus === 'disqualified') isMatch = (msStatus === 'pending' || msStatus === 'wip' || msStatus === 'qualified');
                                 else if (targetTestStatus === 'pending') isMatch = (msStatus === 'pending' || msStatus === 'wip');
                                 else if (targetTestStatus === 'graveyard') isMatch = (msStatus === 'graveyard');
                                 else if (targetTestStatus === 'nomination') isMatch = (msStatus === 'qualified' || msStatus === 'pending' || msStatus === 'wip');
@@ -1021,8 +1027,15 @@ async function handleMappingTrackerCommand(messages, args) {
         }
         let userInput = null;
         for (let i = 0; i < args.length; i++) {
-            if (args[i].toLowerCase() === '-usuario' && i + 1 < args.length && !args[i + 1].startsWith('-')) {
-                userInput = args[i + 1];
+            if (args[i].toLowerCase() === '-usuario' && i + 1 < args.length) {
+                const userTokens = [];
+                for (let j = i + 1; j < args.length; j++) {
+                    if (args[j].startsWith('-')) break;
+                    userTokens.push(args[j]);
+                }
+                if (userTokens.length > 0) {
+                    userInput = userTokens.join(' ');
+                }
                 break;
             }
         }
@@ -1033,25 +1046,22 @@ async function handleMappingTrackerCommand(messages, args) {
 
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
         let targetOsuId = null;
-        let targetUsername = userInput;
+        // ponytail: remueve comillas envolventes del input si las tiene y permite buscar por ID de Discord plano o mención
+        const cleanInput = userInput.replace(/^["']+|["']+$|"/g, '').trim();
+        let targetUsername = cleanInput;
 
-        const mentionMatch = userInput.match(/^<@!?(\d+)>$/);
-        if (mentionMatch) {
-            const discordId = mentionMatch[1];
-            for (const [osuId, linkedInfo] of linkedMap.entries()) {
-                if (linkedInfo.discord_id === discordId) {
-                    targetOsuId = osuId;
-                    targetUsername = linkedInfo.username || targetUsername;
-                    break;
-                }
-            }
-        } else {
-            for (const [osuId, linkedInfo] of linkedMap.entries()) {
-                if (osuId === userInput || (linkedInfo.username && linkedInfo.username.toLowerCase() === userInput.toLowerCase())) {
-                    targetOsuId = osuId;
-                    targetUsername = linkedInfo.username || targetUsername;
-                    break;
-                }
+        const mentionMatch = cleanInput.match(/^<@!?(\d+)>$/);
+        const discordIdMatch = mentionMatch ? mentionMatch[1] : (cleanInput.match(/^\d{17,20}$/) ? cleanInput : null);
+
+        for (const [osuId, linkedInfo] of linkedMap.entries()) {
+            if (
+                (discordIdMatch && linkedInfo.discord_id === discordIdMatch) ||
+                osuId === cleanInput ||
+                (linkedInfo.username && linkedInfo.username.toLowerCase() === cleanInput.toLowerCase())
+            ) {
+                targetOsuId = osuId;
+                targetUsername = linkedInfo.username || targetUsername;
+                break;
             }
         }
 
