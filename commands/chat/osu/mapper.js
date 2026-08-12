@@ -950,13 +950,11 @@ async function handleMappingTrackerCommand(messages, args) {
         return null;
     }
 
-    // Requiere verificación de permisos de administrador para cambios de configuración
-    if (!isAdmin()) {
-        return { content: t(locale, 'mapping_tracker.err_no_perms') };
-    }
-
-    // 2. s.mapper -track -canal
+    // 2. s.mapper -track -canal (Solo Admins)
     if (isCanal) {
+        if (!isAdmin()) {
+            return { content: t(locale, 'mapping_tracker.err_no_perms') };
+        }
         let targetChannelId = null;
         for (let i = 0; i < args.length; i++) {
             if (args[i].toLowerCase() === '-canal' && i + 1 < args.length) {
@@ -985,6 +983,9 @@ async function handleMappingTrackerCommand(messages, args) {
 
     // 3. s.mapper -track -usuario -server (Solo Admins)
     if (isUsuario && isServer) {
+        if (!isAdmin()) {
+            return { content: t(locale, 'mapping_tracker.err_no_perms') };
+        }
         if (!activeConfig || !activeConfig.channel_id) {
             return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
         }
@@ -1020,7 +1021,7 @@ async function handleMappingTrackerCommand(messages, args) {
         return { content: t(locale, 'mapping_tracker.success_add_server', { count: resBulk.count, channelId: activeConfig.channel_id, events: eventsStr }) };
     }
 
-    // 4. s.mapper -track -usuario <ID/mención/username>
+    // 4. s.mapper -track -usuario <ID/mención/username> (Admins para cualquiera, Usuarios normales para sí mismos)
     if (isUsuario) {
         if (!activeConfig || !activeConfig.channel_id) {
             return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
@@ -1040,12 +1041,14 @@ async function handleMappingTrackerCommand(messages, args) {
             }
         }
 
+        // Si no especifica usuario, asume el propio autor del mensaje
         if (!userInput) {
-            return { content: t(locale, 'mapping_tracker.err_specify_user') };
+            userInput = message.author.id;
         }
 
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
         let targetOsuId = null;
+        let targetDiscordId = null;
         // ponytail: remueve comillas envolventes del input si las tiene y permite buscar por ID de Discord plano o mención
         const cleanInput = userInput.replace(/^["']+|["']+$|"/g, '').trim();
         let targetUsername = cleanInput;
@@ -1060,9 +1063,19 @@ async function handleMappingTrackerCommand(messages, args) {
                 (linkedInfo.username && linkedInfo.username.toLowerCase() === cleanInput.toLowerCase())
             ) {
                 targetOsuId = osuId;
+                targetDiscordId = linkedInfo.discord_id;
                 targetUsername = linkedInfo.username || targetUsername;
                 break;
             }
+        }
+
+        if (!targetOsuId) {
+            return { content: t(locale, 'mapping_tracker.err_user_not_linked', { user: userInput }) };
+        }
+
+        // Verificación de permisos: Usuarios no administradores solo pueden modificar sus propias alertas
+        if (!isAdmin() && targetDiscordId !== message.author.id) {
+            return { content: t(locale, 'mapping_tracker.err_no_perms_other_user') };
         }
 
         if (!targetOsuId) {

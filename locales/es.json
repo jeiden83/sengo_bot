@@ -1739,6 +1739,7 @@
     "err_no_tracked_users": "⚠️ No hay mappers rastreados en este servidor. Usa `s.mapper -track -usuario <ID>` o `s.mapper -track -usuario -server`.",
     "err_no_map_status": "❌ No se encontró ningún mapa real que coincida con el estado **{status}** para los mappers rastreados.",
     "err_no_perms": "❌ Necesitas permisos de **Administrar Canal** o **Administrador** para configurar el Mapping Tracker.",
+    "err_no_perms_other_user": "❌ Solo los administradores pueden modificar la configuración de otros usuarios. Tú únicamente puedes configurar tus propias alertas con `s.mapper -track -usuario`.",
     "err_save_channel": "❌ Error al guardar canal: {error}",
     "success_set_channel": "✅ **Canal de Mapping Tracker configurado correctamente en <#{channelId}>**.\n\nAhora puedes añadir mappers usando:\n• `s.mapper -track -usuario <ID/mención>`\n• `s.mapper -track -usuario -server` (añade a todos los miembros vinculados).",
     "success_delete_channel": "🗑️ **Mapping Tracker deshabilitado en este servidor**.\nSe ha eliminado la configuración del canal y se han borrado automáticamente todas las suscripciones de mappers asociadas a este servidor.",
