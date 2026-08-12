@@ -1,6 +1,7 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const emoji_mods = require("../src/emoji_mods.json");
 const emoji_grades = require("../src/emoji_grades.json");
+const emoji_difficulties = require("../src/emoji_difficulties.json");
 const { colorear } = require("../commands/utils/admin.js");
 
 function getEmbedColor(message) {
@@ -182,13 +183,13 @@ function buildPaginationRow({ prefix, current, total, pageSize = 10, oneIndexed 
 }
 
 function getDifficultyEmoji(stars) {
-    if (!stars || typeof stars !== 'number') return '⚪';
-    if (stars < 2.0) return '🟢'; // Easy
-    if (stars < 2.7) return '🔵'; // Normal
-    if (stars < 4.0) return '🟡'; // Hard
-    if (stars < 5.3) return '🔴'; // Insane
-    if (stars < 6.5) return '🟣'; // Expert
-    return '⚫'; // Expert+
+    if (typeof stars !== 'number' || isNaN(stars) || stars <= 0) return emoji_difficulties["easy"];
+    if (stars < 2.0) return emoji_difficulties["easy"];        // Easy: 0.0 - 1.99
+    if (stars < 2.7) return emoji_difficulties["normal"];      // Normal: 2.0 - 2.69
+    if (stars < 4.0) return emoji_difficulties["hard"];        // Hard: 2.7 - 3.99
+    if (stars < 5.3) return emoji_difficulties["insane"];      // Insane: 4.0 - 5.29
+    if (stars < 6.5) return emoji_difficulties["expert"];      // Expert: 5.3 - 6.49
+    return emoji_difficulties["expert_plus"];                  // Expert+: 6.5 and above
 }
 
 /**
