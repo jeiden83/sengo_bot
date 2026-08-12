@@ -198,7 +198,11 @@ async function run(messages, args, intialized_data) {
         const description = t(locale, 'help.description', { prefix });
         const embed = doHelpListEmbed(message, fields, description, locale);
         
-        await message.channel.send({ embeds: [embed] });
+        if (typeof messages.reply === 'function') {
+            await messages.reply({ embeds: [embed] });
+        } else if (message.channel && typeof message.channel.send === 'function') {
+            await message.channel.send({ embeds: [embed] });
+        }
         return;
     }
 
@@ -214,12 +218,15 @@ async function run(messages, args, intialized_data) {
         const categoryCmds = getCategoryCommands(helpData.category, commandsMap, mainCommandsSet);
         const row = buildHelpNavigationRow(helpData.mainName, categoryCmds, locale, prefix);
 
-        const sentMessage = await message.channel.send({
+        const targetSend = typeof messages.reply === 'function' ? messages.reply : (message.channel?.send ? message.channel.send.bind(message.channel) : null);
+        if (!targetSend) return;
+
+        const sentMessage = await targetSend({
             embeds: [embed],
             components: row ? [row] : []
         });
 
-        if (!row) return;
+        if (!row || !sentMessage) return;
 
         const filter = btnInt => btnInt.user.id === message.author.id;
         const collector = sentMessage.createMessageComponentCollector({
@@ -262,7 +269,11 @@ async function run(messages, args, intialized_data) {
 
     const notFoundText = t(locale, 'help.not_found', { queryName, prefix });
     const errEmbed = doHelpListEmbed(message, [], notFoundText, locale);
-    await message.channel.send({ embeds: [errEmbed] });
+    if (typeof messages.reply === 'function') {
+        await messages.reply({ embeds: [errEmbed] });
+    } else if (message.channel && typeof message.channel.send === 'function') {
+        await message.channel.send({ embeds: [errEmbed] });
+    }
 }
 
 run.alias = {

@@ -1,5 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const helpChatCommand = require("../chat/general/help.js");
+const { createSlashMessagesContext } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("help")
@@ -26,17 +27,8 @@ async function run(interaction, res, chat_commands) {
         args.push(comando);
     }
 
-    const messages = {
-        message: {
-            author: interaction.user,
-            member: interaction.member,
-            guild: interaction.guild,
-            locale: interaction.resolvedLocale
-        },
-        res: res,
-        reply: null,
-        logger: interaction.logger
-    };
+    const messages = createSlashMessagesContext(interaction, res);
+    messages.logger = interaction.logger;
 
     // Ejecutar el comando help de chat pasándole la colección chat_commands
     return await helpChatCommand.run(messages, args, chat_commands);
