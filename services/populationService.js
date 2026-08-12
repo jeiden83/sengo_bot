@@ -1108,7 +1108,21 @@ class PopulationService {
             }
 
             const data = await osuRes.json();
-            return { scores: data.scores || [] };
+            const rawScores = data.scores || [];
+            const trimmedScores = rawScores.map(s => ({
+                user_id: s.user_id,
+                user: s.user ? { username: s.user.username } : null,
+                total_score: s.total_score !== undefined ? s.total_score : (s.score || 0),
+                pp: s.pp || 0,
+                accuracy: s.accuracy || 0,
+                mods: s.mods || [],
+                ended_at: s.ended_at || s.created_at || null,
+                created_at: s.created_at || s.ended_at || null,
+                max_combo: s.max_combo || 0,
+                perfect: Boolean(s.perfect),
+                rank: s.rank || ''
+            }));
+            return { scores: trimmedScores };
         } catch (err) {
             return { error: err.message, scores: [] };
         }

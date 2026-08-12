@@ -500,12 +500,39 @@
                         if (isStopped) break;
 
                         const bId = maps[i];
-                        const proxyUrl = `${SERVER}/api/worker/osu-scores?key=${encodeURIComponent(KEY)}&country=${encodeURIComponent(COUNTRY)}&beatmap_id=${bId}`;
+                        let scoreData = null;
+
+                        // 1. Intentar consulta directa a la API de osu! para evitar consumo de red en Render
+                        if (token) {
+                            try {
+                                const directRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${bId}/scores?mode=osu&type=country`, {
+                                    headers: {
+                                        'Authorization': `Bearer ${token}`,
+                                        'x-api-version': '20220705'
+                                    }
+                                });
+                                if (directRes.ok) {
+                                    scoreData = await directRes.json();
+                                } else if (directRes.status === 429) {
+                                    await new Promise(r => setTimeout(r, 1500));
+                                }
+                            } catch (eDirect) {
+                                // Ignorar error de CORS/Red y caer en el proxy de respaldo
+                            }
+                        }
+
+                        // 2. Respaldo por el proxy optimizado de Render si la petición directa falla
+                        if (!scoreData) {
+                            const proxyUrl = `${SERVER}/api/worker/osu-scores?key=${encodeURIComponent(KEY)}&country=${encodeURIComponent(COUNTRY)}&beatmap_id=${bId}`;
+                            try {
+                                const osuRes = await fetch(proxyUrl);
+                                scoreData = await osuRes.json();
+                            } catch (eProxy) {
+                                scoreData = { error: eProxy.message };
+                            }
+                        }
 
                         try {
-                            const osuRes = await fetch(proxyUrl);
-                            const scoreData = await osuRes.json();
-
                             if (scoreData.error) {
                                 log(`Error en mapa ${bId}: ${scoreData.error}`, 'warn');
                             } else {

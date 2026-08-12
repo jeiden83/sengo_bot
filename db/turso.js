@@ -94,7 +94,27 @@ async function executeTursoBatch(statements) {
 const topsCache = new Map();
 const countCache = new Map();
 const snipesCache = new Map();
+const scoreRamDedupeCache = new Map();
+const MAX_DEDUPE_CACHE_SIZE = 250000;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
+
+let tursoIndexesEnsured = false;
+async function ensureTursoIndexes() {
+    if (tursoIndexesEnsured || !isTursoAvailable()) return;
+    tursoIndexesEnsured = true;
+    try {
+        const statements = [
+            { sql: `CREATE INDEX IF NOT EXISTS idx_top_scores_country_map ON top_scores(country_code, beatmap_id)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_top_scores_user_country ON top_scores(user_id, country_code)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniper ON snipes_history(sniper_id)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniped ON snipes_history(sniped_id)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_ranked_beatmaps_mode ON ranked_beatmaps(mode, status)` }
+        ];
+        await executeTursoBatch(statements);
+    } catch (e) {
+        console.error('[Turso] Error asegurando índices en Turso DB:', e.message);
+    }
+}
 
 function getCachedItem(cacheMap, key) {
     const item = cacheMap.get(key);
@@ -505,10 +525,27 @@ async function saveBeatmapsBatch(beatmaps = []) {
 async function saveBatchScoresAndSnipes(scoresToSave = [], snipesToRecord = []) {
     if (!isTursoAvailable()) return 0;
     
+    await ensureTursoIndexes();
+
     const statements = [];
     const nowIso = new Date().toISOString();
 
     for (const s of scoresToSave) {
+        const country = s.country_code || 'VE';
+        const dedupeKey = `${country}:${s.beatmap_id}`;
+        const dedupeSig = `${s.user_id}:${s.score || 0}:${s.pp || 0}:${s.mods || 'NM'}`;
+
+        // Deduplicación en memoria RAM: omitir escrituras SQL si la puntuación es idéntica a la guardada previamente
+        if (scoreRamDedupeCache.get(dedupeKey) === dedupeSig) {
+            continue;
+        }
+
+        scoreRamDedupeCache.set(dedupeKey, dedupeSig);
+        if (scoreRamDedupeCache.size > MAX_DEDUPE_CACHE_SIZE) {
+            const firstKey = scoreRamDedupeCache.keys().next().value;
+            scoreRamDedupeCache.delete(firstKey);
+        }
+
         statements.push({
             sql: `
                 INSERT INTO top_scores 
@@ -535,7 +572,7 @@ async function saveBatchScoresAndSnipes(scoresToSave = [], snipesToRecord = []) 
             `,
             args: [
                 s.beatmap_id,
-                s.country_code || 'VE',
+                country,
                 s.user_id,
                 s.username || '',
                 s.score || 0,
