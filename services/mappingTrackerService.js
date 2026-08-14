@@ -71,7 +71,18 @@ async function fetchUserBeatmapsets(osuId, type = null) {
         });
         const ranked = Array.isArray(rankedRes.data) ? rankedRes.data : [];
 
-        return [...ranked, ...unranked];
+        // También consultar los graveyard más recientes para registrar su estado y detectar revives correctamente
+        const graveyardUrl = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/graveyard?limit=15`;
+        const graveyardRes = await axios.get(graveyardUrl, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'SengoBot/2.0'
+            }
+        }).catch(() => ({ data: [] }));
+        const graveyard = Array.isArray(graveyardRes.data) ? graveyardRes.data : [];
+
+        return [...ranked, ...unranked, ...graveyard];
     } catch (err) {
         if (err.response?.status !== 404) {
             console.error(`[MAPPING-TRACKER-SERVICE] Error al consultar beatmapsets de osu_id ${osuId}:`, err.message);
@@ -232,7 +243,11 @@ async function runMappingTrackerScan() {
                 if (!prevStatus) {
                     // Primer registro o nuevo mapa subido por primera vez
                     if (lastEvents) {
-                        await notifyEvent(mapset, osuId, 'upload', subscriptions);
+                        // ponytail: Si el mapa fue enviado hace más de 48h (submitted_date antigua), es un mapa revivido/reingresado, no un upload nuevo
+                        const submittedTime = mapset.submitted_date ? new Date(mapset.submitted_date).getTime() : 0;
+                        const isRecentlySubmitted = submittedTime > 0 && (Date.now() - submittedTime) < 48 * 60 * 60 * 1000;
+                        const eventType = isRecentlySubmitted ? 'upload' : 'revive';
+                        await notifyEvent(mapset, osuId, eventType, subscriptions);
                     }
                 } else if (prevStatus !== currentStatus) {
                     // Cambio de estado (ej: pending -> qualified, qualified -> ranked, graveyard -> revive, qualified -> disqualified)
