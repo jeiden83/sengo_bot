@@ -1692,7 +1692,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     if (osu_userdata.title) {
         const titleColour = osu_userdata.profile_colour || osu_userdata.groups?.[0]?.colour || null;
         const ansiColor = hexToAnsiColor(titleColour);
-        titleStr = `\`\`\`ansi\n${colorear("👑 " + osu_userdata.title, ansiColor, 1)}\n\`\`\``;
+        titleStr = `\n\`\`\`ansi\n${colorear("👑 " + osu_userdata.title, ansiColor, 1)}\n\`\`\``;
     }
 
     const embed = new EmbedBuilder()

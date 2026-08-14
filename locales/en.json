@@ -1005,7 +1005,7 @@
     "ranked_play": "**• Ranked Play:** `#{rank}` (Rating: {rating})\n",
     "regional_placement": " / **[#{placement}](https://osuworld.octo.moe/#{url})**",
     "author_title": "osu!{mode} profile of {teamPrefix}{username}",
-    "description": "{titleStr}**• Global Rank:** `#{globalRank}`\n{topRankingStr}**• Country Rank:** :flag_{countryCode}: {supporterEmoji}`#{countryRank}`{regionalRankStr}\n{rankedPlayStr}{teamStr}**• Join Date: **{joinDate}",
+    "description": "**• Global Rank:** `#{globalRank}`\n{topRankingStr}**• Country Rank:** :flag_{countryCode}: {supporterEmoji}`#{countryRank}`{regionalRankStr}\n{rankedPlayStr}{teamStr}**• Join Date: **{joinDate}{titleStr}",
     "title": "Title",
     "badges_field": "🎖️ Badges",
     "badges_btn": "Badges ({count})",
