@@ -337,14 +337,15 @@ async function saveLastEventsForOsuId(osuId, lastBeatmapsetId, statusSnapshot = 
 /**
  * Obtiene la posición del mapper en los rankings de Mapper Top (País, Servidor y Global).
  */
-async function getMapperRankings(osuId, countryCode = null, guildId = null) {
+async function getMapperRankings(osuId, countryCode = null, guildId = null, isRankedEvent = false) {
     const supabase = getSupabaseClient();
-    if (!supabase || !osuId) return { nationalRank: null, serverRank: null, globalRank: null, countryCode: null };
+    if (!supabase || !osuId) return { nationalRank: null, oldNationalRank: null, serverRank: null, oldServerRank: null, countryCode: null };
 
     const targetOsuId = Number(osuId);
     let nationalRank = null;
+    let oldNationalRank = null;
     let serverRank = null;
-    let globalRank = null;
+    let oldServerRank = null;
     let resolvedCountryCode = countryCode ? countryCode.toUpperCase() : null;
 
     try {
@@ -378,6 +379,25 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null) {
                 const idx = natMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
                 if (idx !== -1) {
                     nationalRank = idx + 1;
+
+                    // Si es evento ranked/loved, calcular su puesto previo restando 1 al mapa rankeado
+                    if (isRankedEvent) {
+                        const oldList = natMappers.map(m => {
+                            if (Number(m.osu_id) === targetOsuId) {
+                                return { ...m, ranked_count: Math.max(0, (m.ranked_count || 0) - 1) };
+                            }
+                            return m;
+                        });
+                        oldList.sort((a, b) => 
+                            (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                            (b.guest_count || 0) - (a.guest_count || 0) ||
+                            (b.loved_count || 0) - (a.loved_count || 0)
+                        );
+                        const oldIdx = oldList.findIndex(m => Number(m.osu_id) === targetOsuId);
+                        if (oldIdx !== -1) {
+                            oldNationalRank = oldIdx + 1;
+                        }
+                    }
                 }
             }
         }
@@ -406,6 +426,24 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null) {
                     const idx = sMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
                     if (idx !== -1) {
                         serverRank = idx + 1;
+
+                        if (isRankedEvent) {
+                            const oldList = sMappers.map(m => {
+                                if (Number(m.osu_id) === targetOsuId) {
+                                    return { ...m, ranked_count: Math.max(0, (m.ranked_count || 0) - 1) };
+                                }
+                                return m;
+                            });
+                            oldList.sort((a, b) => 
+                                (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                                (b.guest_count || 0) - (a.guest_count || 0) ||
+                                (b.loved_count || 0) - (a.loved_count || 0)
+                            );
+                            const oldIdx = oldList.findIndex(m => Number(m.osu_id) === targetOsuId);
+                            if (oldIdx !== -1) {
+                                oldServerRank = oldIdx + 1;
+                            }
+                        }
                     }
                 }
             }
@@ -414,7 +452,7 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null) {
         console.error('[MAPPING-TRACKER] Error al calcular posiciones de mapper ranking:', err);
     }
 
-    return { nationalRank, serverRank, countryCode: resolvedCountryCode };
+    return { nationalRank, oldNationalRank, serverRank, oldServerRank, countryCode: resolvedCountryCode };
 }
 
 module.exports = {

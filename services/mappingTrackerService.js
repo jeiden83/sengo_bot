@@ -306,7 +306,8 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
         if (!isMatch) continue;
 
         try {
-            const ranksInfo = await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id);
+            const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
+            const ranksInfo = isRankedEvent ? await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id, true) : null;
             const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo, extraInfo);
 
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);

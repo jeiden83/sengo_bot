@@ -17,18 +17,18 @@ const STATUS_KEYS = {
 };
 
 const STATUS_CONFIGS = {
-    new: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
-    pending: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
-    wip: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true },
-    upload: { color: 3066993, titleKey: 'mapping_tracker.title_upload', showDiffs: true },
-    disqualified: { color: 15548997, titleKey: 'mapping_tracker.title_disqualified', showDiffs: true },
-    revive: { color: 8034423, titleKey: 'mapping_tracker.title_revive', showDiffs: true },
-    nomination: { color: 12970478, titleKey: 'mapping_tracker.title_nomination', showDiffs: false },
-    qualified: { color: 16723295, titleKey: 'mapping_tracker.title_qualified', showDiffs: false },
-    ranked: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true },
-    approved: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true },
-    loved: { color: 16737962, titleKey: 'mapping_tracker.title_loved', showDiffs: true },
-    graveyard: { color: 7829367, titleKey: 'mapping_tracker.title_graveyard', showDiffs: true }
+    new: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true, showRank: false },
+    pending: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true, showRank: false },
+    wip: { color: 1826303, titleKey: 'mapping_tracker.title_new', showDiffs: true, showRank: false },
+    upload: { color: 3066993, titleKey: 'mapping_tracker.title_upload', showDiffs: true, showRank: false },
+    disqualified: { color: 15548997, titleKey: 'mapping_tracker.title_disqualified', showDiffs: true, showRank: false },
+    revive: { color: 8034423, titleKey: 'mapping_tracker.title_revive', showDiffs: true, showRank: false },
+    nomination: { color: 12970478, titleKey: 'mapping_tracker.title_nomination', showDiffs: false, showRank: false },
+    qualified: { color: 16723295, titleKey: 'mapping_tracker.title_qualified', showDiffs: false, showRank: false },
+    ranked: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true, showRank: true },
+    approved: { color: 16735016, titleKey: 'mapping_tracker.title_ranked', showDiffs: true, showRank: true },
+    loved: { color: 16737962, titleKey: 'mapping_tracker.title_loved', showDiffs: true, showRank: true },
+    graveyard: { color: 7829367, titleKey: 'mapping_tracker.title_graveyard', showDiffs: true, showRank: false }
 };
 
 /**
@@ -240,18 +240,24 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         || `https://assets.ppy.sh/beatmaps/${beatmapset.id}/covers/list.jpg`;
     embed.setThumbnail(thumbnailUrl);
 
-    // Campos de Ranking si están disponibles
-    if (ranksInfo) {
+    // Campos de Ranking si están disponibles y el evento lo amerita (Ranked / Loved)
+    if (statusCfg.showRank && ranksInfo) {
         const rankParts = [];
         const countryCode = ranksInfo.countryCode || mapperUser?.country_code || beatmapset.user?.country_code;
         const flag = countryCode ? getFlagEmoji(countryCode) : '🌐';
 
         if (ranksInfo.nationalRank) {
-            rankParts.push(`${flag} **#${ranksInfo.nationalRank} (${countryCode ? countryCode.toUpperCase() : ''})**`);
+            const natDisplay = (ranksInfo.oldNationalRank && ranksInfo.oldNationalRank !== ranksInfo.nationalRank)
+                ? `#${ranksInfo.oldNationalRank} ➔ #${ranksInfo.nationalRank}`
+                : `#${ranksInfo.nationalRank}`;
+            rankParts.push(`${flag} **${natDisplay} (${countryCode ? countryCode.toUpperCase() : ''})**`);
         }
         if (ranksInfo.serverRank) {
             const serverLabel = t(locale, 'mapping_tracker.rank_server_suffix').replace(/[()]/g, '');
-            rankParts.push(`🏠 **#${ranksInfo.serverRank} (${serverLabel})**`);
+            const srvDisplay = (ranksInfo.oldServerRank && ranksInfo.oldServerRank !== ranksInfo.serverRank)
+                ? `#${ranksInfo.oldServerRank} ➔ #${ranksInfo.serverRank}`
+                : `#${ranksInfo.serverRank}`;
+            rankParts.push(`🏠 **${srvDisplay} (${serverLabel})**`);
         }
 
         if (rankParts.length > 0) {
