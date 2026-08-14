@@ -16,8 +16,8 @@ const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
 
 function getUserUrl(user, fallbackId) {
-    if (!user) return `https://osu.ppy.sh/users/${fallbackId || ''}`;
-    const id = user.id || fallbackId;
+    if (!user) return fallbackId ? `https://osu.ppy.sh/users/${fallbackId}` : `https://osu.ppy.sh/users/`;
+    const id = user.id || fallbackId || (user.username ? encodeURIComponent(user.username) : '');
     if (user.server === 'gatari') return `https://osu.gatari.pw/u/${id}`;
     if (user.server === 'mameosu') return `https://web.mamesosu.net/u/${id}`;
     return `https://osu.ppy.sh/users/${id}`;
@@ -557,7 +557,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         embed_description = embed_description.concat(score_line);
     }
 
-    const user_url = getUserUrl(top_scores_chunk[0].user);
+    const user_url = getUserUrl(top_scores_chunk[0].user, top_scores_chunk[0].user_id || top_scores_chunk[0].user?.id);
     const avatar_url = top_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 

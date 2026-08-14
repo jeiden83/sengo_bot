@@ -426,9 +426,11 @@ async function run(messages, args){
                 },
                 sniped_name: snipedMap.get(Number(dbScore.beatmap_id)) || dbScore.sniped_name || null,
                 user: {
+                    id: dbScore.user_id || osu_userdata.fn_response.id,
                     username: dbScore.username || osu_userdata.fn_response.username,
                     avatar_url: osu_userdata.fn_response.avatar_url || ''
-                }
+                },
+                user_id: dbScore.user_id || osu_userdata.fn_response.id
             };
         });
 
