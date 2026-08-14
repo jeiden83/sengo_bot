@@ -1,4 +1,4 @@
-const { EmbedBuilder, AttachmentBuilder } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { createCanvas } = require('canvas');
 const { t } = require("../utils/i18n.js");
 const {
@@ -9,6 +9,7 @@ const {
     getStatsString,
     getPlainStatsString,
     buildAnsiBlock,
+    hexToAnsiColor,
     getDifficultyEmoji,
     isLovedScore
 } = require("./osuViewHelpers.js");
@@ -1687,8 +1688,12 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const teamPrefix = osu_userdata.team ? `[${osu_userdata.team.short_name}] ` : "";
     const teamStr = osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : "";
-    const titleLabel = t(locale, 'profile.title');
-    const titleStr = osu_userdata.title ? `**• ${titleLabel}:** ${osu_userdata.title_url ? `[${osu_userdata.title}](${osu_userdata.title_url})` : `\`${osu_userdata.title}\``}\n` : "";
+    let titleStr = "";
+    if (osu_userdata.title) {
+        const titleColour = osu_userdata.profile_colour || osu_userdata.groups?.[0]?.colour || null;
+        const ansiColor = hexToAnsiColor(titleColour);
+        titleStr = `\`\`\`ansi\n${colorear("👑 " + osu_userdata.title, ansiColor, 1)}\n\`\`\``;
+    }
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -2360,6 +2365,65 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
     return embed;
 }
 
+/**
+ * Renderiza la vista paginada de insignias (badges) de un usuario.
+ */
+function doOsuUserBadgesEmbed(message, osu_userdata, page = 1, locale = 'es') {
+    const badges = osu_userdata.badges || [];
+    const totalBadges = badges.length;
+    const itemsPerPage = 5;
+    const totalPages = Math.max(1, Math.ceil(totalBadges / itemsPerPage));
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = Math.min(startIndex + itemsPerPage, totalBadges);
+    const chunk = badges.slice(startIndex, endIndex);
+
+    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
+
+    let desc = "";
+    chunk.forEach((b, idx) => {
+        const globalIdx = startIndex + idx + 1;
+        const dateStr = b.awarded_at ? `<t:${Math.floor(new Date(b.awarded_at).getTime() / 1000)}:d>` : '';
+        const titlePart = b.url ? `[**${b.description}**](${b.url})` : `**${b.description}**`;
+        desc += `\`#${globalIdx}\` 🎖️ ${dateStr ? dateStr + ' — ' : ''}${titlePart}\n\n`;
+    });
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: t(locale, 'profile.badges_embed_title', { username: osu_userdata.username, count: totalBadges }) || `Insignias de ${osu_userdata.username} (${totalBadges})`,
+            url: getUserUrl(osu_userdata),
+            iconURL: osu_userdata.avatar_url
+        })
+        .setDescription(desc || (locale === 'es' ? '*No hay insignias registradas*' : '*No badges recorded*'))
+        .setColor(embedColor)
+        .setThumbnail(chunk[0]?.['image@2x_url'] || chunk[0]?.image_url || osu_userdata.avatar_url)
+        .setFooter({
+            text: t(locale, 'profile.badges_footer', { page: currentPage, maxPages: totalPages, total: totalBadges }) || `Página ${currentPage} de ${totalPages} • Total: ${totalBadges}`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+
+    const row = new ActionRowBuilder();
+    if (totalPages > 1) {
+        row.addComponents(
+            new ButtonBuilder().setCustomId('badges_first').setLabel('<<').setStyle(ButtonStyle.Secondary).setDisabled(currentPage <= 1),
+            new ButtonBuilder().setCustomId('badges_prev').setLabel('<').setStyle(ButtonStyle.Secondary).setDisabled(currentPage <= 1),
+            new ButtonBuilder().setCustomId('badges_next').setLabel('>').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages),
+            new ButtonBuilder().setCustomId('badges_last').setLabel('>>').setStyle(ButtonStyle.Secondary).setDisabled(currentPage >= totalPages)
+        );
+    }
+    row.addComponents(
+        new ButtonBuilder().setCustomId('badges_back').setLabel(t(locale, 'profile.badges_back') || (locale === 'es' ? 'Volver al Perfil' : 'Back to Profile')).setEmoji('⬅️').setStyle(ButtonStyle.Primary)
+    );
+
+    return {
+        embeds: [embed],
+        components: [row]
+    };
+}
+
 module.exports = {
     doOsuEmbed,
     doOsuListEmbed,
@@ -2376,6 +2440,7 @@ module.exports = {
     doOsuSnipesProgressEmbed,
     doOsuSnipesNemesisEmbed,
     doOsuProfileEmbed,
+    doOsuUserBadgesEmbed,
     doOsuReworkMapEmbed,
     doOsuReworkUserEmbed,
     doOsuReworkListEmbed,

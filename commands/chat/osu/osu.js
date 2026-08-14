@@ -1,5 +1,6 @@
 const { getOsuUser, argsParser } = require("../../utils/osu.js");
-const { doOsuProfileEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuProfileEmbed, doOsuUserBadgesEmbed } = require("../../../views/osuEmbeds.js");
+const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { t } = require("../../../utils/i18n.js");
 
 async function getOsuWorldUser(userId, mode) {
@@ -75,7 +76,78 @@ async function run(messages, args) {
         osuworld_data = await getOsuWorldUser(osu_userdata.fn_response.id, osu_userdata.parsed_args.gamemode);
     }
 
-    return doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data, locale);
+    const result = doOsuProfileEmbed(message, osu_userdata.fn_response, (osu_userdata.parsed_args.gamemode), is_detailed, osuworld_data, locale);
+    if (!result || !result.embeds) return result;
+
+    const hasBadges = osu_userdata.fn_response.badges && Array.isArray(osu_userdata.fn_response.badges) && osu_userdata.fn_response.badges.length > 0;
+
+    if (is_detailed && hasBadges) {
+        const badgesBtnRow = new ActionRowBuilder().addComponents(
+            new ButtonBuilder()
+                .setCustomId('profile_show_badges')
+                .setLabel(t(locale, 'profile.badges_btn', { count: osu_userdata.fn_response.badges.length }) || `Insignias (${osu_userdata.fn_response.badges.length})`)
+                .setEmoji('🎖️')
+                .setStyle(ButtonStyle.Secondary)
+        );
+        result.components = [badgesBtnRow];
+
+        const sentMessage = await message.channel.send(result);
+        if (!sentMessage || typeof sentMessage.createMessageComponentCollector !== 'function') {
+            return null;
+        }
+
+        let currentBadgePage = 1;
+        const totalBadges = osu_userdata.fn_response.badges.length;
+        const totalBadgePages = Math.max(1, Math.ceil(totalBadges / 5));
+
+        const collector = sentMessage.createMessageComponentCollector({
+            filter: btnInt => btnInt.user.id === message.author.id,
+            idle: 120000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+                const btnId = i.customId;
+
+                if (btnId === 'profile_show_badges') {
+                    currentBadgePage = 1;
+                    const badgesEmbed = doOsuUserBadgesEmbed(message, osu_userdata.fn_response, currentBadgePage, locale);
+                    await sentMessage.edit(badgesEmbed);
+                } else if (btnId === 'badges_back') {
+                    await sentMessage.edit(result);
+                } else if (btnId === 'badges_first') {
+                    currentBadgePage = 1;
+                    const badgesEmbed = doOsuUserBadgesEmbed(message, osu_userdata.fn_response, currentBadgePage, locale);
+                    await sentMessage.edit(badgesEmbed);
+                } else if (btnId === 'badges_last') {
+                    currentBadgePage = totalBadgePages;
+                    const badgesEmbed = doOsuUserBadgesEmbed(message, osu_userdata.fn_response, currentBadgePage, locale);
+                    await sentMessage.edit(badgesEmbed);
+                } else if (btnId === 'badges_prev') {
+                    currentBadgePage = Math.max(1, currentBadgePage - 1);
+                    const badgesEmbed = doOsuUserBadgesEmbed(message, osu_userdata.fn_response, currentBadgePage, locale);
+                    await sentMessage.edit(badgesEmbed);
+                } else if (btnId === 'badges_next') {
+                    currentBadgePage = Math.min(totalBadgePages, currentBadgePage + 1);
+                    const badgesEmbed = doOsuUserBadgesEmbed(message, osu_userdata.fn_response, currentBadgePage, locale);
+                    await sentMessage.edit(badgesEmbed);
+                }
+            } catch (err) {
+                console.error('[OSU-PROFILE] Error en collector de insignias:', err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sentMessage.edit({ components: [] });
+            } catch {}
+        });
+
+        return null;
+    }
+
+    return result;
 }
 
 run.alias = {

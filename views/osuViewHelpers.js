@@ -124,6 +124,37 @@ function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc) {
     return `\`\`\`ansi\n${stats_str} • ${ppStr}\n\`\`\``;
 }
 
+function hexToAnsiColor(hex) {
+    if (!hex || typeof hex !== 'string') return "amarillo";
+    const cleaned = hex.replace('#', '');
+    const num = parseInt(cleaned, 16);
+    if (isNaN(num)) return "amarillo";
+    const r = (num >> 16) & 255;
+    const g = (num >> 8) & 255;
+    const b = num & 255;
+
+    const ansiMap = [
+        { name: "rojo", r: 255, g: 85, b: 85 },
+        { name: "verde", r: 85, g: 255, b: 85 },
+        { name: "amarillo", r: 255, g: 215, b: 0 },
+        { name: "azul", r: 85, g: 85, b: 255 },
+        { name: "magenta", r: 200, g: 85, b: 255 },
+        { name: "cyan", r: 85, g: 255, b: 255 },
+        { name: "blanco", r: 255, g: 255, b: 255 }
+    ];
+
+    let closest = "amarillo";
+    let minDist = Infinity;
+    for (const c of ansiMap) {
+        const dist = Math.hypot(r - c.r, g - c.g, b - c.b);
+        if (dist < minDist) {
+            minDist = dist;
+            closest = c.name;
+        }
+    }
+    return closest;
+}
+
 const getFlagEmoji = (countryCode) => {
     if (!countryCode || typeof countryCode !== 'string') return "🏴";
     return countryCode
@@ -314,6 +345,7 @@ module.exports = {
     getStatsString,
     getPlainStatsString,
     buildAnsiBlock,
+    hexToAnsiColor,
     getFlagEmoji,
     buildPaginationRow,
     buildRecentButtonsRow,
