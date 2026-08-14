@@ -1687,6 +1687,8 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const teamPrefix = osu_userdata.team ? `[${osu_userdata.team.short_name}] ` : "";
     const teamStr = osu_userdata.team ? `**• Team: [[${osu_userdata.team.short_name}] ${osu_userdata.team.name}](https://osu.ppy.sh/teams/${osu_userdata.team.id})**\n` : "";
+    const titleLabel = t(locale, 'profile.title');
+    const titleStr = osu_userdata.title ? `**• ${titleLabel}:** ${osu_userdata.title_url ? `[${osu_userdata.title}](${osu_userdata.title_url})` : `\`${osu_userdata.title}\``}\n` : "";
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -1703,6 +1705,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             regionalRankStr,
             rankedPlayStr,
             teamStr,
+            titleStr,
             joinDate: join_date
         }))
         .addFields(
@@ -1847,7 +1850,32 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
                 value: `\`${hits_per_min.toLocaleString(locTag)}\``,
                 inline: true
             }
-        )
+        );
+
+    // Bloque de Insignias (Badges) en modo detallado
+    if (osu_userdata.badges && Array.isArray(osu_userdata.badges) && osu_userdata.badges.length > 0) {
+        const totalBadges = osu_userdata.badges.length;
+        const maxDisplay = 6;
+        const displayedBadges = osu_userdata.badges.slice(0, maxDisplay);
+
+        let badgesText = displayedBadges.map(b => {
+            const dateStr = b.awarded_at ? `<t:${Math.floor(new Date(b.awarded_at).getTime() / 1000)}:d>` : '';
+            const link = b.url ? `[${b.description}](${b.url})` : b.description;
+            return `🎖️ ${dateStr ? dateStr + ' — ' : ''}${link}`;
+        }).join('\n');
+
+        if (totalBadges > maxDisplay) {
+            badgesText += `\n*... y ${totalBadges - maxDisplay} ${locale === 'es' ? 'insignias más' : 'more badges'}*`;
+        }
+
+        embed2.addFields({
+            name: `${t(locale, 'profile.badges_field')} (${totalBadges})`,
+            value: badgesText,
+            inline: false
+        });
+    }
+
+    embed2
         .setColor(embedColor)
         .setFooter({
             text: t(locale, 'profile.footer_page2'),
