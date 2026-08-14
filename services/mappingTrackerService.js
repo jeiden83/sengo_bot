@@ -241,13 +241,26 @@ async function runMappingTrackerScan() {
                 };
 
                 if (!prevStatus) {
-                    // Primer registro o nuevo mapa subido por primera vez
+                    // Primer registro del mapa en el snapshot
                     if (lastEvents) {
-                        // ponytail: Si el mapa fue enviado hace más de 48h (submitted_date antigua), es un mapa revivido/reingresado, no un upload nuevo
+                        // ponytail: Si el mapa está en graveyard o ya está ranked/loved, es un mapa existente que se indexa en el snapshot por primera vez, no un evento
+                        if (currentStatus === 'graveyard' || currentStatus === 'ranked' || currentStatus === 'loved') {
+                            continue;
+                        }
+
                         const submittedTime = mapset.submitted_date ? new Date(mapset.submitted_date).getTime() : 0;
-                        const isRecentlySubmitted = submittedTime > 0 && (Date.now() - submittedTime) < 48 * 60 * 60 * 1000;
-                        const eventType = isRecentlySubmitted ? 'upload' : 'revive';
-                        await notifyEvent(mapset, osuId, eventType, subscriptions);
+                        const updatedTime = mapset.last_updated ? new Date(mapset.last_updated).getTime() : 0;
+                        const now = Date.now();
+                        const isRecentlySubmitted = submittedTime > 0 && (now - submittedTime) < 24 * 60 * 60 * 1000;
+                        const isRecentlyUpdated = updatedTime > 0 && (now - updatedTime) < 2 * 60 * 60 * 1000;
+
+                        if (isRecentlySubmitted) {
+                            // Subida nueva de mapa en las últimas 24h
+                            await notifyEvent(mapset, osuId, 'upload', subscriptions);
+                        } else if (isRecentlyUpdated) {
+                            // Mapa antiguo revivido/actualizado en las últimas 2h
+                            await notifyEvent(mapset, osuId, 'revive', subscriptions);
+                        }
                     }
                 } else if (prevStatus !== currentStatus) {
                     // Cambio de estado (ej: pending -> qualified, qualified -> ranked, graveyard -> revive, qualified -> disqualified)
@@ -259,8 +272,10 @@ async function runMappingTrackerScan() {
                     }
                     await notifyEvent(mapset, osuId, eventType, subscriptions);
                 } else if (prevUpdated && currentUpdated && prevUpdated !== currentUpdated) {
-                    // Notificación de actualización de mapa (BSB / Update)
-                    await notifyEvent(mapset, osuId, 'pending', subscriptions);
+                    // Notificación de actualización de mapa (BSB / Update) solo si está en pending/wip
+                    if (currentStatus === 'pending' || currentStatus === 'wip') {
+                        await notifyEvent(mapset, osuId, 'pending', subscriptions);
+                    }
                 }
             }
 
