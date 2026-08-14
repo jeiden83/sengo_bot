@@ -61,12 +61,13 @@ async function run(messages, args) {
         });
         const binancePrice = sum / topAds.length;
 
-        // 3. Calcular la brecha
+        // 3. Calcular la brecha y porcentaje
         const brecha = binancePrice - bcvPrice;
+        const porcentaje = bcvPrice > 0 ? ((binancePrice - bcvPrice) / bcvPrice) * 100 : 0;
 
         const formatVE = (val) => val.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-        return `**La brecha es de: **\`Bs. ${formatVE(brecha)}\` \n- **BCV:** \`Bs. ${formatVE(bcvPrice)}\`\n- **USDT:** \`Bs. ${formatVE(binancePrice)}\``;
+        return `**La brecha es de: **\`Bs. ${formatVE(brecha)}\` (\`${formatVE(porcentaje)}%\`)\n- **BCV:** \`Bs. ${formatVE(bcvPrice)}\`\n- **USDT:** \`Bs. ${formatVE(binancePrice)}\``;
 
     } catch (error) {
         console.error('❌ Error al calcular la brecha:', error.message);
