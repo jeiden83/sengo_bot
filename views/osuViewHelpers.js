@@ -120,7 +120,7 @@ function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc) {
     const maxPpStr = (max_pp !== null && max_pp !== undefined) ? `${max_pp.toFixed(2)}PP` : '';
     const ppStr = pp_fc 
         ? `${colorear(user_pp + 'PP')}/${colorear("(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` 
-        : `${colorear(user_pp + 'PP')}${maxPpStr ? '/' + maxPpStr : ''}`;
+        : `${colorear(user_pp + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
     return `\`\`\`ansi\n${stats_str} • ${ppStr}\n\`\`\``;
 }
 
