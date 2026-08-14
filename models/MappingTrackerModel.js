@@ -86,10 +86,13 @@ async function getTrackerChannel(guildId) {
     return data;
 }
 
+// ponytail: eventos de tracking por defecto recomendados
+const DEFAULT_TRACK_EVENTS = ['ranked', 'qualified', 'loved', 'upload', 'disqualified', 'nomination'];
+
 /**
  * Añade o actualiza la suscripción de un mapper para un servidor/canal.
  */
-async function addTrackedUser(guildId, channelId, osuId, eventTypes = ['all'], addedBy = null) {
+async function addTrackedUser(guildId, channelId, osuId, eventTypes = DEFAULT_TRACK_EVENTS, addedBy = null) {
     const supabase = getSupabaseClient();
     if (!supabase) return { success: false, error: 'Supabase no disponible' };
 
@@ -97,7 +100,7 @@ async function addTrackedUser(guildId, channelId, osuId, eventTypes = ['all'], a
         guild_id: guildId.toString(),
         channel_id: channelId.toString(),
         osu_id: Number(osuId),
-        event_types: Array.isArray(eventTypes) && eventTypes.length > 0 ? eventTypes : ['all'],
+        event_types: Array.isArray(eventTypes) && eventTypes.length > 0 ? eventTypes : DEFAULT_TRACK_EVENTS,
         added_by: addedBy ? addedBy.toString() : null
     };
 
@@ -118,7 +121,7 @@ async function addTrackedUser(guildId, channelId, osuId, eventTypes = ['all'], a
 /**
  * Agrega masivamente usuarios vinculados del servidor al tracking.
  */
-async function addServerUsersToTracker(guildId, channelId, osuIds, eventTypes = ['all'], addedBy = null) {
+async function addServerUsersToTracker(guildId, channelId, osuIds, eventTypes = DEFAULT_TRACK_EVENTS, addedBy = null) {
     const supabase = getSupabaseClient();
     if (!supabase) return { success: false, count: 0, error: 'Supabase no disponible' };
 
@@ -130,7 +133,7 @@ async function addServerUsersToTracker(guildId, channelId, osuIds, eventTypes = 
         guild_id: guildId.toString(),
         channel_id: channelId.toString(),
         osu_id: Number(id),
-        event_types: Array.isArray(eventTypes) && eventTypes.length > 0 ? eventTypes : ['all'],
+        event_types: Array.isArray(eventTypes) && eventTypes.length > 0 ? eventTypes : DEFAULT_TRACK_EVENTS,
         added_by: addedBy ? addedBy.toString() : null
     }));
 

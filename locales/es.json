@@ -1776,7 +1776,7 @@
     "guide_line_flag_gy": "▸ `-graveyard` / `-gy` : Notifica mapas movidos a Graveyard.\n",
     "guide_line_flag_rv": "▸ `-revive` / `-rv` : Notifica mapas revividos de Graveyard.\n",
     "guide_line_flag_nom": "▸ `-nomination` / `-nom` : Notifica nominaciones de BNs.\n",
-    "guide_line_flag_all": "▸ `-todos` / `-all` : Notifica todos los eventos (por defecto).\n",
+    "guide_line_flag_all": "▸ `-todos` / `-all` : Notifica todos los tipos de eventos.\n",
     "guide_flag_example": "*Ejemplo:* `s.mapper -track -usuario @mencion -ranked -qualified`\n\n",
     "guide_header_test": "### 🧪 Prueba de Notificación\n",
     "guide_line_test": "▸ `s.mapper -track -test` : Envía un mensaje de prueba con la última actividad en el canal.\n\n",

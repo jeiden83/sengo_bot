@@ -302,7 +302,7 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
 
     for (const sub of subscriptions) {
         const types = sub.event_types || ['all'];
-        const isMatch = types.includes('all') || types.includes(eventType) || (eventType === 'upload' && types.includes('pending'));
+        const isMatch = types.includes('all') || types.includes(eventType) || (eventType === 'upload' && types.includes('pending')) || (eventType === 'approved' && types.includes('ranked'));
         if (!isMatch) continue;
 
         try {

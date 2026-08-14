@@ -75,6 +75,7 @@ const data = new SlashCommandBuilder()
                     .addBooleanOption(opt => opt.setName("graveyard").setDescription("Notificar cuando pase a Graveyard").setRequired(false))
                     .addBooleanOption(opt => opt.setName("revive").setDescription("Notificar cuando reviva un mapa").setRequired(false))
                     .addBooleanOption(opt => opt.setName("nomination").setDescription("Notificar nominaciones de BN").setRequired(false))
+                    .addBooleanOption(opt => opt.setName("todos").setDescription("Notificar todos los eventos (incluyendo WIP y Graveyard)").setRequired(false))
                     .addBooleanOption(opt => opt.setName("servidor").setDescription("Solo Admins: Añadir a todos los miembros vinculados del servidor").setRequired(false))
             )
             .addSubcommand(sub =>
@@ -133,6 +134,7 @@ async function run(interaction, res) {
             if (interaction.options.getBoolean('graveyard')) args.push('-graveyard');
             if (interaction.options.getBoolean('revive')) args.push('-revive');
             if (interaction.options.getBoolean('nomination')) args.push('-nomination');
+            if (interaction.options.getBoolean('todos')) args.push('-all');
         } else if (sub === 'test') {
             args.push('-test');
             const evento = interaction.options.getString('evento');

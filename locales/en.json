@@ -1772,7 +1772,7 @@
     "guide_line_flag_gy": "▸ `-graveyard` / `-gy` : Alerts maps moved to Graveyard.\n",
     "guide_line_flag_rv": "▸ `-revive` / `-rv` : Alerts maps revived from Graveyard.\n",
     "guide_line_flag_nom": "▸ `-nomination` / `-nom` : Alerts BN nominations.\n",
-    "guide_line_flag_all": "▸ `-todos` / `-all` : Alerts all event types (default).\n",
+    "guide_line_flag_all": "▸ `-todos` / `-all` : Alerts all event types.\n",
     "guide_flag_example": "*Example:* `s.mapper -track -usuario @mention -ranked -qualified`\n\n",
     "guide_header_test": "### 🧪 Notification Test\n",
     "guide_line_test": "▸ `s.mapper -track -test` : Sends a test notification preview in the configured channel.\n\n",

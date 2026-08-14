@@ -732,8 +732,11 @@ async function handleMappingTrackerCommand(messages, args) {
     if (args.some(a => ['-graveyard', '-gy'].includes(a.toLowerCase()))) eventFlags.push('graveyard');
     if (args.some(a => ['-revive', '-rv'].includes(a.toLowerCase()))) eventFlags.push('revive');
     if (args.some(a => ['-nomination', '-nom'].includes(a.toLowerCase()))) eventFlags.push('nomination');
+    if (args.some(a => ['-all', '-todos', '-todo'].includes(a.toLowerCase()))) eventFlags.push('all');
 
-    const finalEvents = eventFlags.length > 0 ? eventFlags : ['all'];
+    // ponytail: eventos por defecto recomendados si el usuario no especifica flags
+    const DEFAULT_TRACK_EVENTS = ['ranked', 'qualified', 'loved', 'upload', 'disqualified', 'nomination'];
+    const finalEvents = eventFlags.length > 0 ? eventFlags : DEFAULT_TRACK_EVENTS;
 
     // 1. s.mapper -track -test (Prueba de notificación enviada al canal de tracking)
     if (isTest) {
