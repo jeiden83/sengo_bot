@@ -408,12 +408,12 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
 
     const formatStat = (label, baseVal, modVal, decimals = 1) => {
         const diff = modVal - baseVal;
-        let arrow = '';
-        if (diff > 0.01) arrow = '▲';
-        else if (diff < -0.01) arrow = '▼';
+        let prefix = '';
+        if (diff > 0.01) prefix = '▲ ';
+        else if (diff < -0.01) prefix = '▼ ';
 
         const rounded = Number(modVal.toFixed(decimals));
-        return `${label} ${rounded}${arrow}`;
+        return `${prefix}${label} ${rounded}`;
     };
 
     const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
