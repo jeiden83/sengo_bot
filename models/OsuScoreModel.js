@@ -2572,6 +2572,11 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                 modsString = mappedMods.join('');
             }
 
+            const buildIdVal = (confirmedScore.build_id !== undefined && confirmedScore.build_id !== null) ? confirmedScore.build_id : null;
+            const modSettingsVal = (confirmedScore.mods && Array.isArray(confirmedScore.mods))
+                ? (confirmedScore.mods.some(m => typeof m === 'object' && m.settings) ? JSON.stringify(confirmedScore.mods) : null)
+                : null;
+
             // --- VALIDACIÓN DE REALTIME SNIPE ---
             // 1. El jugador que acaba de jugar (sniperId) DEBE ser el puesto #1 verificado en la API (verifiedSniperId)
             if (verifiedSniperId !== sniperId) {
