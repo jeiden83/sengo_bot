@@ -337,6 +337,19 @@ function buildTopSingleButtonsRow(current, total, score, renderDisabled = false,
     return [row1, row2];
 }
 
+const GAMEMODE_DISPLAY_NAMES = {
+    'osu': 'std',
+    'taiko': 'taiko',
+    'fruits': 'catch',
+    'mania': 'mania'
+};
+
+function getDisplayGamemode(mode) {
+    if (!mode) return 'std';
+    const m = String(mode).toLowerCase();
+    return GAMEMODE_DISPLAY_NAMES[m] || (m === 'ctb' ? 'catch' : m);
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -352,6 +365,7 @@ module.exports = {
     buildCompareSingleButtonsRow,
     buildTopSingleButtonsRow,
     getDifficultyEmoji,
-    isLovedScore
+    isLovedScore,
+    getDisplayGamemode
 };
 

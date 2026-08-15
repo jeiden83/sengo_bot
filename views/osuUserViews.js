@@ -678,7 +678,7 @@ function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, on
     const filters = [];
     if (playmodeFilter) {
         const modeLabels = {
-            'osu': 'osu!',
+            'osu': 'osu!std',
             'taiko': 'osu!taiko',
             'fruits': 'osu!catch',
             'mania': 'osu!mania'
