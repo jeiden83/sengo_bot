@@ -270,62 +270,16 @@ async function startRenderFlow(messages, replayBuffer, fileName, options = {}, l
             );
             
             try {
-                let files = [];
-                let videoAttached = false;
-                
-                try {
-                    let directVideoUrl = data.videoUrl;
-                    try {
-                        const dynlinkRes = await fetch(`https://apis.issou.best/dynlink/ordr/gen?id=${renderId}`);
-                        if (dynlinkRes.ok) {
-                            const dynlinkData = await dynlinkRes.json();
-                            if (dynlinkData && dynlinkData.url) {
-                                directVideoUrl = dynlinkData.url;
-                            }
-                        }
-                    } catch (dynErr) {
-                        console.warn(`[o!rdr] No se pudo obtener el link directo de dynlink para #${renderId}:`, dynErr.message);
-                    }
-
-                    console.log(`📥 [o!rdr] Comprobando tamaño del video final en ${directVideoUrl}...`);
-                    const headResponse = await fetch(directVideoUrl, { method: 'HEAD' });
-                    if (headResponse.ok) {
-                        const contentLength = parseInt(headResponse.headers.get('content-length') || '0');
-                        const maxLimit = 25 * 1024 * 1024; // 25 MB
-                        
-                        if (contentLength > 0 && contentLength <= maxLimit) {
-                            console.log(`📥 [o!rdr] Descargando video (${(contentLength / 1024 / 1024).toFixed(2)} MB)...`);
-                            const videoResponse = await fetch(directVideoUrl);
-                            if (videoResponse.ok) {
-                                const videoBuffer = Buffer.from(await videoResponse.arrayBuffer());
-                                files.push({
-                                    attachment: videoBuffer,
-                                    name: `sengo_render_${renderId}.mp4`
-                                });
-                                videoAttached = true;
-                            }
-                        } else {
-                            console.log(`⚠️ [o!rdr] Video demasiado grande para adjuntar (${(contentLength / 1024 / 1024).toFixed(2)} MB).`);
-                        }
-                    }
-                } catch (fetchErr) {
-                    console.error(`[o!rdr] Error al descargar/comprobar el video:`, fetchErr.message);
-                }
-
+                // ponytail: Enviar directamente el embed y enlace del video sin descargar/re-subir el MP4 para ahorrar ~50MB de bandwidth por render
                 await sentMessage.edit({
-                    content: videoAttached ? null : data.videoUrl,
                     embeds: [embed],
-                    components,
-                    files
+                    components
                 });
 
-                // Si el video supera el límite de tamaño y no se pudo adjuntar, enviamos un mensaje secundario
-                // solo con el enlace del video para forzar la previsualización del reproductor en Discord.
-                if (!videoAttached) {
-                    await sentMessage.channel.send({
-                        content: data.videoUrl
-                    });
-                }
+                // Enviar la URL del video para que Discord genere la previsualización del reproductor directamente desde o!rdr
+                await sentMessage.channel.send({
+                    content: data.videoUrl
+                });
             } catch (err) {
                 console.error(`[o!rdr] Error al editar mensaje final para #${renderId}:`, err);
             }

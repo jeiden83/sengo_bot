@@ -56,7 +56,9 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         Logger.system(`Error al iniciar BN Background Service: ${err.message}`);
     }
 
-    // 6. Worker silencioso de enriquecimiento de user tags (tras 60 segundos)
+    // 6. Worker silencioso de enriquecimiento de user tags (desactivado temporalmente para optimizar ancho de banda en Render)
+    // ponytail: desactivado para evitar 1.5GB/dia de scraping continuo en hosting
+    /*
     setTimeout(() => {
         try {
             const { startTagEnricherWorker } = require("./tagEnricherWorker.js");
@@ -67,6 +69,7 @@ function initializeServices(client, dbRes, config, todayLogExists) {
             Logger.system(`Error al iniciar Worker de User Tags: ${err.message}`);
         }
     }, 60000);
+    */
 
     // 7. Sincronizaciones específicas de la base de datos (Supabase)
     if (dbRes && dbRes.status === 1) {
