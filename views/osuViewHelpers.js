@@ -350,6 +350,82 @@ function getDisplayGamemode(mode) {
     return GAMEMODE_DISPLAY_NAMES[m] || (m === 'ctb' ? 'catch' : m);
 }
 
+/**
+ * Calcula las estadísticas modificadas del beatmap con los mods y genera la línea formateada
+ * con indicadores de aumento (▲) o disminución (▼).
+ * Ej: `CS 5.2▲ | AR 10▲ | OD 10▲ | HP 7▲ | BPM 180`
+ */
+function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
+    const rosu = require('rosu-pp-js');
+    const baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
+    const baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
+    const baseOd = beatmap.accuracy !== undefined ? beatmap.accuracy : (beatmap.od !== undefined ? beatmap.od : (beatmap.ar !== undefined ? beatmap.ar : 0));
+    const baseHp = beatmap.drain !== undefined ? beatmap.drain : (beatmap.hp !== undefined ? beatmap.hp : 0);
+    const baseBpm = Math.round(beatmap.bpm || 0);
+
+    const rosuModeMap = {
+        'osu': rosu.GameMode.Osu,
+        'taiko': rosu.GameMode.Taiko,
+        'fruits': rosu.GameMode.Catch,
+        'catch': rosu.GameMode.Catch,
+        'ctb': rosu.GameMode.Catch,
+        'mania': rosu.GameMode.Mania,
+        0: rosu.GameMode.Osu,
+        1: rosu.GameMode.Taiko,
+        2: rosu.GameMode.Catch,
+        3: rosu.GameMode.Mania
+    };
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+
+    let modCs = baseCs;
+    let modAr = baseAr;
+    let modOd = baseOd;
+    let modHp = baseHp;
+    let clockRate = 1.0;
+
+    try {
+        const builder = new rosu.BeatmapAttributesBuilder({
+            cs: baseCs,
+            ar: baseAr,
+            od: baseOd,
+            hp: baseHp,
+            mode: activeMode,
+            mods: mods || []
+        });
+        const attrs = builder.build();
+        if (attrs) {
+            modCs = attrs.cs !== undefined ? attrs.cs : baseCs;
+            modAr = attrs.ar !== undefined ? attrs.ar : baseAr;
+            modOd = attrs.od !== undefined ? attrs.od : baseOd;
+            modHp = attrs.hp !== undefined ? attrs.hp : baseHp;
+            clockRate = attrs.clockRate || 1.0;
+        }
+    } catch (err) {
+        // En caso de error, se mantienen las estadísticas base
+    }
+
+    const modBpm = Math.round(baseBpm * clockRate);
+
+    const formatStat = (label, baseVal, modVal, decimals = 1) => {
+        const diff = modVal - baseVal;
+        let arrow = '';
+        if (diff > 0.01) arrow = '▲';
+        else if (diff < -0.01) arrow = '▼';
+
+        const rounded = Number(modVal.toFixed(decimals));
+        return `${label} ${rounded}${arrow}`;
+    };
+
+    const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
+    const csStr = formatStat('CS', baseCs, modCs, csDecimals);
+    const arStr = formatStat('AR', baseAr, modAr, 1);
+    const odStr = formatStat('OD', baseOd, modOd, 1);
+    const hpStr = formatStat('HP', baseHp, modHp, 1);
+    const bpmStr = formatStat('BPM', baseBpm, modBpm, 0);
+
+    return `\`${csStr} | ${arStr} | ${odStr} | ${hpStr} | ${bpmStr}\``;
+}
+
 module.exports = {
     getEmbedColor,
     getFormattedScore,
@@ -366,6 +442,7 @@ module.exports = {
     buildTopSingleButtonsRow,
     getDifficultyEmoji,
     isLovedScore,
-    getDisplayGamemode
+    getDisplayGamemode,
+    getBeatmapStatsLine
 };
 
