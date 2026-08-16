@@ -153,9 +153,10 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
 function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', modeOption = 'ps') {
     const isMobile = modeOption === true || modeOption === 'web' || modeOption === 'movil' || modeOption === 'mobile';
     const isBash = modeOption === 'bash' || modeOption === 'sh' || modeOption === 'linux';
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sengo-bot-tc9l.onrender.com';
 
     if (isMobile) {
-        const webUrl = `https://sengo-bot.onrender.com/worker?key=${sessionKey}&country=${countryCode}`;
+        const webUrl = `${baseUrl}/worker?key=${sessionKey}&country=${countryCode}`;
         return new EmbedBuilder()
             .setTitle(t(locale, 'populate.dm_title', { country: countryCode }))
             .setColor(0x38bdf8)
@@ -178,7 +179,7 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', 
     }
 
     if (isBash) {
-        const bashCmd = `curl -sSL "https://sengo-bot.onrender.com/worker.sh?key=${sessionKey}&country=${countryCode}" | bash`;
+        const bashCmd = `curl -sSL "${baseUrl}/worker.sh?key=${sessionKey}&country=${countryCode}" | bash`;
         return new EmbedBuilder()
             .setTitle(t(locale, 'populate.dm_title', { country: countryCode }))
             .setColor(0xe67e22)
@@ -211,7 +212,7 @@ function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', 
             },
             {
                 name: t(locale, 'populate.dm_step2_title'),
-                value: `\`\`\`powershell\nirm "https://sengo-bot.onrender.com/worker.ps1?key=${sessionKey}&country=${countryCode}" | iex\n\`\`\``
+                value: `\`\`\`powershell\nirm "${baseUrl}/worker.ps1?key=${sessionKey}&country=${countryCode}" | iex\n\`\`\``
             },
             {
                 name: t(locale, 'populate.dm_how_title'),
