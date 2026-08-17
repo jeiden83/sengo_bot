@@ -113,11 +113,12 @@ function initWebhookServer(client, dbRes, config) {
     // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
     const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
 
-    // Si ya hay un servidor corriendo (por ejemplo, tras una recarga 'r'), lo cerramos limpiamente
-    if (serverInstance) {
-        Logger.system("Cerrando servidor de webhook de GitHub existente...");
+    // Si ya hay un servidor corriendo y escuchando, no lo recreamos
+    if (serverInstance && serverInstance.listening) {
+        return;
+    } else if (serverInstance) {
+        Logger.system("Cerrando servidor de webhook existente...");
         serverInstance.close(() => {
-            Logger.system("Servidor de webhook de GitHub anterior cerrado.");
             startServer(client, dbRes, port, config);
         });
     } else {

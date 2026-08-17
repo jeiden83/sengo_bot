@@ -83,12 +83,16 @@ async function main(reload) {
     const ReworkRecalcQueue = require("./models/ReworkRecalcQueue.js");
     ReworkRecalcQueue.initClient(client);
 
+    // 1. Iniciar servidor Webhook inmediatamente para Render (Health Check & Port Binding)
+    const { initWebhookServer } = require("./commands/utils/webhook.js");
+    initWebhookServer(client, res, config);
+
     await load_listeners(res, client, config);
 
-    // Iniciar sesión en Discord antes de inicializar los servicios dependientes
+    // 2. Iniciar sesión en Discord antes de inicializar los servicios dependientes
     await login(client, config);  
 
-    // Inicializar todos los servicios en segundo plano de forma ordenada
+    // 3. Inicializar todos los servicios en segundo plano de forma ordenada
     const { initializeServices } = require("./services/servicesManager.js");
     initializeServices(client, res, config, todayLogExists);  
 
