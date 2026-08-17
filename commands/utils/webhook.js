@@ -566,8 +566,8 @@ function startServer(client, dbRes, port, config) {
             const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
             if (token === expectedToken) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({ success: true, message: 'Discord client disconnected' }));
-                Logger.system("Petición remota de apagado validada. Desconectando cliente de Discord para evitar duplicación...");
+                res.end(JSON.stringify({ success: true, message: 'Discord client disconnected and shutting down' }));
+                Logger.system("Petición remota de apagado validada. Desconectando cliente de Discord y apagando instancia anterior...");
                 if (client) {
                     try {
                         if (client.user) {
@@ -579,6 +579,9 @@ function startServer(client, dbRes, port, config) {
                         Logger.system(`Error al desconectar cliente Discord: ${err.message}`);
                     }
                 }
+                setTimeout(() => {
+                    process.exit(0);
+                }, 1000);
                 return;
             } else {
                 res.writeHead(401, { 'Content-Type': 'application/json' });

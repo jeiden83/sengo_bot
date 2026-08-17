@@ -85,11 +85,12 @@ async function main(reload) {
 
     await load_listeners(res, client, config);
 
+    // Iniciar sesión en Discord antes de inicializar los servicios dependientes
+    await login(client, config);  
+
     // Inicializar todos los servicios en segundo plano de forma ordenada
     const { initializeServices } = require("./services/servicesManager.js");
-    initializeServices(client, res, config, todayLogExists);
-
-    await login(client, config);  
+    initializeServices(client, res, config, todayLogExists);  
 
     if (process.stdin.isTTY) {
         setupCommandLineInterface(res, client, config, reload); 

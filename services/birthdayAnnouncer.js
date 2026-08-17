@@ -113,13 +113,18 @@ async function checkBirthdays(client) {
 function initBirthdayAnnouncer(client) {
     Logger.system("Inicializando servicio de anuncios de cumpleaños...");
     
-    // Comprobar al iniciar tras un breve delay para asegurar que los canales/guilds estén cargados
-    client.once(Events.ClientReady, () => {
+    const onReady = () => {
         setTimeout(() => {
             checkBirthdays(client);
             scheduleHourlyChecks(client);
         }, 10000); // 10 segundos después del ready
-    });
+    };
+
+    if (client.isReady()) {
+        onReady();
+    } else {
+        client.once(Events.ClientReady, onReady);
+    }
 }
 
 /**

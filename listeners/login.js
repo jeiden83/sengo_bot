@@ -4,6 +4,27 @@ const Logger = require("../utils/logger.js");
 async function login(client, config) {
     Logger.system("Intentando iniciar sesión en Discord...");
     
+    // Registrar listeners de estado y eventos de red del cliente Discord
+    client.on(Events.Error, (err) => {
+        Logger.system(`[Discord Error] ${err.message}`);
+    });
+
+    client.on(Events.ShardError, (err, shardId) => {
+        Logger.system(`[Discord Shard Error #${shardId}] ${err.message}`);
+    });
+
+    client.on(Events.ShardDisconnect, (event, shardId) => {
+        Logger.system(`[Discord Shard Desconectado #${shardId}] Código de cierre: ${event.code}`);
+    });
+
+    client.on(Events.ShardReconnecting, (shardId) => {
+        Logger.system(`[Discord Shard Reconectando #${shardId}]...`);
+    });
+
+    client.on(Events.Warn, (info) => {
+        Logger.system(`[Discord Warn] ${info}`);
+    });
+
     client.once(Events.ClientReady, (c) => {
         const { version } = require('../package.json');
         const activityText = `v${version} - Activo`;
