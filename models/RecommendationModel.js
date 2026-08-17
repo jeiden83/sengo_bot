@@ -230,6 +230,9 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         if (dbTags && dbTags.length > 0) {
             dbTags.forEach(tag => {
                 const cleanTag = tag.toLowerCase().trim();
+                if (cleanTag === 'meta/validated' || cleanTag.startsWith('meta/') || cleanTag === 'validated') {
+                    return;
+                }
                 if (cleanTag.length > 2) {
                     // Darle el doble de peso a los tags de patrón específicos (jumps/linear, etc)
                     const weight = cleanTag.includes('/') ? 3 : 2;
@@ -242,6 +245,9 @@ async function buildUserProfileAsync(topScores, supabase = null) {
             if (typeof tags === 'string') {
                 tags.toLowerCase().split(/\s+/).forEach(tag => {
                     const cleanTag = tag.toLowerCase().trim();
+                    if (cleanTag === 'meta/validated' || cleanTag.startsWith('meta/') || cleanTag === 'validated') {
+                        return;
+                    }
                     if (cleanTag.length > 2) {
                         tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
                     }
@@ -411,8 +417,12 @@ function buildUserProfile(topScores) {
         const tags = score.beatmapset?.tags;
         if (typeof tags === 'string') {
             tags.toLowerCase().split(/\s+/).forEach(tag => {
-                if (tag.length > 2) {
-                    tagCounts[tag] = (tagCounts[tag] || 0) + 1;
+                const cleanTag = tag.toLowerCase().trim();
+                if (cleanTag === 'meta/validated' || cleanTag.startsWith('meta/') || cleanTag === 'validated') {
+                    return;
+                }
+                if (cleanTag.length > 2) {
+                    tagCounts[cleanTag] = (tagCounts[cleanTag] || 0) + 1;
                 }
             });
         }
@@ -642,7 +652,9 @@ async function getPersonalizedRecommendations({
 
     const getCleanTags = (c) => {
         const rawTags = (c.user_tags && c.user_tags.length > 0) ? c.user_tags : (c.tags || []);
-        return rawTags.map(t => t.toLowerCase().trim());
+        return rawTags
+            .map(t => t.toLowerCase().trim())
+            .filter(t => t !== 'meta/validated' && !t.startsWith('meta/') && t !== 'validated');
     };
 
     // 3. Scoring
@@ -758,11 +770,11 @@ async function getPersonalizedRecommendations({
                     reasons.push("Largo con DT (+4m)");
                 } else {
                     if (c.total_length >= 600) {
-                        score += 40;
-                        reasons.push("Maratón extra largo (+10m)");
+                        score += 30;
+                        reasons.push("Maratón (+10m)");
                     } else {
-                        score += 25;
-                        reasons.push("Maratón largo (+4m)");
+                        score += 20;
+                        reasons.push("Largo (+4m)");
                     }
                 }
             } else if (lengthScore >= 11) {
@@ -776,6 +788,9 @@ async function getPersonalizedRecommendations({
             const combinedTags = getCleanTags(c);
 
             profile.frequentTags.forEach(cleanTag => {
+                if (cleanTag === 'meta/validated' || cleanTag.startsWith('meta/') || cleanTag === 'validated') {
+                    return;
+                }
                 if (combinedTags.includes(cleanTag)) {
                     // Si el estilo es speed, no coincidir con tags de aim/jumps del usuario
                     if (style === 'speed' && (cleanTag === 'aim' || cleanTag === 'jump' || cleanTag === 'jumps' || cleanTag.includes('aim') || cleanTag.includes('jump') || AIM_TAGS.some(at => cleanTag.includes(at)))) {
@@ -793,7 +808,9 @@ async function getPersonalizedRecommendations({
                     }
                     if (matchedTagsList.length < 2) {
                         const displayName = cleanTag.includes('/') ? cleanTag.split('/')[1] : cleanTag;
-                        matchedTagsList.push(displayName);
+                        if (displayName && displayName !== 'validated' && !displayName.startsWith('meta')) {
+                            matchedTagsList.push(displayName);
+                        }
                     }
                 }
             });
