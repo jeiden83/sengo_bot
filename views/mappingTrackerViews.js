@@ -245,19 +245,23 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         const rankParts = [];
         const countryCode = ranksInfo.countryCode || mapperUser?.country_code || beatmapset.user?.country_code;
         const flag = countryCode ? getFlagEmoji(countryCode) : '🌐';
+        const modeLabel = ranksInfo.gamemode ? (ranksInfo.gamemode === 'osu' ? 'std' : (ranksInfo.gamemode === 'fruits' ? 'ctb' : ranksInfo.gamemode)) : null;
 
         if (ranksInfo.nationalRank) {
             const natDisplay = (ranksInfo.oldNationalRank && ranksInfo.oldNationalRank !== ranksInfo.nationalRank)
                 ? `#${ranksInfo.oldNationalRank} ➔ #${ranksInfo.nationalRank}`
                 : `#${ranksInfo.nationalRank}`;
-            rankParts.push(`${flag} **${natDisplay} (${countryCode ? countryCode.toUpperCase() : ''})**`);
+            const cc = countryCode ? countryCode.toUpperCase() : '';
+            const natTag = (cc && modeLabel) ? `${cc}, ${modeLabel}` : (cc || modeLabel || '');
+            rankParts.push(`${flag} **${natDisplay} (${natTag})**`);
         }
         if (ranksInfo.serverRank) {
             const serverLabel = t(locale, 'mapping_tracker.rank_server_suffix').replace(/[()]/g, '');
             const srvDisplay = (ranksInfo.oldServerRank && ranksInfo.oldServerRank !== ranksInfo.serverRank)
                 ? `#${ranksInfo.oldServerRank} ➔ #${ranksInfo.serverRank}`
                 : `#${ranksInfo.serverRank}`;
-            rankParts.push(`🏠 **${srvDisplay} (${serverLabel})**`);
+            const srvTag = modeLabel ? `${serverLabel}, ${modeLabel}` : serverLabel;
+            rankParts.push(`🏠 **${srvDisplay} (${srvTag})**`);
         }
 
         if (rankParts.length > 0) {

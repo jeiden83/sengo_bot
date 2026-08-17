@@ -338,11 +338,11 @@ async function saveLastEventsForOsuId(osuId, lastBeatmapsetId, statusSnapshot = 
 }
 
 /**
- * Obtiene la posición del mapper en los rankings de Mapper Top (País, Servidor y Global).
+ * Obtiene la posición del mapper en los rankings de Mapper Top (País y Servidor), filtrando opcionalmente por modo de juego.
  */
-async function getMapperRankings(osuId, countryCode = null, guildId = null, isRankedEvent = false) {
+async function getMapperRankings(osuId, countryCode = null, guildId = null, isRankedEvent = false, gamemode = null) {
     const supabase = getSupabaseClient();
-    if (!supabase || !osuId) return { nationalRank: null, oldNationalRank: null, serverRank: null, oldServerRank: null, countryCode: null };
+    if (!supabase || !osuId) return { nationalRank: null, oldNationalRank: null, serverRank: null, oldServerRank: null, countryCode: null, gamemode: null };
 
     const targetOsuId = Number(osuId);
     let nationalRank = null;
@@ -350,27 +350,39 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
     let serverRank = null;
     let oldServerRank = null;
     let resolvedCountryCode = countryCode ? countryCode.toUpperCase() : null;
+    let resolvedGamemode = gamemode ? gamemode.toLowerCase() : null;
 
     try {
-        // 1. Obtener datos del mapper objetivo si no tenemos el país
-        if (!resolvedCountryCode) {
+        // 1. Obtener datos del mapper objetivo si no tenemos el país o el playmode
+        if (!resolvedCountryCode || !resolvedGamemode) {
             const { data: targetStat } = await supabase
                 .from('mapper_statistics')
-                .select('country_code')
+                .select('country_code, playmode')
                 .eq('osu_id', targetOsuId)
                 .maybeSingle();
 
-            if (targetStat && targetStat.country_code) {
-                resolvedCountryCode = targetStat.country_code.toUpperCase();
+            if (targetStat) {
+                if (!resolvedCountryCode && targetStat.country_code) {
+                    resolvedCountryCode = targetStat.country_code.toUpperCase();
+                }
+                if (!resolvedGamemode && targetStat.playmode) {
+                    resolvedGamemode = targetStat.playmode.toLowerCase();
+                }
             }
         }
 
         // 2. Ranking Nacional (País)
         if (resolvedCountryCode) {
-            const { data: natMappers } = await supabase
+            let natQuery = supabase
                 .from('mapper_statistics')
-                .select('osu_id, ranked_count, guest_count, loved_count')
+                .select('osu_id, ranked_count, guest_count, loved_count, playmode')
                 .ilike('country_code', resolvedCountryCode);
+
+            if (resolvedGamemode) {
+                natQuery = natQuery.eq('playmode', resolvedGamemode);
+            }
+
+            const { data: natMappers } = await natQuery;
 
             if (natMappers && natMappers.length > 0) {
                 natMappers.sort((a, b) => 
@@ -414,10 +426,16 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
 
             if (guildSubs && guildSubs.length > 0) {
                 const sOsuIds = guildSubs.map(s => Number(s.osu_id));
-                const { data: sMappers } = await supabase
+                let sQuery = supabase
                     .from('mapper_statistics')
-                    .select('osu_id, ranked_count, guest_count, loved_count')
+                    .select('osu_id, ranked_count, guest_count, loved_count, playmode')
                     .in('osu_id', sOsuIds);
+
+                if (resolvedGamemode) {
+                    sQuery = sQuery.eq('playmode', resolvedGamemode);
+                }
+
+                const { data: sMappers } = await sQuery;
 
                 if (sMappers && sMappers.length > 0) {
                     sMappers.sort((a, b) => 
@@ -455,7 +473,7 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
         console.error('[MAPPING-TRACKER] Error al calcular posiciones de mapper ranking:', err);
     }
 
-    return { nationalRank, oldNationalRank, serverRank, oldServerRank, countryCode: resolvedCountryCode };
+    return { nationalRank, oldNationalRank, serverRank, oldServerRank, countryCode: resolvedCountryCode, gamemode: resolvedGamemode };
 }
 
 module.exports = {

@@ -779,7 +779,7 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
-        const { fetchUserBeatmapsets, fetchBeatmapsetEvents } = require("../../../services/mappingTrackerService.js");
+        const { fetchUserBeatmapsets, fetchBeatmapsetEvents, detectBeatmapsetGamemode } = require("../../../services/mappingTrackerService.js");
 
         let realMapset = null;
         let realUser = null;
@@ -924,7 +924,8 @@ async function handleMappingTrackerCommand(messages, args) {
             };
         }
 
-        const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId);
+        const detectedGamemode = typeof detectBeatmapsetGamemode === 'function' ? detectBeatmapsetGamemode(realMapset, realUser, realUser?.playmode) : null;
+        const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId, false, detectedGamemode);
         const testEmbedResult = doMappingTrackerNotificationEmbed(realMapset, realUser, matchedEventType, locale, ranksInfo, extraInfo);
         const testEmbed = testEmbedResult.embeds[0];
         testEmbed.setFooter({

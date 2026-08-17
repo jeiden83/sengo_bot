@@ -317,6 +317,125 @@ async function runMappingTrackerScan() {
 }
 
 /**
+ * Detecta el modo de juego principal de un beatmapset analizando las dificultades creadas por el mapper/host.
+ * - Discrimina Guest Diffs (GDs) por user_id y por patrones en el nombre de la versión (ej: "TheShadow's Normal").
+ * - Si el host mapeó dificultades, toma el modo predominante de sus dificultades.
+ * - Si hay empate, desempata con la de mayor Star Rating (SR) o con el playmode del perfil.
+ * - Si no hay diffs del host identificadas, desempata con el playmode del perfil o modo de la dificultad más alta.
+ */
+function detectBeatmapsetGamemode(beatmapset, mapperUser = null, fallbackPlaymode = null) {
+    if (!beatmapset) return fallbackPlaymode || 'osu';
+
+    const hostOsuId = Number(mapperUser?.id || beatmapset.user_id || 0);
+    const hostUsername = (mapperUser?.username || beatmapset.creator || '').toLowerCase().trim();
+    const diffs = Array.isArray(beatmapset.beatmaps) ? beatmapset.beatmaps : [];
+
+    if (diffs.length === 0) {
+        return fallbackPlaymode || 'osu';
+    }
+
+    const MODE_INT_MAP = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+
+    function normalizeMode(d) {
+        if (typeof d.mode === 'string' && d.mode) return d.mode.toLowerCase();
+        if (d.mode_int !== undefined && MODE_INT_MAP[d.mode_int]) return MODE_INT_MAP[d.mode_int];
+        if (d.ruleset_id !== undefined && MODE_INT_MAP[d.ruleset_id]) return MODE_INT_MAP[d.ruleset_id];
+        return 'osu';
+    }
+
+    const hostDiffs = [];
+    const allDiffs = [];
+
+    for (const d of diffs) {
+        const mode = normalizeMode(d);
+        const sr = Number(d.difficulty_rating || d.sr || 0);
+        const version = String(d.version || d.name || '').trim();
+        const diffUserId = Number(d.user_id || 0);
+
+        const diffObj = { mode, sr, version, diffUserId };
+        allDiffs.push(diffObj);
+
+        // Comprobación de Guest Diff:
+        if (diffUserId > 0 && hostOsuId > 0 && diffUserId !== hostOsuId) {
+            continue;
+        }
+
+        const possessiveMatch = version.match(/^(.+?)['’]s\s+/i);
+        if (possessiveMatch) {
+            const ownerInName = possessiveMatch[1].toLowerCase().trim();
+            if (hostUsername && ownerInName !== hostUsername) {
+                continue;
+            }
+        }
+
+        const bracketMatch = version.match(/^[\[\(](.+?)[\]\)]\s*/);
+        if (bracketMatch) {
+            const ownerInName = bracketMatch[1].toLowerCase().trim();
+            if (hostUsername && ownerInName !== hostUsername && ownerInName.length > 2) {
+                continue;
+            }
+        }
+
+        hostDiffs.push(diffObj);
+    }
+
+    const targetDiffs = hostDiffs.length > 0 ? hostDiffs : allDiffs;
+
+    const modeCounts = { osu: 0, taiko: 0, fruits: 0, mania: 0 };
+    const modeMaxSr = { osu: 0, taiko: 0, fruits: 0, mania: 0 };
+
+    for (const d of targetDiffs) {
+        modeCounts[d.mode] = (modeCounts[d.mode] || 0) + 1;
+        if (d.sr > (modeMaxSr[d.mode] || 0)) {
+            modeMaxSr[d.mode] = d.sr;
+        }
+    }
+
+    let bestMode = null;
+    let maxCount = -1;
+    let isTied = false;
+
+    for (const [m, count] of Object.entries(modeCounts)) {
+        if (count > maxCount) {
+            maxCount = count;
+            bestMode = m;
+            isTied = false;
+        } else if (count === maxCount && count > 0) {
+            isTied = true;
+        }
+    }
+
+    if (isTied) {
+        let highestSr = -1;
+        let modeWithHighestSr = null;
+        let srTied = false;
+
+        for (const [m, count] of Object.entries(modeCounts)) {
+            if (count === maxCount) {
+                if (modeMaxSr[m] > highestSr) {
+                    highestSr = modeMaxSr[m];
+                    modeWithHighestSr = m;
+                    srTied = false;
+                } else if (modeMaxSr[m] === highestSr) {
+                    srTied = true;
+                }
+            }
+        }
+
+        if (modeWithHighestSr && !srTied) {
+            return modeWithHighestSr;
+        }
+
+        const preferredMode = fallbackPlaymode || mapperUser?.playmode;
+        if (preferredMode && modeCounts[preferredMode] > 0) {
+            return preferredMode;
+        }
+    }
+
+    return bestMode || fallbackPlaymode || 'osu';
+}
+
+/**
  * Envía las notificaciones de eventos a los canales de Discord suscritos.
  */
 async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = null) {
@@ -344,7 +463,8 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
 
         try {
             const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
-            const ranksInfo = isRankedEvent ? await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id, true) : null;
+            const detectedGamemode = detectBeatmapsetGamemode(mapset, mapperUser, mapperUser?.playmode);
+            const ranksInfo = isRankedEvent ? await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id, true, detectedGamemode) : null;
             const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo, extraInfo);
 
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);
@@ -419,5 +539,6 @@ module.exports = {
     runGlobalEventsScan,
     fetchUserBeatmapsets,
     fetchGlobalBeatmapEvents,
-    fetchBeatmapsetEvents
+    fetchBeatmapsetEvents,
+    detectBeatmapsetGamemode
 };
