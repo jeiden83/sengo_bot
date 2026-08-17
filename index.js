@@ -96,12 +96,19 @@ async function main(reload) {
 
     await load_listeners(res, client, config);
 
-    // 2. Iniciar sesión en Discord antes de inicializar los servicios dependientes
-    await login(client, config);  
-
-    // 3. Inicializar todos los servicios en segundo plano de forma ordenada
-    const { initializeServices } = require("./services/servicesManager.js");
-    initializeServices(client, res, config, todayLogExists);  
+    // 2. Iniciar sesión en Discord e inicializar servicios al completar la conexión
+    login(client, config).then(() => {
+        const { initializeServices } = require("./services/servicesManager.js");
+        initializeServices(client, res, config, todayLogExists);
+    }).catch(err => {
+        Logger.system(`Error en el login inicial de Discord: ${err.message}. Reintentando en 5s...`);
+        setTimeout(() => {
+            login(client, config).then(() => {
+                const { initializeServices } = require("./services/servicesManager.js");
+                initializeServices(client, res, config, todayLogExists);
+            }).catch(e => console.error("Error crítico reintentando login:", e));
+        }, 5000);
+    });  
 
     if (process.stdin.isTTY) {
         setupCommandLineInterface(res, client, config, reload); 

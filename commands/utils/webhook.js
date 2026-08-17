@@ -554,6 +554,54 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
+        // Endpoint de diagnóstico para verificar conectividad con Discord desde dentro de Render
+        if (req.method === 'GET' && req.url === '/debug-discord') {
+            const token = process.env.DISCORD_TOKEN || (config && config.TOKEN);
+            const dnsPromises = require('dns').promises;
+            const https = require('https');
+
+            (async () => {
+                try {
+                    const addresses = await dnsPromises.resolve4('discord.com').catch(e => e.message);
+                    
+                    const gatewayData = await new Promise((resolve, reject) => {
+                        const r = https.request({
+                            hostname: 'discord.com',
+                            path: '/api/v10/gateway/bot',
+                            method: 'GET',
+                            headers: {
+                                'Authorization': `Bot ${token}`,
+                                'User-Agent': 'DiscordBot (https://github.com/jeiden83/sengo_bot, 1.0.0)'
+                            }
+                        }, (resp) => {
+                            let d = '';
+                            resp.on('data', chunk => d += chunk);
+                            resp.on('end', () => resolve({ statusCode: resp.statusCode, body: d }));
+                        });
+                        r.on('error', reject);
+                        r.setTimeout(8000, () => r.destroy(new Error("Timeout 8s al consultar gateway")));
+                        r.end();
+                    }).catch(e => ({ error: e.message }));
+
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({
+                        status: 'OK',
+                        dns: addresses,
+                        gatewayTest: gatewayData,
+                        clientState: client ? {
+                            isReady: typeof client.isReady === 'function' ? client.isReady() : false,
+                            wsStatus: client.ws ? client.ws.status : null,
+                            user: client.user ? client.user.tag : null
+                        } : null
+                    }, null, 2));
+                } catch (err) {
+                    res.writeHead(500, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ error: err.message, stack: err.stack }));
+                }
+            })();
+            return;
+        }
+
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
         if ((req.method === 'GET' || req.method === 'HEAD') && (req.url === '/' || req.url === '/health' || req.url === '/webhook' || req.url === '/github')) {
             res.writeHead(200, { 'Content-Type': 'application/json' });
