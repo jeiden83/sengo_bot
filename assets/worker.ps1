@@ -1,7 +1,7 @@
 param(
     [string]$Key = "__WORKER_KEY__",
     [string]$Country = "__WORKER_COUNTRY__",
-    [string]$Server = "https://sengo-bot-tc9l.onrender.com"
+    [string]$Server = "__SERVER_URL__"
 )
 
 if (-not $Key -or $Key -eq "__WORKER_KEY__") {

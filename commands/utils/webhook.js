@@ -647,7 +647,7 @@ function startServer(client, dbRes, port, config) {
                 const key = parsedUrl.query.key || '';
                 const country = parsedUrl.query.country || '';
                 res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-                res.end(PopulationService.getPowerShellScript(key, country));
+                res.end(PopulationService.getPowerShellScript(key, country, req.headers.host));
             } catch (err) {
                 console.error("Error sirviendo worker.ps1:", err);
                 res.writeHead(500, { 'Content-Type': 'application/json' });
@@ -661,7 +661,7 @@ function startServer(client, dbRes, port, config) {
                 const key = parsedUrl.query.key || '';
                 const country = parsedUrl.query.country || '';
                 res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
-                res.end(PopulationService.getBashScript(key, country));
+                res.end(PopulationService.getBashScript(key, country, req.headers.host));
             } catch (err) {
                 console.error("Error sirviendo worker.sh:", err);
                 res.writeHead(500, { 'Content-Type': 'application/json' });

@@ -2,7 +2,7 @@
 
 KEY="__WORKER_KEY__"
 COUNTRY="__WORKER_COUNTRY__"
-SERVER="https://sengo-bot-tc9l.onrender.com"
+SERVER="__SERVER_URL__"
 
 if [ -z "$KEY" ] || [ "$KEY" = "__WORKER_KEY__" ]; then
     echo -e "\033[0;31mError: Se requiere especificar la clave de trabajador (Key).\033[0m"

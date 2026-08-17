@@ -153,7 +153,7 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
 function buildPopulateDmEmbed(sessionKey, countryCode, username, locale = 'es', modeOption = 'ps') {
     const isMobile = modeOption === true || modeOption === 'web' || modeOption === 'movil' || modeOption === 'mobile';
     const isBash = modeOption === 'bash' || modeOption === 'sh' || modeOption === 'linux';
-    const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sengo-bot-tc9l.onrender.com';
+    const baseUrl = process.env.RENDER_EXTERNAL_URL || 'https://sengo-bot-q981.onrender.com';
 
     if (isMobile) {
         const webUrl = `${baseUrl}/worker?key=${sessionKey}&country=${countryCode}`;

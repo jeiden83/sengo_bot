@@ -1131,30 +1131,38 @@ class PopulationService {
     /**
      * Retorna el script de PowerShell en texto plano desde assets/worker.ps1
      */
-    static getPowerShellScript(defaultKey = '', defaultCountry = '') {
+    static getPowerShellScript(defaultKey = '', defaultCountry = '', reqHost = '') {
         const filePath = path.join(__dirname, '../assets/worker.ps1');
         let content = fs.readFileSync(filePath, 'utf8');
-        if (defaultKey) {
-            content = content.replace('__WORKER_KEY__', defaultKey);
-        }
-        if (defaultCountry) {
-            content = content.replace('__WORKER_COUNTRY__', defaultCountry);
-        }
-        return content;
-    }
+        const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
 
-    /**
-     * Retorna el script de Bash en texto plano desde assets/worker.sh para dispositivos móviles (Termux)
-     */
-    static getBashScript(defaultKey = '', defaultCountry = '') {
-        const filePath = path.join(__dirname, '../assets/worker.sh');
-        let content = fs.readFileSync(filePath, 'utf8');
         if (defaultKey) {
             content = content.replace(/__WORKER_KEY__/g, defaultKey);
         }
         if (defaultCountry) {
             content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
         }
+        content = content.replace(/__SERVER_URL__/g, serverUrl);
+        content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
+        return content;
+    }
+
+    /**
+     * Retorna el script de Bash en texto plano desde assets/worker.sh para dispositivos móviles (Termux)
+     */
+    static getBashScript(defaultKey = '', defaultCountry = '', reqHost = '') {
+        const filePath = path.join(__dirname, '../assets/worker.sh');
+        let content = fs.readFileSync(filePath, 'utf8');
+        const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
+
+        if (defaultKey) {
+            content = content.replace(/__WORKER_KEY__/g, defaultKey);
+        }
+        if (defaultCountry) {
+            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
+        }
+        content = content.replace(/__SERVER_URL__/g, serverUrl);
+        content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
         return content;
     }
 
