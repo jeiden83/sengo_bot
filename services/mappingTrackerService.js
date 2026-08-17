@@ -12,6 +12,19 @@ let isScanningEvents = false;
 // ponytail: lastProcessedEventId guardado en memoria volatil para escaneo rapido de eventos a 30s; si el bot se reinicia, el escaneo profundo de 5m reconcilia cualquier estado omitido
 let lastProcessedEventId = 0;
 
+// Deduplicador de notificaciones para evitar anuncios repetidos entre escaneos rapidos y profundos
+const recentlyNotified = new Map();
+const NOTIFICATION_DEDUPE_TTL = 30 * 60 * 1000; // 30 minutos
+
+function cleanOldNotifiedEntries() {
+    const now = Date.now();
+    for (const [key, timestamp] of recentlyNotified.entries()) {
+        if (now - timestamp > NOTIFICATION_DEDUPE_TTL) {
+            recentlyNotified.delete(key);
+        }
+    }
+}
+
 /**
  * Obtiene token Oauth cliente o del bot para peticiones a la API v2 de osu!
  */
@@ -188,6 +201,20 @@ async function runGlobalEventsScan() {
                 };
 
                 await notifyEvent(mapset, mapperOsuId, eventType, subscriptions, extraInfo);
+
+                // Sincronizar el snapshot del mapper en DB para evitar que el escaneo profundo duplique el evento
+                try {
+                    const lastEvents = await MappingTrackerModel.getLastEventsForOsuId(mapperOsuId);
+                    const currentSnapshot = lastEvents?.status_snapshot || {};
+                    const mapsetIdStr = mapset.id.toString();
+                    currentSnapshot[mapsetIdStr] = {
+                        status: eventType === 'nomination' ? (currentSnapshot[mapsetIdStr]?.status || 'pending') : eventType,
+                        last_updated: mapset.last_updated || new Date().toISOString()
+                    };
+                    await MappingTrackerModel.saveLastEventsForOsuId(mapperOsuId, mapset.id, currentSnapshot);
+                } catch (snapErr) {
+                    // Silenciar errores menores al guardar snapshot
+                }
             }
         }
 
@@ -300,10 +327,20 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
         country_code: mapset.user?.country_code || null
     };
 
+    cleanOldNotifiedEntries();
+
     for (const sub of subscriptions) {
         const types = sub.event_types || ['all'];
         const isMatch = types.includes('all') || types.includes(eventType) || (eventType === 'upload' && types.includes('pending')) || (eventType === 'approved' && types.includes('ranked'));
         if (!isMatch) continue;
+
+        const notifKey = `${sub.channel_id}:${mapset.id}:${eventType}`;
+        const lastSent = recentlyNotified.get(notifKey);
+        if (lastSent && (Date.now() - lastSent) < NOTIFICATION_DEDUPE_TTL) {
+            // Ya fue notificado a este canal en los últimos 30 minutos (evita duplicados entre escaneo rápido y profundo)
+            continue;
+        }
+        recentlyNotified.set(notifKey, Date.now());
 
         try {
             const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
