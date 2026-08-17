@@ -220,7 +220,8 @@ async function run(messages, args) {
             return isAllServers ? t(locale, 'ranked.err_no_linked_bot') : t(locale, 'ranked.err_no_linked_guild');
         }
 
-        const linkedOsuIds = linkedUsers.map(u => u.osu_id.toString());
+        const validLinkedUsers = linkedUsers.filter(u => u && u.osu_id);
+        const linkedOsuIds = validLinkedUsers.map(u => u.osu_id.toString());
 
         try {
             const dbPlayers = await OsuMatchmakingModel.fetchServerRankedLeaderboard(linkedOsuIds);
@@ -238,7 +239,7 @@ async function run(messages, args) {
 
             // Identificar usuarios vinculados que faltan en la base de datos
             const foundOsuIds = new Set(dbPlayers.map(p => p.osu_id));
-            const missingUsers = linkedUsers.filter(u => !foundOsuIds.has(u.osu_id.toString()));
+            const missingUsers = validLinkedUsers.filter(u => !foundOsuIds.has(u.osu_id.toString()));
 
             if (missingUsers.length > 0) {
                 // Actualizar en segundo plano de manera asíncrona

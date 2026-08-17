@@ -67,13 +67,14 @@ async function run(messages, args) {
         if (logger) logger.process(t(locale, 'amigos.log_get_db_users'));
         const dbUsers = await OsuUserModel.getLinkedUsers({ bypass: true });
 
-        if (!dbUsers || dbUsers.length === 0) {
+        const validDbUsers = dbUsers.filter(u => u && u.osu_id);
+        if (validDbUsers.length === 0) {
             return t(locale, 'amigos.err_no_linked_users');
         }
 
         // Encontrar cuáles de los usuarios vinculados NO están en la lista de amigos del owner
         const friendIds = new Set(friendsList.map(f => f.id.toString()));
-        const missingFriends = dbUsers.filter(u => !friendIds.has(u.osu_id.toString()));
+        const missingFriends = validDbUsers.filter(u => !friendIds.has(u.osu_id.toString()));
 
         // Obtener los nombres de usuario de osu! para los usuarios faltantes
         if (logger) logger.process(t(locale, 'amigos.log_get_missing_names'));

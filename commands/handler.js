@@ -317,7 +317,7 @@ async function chatCommand(intialized_data, command_data) {
                     let isSelf = false;
                     if (cleanInput === discordId) {
                         isSelf = true;
-                    } else if (user_found && cleanInput === user_found.osu_id.toString()) {
+                    } else if (user_found && user_found.osu_id && cleanInput === user_found.osu_id.toString()) {
                         isSelf = true;
                     } else {
                         if (!userToken) {

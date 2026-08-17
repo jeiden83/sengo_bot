@@ -766,7 +766,7 @@ async function run(messages, args) {
         }
     }
 
-    if (profile && profile.id && linkedUser && profile.id.toString() === linkedUser.osu_id.toString()) {
+    if (profile && profile.id && linkedUser && linkedUser.osu_id && profile.id.toString() === linkedUser.osu_id.toString()) {
         const apiSupporter = !!profile.is_supporter;
         if (apiSupporter && !hasSupporter) {
             hasSupporter = true;

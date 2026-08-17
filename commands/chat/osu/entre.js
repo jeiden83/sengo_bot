@@ -20,7 +20,7 @@ async function run(messages, args) {
         // Player A is the command invoker (author)
         const discord_id = message.author.id;
         const user_found = await OsuUserModel.getLinkedUser(res ? res.User : null, discord_id);
-        if (!user_found) {
+        if (!user_found || !user_found.osu_id) {
             return t(locale, 'entre.err_not_linked', { id: discord_id });
         }
         playerAInput = user_found.osu_id.toString();
