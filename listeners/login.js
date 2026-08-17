@@ -26,9 +26,7 @@ async function login(client, config) {
     });
 
     client.on(Events.Debug, (info) => {
-        if (info.includes('429') || info.includes('rate') || info.includes('WS') || info.includes('Heartbeat') || info.includes('gateway') || info.includes('Session') || info.includes('Shard') || info.includes('Identifying') || info.includes('hello')) {
-            Logger.system(`[Discord WS] ${info}`);
-        }
+        Logger.system(`[Discord WS] ${info}`);
     });
 
     client.once(Events.ClientReady, (c) => {

@@ -1,3 +1,6 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const { Client, GatewayIntentBits, ActivityType, Partials } = require("discord.js");
 const { load_listeners } = require("./listeners/commands.js");
 const { connectDB } = require("./db/database.js");
@@ -73,7 +76,11 @@ async function main(reload) {
             GatewayIntentBits.DirectMessageReactions,
             GatewayIntentBits.GuildMessageReactions
         ],
-        partials: [Partials.Channel, Partials.Message, Partials.Reaction]
+        partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+        rest: {
+            timeout: 15000,
+            retries: 3
+        }
     });
     
     res = await connectDB(config);
