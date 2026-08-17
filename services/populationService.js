@@ -1136,12 +1136,8 @@ class PopulationService {
         let content = fs.readFileSync(filePath, 'utf8');
         const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
 
-        if (defaultKey) {
-            content = content.replace(/__WORKER_KEY__/g, defaultKey);
-        }
-        if (defaultCountry) {
-            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
-        }
+        content = content.replace(/__WORKER_KEY__/g, defaultKey || '');
+        content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry || '');
         content = content.replace(/__SERVER_URL__/g, serverUrl);
         content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
         return content;
@@ -1155,12 +1151,8 @@ class PopulationService {
         let content = fs.readFileSync(filePath, 'utf8');
         const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
 
-        if (defaultKey) {
-            content = content.replace(/__WORKER_KEY__/g, defaultKey);
-        }
-        if (defaultCountry) {
-            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
-        }
+        content = content.replace(/__WORKER_KEY__/g, defaultKey || '');
+        content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry || '');
         content = content.replace(/__SERVER_URL__/g, serverUrl);
         content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
         return content;

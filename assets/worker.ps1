@@ -4,12 +4,12 @@ param(
     [string]$Server = "__SERVER_URL__"
 )
 
-if (-not $Key -or $Key -eq "__WORKER_KEY__") {
+if ([string]::IsNullOrWhiteSpace($Key)) {
     Write-Host "Error: Se requiere especificar la clave de trabajador (Key)." -ForegroundColor Red
     exit 1
 }
 
-if (-not $Country -or $Country -eq "__WORKER_COUNTRY__") {
+if ([string]::IsNullOrWhiteSpace($Country)) {
     Write-Host "Error: Se requiere especificar el codigo de pais (Country)." -ForegroundColor Red
     exit 1
 }

@@ -4,12 +4,12 @@ KEY="__WORKER_KEY__"
 COUNTRY="__WORKER_COUNTRY__"
 SERVER="__SERVER_URL__"
 
-if [ -z "$KEY" ] || [ "$KEY" = "__WORKER_KEY__" ]; then
+if [ -z "$KEY" ]; then
     echo -e "\033[0;31mError: Se requiere especificar la clave de trabajador (Key).\033[0m"
     exit 1
 fi
 
-if [ -z "$COUNTRY" ] || [ "$COUNTRY" = "__WORKER_COUNTRY__" ]; then
+if [ -z "$COUNTRY" ]; then
     echo -e "\033[0;31mError: Se requiere especificar el código de país (Country).\033[0m"
     exit 1
 fi
