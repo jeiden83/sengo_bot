@@ -266,9 +266,21 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
 
         if (rankParts.length > 0) {
             const fieldName = t(locale, 'mapping_tracker.field_mapper_rank').replace(/^🏆\s*/, '');
+            let fieldValue = rankParts.join(' • ');
+
+            if (ranksInfo.linkedGds && ranksInfo.linkedGds.length > 0) {
+                const gdStrings = ranksInfo.linkedGds.map(g => {
+                    const flag = g.country_code ? getFlagEmoji(g.country_code) : '';
+                    const rankTag = g.nationalRank ? `(${flag} #${g.nationalRank})` : (flag ? `(${flag})` : '');
+                    const diffsJoined = g.diffs.map(d => `*${d}*`).join(', ');
+                    return `[${g.username}](https://osu.ppy.sh/users/${g.osu_id}) [${diffsJoined}] ${rankTag}`.trim();
+                });
+                fieldValue += `\n-# 🤝 **GDs en el set:** ${gdStrings.join(' • ')}`;
+            }
+
             embed.addFields({
                 name: `🏆 ${fieldName} `,
-                value: rankParts.join(' • '),
+                value: fieldValue,
                 inline: false
             });
         }

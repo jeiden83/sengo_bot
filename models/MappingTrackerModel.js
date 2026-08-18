@@ -476,6 +476,81 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
     return { nationalRank, oldNationalRank, serverRank, oldServerRank, countryCode: resolvedCountryCode, gamemode: resolvedGamemode };
 }
 
+/**
+ * Busca mappers de Guest Diffs presentes en el beatmapset que estén registrados/linkeados en Sengo,
+ * y obtiene sus estadísticas y posición de ranking con formato discreto.
+ */
+async function getLinkedGdMappersInfo(beatmapset, guildId = null, gamemode = 'osu') {
+    const supabase = getSupabaseClient();
+    if (!supabase || !beatmapset || !Array.isArray(beatmapset.beatmaps)) return [];
+
+    const hostOsuId = Number(beatmapset.user_id || 0);
+    const guestDiffsMap = new Map();
+
+    for (const b of beatmapset.beatmaps) {
+        const diffUserId = Number(b.user_id || 0);
+        if (diffUserId > 0 && diffUserId !== hostOsuId) {
+            if (!guestDiffsMap.has(diffUserId)) {
+                guestDiffsMap.set(diffUserId, []);
+            }
+            guestDiffsMap.get(diffUserId).push(b.version || 'Diff');
+        }
+    }
+
+    if (guestDiffsMap.size === 0) return [];
+
+    const guestOsuIds = Array.from(guestDiffsMap.keys());
+
+    try {
+        const { data: linkedUsers } = await supabase
+            .from('users')
+            .select('osu_id, discord_id')
+            .in('osu_id', guestOsuIds.map(String));
+
+        if (!linkedUsers || linkedUsers.length === 0) return [];
+
+        const linkedOsuIdSet = new Set(linkedUsers.map(u => Number(u.osu_id)));
+
+        const { data: mStats } = await supabase
+            .from('mapper_statistics')
+            .select('osu_id, username, country_code, playmode, ranked_count, guest_count')
+            .in('osu_id', Array.from(linkedOsuIdSet).map(String));
+
+        const statsMap = new Map();
+        if (mStats) {
+            mStats.forEach(s => statsMap.set(Number(s.osu_id), s));
+        }
+
+        const result = [];
+        for (const guestId of linkedOsuIdSet) {
+            const diffs = guestDiffsMap.get(guestId) || [];
+            const stat = statsMap.get(guestId);
+            const username = stat?.username || `Mapper #${guestId}`;
+            const countryCode = stat?.country_code || null;
+
+            let natRank = null;
+            if (countryCode) {
+                const ranks = await getMapperRankings(guestId, countryCode, guildId, false, gamemode);
+                natRank = ranks?.nationalRank || null;
+            }
+
+            result.push({
+                osu_id: guestId,
+                username,
+                country_code: countryCode,
+                diffs,
+                nationalRank: natRank,
+                gamemode
+            });
+        }
+
+        return result;
+    } catch (err) {
+        console.error('[MAPPING-TRACKER] Error al obtener datos de GDs linkeadas:', err.message);
+        return [];
+    }
+}
+
 module.exports = {
     setTrackerChannel,
     deleteTrackerChannel,
@@ -488,5 +563,6 @@ module.exports = {
     getSubscriptionsForOsuId,
     getLastEventsForOsuId,
     saveLastEventsForOsuId,
-    getMapperRankings
+    getMapperRankings,
+    getLinkedGdMappersInfo
 };

@@ -465,6 +465,9 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
             const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
             const detectedGamemode = detectBeatmapsetGamemode(mapset, mapperUser, mapperUser?.playmode);
             const ranksInfo = isRankedEvent ? await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id, true, detectedGamemode) : null;
+            if (ranksInfo) {
+                ranksInfo.linkedGds = await MappingTrackerModel.getLinkedGdMappersInfo(mapset, sub.guild_id, detectedGamemode);
+            }
             const embedResult = doMappingTrackerNotificationEmbed(mapset, mapperUser, eventType, 'es', ranksInfo, extraInfo);
 
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);

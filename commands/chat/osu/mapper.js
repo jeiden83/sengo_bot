@@ -926,6 +926,9 @@ async function handleMappingTrackerCommand(messages, args) {
 
         const detectedGamemode = typeof detectBeatmapsetGamemode === 'function' ? detectBeatmapsetGamemode(realMapset, realUser, realUser?.playmode) : null;
         const ranksInfo = await MappingTrackerModel.getMapperRankings(realUser.id, realUser.country_code || realUser.country?.code, guildId, false, detectedGamemode);
+        if (ranksInfo && typeof MappingTrackerModel.getLinkedGdMappersInfo === 'function') {
+            ranksInfo.linkedGds = await MappingTrackerModel.getLinkedGdMappersInfo(realMapset, guildId, detectedGamemode);
+        }
         const testEmbedResult = doMappingTrackerNotificationEmbed(realMapset, realUser, matchedEventType, locale, ranksInfo, extraInfo);
         const testEmbed = testEmbedResult.embeds[0];
         testEmbed.setFooter({
