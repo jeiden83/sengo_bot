@@ -13,7 +13,8 @@ const {
     getDifficultyEmoji,
     isLovedScore,
     getDisplayGamemode,
-    getBeatmapStatsLine
+    getBeatmapStatsLine,
+    hasLazerCustomMods
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -206,12 +207,17 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     let authorName = t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode });
     let footerText = t(locale, 'recent.embed_footer_default');
 
+    const isLazerCustomRework = pre_calculated.isRework && hasLazerCustomMods(recent_scores.mods);
+
     if (recent_scores.isSimulated) {
         authorName = t(locale, 'sim.embed_author', { username });
         footerText = t(locale, 'sim.embed_footer');
     } else if (pre_calculated.isRework) {
         authorName = `👑 Jugada Reciente (Rework) para ${username}`;
         footerText = `Sengo • Rework PP (${pre_calculated.reworkCode || 'master'})`;
+        if (isLazerCustomRework) {
+            footerText += ` • ⚠️ ${t(locale, 'rework.lazer_custom_mods_footer_tag')}`;
+        }
     } else if (recent_scores.beatmap.mode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null) {
@@ -230,6 +236,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const line2 = `**${score}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}`;
     const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu');
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
+    const reworkDisclaimer = isLazerCustomRework ? `\n${t(locale, 'rework.lazer_custom_mods_warning')}` : '';
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -239,7 +246,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
-        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
+        .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}${reworkDisclaimer}`)
         .setImage(beatmap_cover)
         .setColor(embedColor)
         .setFooter({
@@ -2313,6 +2320,12 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
         failedNote = `\n\n${t(locale, 'rework.failed_play_note', { ratio: ratioStr })}`;
     }
 
+    const isLazerCustomPlay = hasLazerCustomMods(parsedPlay.mods);
+    let lazerWarning = '';
+    if (isLazerCustomPlay) {
+        lazerWarning = `\n\n${t(locale, 'rework.lazer_custom_mods_warning')}`;
+    }
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: t(locale, 'rework.play_author', { username: parsedPlay.username }),
@@ -2332,10 +2345,12 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
 ▸ **${t(locale, 'rework.user_comp_rework') || 'PP en Rework'}:** \`${reworkPP.toFixed(2)} pp\`
 ▸ **${t(locale, 'rework.user_comp_change') || 'Cambio'}:** \`${diffString}\`
 ▸ **${t(locale, 'rework.top_single_precision') || 'Precisión'}:** \`${parsedPlay.accuracy.toFixed(2)}%\`${hitsText}
-▸ **Combo:** \`x${parsedPlay.combo || '?'}/${parsedPlay.maxCombo || beatmap.max_combo || '?'}\`${failedNote}
+▸ **Combo:** \`x${parsedPlay.combo || '?'}/${parsedPlay.maxCombo || beatmap.max_combo || '?'}\`${failedNote}${lazerWarning}
         `)
         .setFooter({
-            text: `Sengo • PP Rework Play Comparison`,
+            text: isLazerCustomPlay
+                ? `Sengo • PP Rework Play Comparison • ⚠️ ${t(locale, 'rework.lazer_custom_mods_footer_tag')}`
+                : `Sengo • PP Rework Play Comparison`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
         })
         .setTimestamp();

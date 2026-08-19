@@ -351,17 +351,81 @@ function getDisplayGamemode(mode) {
 }
 
 /**
+ * Detecta si los mods incluyen modificadores personalizados o exclusivos de osu!lazer
+ * que no son soportados por herramientas/APIs clásicas como Huismetbenen (ej. DA, HT/DT con velocidad personalizada).
+ */
+function hasLazerCustomMods(mods) {
+    if (!mods) return false;
+    if (typeof mods === 'string') {
+        const upper = mods.toUpperCase();
+        if (upper.includes('DA')) return true;
+        return false;
+    }
+    if (Array.isArray(mods)) {
+        for (const m of mods) {
+            if (typeof m === 'string') {
+                if (m.toUpperCase() === 'DA') return true;
+                continue;
+            }
+            if (typeof m === 'object' && m !== null) {
+                const acr = (m.acronym || '').toUpperCase();
+                if (acr === 'DA') return true;
+                if (m.settings) {
+                    if (m.settings.speed_change !== undefined) {
+                        if ((acr === 'HT' && m.settings.speed_change !== 0.75) ||
+                            ((acr === 'DT' || acr === 'NC') && m.settings.speed_change !== 1.5)) {
+                            return true;
+                        }
+                    }
+                    if (m.settings.circle_size !== undefined || 
+                        m.settings.approach_rate !== undefined || 
+                        m.settings.overall_difficulty !== undefined || 
+                        m.settings.drain_rate !== undefined) {
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+    return false;
+}
+
+/**
  * Calcula las estadísticas modificadas del beatmap con los mods y genera la línea formateada
  * con indicadores de aumento (▲) o disminución (▼).
  * Ej: `CS 5.2▲ | AR 10▲ | OD 10▲ | HP 7▲ | BPM 180`
  */
 function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
     const rosu = require('rosu-pp-js');
-    const baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
-    const baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
-    const baseOd = beatmap.accuracy !== undefined ? beatmap.accuracy : (beatmap.od !== undefined ? beatmap.od : (beatmap.ar !== undefined ? beatmap.ar : 0));
-    const baseHp = beatmap.drain !== undefined ? beatmap.drain : (beatmap.hp !== undefined ? beatmap.hp : 0);
+    let baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
+    let baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
+    let baseOd = beatmap.accuracy !== undefined ? beatmap.accuracy : (beatmap.od !== undefined ? beatmap.od : (beatmap.ar !== undefined ? beatmap.ar : 0));
+    let baseHp = beatmap.drain !== undefined ? beatmap.drain : (beatmap.hp !== undefined ? beatmap.hp : 0);
     const baseBpm = Math.round(beatmap.bpm || 0);
+
+    const originalBaseCs = baseCs;
+    const originalBaseAr = baseAr;
+    const originalBaseOd = baseOd;
+    const originalBaseHp = baseHp;
+
+    // Si hay mod DA (Difficulty Adjust), extraer las sobreescrituras de atributos
+    if (Array.isArray(mods)) {
+        const daMod = mods.find(m => (typeof m === 'object' && m !== null && (m.acronym === 'DA' || m.acronym === 'da')));
+        if (daMod && daMod.settings) {
+            if (daMod.settings.circle_size !== undefined && daMod.settings.circle_size !== null) {
+                baseCs = Number(daMod.settings.circle_size);
+            }
+            if (daMod.settings.approach_rate !== undefined && daMod.settings.approach_rate !== null) {
+                baseAr = Number(daMod.settings.approach_rate);
+            }
+            if (daMod.settings.overall_difficulty !== undefined && daMod.settings.overall_difficulty !== null) {
+                baseOd = Number(daMod.settings.overall_difficulty);
+            }
+            if (daMod.settings.drain_rate !== undefined && daMod.settings.drain_rate !== null) {
+                baseHp = Number(daMod.settings.drain_rate);
+            }
+        }
+    }
 
     const rosuModeMap = {
         'osu': rosu.GameMode.Osu,
@@ -406,8 +470,8 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
 
     const modBpm = Math.round(baseBpm * clockRate);
 
-    const formatStat = (label, baseVal, modVal, decimals = 1) => {
-        const diff = modVal - baseVal;
+    const formatStat = (label, originalBaseVal, modVal, decimals = 1) => {
+        const diff = modVal - originalBaseVal;
         let prefix = '';
         if (diff > 0.01) prefix = '▲ ';
         else if (diff < -0.01) prefix = '▼ ';
@@ -417,10 +481,10 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
     };
 
     const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
-    const csStr = formatStat('CS', baseCs, modCs, csDecimals);
-    const arStr = formatStat('AR', baseAr, modAr, 1);
-    const odStr = formatStat('OD', baseOd, modOd, 1);
-    const hpStr = formatStat('HP', baseHp, modHp, 1);
+    const csStr = formatStat('CS', originalBaseCs, modCs, csDecimals);
+    const arStr = formatStat('AR', originalBaseAr, modAr, 1);
+    const odStr = formatStat('OD', originalBaseOd, modOd, 1);
+    const hpStr = formatStat('HP', originalBaseHp, modHp, 1);
     const bpmStr = formatStat('BPM', baseBpm, modBpm, 0);
 
     return `\`${csStr} | ${arStr} | ${odStr} | ${hpStr} | ${bpmStr}\``;
@@ -443,6 +507,7 @@ module.exports = {
     getDifficultyEmoji,
     isLovedScore,
     getDisplayGamemode,
-    getBeatmapStatsLine
+    getBeatmapStatsLine,
+    hasLazerCustomMods
 };
 
