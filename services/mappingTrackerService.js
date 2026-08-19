@@ -472,12 +472,58 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
 
             const channel = await discordClient.channels.fetch(sub.channel_id).catch(() => null);
             if (channel && typeof channel.send === 'function') {
-                await channel.send(embedResult);
+                const sentMsg = await channel.send(embedResult);
+
+                // Si alguna dificultad tiene SR 0 (típico cuando osu! aún está procesando el cálculo de dificultad tras la subida)
+                const hasZeroSr = Array.isArray(mapset.beatmaps) && mapset.beatmaps.some(d => Number(d.difficulty_rating || d.sr || 0) === 0);
+                if (hasZeroSr && sentMsg && typeof sentMsg.edit === 'function') {
+                    scheduleSrRecheck(sentMsg, mapset.id, mapperUser, eventType, ranksInfo, extraInfo);
+                }
             }
         } catch (sendErr) {
             console.error(`[MAPPING-TRACKER-SERVICE] Error al enviar mensaje a canal ${sub.channel_id}:`, sendErr.message);
         }
     }
+}
+
+/**
+ * Re-consulta el beatmapset tras 30s (y 60s si aún no ha terminado) para actualizar el mensaje de Discord
+ * cuando la API de osu! termine de calcular los Star Ratings de un mapa recién subido.
+ */
+function scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, extraInfo, attempt = 1) {
+    const delay = attempt === 1 ? 30000 : 30000;
+    setTimeout(async () => {
+        try {
+            const token = await getOsuApiToken();
+            if (!token) return;
+
+            const res = await axios.get(`https://osu.ppy.sh/api/v2/beatmapsets/${mapsetId}`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'SengoBot/2.0'
+                }
+            });
+
+            const updatedMapset = res.data;
+            if (updatedMapset && Array.isArray(updatedMapset.beatmaps) && updatedMapset.beatmaps.length > 0) {
+                const allHasSr = updatedMapset.beatmaps.every(d => Number(d.difficulty_rating || d.sr || 0) > 0);
+                const someHasSr = updatedMapset.beatmaps.some(d => Number(d.difficulty_rating || d.sr || 0) > 0);
+
+                if (someHasSr) {
+                    const updatedEmbedResult = doMappingTrackerNotificationEmbed(updatedMapset, mapperUser, eventType, 'es', ranksInfo, extraInfo);
+                    await sentMsg.edit(updatedEmbedResult);
+                }
+
+                // Si aún quedan dificultades con SR 0 y es el primer intento, reintentar una segunda vez a los 60s
+                if (!allHasSr && attempt === 1) {
+                    scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, extraInfo, 2);
+                }
+            }
+        } catch (err) {
+            // Silenciar error en reintento en background
+        }
+    }, delay);
 }
 
 /**
