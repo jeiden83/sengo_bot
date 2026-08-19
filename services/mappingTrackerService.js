@@ -491,7 +491,7 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
  * cuando la API de osu! termine de calcular los Star Ratings de un mapa recién subido.
  */
 function scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, extraInfo, attempt = 1) {
-    const delay = attempt === 1 ? 30000 : 30000;
+    const delay = 30000; // 30s para el 1er intento (T+30s), y otros 30s si se requiere un 2do intento (T+60s)
     setTimeout(async () => {
         try {
             const token = await getOsuApiToken();
