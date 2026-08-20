@@ -76,6 +76,89 @@ async function fetchGithubStats(repoName, before, after) {
 
 let serverInstance = null;
 let ngrokProcess = null;
+let isReconnectingDiscord = false;
+let consecutiveUnhealthyChecks = 0;
+let watchdogInterval = null;
+
+/**
+ * Autorecuperación proactiva del cliente Discord ante sockets zombie o desconexiones silenciosas.
+ */
+async function forceDiscordReconnect(client, config, reason = "Socket zombie detectado") {
+    if (isReconnectingDiscord) return;
+    isReconnectingDiscord = true;
+    Logger.system(`[DISCORD-WATCHDOG] ⚠️ ${reason}. Ejecutando autorecuperación del cliente Discord...`);
+
+    try {
+        const token = process.env.DISCORD_TOKEN || (config && config.TOKEN);
+        if (!token) {
+            Logger.system("[DISCORD-WATCHDOG] Error: No se encontró token de Discord para autorecuperación.");
+            return;
+        }
+
+        // 1. Intentar reconexión suave a nivel de Shard si existe
+        if (client && client.ws && client.ws.shards && client.ws.shards.size > 0) {
+            const shard = client.ws.shards.first();
+            if (shard) {
+                try {
+                    Logger.system("[DISCORD-WATCHDOG] Reiniciando Shard 0...");
+                    shard.destroy({ closeCode: 4000, reset: true, emit: true });
+                    await new Promise(resolve => setTimeout(resolve, 4000));
+                    if (client.isReady && client.isReady() && client.ws.status === 0) {
+                        Logger.system("[DISCORD-WATCHDOG] ✅ Shard 0 reconectado y operativo.");
+                        consecutiveUnhealthyChecks = 0;
+                        return;
+                    }
+                } catch (shardErr) {
+                    Logger.system(`[DISCORD-WATCHDOG] Fallo al reiniciar Shard: ${shardErr.message}`);
+                }
+            }
+        }
+
+        // 2. Si el shard no revivió, destruir y hacer relogin completo
+        if (client) {
+            try {
+                if (client.user) client.user.setActivity(null);
+                client.destroy();
+            } catch (e) {}
+            
+            await new Promise(resolve => setTimeout(resolve, 2500));
+            await client.login(token);
+            Logger.system("[DISCORD-WATCHDOG] ✅ Cliente de Discord relogueado y recuperado exitosamente.");
+            consecutiveUnhealthyChecks = 0;
+        }
+    } catch (err) {
+        Logger.system(`[DISCORD-WATCHDOG] ❌ Error en la autorecuperación de Discord: ${err.message}`);
+    } finally {
+        isReconnectingDiscord = false;
+    }
+}
+
+/**
+ * Inicia el watchdog en segundo plano para revisar periódicamente la salud de Discord.
+ */
+function startDiscordWatchdog(client, config) {
+    if (!client || watchdogInterval) return;
+    
+    // Intervalo de vigilancia cada 60 segundos
+    watchdogInterval = setInterval(async () => {
+        if (!client) return;
+        const isReady = typeof client.isReady === 'function' ? client.isReady() : false;
+        const wsStatus = client.ws ? client.ws.status : -1;
+
+        // Status 0 = READY
+        if (!isReady || wsStatus !== 0) {
+            consecutiveUnhealthyChecks++;
+            Logger.system(`[DISCORD-WATCHDOG] Estado anormal detectado (isReady: ${isReady}, wsStatus: ${wsStatus}). Chequeo ${consecutiveUnhealthyChecks}/2.`);
+            
+            // Si lleva 2 chequeos consecutivos (2 minutos) sin estar READY, forzar la autorecuperación
+            if (consecutiveUnhealthyChecks >= 2) {
+                await forceDiscordReconnect(client, config, `Socket zombie persistente durante ${consecutiveUnhealthyChecks} minutos`);
+            }
+        } else {
+            consecutiveUnhealthyChecks = 0;
+        }
+    }, 60 * 1000);
+}
 
 /**
  * Intenta encontrar el ejecutable de ngrok en rutas comunes de Windows/Linux/Mac.
@@ -112,6 +195,9 @@ function initWebhookServer(client, dbRes, config) {
     const useSupabase = true; // Sengo ahora siempre está en modo Supabase
     // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
     const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
+
+    // Iniciar watchdog proactivo de salud de Discord
+    startDiscordWatchdog(client, config);
 
     // Si ya hay un servidor corriendo y escuchando, no lo recreamos
     if (serverInstance && serverInstance.listening) {
@@ -604,8 +690,30 @@ function startServer(client, dbRes, port, config) {
 
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
         if ((req.method === 'GET' || req.method === 'HEAD') && (req.url === '/' || req.url === '/health' || req.url === '/webhook' || req.url === '/github')) {
+            const isDiscordReady = client && typeof client.isReady === 'function' ? client.isReady() : false;
+            const wsStatus = client?.ws ? client.ws.status : -1;
+            const wsPing = client?.ws ? client.ws.ping : -1;
+
+            // Si Discord está en estado zombie o desconectado (wsStatus !== 0)
+            if (!isDiscordReady || wsStatus !== 0) {
+                // Disparar autorecuperación inmediata al ser detectado por el ping de UptimeRobot
+                forceDiscordReconnect(client, config, `Detectado por petición /health (isReady: ${isDiscordReady}, wsStatus: ${wsStatus})`);
+                
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    status: 'RECOVERING',
+                    message: 'Sengo Web Server is UP, but Discord client was disconnected/zombie. Auto-reconnection triggered.',
+                    discord: { isReady: isDiscordReady, wsStatus, wsPing }
+                }));
+                return;
+            }
+
             res.writeHead(200, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ status: 'UP', message: 'Sengo is running smoothly' }));
+            res.end(JSON.stringify({
+                status: 'UP',
+                message: 'Sengo is running smoothly',
+                discord: { isReady: true, wsStatus: 0, wsPing }
+            }));
             return;
         }
 
