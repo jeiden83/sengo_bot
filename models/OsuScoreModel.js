@@ -542,12 +542,14 @@ async function _getUserTopScores(parsed_args) {
     const cached = userTopScoresCache.get(cacheKey);
 
     if (cached && (now - cached.timestamp) < TOP_SCORES_CACHE_TTL) {
-        return cached.scores;
+        return typeof structuredClone === 'function' ? structuredClone(cached.scores) : JSON.parse(JSON.stringify(cached.scores));
     }
 
     const returnAndCache = (scores) => {
         if (scores && Array.isArray(scores) && scores.length > 0) {
-            setWithLimit(userTopScoresCache, cacheKey, { scores, timestamp: now });
+            const copy = typeof structuredClone === 'function' ? structuredClone(scores) : JSON.parse(JSON.stringify(scores));
+            setWithLimit(userTopScoresCache, cacheKey, { scores: copy, timestamp: now });
+            return typeof structuredClone === 'function' ? structuredClone(copy) : JSON.parse(JSON.stringify(copy));
         }
         return scores;
     };
