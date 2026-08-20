@@ -147,12 +147,10 @@ async function run(messages, args) {
     });
     const mapAttrs = builder.build();
 
-    const perf = new engine.Performance({ mods: activeModsStr });
-    const attrs = perf.calculate(map);
-    const difficulty = attrs.difficulty || attrs;
-
-    const stars = difficulty.stars;
-    const maxCombo = difficulty.maxCombo || beatmap.max_combo || 0;
+    const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+    const stars = diffAttrs.stars;
+    const maxCombo = diffAttrs.maxCombo || beatmap.max_combo || 0;
+    const difficulty = diffAttrs;
 
     const cs = mapAttrs.cs;
     const ar = mapAttrs.ar;
@@ -164,11 +162,11 @@ async function run(messages, args) {
     const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
     const hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
 
-    // 6. Calcular PP para diferentes precisiones
-    const ppSS = new engine.Performance({ mods: activeModsStr }).calculate(map).pp.toFixed(2);
-    const pp99 = new engine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp.toFixed(2);
-    const pp98 = new engine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp.toFixed(2);
-    const pp95 = new engine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp.toFixed(2);
+    // 6. Calcular PP para diferentes precisiones sobre los atributos de dificultad pre-calculados
+    const ppSS = new engine.Performance({ mods: activeModsStr }).calculate(diffAttrs).pp.toFixed(2);
+    const pp99 = new engine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(diffAttrs).pp.toFixed(2);
+    const pp98 = new engine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(diffAttrs).pp.toFixed(2);
+    const pp95 = new engine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(diffAttrs).pp.toFixed(2);
 
     // Estilo de estados de mapa con traducciones
     const status_names = {
