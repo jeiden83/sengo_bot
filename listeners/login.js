@@ -26,6 +26,8 @@ async function login(client, config) {
     });
 
     client.on(Events.Debug, (info) => {
+        // Ocultar heartbeats rutinarios de discord para evitar spam en los logs
+        if (info.toLowerCase().includes('heartbeat')) return;
         Logger.system(`[Discord WS] ${info}`);
     });
 
