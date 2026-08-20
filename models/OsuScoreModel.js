@@ -2,7 +2,7 @@ const { v2 } = require('osu-api-extended');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../utils/ppEngine.js");
 const { getSupabaseClient } = require("../db/database.js");
 const OsuUserModel = require('./OsuUserModel.js');
 const BeatmapModel = require('./BeatmapModel.js');
@@ -143,9 +143,11 @@ function convertGatariMods(modsBitmask) {
 /**
  * Calcula el rendimiento (PP) y el PP teórico en caso de Full Combo.
  */
-function calculatePP(recent_scores, map, maximo_pp, Attrs) {
+function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) {
     normalizeScore(recent_scores);
     const { great = 0, ok = 0, meh = 0, miss = 0, perfect = 0, good = 0, small_tick_miss = 0 } = recent_scores.statistics;
+
+    const engine = ppEngine.getEngine(engineChoice || recent_scores?.ppEngine);
 
     let mode = recent_scores.mode;
     if (mode === undefined) {
@@ -163,16 +165,16 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     mode = mode || 'osu';
 
     const rosuModeMap = {
-        'osu': rosu.GameMode.Osu,
-        'taiko': rosu.GameMode.Taiko,
-        'fruits': rosu.GameMode.Catch,
-        'mania': rosu.GameMode.Mania,
-        0: rosu.GameMode.Osu,
-        1: rosu.GameMode.Taiko,
-        2: rosu.GameMode.Catch,
-        3: rosu.GameMode.Mania
+        'osu': engine.GameMode.Osu,
+        'taiko': engine.GameMode.Taiko,
+        'fruits': engine.GameMode.Catch,
+        'mania': engine.GameMode.Mania,
+        0: engine.GameMode.Osu,
+        1: engine.GameMode.Taiko,
+        2: engine.GameMode.Catch,
+        3: engine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : engine.GameMode.Osu;
 
     if (map.mode !== activeMode) {
         try {
@@ -238,7 +240,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     }
 
     if (maximo_pp) {
-        const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
+        const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
         return maxAttrs;
     }
 
@@ -249,7 +251,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         total_hits = great + ok + meh + miss + small_tick_miss;
     }
 
-    const difficulty = new rosu.Difficulty(max_perfomance_constructor);
+    const difficulty = new engine.Difficulty(max_perfomance_constructor);
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
 
@@ -2322,10 +2324,15 @@ async function getUserNationalTopsCount(userId, mode, country_code = 'VE') {
     return count || 0;
 }
 
+function benchmarkPP(score, mapInstance) {
+    return ppEngine.benchmarkEngines(score, mapInstance, calculatePP);
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
     calculatePP,
+    benchmarkPP,
     getUnrankedBeatmapUserAllScores,
     getUserRecentScores,
     getUserTopScores,

@@ -364,19 +364,20 @@ async function run(messages, args) {
     let targetStars = beatmap_metadata.difficulty_rating;
     try {
         const { getBeatmap_osu } = require("../../utils/osu.js");
-        const rosu = require("rosu-pp-js");
-        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
+        const ppEngine = require("../../../utils/ppEngine.js");
+        const engine = ppEngine.getEngine(parsed_args.ppEngine);
+        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata, parsed_args.ppEngine);
         
         const activeGamemode = parsed_args.gamemode || targetGamemode || beatmap_metadata.mode;
         const rosuModeMap = {
-            'osu': rosu.GameMode.Osu,
-            'taiko': rosu.GameMode.Taiko,
-            'fruits': rosu.GameMode.Catch,
-            'mania': rosu.GameMode.Mania,
-            0: rosu.GameMode.Osu,
-            1: rosu.GameMode.Taiko,
-            2: rosu.GameMode.Catch,
-            3: rosu.GameMode.Mania
+            'osu': engine.GameMode.Osu,
+            'taiko': engine.GameMode.Taiko,
+            'fruits': engine.GameMode.Catch,
+            'mania': engine.GameMode.Mania,
+            0: engine.GameMode.Osu,
+            1: engine.GameMode.Taiko,
+            2: engine.GameMode.Catch,
+            3: engine.GameMode.Mania
         };
         const activeMode = rosuModeMap[activeGamemode] !== undefined ? rosuModeMap[activeGamemode] : rosu.GameMode.Osu;
         if (map.mode !== activeMode) {

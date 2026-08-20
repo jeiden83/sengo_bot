@@ -1,7 +1,7 @@
 const { getBeatmap_osu, findBeatmapInChannel } = require("../../utils/osu.js");
 const BeatmapModel = require("../../../models/BeatmapModel.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../../../utils/ppEngine.js");
 const { v2 } = require('osu-api-extended');
 const { doOsuEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
@@ -175,6 +175,13 @@ function parseSimArgs(args) {
         if (lower === '-mania') { options.mode = 'mania'; continue; }
         if (lower === '-std' || lower === '-osu') { options.mode = 'osu'; continue; }
 
+        // Flags de motor de PP
+        if (lower === '-sengo' || lower === '--sengo' || lower === '-rust' || lower === '-native') { options.ppEngine = 'sengo'; continue; }
+        if (lower === '-rosu' || lower === '--rosu' || lower === '-wasm' || lower === '-legacy') { options.ppEngine = 'rosu'; continue; }
+        if (lower.startsWith('-pp=') || lower.startsWith('--pp=')) { options.ppEngine = lower.split('=')[1]?.trim(); continue; }
+        if (lower.startsWith('-engine=') || lower.startsWith('--engine=')) { options.ppEngine = lower.split('=')[1]?.trim(); continue; }
+        if (lower === '-bench' || lower === '--bench' || lower === '-benchmark' || lower === '--benchmark') { options.ppBenchmark = true; continue; }
+
         // 8. Hit stats específicos (-n300 300 / -n100 5 / -n50 2)
         if (lower === '-n300' && i + 1 < argsList.length) { options.fixed300 = parseInt(argsList[i + 1]); i++; continue; }
         if (lower === '-n100' && i + 1 < argsList.length) { options.fixed100 = parseInt(argsList[i + 1]); i++; continue; }
@@ -289,10 +296,11 @@ async function run(messages, args) {
         return t(locale, 'sim.err_fetch_map');
     }
 
-    // Cargar archivo .osu con rosu-pp-js
+    // Cargar archivo .osu con el motor seleccionado
+    const engine = ppEngine.getEngine(simOptions.ppEngine);
     let map;
     try {
-        map = await getBeatmap_osu(beatmapData.beatmapset_id, beatmapData.id, beatmapData);
+        map = await getBeatmap_osu(beatmapData.beatmapset_id, beatmapData.id, beatmapData, simOptions.ppEngine);
     } catch (e) {
         console.error("Error al cargar .osu para s.sim:", e.message);
         return t(locale, 'sim.err_fetch_map');
@@ -300,16 +308,16 @@ async function run(messages, args) {
 
     // Aplicar conversión de modo si fue forzado
     const modeNameMap = {
-        'osu': rosu.GameMode.Osu,
-        'std': rosu.GameMode.Osu,
-        'taiko': rosu.GameMode.Taiko,
-        'fruits': rosu.GameMode.Catch,
-        'ctb': rosu.GameMode.Catch,
-        'catch': rosu.GameMode.Catch,
-        'mania': rosu.GameMode.Mania
+        'osu': engine.GameMode.Osu,
+        'std': engine.GameMode.Osu,
+        'taiko': engine.GameMode.Taiko,
+        'fruits': engine.GameMode.Catch,
+        'ctb': engine.GameMode.Catch,
+        'catch': engine.GameMode.Catch,
+        'mania': engine.GameMode.Mania
     };
     const requestedModeStr = simOptions.mode || beatmapData.mode;
-    const activeMode = modeNameMap[requestedModeStr] !== undefined ? modeNameMap[requestedModeStr] : rosu.GameMode.Osu;
+    const activeMode = modeNameMap[requestedModeStr] !== undefined ? modeNameMap[requestedModeStr] : engine.GameMode.Osu;
 
     if (map.mode !== activeMode) {
         map.convert(activeMode);
@@ -317,9 +325,9 @@ async function run(messages, args) {
 
     const activeModsStr = simOptions.mods || 'NM';
 
-    // Obtener Max Combo y Stars con rosu
-    const perfMax = new rosu.Performance({ mods: activeModsStr }).calculate(map);
-    const beatmapMaxCombo = perfMax.difficulty.maxCombo || beatmapData.max_combo || 1;
+    // Obtener Max Combo y Stars con el motor activo
+    const perfMax = new engine.Performance({ mods: activeModsStr }).calculate(map);
+    const beatmapMaxCombo = (perfMax.difficulty ? perfMax.difficulty.maxCombo : perfMax.maxCombo) || beatmapData.max_combo || 1;
     const totalObjects = map.nObjects || (beatmapData.count_circles + beatmapData.count_sliders + beatmapData.count_spinners) || 100;
 
     // Determinar Misses y Combo
@@ -338,7 +346,7 @@ async function run(messages, args) {
     });
 
     // Calcular Performance de la jugada simulada
-    const perfSim = new rosu.Performance({
+    const perfSim = new engine.Performance({
         mods: activeModsStr,
         n300: hitsResult.count300,
         n100: hitsResult.count100,
@@ -351,7 +359,7 @@ async function run(messages, args) {
     // Calcular Performance si la jugada hubiera sido FC (para mostrar el PP entre paréntesis)
     let perfFC = null;
     if (misses > 0 || combo < beatmapMaxCombo) {
-        perfFC = new rosu.Performance({
+        perfFC = new engine.Performance({
             mods: activeModsStr,
             n300: hitsResult.count300 + misses,
             n100: hitsResult.count100,

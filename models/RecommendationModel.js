@@ -982,7 +982,7 @@ async function getPersonalizedRecommendations({
 
 async function recalculateExactPP(recs, activeMods) {
     try {
-        const rosu = require("rosu-pp-js");
+        const ppEngine = require("../utils/ppEngine.js");
         const BeatmapModel = require("./BeatmapModel.js");
 
         for (const rec of recs) {
@@ -1000,24 +1000,25 @@ async function recalculateExactPP(recs, activeMods) {
                 };
                 const map = await BeatmapModel.getBeatmap_osu(rec.beatmapsetId, rec.beatmapId, meta);
                 if (map) {
-                    const perfAttrs = new rosu.Performance({ mods: activeModsStr }).calculate(map);
+                    const perfAttrs = new ppEngine.Performance({ mods: activeModsStr }).calculate(map);
                     const ppSS = perfAttrs.pp;
-                    const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
+                    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
 
                     rec.maxPP = Math.round(ppSS);
                     rec.pp99 = Math.round(pp99);
-                    if (perfAttrs.difficulty && typeof perfAttrs.difficulty.stars === 'number') {
-                        rec.stars = perfAttrs.difficulty.stars;
+                    const starsVal = (perfAttrs.difficulty ? perfAttrs.difficulty.stars : perfAttrs.stars);
+                    if (typeof starsVal === 'number') {
+                        rec.stars = starsVal;
                     }
 
                     map.free();
                 }
-            } catch (innerErr) {
-                Logger.system(`Error al recalcular PP exacto con rosu para mapa ${rec.beatmapId}: ${innerErr.message}`);
+            } catch (err) {
+                // Silencioso por mapa individual
             }
         }
-    } catch (outerErr) {
-        Logger.system(`Error cargando rosu-pp para recalculación de recomendaciones: ${outerErr.message}`);
+    } catch (e) {
+        console.error("[RecModel] Error recalculando exact PP:", e);
     }
     return recs;
 }

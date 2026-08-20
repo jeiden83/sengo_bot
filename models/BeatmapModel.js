@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const https = require('https');
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../utils/ppEngine.js");
 const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
@@ -29,9 +29,10 @@ function setWithLimit(map, key, value, limit = 100) {
  * Obtiene y descarga el beatmap.osu dado el ID del set y del mapa.
  * Usado principalmente para el cálculo de PP.
  */
-async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata) {
+async function getBeatmap_osu(beatmapset_id, beatmap_osu_id, beatmap_metadata, engineChoice = null) {
     const filePath = await downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_metadata);
-    return new rosu.Beatmap(fs.readFileSync(filePath));
+    const engine = ppEngine.getEngine(engineChoice);
+    return new engine.Beatmap(fs.readFileSync(filePath));
 }
 
 /**

@@ -451,7 +451,7 @@ async function run(messages, args) {
             }
 
             // Calcular la duración total ajustada por el multiplicador de velocidad
-            const { BeatmapAttributesBuilder } = require("rosu-pp-js");
+            const { BeatmapAttributesBuilder } = require("../../../utils/ppEngine.js");
             const attrsBuilder = new BeatmapAttributesBuilder({
                 map: map,
                 mods: activeModsStr
@@ -519,7 +519,7 @@ async function run(messages, args) {
                     // Convertir el modo de juego si es necesario
                     const requestedMode = parser_res.parsed_args.gamemode;
                     if (beatmap.mode === 'osu' && requestedMode && requestedMode !== 'osu') {
-                        const { GameMode } = require("rosu-pp-js");
+                        const { GameMode } = require("../../../utils/ppEngine.js");
                         const modeMap = {
                             'osu': GameMode.Osu,
                             'taiko': GameMode.Taiko,

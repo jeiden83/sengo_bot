@@ -1,6 +1,6 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParser, argsParserNoCommand, getOsuUser } = require("../../utils/osu.js");
 const ReworkModel = require("../../../models/ReworkModel.js");
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../../../utils/ppEngine.js");
 const { doOsuReworkMapEmbed, doOsuReworkUserEmbed, doOsuReworkListEmbed, doOsuReworkTopEmbed, doOsuReworkPlayEmbed } = require("../../../views/osuEmbeds.js");
 const { t } = require("../../../utils/i18n.js");
 const config = require("../../../config.js");
@@ -1018,10 +1018,10 @@ async function run(messages, args) {
 
     if (activeMode === 'osu' && requestedMode && requestedMode !== 'osu') {
         const modeMap = {
-            'osu': rosu.GameMode.Osu,
-            'taiko': rosu.GameMode.Taiko,
-            'fruits': rosu.GameMode.Catch,
-            'mania': rosu.GameMode.Mania
+            'osu': ppEngine.GameMode.Osu,
+            'taiko': ppEngine.GameMode.Taiko,
+            'fruits': ppEngine.GameMode.Catch,
+            'mania': ppEngine.GameMode.Mania
         };
         if (modeMap[requestedMode] !== undefined) {
             map.convert(modeMap[requestedMode]);
@@ -1030,19 +1030,19 @@ async function run(messages, args) {
     }
 
     // Calcular estrellas base
-    const baseStarsPerf = new rosu.Performance({ mods: [] });
+    const baseStarsPerf = new ppEngine.Performance({ mods: [] });
     const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const baseStars = baseStarsAttrs.difficulty.stars;
+    const baseStars = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.stars : baseStarsAttrs.stars) || 0;
 
-    const modStarsPerf = new rosu.Performance({ mods: activeModsStr });
+    const modStarsPerf = new ppEngine.Performance({ mods: activeModsStr });
     const modStarsAttrs = modStarsPerf.calculate(map);
-    const liveModStars = modStarsAttrs.difficulty.stars;
+    const liveModStars = (modStarsAttrs.difficulty ? modStarsAttrs.difficulty.stars : modStarsAttrs.stars) || 0;
 
     // Calcular PP para diferentes precisiones en Live
-    const ppSS = new rosu.Performance({ mods: activeModsStr }).calculate(map).pp;
-    const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
-    const pp98 = new rosu.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp;
-    const pp95 = new rosu.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp;
+    const ppSS = new ppEngine.Performance({ mods: activeModsStr }).calculate(map).pp;
+    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
+    const pp98 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp;
+    const pp95 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp;
 
     const livePPValues = {
         ppSS,
@@ -1051,19 +1051,19 @@ async function run(messages, args) {
         pp95,
         baseStars,
         liveModStars,
-        maxCombo: baseStarsAttrs.difficulty.maxCombo
+        maxCombo: (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0
     };
 
     if (parsedPlay) {
         parsedPlay.liveModStars = liveModStars;
-        parsedPlay.maxCombo = baseStarsAttrs.difficulty.maxCombo;
+        parsedPlay.maxCombo = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0;
         if (!parsedPlay.combo) {
-            parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
+            parsedPlay.combo = parsedPlay.maxCombo;
         }
 
         let fullLivePP = 0;
         try {
-            const livePerf = new rosu.Performance({
+            const livePerf = new ppEngine.Performance({
                 mods: activeModsStr,
                 accuracy: parsedPlay.accuracy,
                 combo: parsedPlay.combo || undefined,
@@ -1080,7 +1080,7 @@ async function run(messages, args) {
                     const total_hits = (parsedPlay.count_300 || 0) + (parsedPlay.count_100 || 0) + (parsedPlay.count_50 || 0) + (parsedPlay.misses || 0);
                     if (total_hits > 0) {
                         try {
-                            const difficulty = new rosu.Difficulty({ mods: activeModsStr });
+                            const difficulty = new ppEngine.Difficulty({ mods: activeModsStr });
                             parsedPlay.livePP = difficulty.gradualPerformance(map).nth({
                                 maxCombo: parsedPlay.combo || undefined,
                                 misses: parsedPlay.misses,
@@ -1375,21 +1375,21 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
     const activeModsStr = modsStr;
     let activeMode = beatmap.mode;
 
-    const baseStarsPerf = new rosu.Performance({ mods: [] });
+    const baseStarsPerf = new ppEngine.Performance({ mods: [] });
     const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const modStarsPerf = new rosu.Performance({ mods: activeModsStr });
+    const modStarsPerf = new ppEngine.Performance({ mods: activeModsStr });
     const modStarsAttrs = modStarsPerf.calculate(map);
-    const liveModStars = modStarsAttrs.difficulty.stars;
+    const liveModStars = (modStarsAttrs.difficulty ? modStarsAttrs.difficulty.stars : modStarsAttrs.stars) || 0;
 
     parsedPlay.liveModStars = liveModStars;
-    parsedPlay.maxCombo = baseStarsAttrs.difficulty.maxCombo;
+    parsedPlay.maxCombo = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0;
     if (!parsedPlay.combo) {
-        parsedPlay.combo = baseStarsAttrs.difficulty.maxCombo;
+        parsedPlay.combo = parsedPlay.maxCombo;
     }
 
     let fullLivePP = 0;
     try {
-        const livePerf = new rosu.Performance({
+        const livePerf = new ppEngine.Performance({
             mods: activeModsStr,
             accuracy: parsedPlay.accuracy,
             combo: parsedPlay.combo || undefined,
@@ -1406,7 +1406,7 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
                 const total_hits = (parsedPlay.count_300 || 0) + (parsedPlay.count_100 || 0) + (parsedPlay.count_50 || 0) + (parsedPlay.misses || 0);
                 if (total_hits > 0) {
                     try {
-                        const difficulty = new rosu.Difficulty({ mods: activeModsStr });
+                        const difficulty = new ppEngine.Difficulty({ mods: activeModsStr });
                         parsedPlay.livePP = difficulty.gradualPerformance(map).nth({
                             maxCombo: parsedPlay.combo || undefined,
                             misses: parsedPlay.misses,

@@ -1,6 +1,6 @@
 const { getBeatmap_osu, getBeatmap, findBeatmapInChannel, argsParserNoCommand, getBeatmapsetTags } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../../../utils/ppEngine.js");
 
 function formatLength(seconds) {
     const m = Math.floor(seconds / 60);
@@ -93,9 +93,10 @@ async function run(messages, args) {
         return { embeds: [embed], components };
     }
 
+    const engine = ppEngine.getEngine(parsed_args.ppEngine);
     let map;
     try {
-        map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap);
+        map = await getBeatmap_osu(beatmap.beatmapset_id, beatmap.id, beatmap, parsed_args.ppEngine);
     } catch (e) {
         return t(locale, 'map.err_parse', { id: beatmap_id });
     }
@@ -113,10 +114,10 @@ async function run(messages, args) {
     // Si el base es 'osu' (std) y el usuario especificó otro modo de juego, lo convertimos
     if (activeMode === 'osu' && requestedMode && requestedMode !== 'osu') {
         const modeMap = {
-            'osu': rosu.GameMode.Osu,
-            'taiko': rosu.GameMode.Taiko,
-            'fruits': rosu.GameMode.Catch,
-            'mania': rosu.GameMode.Mania
+            'osu': engine.GameMode.Osu,
+            'taiko': engine.GameMode.Taiko,
+            'fruits': engine.GameMode.Catch,
+            'mania': engine.GameMode.Mania
         };
         if (modeMap[requestedMode] !== undefined) {
             map.convert(modeMap[requestedMode]);
@@ -126,12 +127,12 @@ async function run(messages, args) {
     }
 
     // Calcular estrellas base (con o sin conversión, pero sin mods)
-    const baseStarsPerf = new rosu.Performance({ mods: [] });
+    const baseStarsPerf = new engine.Performance({ mods: [] });
     const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const baseStars = baseStarsAttrs.difficulty.stars;
+    const baseStars = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.stars : baseStarsAttrs.stars) || 0;
 
     // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
-    const baseBuilder = new rosu.BeatmapAttributesBuilder({ map: map });
+    const baseBuilder = new engine.BeatmapAttributesBuilder({ map: map });
     const baseMapAttrs = baseBuilder.build();
     const baseCs = baseMapAttrs.cs;
     const baseAr = baseMapAttrs.ar;
@@ -140,15 +141,15 @@ async function run(messages, args) {
     const baseBpm = Math.round(map.bpm);
 
     // Calcular estadísticas y atributos ajustados por mods
-    const builder = new rosu.BeatmapAttributesBuilder({
+    const builder = new engine.BeatmapAttributesBuilder({
         map: map,
         mods: activeModsStr
     });
     const mapAttrs = builder.build();
 
-    const perf = new rosu.Performance({ mods: activeModsStr });
+    const perf = new engine.Performance({ mods: activeModsStr });
     const attrs = perf.calculate(map);
-    const difficulty = attrs.difficulty;
+    const difficulty = attrs.difficulty || attrs;
 
     const stars = difficulty.stars;
     const maxCombo = difficulty.maxCombo || beatmap.max_combo || 0;
@@ -164,10 +165,10 @@ async function run(messages, args) {
     const hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
 
     // 6. Calcular PP para diferentes precisiones
-    const ppSS = new rosu.Performance({ mods: activeModsStr }).calculate(map).pp.toFixed(2);
-    const pp99 = new rosu.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp.toFixed(2);
-    const pp98 = new rosu.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp.toFixed(2);
-    const pp95 = new rosu.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp.toFixed(2);
+    const ppSS = new engine.Performance({ mods: activeModsStr }).calculate(map).pp.toFixed(2);
+    const pp99 = new engine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp.toFixed(2);
+    const pp98 = new engine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp.toFixed(2);
+    const pp95 = new engine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp.toFixed(2);
 
     // Estilo de estados de mapa con traducciones
     const status_names = {
@@ -304,10 +305,10 @@ async function run(messages, args) {
                 try {
                     if (beatmap.mode === 'osu' && requestedMode && requestedMode !== 'osu') {
                         const modeMap = {
-                            'osu': rosu.GameMode.Osu,
-                            'taiko': rosu.GameMode.Taiko,
-                            'fruits': rosu.GameMode.Catch,
-                            'mania': rosu.GameMode.Mania
+                            'osu': engine.GameMode.Osu,
+                            'taiko': engine.GameMode.Taiko,
+                            'fruits': engine.GameMode.Catch,
+                            'mania': engine.GameMode.Mania
                         };
                         if (modeMap[requestedMode] !== undefined) {
                             tempMap.convert(modeMap[requestedMode]);

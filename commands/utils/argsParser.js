@@ -457,6 +457,8 @@ function argsParserNoCommand(args, options = {}) {
     let mapset = false;
     let nemesis = false;
     let srFilters = [];
+    let ppEngine = null;
+    let ppBenchmark = false;
 
     const extractId = str => {
         if (!str) return null;
@@ -874,6 +876,30 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
+        // Si es selector de motor de PP (-sengo / -rosu / -pp=sengo / -pp=rosu / -engine=sengo / -engine=rosu)
+        if (arg === "-sengo" || arg === "--sengo" || arg === "-rust" || arg === "-native") {
+            ppEngine = 'sengo';
+            continue;
+        }
+        if (arg === "-rosu" || arg === "--rosu" || arg === "-wasm" || arg === "-legacy") {
+            ppEngine = 'rosu';
+            continue;
+        }
+        if (arg.startsWith("-pp=") || arg.startsWith("--pp=")) {
+            ppEngine = arg.split("=")[1]?.toLowerCase().trim();
+            continue;
+        }
+        if (arg.startsWith("-engine=") || arg.startsWith("--engine=")) {
+            ppEngine = arg.split("=")[1]?.toLowerCase().trim();
+            continue;
+        }
+
+        // Si es modo benchmark / comparador (-bench / -benchmark)
+        if (arg === "-bench" || arg === "--bench" || arg === "-benchmark" || arg === "--benchmark") {
+            ppBenchmark = true;
+            continue;
+        }
+
         // Si es exactamente "-server" o "-srv"
         if (arg === "-server" || arg === "-srv") {
             if (i + 1 < args_list.length) {
@@ -1258,7 +1284,9 @@ function argsParserNoCommand(args, options = {}) {
         'nochoke': nochoke,
         'mapset': mapset,
         'nemesis': nemesis,
-        'srFilters': srFilters
+        'srFilters': srFilters,
+        'ppEngine': ppEngine,
+        'ppBenchmark': ppBenchmark
     };
     return parsed_args;
 }

@@ -1,5 +1,5 @@
 const { createCanvas } = require('canvas');
-const rosu = require("rosu-pp-js");
+const ppEngine = require("./ppEngine.js");
 
 function formatLength(seconds) {
     const m = Math.floor(seconds / 60);
@@ -9,7 +9,7 @@ function formatLength(seconds) {
 
 /**
  * Genera el búfer de imagen (PNG) del gráfico de strains para un beatmap dado.
- * @param {rosu.Beatmap} map Instancia del mapa de rosu-pp-js
+ * @param {Object} map Instancia del mapa (Beatmap)
  * @param {string} modsStr String de los mods activos
  * @param {string} activeMode Modo de juego activo ('osu', 'taiko', 'fruits', 'mania')
  * @param {number} totalLength Duración total del mapa en segundos
@@ -18,7 +18,7 @@ function formatLength(seconds) {
  * @returns {Buffer} Búfer de la imagen PNG
  */
 function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent, failLabel) {
-    const diff = new rosu.Difficulty({ mods: modsStr });
+    const diff = new ppEngine.Difficulty({ mods: modsStr });
     const strains = diff.strains(map);
 
     // Identificar los arreglos a graficar según el modo de juego

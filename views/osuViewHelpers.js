@@ -396,7 +396,7 @@ function hasLazerCustomMods(mods) {
  * Ej: `CS 5.2▲ | AR 10▲ | OD 10▲ | HP 7▲ | BPM 180`
  */
 function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
-    const rosu = require('rosu-pp-js');
+    const ppEngine = require('../utils/ppEngine.js');
     let baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
     let baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
     let baseOd = beatmap.accuracy !== undefined ? beatmap.accuracy : (beatmap.od !== undefined ? beatmap.od : (beatmap.ar !== undefined ? beatmap.ar : 0));
@@ -428,18 +428,18 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
     }
 
     const rosuModeMap = {
-        'osu': rosu.GameMode.Osu,
-        'taiko': rosu.GameMode.Taiko,
-        'fruits': rosu.GameMode.Catch,
-        'catch': rosu.GameMode.Catch,
-        'ctb': rosu.GameMode.Catch,
-        'mania': rosu.GameMode.Mania,
-        0: rosu.GameMode.Osu,
-        1: rosu.GameMode.Taiko,
-        2: rosu.GameMode.Catch,
-        3: rosu.GameMode.Mania
+        'osu': ppEngine.GameMode.Osu,
+        'taiko': ppEngine.GameMode.Taiko,
+        'fruits': ppEngine.GameMode.Catch,
+        'catch': ppEngine.GameMode.Catch,
+        'ctb': ppEngine.GameMode.Catch,
+        'mania': ppEngine.GameMode.Mania,
+        0: ppEngine.GameMode.Osu,
+        1: ppEngine.GameMode.Taiko,
+        2: ppEngine.GameMode.Catch,
+        3: ppEngine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : ppEngine.GameMode.Osu;
 
     let modCs = baseCs;
     let modAr = baseAr;
@@ -448,7 +448,7 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
     let clockRate = 1.0;
 
     try {
-        const builder = new rosu.BeatmapAttributesBuilder({
+        const builder = new ppEngine.BeatmapAttributesBuilder({
             cs: baseCs,
             ar: baseAr,
             od: baseOd,

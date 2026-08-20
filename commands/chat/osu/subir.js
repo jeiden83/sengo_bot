@@ -5,7 +5,7 @@ const OsuUserModel = require("../../../models/OsuUserModel.js");
 
 const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
 const axios = require('axios');
-const rosu = require("rosu-pp-js");
+const ppEngine = require("../../../utils/ppEngine.js");
 const { t } = require("../../../utils/i18n.js");
 
 /**
@@ -107,12 +107,12 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     }
 
     const rosuModeMap = {
-        'osu': rosu.GameMode.Osu,
-        'taiko': rosu.GameMode.Taiko,
-        'fruits': rosu.GameMode.Catch,
-        'mania': rosu.GameMode.Mania
+        'osu': ppEngine.GameMode.Osu,
+        'taiko': ppEngine.GameMode.Taiko,
+        'fruits': ppEngine.GameMode.Catch,
+        'mania': ppEngine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : rosu.GameMode.Osu;
+    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : ppEngine.GameMode.Osu;
 
     if (map.mode !== activeMode) {
         try {
@@ -123,11 +123,11 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     }
 
     if (maximo_pp) {
-        const maxAttrs = new rosu.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
+        const maxAttrs = new ppEngine.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
         return maxAttrs;
     }
 
-    const difficulty = new rosu.Difficulty(max_perfomance_constructor);
+    const difficulty = new ppEngine.Difficulty(max_perfomance_constructor);
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
 

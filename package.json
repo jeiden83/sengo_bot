@@ -27,6 +27,7 @@
     "osu-api-extended": "^3.1.12",
     "osu-web.js": "^1.1.0",
     "rosu-pp-js": "^4.0.1",
+    "sengo-pp": "file:../sengo_pp",
     "sharp": "^0.34.5",
     "socket.io-client": "^4.8.3",
     "tatsu": "^1.2.0"
