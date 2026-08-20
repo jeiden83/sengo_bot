@@ -1918,12 +1918,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                         await BeatmapModel.getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
                         console.log(`[BG-PRELOAD] Mapa precargado: ${beatmapId}`);
 
-                        // Si hay un mensaje provisto y pertenece a una guild, gatillar precarga del gap y compare
-                        if (message && message.guild) {
-                            triggerBackgroundGapCache(message, beatmapId, gamemode).catch(err => {
-                                console.error(`[BG-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
-                            });
-                        }
+                        // Precargar únicamente el mapa y metadata, evitando saturar cuota con gap en cada link/comando
                     }
                 } catch (err) {
                     console.error(`[BG-PRELOAD] Error al precargar beatmap ${beatmapId}:`, err);

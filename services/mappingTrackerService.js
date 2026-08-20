@@ -1,6 +1,7 @@
 const Logger = require("../utils/logger.js");
 const MappingTrackerModel = require("../models/MappingTrackerModel.js");
 const { doMappingTrackerNotificationEmbed } = require("../views/mappingTrackerViews.js");
+const { osuApiQueue } = require("../utils/OsuApiQueue.js");
 const axios = require("axios");
 
 let trackerInterval = null;
@@ -53,46 +54,46 @@ async function fetchUserBeatmapsets(osuId, type = null) {
         if (type && ['loved', 'graveyard', 'ranked', 'pending'].includes(type.toLowerCase())) {
             const reqType = type.toLowerCase() === 'pending' ? 'unranked' : type.toLowerCase();
             const url = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/${reqType}?limit=25`;
-            const res = await axios.get(url, {
+            const res = await osuApiQueue.add(() => axios.get(url, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     'User-Agent': 'SengoBot/2.0'
                 }
-            });
+            }), 0);
             return Array.isArray(res.data) ? res.data : [];
         }
 
         const url = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/unranked?limit=50`;
-        const res = await axios.get(url, {
+        const res = await osuApiQueue.add(() => axios.get(url, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'User-Agent': 'SengoBot/2.0'
             }
-        });
+        }), 0);
         const unranked = Array.isArray(res.data) ? res.data : [];
 
         // También consultar los ranked más recientes
         const rankedUrl = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/ranked?limit=10`;
-        const rankedRes = await axios.get(rankedUrl, {
+        const rankedRes = await osuApiQueue.add(() => axios.get(rankedUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'User-Agent': 'SengoBot/2.0'
             }
-        });
+        }), 0);
         const ranked = Array.isArray(rankedRes.data) ? rankedRes.data : [];
 
         // También consultar los graveyard más recientes para registrar su estado y detectar revives correctamente
         const graveyardUrl = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/graveyard?limit=15`;
-        const graveyardRes = await axios.get(graveyardUrl, {
+        const graveyardRes = await osuApiQueue.add(() => axios.get(graveyardUrl, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'User-Agent': 'SengoBot/2.0'
             }
-        }).catch(() => ({ data: [] }));
+        }), 0).catch(() => ({ data: [] }));
         const graveyard = Array.isArray(graveyardRes.data) ? graveyardRes.data : [];
 
         return [...ranked, ...unranked, ...graveyard];
@@ -112,13 +113,13 @@ async function fetchGlobalBeatmapEvents() {
     if (!token) return [];
 
     try {
-        const res = await axios.get("https://osu.ppy.sh/api/v2/beatmapsets/events", {
+        const res = await osuApiQueue.add(() => axios.get("https://osu.ppy.sh/api/v2/beatmapsets/events", {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'User-Agent': 'SengoBot/2.0'
             }
-        });
+        }), 0);
         return Array.isArray(res.data?.events) ? res.data.events : [];
     } catch (err) {
         console.error('[MAPPING-TRACKER-SERVICE] Error al consultar eventos globales de beatmapsets:', err.message);
@@ -497,13 +498,13 @@ function scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, 
             const token = await getOsuApiToken();
             if (!token) return;
 
-            const res = await axios.get(`https://osu.ppy.sh/api/v2/beatmapsets/${mapsetId}`, {
+            const res = await osuApiQueue.add(() => axios.get(`https://osu.ppy.sh/api/v2/beatmapsets/${mapsetId}`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
                     'User-Agent': 'SengoBot/2.0'
                 }
-            });
+            }), 0);
 
             const updatedMapset = res.data;
             if (updatedMapset && Array.isArray(updatedMapset.beatmaps) && updatedMapset.beatmaps.length > 0) {
@@ -569,13 +570,13 @@ async function fetchBeatmapsetEvents(beatmapsetId) {
 
     try {
         const url = `https://osu.ppy.sh/api/v2/beatmapsets/events?beatmapset_id=${beatmapsetId}`;
-        const res = await axios.get(url, {
+        const res = await osuApiQueue.add(() => axios.get(url, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'User-Agent': 'SengoBot/2.0'
             }
-        });
+        }), 0);
         return Array.isArray(res.data?.events) ? res.data.events : [];
     } catch (err) {
         return [];

@@ -152,6 +152,18 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                             }
                         }
                     }
+
+                    // ponytail: fallback predictivo ante desfase de propagación en la API de osu! Bancho
+                    if (!user_top_pos && pre_calculated && pre_calculated.pp > 0 && topScores.length > 0) {
+                        const numericPP = Number(pre_calculated.pp);
+                        const minTopPP = topScores[topScores.length - 1]?.pp || 0;
+                        if (numericPP >= minTopPP || topScores.length < 100) {
+                            const higherPlays = topScores.filter(s => (s.pp || 0) > numericPP).length;
+                            if (higherPlays < 100) {
+                                user_top_pos = higherPlays + 1;
+                            }
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Error fetching beatmap best score position / top scores:", e);
