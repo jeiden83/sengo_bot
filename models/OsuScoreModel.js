@@ -2169,15 +2169,8 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
         if (!beatmap_id) return;
 
         try {
-            let beatmap = score.beatmap;
-            if (!beatmap || beatmap.max_combo === undefined || beatmap.status === undefined) {
-                beatmap = await BeatmapModel.getBeatmap(beatmap_id);
-            }
-            const maxCombo = beatmap.max_combo || 0;
-            const isFC = score.perfect || (miss === 0 && score.max_combo >= (maxCombo - 2));
-
-            // Fast-path: Si la jugada ya es FC y no requiere rework local, mantenemos sus valores sin recálculo pesado
-            if (isFC && !score.values && typeof score.pp === 'number' && score.pp > 0) {
+            // Fast-path: Si la jugada no tuvo misses y no requiere rework, usamos sus datos de inmediato
+            if (miss === 0 && !score.values && typeof score.pp === 'number' && score.pp > 0) {
                 score.noChoke = {
                     accuracy: score.accuracy * 100,
                     pp: score.pp,
@@ -2220,13 +2213,14 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
             }
 
             const ncRank = calculateNoChokeRank(ncStats, score.mods, mode);
-
-            const map = await BeatmapModel.getBeatmap_osu(score.beatmap.beatmapset_id || score.beatmap.set_id || beatmap.beatmapset_id, beatmap_id, beatmap, engineChoice);
+            const beatmapset_id = score.beatmap?.beatmapset_id || score.beatmap?.set_id;
+            const map = await BeatmapModel.getBeatmap_osu(beatmapset_id, beatmap_id, score.beatmap, engineChoice);
             const maxAttrs = calculatePP(score, map, "maximo_pp", null, engineChoice);
-            
+            const maxCombo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : maxAttrs?.maxCombo) || score.beatmap?.max_combo || score.max_combo;
+
             const nc_score = {
                 ...score,
-                max_combo: maxCombo || score.max_combo,
+                max_combo: maxCombo,
                 statistics: ncStats,
                 mods: score.mods
             };
@@ -2243,7 +2237,7 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
                 pp: score.values ? rework_nc_pp : live_nc_pp,
                 live_pp: live_nc_pp,
                 rank: ncRank,
-                max_combo: maxCombo || score.max_combo,
+                max_combo: maxCombo,
                 statistics: ncStats
             };
         } catch (err) {
