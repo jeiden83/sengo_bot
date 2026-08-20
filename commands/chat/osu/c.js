@@ -379,14 +379,14 @@ async function run(messages, args) {
             2: engine.GameMode.Catch,
             3: engine.GameMode.Mania
         };
-        const activeMode = rosuModeMap[activeGamemode] !== undefined ? rosuModeMap[activeGamemode] : rosu.GameMode.Osu;
+        const activeMode = rosuModeMap[activeGamemode] !== undefined ? rosuModeMap[activeGamemode] : engine.GameMode.Osu;
         if (map.mode !== activeMode) {
             map.convert(activeMode);
         }
         
-        const baseAttrs = new rosu.Performance().calculate(map);
-        if (baseAttrs && baseAttrs.difficulty && baseAttrs.difficulty.stars !== undefined) {
-            targetStars = baseAttrs.difficulty.stars;
+        const baseAttrs = new engine.Difficulty().calculate(map);
+        if (baseAttrs && typeof baseAttrs.stars === 'number') {
+            targetStars = baseAttrs.stars;
         }
         map.free();
     } catch (err) {

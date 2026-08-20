@@ -122,7 +122,7 @@ function parseSimArgs(args) {
             options.mods = clean.slice(1).toUpperCase();
             continue;
         }
-        if ((lower === '-mods' || lower === '-m') && i + 1 < argsList.length) {
+        if ((lower === '-mods' || (lower === '-m' && !/^\d+$/.test(argsList[i + 1] || ''))) && i + 1 < argsList.length) {
             options.mods = argsList[i + 1].toUpperCase().replace(/[^A-Z]/g, '');
             i++;
             continue;
@@ -325,10 +325,15 @@ async function run(messages, args) {
 
     const activeModsStr = simOptions.mods || 'NM';
 
-    // Obtener Max Combo y Stars con el motor activo
-    const perfMax = new engine.Performance({ mods: activeModsStr }).calculate(map);
-    const beatmapMaxCombo = (perfMax.difficulty ? perfMax.difficulty.maxCombo : perfMax.maxCombo) || beatmapData.max_combo || 1;
+    // Obtener DifficultyAttributes y Stars con el motor activo
+    const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+    const beatmapMaxCombo = diffAttrs.maxCombo || beatmapData.max_combo || 1;
     const totalObjects = map.nObjects || (beatmapData.count_circles + beatmapData.count_sliders + beatmapData.count_spinners) || 100;
+
+    const perfMax = new engine.Performance({ mods: activeModsStr }).calculate(diffAttrs);
+    if (diffAttrs && typeof diffAttrs.stars === 'number') {
+        perfMax.stars = diffAttrs.stars;
+    }
 
     // Determinar Misses y Combo
     const misses = simOptions.misses !== null ? simOptions.misses : 0;
@@ -354,7 +359,7 @@ async function run(messages, args) {
         misses: hitsResult.misses,
         combo: combo,
         accuracy: hitsResult.accuracy
-    }).calculate(map);
+    }).calculate(diffAttrs);
 
     // Calcular Performance si la jugada hubiera sido FC (para mostrar el PP entre paréntesis)
     let perfFC = null;
@@ -367,7 +372,7 @@ async function run(messages, args) {
             misses: 0,
             combo: beatmapMaxCombo,
             accuracy: hitsResult.accuracy
-        }).calculate(map);
+        }).calculate(diffAttrs);
     }
 
     const grade = calculateGrade(hitsResult.accuracy, misses, combo, beatmapMaxCombo);
