@@ -1,7 +1,7 @@
-# Dependencias
+# Dependencias y Configuración IDE/Build
 node_modules/
-.vscode/extensions.json
-.vscode/launch.json
+.vscode/
+.wrangler/
 
 # Carpeta privada
 commands/chat/admin/
