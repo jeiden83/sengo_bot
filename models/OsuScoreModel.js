@@ -240,12 +240,14 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     }
 
     if (maximo_pp) {
-        const diffAttrs = Attrs ? Attrs : new engine.Difficulty(max_perfomance_constructor).calculate(map);
-        const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(diffAttrs);
-        if (diffAttrs && typeof diffAttrs.stars === 'number') {
-            maxAttrs.stars = diffAttrs.stars;
+        const targetDiffAttrs = (Attrs && Attrs.constructor?.name === 'DifficultyAttributes') 
+            ? Attrs 
+            : new engine.Difficulty(max_perfomance_constructor).calculate(map);
+        const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
+        if (targetDiffAttrs && typeof targetDiffAttrs.stars === 'number') {
+            maxAttrs.stars = targetDiffAttrs.stars;
             if (maxAttrs.difficulty) {
-                maxAttrs.difficulty.stars = diffAttrs.stars;
+                maxAttrs.difficulty.stars = targetDiffAttrs.stars;
             }
         }
         return maxAttrs;
@@ -258,6 +260,24 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         total_hits = great + ok + meh + miss + small_tick_miss;
     }
 
+    // Para jugadas completadas (Full Plays e IF FC), calculamos con el motor completo de Performance (con Reading)
+    if (recent_scores.passed !== false && !recent_scores.isFailed) {
+        const perfConstructor = { ...difficulty_constructor };
+        if (recent_scores.accuracy !== undefined) {
+            perfConstructor.accuracy = typeof recent_scores.accuracy === 'number' && recent_scores.accuracy <= 1 
+                ? recent_scores.accuracy * 100 
+                : recent_scores.accuracy;
+        } else if (total_hits > 0) {
+            const weighted = (great * 300) + (ok * 100) + (meh * 50);
+            perfConstructor.accuracy = (weighted / (total_hits * 300)) * 100;
+        }
+        const targetDiffAttrs = (Attrs && Attrs.constructor?.name === 'DifficultyAttributes') 
+            ? Attrs 
+            : new engine.Difficulty(max_perfomance_constructor).calculate(map);
+        return new engine.Performance(perfConstructor).calculate(targetDiffAttrs);
+    }
+
+    // Para jugadas fallidas a mitad del mapa, calculamos progresivamente con gradualPerformance
     const difficulty = new engine.Difficulty(max_perfomance_constructor);
     return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
 }
