@@ -2138,7 +2138,7 @@ function calculateNoChokeRank(stats, mods, mode = 'osu') {
     return "S";
 }
 
-async function ensureNoChokeScores(scores, gamemode) {
+async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
     if (!Array.isArray(scores) || scores.length === 0) return;
 
     // Precargar todos los mapas de las puntuaciones en lote desde la base de datos
@@ -2154,7 +2154,7 @@ async function ensureNoChokeScores(scores, gamemode) {
         }
     }
 
-    const promises = scores.map(async (score) => {
+    const processSingleScore = async (score) => {
         if (score.noChoke) return;
 
         const stats = score.statistics || {};
@@ -2174,7 +2174,20 @@ async function ensureNoChokeScores(scores, gamemode) {
                 beatmap = await BeatmapModel.getBeatmap(beatmap_id);
             }
             const maxCombo = beatmap.max_combo || 0;
-            const isFC = miss === 0 && score.max_combo >= (maxCombo - 2);
+            const isFC = score.perfect || (miss === 0 && score.max_combo >= (maxCombo - 2));
+
+            // Fast-path: Si la jugada ya es FC y no requiere rework local, mantenemos sus valores sin recálculo pesado
+            if (isFC && !score.values && typeof score.pp === 'number' && score.pp > 0) {
+                score.noChoke = {
+                    accuracy: score.accuracy * 100,
+                    pp: score.pp,
+                    live_pp: score.pp,
+                    rank: score.rank,
+                    max_combo: score.max_combo,
+                    statistics: score.statistics
+                };
+                return;
+            }
 
             const ncStats = {
                 perfect: perfect,
@@ -2208,8 +2221,8 @@ async function ensureNoChokeScores(scores, gamemode) {
 
             const ncRank = calculateNoChokeRank(ncStats, score.mods, mode);
 
-            const map = await BeatmapModel.getBeatmap_osu(score.beatmap.beatmapset_id || score.beatmap.set_id || beatmap.beatmapset_id, beatmap_id, beatmap);
-            const maxAttrs = calculatePP(score, map, "maximo_pp");
+            const map = await BeatmapModel.getBeatmap_osu(score.beatmap.beatmapset_id || score.beatmap.set_id || beatmap.beatmapset_id, beatmap_id, beatmap, engineChoice);
+            const maxAttrs = calculatePP(score, map, "maximo_pp", null, engineChoice);
             
             const nc_score = {
                 ...score,
@@ -2217,7 +2230,7 @@ async function ensureNoChokeScores(scores, gamemode) {
                 statistics: ncStats,
                 mods: score.mods
             };
-            const live_nc_pp = calculatePP(nc_score, map, null, maxAttrs).pp;
+            const live_nc_pp = calculatePP(nc_score, map, null, maxAttrs, engineChoice).pp;
             map.free();
 
             let rework_nc_pp = live_nc_pp;
@@ -2234,7 +2247,7 @@ async function ensureNoChokeScores(scores, gamemode) {
                 statistics: ncStats
             };
         } catch (err) {
-            console.error(`Error calculating no-choke for score ${score.score_id || score.id}:`, err);
+            console.error(`Error calculating no-choke for score ${score.score_id || score.id}:`, err.message);
             score.noChoke = {
                 accuracy: score.accuracy * 100,
                 pp: score.values ? score.values.local_pp : (score.pp || 0),
@@ -2244,9 +2257,21 @@ async function ensureNoChokeScores(scores, gamemode) {
                 statistics: score.statistics
             };
         }
+    };
+
+    // Procesamiento concurrente controlado (5 workers en paralelo) para no saturar memoria ni red
+    const queue = [...scores];
+    const concurrency = Math.min(5, queue.length);
+    const workers = Array.from({ length: concurrency }, async () => {
+        while (queue.length > 0) {
+            const item = queue.shift();
+            if (item) {
+                await processSingleScore(item);
+            }
+        }
     });
 
-    await Promise.all(promises);
+    await Promise.all(workers);
 }
 
 /**

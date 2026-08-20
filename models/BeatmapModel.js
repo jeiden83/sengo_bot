@@ -129,15 +129,15 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
         }
     }
 
-    // Si falló osu.direct o está marcado como offline temporalmente, usar osu.ppy.sh como fallback inmediato
+    // Si falló osu.direct o está marcado como offline temporalmente, usar osu.ppy.sh como fallback inmediato a través de la cola de la API
     if (!downloadSuccess) {
         try {
-            const response = await axios.get(`https://osu.ppy.sh/osu/${beatmap_osu_id}`, {
+            const response = await osuApiQueue.add(() => axios.get(`https://osu.ppy.sh/osu/${beatmap_osu_id}`, {
                 timeout: 5000,
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
                 }
-            });
+            }), 1);
             data = response.data;
             downloadSuccess = true;
         } catch (error) {

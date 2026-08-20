@@ -57,7 +57,26 @@ async function run(messages, args) {
 
     let originalScores = parser_res.fn_response;
     if (parser_res.parsed_args.nochoke) {
-        return t(locale, 'top.err_nc_disabled');
+        await ensureNoChokeScores(originalScores, parser_res.parsed_args.gamemode, parser_res.parsed_args.ppEngine);
+        originalScores.forEach(score => {
+            score.originalPP = score.pp;
+            score.originalAccuracy = score.accuracy;
+            score.originalRankGrade = score.rank;
+            score.originalStats = score.statistics;
+            score.originalCombo = score.max_combo;
+
+            if (score.noChoke) {
+                score.pp = score.noChoke.pp;
+                score.accuracy = score.noChoke.accuracy / 100;
+                score.rank = score.noChoke.rank;
+                score.statistics = score.noChoke.statistics;
+                score.max_combo = score.noChoke.max_combo;
+            }
+        });
+        originalScores.sort((a, b) => (b.pp || 0) - (a.pp || 0));
+        originalScores.forEach((score, idx) => {
+            score.noChokeRank = idx + 1;
+        });
     }
 
 
@@ -206,10 +225,10 @@ async function run(messages, args) {
             const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
             const total_hits = great + ok + meh + miss;
             const beatmap = await getBeatmap(score.beatmap.id);
-            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
-            const maxAttrs = calculatePP(score, map, "maximo_pp");
+            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap, parser_res.parsed_args.ppEngine);
+            const maxAttrs = calculatePP(score, map, "maximo_pp", null, parser_res.parsed_args.ppEngine);
 
-            const user_pp = score.pp ? score.pp : calculatePP(score, map, null, maxAttrs).pp;
+            const user_pp = score.pp ? score.pp : calculatePP(score, map, null, maxAttrs, parser_res.parsed_args.ppEngine).pp;
             const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
 
             let pp_fc = null;
@@ -226,7 +245,7 @@ async function run(messages, args) {
                         max_combo: beatmap_max_combo,
                         statistics: fc_statistics
                     };
-                    pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
+                    pp_fc = calculatePP(fc_score, map, null, maxAttrs, parser_res.parsed_args.ppEngine).pp;
                 } catch (err) {
                     console.error("Error calculating pp_fc:", err);
                 }
@@ -388,9 +407,9 @@ async function run(messages, args) {
             }
             try {
                 const beatmap = await getBeatmap(score.beatmap.id);
-                const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
-                const maxAttrs = calculatePP(score, map, "maximo_pp");
-                const stars = maxAttrs.difficulty.stars;
+                const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap, parser_res.parsed_args.ppEngine);
+                const maxAttrs = calculatePP(score, map, "maximo_pp", null, parser_res.parsed_args.ppEngine);
+                const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : score.beatmap.difficulty_rating);
                 map.free();
                 return stars;
             } catch (e) {
