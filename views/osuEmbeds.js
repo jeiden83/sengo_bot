@@ -50,7 +50,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = (pre_calculated.reworkStars || pre_calculated.maxAttrs.difficulty.stars).toFixed(2);
+    const difficultyStars = pre_calculated.reworkStars || pre_calculated.maxAttrs.stars || (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0);
+    const difficulty = (difficultyStars || 0).toFixed(2);
     const embedColor = getEmbedColor(message);
 
     const stats = recent_scores.statistics || {};
@@ -396,7 +397,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const difficulty = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
@@ -613,7 +614,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
 
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = pre_calculated.maxAttrs.difficulty.stars.toFixed(2);
+    const difficulty = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
@@ -881,13 +882,15 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         }
     }
 
+    const mapStars = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
+
     const embed = new EmbedBuilder()
         .setAuthor({
             name: authorName,
             url: authorUrl,
             iconURL: recent_scores.user.avatar_url
         })
-        .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${pre_calculated.maxAttrs.difficulty.stars.toFixed(2) + '★'} `)
+        .setTitle(`${recent_scores.beatmapset.title} [${recent_scores.beatmap.version}] - ${mapStars + '★'} `)
         .setURL(`https://osu.ppy.sh/b/${beatmap_id}`)
         .setDescription(`${line1}\n${line2}\n${line3}\n${ansiBlock}`)
         .setImage(recent_scores.beatmapset.covers["cover@2x"])

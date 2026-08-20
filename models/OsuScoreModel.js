@@ -240,7 +240,14 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     }
 
     if (maximo_pp) {
-        const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
+        const diffAttrs = Attrs ? Attrs : new engine.Difficulty(max_perfomance_constructor).calculate(map);
+        const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(diffAttrs);
+        if (diffAttrs && typeof diffAttrs.stars === 'number') {
+            maxAttrs.stars = diffAttrs.stars;
+            if (maxAttrs.difficulty) {
+                maxAttrs.difficulty.stars = diffAttrs.stars;
+            }
+        }
         return maxAttrs;
     }
 
