@@ -1,6 +1,6 @@
 const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
 
-const { doOsuTopSingleEmbed, doOsuTopListEmbed } = require("../../../views/osuEmbeds.js");
+const { doOsuTopSingleEmbed, doOsuTopListEmbed, doOsuTopProgressEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
 
@@ -56,8 +56,75 @@ async function run(messages, args) {
     });
 
     let originalScores = parser_res.fn_response;
+    let sentMessage = null;
+
     if (parser_res.parsed_args.nochoke) {
-        await ensureNoChokeScores(originalScores, parser_res.parsed_args.gamemode, parser_res.parsed_args.ppEngine);
+        const processStartTime = Date.now();
+        let stepStartTime = Date.now();
+
+        const stepTemplates = locale === 'es' ? [
+            "Obteniendo mejores jugadas de osu! API...",
+            "Calculando No-Choke y procesando mapas..."
+        ] : [
+            "Fetching top plays from osu! API...",
+            "Calculating No-Choke and processing maps..."
+        ];
+
+        const activeSteps = [
+            {
+                text: stepTemplates[0],
+                status: 'success',
+                duration: null,
+                extra: `(\`${originalScores.length}\` plays)`
+            },
+            {
+                text: stepTemplates[1],
+                status: 'loading',
+                duration: null,
+                extra: `(\`0/${originalScores.length}\` mapas)`
+            }
+        ];
+
+        const updateProgress = async (stepIndex, status, extra = "") => {
+            const step = activeSteps[stepIndex];
+            if (step) {
+                step.status = status;
+                if (extra) step.extra = extra;
+                if (status === 'success' || status === 'error') {
+                    if (step.duration === null) {
+                        step.duration = Date.now() - stepStartTime;
+                    }
+                }
+            }
+
+            const totalElapsed = Date.now() - processStartTime;
+            const progressEmbed = doOsuTopProgressEmbed(message, activeSteps, totalElapsed, locale);
+
+            try {
+                if (!sentMessage) {
+                    if (res && typeof res.reply === 'function') {
+                        sentMessage = await res.reply({ embeds: [progressEmbed], fetchReply: true });
+                    } else {
+                        sentMessage = await message.channel.send({ embeds: [progressEmbed] });
+                    }
+                } else if (typeof sentMessage.edit === 'function') {
+                    await sentMessage.edit({ embeds: [progressEmbed] });
+                }
+            } catch (e) {
+                // Silencioso
+            }
+        };
+
+        // Enviar embed de carga inicial
+        await updateProgress(1, 'loading', `(\`0/${originalScores.length}\` mapas)`);
+        stepStartTime = Date.now();
+
+        await ensureNoChokeScores(originalScores, parser_res.parsed_args.gamemode, parser_res.parsed_args.ppEngine, async (done, total) => {
+            const stepElapsed = Date.now() - stepStartTime;
+            const isDone = done === total;
+            await updateProgress(1, isDone ? 'success' : 'loading', `(\`${done}/${total}\` mapas) - **${stepElapsed}ms**`);
+        });
+
         originalScores.forEach(score => {
             score.originalPP = score.pp;
             score.originalAccuracy = score.accuracy;
@@ -189,6 +256,10 @@ async function run(messages, args) {
                 ? `\n- Dificultad: \`${filterStrings.join(' e ')}\``
                 : `\n- Difficulty: \`${filterStrings.join(' and ')}\``;
         }
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            await sentMessage.edit({ content: errorMsg, embeds: [] });
+            return;
+        }
         return errorMsg;
     }
 
@@ -271,11 +342,20 @@ async function run(messages, args) {
             return buildTopSingleButtonsRow(curr, max, scoreObj, renderDisabled, currentScoreMode);
         };
 
-        const sent_message = await message.channel.send({
-            content: content_msg,
-            embeds: [initialEmbed],
-            components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
-        });
+        let sent_message;
+        if (sentMessage && typeof sentMessage.edit === 'function') {
+            sent_message = await sentMessage.edit({
+                content: content_msg,
+                embeds: [initialEmbed],
+                components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
+            });
+        } else {
+            sent_message = await message.channel.send({
+                content: content_msg,
+                embeds: [initialEmbed],
+                components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
+            });
+        }
 
         const filter = btnInt => btnInt.user.id === message.author.id;
         const collector = sent_message.createMessageComponentCollector({
@@ -426,10 +506,19 @@ async function run(messages, args) {
         return buildPaginationRow({ prefix: 'rsl', current: start, total, pageSize: 5 });
     };
 
-    const sent_message = await message.channel.send({
-        embeds: [initialListEmbed],
-        components: [getListButtonsRow(startIndex, total_plays)]
-    });
+    let sent_message;
+    if (sentMessage && typeof sentMessage.edit === 'function') {
+        sent_message = await sentMessage.edit({
+            content: null,
+            embeds: [initialListEmbed],
+            components: [getListButtonsRow(startIndex, total_plays)]
+        });
+    } else {
+        sent_message = await message.channel.send({
+            embeds: [initialListEmbed],
+            components: [getListButtonsRow(startIndex, total_plays)]
+        });
+    }
 
     const filter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({

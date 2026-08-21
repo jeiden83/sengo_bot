@@ -1499,6 +1499,41 @@ ${t(locale, 'snipes.most_snipes_year', { year: mostSnipes_year[0], count: mostSn
 }
 
 /**
+ * Renderiza el embed de progreso para el cálculo de No-Choke en s.top
+ * @param {Object} message - Mensaje de Discord
+ * @param {Array<{ text: string, status: 'loading'|'success'|'error'|'warning', duration: number|null, extra: string }>} activeSteps
+ * @param {number} totalElapsed - Tiempo transcurrido en ms
+ * @param {string} locale - Idioma
+ * @returns {EmbedBuilder}
+ */
+function doOsuTopProgressEmbed(message, activeSteps, totalElapsed, locale = 'es') {
+    const roleColor = message?.member?.roles?.highest?.color;
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ff66aa';
+
+    const descriptionLines = activeSteps.map((s) => {
+        let emoji = '⏳';
+        if (s.status === 'success') emoji = '✅';
+        else if (s.status === 'error') emoji = '❌';
+        else if (s.status === 'warning') emoji = '⚠️';
+
+        let durationText = s.duration !== null ? ` - **${s.duration}ms**` : "";
+        let extraText = s.extra ? ` ${s.extra}` : "";
+        return `${emoji} ${s.text}${durationText}${extraText}`;
+    });
+
+    const elapsedSeconds = (totalElapsed / 1000).toFixed(2);
+    return new EmbedBuilder()
+        .setTitle(locale === 'es' ? "Calculando No-Choke (s.top)..." : "Calculating No-Choke (s.top)...")
+        .setDescription(descriptionLines.join('\n'))
+        .setColor(embedColor)
+        .setFooter({
+            text: locale === 'es'
+                ? `Sengo • Tiempo transcurrido: ${elapsedSeconds}s`
+                : `Sengo • Elapsed time: ${elapsedSeconds}s`
+        });
+}
+
+/**
  * Renderiza el embed del progreso de scrapeo inicial de snipes
  */
 function doOsuSnipesProgressEmbed(percentage, processedMaps, totalMaps, country_code, playmode, locale = 'es') {
@@ -2437,6 +2472,7 @@ module.exports = {
     doOsuListEmbed,
     doOsuTopSingleEmbed,
     doOsuTopListEmbed,
+    doOsuTopProgressEmbed,
     doOsuCompareSingleEmbed,
     doOsuCompareListEmbed,
     getOsuCompareContent,

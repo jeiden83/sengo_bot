@@ -2147,7 +2147,7 @@ function calculateNoChokeRank(stats, mods, mode = 'osu') {
     return "S";
 }
 
-async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
+async function ensureNoChokeScores(scores, gamemode, engineChoice = null, onProgress = null) {
     if (!Array.isArray(scores) || scores.length === 0) return;
 
     // Precargar todos los mapas de las puntuaciones en lote desde la base de datos
@@ -2163,21 +2163,24 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
         }
     }
 
+    let processedCount = 0;
+    const totalScores = scores.length;
+
     const processSingleScore = async (score) => {
-        if (score.noChoke) return;
-
-        const stats = score.statistics || {};
-        const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
-        const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
-        const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-        const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
-        const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
-
-        let beatmap_id = score.beatmap?.id;
-        if (!beatmap_id) return;
-
         try {
+            if (score.noChoke) return;
+
+            const stats = score.statistics || {};
+            const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+            const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+            const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+            const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+            const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
+            const good = stats.good !== undefined ? stats.good : (stats.count_katu || 0);
+
+            let beatmap_id = score.beatmap?.id;
+            if (!beatmap_id) return;
+
             // Fast-path: Si la jugada no tuvo misses y no requiere rework, usamos sus datos de inmediato
             if (miss === 0 && !score.values && typeof score.pp === 'number' && score.pp > 0) {
                 score.noChoke = {
@@ -2260,6 +2263,13 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
                 max_combo: score.max_combo,
                 statistics: score.statistics
             };
+        } finally {
+            processedCount++;
+            if (onProgress && (processedCount % 20 === 0 || processedCount === totalScores)) {
+                try {
+                    await onProgress(processedCount, totalScores);
+                } catch (e) {}
+            }
         }
     };
 
