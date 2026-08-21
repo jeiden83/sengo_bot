@@ -89,7 +89,9 @@ function setCachedItem(cacheMap, key, data) {
  * Obtiene las puntuaciones nacionales (#1) de un usuario en un modo específico y país desde Turso
  */
 async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = false, onPageLoad = null) {
-    const cacheKey = `${userId}:${mode}:${countryCode}:${detailed}`;
+    const cleanId = userId.toString().replace(/\.0+$/, '');
+    const altId = cleanId + '.0';
+    const cacheKey = `${cleanId}:${mode}:${countryCode}:${detailed}`;
     const cached = getCachedItem(topsCache, cacheKey);
     if (cached) {
         if (onPageLoad) onPageLoad(cached.length);
@@ -103,10 +105,10 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
             b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo, b.status
         FROM top_scores t
         INNER JOIN ranked_beatmaps b ON t.beatmap_id = b.beatmap_id
-        WHERE t.user_id = ? AND b.mode = ? AND t.country_code = ?
+        WHERE (t.user_id = ? OR t.user_id = ?) AND b.mode = ? AND t.country_code = ?
     `;
 
-    const rows = await executeTurso(sql, [userId.toString(), mode, countryCode]);
+    const rows = await executeTurso(sql, [cleanId, altId, mode, countryCode]);
 
     const formatted = rows.map(r => {
         let statsObj = r.statistics;
@@ -164,7 +166,9 @@ async function getUserNationalTops(userId, mode, countryCode = 'VE', detailed = 
  * Conteo de tops nacionales en Turso
  */
 async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
-    const cacheKey = `${userId}:${mode}:${countryCode}`;
+    const cleanId = userId.toString().replace(/\.0+$/, '');
+    const altId = cleanId + '.0';
+    const cacheKey = `${cleanId}:${mode}:${countryCode}`;
     const cached = getCachedItem(countCache, cacheKey);
     if (cached !== null) {
         return cached;
@@ -174,9 +178,9 @@ async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
         SELECT COUNT(*) as count
         FROM top_scores t
         INNER JOIN ranked_beatmaps b ON t.beatmap_id = b.beatmap_id
-        WHERE t.user_id = ? AND b.mode = ? AND t.country_code = ?
+        WHERE (t.user_id = ? OR t.user_id = ?) AND b.mode = ? AND t.country_code = ?
     `;
-    const rows = await executeTurso(sql, [userId.toString(), mode, countryCode]);
+    const rows = await executeTurso(sql, [cleanId, altId, mode, countryCode]);
     const cnt = rows[0]?.count || 0;
     setCachedItem(countCache, cacheKey, cnt);
     return cnt;
@@ -186,7 +190,9 @@ async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
  * Historial de snipes hecho y recibido en Turso
  */
 async function getUserSnipesHistory(userId) {
-    const cacheKey = userId.toString();
+    const cleanId = userId.toString().replace(/\.0+$/, '');
+    const altId = cleanId + '.0';
+    const cacheKey = cleanId;
     const cached = getCachedItem(snipesCache, cacheKey);
     if (cached && cached.made && cached.received) {
         const hasMissing = cached.made.some(m => !m.ranked_beatmaps?.title) || cached.received.some(r => !r.ranked_beatmaps?.title);
@@ -199,7 +205,7 @@ async function getUserSnipesHistory(userId) {
         SELECT s.sniped_name, s.sniped_id, s.beatmap_id, s.pp, s.ended_at, b.title, b.version
         FROM snipes_history s
         LEFT JOIN ranked_beatmaps b ON s.beatmap_id = b.beatmap_id
-        WHERE s.sniper_id = ? AND s.sniped_id != '0' AND s.sniped_name != 'SYSTEM_NO_SCORE'
+        WHERE (s.sniper_id = ? OR s.sniper_id = ?) AND s.sniped_id != '0' AND s.sniped_id != '0.0' AND s.sniped_name != 'SYSTEM_NO_SCORE'
         ORDER BY s.ended_at DESC
     `;
 
@@ -207,13 +213,13 @@ async function getUserSnipesHistory(userId) {
         SELECT s.sniper_name, s.sniper_id, s.beatmap_id, s.pp, s.ended_at, b.title, b.version
         FROM snipes_history s
         LEFT JOIN ranked_beatmaps b ON s.beatmap_id = b.beatmap_id
-        WHERE s.sniped_id = ? AND s.sniper_id != '0' AND s.sniper_name != 'SYSTEM_NO_SCORE'
+        WHERE (s.sniped_id = ? OR s.sniped_id = ?) AND s.sniper_id != '0' AND s.sniper_id != '0.0' AND s.sniper_name != 'SYSTEM_NO_SCORE'
         ORDER BY s.ended_at DESC
     `;
 
     const [rowsMade, rowsReceived] = await Promise.all([
-        executeTurso(sqlMade, [userId.toString()]),
-        executeTurso(sqlReceived, [userId.toString()])
+        executeTurso(sqlMade, [cleanId, altId]),
+        executeTurso(sqlReceived, [cleanId, altId])
     ]);
 
     const made = rowsMade.map(r => ({
@@ -334,10 +340,11 @@ async function saveTopScore(s) {
            OR top_scores.user_id != excluded.user_id 
            OR top_scores.pp != excluded.pp
     `;
+    const cleanUserId = (s.user_id || '0').toString().replace(/\.0+$/, '');
     const args = [
         s.beatmap_id,
         s.country_code || 'VE',
-        s.user_id,
+        cleanUserId,
         s.username || '',
         s.score || 0,
         s.pp || 0,
@@ -355,7 +362,7 @@ async function saveTopScore(s) {
     await executeTurso(sql, args);
 
     if (s.user_id) {
-        const uStr = s.user_id.toString();
+        const uStr = cleanUserId;
         for (const k of topsCache.keys()) {
             if (k.startsWith(uStr + ':')) topsCache.delete(k);
         }
@@ -372,13 +379,15 @@ async function recordSnipe(sh) {
     if (!sh || !sh.sniped_id || sh.sniped_id.toString() === '0' || sh.sniped_name === 'SYSTEM_NO_SCORE' || !sh.sniper_id || sh.sniper_id.toString() === '0' || sh.sniper_name === 'SYSTEM_NO_SCORE') {
         return;
     }
+    const cleanSniperId = sh.sniper_id.toString().replace(/\.0+$/, '');
+    const cleanSnipedId = sh.sniped_id.toString().replace(/\.0+$/, '');
     const endedAt = sh.ended_at || new Date().toISOString();
     try {
         const checkSql = `SELECT id FROM snipes_history WHERE beatmap_id = ? AND sniper_id = ? AND sniped_id = ? AND ended_at = ? LIMIT 1`;
         const existing = await executeTurso(checkSql, [
             sh.beatmap_id.toString(),
-            sh.sniper_id.toString(),
-            sh.sniped_id.toString(),
+            cleanSniperId,
+            cleanSnipedId,
             endedAt
         ]);
         if (existing && existing.length > 0) return;
@@ -393,9 +402,9 @@ async function recordSnipe(sh) {
     `;
     const args = [
         sh.beatmap_id,
-        sh.sniper_id,
+        cleanSniperId,
         sh.sniper_name,
-        sh.sniped_id,
+        cleanSnipedId,
         sh.sniped_name,
         sh.pp || 0,
         endedAt,
