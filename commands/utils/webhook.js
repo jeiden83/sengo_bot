@@ -88,6 +88,8 @@ async function forceDiscordReconnect(client, config, reason = "Socket zombie det
     isReconnectingDiscord = true;
     Logger.system(`[DISCORD-WATCHDOG] ⚠️ ${reason}. Ejecutando autorecuperación del cliente Discord...`);
 
+    const { setBotPresence } = require("../../listeners/login.js");
+
     try {
         const token = process.env.DISCORD_TOKEN || (config && config.TOKEN);
         if (!token) {
@@ -105,6 +107,7 @@ async function forceDiscordReconnect(client, config, reason = "Socket zombie det
                     await new Promise(resolve => setTimeout(resolve, 4000));
                     if (client.isReady && client.isReady() && client.ws.status === 0) {
                         Logger.system("[DISCORD-WATCHDOG] ✅ Shard 0 reconectado y operativo.");
+                        setBotPresence(client);
                         consecutiveUnhealthyChecks = 0;
                         return;
                     }
@@ -117,12 +120,12 @@ async function forceDiscordReconnect(client, config, reason = "Socket zombie det
         // 2. Si el shard no revivió, destruir y hacer relogin completo
         if (client) {
             try {
-                if (client.user) client.user.setActivity(null);
                 client.destroy();
             } catch (e) {}
             
             await new Promise(resolve => setTimeout(resolve, 2500));
             await client.login(token);
+            setBotPresence(client);
             Logger.system("[DISCORD-WATCHDOG] ✅ Cliente de Discord relogueado y recuperado exitosamente.");
             consecutiveUnhealthyChecks = 0;
         }
@@ -145,13 +148,13 @@ function startDiscordWatchdog(client, config) {
         const isReady = typeof client.isReady === 'function' ? client.isReady() : false;
         const wsStatus = client.ws ? client.ws.status : -1;
 
-        // Status 0 = READY
-        if (!isReady || wsStatus !== 0) {
+        // Status 0 = READY. Solo alertar si el WebSocket no está en estado READY (0) y no está isReady
+        if (!isReady && wsStatus !== 0) {
             consecutiveUnhealthyChecks++;
-            Logger.system(`[DISCORD-WATCHDOG] Estado anormal detectado (isReady: ${isReady}, wsStatus: ${wsStatus}). Chequeo ${consecutiveUnhealthyChecks}/2.`);
+            Logger.system(`[DISCORD-WATCHDOG] Estado anormal detectado (isReady: ${isReady}, wsStatus: ${wsStatus}). Chequeo ${consecutiveUnhealthyChecks}/5.`);
             
-            // Si lleva 2 chequeos consecutivos (2 minutos) sin estar READY, forzar la autorecuperación
-            if (consecutiveUnhealthyChecks >= 2) {
+            // Si lleva 5 chequeos consecutivos (5 minutos) desconectado sin que discord.js auto-resuelva, forzar autorecuperación
+            if (consecutiveUnhealthyChecks >= 5) {
                 await forceDiscordReconnect(client, config, `Socket zombie persistente durante ${consecutiveUnhealthyChecks} minutos`);
             }
         } else {
