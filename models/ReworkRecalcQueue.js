@@ -154,10 +154,12 @@ async function removeWarningFromMessage(task) {
                 const beatmapIds = matches.map(m => parseInt(m[1]));
                 const supabase = getSupabaseClient();
                 if (supabase) {
+                    const cleanId = task.userId.toString().replace(/\.0+$/, '');
+                    const altId = cleanId + '.0';
                     const { data, error } = await supabase
                         .from('top_scores')
                         .select('beatmap_id, pp')
-                        .eq('user_id', task.userId.toString())
+                        .in('user_id', [cleanId, altId])
                         .in('beatmap_id', beatmapIds)
                         .eq('country_code', task.countryCode);
 
@@ -201,6 +203,9 @@ async function recalculateUserTops(task) {
         return;
     }
 
+    const cleanId = task.userId.toString().replace(/\.0+$/, '');
+    const altId = cleanId + '.0';
+
     // Obtener todas las jugadas del usuario en el modo y país correspondiente (paginado de 1000 en 1000)
     const plays = [];
     let from = 0;
@@ -210,7 +215,7 @@ async function recalculateUserTops(task) {
         const { data, error } = await supabase
             .from('top_scores')
             .select('pp, mods, ended_at, score, accuracy, beatmap_id, max_combo, perfect, statistics, rank, country_code, updated_at, ranked_beatmaps!inner(mode, beatmapset_id)')
-            .eq('user_id', task.userId.toString())
+            .in('user_id', [cleanId, altId])
             .eq('ranked_beatmaps.mode', task.mode)
             .eq('country_code', task.countryCode)
             .range(from, from + PAGE_SIZE - 1);
