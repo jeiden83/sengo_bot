@@ -319,9 +319,10 @@ async function getUnrankedBeatmapUserAllScores(parsed_args) {
  * Obtiene jugadas recientes del usuario.
  */
 async function getUserRecentScores(parsed_args) {
-    if (parsed_args && parsed_args.username && parsed_args.username[0]) {
-        clearUserScoresCache(parsed_args.username[0]);
+    if (!parsed_args || !parsed_args.username || !parsed_args.username[0]) {
+        return [];
     }
+    clearUserScoresCache(parsed_args.username[0]);
     const server = parsed_args.server || 'bancho';
     let result = [];
 
@@ -506,6 +507,9 @@ async function getUserRecentScores(parsed_args) {
  * Obtiene las mejores jugadas de un usuario (top plays), con caché de 5 minutos y deduplicador.
  */
 async function getUserTopScores(parsed_args) {
+    if (!parsed_args || !parsed_args.username || !parsed_args.username[0]) {
+        return [];
+    }
     const server = parsed_args.server || 'bancho';
     const mode = parsed_args.gamemode || 'osu';
     const username = parsed_args.username[0];

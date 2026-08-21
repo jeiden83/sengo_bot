@@ -337,13 +337,14 @@ async function getLinkedUser(User, discordId) {
     if (User && typeof User.findOne === 'function') {
         try {
             const user = await User.findOne({ discord_id: discordId });
-            if (user) {
+            if (user && user.osu_id) {
                 const oauthRecord = await getOAuthTokenRecord(discordId);
                 if (oauthRecord) {
                     user.is_supporter = !!oauthRecord.is_supporter;
                 }
+                return user;
             }
-            return user;
+            return null;
         } catch (err) {
             console.error(`Error al buscar vinculación para ${discordId} usando User.findOne:`, err);
             return null;
@@ -362,13 +363,14 @@ async function getLinkedUser(User, discordId) {
 
         if (error) throw error;
         
-        if (data) {
+        if (data && data.osu_id) {
             const oauthRecord = await getOAuthTokenRecord(discordId);
             if (oauthRecord) {
                 data.is_supporter = !!oauthRecord.is_supporter;
             }
+            return data;
         }
-        return data;
+        return null;
     } catch (err) {
         console.error(`Error al buscar vinculación para ${discordId} en OsuUserModel:`, err);
         return null;
