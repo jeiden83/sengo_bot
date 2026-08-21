@@ -29,6 +29,16 @@ const data = new SlashCommandBuilder()
             .setDescription("Ordenar por victorias en lugar de rating (ELO)")
             .setRequired(false)
     )
+    .addBooleanOption(option =>
+        option.setName("winrate")
+            .setDescription("Ordenar por porcentaje de victorias (% WR)")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("partidas")
+            .setDescription("Ordenar por total de partidas jugadas")
+            .setRequired(false)
+    )
     .addIntegerOption(option =>
         option.setName("pagina")
             .setDescription("Página de la clasificación a mostrar")
@@ -41,6 +51,8 @@ async function run(interaction, res) {
     const server = interaction.options.getBoolean("server");
     const server_id = interaction.options.getString("server_id");
     const wins = interaction.options.getBoolean("wins");
+    const winrate = interaction.options.getBoolean("winrate");
+    const partidas = interaction.options.getBoolean("partidas");
     const pagina = interaction.options.getInteger("pagina");
 
     const args = [];
@@ -60,6 +72,12 @@ async function run(interaction, res) {
     }
     if (wins) {
         args.push("-wins");
+    }
+    if (winrate) {
+        args.push("-wr");
+    }
+    if (partidas) {
+        args.push("-plays");
     }
     if (pagina) {
         args.push("-p", pagina.toString());
