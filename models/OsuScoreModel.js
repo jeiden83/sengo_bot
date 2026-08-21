@@ -2578,10 +2578,11 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
 
         if (!currentTop || newScoreVal > oldScoreVal || isDifferentUser) {
             // --- VERIFICACIÓN CON LA API EN TIEMPO REAL ---
-            let confirmedScore = score;
-            let verifiedSniperId = sniperId;
-            let verifiedUsername = osuUsername || score.user?.username || 'Desconocido';
+            let confirmedScore = null;
+            let verifiedSniperId = null;
+            let verifiedUsername = null;
             let secondPlaceUser = null;
+            let apiVerified = false;
 
             try {
                 // Obtener token supporter de VE desde Supabase (tabla liviana)
@@ -2623,11 +2624,17 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                         confirmedScore = topApiScore;
                         normalizeScore(confirmedScore);
                         verifiedSniperId = topApiUserId;
-                        verifiedUsername = topApiScore.user?.username || (topApiUserId === sniperId ? verifiedUsername : 'Desconocido');
+                        verifiedUsername = topApiScore.user?.username || (topApiUserId === sniperId ? (osuUsername || score.user?.username) : 'Desconocido');
+                        apiVerified = true;
                     }
                 }
             } catch (apiErr) {
                 console.error(`[REALTIME-SNIPE] Error durante la verificación de la API en el mapa ${beatmapId}:`, apiErr.response?.data || apiErr.message);
+            }
+
+            // CRÍTICO: Si la API oficial no confirmó el leaderboard nacional, NO registrar snipe ni actualizar top_scores
+            if (!apiVerified || !confirmedScore || !verifiedSniperId) {
+                return;
             }
 
             let modsString = 'NM';
