@@ -2222,8 +2222,9 @@ async function ensureNoChokeScores(scores, gamemode, engineChoice = null) {
             }
 
             const ncRank = calculateNoChokeRank(ncStats, score.mods, mode);
-            const beatmapset_id = score.beatmap?.beatmapset_id || score.beatmap?.set_id;
-            const map = await BeatmapModel.getBeatmap_osu(beatmapset_id, beatmap_id, score.beatmap, engineChoice);
+            const beatmapset_id = score.beatmap?.beatmapset_id || score.beatmap?.set_id || score.beatmapset?.id;
+            const beatmapMeta = score.beatmapset ? { ...score.beatmap, beatmapset: score.beatmapset } : score.beatmap;
+            const map = await BeatmapModel.getBeatmap_osu(beatmapset_id, beatmap_id, beatmapMeta, engineChoice);
             const maxAttrs = calculatePP(score, map, "maximo_pp", null, engineChoice);
             const maxCombo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : maxAttrs?.maxCombo) || score.beatmap?.max_combo || score.max_combo;
 

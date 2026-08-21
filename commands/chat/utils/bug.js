@@ -4,6 +4,7 @@ const { doBugReportEmbed } = require("../../../views/bugViews.js");
 const { t } = require("../../../utils/i18n.js");
 
 async function getForumTagId(client, webhookUrl, tagNames) {
+    if (!client || !client.token || !client.isReady || !client.isReady()) return null;
     try {
         const match = webhookUrl.match(/\/webhooks\/(\d+)\//);
         if (!match) return null;
@@ -20,7 +21,9 @@ async function getForumTagId(client, webhookUrl, tagNames) {
             return targetTag ? targetTag.id : null;
         }
     } catch (err) {
-        console.error(`[Webhook Tags] Error al buscar tags [${tagNames.join(', ')}]:`, err);
+        if (!err.message?.includes('token')) {
+            console.error(`[Webhook Tags] Error al buscar tags [${tagNames.join(', ')}]:`, err);
+        }
     }
     return null;
 }

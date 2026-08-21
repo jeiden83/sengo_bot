@@ -27,7 +27,10 @@ async function localBeatmapStatus(beatmap_osu_id, beatmap_metadata){
 	// Si le pasamos datos al beatmap_metadata
 	// Forma de remplazar los datos en Supabase
 	if(beatmap_metadata){
-		const name = `${beatmap_metadata.beatmapset.artist} - ${beatmap_metadata.beatmapset.title} [${beatmap_metadata.version}]`;
+		const artist = beatmap_metadata.beatmapset?.artist || beatmap_metadata.artist || '';
+		const title = beatmap_metadata.beatmapset?.title || beatmap_metadata.title || '';
+		const version = beatmap_metadata.version || '';
+		const name = (artist && title) ? `${artist} - ${title} [${version}]` : (version ? `[${version}]` : `Beatmap ${beatmap_osu_id}`);
 
 		const { error } = await supabase
 			.from('local_beatmaps')
