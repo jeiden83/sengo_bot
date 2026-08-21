@@ -52,32 +52,34 @@ function createSlashMessagesContext(interaction, res) {
                 if (prop === 'edit') {
                     return async (options) => {
                         try {
-                            return await target.edit(options);
-                        } catch (err) {
-                            if (err.name === 'DiscordjsError' || err.code === 'ChannelNotCached' || err.message?.includes('cache')) {
-                                if (!isFollowUp) {
-                                    return await interaction.editReply(options);
-                                } else {
-                                    return await interaction.webhook.editMessage(target.id, options);
-                                }
+                            if (!isFollowUp) {
+                                return await interaction.editReply(options);
+                            } else {
+                                return await interaction.webhook.editMessage(target.id, options);
                             }
-                            throw err;
+                        } catch (err) {
+                            try {
+                                return await target.edit(options);
+                            } catch (secondErr) {
+                                throw err;
+                            }
                         }
                     };
                 }
                 if (prop === 'delete') {
                     return async () => {
                         try {
-                            return await target.delete();
-                        } catch (err) {
-                            if (err.name === 'DiscordjsError' || err.code === 'ChannelNotCached' || err.message?.includes('cache')) {
-                                if (!isFollowUp) {
-                                    return await interaction.deleteReply();
-                                } else {
-                                    return await interaction.webhook.deleteMessage(target.id);
-                                }
+                            if (!isFollowUp) {
+                                return await interaction.deleteReply();
+                            } else {
+                                return await interaction.webhook.deleteMessage(target.id);
                             }
-                            throw err;
+                        } catch (err) {
+                            try {
+                                return await target.delete();
+                            } catch (secondErr) {
+                                throw err;
+                            }
                         }
                     };
                 }
