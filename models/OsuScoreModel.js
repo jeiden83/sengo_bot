@@ -244,10 +244,13 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
             ? Attrs 
             : new engine.Difficulty(max_perfomance_constructor).calculate(map);
         const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
-        if (targetDiffAttrs && typeof targetDiffAttrs.stars === 'number') {
-            maxAttrs.stars = targetDiffAttrs.stars;
+        const effectiveStars = (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number')
+            ? maxAttrs.difficulty.stars
+            : targetDiffAttrs?.stars;
+        if (typeof effectiveStars === 'number') {
+            maxAttrs.stars = effectiveStars;
             if (maxAttrs.difficulty) {
-                maxAttrs.difficulty.stars = targetDiffAttrs.stars;
+                maxAttrs.difficulty.stars = effectiveStars;
             }
         }
         return maxAttrs;
@@ -546,14 +549,14 @@ async function _getUserTopScores(parsed_args) {
     const cached = userTopScoresCache.get(cacheKey);
 
     if (cached && (now - cached.timestamp) < TOP_SCORES_CACHE_TTL) {
-        return typeof structuredClone === 'function' ? structuredClone(cached.scores) : JSON.parse(JSON.stringify(cached.scores));
+        return typeof globalThis.structuredClone === 'function' ? globalThis.structuredClone(cached.scores) : JSON.parse(JSON.stringify(cached.scores));
     }
 
     const returnAndCache = (scores) => {
         if (scores && Array.isArray(scores) && scores.length > 0) {
-            const copy = typeof structuredClone === 'function' ? structuredClone(scores) : JSON.parse(JSON.stringify(scores));
+            const copy = typeof globalThis.structuredClone === 'function' ? globalThis.structuredClone(scores) : JSON.parse(JSON.stringify(scores));
             setWithLimit(userTopScoresCache, cacheKey, { scores: copy, timestamp: now });
-            return typeof structuredClone === 'function' ? structuredClone(copy) : JSON.parse(JSON.stringify(copy));
+            return typeof globalThis.structuredClone === 'function' ? globalThis.structuredClone(copy) : JSON.parse(JSON.stringify(copy));
         }
         return scores;
     };

@@ -124,6 +124,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
 
     if (maximo_pp) {
         const maxAttrs = new ppEngine.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
+        if (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number') {
+            maxAttrs.stars = maxAttrs.difficulty.stars;
+        }
         return maxAttrs;
     }
 
