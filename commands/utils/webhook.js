@@ -131,10 +131,10 @@ function startDiscordWatchdog(client, config) {
         const isReady = typeof client.isReady === 'function' ? client.isReady() : false;
         const wsStatus = client.ws ? client.ws.status : -1;
 
-        // Status 0 = READY. El bot es saludable si el WebSocket está en 0 (READY) o isReady es true
-        const isHealthy = wsStatus === 0 || isReady;
+        // Status 0 = READY. Estados 1, 2, 3, 4, 6, 7, 8 son estados transitorios de conexión válidos
+        const isConnectedOrConnecting = wsStatus === 0 || isReady || [1, 2, 3, 4, 6, 7, 8].includes(wsStatus);
 
-        if (!isHealthy) {
+        if (!isConnectedOrConnecting) {
             consecutiveUnhealthyChecks++;
             Logger.system(`[DISCORD-WATCHDOG] Estado anormal detectado (isReady: ${isReady}, wsStatus: ${wsStatus}). Chequeo ${consecutiveUnhealthyChecks}/5.`);
             
@@ -682,28 +682,20 @@ function startServer(client, dbRes, port, config) {
             const wsStatus = client?.ws ? client.ws.status : -1;
             const wsPing = client?.ws ? client.ws.ping : -1;
 
-            // Status 0 = READY. El bot se considera saludable si el WebSocket está en 0 (READY) o isReady es true
-            const isHealthy = wsStatus === 0 || isDiscordReady;
-
-            // Si Discord está realmente en estado zombie o desconectado
-            if (!isHealthy) {
-                // Disparar autorecuperación inmediata solo cuando realmente está desconectado
-                forceDiscordReconnect(client, config, `Detectado por petición /health (isReady: ${isDiscordReady}, wsStatus: ${wsStatus})`);
-                
-                res.writeHead(200, { 'Content-Type': 'application/json' });
-                res.end(JSON.stringify({
-                    status: 'RECOVERING',
-                    message: 'Sengo Web Server is UP, but Discord client was disconnected/zombie. Auto-reconnection triggered.',
-                    discord: { isReady: isDiscordReady, wsStatus, wsPing }
-                }));
-                return;
+            let statusText = 'UP';
+            if (wsStatus === 0 || isDiscordReady) {
+                statusText = 'UP';
+            } else if ([1, 2, 3, 4, 6, 7, 8].includes(wsStatus)) {
+                statusText = 'CONNECTING';
+            } else {
+                statusText = 'DEGRADED';
             }
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({
-                status: 'UP',
-                message: 'Sengo is running smoothly',
-                discord: { isReady: isHealthy, wsStatus: wsStatus === 0 ? 0 : wsStatus, wsPing }
+                status: statusText,
+                message: statusText === 'UP' ? 'Sengo is running smoothly' : `Sengo is ${statusText.toLowerCase()}`,
+                discord: { isReady: wsStatus === 0 || isDiscordReady, wsStatus, wsPing }
             }));
             return;
         }
