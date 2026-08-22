@@ -97,31 +97,14 @@ async function forceDiscordReconnect(client, config, reason = "Socket zombie det
             return;
         }
 
-        // 1. Intentar reconexión suave a nivel de Shard si existe
-        if (client && client.ws && client.ws.shards && client.ws.shards.size > 0) {
-            const shard = client.ws.shards.first();
-            if (shard) {
-                try {
-                    Logger.system("[DISCORD-WATCHDOG] Reiniciando Shard 0...");
-                    shard.destroy({ closeCode: 4000, reset: true, emit: true });
-                    await new Promise(resolve => setTimeout(resolve, 4000));
-                    if (client.isReady && client.isReady() && client.ws.status === 0) {
-                        Logger.system("[DISCORD-WATCHDOG] ✅ Shard 0 reconectado y operativo.");
-                        setBotPresence(client);
-                        consecutiveUnhealthyChecks = 0;
-                        return;
-                    }
-                } catch (shardErr) {
-                    Logger.system(`[DISCORD-WATCHDOG] Fallo al reiniciar Shard: ${shardErr.message}`);
-                }
-            }
-        }
-
-        // 2. Si el shard no revivió, destruir y hacer relogin completo
         if (client) {
             try {
                 client.destroy();
             } catch (e) {}
+
+            if (client.ws) {
+                client.ws.destroyed = false;
+            }
             
             await new Promise(resolve => setTimeout(resolve, 2500));
             await client.login(token);
@@ -148,8 +131,10 @@ function startDiscordWatchdog(client, config) {
         const isReady = typeof client.isReady === 'function' ? client.isReady() : false;
         const wsStatus = client.ws ? client.ws.status : -1;
 
-        // Status 0 = READY. Solo alertar si el WebSocket no está en estado READY (0) y no está isReady
-        if (!isReady && wsStatus !== 0) {
+        // Status 0 = READY. El bot es saludable si el WebSocket está en 0 (READY) o isReady es true
+        const isHealthy = wsStatus === 0 || isReady;
+
+        if (!isHealthy) {
             consecutiveUnhealthyChecks++;
             Logger.system(`[DISCORD-WATCHDOG] Estado anormal detectado (isReady: ${isReady}, wsStatus: ${wsStatus}). Chequeo ${consecutiveUnhealthyChecks}/5.`);
             
@@ -697,9 +682,12 @@ function startServer(client, dbRes, port, config) {
             const wsStatus = client?.ws ? client.ws.status : -1;
             const wsPing = client?.ws ? client.ws.ping : -1;
 
-            // Si Discord está en estado zombie o desconectado (wsStatus !== 0)
-            if (!isDiscordReady || wsStatus !== 0) {
-                // Disparar autorecuperación inmediata al ser detectado por el ping de UptimeRobot
+            // Status 0 = READY. El bot se considera saludable si el WebSocket está en 0 (READY) o isReady es true
+            const isHealthy = wsStatus === 0 || isDiscordReady;
+
+            // Si Discord está realmente en estado zombie o desconectado
+            if (!isHealthy) {
+                // Disparar autorecuperación inmediata solo cuando realmente está desconectado
                 forceDiscordReconnect(client, config, `Detectado por petición /health (isReady: ${isDiscordReady}, wsStatus: ${wsStatus})`);
                 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -715,7 +703,7 @@ function startServer(client, dbRes, port, config) {
             res.end(JSON.stringify({
                 status: 'UP',
                 message: 'Sengo is running smoothly',
-                discord: { isReady: true, wsStatus: 0, wsPing }
+                discord: { isReady: isHealthy, wsStatus: wsStatus === 0 ? 0 : wsStatus, wsPing }
             }));
             return;
         }
