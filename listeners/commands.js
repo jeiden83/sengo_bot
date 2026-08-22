@@ -340,8 +340,13 @@ async function chat_command_listener(chat_commands, client, config, res) {
 
             if (!command_result) return;
             
+            // Si el resultado ya es un mensaje enviado de discord.js o no es un payload/texto válido, no reenviar
+            if (typeof command_result === 'object' && command_result.client && command_result.id) {
+                return;
+            }
+
             // Comprobar la longitud del mensaje y enviar un error si es muy largo
-            if (command_result.length > MAX_MESSAGE_LENGTH) {
+            if (typeof command_result === 'string' && command_result.length > MAX_MESSAGE_LENGTH) {
                 await message.channel.send(`❌ El resultado es demasiado largo para ser enviado. (Más de ${MAX_MESSAGE_LENGTH} caracteres)`);
                 logger.failed("El resultado superó los 2000 caracteres.");
                 return;

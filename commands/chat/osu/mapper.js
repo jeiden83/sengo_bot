@@ -547,7 +547,8 @@ async function run(messages, args) {
 
         const allSets = [...(pending || []), ...(ranked || []), ...(graveyard || []), ...(loved || [])];
         if (allSets.length === 0) {
-            return message.reply(t(locale, 'mapper.err_no_beatmaps', { username: osuUser.username }));
+            await message.reply(t(locale, 'mapper.err_no_beatmaps', { username: osuUser.username }));
+            return;
         }
 
         allSets.sort((a, b) => {
@@ -571,7 +572,8 @@ async function run(messages, args) {
         });
 
         if (logger) logger.success(`Mapset reciente de ${osuUser.username} cargado con éxito.`);
-        return await mCommand.run(messages, [targetId, ...additionalArgs]);
+        await mCommand.run(messages, [targetId, ...additionalArgs]);
+        return;
     }
 
     let currentType = type;

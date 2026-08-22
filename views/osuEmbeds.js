@@ -966,17 +966,17 @@ function doOsuMapEmbed({
 
     const dateParts = [];
     if (submittedUnix) {
-        dateParts.push(`**${t(locale, 'map.submitted')}:** <t:${submittedUnix}:d>`);
+        dateParts.push(`${t(locale, 'map.submitted')}: <t:${submittedUnix}:d>`);
     }
     if (updatedUnix) {
-        dateParts.push(`**${t(locale, 'map.updated')}:** <t:${updatedUnix}:d>`);
+        dateParts.push(`${t(locale, 'map.updated')}: <t:${updatedUnix}:d>`);
     }
 
     const descLines = [
         `▸ **${t(locale, 'map.status')}:** \`${statusName}\`  •  **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''}  •  **${t(locale, 'map.difficulty')}:** \`${stars.toFixed(2)}★\`${Math.abs(stars - baseStars) > 0.01 ? ` *(${baseStars.toFixed(2)}★)*` : ''}`,
         `▸ **BPM:** \`${attributes.bpm}\`${attributes.speedMultiplier !== 1.0 ? ` *(${attributes.baseBpm})*` : ''}  •  **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\`${attributes.totalLength !== attributes.hitLength ? ` *(Drain: ${formatLength(attributes.hitLength)})*` : ''}  •  **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\``,
-        `▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? ` *(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''}  •  **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? ` *(${attributes.baseAr.toFixed(1)})*` : ''}  •  **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? ` *(${attributes.baseOd.toFixed(1)})*` : ''}  •  **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? ` *(${attributes.baseHp.toFixed(1)})*` : ''}`,
-        `▸ **${t(locale, 'map.objects')}:** ${objectsValue}`
+        `▸ ${attributes.csLabel}: \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? ` *(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''}  •  AR: \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? ` *(${attributes.baseAr.toFixed(1)})*` : ''}  •  OD: \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? ` *(${attributes.baseOd.toFixed(1)})*` : ''}  •  HP: \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? ` *(${attributes.baseHp.toFixed(1)})*` : ''}`,
+        `\n▸ **${t(locale, 'map.objects')}:** ${objectsValue}`
     ];
 
     if (dateParts.length > 0) {
@@ -987,7 +987,7 @@ function doOsuMapEmbed({
         descLines.push(`▸ **${t(locale, 'map.tags')}:** ${tagsToDisplay.slice(0, 5).map(t => `\`${t}\``).join(' ')}`);
     }
 
-    descLines.push(`\n▸ **${t(locale, 'map.recommended_pp')}:**\n${ppAnsiBlock}`);
+    descLines.push(`\n${ppAnsiBlock}`);
 
     const embed = new EmbedBuilder()
         .setAuthor({
