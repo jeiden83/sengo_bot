@@ -96,19 +96,23 @@ async function main(reload) {
 
     await load_listeners(res, client, config);
 
-    // 2. Iniciar sesión en Discord e inicializar servicios al completar la conexión
-    login(client, config).then(() => {
-        const { initializeServices } = require("./services/servicesManager.js");
-        initializeServices(client, res, config, todayLogExists);
-    }).catch(err => {
-        Logger.system(`Error en el login inicial de Discord: ${err.message}. Reintentando en 5s...`);
-        setTimeout(() => {
-            login(client, config).then(() => {
+    // 2. Iniciar sesión en Discord e inicializar servicios con reintento continuo en caso de límites de red
+    async function startDiscordWithRetry() {
+        let delayMs = 5000;
+        while (true) {
+            try {
+                await login(client, config);
                 const { initializeServices } = require("./services/servicesManager.js");
                 initializeServices(client, res, config, todayLogExists);
-            }).catch(e => console.error("Error crítico reintentando login:", e));
-        }, 5000);
-    });  
+                break;
+            } catch (err) {
+                Logger.system(`Error al conectar con Discord: ${err.message}. Reintentando en ${Math.round(delayMs / 1000)}s...`);
+                await new Promise(resolve => setTimeout(resolve, delayMs));
+                delayMs = Math.min(delayMs * 1.5, 30000); // Máximo 30 segundos entre reintentos
+            }
+        }
+    }
+    startDiscordWithRetry();  
 
     if (process.stdin.isTTY) {
         setupCommandLineInterface(res, client, config, reload); 

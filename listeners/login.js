@@ -12,56 +12,62 @@ function setBotPresence(client) {
     }
 }
 
+let listenersRegistered = false;
+
 async function login(client, config) {
     Logger.system("Intentando iniciar sesión en Discord...");
     
-    // Registrar listeners de estado y eventos de red del cliente Discord
-    client.on(Events.Error, (err) => {
-        Logger.system(`[Discord Error] ${err.message}`);
-    });
+    // Registrar listeners de estado y eventos de red del cliente Discord solo una vez
+    if (!listenersRegistered) {
+        listenersRegistered = true;
 
-    client.on(Events.ShardError, (err, shardId) => {
-        Logger.system(`[Discord Shard Error #${shardId}] ${err.message}`);
-    });
+        client.on(Events.Error, (err) => {
+            Logger.system(`[Discord Error] ${err.message}`);
+        });
 
-    client.on(Events.ShardDisconnect, (event, shardId) => {
-        Logger.system(`[Discord Shard Desconectado #${shardId}] Código de cierre: ${event.code}`);
-    });
+        client.on(Events.ShardError, (err, shardId) => {
+            Logger.system(`[Discord Shard Error #${shardId}] ${err.message}`);
+        });
 
-    client.on(Events.ShardReconnecting, (shardId) => {
-        Logger.system(`[Discord Shard Reconectando #${shardId}]...`);
-    });
+        client.on(Events.ShardDisconnect, (event, shardId) => {
+            Logger.system(`[Discord Shard Desconectado #${shardId}] Código de cierre: ${event.code}`);
+        });
 
-    client.on(Events.ShardResume, (shardId) => {
-        setBotPresence(client);
-        Logger.system(`[Discord Shard #${shardId}] Sesión reanudada.`);
-    });
+        client.on(Events.ShardReconnecting, (shardId) => {
+            Logger.system(`[Discord Shard Reconectando #${shardId}]...`);
+        });
 
-    client.on(Events.Warn, (info) => {
-        Logger.system(`[Discord Warn] ${info}`);
-    });
+        client.on(Events.ShardResume, (shardId) => {
+            setBotPresence(client);
+            Logger.system(`[Discord Shard #${shardId}] Sesión reanudada.`);
+        });
 
-    if (process.env.DEBUG === 'true') {
-        client.on(Events.Debug, (info) => {
-            // Ocultar heartbeats rutinarios de discord para evitar spam en los logs
-            if (info.toLowerCase().includes('heartbeat')) return;
-            Logger.system(`[Discord WS] ${info}`);
+        client.on(Events.Warn, (info) => {
+            Logger.system(`[Discord Warn] ${info}`);
+        });
+
+        if (process.env.DEBUG === 'true') {
+            client.on(Events.Debug, (info) => {
+                // Ocultar heartbeats rutinarios de discord para evitar spam en los logs
+                if (info.toLowerCase().includes('heartbeat')) return;
+                Logger.system(`[Discord WS] ${info}`);
+            });
+        }
+
+        client.on(Events.ClientReady, (c) => {
+            setBotPresence(c);
+            Logger.system(`Sengo iniciado y listo en Discord como ${c.user.tag}`);
+            
+            // Inicializar gestor de sorteos
+            try {
+                const { initGiveawayManager } = require('../models/GiveawayModel.js');
+                initGiveawayManager(c);
+                Logger.system("Gestor de sorteos (Giveaways) inicializado con éxito.");
+            } catch (err) {
+                Logger.system(`Error al inicializar gestor de sorteos: ${err.message}`);
+            }
         });
     }
-
-    client.on(Events.ClientReady, (c) => {
-        setBotPresence(c);
-        Logger.system(`Sengo iniciado y listo en Discord como ${c.user.tag}`);
-        
-        // Inicializar gestor de sorteos
-        try {
-            const { initGiveawayManager } = require('../models/GiveawayModel.js');
-            initGiveawayManager(c);
-            Logger.system("Gestor de sorteos (Giveaways) inicializado con éxito.");
-        } catch (err) {
-            Logger.system(`Error al inicializar gestor de sorteos: ${err.message}`);
-        }
-    });
 
     try {
         if (!config.TOKEN) {
