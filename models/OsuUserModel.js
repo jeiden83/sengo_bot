@@ -36,7 +36,7 @@ async function loadToken() {
     try {
         const fileContent = await fs.readFile(tokenFilePath, 'utf-8');
         const osu_token = JSON.parse(fileContent);
-        if (osu_token && osu_token.expires_at && Date.now() < osu_token.expires_at) {
+        if (osu_token && osu_token.expires_at && Date.now() < (osu_token.expires_at - 60000)) {
             return osu_token;
         }
     } catch (error) {
@@ -68,6 +68,29 @@ async function loadToken() {
     })();
 
     return webTokenPromise;
+}
+
+/**
+ * Obtiene un access_token de cliente válido para peticiones directas a la API v2 de osu!
+ * ponytail: reutiliza loadToken() / osu_web_token.json con margen de 1m para asegurar renovación automática de credenciales públicas
+ */
+async function getValidClientToken(forceRefresh = false) {
+    try {
+        if (forceRefresh) {
+            const tokenFilePath = path.resolve('osu_web_token.json');
+            try {
+                await fs.unlink(tokenFilePath);
+            } catch (e) {}
+        }
+        const tokenData = await loadToken();
+        if (tokenData && tokenData.access_token) {
+            return tokenData.access_token;
+        }
+    } catch (err) {
+        console.error("[OsuUserModel] Error al obtener token de cliente:", err.message);
+    }
+
+    return process.env.OSU_CLIENT_TOKEN || null;
 }
 
 /**
@@ -2400,6 +2423,7 @@ const OsuUserModel = {
     getFriendsList,
     fetchMeDetails,
     getValidTokenForUser,
+    getValidClientToken,
     getSupporterTokenForCountry,
     saveOAuthToken,
     getAllOAuthUsers,

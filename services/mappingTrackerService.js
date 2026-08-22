@@ -1,5 +1,6 @@
 const Logger = require("../utils/logger.js");
 const MappingTrackerModel = require("../models/MappingTrackerModel.js");
+const OsuUserModel = require("../models/OsuUserModel.js");
 const { doMappingTrackerNotificationEmbed } = require("../views/mappingTrackerViews.js");
 const { osuApiQueue } = require("../utils/OsuApiQueue.js");
 const axios = require("axios");
@@ -27,20 +28,11 @@ function cleanOldNotifiedEntries() {
 }
 
 /**
- * Obtiene token Oauth cliente o del bot para peticiones a la API v2 de osu!
+ * Obtiene token OAuth de cliente válido para peticiones públicas a la API v2 de osu!
+ * ponytail: delega en OsuUserModel.getValidClientToken() con renovación automática de credenciales públicas
  */
-async function getOsuApiToken() {
-    try {
-        const { getSupabaseClient } = require("../db/database.js");
-        const supabase = getSupabaseClient();
-        if (supabase) {
-            const { data } = await supabase.from('oauth_tokens').select('access_token').limit(1);
-            if (data && data.length > 0) return data[0].access_token;
-        }
-    } catch (e) {}
-
-    // Fallback a variables de entorno si existen
-    return process.env.OSU_CLIENT_TOKEN || null;
+async function getOsuApiToken(forceRefresh = false) {
+    return await OsuUserModel.getValidClientToken(forceRefresh);
 }
 
 /**
@@ -58,7 +50,7 @@ async function fetchUserBeatmapsets(osuId, type = null) {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
-                    'User-Agent': 'SengoBot/2.0'
+                    'User-Agent': 'Sengo/2.0'
                 }
             }), 0);
             return Array.isArray(res.data) ? res.data : [];
@@ -69,7 +61,7 @@ async function fetchUserBeatmapsets(osuId, type = null) {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'SengoBot/2.0'
+                'User-Agent': 'Sengo/2.0'
             }
         }), 0);
         const unranked = Array.isArray(res.data) ? res.data : [];
@@ -80,7 +72,7 @@ async function fetchUserBeatmapsets(osuId, type = null) {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'SengoBot/2.0'
+                'User-Agent': 'Sengo/2.0'
             }
         }), 0);
         const ranked = Array.isArray(rankedRes.data) ? rankedRes.data : [];
@@ -91,13 +83,16 @@ async function fetchUserBeatmapsets(osuId, type = null) {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'SengoBot/2.0'
+                'User-Agent': 'Sengo/2.0'
             }
         }), 0).catch(() => ({ data: [] }));
         const graveyard = Array.isArray(graveyardRes.data) ? graveyardRes.data : [];
 
         return [...ranked, ...unranked, ...graveyard];
     } catch (err) {
+        if (err.response?.status === 401) {
+            await getOsuApiToken(true);
+        }
         if (err.response?.status !== 404) {
             console.error(`[MAPPING-TRACKER-SERVICE] Error al consultar beatmapsets de osu_id ${osuId}:`, err.message);
         }
@@ -117,11 +112,14 @@ async function fetchGlobalBeatmapEvents() {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'SengoBot/2.0'
+                'User-Agent': 'Sengo/2.0'
             }
         }), 0);
         return Array.isArray(res.data?.events) ? res.data.events : [];
     } catch (err) {
+        if (err.response?.status === 401) {
+            await getOsuApiToken(true);
+        }
         console.error('[MAPPING-TRACKER-SERVICE] Error al consultar eventos globales de beatmapsets:', err.message);
         return [];
     }
@@ -502,7 +500,7 @@ function scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, 
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json',
-                    'User-Agent': 'SengoBot/2.0'
+                    'User-Agent': 'Sengo/2.0'
                 }
             }), 0);
 
@@ -574,7 +572,7 @@ async function fetchBeatmapsetEvents(beatmapsetId) {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
-                'User-Agent': 'SengoBot/2.0'
+                'User-Agent': 'Sengo/2.0'
             }
         }), 0);
         return Array.isArray(res.data?.events) ? res.data.events : [];
