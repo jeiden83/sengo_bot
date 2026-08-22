@@ -4,15 +4,21 @@ let rosuWasm = null;
 // 1. Intentar cargar el motor nativo de Rust (sengo-pp)
 try {
     sengoNative = require('sengo-pp');
+    console.log("[PP-ENGINE] Motor nativo 'sengo-pp' (Rust NAPI) cargado exitosamente.");
 } catch (err) {
-    // Silencioso, usaremos fallback
+    console.warn("[PP-ENGINE] Advertencia: No se pudo cargar el motor nativo 'sengo-pp' (Rust). Motivo:", err.message);
 }
 
 // 2. Intentar cargar el motor WebAssembly (rosu-pp-js) como respaldo
 try {
     rosuWasm = require('rosu-pp-js');
+    if (!sengoNative) {
+        console.log("[PP-ENGINE] Usando motor de respaldo 'rosu-pp-js' (WASM).");
+    }
 } catch (err) {
-    // Si rosu falla pero sengoNative existe, continuará con sengoNative
+    if (!sengoNative) {
+        console.error("[PP-ENGINE] Error al cargar motor de respaldo 'rosu-pp-js' (WASM):", err.message);
+    }
 }
 
 if (!sengoNative && !rosuWasm) {
