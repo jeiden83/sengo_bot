@@ -194,7 +194,8 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         for (const d of processedDiffs) {
             const srVal = Number(d.difficulty_rating || d.sr || 0);
             const srFormatted = Number.isInteger(srVal) ? srVal : parseFloat(srVal.toFixed(2));
-            const srEmoji = getDifficultyEmoji(srVal);
+            const diffMode = d.mode || d.ruleset || beatmapset.game_mode || beatmapset.mode || 'osu';
+            const srEmoji = getDifficultyEmoji(srVal, diffMode);
             const paddedName = d.formattedName.padEnd(maxLen, ' ');
             const diffId = d.id || d.beatmap_id;
             const diffUrl = diffId ? `https://osu.ppy.sh/b/${diffId}` : `https://osu.ppy.sh/beatmapsets/${beatmapset.id}`;

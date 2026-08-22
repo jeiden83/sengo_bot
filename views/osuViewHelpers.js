@@ -213,14 +213,35 @@ function buildPaginationRow({ prefix, current, total, pageSize = 10, oneIndexed 
     );
 }
 
-function getDifficultyEmoji(stars) {
-    if (typeof stars !== 'number' || isNaN(stars) || stars <= 0) return emoji_difficulties["easy"];
-    if (stars < 2.0) return emoji_difficulties["easy"];        // Easy: 0.0 - 1.99
-    if (stars < 2.7) return emoji_difficulties["normal"];      // Normal: 2.0 - 2.69
-    if (stars < 4.0) return emoji_difficulties["hard"];        // Hard: 2.7 - 3.99
-    if (stars < 5.3) return emoji_difficulties["insane"];      // Insane: 4.0 - 5.29
-    if (stars < 6.5) return emoji_difficulties["expert"];      // Expert: 5.3 - 6.49
-    return emoji_difficulties["expert_plus"];                  // Expert+: 6.5 and above
+function normalizeGameMode(mode) {
+    if (!mode && mode !== 0) return 'osu';
+    if (typeof mode === 'number') {
+        if (mode === 1) return 'taiko';
+        if (mode === 2) return 'fruits';
+        if (mode === 3) return 'mania';
+        return 'osu';
+    }
+    const m = String(mode).toLowerCase();
+    if (m === 'taiko' || m === '1') return 'taiko';
+    if (m === 'fruits' || m === 'ctb' || m === 'catch' || m === '2') return 'fruits';
+    if (m === 'mania' || m === '3') return 'mania';
+    return 'osu';
+}
+
+function getDifficultyEmoji(stars, mode = 'osu') {
+    const normalizedMode = normalizeGameMode(mode);
+    const modeEmojis = emoji_difficulties[normalizedMode] || emoji_difficulties['osu'] || emoji_difficulties;
+
+    let key = "easy";
+    if (typeof stars !== 'number' || isNaN(stars) || stars <= 0) key = "easy";
+    else if (stars < 2.0) key = "easy";        // Easy: 0.0 - 1.99
+    else if (stars < 2.7) key = "normal";      // Normal: 2.0 - 2.69
+    else if (stars < 4.0) key = "hard";        // Hard: 2.7 - 3.99
+    else if (stars < 5.3) key = "insane";      // Insane: 4.0 - 5.29
+    else if (stars < 6.5) key = "expert";      // Expert: 5.3 - 6.49
+    else key = "expert_plus";                  // Expert+: 6.5 and above
+
+    return modeEmojis[key] || emoji_difficulties[key] || "";
 }
 
 /**

@@ -1078,9 +1078,8 @@ function doOsuMapsetEmbed({
 
     for (const map of sortedBeatmaps) {
         const starsVal = map.difficulty_rating || 0;
-        const diffEmoji = getDifficultyEmoji(starsVal);
-        const modeEmoji = modeEmojis[map.mode] || '❓';
-        const displayEmoji = map.mode === 'osu' ? diffEmoji : `${diffEmoji}${modeEmoji}`;
+        const diffEmoji = getDifficultyEmoji(starsVal, map.mode);
+        const displayEmoji = diffEmoji;
 
         const stars = map.difficulty_rating ? map.difficulty_rating.toFixed(2) : '0.00';
         const maxCombo = map.max_combo ? `x${map.max_combo}` : '-';

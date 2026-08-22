@@ -1,4 +1,36 @@
 {
+  "osu": {
+    "easy": "<:Easy:1536902014599176212>",
+    "normal": "<:Normal:1536902015505014944>",
+    "hard": "<:Hard:1536902012862599238>",
+    "insane": "<:Insane:1536902012032258079>",
+    "expert": "<:Expert:1536902346196652043>",
+    "expert_plus": "<:ExpertPlus:1536902013781024818>"
+  },
+  "taiko": {
+    "easy": "<:taiko_easy:1540709935309131828>",
+    "normal": "<:taiko_normal:1540709935980220539>",
+    "hard": "<:taiko_hard:1540709937968058430>",
+    "insane": "<:taiko_insane:1540709938765107300>",
+    "expert": "<:taiko_expert:1540709939675144332>",
+    "expert_plus": "<:taiko_expert_plus:1540709940551880804>"
+  },
+  "fruits": {
+    "easy": "<:ctb_easy:1540709929101435022>",
+    "normal": "<:ctb_normal:1540709930271768597>",
+    "hard": "<:ctb_hard:1540709931265818715>",
+    "insane": "<:ctb_insane:1540709932221857853>",
+    "expert": "<:ctb_expert:1540709933513838675>",
+    "expert_plus": "<:ctb_expert_plus:1540709934109294743>"
+  },
+  "mania": {
+    "easy": "<:mania_easy:1540709941264912446>",
+    "normal": "<:mania_normal:1540709942598832129>",
+    "hard": "<:mania_hard:1540709943836020826>",
+    "insane": "<:mania_insane:1540709944817487892>",
+    "expert": "<:mania_expert:1540709945769730049>",
+    "expert_plus": "<:mania_expert_plus:1540709947099185234>"
+  },
   "easy": "<:Easy:1536902014599176212>",
   "normal": "<:Normal:1536902015505014944>",
   "hard": "<:Hard:1536902012862599238>",
