@@ -676,6 +676,32 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
+        // Endpoint seguro para consultar las últimas líneas del archivo de logs de hoy en Render
+        if (req.method === 'GET' && req.url.startsWith('/render-logs')) {
+            const token = req.headers['authorization'] || new URL(req.url, 'http://localhost').searchParams.get('token');
+            const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
+            if (token === expectedToken) {
+                const logsDir = path.join(process.cwd(), 'db/local/logs');
+                const logFile = path.join(logsDir, `${Logger.getLocalDateString()}.log`);
+                if (fs.existsSync(logFile)) {
+                    const content = fs.readFileSync(logFile, 'utf8');
+                    const lines = content.trim().split('\n');
+                    const lastLines = lines.slice(-100);
+                    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                    res.end(lastLines.join('\n'));
+                    return;
+                } else {
+                    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                    res.end("No hay archivo de logs para el día de hoy.");
+                    return;
+                }
+            } else {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+        }
+
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
         if ((req.method === 'GET' || req.method === 'HEAD') && (req.url === '/' || req.url === '/health' || req.url === '/webhook' || req.url === '/github')) {
             const isDiscordReady = client && typeof client.isReady === 'function' ? client.isReady() : false;
