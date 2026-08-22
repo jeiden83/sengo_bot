@@ -323,7 +323,7 @@
     "mapper": {
       "header": "osu! Mapper statistics and Mapping Tracker",
       "body": "Displays detailed mapper statistics in osu! (followers, Kudosu, ranked, loved, graveyard, guest diffs, and nominations), mappers top leaderboard, BNs, and Mapping Tracker for automatic notifications.",
-      "usage": "s.mapper / s.mappers : Displays your mapper statistics.\ns.mapper 'osu_user' : Displays specified user's mapper statistics.\n\ns.mapper -track -canal #channel : Sets the mapping notifications channel.\ns.mapper -track -canal : Disables tracking and purges associated subscriptions.\ns.mapper -track -usuario <ID/mention> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Adds a Sengo-linked user to tracking.\ns.mapper -track -usuario -server : Bulk adds all Sengo-linked mappers in the server (Admins Only).\ns.mapper -track -test : Sends a test notification preview in the server channel.\n\ns.mapper -top : Displays the country's mappers top leaderboard.\ns.mapper -bn : Displays the Beatmap Nominators (BN) list from Mappers' Guild."
+      "usage": "s.mapper / s.mappers : Displays your mapper statistics.\ns.mapper 'osu_user' : Displays specified user's mapper statistics.\ns.mapper 'osu_user' -rs / -r : Launches the mapper's most recent beatmapset.\n\ns.mapper -track -canal #channel : Sets the mapping notifications channel.\ns.mapper -track -canal : Disables tracking and purges associated subscriptions.\ns.mapper -track -usuario <ID/mention> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Adds a Sengo-linked user to tracking.\ns.mapper -track -usuario -server : Bulk adds all Sengo-linked mappers in the server (Admins Only).\ns.mapper -track -test : Sends a test notification preview in the server channel.\n\ns.mapper -top : Displays the country's mappers top leaderboard.\ns.mapper -bn : Displays the Beatmap Nominators (BN) list from Mappers' Guild."
     },
     "subir": {
       "header": "Upload a score to Sengo's database.",
@@ -1129,6 +1129,7 @@
     "loading_api": "⏳ *Fetching data from osu! API...*",
     "searching_maps": "⏳ *Searching maps for {username}...*",
     "err_api_fetch": "❌ *Error loading maps from the osu! API.*",
+    "err_no_beatmaps": "❌ User **{username}** has not uploaded any beatmapsets.",
     "embed_title": "🛠️ Mapper Statistics: {flag} {username}{supporter}",
     "field_community": "👥 Community",
     "field_community_val": "• **Notified / Followers**: `{followers}`\n• **Total Kudosu**: `{kudosu}` (Available: `{available}`)",

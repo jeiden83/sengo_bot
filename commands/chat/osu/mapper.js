@@ -480,10 +480,13 @@ async function run(messages, args) {
 
     // Pre-procesar argumentos para detectar flags de tipo de mapa
     let type = 'profile';
+    let isRecentMode = false;
     const cleanArgs = [];
     for (const arg of args) {
         const lowerArg = arg.toLowerCase();
-        if (lowerArg === '-rankeados' || lowerArg === '-rankeds') {
+        if (lowerArg === '-rs' || lowerArg === '-r' || lowerArg === '-reciente' || lowerArg === '-recent') {
+            isRecentMode = true;
+        } else if (lowerArg === '-rankeados' || lowerArg === '-rankeds') {
             type = 'ranked';
         } else if (lowerArg === '-pending' || lowerArg === '-wip') {
             type = 'pending';
@@ -530,6 +533,46 @@ async function run(messages, args) {
             console.error("Error al actualizar mapper en segundo plano:", err);
         });
     }).catch(err => {});
+
+    // Si se solicitó el mapset más reciente (-rs / -r), buscar y lanzar la dificultad principal
+    if (isRecentMode) {
+        if (logger) logger.process(`Buscando el mapset más reciente de ${osuUser.username}...`);
+        const osuClient = await getOsuClient();
+        const [pending, ranked, graveyard, loved] = await Promise.all([
+            osuClient.users.getUserBeatmaps(osuUser.id, 'pending', { query: { limit: 5 } }).catch(() => []),
+            osuClient.users.getUserBeatmaps(osuUser.id, 'ranked', { query: { limit: 5 } }).catch(() => []),
+            osuClient.users.getUserBeatmaps(osuUser.id, 'graveyard', { query: { limit: 5 } }).catch(() => []),
+            osuClient.users.getUserBeatmaps(osuUser.id, 'loved', { query: { limit: 5 } }).catch(() => [])
+        ]);
+
+        const allSets = [...(pending || []), ...(ranked || []), ...(graveyard || []), ...(loved || [])];
+        if (allSets.length === 0) {
+            return message.reply(t(locale, 'mapper.err_no_beatmaps', { username: osuUser.username }));
+        }
+
+        allSets.sort((a, b) => {
+            const dateA = new Date(a.submitted_date || a.last_updated || 0).getTime();
+            const dateB = new Date(b.submitted_date || b.last_updated || 0).getTime();
+            if (dateB !== dateA) return dateB - dateA;
+            return (b.id || 0) - (a.id || 0);
+        });
+
+        const recentSet = allSets[0];
+        const sortedMaps = Array.isArray(recentSet.beatmaps) && recentSet.beatmaps.length > 0
+            ? [...recentSet.beatmaps].sort((a, b) => (b.difficulty_rating || 0) - (a.difficulty_rating || 0))
+            : [];
+        const targetBeatmap = sortedMaps[0];
+        const targetId = targetBeatmap ? String(targetBeatmap.id) : String(recentSet.id);
+
+        const mCommand = require("./m.js");
+        const additionalArgs = args.filter(a => {
+            const l = a.toLowerCase();
+            return l.startsWith('+') || l === '-mapset' || (l.startsWith('-m') && l !== '-m' && l !== '-modo') || l.startsWith('-pp');
+        });
+
+        if (logger) logger.success(`Mapset reciente de ${osuUser.username} cargado con éxito.`);
+        return await mCommand.run(messages, [targetId, ...additionalArgs]);
+    }
 
     let currentType = type;
     let currentPage = 1;

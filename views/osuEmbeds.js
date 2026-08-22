@@ -945,19 +945,25 @@ function doOsuMapEmbed({
             tagsToDisplay = beatmap.beatmapset.tags.split(/\s+/).filter(t => t.length > 0);
         }
     }
-    const userTagsStr = tagsToDisplay && tagsToDisplay.length > 0
-        ? `\n▸ **${t(locale, 'map.tags')}:** ${tagsToDisplay.slice(0, 3).map(t => `\`${t}\``).join(', ')}`
-        : '';
 
     const ppSSColor = `\u001b[1;32m${ppValues.ppSS}pp\u001b[0m`;
     const pp99Color = `\u001b[1;33m${ppValues.pp99}pp\u001b[0m`;
     const pp98Color = `\u001b[1;36m${ppValues.pp98}pp\u001b[0m`;
-    const ppAnsiBlock = `\`\`\`ansi\n${ppSSColor}/100% - ${pp99Color}/99% - ${pp98Color}/98%\n\`\`\``;
+    const pp95Color = ppValues.pp95 ? `\u001b[1;35m${ppValues.pp95}pp\u001b[0m` : null;
+
+    const ppEntries = [
+        `${ppSSColor} / 100%`,
+        `${pp99Color} / 99%`,
+        `${pp98Color} / 98%`
+    ];
+    if (pp95Color) {
+        ppEntries.push(`${pp95Color} / 95%`);
+    }
+    const ppAnsiBlock = `\`\`\`ansi\n${ppEntries.join('  •  ')}\n\`\`\``;
 
     const submittedUnix = beatmap.beatmapset.submitted_date ? Math.floor(new Date(beatmap.beatmapset.submitted_date).getTime() / 1000) : null;
     const updatedUnix = beatmap.beatmapset.last_updated ? Math.floor(new Date(beatmap.beatmapset.last_updated).getTime() / 1000) : null;
 
-    let datesLine = '';
     const dateParts = [];
     if (submittedUnix) {
         dateParts.push(`**${t(locale, 'map.submitted')}:** <t:${submittedUnix}:d>`);
@@ -965,9 +971,23 @@ function doOsuMapEmbed({
     if (updatedUnix) {
         dateParts.push(`**${t(locale, 'map.updated')}:** <t:${updatedUnix}:d>`);
     }
+
+    const descLines = [
+        `▸ **${t(locale, 'map.status')}:** \`${statusName}\`  •  **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''}  •  **${t(locale, 'map.difficulty')}:** \`${stars.toFixed(2)}★\`${Math.abs(stars - baseStars) > 0.01 ? ` *(${baseStars.toFixed(2)}★)*` : ''}`,
+        `▸ **BPM:** \`${attributes.bpm}\`${attributes.speedMultiplier !== 1.0 ? ` *(${attributes.baseBpm})*` : ''}  •  **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\`${attributes.totalLength !== attributes.hitLength ? ` *(Drain: ${formatLength(attributes.hitLength)})*` : ''}  •  **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\``,
+        `▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? ` *(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''}  •  **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? ` *(${attributes.baseAr.toFixed(1)})*` : ''}  •  **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? ` *(${attributes.baseOd.toFixed(1)})*` : ''}  •  **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? ` *(${attributes.baseHp.toFixed(1)})*` : ''}`,
+        `▸ **${t(locale, 'map.objects')}:** ${objectsValue}`
+    ];
+
     if (dateParts.length > 0) {
-        datesLine = `\n▸ ${dateParts.join(' ▸ ')}`;
+        descLines.push(`▸ ${dateParts.join('  •  ')}`);
     }
+
+    if (tagsToDisplay && tagsToDisplay.length > 0) {
+        descLines.push(`▸ **${t(locale, 'map.tags')}:** ${tagsToDisplay.slice(0, 5).map(t => `\`${t}\``).join(' ')}`);
+    }
+
+    descLines.push(`\n▸ **${t(locale, 'map.recommended_pp')}:**\n${ppAnsiBlock}`);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -977,17 +997,7 @@ function doOsuMapEmbed({
         })
         .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
         .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
-        .setDescription(`
-▸ **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''} ▸ **${t(locale, 'map.difficulty')}:** \`${stars.toFixed(2)}★\` ${Math.abs(stars - baseStars) > 0.01 ? t(locale, 'map.base', { base: baseStars.toFixed(2) }) : ''} ▸ **${t(locale, 'map.status')}:** \`${statusName}\`
-
-▸ **BPM:** \`${attributes.bpm}\` ${attributes.speedMultiplier !== 1.0 ? t(locale, 'map.bpm_base', { base: attributes.baseBpm }) : ''} ▸ **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\` ${t(locale, 'map.drain', { drain: formatLength(attributes.hitLength) })} ▸ **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\`
-▸ **${attributes.csLabel}:** \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? `*(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''} ▸ **AR:** \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? `*(${attributes.baseAr.toFixed(1)})*` : ''} ▸ **OD:** \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? `*(${attributes.baseOd.toFixed(1)})*` : ''} ▸ **HP:** \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? `*(${attributes.baseHp.toFixed(1)})*` : ''}
-
-▸ **${t(locale, 'map.objects')}:** ${objectsValue}${datesLine}
-
-▸ **${t(locale, 'map.recommended_pp')}:**
-${ppAnsiBlock}${userTagsStr}
-        `)
+        .setDescription(descLines.join('\n'))
         .setImage(beatmap.beatmapset.covers["cover@2x"])
         .setColor(embedColor)
         .setFooter({

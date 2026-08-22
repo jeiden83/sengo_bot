@@ -23,6 +23,7 @@ const data = new SlashCommandBuilder()
                 { name: "GDs (Guest Difficulties)", value: "gd" },
                 { name: "Todos", value: "all" }
             ))
+            .addBooleanOption(opt => opt.setName("reciente").setDescription("Muestra el mapset más reciente del mapper").setRequired(false))
     )
     // Subcomando: top
     .addSubcommand(sub =>
@@ -149,9 +150,11 @@ async function run(interaction, res) {
         const user = interaction.options.getString('usuario');
         const modo = interaction.options.getString('modo');
         const tipo = interaction.options.getString('tipo');
+        const reciente = interaction.options.getBoolean('reciente');
         if (user) args.push(user);
         if (modo) { args.push('-m'); args.push(modo); }
         if (tipo && tipo !== 'all') args.push(`-${tipo}`);
+        if (reciente) args.push('-r');
     } else if (sub === 'top') {
         args.push('-top');
         const pais = interaction.options.getString('pais');

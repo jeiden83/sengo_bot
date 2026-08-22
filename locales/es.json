@@ -323,7 +323,7 @@
     "mapper": {
       "header": "Estadísticas de creador/mapper y Mapping Tracker",
       "body": "Muestra estadísticas detalladas del mapper en osu! (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones), top de mappers, BNs y el sistema de Mapping Tracker para notificaciones automáticas.",
-      "usage": "s.mapper / s.mappers : Muestra tus estadísticas como mapper.\ns.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.\n\ns.mapper -track -canal #canal : Configura el canal de notificaciones de mapping.\ns.mapper -track -canal : Deshabilita el tracking y borra las suscripciones asociadas.\ns.mapper -track -usuario <ID/mención> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Añade un usuario vinculado a Sengo al tracking.\ns.mapper -track -usuario -server : Añade masivamente a todos los mappers vinculados a Sengo del servidor (Solo Admins).\ns.mapper -track -test : Envía una notificación de prueba en el canal de notificaciones del servidor.\n\ns.mapper -top : Muestra el top de mappers del país del usuario.\ns.mapper -bn : Muestra la lista de Beatmap Nominators (BN) de Mappers' Guild."
+      "usage": "s.mapper / s.mappers : Muestra tus estadísticas como mapper.\ns.mapper 'usuario_osu' : Muestra las estadísticas de mapper del usuario especificado.\ns.mapper 'usuario_osu' -rs / -r : Lanza el mapset más reciente del mapper.\n\ns.mapper -track -canal #canal : Configura el canal de notificaciones de mapping.\ns.mapper -track -canal : Deshabilita el tracking y borra las suscripciones asociadas.\ns.mapper -track -usuario <ID/mención> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Añade un usuario vinculado a Sengo al tracking.\ns.mapper -track -usuario -server : Añade masivamente a todos los mappers vinculados a Sengo del servidor (Solo Admins).\ns.mapper -track -test : Envía una notificación de prueba en el canal de notificaciones del servidor.\n\ns.mapper -top : Muestra el top de mappers del país del usuario.\ns.mapper -bn : Muestra la lista de Beatmap Nominators (BN) de Mappers' Guild."
     },
     "subir": {
       "header": "Sube una score a la base de datos de Sengo.",
@@ -1129,6 +1129,7 @@
     "loading_api": "⏳ *Buscando datos en la API de osu!...*",
     "searching_maps": "⏳ *Buscando mapas de {username}...*",
     "err_api_fetch": "❌ *Error al cargar los mapas de la API de osu!.*",
+    "err_no_beatmaps": "❌ El usuario **{username}** no tiene ningún beatmapset subido.",
     "embed_title": "🛠️ Estadísticas de Mapper: {flag} {username}{supporter}",
     "field_community": "👥 Comunidad",
     "field_community_val": "• **Notificado / Seguidores**: `{followers}`\n• **Kudosu Total**: `{kudosu}` (Disponible: `{available}`)",
