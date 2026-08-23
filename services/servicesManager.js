@@ -146,6 +146,14 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         } catch (err) {
             Logger.system(`Error al iniciar Mapping Tracker Service: ${err.message}`);
         }
+
+        // 11. Servicio de Streaming de Logs de Render y Alertas de Errores
+        try {
+            const { initRenderLogService } = require("./renderLogService.js");
+            initRenderLogService();
+        } catch (err) {
+            Logger.system(`Error al iniciar Render Log Service: ${err.message}`);
+        }
     }
 }
 
