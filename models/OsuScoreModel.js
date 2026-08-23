@@ -2039,36 +2039,7 @@ async function triggerBackgroundRecentPreload(message, recentScore, parsed_args)
             }
         }
 
-        // 2. Precarga del Leaderboard del país (.lb) de ese usuario en ese mapa (Prioridad media)
-        if (!countryCode && message && message.author) {
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase) {
-                    const { data: userToken } = await supabase
-                        .from('users')
-                        .select('country_code')
-                        .eq('discord_id', message.author.id)
-                        .maybeSingle();
-                    if (userToken && userToken.country_code) {
-                        countryCode = userToken.country_code;
-                    }
-                }
-            } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al buscar país del usuario en DB:`, err);
-            }
-        }
-
-        if (countryCode && beatmapId) {
-            try {
-                const { preloadCountryLeaderboard } = require("../commands/chat/osu/lb.js");
-                const isLazer = recentScore.build_id !== null && recentScore.build_id !== undefined;
-                await preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer);
-            } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al precargar leaderboard nacional de ${countryCode} para el mapa ${beatmapId}:`, err);
-            }
-        }
-
-        // 3. Precarga del Gap en segundo plano (Prioridad baja)
+        // 2. Precarga del Gap en segundo plano (Prioridad baja)
         try {
             await triggerBackgroundGapCache(message, beatmapId, mode);
         } catch (err) {
@@ -2589,29 +2560,24 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             let apiVerified = false;
 
             try {
-                // Obtener token supporter de VE desde Supabase (tabla liviana)
-                const { data: dbTokens } = await supabase
-                    .from('oauth_tokens')
-                    .select('access_token')
-                    .eq('is_supporter', true)
-                    .eq('country_code', 'VE')
-                    .limit(1);
+                // Obtener token supporter de VE usando el helper estandarizado
+                const OsuUserModel = require("./OsuUserModel.js");
+                const supporterRes = await OsuUserModel.getSupporterTokenForCountry('VE');
 
-                if (dbTokens && dbTokens.length > 0) {
-                    const token = dbTokens[0].access_token;
+                if (supporterRes && supporterRes.token) {
                     const isLazerMode = score.legacy_only === 0 || score.legacy_only === false || Boolean(score.build_id);
                     const legacyOnlyVal = isLazerMode ? 0 : ((score.legacy_only !== undefined && score.legacy_only !== null) ? (score.legacy_only ? 1 : 0) : 0);
                     const modeParam = score.beatmap?.mode || 'osu';
                     const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=${modeParam}&type=country&legacy_only=${legacyOnlyVal}`;
                     const axios = require('axios');
-                    const apiRes = await axios.get(url, {
+
+                    const apiRes = await osuApiQueue.add(() => axios.get(url, {
                         headers: {
-                            'Authorization': `Bearer ${token}`,
-                            'Content-Type': 'application/json',
-                            'User-Agent': 'Mozilla/5.0',
+                            'Authorization': `Bearer ${supporterRes.token}`,
+                            'Accept': 'application/json',
                             'x-api-version': '20240728'
                         }
-                    });
+                    }));
 
                     const countryScores = apiRes.data?.scores;
                     if (Array.isArray(countryScores) && countryScores.length > 0) {
@@ -2633,7 +2599,9 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
                     }
                 }
             } catch (apiErr) {
-                console.error(`[REALTIME-SNIPE] Error durante la verificación de la API en el mapa ${beatmapId}:`, apiErr.response?.data || apiErr.message);
+                const status = apiErr.response?.status;
+                const errorMsg = status ? `HTTP ${status}` : (apiErr.message || 'Error desconocido');
+                console.error(`[REALTIME-SNIPE] Error durante la verificación de la API en el mapa ${beatmapId}: ${errorMsg}`);
             }
 
             // CRÍTICO: Si la API oficial no confirmó el leaderboard nacional, NO registrar snipe ni actualizar top_scores

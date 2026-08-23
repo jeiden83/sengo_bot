@@ -553,37 +553,4 @@ run.description = {
     'usage': t('es', 'commands.lb.usage')
 }
 
-async function preloadCountryLeaderboard(beatmapId, mode, countryCode, isLazer = null) {
-    if (!beatmapId || !countryCode) return;
-    const countryFilter = countryCode.toUpperCase();
-
-    let legacyOnlyVal = 1;
-    if (isLazer === true) {
-        legacyOnlyVal = 0;
-    }
-
-    try {
-        const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryFilter);
-        if (!supporterRes) {
-            console.log(`[BG-LB-PRELOAD] No hay supporter para el país ${countryFilter}`);
-            return;
-        }
-
-        const urlObj = new URL(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores`);
-        urlObj.searchParams.append('mode', mode || 'osu');
-        urlObj.searchParams.append('type', 'country');
-        urlObj.searchParams.append('legacy_only', legacyOnlyVal);
-        urlObj.searchParams.append('country', countryFilter.toUpperCase());
-
-        await fetchLeaderboardCached(urlObj.toString(), {
-            'Authorization': `Bearer ${supporterRes.token}`,
-            'Content-Type': 'application/json',
-            'x-api-version': '20240728'
-        });
-        console.log(`[BG-LB-PRELOAD] Leaderboard de país ${countryFilter} precargado exitosamente para el mapa ${beatmapId}`);
-    } catch (err) {
-        console.error(`[BG-LB-PRELOAD] Error al precargar leaderboard nacional de ${countryFilter}:`, err);
-    }
-}
-
-module.exports = { run, "description": run.description, preloadCountryLeaderboard }
+module.exports = { run, "description": run.description }
