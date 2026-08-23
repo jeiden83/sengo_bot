@@ -1000,13 +1000,14 @@ async function recalculateExactPP(recs, activeMods) {
                 };
                 const map = await BeatmapModel.getBeatmap_osu(rec.beatmapsetId, rec.beatmapId, meta);
                 if (map) {
-                    const perfAttrs = new ppEngine.Performance({ mods: activeModsStr }).calculate(map);
+                    const diffAttrs = new ppEngine.Difficulty({ mods: activeModsStr }).calculate(map);
+                    const perfAttrs = new ppEngine.Performance({ mods: activeModsStr }).calculate(diffAttrs);
                     const ppSS = perfAttrs.pp;
-                    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
+                    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(diffAttrs).pp;
 
                     rec.maxPP = Math.round(ppSS);
                     rec.pp99 = Math.round(pp99);
-                    const starsVal = (perfAttrs.difficulty ? perfAttrs.difficulty.stars : perfAttrs.stars);
+                    const starsVal = diffAttrs.stars;
                     if (typeof starsVal === 'number') {
                         rec.stars = starsVal;
                     }

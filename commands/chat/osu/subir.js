@@ -123,9 +123,18 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
     }
 
     if (maximo_pp) {
-        const maxAttrs = new ppEngine.Performance(max_perfomance_constructor).calculate(Attrs ? Attrs : map);
-        if (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number') {
-            maxAttrs.stars = maxAttrs.difficulty.stars;
+        const targetDiffAttrs = (Attrs && Attrs.constructor?.name === 'DifficultyAttributes')
+            ? Attrs
+            : new ppEngine.Difficulty(max_perfomance_constructor).calculate(map);
+        const maxAttrs = new ppEngine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
+        const effectiveStars = (typeof targetDiffAttrs?.stars === 'number')
+            ? targetDiffAttrs.stars
+            : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0);
+        if (typeof effectiveStars === 'number') {
+            maxAttrs.stars = effectiveStars;
+            if (maxAttrs.difficulty) {
+                maxAttrs.difficulty.stars = effectiveStars;
+            }
         }
         return maxAttrs;
     }

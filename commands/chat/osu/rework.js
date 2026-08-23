@@ -1030,19 +1030,17 @@ async function run(messages, args) {
     }
 
     // Calcular estrellas base
-    const baseStarsPerf = new ppEngine.Performance({ mods: [] });
-    const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const baseStars = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.stars : baseStarsAttrs.stars) || 0;
+    const baseDiffAttrs = new ppEngine.Difficulty({ mods: [] }).calculate(map);
+    const baseStars = baseDiffAttrs.stars || 0;
 
-    const modStarsPerf = new ppEngine.Performance({ mods: activeModsStr });
-    const modStarsAttrs = modStarsPerf.calculate(map);
-    const liveModStars = (modStarsAttrs.difficulty ? modStarsAttrs.difficulty.stars : modStarsAttrs.stars) || 0;
+    const modDiffAttrs = new ppEngine.Difficulty({ mods: activeModsStr }).calculate(map);
+    const liveModStars = modDiffAttrs.stars || 0;
 
     // Calcular PP para diferentes precisiones en Live
-    const ppSS = new ppEngine.Performance({ mods: activeModsStr }).calculate(map).pp;
-    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(map).pp;
-    const pp98 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(map).pp;
-    const pp95 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(map).pp;
+    const ppSS = new ppEngine.Performance({ mods: activeModsStr }).calculate(modDiffAttrs).pp;
+    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(modDiffAttrs).pp;
+    const pp98 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(modDiffAttrs).pp;
+    const pp95 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(modDiffAttrs).pp;
 
     const livePPValues = {
         ppSS,
@@ -1051,12 +1049,12 @@ async function run(messages, args) {
         pp95,
         baseStars,
         liveModStars,
-        maxCombo: (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0
+        maxCombo: modDiffAttrs.maxCombo || baseDiffAttrs.maxCombo || 0
     };
 
     if (parsedPlay) {
         parsedPlay.liveModStars = liveModStars;
-        parsedPlay.maxCombo = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0;
+        parsedPlay.maxCombo = modDiffAttrs.maxCombo || baseDiffAttrs.maxCombo || 0;
         if (!parsedPlay.combo) {
             parsedPlay.combo = parsedPlay.maxCombo;
         }
@@ -1375,14 +1373,12 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
     const activeModsStr = modsStr;
     let activeMode = beatmap.mode;
 
-    const baseStarsPerf = new ppEngine.Performance({ mods: [] });
-    const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const modStarsPerf = new ppEngine.Performance({ mods: activeModsStr });
-    const modStarsAttrs = modStarsPerf.calculate(map);
-    const liveModStars = (modStarsAttrs.difficulty ? modStarsAttrs.difficulty.stars : modStarsAttrs.stars) || 0;
+    const baseDiffAttrs = new ppEngine.Difficulty({ mods: [] }).calculate(map);
+    const modDiffAttrs = new ppEngine.Difficulty({ mods: activeModsStr }).calculate(map);
+    const liveModStars = modDiffAttrs.stars || 0;
 
     parsedPlay.liveModStars = liveModStars;
-    parsedPlay.maxCombo = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.maxCombo : baseStarsAttrs.maxCombo) || 0;
+    parsedPlay.maxCombo = modDiffAttrs.maxCombo || baseDiffAttrs.maxCombo || 0;
     if (!parsedPlay.combo) {
         parsedPlay.combo = parsedPlay.maxCombo;
     }
@@ -1398,7 +1394,7 @@ async function executePlayRework(messages, parsedPlay, reworkQuery = "") {
             n50: parsedPlay.count_50,
             misses: parsedPlay.misses
         });
-        const liveAttrs = livePerf.calculate(map);
+        const liveAttrs = livePerf.calculate(modDiffAttrs);
         fullLivePP = liveAttrs.pp;
 
         if (parsedPlay.isFailed) {

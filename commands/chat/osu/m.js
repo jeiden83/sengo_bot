@@ -127,9 +127,8 @@ async function run(messages, args) {
     }
 
     // Calcular estrellas base (con o sin conversión, pero sin mods)
-    const baseStarsPerf = new engine.Performance({ mods: [] });
-    const baseStarsAttrs = baseStarsPerf.calculate(map);
-    const baseStars = (baseStarsAttrs.difficulty ? baseStarsAttrs.difficulty.stars : baseStarsAttrs.stars) || 0;
+    const baseDiffAttrs = new engine.Difficulty({ mods: [] }).calculate(map);
+    const baseStars = baseDiffAttrs.stars || 0;
 
     // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
     const baseBuilder = new engine.BeatmapAttributesBuilder({ map: map });

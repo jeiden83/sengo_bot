@@ -776,7 +776,7 @@ async function run(messages, args){
                     const beatmap = await getBeatmap(score.beatmap.id);
                     const map = await getBeatmap_osu(score.beatmapset.id, score.beatmap.id, beatmap);
                     const maxAttrs = calculatePP(score, map, "maximo_pp");
-                    const stars = maxAttrs.difficulty.stars;
+                    const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : score.beatmap.difficulty_rating);
                     map.free();
                     return stars;
                 } catch (e) {

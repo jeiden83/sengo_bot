@@ -244,9 +244,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
             ? Attrs 
             : new engine.Difficulty(max_perfomance_constructor).calculate(map);
         const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
-        const effectiveStars = (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number')
-            ? maxAttrs.difficulty.stars
-            : targetDiffAttrs?.stars;
+        const effectiveStars = (typeof targetDiffAttrs?.stars === 'number')
+            ? targetDiffAttrs.stars
+            : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0);
         if (typeof effectiveStars === 'number') {
             maxAttrs.stars = effectiveStars;
             if (maxAttrs.difficulty) {
@@ -277,7 +277,11 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         const targetDiffAttrs = (Attrs && Attrs.constructor?.name === 'DifficultyAttributes') 
             ? Attrs 
             : new engine.Difficulty(max_perfomance_constructor).calculate(map);
-        return new engine.Performance(perfConstructor).calculate(targetDiffAttrs);
+        const perfResult = new engine.Performance(perfConstructor).calculate(targetDiffAttrs);
+        if (typeof targetDiffAttrs?.stars === 'number') {
+            perfResult.stars = targetDiffAttrs.stars;
+        }
+        return perfResult;
     }
 
     // Para jugadas fallidas a mitad del mapa, calculamos progresivamente con gradualPerformance
