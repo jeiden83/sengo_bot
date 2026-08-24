@@ -41,6 +41,21 @@ function stripAnsi(str) {
     return str.replace(/[\u001b\u009b][[()#;?]*(?:[0-9]{1,4}(?:;[0-9]{0,4})*)?[0-9A-ORZcf-nqry=><]/g, '');
 }
 
+const ERROR_PATTERNS = [
+    /\b(?:error|exception|typeerror|referenceerror|syntaxerror|rangeerror)\b/i,
+    /\b(?:unhandledpromiserejection|uncaughtexception)\b/i,
+    /\b(?:request failed with status code|http [45]\d{2}|status code [45]\d{2})\b/i,
+    /\b(?:econnrefused|etimedout|enotfound|econnreset)\b/i,
+    /\[(?:error|fatal)\]/i
+];
+
+function isEntryAnError(cleanMsg, labels = []) {
+    if (labels.some(l => (l.name === 'level' && (l.value === 'error' || l.value === 'err' || l.value === 'fatal')) || (l.name === 'stream' && l.value === 'stderr'))) {
+        return true;
+    }
+    return ERROR_PATTERNS.some(rx => rx.test(cleanMsg));
+}
+
 /**
  * Envía un mensaje o lote a un webhook de Discord con reintento básico y control de límites.
  */
@@ -145,18 +160,17 @@ async function pollRenderLogs() {
 
         for (const entry of newLogs) {
             const labels = entry.labels || [];
-            const isError = labels.some(l => l.name === 'level' && l.value === 'error');
             const cleanMsg = stripAnsi(entry.message || '').trim();
             if (!cleanMsg) continue;
 
             const timeFormatted = entry.timestamp.slice(11, 19);
             const line = `[${timeFormatted}] ${cleanMsg}`;
+            const isError = isEntryAnError(cleanMsg, labels);
 
             if (isError) {
                 errorLogs.push(line);
-            } else {
-                infoLogs.push(line);
             }
+            infoLogs.push(line);
         }
 
         // 1. Enviar errores inmediatamente al webhook de errores si está configurado
