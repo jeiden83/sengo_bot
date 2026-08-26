@@ -202,6 +202,8 @@ async function run(messages, args) {
                 sortBy = 'loved';
             } else if (arg === '-followers' || arg === '-seguidores') {
                 sortBy = 'followers';
+            } else if (arg === '-subscribers' || arg === '-subs' || arg === '-suscriptores') {
+                sortBy = 'subscribers';
             } else if (arg === '-graveyard' || arg === '-abandonados') {
                 sortBy = 'graveyard';
             } else if (arg === '-recent' || arg === '-reciente') {
@@ -396,6 +398,8 @@ async function run(messages, args) {
             filteredMappers.sort((a, b) => (b.loved_count || 0) - (a.loved_count || 0));
         } else if (sortBy === 'followers') {
             filteredMappers.sort((a, b) => (b.followers || 0) - (a.followers || 0));
+        } else if (sortBy === 'subscribers') {
+            filteredMappers.sort((a, b) => (b.subscribers || 0) - (a.subscribers || 0));
         } else if (sortBy === 'graveyard') {
             filteredMappers.sort((a, b) => (b.graveyard_count || 0) - (a.graveyard_count || 0));
         } else if (sortBy === 'recent') {

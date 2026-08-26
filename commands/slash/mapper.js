@@ -36,7 +36,8 @@ const data = new SlashCommandBuilder()
                 { name: "Mapas Rankeados", value: "ranked" },
                 { name: "Mapas WIP / Pending", value: "wip" },
                 { name: "Mapas Loved", value: "loved" },
-                { name: "Seguidores", value: "followers" },
+                { name: "Seguidores (Perfil)", value: "followers" },
+                { name: "Suscriptores (Mapping)", value: "subscribers" },
                 { name: "Graveyard", value: "graveyard" },
                 { name: "Reciente", value: "recent" }
             ))

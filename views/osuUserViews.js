@@ -113,8 +113,9 @@ function doOsuMapperEmbed(message, user, locale = 'es') {
     const flag = getFlagEmoji(user.country_code);
     const locTag = locale === 'es' ? 'es-ES' : 'en-US';
     
-    // Kudosu y seguidores de mapeo
-    const mappingFollowers = user.mapping_follower_count?.toLocaleString(locTag) || '0';
+    // Kudosu, seguidores y suscriptores de mapeo
+    const followers = (user.follower_count || 0).toLocaleString(locTag);
+    const subscribers = (user.mapping_follower_count || 0).toLocaleString(locTag);
     const kudosuTotal = user.kudosu?.total?.toLocaleString(locTag) || '0';
     const kudosuAvailable = user.kudosu?.available?.toLocaleString(locTag) || '0';
     
@@ -137,7 +138,7 @@ function doOsuMapperEmbed(message, user, locale = 'es') {
         .addFields(
             { 
                 name: t(locale, 'mapper.field_community'), 
-                value: t(locale, 'mapper.field_community_val', { followers: mappingFollowers, kudosu: kudosuTotal, available: kudosuAvailable }), 
+                value: t(locale, 'mapper.field_community_val', { followers, subscribers, kudosu: kudosuTotal, available: kudosuAvailable }), 
                 inline: false 
             },
             { 
@@ -455,6 +456,7 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
         'graveyard': t(locale, 'mapper.sort_graveyard'),
         'gd': t(locale, 'mapper.sort_gd'),
         'followers': t(locale, 'mapper.sort_followers'),
+        'subscribers': t(locale, 'mapper.sort_subscribers'),
         'kudosus': t(locale, 'mapper.sort_kudosus'),
         'recent': t(locale, 'mapper.sort_recent')
     };
@@ -504,7 +506,9 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
             if (sortBy === 'kudosus') {
                 highlightStat = t(locale, 'mapper.stat_kudosu', { count: mapper.kudosu_total });
             } else if (sortBy === 'followers') {
-                highlightStat = t(locale, 'mapper.stat_followers', { count: mapper.followers });
+                highlightStat = t(locale, 'mapper.stat_followers', { count: mapper.followers || 0 });
+            } else if (sortBy === 'subscribers') {
+                highlightStat = t(locale, 'mapper.stat_subscribers', { count: mapper.subscribers || 0 });
             } else if (sortBy === 'recent') {
                 highlightStat = mapper.last_updated 
                     ? t(locale, 'mapper.stat_last_map', { unix: Math.floor(new Date(mapper.last_updated).getTime() / 1000) })
@@ -516,13 +520,14 @@ function doOsuMapperTopEmbed(message, mappers, page, maxPages, sortBy, countryFi
             
             // Fila de estadísticas
             description += t(locale, 'mapper.row_stats', {
-                ranked: mapper.ranked_count,
-                loved: mapper.loved_count,
-                wip: mapper.pending_count,
-                gds: mapper.guest_count,
-                graveyard: mapper.graveyard_count,
-                followers: mapper.followers,
-                kudosu: mapper.kudosu_total
+                ranked: mapper.ranked_count || 0,
+                loved: mapper.loved_count || 0,
+                wip: mapper.pending_count || 0,
+                gds: mapper.guest_count || 0,
+                graveyard: mapper.graveyard_count || 0,
+                followers: mapper.followers || 0,
+                subscribers: mapper.subscribers || 0,
+                kudosu: mapper.kudosu_total || 0
             });
             
             // Fila de actualización

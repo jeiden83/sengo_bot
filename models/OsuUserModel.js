@@ -1522,6 +1522,7 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
+                subscribers: existing.subscribers,
                 last_updated: existing.last_updated,
                 playmode: existing.playmode
             });
@@ -1574,7 +1575,8 @@ async function getMapperTop(forceUpdate = false, onProgress = null) {
                 pending_count: profile.pending_beatmapset_count,
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
-                followers: profile.mapping_follower_count,
+                followers: profile.follower_count || 0,
+                subscribers: profile.mapping_follower_count || 0,
                 last_updated,
                 playmode: profile.playmode
             });
@@ -1731,6 +1733,7 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
+                subscribers: existing.subscribers,
                 last_updated: existing.last_updated,
                 playmode: existing.playmode
             });
@@ -1787,7 +1790,8 @@ async function getNationalMapperTop(countryFilter, forceUpdate = false, onProgre
                 pending_count: profile.pending_beatmapset_count,
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
-                followers: profile.mapping_follower_count,
+                followers: profile.follower_count || 0,
+                subscribers: profile.mapping_follower_count || 0,
                 last_updated,
                 playmode: profile.playmode
             });
@@ -1936,6 +1940,7 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 graveyard_count: existing.graveyard_count,
                 guest_count: existing.guest_count,
                 followers: existing.followers,
+                subscribers: existing.subscribers,
                 last_updated: existing.last_updated,
                 playmode: existing.playmode
             });
@@ -1992,7 +1997,8 @@ async function getGlobalKudosuMapperTop(forceUpdate = false, onProgress = null) 
                 pending_count: profile.pending_beatmapset_count,
                 graveyard_count: profile.graveyard_beatmapset_count,
                 guest_count: profile.guest_beatmapset_count,
-                followers: profile.mapping_follower_count,
+                followers: profile.follower_count || 0,
+                subscribers: profile.mapping_follower_count || 0,
                 last_updated,
                 playmode: profile.playmode
             });
@@ -2088,7 +2094,8 @@ async function upsertMapperFromProfile(profile, client) {
         pending_count: profile.pending_beatmapset_count,
         graveyard_count: profile.graveyard_beatmapset_count,
         guest_count: profile.guest_beatmapset_count,
-        followers: profile.mapping_follower_count,
+        followers: profile.follower_count || 0,
+        subscribers: profile.mapping_follower_count || 0,
         last_updated,
         playmode: profile.playmode,
         updated_at: new Date().toISOString()
