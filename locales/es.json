@@ -734,7 +734,7 @@
     "missing_more": "\n*...y **{count}** usuarios vinculados más.*",
     "list_header": "Total de amigos en osu!: **{total}**\n\n",
     "list_header_country": "Amigos de {country}: **{count}** (de {total} amigos en total)\n\n",
-    "list_legend": "\n**Leyenda:**\n• **Supporter**: Si el usuario tiene supporter en osu! activo.\n• **Mutual**: ✅ Sí, ❌ No, ❓ Vinculado pero falta scope `friends.read` (se requiere `s.link`).\n• **Sengo**: Cuenta vinculada a Sengo.",
+    "list_legend": "🟢 - Usuario conectado\n💖 - Usuario con support\n👥 - Está en Sengo y te tiene mutual\n-# Si no está en Sengo no se puede saber el mutual\n\n",
     "list_title": "👥 Lista de Amigos en osu!",
     "list_title_country": "👥 Amigos en osu! - {country}",
     "empty_desc_country": "No tienes ningún amigo de {country} agregado en tu cuenta de osu!.",

@@ -182,10 +182,11 @@ async function run(messages, args) {
     const maxPages = Math.ceil(filteredFriends.length / 10);
     let pageNum = 1;
     let startIndex = 0;
+    const hasButtons = filteredFriends.length > 10;
 
     // Función para renderizar el embed de una página utilizando la capa de visualización (View)
-    const generateEmbed = (chunk, page, maxP) => {
-        return doOsuFriendsListEmbed(message, filteredFriends, chunk, page, maxP, startIndex, totalFriends, filterCountryCode);
+    const generateEmbed = (chunk, page, maxP, showLegend = hasButtons) => {
+        return doOsuFriendsListEmbed(message, filteredFriends, chunk, page, maxP, startIndex, totalFriends, filterCountryCode, meDetails, showLegend);
     };
 
     const getButtonsRow = (start, total) => {
@@ -197,12 +198,12 @@ async function run(messages, args) {
     const initialChunk = filteredFriends.slice(startIndex, startIndex + 10);
     await checkMutualsForChunk(initialChunk, myOsuId, linkedMap);
 
-    const initialEmbed = generateEmbed(initialChunk, pageNum, maxPages);
+    const initialEmbed = generateEmbed(initialChunk, pageNum, maxPages, hasButtons);
 
     let sent_message;
     const sendOptions = {
         embeds: [initialEmbed],
-        components: filteredFriends.length > 10 ? [getButtonsRow(startIndex, filteredFriends.length)] : []
+        components: hasButtons ? [getButtonsRow(startIndex, filteredFriends.length)] : []
     };
 
     if (reply) {
@@ -211,7 +212,7 @@ async function run(messages, args) {
         sent_message = await message.channel.send(sendOptions);
     }
 
-    if (filteredFriends.length <= 10) return;
+    if (!hasButtons) return;
 
     const btnFilter = btnInt => btnInt.user.id === message.author.id;
     const collector = sent_message.createMessageComponentCollector({
@@ -243,7 +244,7 @@ async function run(messages, args) {
                 await checkMutualsForChunk(currentChunk, myOsuId, linkedMap);
             }
 
-            const updatedEmbed = generateEmbed(currentChunk, pageNum, maxPages);
+            const updatedEmbed = generateEmbed(currentChunk, pageNum, maxPages, true);
 
             await i.editReply({
                 embeds: [updatedEmbed],
@@ -256,7 +257,9 @@ async function run(messages, args) {
 
     collector.on('end', async () => {
         try {
-            await sent_message.edit({ components: [] });
+            const currentChunk = filteredFriends.slice(startIndex, startIndex + 10);
+            const expiredEmbed = generateEmbed(currentChunk, pageNum, maxPages, false);
+            await sent_message.edit({ embeds: [expiredEmbed], components: [] });
         } catch {}
     });
 }

@@ -734,7 +734,7 @@
     "missing_more": "\n*...and **{count}** more linked users.*",
     "list_header": "Total friends on osu!: **{total}**\n\n",
     "list_header_country": "Friends from {country}: **{count}** (out of {total} total friends)\n\n",
-    "list_legend": "\n**Legend:**\n• **Supporter**: Whether the user has active osu! supporter.\n• **Mutual**: ✅ Yes, ❌ No, ❓ Linked but missing `friends.read` scope (requires `s.link`).\n• **Sengo**: Linked account to Sengo.",
+    "list_legend": "🟢 - Online user\n💖 - User with support\n👥 - On Sengo and mutual friend\n-# If not on Sengo, mutual status cannot be determined\n\n",
     "list_title": "👥 osu! Friends List",
     "list_title_country": "👥 osu! Friends List - {country}",
     "empty_desc_country": "You do not have any friends from {country} added on your osu! account.",

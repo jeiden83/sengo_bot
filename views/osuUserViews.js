@@ -58,7 +58,7 @@ function doOsuMissingFriendsEmbed(message, missingFriends) {
 /**
  * Renderiza una página de la lista de amigos en osu! (amigos.js)
  */
-function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends, filterCountryCode) {
+function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends, filterCountryCode, user = null, showLegend = true) {
     const embedColor = getEmbedColor(message);
     const locale = message.locale || 'es';
     let desc = "";
@@ -67,6 +67,10 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         desc = t(locale, 'amigos.list_header_country', { country: filterCountryCode, count: friends.length, total: totalFriends });
     } else {
         desc = t(locale, 'amigos.list_header', { total: totalFriends });
+    }
+
+    if (showLegend) {
+        desc += t(locale, 'amigos.list_legend');
     }
 
     // Calcular la longitud máxima del nombre en la página actual para alineación perfecta en columna
@@ -95,12 +99,13 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
     });
 
     const title = filterCountryCode ? t(locale, 'amigos.list_title_country', { country: filterCountryCode }) : t(locale, 'amigos.list_title');
+    const avatarUrl = user?.avatar_url || (user?.id ? `https://a.ppy.sh/${user.id}` : (message?.author?.displayAvatarURL ? message.author.displayAvatarURL({ extension: 'png' }) : "https://jeiden.s-ul.eu/3ssHl9Gd"));
 
     return new EmbedBuilder()
         .setTitle(title)
         .setDescription(desc)
         .setColor(embedColor)
-        .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
+        .setThumbnail(avatarUrl)
         .setFooter({ text: t(locale, 'amigos.list_footer', { page, maxPages }), iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();
 }
