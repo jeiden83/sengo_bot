@@ -115,7 +115,17 @@ async function fetchGlobalBeatmapEvents() {
                 'User-Agent': 'Sengo/2.0'
             }
         }), 0);
-        return Array.isArray(res.data?.events) ? res.data.events : [];
+        const events = Array.isArray(res.data?.events) ? res.data.events : [];
+        const users = Array.isArray(res.data?.users) ? res.data.users : [];
+        const userMap = new Map(users.map(u => [u.id, u]));
+
+        for (const event of events) {
+            if (!event.user && event.user_id && userMap.has(event.user_id)) {
+                event.user = userMap.get(event.user_id);
+            }
+        }
+
+        return events;
     } catch (err) {
         if (err.response?.status === 401) {
             await getOsuApiToken(true);
@@ -575,7 +585,17 @@ async function fetchBeatmapsetEvents(beatmapsetId) {
                 'User-Agent': 'Sengo/2.0'
             }
         }), 0);
-        return Array.isArray(res.data?.events) ? res.data.events : [];
+        const events = Array.isArray(res.data?.events) ? res.data.events : [];
+        const users = Array.isArray(res.data?.users) ? res.data.users : [];
+        const userMap = new Map(users.map(u => [u.id, u]));
+
+        for (const event of events) {
+            if (!event.user && event.user_id && userMap.has(event.user_id)) {
+                event.user = userMap.get(event.user_id);
+            }
+        }
+
+        return events;
     } catch (err) {
         return [];
     }

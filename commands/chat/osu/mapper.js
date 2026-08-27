@@ -941,7 +941,7 @@ async function handleMappingTrackerCommand(messages, args) {
                 const events = await fetchBeatmapsetEvents(realMapset.id);
                 const nomEvent = events.find(e => ['nominate', 'qualify', 'approve'].includes((e.type || '').toLowerCase()));
                 if (nomEvent) {
-                    if (!nomUser && (nomEvent.user || nomEvent.user_id)) {
+                    if ((!nomUser || nomUser.username?.startsWith('BN #')) && (nomEvent.user || nomEvent.user_id)) {
                         const u = nomEvent.user || {};
                         const uId = u.id || nomEvent.user_id;
                         nomUser = {
