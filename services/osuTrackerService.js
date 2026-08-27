@@ -162,6 +162,12 @@ function updateTrackChannelInMemory(guildId, channelId) {
  */
 async function processNewScore(client, userObj, score) {
     const osuId = userObj.osuId;
+
+    // ponytail: En osu! únicamente los mapas 'ranked' y 'approved' otorgan PP oficial y pueden ser Top Plays (/scores/best)
+    const initialStatus = (score.beatmap?.status || score.beatmapset?.status || '').toLowerCase();
+    if (initialStatus && !['ranked', 'approved'].includes(initialStatus)) {
+        return;
+    }
     
     // 1. Obtener el Top 200 de mejores puntuaciones del usuario
     await OsuUserModel.NewloadToken();
@@ -199,6 +205,11 @@ async function processNewScore(client, userObj, score) {
     try {
         normalizeScore(score);
         const beatmapData = await getBeatmap(score.beatmap.id);
+        const mapStatus = (beatmapData?.status || score.beatmap?.status || score.beatmapset?.status || '').toLowerCase();
+        if (mapStatus && !['ranked', 'approved'].includes(mapStatus)) {
+            return;
+        }
+
         mapObj = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmapData);
         
         let maxAttrs = null;
