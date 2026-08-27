@@ -1026,6 +1026,7 @@
     "a_ranks": " ▸ **A Ranks (Pass/Low Acc):** `{percent}%` of total",
     "quick_analysis": "⚡ **Quick Performance Analysis:**",
     "account_age": " ▸ **Account age:** `{days}` days",
+    "followers": " ▸ **Followers:** `{count}`",
     "play_pace": " ▸ **Play Pace:** `{pace}` playcount/day",
     "pp_efficiency": " ▸ **PP Efficiency:** `{eff}` PP per 1,000 plays",
     "hit_consistency": " ▸ **Hit Consistency:** `{consistency}` average hits per play",

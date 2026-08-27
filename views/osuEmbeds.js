@@ -1855,6 +1855,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         t(locale, 'profile.a_ranks', { percent: a_percent }) + "\n\n" +
         t(locale, 'profile.quick_analysis') + "\n" +
         t(locale, 'profile.account_age', { days: diffDays.toLocaleString(locTag) }) + "\n" +
+        t(locale, 'profile.followers', { count: (osu_userdata.follower_count || 0).toLocaleString(locTag) }) + "\n" +
         t(locale, 'profile.play_pace', { pace: avg_playcount_day }) + "\n" +
         t(locale, 'profile.pp_efficiency', { eff: pp_per_1k }) + "\n" +
         t(locale, 'profile.hit_consistency', { consistency: hits_per_play }) + "\n\n" +

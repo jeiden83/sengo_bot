@@ -1026,6 +1026,7 @@
     "a_ranks": " ▸ **A Ranks (Pass/Bajo Acc):** `{percent}%` del total",
     "quick_analysis": "⚡ **Análisis Rápido de Rendimiento:**",
     "account_age": " ▸ **Antigüedad de la cuenta:** `{days}` días",
+    "followers": " ▸ **Seguidores:** `{count}`",
     "play_pace": " ▸ **Ritmo de Juego:** `{pace}` playcount/día",
     "pp_efficiency": " ▸ **Eficiencia de PP:** `{eff}` PP por cada 1,000 plays",
     "hit_consistency": " ▸ **Consistencia de Hits:** `{consistency}` hits promedio por jugada",
