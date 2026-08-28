@@ -8,26 +8,22 @@ const { getSupabaseClient } = require("../db/database.js");
 const OsuScoreModel = require("../models/OsuScoreModel.js");
 const BirthdayModel = require("../models/BirthdayModel.js");
 
-// Registrar fuentes Poppins
-const fontDir = path.join(process.cwd(), "assets/fonts");
-if (fs.existsSync(path.join(fontDir, "Poppins-Regular.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-Regular.ttf"), { family: "Poppins", weight: "normal", style: "normal" });
+// Registrar fuentes del sistema para coincidir con la tipografía de Milin
+const winFonts = "C:/Windows/Fonts";
+if (fs.existsSync(path.join(winFonts, "segoeui.ttf"))) {
+    registerFont(path.join(winFonts, "segoeui.ttf"), { family: "SegoeCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuib.ttf"), { family: "SegoeCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuii.ttf"), { family: "SegoeCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "segoeuiz.ttf"), { family: "SegoeCustom", weight: "bold", style: "italic" });
 }
-if (fs.existsSync(path.join(fontDir, "Poppins-SemiBold.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-SemiBold.ttf"), { family: "Poppins", weight: "600", style: "normal" });
+if (fs.existsSync(path.join(winFonts, "arial.ttf"))) {
+    registerFont(path.join(winFonts, "arial.ttf"), { family: "ArialCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "arialbd.ttf"), { family: "ArialCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "ariali.ttf"), { family: "ArialCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "arialbi.ttf"), { family: "ArialCustom", weight: "bold", style: "italic" });
 }
-if (fs.existsSync(path.join(fontDir, "Poppins-Bold.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-Bold.ttf"), { family: "Poppins", weight: "bold", style: "normal" });
-}
-if (fs.existsSync(path.join(fontDir, "Poppins-Italic.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-Italic.ttf"), { family: "Poppins", weight: "normal", style: "italic" });
-}
-if (fs.existsSync(path.join(fontDir, "Poppins-BoldItalic.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-BoldItalic.ttf"), { family: "Poppins", weight: "bold", style: "italic" });
-}
-if (fs.existsSync(path.join(fontDir, "Poppins-SemiBoldItalic.ttf"))) {
-    registerFont(path.join(fontDir, "Poppins-SemiBoldItalic.ttf"), { family: "Poppins", weight: "600", style: "italic" });
-}
+
+const FONT_FAMILY = '"SegoeCustom", "ArialCustom", "Segoe UI", Arial, sans-serif';
 
 /**
  * Descarga una imagen remota de forma segura y devuelve un Image object de canvas.
@@ -49,7 +45,7 @@ async function fetchImageSafe(url) {
 /**
  * Recorta y dibuja una imagen en modo Cover sin deformarla.
  */
-function drawImageCover(ctx, img, x, y, w, h) {
+function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5) {
     if (!img) return;
     const imgRatio = img.width / img.height;
     const targetRatio = w / h;
@@ -64,7 +60,7 @@ function drawImageCover(ctx, img, x, y, w, h) {
         sw = img.width;
         sh = img.width / targetRatio;
         sx = 0;
-        sy = (img.height - sh) / 2;
+        sy = (img.height - sh) * alignY;
     }
 
     ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
@@ -253,7 +249,7 @@ function generateCardTitle(skills, modStats, pp, user, sengoData) {
     if (modStats.NM >= 55) descriptor = "Mod-Hating";
     else if (modStats.DT >= 40) descriptor = "Speedy";
     else if (modStats.HR >= 35) descriptor = "Ant-Clicking";
-    else if (modStats.HD >= 45) descriptor = "HD-Abusing";
+    else if (modStats.HD >= 45) descriptor = "HD abusing";
     else if (modStats.FL >= 5) descriptor = "Blindsighted";
     else if (modStats.EZ >= 10) descriptor = "Patient";
     else if (modStats.NM <= 15) descriptor = "Mod-Loving";
@@ -318,7 +314,7 @@ async function fetchPinnedScore(userId, topScores) {
 function getGradeColor(grade) {
     const g = (grade || "A").toUpperCase();
     if (g === "SS" || g === "X" || g === "XH") return "#e2e8f0";
-    if (g === "S" || g === "SH") return "#fbbf24";
+    if (g === "S" || g === "SH") return "#facc15";
     if (g === "A") return "#22c55e";
     if (g === "B") return "#3b82f6";
     if (g === "C") return "#a855f7";
@@ -326,7 +322,7 @@ function getGradeColor(grade) {
 }
 
 /**
- * Renderiza la tarjeta de perfil en Canvas estilo YO (1300 x 720)
+ * Renderiza la tarjeta de perfil en Canvas estilo YO con fondo ciruela cálido (#27152c)
  * @param {any} user Datos del usuario de osu!
  * @param {Array} topScores Top scores del usuario
  * @returns {Promise<Buffer>} Buffer PNG de la imagen
@@ -356,27 +352,27 @@ async function renderYoCard(user, topScores = []) {
     const title = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData);
     const pinnedPlay = await fetchPinnedScore(user.id, topScores);
 
-    // 1. FONDO PRINCIPAL OSCURO VIOLETA
-    ctx.fillStyle = "#0f0917";
+    // 1. FONDO PRINCIPAL COLOR CIRUELA / VIOLETA OSCURO EXACTO (#27152c)
+    ctx.fillStyle = "#27152c";
     ctx.fillRect(0, 0, width, height);
 
-    // Patrón sutil de puntos (Dotted background)
-    ctx.fillStyle = "rgba(255, 255, 255, 0.04)";
-    const dotSpacing = 24;
-    for (let x = 12; x < width; x += dotSpacing) {
-        for (let y = 12; y < height; y += dotSpacing) {
+    // Patrón de puntos cálidos
+    ctx.fillStyle = "rgba(255, 200, 255, 0.055)";
+    const dotSpacing = 22;
+    for (let x = 11; x < width; x += dotSpacing) {
+        for (let y = 11; y < height; y += dotSpacing) {
             ctx.beginPath();
-            ctx.arc(x, y, 1.3, 0, Math.PI * 2);
+            ctx.arc(x, y, 1.4, 0, Math.PI * 2);
             ctx.fill();
         }
     }
 
     // 2. CABECERA: TÍTULO SUPERIOR + HITCIRCLE
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic bold 28px "Poppins", sans-serif';
+    ctx.font = `italic 30px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
-    ctx.fillText(title.line1, 550, 42);
-    ctx.fillText(title.line2, 550, 78);
+    ctx.fillText(title.line1, 500, 42);
+    ctx.fillText(title.line2, 500, 78);
 
     // Hitcircle de osu!
     const circleX = 870;
@@ -397,15 +393,15 @@ async function renderYoCard(user, topScores = []) {
     const avatarY = 118;
     const avatarSize = 270;
 
-    // Avatar
+    // Avatar sin recorte excesivo
     ctx.save();
-    roundRect(ctx, avatarX, avatarY, avatarSize, avatarSize, 20);
+    roundRect(ctx, avatarX, avatarY, avatarSize, avatarSize, 14);
     ctx.clip();
     const avatarImg = await fetchImageSafe(user.avatar_url);
     if (avatarImg) {
-        drawImageCover(ctx, avatarImg, avatarX, avatarY, avatarSize, avatarSize);
+        ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
     } else {
-        ctx.fillStyle = "#2e1065";
+        ctx.fillStyle = "#170c1a";
         ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
     }
     ctx.restore();
@@ -413,18 +409,18 @@ async function renderYoCard(user, topScores = []) {
     // Contenedor Level & Medals
     const progY = 405;
     const progH = 160;
-    ctx.fillStyle = "rgba(20, 12, 32, 0.85)";
-    roundRect(ctx, avatarX, progY, avatarSize, progH, 20, true);
+    ctx.fillStyle = "#170c1a";
+    roundRect(ctx, avatarX, progY, avatarSize, progH, 14, true);
 
     // Level
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic bold 24px "Poppins", sans-serif';
+    ctx.font = `italic 24px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
-    ctx.fillText(`lvl ${level.current || 100}`, avatarX + (avatarSize / 2), progY + 42);
+    ctx.fillText(`lvl ${level.current || 100}`, avatarX + (avatarSize / 2), progY + 44);
 
     const lvlBarX = avatarX + 15;
     const lvlBarW = avatarSize - 30;
-    const lvlBarY = progY + 54;
+    const lvlBarY = progY + 56;
     const lvlProg = Math.min(100, Math.max(0, level.progress || 0));
 
     ctx.fillStyle = "#2e253c";
@@ -434,9 +430,9 @@ async function renderYoCard(user, topScores = []) {
 
     // Medals
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic bold 22px "Poppins", sans-serif';
+    ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
-    ctx.fillText(`Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, avatarX + (avatarSize / 2), progY + 115);
+    ctx.fillText(`Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, avatarX + (avatarSize / 2), progY + 116);
 
     const medalBarY = progY + 128;
     ctx.fillStyle = "#2e253c";
@@ -454,76 +450,81 @@ async function renderYoCard(user, topScores = []) {
     const rankBoxY = 118;
     const rankBoxSize = 270;
 
-    ctx.fillStyle = "rgba(20, 12, 32, 0.85)";
-    roundRect(ctx, rankBoxX, rankBoxY, rankBoxSize, rankBoxSize, 20, true);
+    ctx.fillStyle = "#170c1a";
+    roundRect(ctx, rankBoxX, rankBoxY, rankBoxSize, rankBoxSize, 14, true);
 
-    // Bandera y Nombre
-    const flagW = 82;
-    const flagH = 54;
-    const flagX = rankBoxX + 18;
-    const flagY = rankBoxY + 18;
+    // Bandera oficial (proporciones correctas)
+    const flagW = 78;
+    const flagH = 52;
+    const flagX = rankBoxX + 16;
+    const flagY = rankBoxY + 16;
 
     const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
     const flagImg = await fetchImageSafe(flagUrl);
     if (flagImg) {
         ctx.save();
-        roundRect(ctx, flagX, flagY, flagW, flagH, 8);
+        roundRect(ctx, flagX, flagY, flagW, flagH, 6);
         ctx.clip();
         ctx.drawImage(flagImg, flagX, flagY, flagW, flagH);
         ctx.restore();
     }
 
+    // Nombre de usuario
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'bold 44px "Poppins", sans-serif';
+    ctx.font = `bold 44px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(user.username, rankBoxX + 112, flagY + 42);
+    ctx.fillText(user.username, rankBoxX + 104, flagY + 41);
 
     // Global Rank
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = 'italic 22px "Poppins", sans-serif';
+    ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
     const rankCenterX = rankBoxX + (rankBoxSize / 2);
     ctx.fillText("Global Rank", rankCenterX, rankBoxY + 115);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'bold 54px "Poppins", sans-serif';
+    ctx.font = `bold 54px ${FONT_FAMILY}`;
     ctx.fillText(globalRank, rankCenterX, rankBoxY + 168);
 
     // Country Rank
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = 'italic 22px "Poppins", sans-serif';
+    ctx.font = `italic 22px ${FONT_FAMILY}`;
+    ctx.textAlign = "center";
     ctx.fillText("Country", rankCenterX, rankBoxY + 208);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'bold 50px "Poppins", sans-serif';
+    ctx.font = `bold 50px ${FONT_FAMILY}`;
     ctx.fillText(countryRank, rankCenterX, rankBoxY + 254);
 
-    // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY CARD
+    // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY CARD (Ancho completo e ilustración visible)
     const playBoxX = 715;
     const playBoxY = 118;
-    const playBoxW = 450;
+    const playBoxW = 575;
     const playBoxH = 270;
 
     ctx.save();
-    roundRect(ctx, playBoxX, playBoxY, playBoxW, playBoxH, 20);
+    roundRect(ctx, playBoxX, playBoxY, playBoxW, playBoxH, 14);
     ctx.clip();
 
     const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
     const mapCoverImg = await fetchImageSafe(coverUrl);
     if (mapCoverImg) {
-        drawImageCover(ctx, mapCoverImg, playBoxX, playBoxY, playBoxW, playBoxH);
+        drawImageCover(ctx, mapCoverImg, playBoxX, playBoxY, playBoxW, playBoxH, 0.3);
     } else {
-        ctx.fillStyle = "#1e1b4b";
+        ctx.fillStyle = "#170c1a";
         ctx.fillRect(playBoxX, playBoxY, playBoxW, playBoxH);
     }
 
+    // Degradado sutil para iluminar el arte del beatmap
     const playGrad = ctx.createLinearGradient(playBoxX, 0, playBoxX + playBoxW, 0);
-    playGrad.addColorStop(0, "rgba(12, 8, 20, 0.88)");
-    playGrad.addColorStop(0.55, "rgba(12, 8, 20, 0.70)");
-    playGrad.addColorStop(1, "rgba(12, 8, 20, 0.45)");
+    playGrad.addColorStop(0, "rgba(15, 8, 20, 0.92)");
+    playGrad.addColorStop(0.40, "rgba(15, 8, 20, 0.70)");
+    playGrad.addColorStop(0.70, "rgba(15, 8, 20, 0.35)");
+    playGrad.addColorStop(1, "rgba(15, 8, 20, 0.15)");
     ctx.fillStyle = playGrad;
     ctx.fillRect(playBoxX, playBoxY, playBoxW, playBoxH);
 
+    // Contenido de la jugada
     const mapTitle = pinnedPlay?.beatmapset?.title || "Ange du Blanc Pur";
     const mapArtist = pinnedPlay?.beatmapset?.artist || "ke-ji feat. Nanahira";
     const mapDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
@@ -534,20 +535,20 @@ async function renderYoCard(user, topScores = []) {
     const scoreGrade = pinnedPlay?.rank || "A";
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic 600 20px "Poppins", sans-serif';
+    ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(`${mapTitle} by ${mapArtist}`.slice(0, 42), playBoxX + 16, playBoxY + 34);
+    ctx.fillText(`${mapTitle} by ${mapArtist}`.slice(0, 48), playBoxX + 16, playBoxY + 34);
 
-    ctx.font = 'italic 600 22px "Poppins", sans-serif';
-    ctx.fillText(`${mapDiff} ${mapSR}`.slice(0, 28), playBoxX + 16, playBoxY + 76);
+    ctx.font = `italic bold 23px ${FONT_FAMILY}`;
+    ctx.fillText(`${mapDiff} ${mapSR}`.slice(0, 32), playBoxX + 16, playBoxY + 76);
 
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = 'italic 17px "Poppins", sans-serif';
+    ctx.font = `italic 18px ${FONT_FAMILY}`;
     ctx.textAlign = "right";
     ctx.fillText(`${scoreVal} Score`, playBoxX + playBoxW - 16, playBoxY + 76);
 
     ctx.fillStyle = getGradeColor(scoreGrade);
-    ctx.font = 'bold 74px "Poppins", sans-serif';
+    ctx.font = `bold 76px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
     ctx.fillText(scoreGrade, playBoxX + 80, playBoxY + 175);
 
@@ -560,14 +561,14 @@ async function renderYoCard(user, topScores = []) {
         ctx.fillStyle = mod === "DT" || mod === "NC" ? "#f87171" : (mod === "HD" ? "#a3e635" : "#38bdf8");
         roundRect(ctx, modX, playBoxY + 205, 52, 32, 16, true);
         ctx.fillStyle = "#000000";
-        ctx.font = 'bold 15px "Poppins", sans-serif';
+        ctx.font = `bold 16px ${FONT_FAMILY}`;
         ctx.textAlign = "center";
         ctx.fillText(mod, modX + 26, playBoxY + 227);
         modX += 60;
     }
 
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = 'italic 18px "Poppins", sans-serif';
+    ctx.font = `italic 19px ${FONT_FAMILY}`;
     ctx.textAlign = "right";
     ctx.fillText(`${scoreAcc}%`, playBoxX + playBoxW - 16, playBoxY + 155);
     ctx.fillText(`${scoreCombo}`, playBoxX + playBoxW - 16, playBoxY + 225);
@@ -577,24 +578,24 @@ async function renderYoCard(user, topScores = []) {
     // 6. BLOQUE MEDIO: ESTADÍSTICAS Y 4 BARRAS DE SKILLS
     const statsBoxX = 425;
     const statsBoxY = 405;
-    const statsBoxW = 740;
+    const statsBoxW = 865;
     const statsBoxH = 160;
 
-    ctx.fillStyle = "rgba(20, 12, 32, 0.85)";
-    roundRect(ctx, statsBoxX, statsBoxY, statsBoxW, statsBoxH, 20, true);
+    ctx.fillStyle = "#170c1a";
+    roundRect(ctx, statsBoxX, statsBoxY, statsBoxW, statsBoxH, 14, true);
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic 500 18px "Poppins", sans-serif';
+    ctx.font = `italic 18px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(`Total Score: ${Number(stats.total_score || 64030148109).toLocaleString()}`, statsBoxX + 22, statsBoxY + 42);
-    ctx.fillText(`Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, statsBoxX + 42, statsBoxY + 90);
-    ctx.fillText(`Playcount ${Number(stats.play_count || 41795).toLocaleString()}`, statsBoxX + 42, statsBoxY + 138);
+    ctx.fillText(`Total Score: ${Number(stats.total_score || 64030148109).toLocaleString()}`, statsBoxX + 24, statsBoxY + 44);
+    ctx.fillText(`Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, statsBoxX + 44, statsBoxY + 92);
+    ctx.fillText(`Playcount ${Number(stats.play_count || 41795).toLocaleString()}`, statsBoxX + 44, statsBoxY + 138);
 
     const skillsList = [
-        { label: "ACC", val: skillData.acc, x: statsBoxX + 325 },
-        { label: "AIM", val: skillData.aim, x: statsBoxX + 430 },
-        { label: "SPEED", val: skillData.speed, x: statsBoxX + 535 },
-        { label: "READING", val: skillData.reading, x: statsBoxX + 645 }
+        { label: "ACC", val: skillData.acc, x: statsBoxX + 380 },
+        { label: "AIM", val: skillData.aim, x: statsBoxX + 500 },
+        { label: "SPEED", val: skillData.speed, x: statsBoxX + 620 },
+        { label: "READING", val: skillData.reading, x: statsBoxX + 750 }
     ];
 
     const pillarW = 24;
@@ -603,11 +604,11 @@ async function renderYoCard(user, topScores = []) {
 
     skillsList.forEach(s => {
         ctx.fillStyle = "#ffffff";
-        ctx.font = 'bold 22px "Poppins", sans-serif';
+        ctx.font = `bold 22px ${FONT_FAMILY}`;
         ctx.textAlign = "center";
         ctx.fillText(String(s.val), s.x, statsBoxY + 30);
 
-        ctx.fillStyle = "#261b33";
+        ctx.fillStyle = "#2e233d";
         roundRect(ctx, s.x - (pillarW / 2), pillarY, pillarW, pillarH, 4, true);
 
         const fillRatio = Math.min(1, Math.max(0.08, s.val / 100));
@@ -616,21 +617,21 @@ async function renderYoCard(user, topScores = []) {
         roundRect(ctx, s.x - (pillarW / 2), pillarY + pillarH - fillH, pillarW, fillH, 4, true);
 
         ctx.fillStyle = "#ffffff";
-        ctx.font = 'italic bold 18px "Poppins", sans-serif';
+        ctx.font = `italic bold 18px ${FONT_FAMILY}`;
         ctx.fillText(s.label, s.x, statsBoxY + 138);
     });
 
     // 7. BLOQUE INFERIOR: ECOSISTEMA SENGO Y LOCAL STATS
     const sengoBoxX = 135;
     const sengoBoxY = 580;
-    const sengoBoxW = 1030;
+    const sengoBoxW = 1155;
     const sengoBoxH = 75;
 
-    ctx.fillStyle = "rgba(20, 12, 32, 0.85)";
-    roundRect(ctx, sengoBoxX, sengoBoxY, sengoBoxW, sengoBoxH, 18, true);
+    ctx.fillStyle = "#170c1a";
+    roundRect(ctx, sengoBoxX, sengoBoxY, sengoBoxW, sengoBoxH, 14, true);
 
     ctx.fillStyle = "#e2e8f0";
-    ctx.font = 'italic 17px "Poppins", sans-serif';
+    ctx.font = `italic 17px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
     ctx.fillText("Sengo ecosystem & local stats", sengoBoxX + (sengoBoxW / 2), sengoBoxY + 26);
 
@@ -641,7 +642,7 @@ async function renderYoCard(user, topScores = []) {
     const snipesMade = sengoData.snipesMade || "0";
 
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic 17px "Poppins", sans-serif';
+    ctx.font = `italic 17px ${FONT_FAMILY}`;
     ctx.fillText(
         `#1 ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        Birthday: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`,
         sengoBoxX + (sengoBoxW / 2),
@@ -651,12 +652,12 @@ async function renderYoCard(user, topScores = []) {
     // 8. FOOTER: BRANDING & FECHA
     const today = new Date().toISOString().split("T")[0];
     ctx.fillStyle = "#ffffff";
-    ctx.font = 'italic bold 26px "Poppins", sans-serif';
+    ctx.font = `italic bold 28px ${FONT_FAMILY}`;
     ctx.textAlign = "right";
     ctx.fillText("SengoBot", 580, 700);
 
     ctx.fillStyle = "#cbd5e1";
-    ctx.font = 'italic 22px "Poppins", sans-serif';
+    ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
     ctx.fillText(today, 630, 700);
 
