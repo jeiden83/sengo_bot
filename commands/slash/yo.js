@@ -1,5 +1,10 @@
 const { SlashCommandBuilder } = require("discord.js");
-const yoChatCommand = require("../chat/admin/yo.js");
+let yoChatCommand = null;
+try {
+    yoChatCommand = require("../chat/admin/yo.js");
+} catch (e) {
+    // Si la carpeta commands/chat/admin/ es privada y no está en Render por .gitignore
+}
 const { createSlashMessagesContext } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
@@ -33,6 +38,9 @@ if (typeof data.setContexts === "function") {
 }
 
 async function run(interaction, res, chat_commands) {
+    if (!yoChatCommand) {
+        return "❌ Este comando no está disponible en este entorno.";
+    }
     const isCanvas = interaction.options.getBoolean("canvas");
     const isEmbed = interaction.options.getBoolean("embed");
     const targetUser = interaction.options.getString("usuario");
