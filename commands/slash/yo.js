@@ -4,7 +4,19 @@ const { createSlashMessagesContext } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("yo")
-    .setDescription("Envía la foto de YO (Solo Admin)")
+    .setDescription("Envía la foto de YO o genera la tarjeta en Canvas (Solo Admin)")
+    .addBooleanOption(option =>
+        option
+            .setName("canvas")
+            .setDescription("¿Generar la tarjeta de perfil dinámica con Canvas?")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
+        option
+            .setName("usuario")
+            .setDescription("Usuario de osu! o mención para la tarjeta (opcional)")
+            .setRequired(false)
+    )
     .addBooleanOption(option =>
         option
             .setName("embed")
@@ -21,12 +33,19 @@ if (typeof data.setContexts === "function") {
 }
 
 async function run(interaction, res, chat_commands) {
+    const isCanvas = interaction.options.getBoolean("canvas");
     const isEmbed = interaction.options.getBoolean("embed");
-    const args = isEmbed ? ["-embed"] : [];
+    const targetUser = interaction.options.getString("usuario");
+
+    const args = [];
+    if (isCanvas) args.push("-canva");
+    if (isEmbed) args.push("-embed");
+    if (targetUser) args.push(targetUser);
+
     const messages = createSlashMessagesContext(interaction, res);
 
     const result = await yoChatCommand.run(messages, args, chat_commands);
     return result || true;
 }
 
-module.exports = { data, run, description: "Envía la foto de YO (Solo Admin)" };
+module.exports = { data, run, description: "Envía la foto de YO o genera la tarjeta en Canvas (Solo Admin)" };

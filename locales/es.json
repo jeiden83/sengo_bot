@@ -376,9 +376,9 @@
       "usage": "s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]"
     },
     "yo": {
-      "header": "Envía la foto de YO.",
-      "body": "Envía la imagen YO.png de los assets como imagen normal o dentro de un embed usando el flag -embed.",
-      "usage": "s.yo [-embed]"
+      "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
+      "body": "Envía la imagen YO.png estática o genera la tarjeta dinámica de perfil con Canvas usando el flag -canva [usuario]. Permite embeberla con -embed.",
+      "usage": "s.yo [-canva [usuario]] [-embed]"
     }
   },
   "contributors": {
@@ -1842,6 +1842,7 @@
   },
   "yo": {
     "err_owner_only": "❌ No puedes hacer esto, solo el dueño del bot puede.",
-    "err_file_not_found": "❌ No se encontró la imagen de YO en los archivos locales."
+    "err_file_not_found": "❌ No se encontró la imagen de YO en los archivos locales.",
+    "err_user_not_found": "❌ No se pudo encontrar al usuario `{user}` en osu!."
   }
 }
