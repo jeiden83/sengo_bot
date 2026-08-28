@@ -1,0 +1,2501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sengo Card Studio - Editor Visual Avanzado</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:ital,wght@0,400;0,600;0,700;0,800;1,400;1,600;1,700;1,800&family=Outfit:wght@400;600;700;800&family=Roboto+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #07040a;
+            --panel-bg: #120b1c;
+            --panel-border: #26163b;
+            --card-bg: rgba(255, 255, 255, 0.035);
+            --accent: #a855f7;
+            --accent-hover: #c084fc;
+            --accent-glow: rgba(168, 85, 247, 0.35);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Sidebar con Tabs */
+        .sidebar {
+            width: 470px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.1rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #c084fc, #ec4899, #60a5fa);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* Navigation Tabs */
+        .tabs-nav {
+            display: flex;
+            background: rgba(0, 0, 0, 0.35);
+            border-bottom: 1px solid var(--panel-border);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 12px 8px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.78rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-hover);
+            border-bottom-color: var(--accent);
+            background: rgba(168, 85, 247, 0.08);
+        }
+
+        .controls-container {
+            padding: 16px;
+            overflow-y: auto;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .tab-content {
+            display: none;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .tab-content.active {
+            display: flex;
+        }
+
+        .section-card {
+            background: var(--card-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 10px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .section-title {
+            font-size: 0.8rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--accent-hover);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .control-label {
+            font-size: 0.78rem;
+            color: var(--text-muted);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .control-label span.val {
+            color: #e2e8f0;
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        input[type="text"], input[type="number"], select {
+            background: #09050e;
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+            padding: 7px 10px;
+            color: #fff;
+            font-size: 0.82rem;
+            outline: none;
+            transition: border-color 0.2s;
+            width: 100%;
+        }
+
+        input[type="text"]:focus, input[type="number"]:focus, select:focus {
+            border-color: var(--accent);
+        }
+
+        input[type="range"] {
+            accent-color: var(--accent);
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .checkbox-label {
+            font-size: 0.8rem;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+        }
+
+        .color-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            background: none;
+            flex-shrink: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid var(--panel-border);
+            border-radius: 6px;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 8px;
+        }
+
+        .file-upload-btn {
+            background: rgba(168, 85, 247, 0.12);
+            border: 1px dashed var(--accent);
+            border-radius: 8px;
+            padding: 10px;
+            color: var(--accent-hover);
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .file-upload-btn:hover {
+            background: rgba(168, 85, 247, 0.2);
+        }
+
+        /* Botones de acción */
+        .btn-group {
+            padding: 14px 16px;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: var(--panel-bg);
+        }
+
+        .btn {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: var(--accent-hover);
+            box-shadow: 0 4px 12px var(--accent-glow);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+
+        .btn-search {
+            background: linear-gradient(135deg, #a855f7, #ec4899);
+            color: white;
+            border: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 0.8rem;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+
+        /* Lienzo Principal (Viewport) */
+        .viewport {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: #060309;
+            position: relative;
+            overflow: auto;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .canvas-container {
+            position: relative;
+            box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            overflow: hidden;
+            background: #27152c;
+            display: inline-block;
+            transition: transform 0.15s ease;
+        }
+
+        canvas {
+            display: block;
+            width: 1300px;
+            height: 720px;
+            max-width: 100%;
+            height: auto;
+        }
+
+        #reference-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.1s;
+            object-fit: fill;
+        }
+
+        .toolbar {
+            position: absolute;
+            top: 16px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 5;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .toolbar label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+        }
+
+        /* Modal para exportar / importar */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(8px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .modal-content {
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 14px;
+            width: 90%;
+            max-width: 600px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 25px 60px rgba(0,0,0,0.8);
+        }
+
+        .modal-content textarea {
+            width: 100%;
+            height: 280px;
+            background: #08040d;
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            color: #4ade80;
+            font-family: 'Roboto Mono', monospace;
+            padding: 12px;
+            font-size: 0.82rem;
+            resize: none;
+            outline: none;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Panel Lateral con Controles -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🎨 Sengo Card Studio</h1>
+            <span style="font-size: 0.75rem; color: #c084fc; font-weight: 600;">1300 × 720</span>
+        </div>
+
+        <!-- Barra de Pestañas -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" onclick="switchTab('tab-style')">🎨 Fondo & Tema</button>
+            <button class="tab-btn" onclick="switchTab('tab-cards')">📦 Tarjetas</button>
+            <button class="tab-btn" onclick="switchTab('tab-fonts')">🔤 Fuentes</button>
+            <button class="tab-btn" onclick="switchTab('tab-player')">👤 Jugador & Play</button>
+        </div>
+
+        <div class="controls-container">
+            <!-- PESTAÑA 1: ESTILO GLOBAL Y FONDOS -->
+            <div id="tab-style" class="tab-content active">
+                <div class="section-card">
+                    <div class="section-title">🎨 Colores Base Globales</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Fondo Principal</label>
+                            <div class="color-row">
+                                <input type="color" id="bgColor" value="#27152c" oninput="state.theme.bgColor=this.value; render();">
+                                <input type="text" id="bgColorText" value="#27152c" onchange="state.theme.bgColor=this.value; render();">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Color Tarjetas (Base)</label>
+                            <div class="color-row">
+                                <input type="color" id="cardColor" value="#170c1a" oninput="state.theme.cardColor=this.value; render();">
+                                <input type="text" id="cardColorText" value="#170c1a" onchange="state.theme.cardColor=this.value; render();">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Borde Tarjetas</label>
+                            <div class="color-row">
+                                <input type="color" id="borderColor" value="#351a44" oninput="state.theme.cardBorderColor=this.value; render();">
+                                <input type="text" id="borderColorText" value="#351a44" onchange="state.theme.cardBorderColor=this.value; render();">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Radio Esquinas Global <span class="val" id="val-radius">14px</span></label>
+                            <input type="range" min="0" max="30" value="14" oninput="state.theme.cardRadius=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">🖼️ Imagen / Cover de Perfil de Fondo</div>
+                    <label class="checkbox-label" style="margin-bottom: 8px;">
+                        <input type="checkbox" id="useProfileCoverCheckbox" checked onchange="state.theme.useProfileCover=this.checked; render();">
+                        <span>Usar Banner/Cover del Perfil de osu!</span>
+                    </label>
+                    <label class="file-upload-btn">
+                        📁 Subir Imagen de Fondo desde tu PC
+                        <input type="file" accept="image/*" style="display: none;" onchange="handleBgUpload(event)">
+                    </label>
+                    <div class="control-group" style="margin-top: 6px;">
+                        <label class="control-label">O URL de Imagen de Fondo</label>
+                        <input type="text" id="bgImageUrlInput" placeholder="https://..." onchange="state.theme.bgImageUrl=this.value; render();">
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Opacidad Imagen <span class="val" id="val-bgImgOp">50%</span></label>
+                            <input type="range" id="bgImgOpInput" min="0" max="1" step="0.05" value="0.5" oninput="state.theme.bgImageOpacity=parseFloat(this.value); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Desenfoque (Blur) <span class="val" id="val-bgBlur">5px</span></label>
+                            <input type="range" id="bgBlurInput" min="0" max="25" value="5" oninput="state.theme.bgImageBlur=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Degradado de Mezcla</label>
+                            <select onchange="state.theme.bgGradientMode=this.value; render();">
+                                <option value="radial">Viñeta Radial (Bordes oscuros)</option>
+                                <option value="vertical" selected>Vertical (Arriba a abajo)</option>
+                                <option value="horizontal">Horizontal (Laterales)</option>
+                                <option value="none">Sin degradado</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Intensidad Mezcla <span class="val" id="val-bgGradInt">100%</span></label>
+                            <input type="range" min="0" max="1" step="0.05" value="1" oninput="state.theme.bgGradientIntensity=parseFloat(this.value); render();">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">✨ Patrón de Fondo (10 Variantes)</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Tipo de Patrón</label>
+                            <select id="patternTypeSelect" onchange="state.theme.patternType=this.value; render();">
+                                <option value="staggered_dots" selected>Puntos en X Intercalados (Estilo Milin)</option>
+                                <option value="dots">Puntos Alineados (Dots)</option>
+                                <option value="grid">Cuadrícula Fina (Grid)</option>
+                                <option value="diamonds">Diamantes Isométricos (45°)</option>
+                                <option value="stripes">Rayas Diagonales (Stripes)</option>
+                                <option value="crosses">Cruces / Plus Grid (+)</option>
+                                <option value="hexagons">Panal / Hexágonos</option>
+                                <option value="waves">Ondas Suaves (Sine Waves)</option>
+                                <option value="triangles">Triángulos Geométricos</option>
+                                <option value="scanlines">Líneas Scanline (CRT)</option>
+                                <option value="none">Ninguno (Liso)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Espaciado <span class="val" id="val-patSpace">20px</span></label>
+                            <input type="range" min="8" max="60" value="20" oninput="state.theme.patternSpacing=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Opacidad Patrón <span class="val" id="val-patOp">0.11</span></label>
+                            <input type="range" min="0" max="0.30" step="0.005" value="0.11" oninput="state.theme.patternOpacity=parseFloat(this.value); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Color Patrón</label>
+                            <input type="color" value="#ffc8ff" oninput="state.theme.patternColor=this.value; render();">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Grosor de Línea / Punto <span class="val" id="val-patWidth">3.9px</span></label>
+                        <input type="range" min="0.5" max="5" step="0.1" value="3.9" oninput="state.theme.patternWidth=parseFloat(this.value); render();">
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">🌘 Sombra / Viñeta de Fondo (Estilo Milin)</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Forma / Modo de Sombra</label>
+                            <select id="bgVignetteModeSelect" onchange="state.theme.bgVignetteMode=this.value; render();">
+                                <option value="top_bottom" selected>Arriba y Abajo (Top & Bottom parejo - Milin)</option>
+                                <option value="radial">Viñeta Radial / Elíptica (Bordes y esquinas)</option>
+                                <option value="top_only">Solo Arriba (Header oscuro)</option>
+                                <option value="bottom_only">Solo Abajo (Footer oscuro)</option>
+                                <option value="sides">Laterales (Izquierda y Derecha)</option>
+                                <option value="corners">4 Esquinas Oscuras</option>
+                                <option value="none">Sin sombra (Plano)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Color Sombra</label>
+                            <div class="color-row">
+                                <input type="color" id="bgVignetteColor" value="#000000" oninput="state.theme.bgVignetteColor=this.value; document.getElementById('bgVignetteColorText').value=this.value; render();">
+                                <input type="text" id="bgVignetteColorText" value="#000000" onchange="state.theme.bgVignetteColor=this.value; document.getElementById('bgVignetteColor').value=this.value; render();">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="control-group">
+                            <label class="control-label">Tamaño / Cobertura <span class="val" id="val-vigSpread">13%</span></label>
+                            <input type="range" id="bgVignetteSpreadInput" min="5" max="95" value="13" oninput="state.theme.bgVignetteSpread=parseInt(this.value); document.getElementById('val-vigSpread').textContent=this.value+'%'; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Opacidad Sombra <span class="val" id="val-vigOp">60%</span></label>
+                            <input type="range" id="bgVignetteOpacityInput" min="0" max="1" step="0.05" value="0.60" oninput="state.theme.bgVignetteOpacity=parseFloat(this.value); document.getElementById('val-vigOp').textContent=Math.round(this.value*100)+'%'; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Difuminado / Suavidad <span class="val" id="val-vigFeather">34%</span></label>
+                            <input type="range" id="bgVignetteFeatherInput" min="0" max="100" value="34" oninput="state.theme.bgVignetteFeather=parseInt(this.value); document.getElementById('val-vigFeather').textContent=this.value+'%'; render();">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">🌑 Sombras Globales (Drop Shadow)</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Desenfoque <span class="val" id="val-shBlur">21px</span></label>
+                            <input type="range" min="0" max="40" value="21" oninput="state.theme.cardShadowBlur=parseInt(this.value); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Desplazamiento Y <span class="val" id="val-shY">4px</span></label>
+                            <input type="range" min="0" max="25" value="4" oninput="state.theme.cardShadowY=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                    <div class="control-group">
+                        <label class="control-label">Opacidad Sombra <span class="val" id="val-shOp">70%</span></label>
+                        <input type="range" min="0" max="1" step="0.05" value="0.70" oninput="state.theme.cardShadowOpacity=parseFloat(this.value); render();">
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 2: SECCIONES Y TARJETAS INDIVIDUALES -->
+            <div id="tab-cards" class="tab-content">
+                <!-- Toggles de Visibilidad Global de Secciones -->
+                <div class="section-card">
+                    <div class="section-title">👁️ Visibilidad de Secciones (Mostrar / Ocultar)</div>
+                    <div class="grid-2" style="gap: 8px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-header" checked onchange="toggleCardVisibility('header', this.checked)">
+                            <span>👑 Cabecera & Hitcircle</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-leftCol" checked onchange="toggleCardVisibility('leftCol', this.checked)">
+                            <span>🖼️ Avatar & Nivel</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-rankBox" checked onchange="toggleCardVisibility('rankBox', this.checked)">
+                            <span>🏆 Tarjeta Rankings</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-playBox" checked onchange="toggleCardVisibility('playBox', this.checked)">
+                            <span>🎮 Play Destacada</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-statsBox" checked onchange="toggleCardVisibility('statsBox', this.checked)">
+                            <span>📊 Stats & 4 Skills</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-sengoBox" checked onchange="toggleCardVisibility('sengoBox', this.checked)">
+                            <span>🌐 Ecosistema Sengo</span>
+                        </label>
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="vis-footer" checked onchange="toggleCardVisibility('footer', this.checked)">
+                            <span>📌 Footer SengoBot</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">📦 Seleccionar Tarjeta a Editar</div>
+                    <div class="control-group">
+                        <select id="selectedCardSelect" onchange="selectCard(this.value)">
+                            <option value="leftCol">Columna Izquierda (Avatar + Nivel + Medallas)</option>
+                            <option value="rankBox">Tarjeta Rankings (Bandera + Nombres + Rango)</option>
+                            <option value="playBox">Tarjeta Play Pinned (Cover + Dificultad + Mods)</option>
+                            <option value="statsBox">Tarjeta Stats & 4 Skills</option>
+                            <option value="sengoBox">Barra Ecosistema Sengo</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Editor de Tarjeta Seleccionada -->
+                <div class="section-card" id="cardEditorPanel">
+                    <div class="section-title" id="cardEditorTitle">🛠️ Propiedades de Tarjeta</div>
+                    <label class="checkbox-label" style="margin-bottom: 6px;">
+                        <input type="checkbox" id="cardVisibleCheckbox" checked onchange="updateCurrentCard('visible', this.checked);">
+                        <span style="font-weight: 600; color: #c084fc;">Mostrar esta Tarjeta en el Lienzo</span>
+                    </label>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Posición X <span class="val" id="val-cardX">135</span></label>
+                            <input type="range" id="cardX" min="20" max="1100" value="135" oninput="updateCurrentCard('x', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Posición Y <span class="val" id="val-cardY">100</span></label>
+                            <input type="range" id="cardY" min="20" max="650" value="100" oninput="updateCurrentCard('y', parseInt(this.value));">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Ancho (W) <span class="val" id="val-cardW">270</span></label>
+                            <input type="range" id="cardW" min="50" max="1200" value="270" oninput="updateCurrentCard('w', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Alto (H) <span class="val" id="val-cardH">445</span></label>
+                            <input type="range" id="cardH" min="40" max="600" value="445" oninput="updateCurrentCard('h', parseInt(this.value));">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Color de Fondo Propio</label>
+                            <div class="color-row">
+                                <input type="color" id="cardCustomBg" value="#170c1a" oninput="updateCurrentCard('customBg', this.value);">
+                                <input type="text" id="cardCustomBgText" value="#170c1a" onchange="updateCurrentCard('customBg', this.value);">
+                            </div>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Radio de Esquinas <span class="val" id="val-cardRadius">14px</span></label>
+                            <input type="range" id="cardIndivRadius" min="0" max="35" value="14" oninput="updateCurrentCard('customRadius', parseInt(this.value));">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Propiedades Adicionales Específicas -->
+                <div class="section-card">
+                    <div class="section-title">⚙️ Ajustes de Contenido de la Tarjeta</div>
+                    <!-- Left Col Specifics -->
+                    <div id="spec-leftCol" class="specific-panel">
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label class="control-label">Alto de Avatar <span class="val" id="val-avatarH">265</span></label>
+                                <input type="range" min="150" max="350" value="265" oninput="state.leftCol.avatarH=parseInt(this.value); render();">
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Alineación Y Avatar</label>
+                                <input type="range" min="0" max="1" step="0.05" value="0.2" oninput="state.leftCol.avatarAlignY=parseFloat(this.value); render();">
+                            </div>
+                        </div>
+                        <label class="checkbox-label" style="margin-top: 6px;">
+                            <input type="checkbox" checked onchange="state.leftCol.avatarShadow=this.checked; render();">
+                            <span>Sombra Interior Suave en Avatar</span>
+                        </label>
+                    </div>
+
+                    <!-- Rank Box Specifics -->
+                    <div id="spec-rankBox" class="specific-panel" style="display: none;">
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label class="control-label">Ancho Bandera <span class="val" id="val-flagW">84</span></label>
+                                <input type="range" min="40" max="120" value="84" oninput="state.rankBox.flagW=parseInt(this.value); render();">
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Alto Bandera <span class="val" id="val-flagH">56</span></label>
+                                <input type="range" min="30" max="80" value="56" oninput="state.rankBox.flagH=parseInt(this.value); render();">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Play Box Specifics -->
+                    <div id="spec-playBox" class="specific-panel" style="display: none;">
+                        <div class="control-group">
+                            <label class="control-label">Punto de Corte Degradado Oscuro <span class="val" id="val-playGrad">0.40</span></label>
+                            <input type="range" min="0.1" max="0.9" step="0.05" value="0.40" oninput="state.playBox.gradStop=parseFloat(this.value); render();">
+                        </div>
+                    </div>
+
+                    <!-- Stats Box Specifics -->
+                    <div id="spec-statsBox" class="specific-panel" style="display: none;">
+                        <div class="grid-2">
+                            <div class="control-group">
+                                <label class="control-label">Ancho Pilares Skill <span class="val" id="val-pilW">24</span></label>
+                                <input type="range" min="14" max="45" value="24" oninput="state.statsBox.pillarW=parseInt(this.value); render();">
+                            </div>
+                            <div class="control-group">
+                                <label class="control-label">Alto Pilares Skill <span class="val" id="val-pilH">65</span></label>
+                                <input type="range" min="35" max="95" value="65" oninput="state.statsBox.pillarH=parseInt(this.value); render();">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sengo Box Specifics -->
+                    <div id="spec-sengoBox" class="specific-panel" style="display: none;">
+                        <div class="control-group">
+                            <label class="control-label">Espaciado de Texto Ecosistema Sengo</label>
+                            <input type="range" min="10" max="80" value="30" oninput="state.sengoBox.spacing=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 3: TIPOGRAFÍAS Y FUENTES (TODAS INDIVIDUALES + GLOBAL) -->
+            <div id="tab-fonts" class="tab-content">
+                <div class="section-card">
+                    <div class="section-title">🔤 Tipografía Global (Por Defecto)</div>
+                    <div class="control-group">
+                        <label class="control-label">Familia de Fuente Global</label>
+                        <select onchange="state.theme.fontFamily=this.value; render();">
+                            <option value='"Segoe UI", "Poppins", Arial, sans-serif'>Segoe UI / Poppins</option>
+                            <option value='"Poppins", "Segoe UI", sans-serif'>Poppins Pure</option>
+                            <option value='"Outfit", "Segoe UI", sans-serif' selected>Outfit (Geométrica Moderna)</option>
+                            <option value='Arial, sans-serif'>Arial Clásica</option>
+                            <option value='"Inter", sans-serif'>Inter</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">📝 Seleccionar Texto a Editar</div>
+                    <div class="control-group">
+                        <select id="selectedFontElement" onchange="selectFontElement(this.value)">
+                            <option value="headerTitle1">Título Cabecera - Línea 1 (Expert Mod-Loving)</option>
+                            <option value="headerTitle2">Título Cabecera - Línea 2 (National Nemesis)</option>
+                            <option value="username">Nombre de Usuario (Jeiden)</option>
+                            <option value="globalRankVal">Número de Ranking Global (41.425)</option>
+                            <option value="globalRankLabel">Etiqueta "Global Rank"</option>
+                            <option value="countryRankVal">Número de Ranking País (53)</option>
+                            <option value="countryRankLabel">Etiqueta "Country"</option>
+                            <option value="levelText">Nivel (lvl 101)</option>
+                            <option value="medalsText">Medallas (Medals 28% 97/352)</option>
+                            <option value="playTitle">Título de Beatmap Play</option>
+                            <option value="playDiff">Dificultad y SR de Play</option>
+                            <option value="playScore">Puntaje de Play</option>
+                            <option value="playGrade">Letra de Rango (S/A)</option>
+                            <option value="playStats">Accuracy y Combo de Play</option>
+                            <option value="statsLabels">Etiquetas de Stats Generales (Total Score...)</option>
+                            <option value="skillValues">Valores de Skills (76.36, 47.97...)</option>
+                            <option value="skillLabels">Etiquetas de Skills (ACC, AIM...)</option>
+                            <option value="sengoHeader">Cabecera Ecosistema Sengo</option>
+                            <option value="sengoContent">Datos Ecosistema Sengo</option>
+                            <option value="footerBrand">Marca de Footer (SengoBot)</option>
+                            <option value="footerDate">Fecha de Footer</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Editor de Fuente Seleccionada -->
+                <div class="section-card" id="fontEditorPanel">
+                    <div class="section-title" id="fontEditorTitle">🔤 Propiedades de la Fuente</div>
+
+                    <!-- Grupo especial Auto-fit para Username -->
+                    <div id="usernameAutoFitGroup" style="display: none; margin-bottom: 12px; padding: 10px; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: 8px;">
+                        <label class="checkbox-label" style="font-weight: 600; color: #c084fc; cursor: pointer;">
+                            <input type="checkbox" id="usernameAutoFitCheckbox" checked onchange="state.fonts.username.autoFit = this.checked; render(); updateUsernameAutoFitUI();">
+                            <span>✨ Auto-ajustar tamaño si es largo (mínimo 16px)</span>
+                        </label>
+                        <div style="font-size: 0.73rem; color: var(--text-muted); margin-top: 4px;">
+                            Permite que nombres cortos (como <i>Jeiden</i> o <i>Milin</i>) se muestren grandes con el tamaño del slider, y se reduzcan automáticamente (hasta 16px) solo si el nombre es muy largo (como <i>yukarimybelovedsda</i>).
+                        </div>
+                    </div>
+
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Tamaño Fuente <span class="val" id="val-fontSize">30px</span></label>
+                            <input type="range" id="fontSizeInput" min="10" max="90" value="30" oninput="updateCurrentFont('size', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Color de Texto</label>
+                            <div class="color-row">
+                                <input type="color" id="fontColorInput" value="#ffffff" oninput="updateCurrentFont('color', this.value);">
+                                <input type="text" id="fontColorText" value="#ffffff" onchange="updateCurrentFont('color', this.value);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Grosor (Weight)</label>
+                            <select id="fontWeightInput" onchange="updateCurrentFont('weight', this.value);">
+                                <option value="normal">Normal (400)</option>
+                                <option value="600">SemiBold (600)</option>
+                                <option value="bold">Bold (700)</option>
+                                <option value="800">ExtraBold (800)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Estilo</label>
+                            <select id="fontStyleInput" onchange="updateCurrentFont('style', this.value);">
+                                <option value="italic">Cursiva (Italic)</option>
+                                <option value="normal">Normal (Recto)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Efecto Visual</label>
+                            <select id="fontEffectTypeInput" onchange="updateCurrentFont('effectType', this.value);">
+                                <option value="none">Ninguno</option>
+                                <option value="glow">Resplandor (Glow)</option>
+                                <option value="shadow">Sombra Proyectada (Shadow)</option>
+                            </select>
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Color del Efecto</label>
+                            <div class="color-row">
+                                <input type="color" id="fontEffectColorInput" value="#c084fc" oninput="updateCurrentFont('effectColor', this.value);">
+                                <input type="text" id="fontEffectColorText" value="#c084fc" onchange="updateCurrentFont('effectColor', this.value);">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Extensión / Blur <span class="val" id="val-fontBlur">0px</span></label>
+                            <input type="range" id="fontBlurInput" min="0" max="40" value="0" oninput="updateCurrentFont('effectBlur', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Fuerza / Opacidad <span class="val" id="val-fontOpacity">100%</span></label>
+                            <input type="range" id="fontOpacityInput" min="0" max="1" step="0.05" value="1.0" oninput="updateCurrentFont('effectOpacity', parseFloat(this.value));">
+                        </div>
+                    </div>
+                    <div class="grid-2" id="fontOffsetRow">
+                        <div class="control-group">
+                            <label class="control-label">Desplazamiento X <span class="val" id="val-fontOffX">0px</span></label>
+                            <input type="range" id="fontOffXInput" min="-25" max="25" value="0" oninput="updateCurrentFont('effectOffsetX', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Desplazamiento Y <span class="val" id="val-fontOffY">3px</span></label>
+                            <input type="range" id="fontOffYInput" min="-25" max="25" value="3" oninput="updateCurrentFont('effectOffsetY', parseInt(this.value));">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PESTAÑA 4: JUGADOR, BUSCADOR & PLAY COVER -->
+            <div id="tab-player" class="tab-content">
+                <!-- Buscador de Jugador -->
+                <div class="section-card">
+                    <div class="section-title">🔍 Buscar Jugador en osu!</div>
+                    <div style="display: flex; gap: 8px;">
+                        <input type="text" id="searchUserInput" placeholder="Escribe el nombre del jugador (ej: Milin, Jeiden, Mrekk)">
+                        <button class="btn-search" onclick="searchOsuPlayer()">🔍 Cargar</button>
+                    </div>
+                    <span style="font-size: 0.72rem; color: var(--text-muted);">Carga automáticamente avatar, país, ranking, nivel y pinned play del jugador.</span>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">👤 Perfil & Identidad</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Username</label>
+                            <input type="text" id="pUsername" value="Jeiden" oninput="state.player.username=this.value; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Código País (2 letras)</label>
+                            <input type="text" id="pCountry" value="VE" style="text-transform: uppercase;" oninput="state.player.countryCode=this.value.toUpperCase(); render();">
+                        </div>
+                    </div>
+                    <label class="file-upload-btn" style="margin-top: 6px;">
+                        📁 Subir Avatar desde tu PC
+                        <input type="file" accept="image/*" style="display: none;" onchange="handleAvatarUpload(event)">
+                    </label>
+                    <div class="control-group">
+                        <label class="control-label">URL del Avatar</label>
+                        <input type="text" id="pAvatarUrl" value="https://a.ppy.sh/11622889?1784771164.jpeg" onchange="state.player.avatar=this.value; render();">
+                    </div>
+                </div>
+
+                <!-- Beatmap Play Cover Correcto -->
+                <div class="section-card">
+                    <div class="section-title">🎵 Play Destacada & Fondo Beatmap</div>
+                    <label class="file-upload-btn">
+                        📁 Subir Fondo del Beatmap desde PC
+                        <input type="file" accept="image/*" style="display: none;" onchange="handleCoverUpload(event)">
+                    </label>
+                    <div class="control-group">
+                        <label class="control-label">O URL de Cover del Beatmap</label>
+                        <input type="text" id="pCoverUrl" value="https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg" onchange="state.player.play.cover=this.value; render();">
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Título de Canción</label>
+                            <input type="text" id="pPlayTitle" value="Maid-chan yori. by Maid-chan (CV: Horie Yui)" oninput="state.player.play.title=this.value; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Dificultad y SR</label>
+                            <input type="text" id="pPlayDiff" value="rollpan's Extra 6.36" oninput="state.player.play.diff=this.value; render();">
+                        </div>
+                    </div>
+                    <div class="grid-3">
+                        <div class="control-group">
+                            <label class="control-label">Score</label>
+                            <input type="text" id="pPlayScore" value="965.309 Score" oninput="state.player.play.score=this.value; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Letra Rango</label>
+                            <input type="text" id="pPlayGrade" value="S" oninput="state.player.play.grade=this.value.toUpperCase(); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Mods (ej: CL, HD)</label>
+                            <input type="text" id="pPlayMods" value="CL" oninput="state.player.play.mods=this.value.split(',').map(m=>m.trim()); render();">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">📊 Rankings & Progresión</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Global Rank</label>
+                            <input type="text" id="pGlobalRank" value="41.425" oninput="state.player.globalRank=this.value; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Country Rank</label>
+                            <input type="text" id="pCountryRank" value="53" oninput="state.player.countryRank=this.value; render();">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Nivel</label>
+                            <input type="text" id="pLevel" value="101" oninput="state.player.level=this.value; render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">% Medallas <span class="val" id="val-pMedals">28%</span></label>
+                            <input type="range" min="0" max="100" value="28" oninput="state.player.medalsPct=parseInt(this.value); render();">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section-card">
+                    <div class="section-title">⚡ 4 Habilidades (Skills 0-100)</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">ACC <span class="val" id="val-skAcc">76.36</span></label>
+                            <input type="range" min="0" max="100" step="0.5" value="76.36" oninput="state.player.skills.acc=parseFloat(this.value); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">AIM <span class="val" id="val-skAim">47.97</span></label>
+                            <input type="range" min="0" max="100" step="0.5" value="47.97" oninput="state.player.skills.aim=parseFloat(this.value); render();">
+                        </div>
+                    </div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">SPEED <span class="val" id="val-skSpd">40.59</span></label>
+                            <input type="range" min="0" max="100" step="0.5" value="40.59" oninput="state.player.skills.speed=parseFloat(this.value); render();">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">READING <span class="val" id="val-skRead">33.25</span></label>
+                            <input type="range" min="0" max="100" step="0.5" value="33.25" oninput="state.player.skills.reading=parseFloat(this.value); render();">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="btn-group">
+            <div class="grid-2">
+                <button class="btn" onclick="openExportModal()">📋 Exportar JSON</button>
+                <button class="btn btn-secondary" onclick="openImportModal()">📥 Importar JSON</button>
+            </div>
+            <button class="btn btn-secondary" onclick="downloadPNG()">💾 Descargar Imagen PNG</button>
+        </div>
+    </div>
+
+    <!-- Viewport con el Canvas -->
+    <div class="viewport">
+        <div class="toolbar">
+            <label>
+                <span>🔍 Zoom:</span>
+                <input type="range" id="zoomSlider" min="0.4" max="2.2" step="0.05" value="0.9" oninput="setZoom(parseFloat(this.value))" style="width: 95px;">
+                <span id="zoomVal" style="font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #c084fc;">90%</span>
+            </label>
+            <button class="btn-secondary" style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" onclick="resetZoom()">100%</button>
+            <button class="btn-secondary" style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" onclick="fitZoom()">Ajustar</button>
+            <div style="width: 1px; height: 18px; background: var(--panel-border);"></div>
+            <label style="cursor: pointer;" title="Ajustar opacidad de YO original (o haz clic en 📁 para cargar otra imagen)">
+                <span>🔍 YO.png:</span>
+                <input type="range" id="overlayOpacity" min="0" max="1" step="0.05" value="0" oninput="updateOverlay(this.value)" style="width: 80px;">
+                <span id="overlayVal" style="font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #c084fc;">0%</span>
+                <label style="display: inline-flex; align-items: center; margin: 0; cursor: pointer;" title="Subir otra imagen de referencia">
+                    <span style="font-size: 0.75rem; background: #26163b; padding: 2px 6px; border-radius: 4px; border: 1px solid var(--panel-border); color: #c084fc;">📁</span>
+                    <input type="file" accept="image/*" style="display: none;" onchange="handleRefUpload(event)">
+                </label>
+            </label>
+            <button class="btn-secondary" style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" onclick="toggleGrid()">📐 Guías</button>
+        </div>
+
+        <div class="canvas-container" id="container">
+            <canvas id="cardCanvas" width="1300" height="720"></canvas>
+            <img id="reference-overlay" src="../../assets/YO.png" onerror="if(this.src.indexOf('assets/YO.png')!==-1 && !this.dataset.fallback){ this.dataset.fallback='1'; this.src='/assets/YO.png'; } else if(!this.dataset.fallback2){ this.dataset.fallback2='1'; this.src='../assets/YO.png'; }" alt="YO Original">
+        </div>
+    </div>
+
+    <!-- Modal Exportar / Importar -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle" style="font-size: 1.1rem; color: #fff;">📋 Configuración JSON de la Tarjeta</h2>
+            <p id="modalDesc" style="font-size: 0.82rem; color: var(--text-muted);">Copia este JSON para guardarlo o pasarlo al bot:</p>
+            <textarea id="modalText"></textarea>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="closeModal()">Cerrar</button>
+                <button class="btn" id="modalActionBtn" onclick="modalAction()">Copiar al Portapapeles</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('cardCanvas');
+        const ctx = canvas.getContext('2d');
+        let showGrid = false;
+
+        // ESTADO GLOBAL COMPLETO REACTIVO
+        const state = {
+            theme: {
+                bgColor: '#27152c',
+                cardColor: '#170c1a',
+                cardBorderColor: '#351a44',
+                cardRadius: 14,
+                cardShadowBlur: 21,
+                cardShadowY: 4,
+                cardShadowOpacity: 0.7,
+                patternType: 'staggered_dots',
+                patternSpacing: 20,
+                patternOpacity: 0.11,
+                patternColor: '#ffc8ff',
+                patternWidth: 3.9,
+                bgImageUrl: null,
+                useProfileCover: true,
+                profileCoverUrl: 'https://assets.ppy.sh/user-profile-covers/11622889/8d802f4f3d56d4a1e33c5991065fe16b9ac2e3575c776189104eebfa65d23f12.png',
+                bgImageOpacity: 0.5,
+                bgImageBlur: 5,
+                bgGradientMode: 'vertical',
+                bgGradientIntensity: 1,
+                fontFamily: '"Outfit", "Segoe UI", sans-serif',
+                bgVignetteSpread: 13,
+                bgVignetteFeather: 34,
+                bgVignetteMode: 'top_bottom',
+                bgVignetteColor: '#000000',
+                bgVignetteOpacity: 0.6
+            },
+            cards: {
+                header: { visible: true },
+                leftCol: { visible: true, x: 77, y: 100, w: 270, h: 445, customBg: null, customRadius: 14 },
+                rankBox: { visible: true, x: 368, y: 100, w: 270, h: 270, customBg: null, customRadius: 14 },
+                playBox: { visible: true, x: 659, y: 100, w: 575, h: 270, customBg: null, customRadius: 14 },
+                statsBox: { visible: true, x: 368, y: 390, w: 865, h: 155, customBg: null, customRadius: 14 },
+                sengoBox: { visible: true, x: 79, y: 565, w: 1156, h: 75, customBg: null, customRadius: 14 },
+                footer: { visible: true }
+            },
+            leftCol: {
+                avatarH: 265,
+                avatarAlignY: 0.2,
+                avatarShadow: true
+            },
+            rankBox: {
+                flagW: 84,
+                flagH: 56
+            },
+            playBox: {
+                gradStop: 0.4
+            },
+            statsBox: {
+                pillarW: 24,
+                pillarH: 65
+            },
+            sengoBox: {
+                spacing: 31
+            },
+            fonts: {
+                headerTitle1: { size: 30, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectBlur: 12 },
+                headerTitle2: { size: 30, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectBlur: 12 },
+                username: { size: 44, weight: 'bold', style: 'normal', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', autoFit: true, minSize: 16 },
+                globalRankVal: { size: 58, weight: 'bold', style: 'normal', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'glow', effectBlur: 6, effectColor: '#c7a1ec' },
+                globalRankLabel: { size: 22, weight: 'normal', style: 'italic', color: '#cbd5e1', glowBlur: 0, glowColor: '#c084fc', effectBlur: 0 },
+                countryRankVal: { size: 50, weight: 'bold', style: 'normal', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                countryRankLabel: { size: 22, weight: 'normal', style: 'italic', color: '#cbd5e1', glowBlur: 0, glowColor: '#c084fc' },
+                levelText: { size: 24, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                medalsText: { size: 22, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                playTitle: { size: 22, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                playDiff: { size: 23, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                playScore: { size: 20, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 4, effectOffsetY: 3 },
+                playGrade: { size: 76, weight: 'bold', style: 'normal', color: '#facc15', glowBlur: 0, glowColor: '#c084fc' },
+                playStats: { size: 19, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectBlur: 4, effectType: 'shadow', effectColor: '#000000', effectOpacity: 1 },
+                statsLabels: { size: 18, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                skillValues: { size: 22, weight: 'bold', style: 'normal', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                skillLabels: { size: 18, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                sengoHeader: { size: 17, weight: 'normal', style: 'italic', color: '#e2e8f0', glowBlur: 0, glowColor: '#c084fc' },
+                sengoContent: { size: 17, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                footerBrand: { size: 28, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'glow', effectColor: '#fe4d4d', effectBlur: 22, effectOpacity: 0.6 },
+                footerDate: { size: 22, weight: 'normal', style: 'italic', color: '#cbd5e1', glowBlur: 0, glowColor: '#c084fc' }
+            },
+            header: {
+                titleLine1: 'Expert Mod-Loving',
+                titleLine2: 'National Nemesis',
+                titleY: 42,
+                circleX: 870
+            },
+            player: {
+                username: "Jeiden",
+                countryCode: "VE",
+                globalRank: "41.425",
+                countryRank: "53",
+                level: "101",
+                levelProg: 20,
+                medalsPct: 28,
+                medalsCount: 97,
+                totalScore: "147.271.811.820",
+                acc: "98.88",
+                playcount: "83.535",
+                skills: { acc: 100, aim: 100, speed: 100, reading: 100 },
+                sengo: { tops: 1823, topPP: 352, birthday: "04 Oct", snipes: 445, skin: "Naranja v7" },
+                play: {
+                    title: "Maid-chan yori. by Maid-chan (CV: Horie Yui)",
+                    diff: "rollpan's Extra 6.36",
+                    score: "965.309 Score",
+                    grade: "S",
+                    acc: "99.35%",
+                    combo: "635x",
+                    mods: ["CL"],
+                    cover: "https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg?1650633828"
+                },
+                avatar: "https://a.ppy.sh/11622889?1784771164.jpeg"
+            }
+        };
+
+        let selectedFontKey = 'headerTitle1';
+        let selectedCardKey = 'leftCol';
+        let imageCache = {};
+
+        // Mapeo oficial de mods de osu!lazer (ppy/osu-resources & ppy/osu-web)
+        const MOD_SLUGS = {
+            'CL': 'classic', 'CLASSIC': 'classic',
+            'DT': 'double-time', 'DOUBLETIME': 'double-time',
+            'NC': 'nightcore', 'NIGHTCORE': 'nightcore',
+            'HD': 'hidden', 'HIDDEN': 'hidden',
+            'HR': 'hard-rock', 'HARDROCK': 'hard-rock',
+            'EZ': 'easy', 'EASY': 'easy',
+            'FL': 'flashlight', 'FLASHLIGHT': 'flashlight',
+            'NF': 'no-fail', 'NOFAIL': 'no-fail',
+            'HT': 'half-time', 'HALFTIME': 'half-time',
+            'DC': 'daycore', 'DAYCORE': 'daycore',
+            'SD': 'sudden-death', 'SUDDENDEATH': 'sudden-death',
+            'PF': 'perfect', 'PERFECT': 'perfect',
+            'RX': 'relax', 'RELAX': 'relax',
+            'AP': 'autopilot', 'AUTOPILOT': 'autopilot',
+            'SO': 'spun-out', 'SPUNOUT': 'spun-out',
+            'AT': 'autoplay', 'AUTOPLAY': 'autoplay',
+            'CN': 'cinema', 'CINEMA': 'cinema',
+            'V2': 'score-v2', 'SV2': 'score-v2', 'SCOREV2': 'score-v2',
+            'TD': 'touch-device', 'TOUCHDEVICE': 'touch-device',
+            'MR': 'mirror', 'MIRROR': 'mirror',
+            'AL': 'alternate', 'ALTERNATE': 'alternate',
+            'SG': 'single-tap', 'SINGLETAP': 'single-tap',
+            'WU': 'wind-up', 'WINDUP': 'wind-up',
+            'WD': 'wind-down', 'WINDDOWN': 'wind-down',
+            'DA': 'difficulty-adjust', 'DIFFICULTYADJUST': 'difficulty-adjust',
+            'AS': 'adaptive-speed', 'ADAPTIVESPEED': 'adaptive-speed',
+            'CS': 'constant-speed', 'CONSTANTSPEED': 'constant-speed',
+            'RD': 'random', 'RANDOM': 'random',
+            'AC': 'accuracy-challenge', 'ACCURACYCHALLENGE': 'accuracy-challenge',
+            'BL': 'blinds', 'BLINDS': 'blinds',
+            'ST': 'strict-tracking', 'STRICTTRACKING': 'strict-tracking',
+            'TC': 'traceable', 'TRACEABLE': 'traceable',
+            'BR': 'barrel-roll', 'BARRELROLL': 'barrel-roll'
+        };
+
+        const MOD_COLORS = {
+            'EZ': { bg: '#56c9a8', fg: '#002b1f' },
+            'NF': { bg: '#56c9a8', fg: '#002b1f' },
+            'HT': { bg: '#56c9a8', fg: '#002b1f' },
+            'DC': { bg: '#56c9a8', fg: '#002b1f' },
+            'DT': { bg: '#fa4277', fg: '#33000f' },
+            'NC': { bg: '#fa4277', fg: '#33000f' },
+            'HD': { bg: '#a3e635', fg: '#1a2e00' },
+            'HR': { bg: '#ff3b5c', fg: '#33000a' },
+            'FL': { bg: '#f59e0b', fg: '#331a00' },
+            'SD': { bg: '#fa4277', fg: '#33000f' },
+            'PF': { bg: '#fa4277', fg: '#33000f' },
+            'BL': { bg: '#fa4277', fg: '#33000f' },
+            'ST': { bg: '#fa4277', fg: '#33000f' },
+            'CL': { bg: '#705988', fg: '#140c1c' },
+            'RX': { bg: '#00b8ff', fg: '#002233' },
+            'AP': { bg: '#00b8ff', fg: '#002233' },
+            'SO': { bg: '#00b8ff', fg: '#002233' },
+            'AT': { bg: '#00b8ff', fg: '#002233' },
+            'CN': { bg: '#00b8ff', fg: '#002233' },
+            'V2': { bg: '#bf55ec', fg: '#240033' },
+            'SV2': { bg: '#bf55ec', fg: '#240033' },
+            'MR': { bg: '#bf55ec', fg: '#240033' },
+            'TD': { bg: '#00b8ff', fg: '#002233' }
+        };
+
+        function getModBadgeUrl(mod) {
+            if (!mod) return null;
+            const clean = String(mod).trim().toUpperCase();
+            const slug = MOD_SLUGS[clean] || String(mod).toLowerCase().replace(/[^a-z0-9]/g, '-');
+            return `https://raw.githubusercontent.com/ppy/osu-resources/master/osu.Game.Resources/Textures/Icons/Mods/mod-${slug}.png`;
+        }
+
+        function drawLazerModBadge(ctx, mod, x, y, w = 54, h = 34) {
+            const clean = String(mod).trim().toUpperCase();
+            const colors = MOD_COLORS[clean] || { bg: '#fa4277', fg: '#111827' };
+
+            ctx.save();
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+            ctx.shadowBlur = 6;
+            ctx.shadowOffsetY = 2;
+            ctx.fillStyle = colors.bg;
+            roundRect(ctx, x, y, w, h, 8, true, false);
+            ctx.restore();
+
+            const modUrl = getModBadgeUrl(mod);
+            const modImg = modUrl ? getImage(modUrl) : null;
+
+            if (modImg && modImg.complete && modImg.naturalWidth > 0) {
+                ctx.save();
+                const iconH = h * 0.68;
+                const iconW = iconH * (modImg.naturalWidth / modImg.naturalHeight);
+                const iconX = x + (w - iconW) / 2;
+                const iconY = y + (h - iconH) / 2;
+
+                try {
+                    const tempCanvas = document.createElement('canvas');
+                    tempCanvas.width = Math.max(1, Math.round(iconW));
+                    tempCanvas.height = Math.max(1, Math.round(iconH));
+                    const tCtx = tempCanvas.getContext('2d');
+                    tCtx.drawImage(modImg, 0, 0, tempCanvas.width, tempCanvas.height);
+                    tCtx.globalCompositeOperation = 'source-in';
+                    tCtx.fillStyle = colors.fg;
+                    tCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+
+                    ctx.drawImage(tempCanvas, iconX, iconY, iconW, iconH);
+                } catch (e) {
+                    ctx.drawImage(modImg, iconX, iconY, iconW, iconH);
+                }
+                ctx.restore();
+            } else {
+                ctx.fillStyle = colors.fg;
+                ctx.font = `bold 16px ${state.theme.fontFamily}`;
+                ctx.textAlign = 'center';
+                ctx.fillText(clean, x + (w / 2), y + (h / 2) + 6);
+            }
+        }
+
+        function getProxiedImageUrl(url) {
+            if (!url) return null;
+            if (url.startsWith('data:') || url.startsWith('blob:') || url.startsWith('/')) return url;
+            if (url.startsWith('http://') || url.startsWith('https://')) {
+                // Si estamos en un servidor web HTTP/HTTPS (Render o localhost), usar endpoint del proxy
+                if (window.location.protocol.startsWith('http')) {
+                    return `/api/card/proxy?url=${encodeURIComponent(url)}`;
+                }
+                // Si se abre como archivo local file:///, usar URL directa
+                return url;
+            }
+            return url;
+        }
+
+        function getImage(url) {
+            if (!url) return null;
+            if (imageCache[url]) return imageCache[url].loaded ? imageCache[url].img : null;
+
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            imageCache[url] = { img, loaded: false };
+
+            img.onload = () => {
+                imageCache[url].loaded = true;
+                render();
+            };
+
+            img.onerror = () => {
+                // Si falló con crossOrigin, reintentar sin crossOrigin para renderizar en canvas local
+                if (img.crossOrigin) {
+                    const fallbackImg = new Image();
+                    fallbackImg.onload = () => {
+                        imageCache[url] = { img: fallbackImg, loaded: true };
+                        render();
+                    };
+                    fallbackImg.onerror = () => {
+                        console.warn('Error al cargar imagen:', url);
+                        imageCache[url].loaded = false;
+                    };
+                    fallbackImg.src = url;
+                } else {
+                    console.warn('Error al cargar imagen:', url);
+                    imageCache[url].loaded = false;
+                }
+            };
+
+            img.src = getProxiedImageUrl(url);
+            return null;
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            event.currentTarget.classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+        }
+
+        // CONTROL DE FUENTES INDIVIDUALES
+        function updateUsernameAutoFitUI() {
+            const isAuto = state.fonts.username?.autoFit !== false;
+            const sizeInp = document.getElementById('fontSizeInput');
+            const sizeVal = document.getElementById('val-fontSize');
+            if (sizeInp) sizeInp.disabled = false;
+            if (selectedFontKey === 'username') {
+                if (sizeVal) sizeVal.textContent = (state.fonts.username?.size || 42) + 'px' + (isAuto ? ' (Auto)' : '');
+            }
+        }
+
+        function selectFontElement(key) {
+            selectedFontKey = key;
+            const f = state.fonts[key];
+            if (!f) return;
+
+            document.getElementById('fontEditorTitle').textContent = `🔤 Editando: ${key}`;
+
+            const autoFitGroup = document.getElementById('usernameAutoFitGroup');
+            if (autoFitGroup) {
+                autoFitGroup.style.display = (key === 'username') ? 'block' : 'none';
+                if (key === 'username') {
+                    const cb = document.getElementById('usernameAutoFitCheckbox');
+                    if (cb) cb.checked = f.autoFit !== false;
+                }
+            }
+
+            document.getElementById('fontSizeInput').value = f.size;
+            document.getElementById('val-fontSize').textContent = f.size + 'px';
+            updateUsernameAutoFitUI();
+
+            document.getElementById('fontColorInput').value = f.color;
+            document.getElementById('fontColorText').value = f.color;
+            document.getElementById('fontWeightInput').value = f.weight;
+            document.getElementById('fontStyleInput').value = f.style;
+
+            document.getElementById('fontEffectTypeInput').value = f.effectType || 'none';
+            document.getElementById('fontEffectColorInput').value = f.effectColor || '#c084fc';
+            document.getElementById('fontEffectColorText').value = f.effectColor || '#c084fc';
+            document.getElementById('fontBlurInput').value = f.effectBlur || 0;
+            document.getElementById('val-fontBlur').textContent = (f.effectBlur || 0) + 'px';
+            document.getElementById('fontOpacityInput').value = f.effectOpacity != null ? f.effectOpacity : 1.0;
+            document.getElementById('val-fontOpacity').textContent = Math.round((f.effectOpacity != null ? f.effectOpacity : 1.0) * 100) + '%';
+            document.getElementById('fontOffXInput').value = f.effectOffsetX || 0;
+            document.getElementById('val-fontOffX').textContent = (f.effectOffsetX || 0) + 'px';
+            document.getElementById('fontOffYInput').value = f.effectOffsetY != null ? f.effectOffsetY : 3;
+            document.getElementById('val-fontOffY').textContent = (f.effectOffsetY != null ? f.effectOffsetY : 3) + 'px';
+        }
+
+        function updateCurrentFont(prop, val) {
+            if (!state.fonts[selectedFontKey]) return;
+            state.fonts[selectedFontKey][prop] = val;
+            if (prop === 'size') document.getElementById('val-fontSize').textContent = val + 'px';
+            if (prop === 'effectBlur') document.getElementById('val-fontBlur').textContent = val + 'px';
+            if (prop === 'effectOpacity') document.getElementById('val-fontOpacity').textContent = Math.round(val * 100) + '%';
+            if (prop === 'effectOffsetX') document.getElementById('val-fontOffX').textContent = val + 'px';
+            if (prop === 'effectOffsetY') document.getElementById('val-fontOffY').textContent = val + 'px';
+            if (prop === 'color') document.getElementById('fontColorText').value = val;
+            if (prop === 'effectColor') document.getElementById('fontEffectColorText').value = val;
+            render();
+        }
+
+        // CONTROL DE VISIBILIDAD DE TARJETAS
+        function toggleCardVisibility(key, isVis) {
+            if (!state.cards[key]) state.cards[key] = {};
+            state.cards[key].visible = isVis;
+            const toggleEl = document.getElementById(`vis-${key}`);
+            if (toggleEl) toggleEl.checked = isVis;
+            if (key === selectedCardKey) {
+                const cb = document.getElementById('cardVisibleCheckbox');
+                if (cb) cb.checked = isVis;
+            }
+            render();
+        }
+
+        // CONTROL DE TARJETAS INDIVIDUALES
+        function selectCard(key) {
+            selectedCardKey = key;
+            const c = state.cards[key];
+            if (!c) return;
+
+            document.getElementById('cardEditorTitle').textContent = `🛠️ Editando: ${key}`;
+            document.getElementById('cardVisibleCheckbox').checked = c.visible !== false;
+            document.getElementById('cardX').value = c.x || 100;
+            document.getElementById('val-cardX').textContent = c.x || 100;
+            document.getElementById('cardY').value = c.y || 100;
+            document.getElementById('val-cardY').textContent = c.y || 100;
+            document.getElementById('cardW').value = c.w || 300;
+            document.getElementById('val-cardW').textContent = c.w || 300;
+            document.getElementById('cardH').value = c.h || 200;
+            document.getElementById('val-cardH').textContent = c.h || 200;
+            document.getElementById('cardCustomBg').value = c.customBg || state.theme.cardColor;
+            document.getElementById('cardCustomBgText').value = c.customBg || state.theme.cardColor;
+            document.getElementById('cardIndivRadius').value = c.customRadius != null ? c.customRadius : state.theme.cardRadius;
+            document.getElementById('val-cardRadius').textContent = (c.customRadius != null ? c.customRadius : state.theme.cardRadius) + 'px';
+
+            document.querySelectorAll('.specific-panel').forEach(p => p.style.display = 'none');
+            const specEl = document.getElementById(`spec-${key}`);
+            if (specEl) specEl.style.display = 'block';
+        }
+
+        function updateCurrentCard(prop, val) {
+            if (!state.cards[selectedCardKey]) state.cards[selectedCardKey] = {};
+            state.cards[selectedCardKey][prop] = val;
+            if (prop === 'visible') {
+                const toggleEl = document.getElementById(`vis-${selectedCardKey}`);
+                if (toggleEl) toggleEl.checked = val;
+            }
+            if (prop === 'x') document.getElementById('val-cardX').textContent = val;
+            if (prop === 'y') document.getElementById('val-cardY').textContent = val;
+            if (prop === 'w') document.getElementById('val-cardW').textContent = val;
+            if (prop === 'h') document.getElementById('val-cardH').textContent = val;
+            if (prop === 'customRadius') document.getElementById('val-cardRadius').textContent = val + 'px';
+            if (prop === 'customBg') document.getElementById('cardCustomBgText').value = val;
+            render();
+        }
+
+        function handleBgUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                state.theme.bgImageUrl = ev.target.result;
+                render();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleAvatarUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                state.player.avatar = ev.target.result;
+                render();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function handleCoverUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                state.player.play.cover = ev.target.result;
+                render();
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // BÚSQUEDA DINÁMICA DE JUGADORES (SERVIDOR LOCAL / REMOTO O FALLBACK)
+        async function searchOsuPlayer(presetUsername) {
+            const username = (presetUsername || document.getElementById('searchUserInput').value).trim();
+            if (!username) return alert('Por favor ingresa un nombre de usuario de osu!.');
+
+            const btn = document.querySelector('.btn-search');
+            if (btn) btn.textContent = '⏳ Buscando...';
+
+            try {
+                let data = null;
+
+                if (window.location.protocol.startsWith('http')) {
+                    // Servidor web actual (Render o localhost)
+                    const res = await fetch(`/api/card/user?username=${encodeURIComponent(username)}`);
+                    if (res.ok) data = await res.json();
+                } else {
+                    // Modo archivo local file:///
+                    // 1. Intentar servidor local si está corriendo (puerto 3333 o 3000)
+                    try {
+                        const localRes = await fetch(`http://localhost:3333/api/card/user?username=${encodeURIComponent(username)}`, { signal: AbortSignal.timeout(1200) });
+                        if (localRes.ok) data = await localRes.json();
+                    } catch {}
+
+                    // 2. Si no hay servidor local activo, consultar API pública de Sengo en Render
+                    if (!data) {
+                        try {
+                            const remoteRes = await fetch(`https://sengo-bot-q981.onrender.com/api/card/user?username=${encodeURIComponent(username)}`, { signal: AbortSignal.timeout(6000) });
+                            if (remoteRes.ok) data = await remoteRes.json();
+                        } catch {}
+                    }
+                }
+
+                if (data && data.username && !data.error) {
+                    state.player.username = data.username;
+                    state.player.countryCode = data.countryCode;
+                    state.player.globalRank = data.globalRank;
+                    state.player.countryRank = data.countryRank;
+                    state.player.level = data.level;
+                    state.player.levelProg = data.levelProg || 0;
+                    state.player.medalsPct = data.medalsPct || 0;
+                    state.player.medalsCount = data.medalsCount || 0;
+                    state.player.totalScore = data.totalScore;
+                    state.player.acc = data.acc;
+                    state.player.playcount = data.playcount;
+                    state.player.avatar = data.avatar;
+                    if (data.profileCoverUrl) {
+                        state.theme.profileCoverUrl = data.profileCoverUrl;
+                    }
+                    if (data.play) {
+                        state.player.play = data.play;
+                    }
+
+                    // Sincronizar todos los inputs en pantalla
+                    document.getElementById('pUsername').value = state.player.username;
+                    document.getElementById('pCountry').value = state.player.countryCode;
+                    document.getElementById('pGlobalRank').value = state.player.globalRank;
+                    document.getElementById('pCountryRank').value = state.player.countryRank;
+                    document.getElementById('pLevel').value = state.player.level;
+                    document.getElementById('pAvatarUrl').value = state.player.avatar;
+                    if (document.getElementById('pCoverUrl') && data.play?.cover) document.getElementById('pCoverUrl').value = data.play.cover;
+                    if (document.getElementById('pPlayTitle') && data.play?.title) document.getElementById('pPlayTitle').value = data.play.title;
+                    if (document.getElementById('pPlayDiff') && data.play?.diff) document.getElementById('pPlayDiff').value = data.play.diff;
+                    if (document.getElementById('pPlayScore') && data.play?.score) document.getElementById('pPlayScore').value = data.play.score;
+                    if (document.getElementById('pPlayGrade') && data.play?.grade) document.getElementById('pPlayGrade').value = data.play.grade;
+                    if (document.getElementById('pPlayMods') && data.play?.mods) document.getElementById('pPlayMods').value = Array.isArray(data.play.mods) ? data.play.mods.join(', ') : data.play.mods;
+
+                    render();
+                    if (!presetUsername) alert(`✅ ¡Jugador ${data.username} (#${data.globalRank}) cargado con éxito!`);
+                    return;
+                }
+                throw new Error('No data received from API');
+            } catch (e) {
+                console.warn('Fallo al consultar API de osu!, usando fallbacks locales:', e);
+                const uLower = username.toLowerCase();
+                if (uLower === 'jeiden') {
+                    state.player.username = "Jeiden";
+                    state.player.countryCode = "VE";
+                    state.player.globalRank = "41.425";
+                    state.player.countryRank = "53";
+                    state.player.level = "101";
+                    state.player.avatar = "https://a.ppy.sh/11622889?1784771164.jpeg";
+                    state.theme.profileCoverUrl = "https://assets.ppy.sh/user-profile-covers/11622889/8d802f4f3d56d4a1e33c5991065fe16b9ac2e3575c776189104eebfa65d23f12.png";
+                    state.player.play.cover = "https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg";
+                    state.player.play.title = "Maid-chan yori. by Maid-chan (CV: Horie Yui)";
+                    state.player.play.diff = "rollpan's Extra 6.36";
+                    state.player.play.score = "965.309 Score";
+                    state.player.play.grade = "S";
+                    state.player.play.mods = ["CL"];
+                    document.getElementById('pUsername').value = "Jeiden";
+                    document.getElementById('pCountry').value = "VE";
+                    document.getElementById('pGlobalRank').value = "41.425";
+                    document.getElementById('pCountryRank').value = "53";
+                    document.getElementById('pLevel').value = "101";
+                    document.getElementById('pAvatarUrl').value = state.player.avatar;
+                    document.getElementById('pCoverUrl').value = state.player.play.cover;
+                    document.getElementById('pPlayTitle').value = state.player.play.title;
+                    document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    document.getElementById('pPlayScore').value = state.player.play.score;
+                    document.getElementById('pPlayGrade').value = state.player.play.grade;
+                    document.getElementById('pPlayMods').value = "CL";
+                    render();
+                    if (!presetUsername) alert('✅ Datos de Jeiden cargados.');
+                } else if (uLower === 'mochilo') {
+                    state.player.username = "Mochilo";
+                    state.player.countryCode = "VE";
+                    state.player.globalRank = "23.420";
+                    state.player.countryRank = "30";
+                    state.player.level = "102";
+                    state.player.avatar = "https://a.ppy.sh/31038461?1787089430.jpeg";
+                    state.player.play.cover = "https://assets.ppy.sh/beatmaps/896080/covers/cover@2x.jpg?1650673178";
+                    state.player.play.title = "Tsukinami by Wakeshima Kanon";
+                    state.player.play.diff = "Nostalgia 5.97";
+                    state.player.play.score = "967.914 Score";
+                    state.player.play.grade = "S";
+                    state.player.play.mods = ["CL"];
+                    state.player.play.acc = "99.42%";
+                    state.player.play.combo = "1682x";
+                    document.getElementById('pUsername').value = "Mochilo";
+                    document.getElementById('pCountry').value = "VE";
+                    document.getElementById('pGlobalRank').value = "23.420";
+                    document.getElementById('pCountryRank').value = "30";
+                    document.getElementById('pLevel').value = "102";
+                    document.getElementById('pAvatarUrl').value = state.player.avatar;
+                    document.getElementById('pCoverUrl').value = state.player.play.cover;
+                    document.getElementById('pPlayTitle').value = state.player.play.title;
+                    document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    document.getElementById('pPlayScore').value = state.player.play.score;
+                    document.getElementById('pPlayGrade').value = state.player.play.grade;
+                    document.getElementById('pPlayMods').value = "CL";
+                    render();
+                    if (!presetUsername) alert('✅ Datos de Mochilo cargados.');
+                } else if (uLower === 'milin') {
+                    state.player.username = "Milin";
+                    state.player.countryCode = "VE";
+                    state.player.globalRank = "69.020";
+                    state.player.countryRank = "101";
+                    state.player.level = "100";
+                    state.player.avatar = "https://a.ppy.sh/16688497?1785785668.jpeg";
+                    state.theme.profileCoverUrl = "https://assets.ppy.sh/user-profile-covers/16688497/7b00281f563b14da83ebcb4f19b0791375a44f9936b33008c9f7b24366756094.png";
+                    state.player.play.cover = "https://assets.ppy.sh/beatmaps/38235/covers/cover@2x.jpg?1622050466";
+                    state.player.play.title = "Eiji Kuinbii by 07th Expansion";
+                    state.player.play.diff = "Collapse 4.94";
+                    state.player.play.grade = "A";
+                    state.player.play.score = "23.286.714 Score";
+                    state.player.play.acc = "97.91%";
+                    state.player.play.combo = "952x";
+                    state.player.play.mods = ["DT", "CL"];
+                    document.getElementById('pUsername').value = "Milin";
+                    document.getElementById('pCountry').value = "VE";
+                    document.getElementById('pGlobalRank').value = "69.020";
+                    document.getElementById('pCountryRank').value = "101";
+                    document.getElementById('pLevel').value = "100";
+                    document.getElementById('pAvatarUrl').value = state.player.avatar;
+                    document.getElementById('pCoverUrl').value = state.player.play.cover;
+                    document.getElementById('pPlayTitle').value = state.player.play.title;
+                    document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    document.getElementById('pPlayScore').value = state.player.play.score;
+                    document.getElementById('pPlayGrade').value = state.player.play.grade;
+                    document.getElementById('pPlayMods').value = "DT, CL";
+                    render();
+                    if (!presetUsername) alert('✅ Datos de Milin cargados.');
+                } else {
+                    state.player.username = username;
+                    document.getElementById('pUsername').value = username;
+                    if (!presetUsername) alert(`⚠️ No se pudo obtener datos en vivo para ${username}. Puedes iniciar 'node scratch/editor_server.js' en la terminal o editar los campos manualmente.`);
+                }
+            } finally {
+
+                if (btn) btn.textContent = '🔍 Cargar';
+                render();
+            }
+        }
+
+        function updateOverlay(val) {
+            const overlay = document.getElementById('reference-overlay');
+            overlay.style.opacity = val;
+            document.getElementById('overlayVal').textContent = Math.round(val * 100) + '%';
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            render();
+        }
+
+        function roundRect(ctx, x, y, width, height, radius, fill = false, stroke = false) {
+            if (typeof radius === 'number') {
+                radius = { tl: radius, tr: radius, br: radius, bl: radius };
+            }
+            ctx.beginPath();
+            ctx.moveTo(x + radius.tl, y);
+            ctx.lineTo(x + width - radius.tr, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+            ctx.lineTo(x + width, y + height - radius.br);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+            ctx.lineTo(x + radius.bl, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+            ctx.lineTo(x, y + radius.tl);
+            ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+            ctx.closePath();
+            if (fill) ctx.fill();
+            if (stroke) ctx.stroke();
+        }
+
+        function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5) {
+            if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
+            const imgRatio = img.naturalWidth / img.naturalHeight;
+            if (!isFinite(imgRatio) || imgRatio <= 0) return;
+            const targetRatio = w / h;
+            let sw, sh, sx, sy;
+
+            if (imgRatio > targetRatio) {
+                sh = img.naturalHeight;
+                sw = img.naturalHeight * targetRatio;
+                sx = (img.naturalWidth - sw) / 2;
+                sy = 0;
+            } else {
+                sw = img.naturalWidth;
+                sh = img.naturalWidth / targetRatio;
+                sx = 0;
+                sy = (img.naturalHeight - sh) * alignY;
+            }
+
+            try {
+                ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+            } catch (e) {
+                console.warn('drawImage failed:', e);
+            }
+        }
+
+        // DIBUJAR TEXTO CON PROPIEDADES INDIVIDUALES (GLOW O SHADOW)
+        function drawCustomText(key, text, x, y, align = 'left', customFontSize = null, maxWidth = null) {
+            const f = state.fonts[key] || { size: 20, weight: 'normal', style: 'normal', color: '#fff' };
+            ctx.save();
+
+            if (f.effectType && f.effectType !== 'none') {
+                const opacity = f.effectOpacity != null ? f.effectOpacity : 1.0;
+                let shadowCol = f.effectColor || '#c084fc';
+                if (shadowCol.startsWith('#') && shadowCol.length === 7) {
+                    const r = parseInt(shadowCol.slice(1, 3), 16) || 0;
+                    const g = parseInt(shadowCol.slice(3, 5), 16) || 0;
+                    const b = parseInt(shadowCol.slice(5, 7), 16) || 0;
+                    ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+                } else {
+                    ctx.shadowColor = shadowCol;
+                }
+
+                ctx.shadowBlur = f.effectBlur || 0;
+
+                if (f.effectType === 'shadow') {
+                    ctx.shadowOffsetX = f.effectOffsetX != null ? f.effectOffsetX : 0;
+                    ctx.shadowOffsetY = f.effectOffsetY != null ? f.effectOffsetY : 3;
+                } else {
+                    ctx.shadowOffsetX = 0;
+                    ctx.shadowOffsetY = 0;
+                }
+            }
+
+            ctx.fillStyle = f.color || '#ffffff';
+            const italic = f.style === 'italic' ? 'italic ' : '';
+            const weight = f.weight ? `${f.weight} ` : '';
+            const fontSize = customFontSize || f.size || 20;
+            ctx.font = `${italic}${weight}${fontSize}px ${state.theme.fontFamily}`;
+            ctx.textAlign = align;
+            if (maxWidth) {
+                ctx.fillText(text, x, y, maxWidth);
+            } else {
+                ctx.fillText(text, x, y);
+            }
+            ctx.restore();
+        }
+
+        function render() {
+            const { theme, cards, header, leftCol, rankBox, playBox, statsBox, sengoBox, player } = state;
+
+            // 1. Fondo base
+            ctx.fillStyle = theme.bgColor;
+            ctx.fillRect(0, 0, 1300, 720);
+
+            // Imagen de fondo (Cover del perfil de osu o Imagen personalizada)
+            const activeBgUrl = theme.useProfileCover && theme.profileCoverUrl ? theme.profileCoverUrl : theme.bgImageUrl;
+            if (activeBgUrl) {
+                const bgImg = getImage(activeBgUrl);
+                if (bgImg) {
+                    ctx.save();
+                    ctx.globalAlpha = theme.bgImageOpacity;
+                    if (theme.bgImageBlur > 0) {
+                        ctx.filter = `blur(${theme.bgImageBlur}px)`;
+                    }
+                    drawImageCover(ctx, bgImg, 0, 0, 1300, 720);
+                    ctx.restore();
+
+                    // Degradado de mezcla sobre la imagen
+                    if (theme.bgGradientMode && theme.bgGradientMode !== 'none') {
+                        ctx.save();
+                        ctx.globalAlpha = theme.bgGradientIntensity || 0.75;
+                        if (theme.bgGradientMode === 'radial') {
+                            const radGrad = ctx.createRadialGradient(650, 360, 180, 650, 360, 720);
+                            radGrad.addColorStop(0, 'rgba(0,0,0,0)');
+                            radGrad.addColorStop(0.65, 'rgba(0,0,0,0.35)');
+                            radGrad.addColorStop(1, theme.bgColor);
+                            ctx.fillStyle = radGrad;
+                        } else if (theme.bgGradientMode === 'vertical') {
+                            const vertGrad = ctx.createLinearGradient(0, 0, 0, 720);
+                            vertGrad.addColorStop(0, 'rgba(0,0,0,0.1)');
+                            vertGrad.addColorStop(0.5, 'rgba(0,0,0,0.4)');
+                            vertGrad.addColorStop(1, theme.bgColor);
+                            ctx.fillStyle = vertGrad;
+                        } else if (theme.bgGradientMode === 'horizontal') {
+                            const horizGrad = ctx.createLinearGradient(0, 0, 1300, 0);
+                            horizGrad.addColorStop(0, theme.bgColor);
+                            horizGrad.addColorStop(0.3, 'rgba(0,0,0,0.2)');
+                            horizGrad.addColorStop(0.7, 'rgba(0,0,0,0.2)');
+                            horizGrad.addColorStop(1, theme.bgColor);
+                            ctx.fillStyle = horizGrad;
+                        }
+                        ctx.fillRect(0, 0, 1300, 720);
+                        ctx.restore();
+                    }
+                }
+            }
+
+            // Patrones de Fondo (10 Variantes)
+            const sp = theme.patternSpacing || 22;
+            const pWidth = theme.patternWidth || 1.4;
+            ctx.fillStyle = theme.patternColor;
+            ctx.strokeStyle = theme.patternColor;
+            ctx.globalAlpha = theme.patternOpacity;
+
+            if (theme.patternType === 'staggered_dots' || theme.patternType === 'milin_dots') {
+                const rowH = sp * 0.866;
+                let rowIndex = 0;
+                for (let y = pWidth; y < 720 + rowH; y += rowH, rowIndex++) {
+                    const offsetX = (rowIndex % 2 === 1) ? sp / 2 : 0;
+                    for (let x = offsetX; x < 1300 + sp; x += sp) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, pWidth, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            } else if (theme.patternType === 'dots') {
+                for (let x = sp / 2; x < 1300; x += sp) {
+                    for (let y = sp / 2; y < 720; y += sp) {
+                        ctx.beginPath();
+                        ctx.arc(x, y, pWidth, 0, Math.PI * 2);
+                        ctx.fill();
+                    }
+                }
+            } else if (theme.patternType === 'grid') {
+                ctx.lineWidth = pWidth;
+                for (let x = 0; x < 1300; x += sp) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 720); ctx.stroke();
+                }
+                for (let y = 0; y < 720; y += sp) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                }
+            } else if (theme.patternType === 'diamonds') {
+                ctx.lineWidth = pWidth;
+                for (let x = -720; x < 1300 + 720; x += sp * 1.4) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 720, 720); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 720, 720); ctx.stroke();
+                }
+            } else if (theme.patternType === 'stripes') {
+                ctx.lineWidth = pWidth;
+                for (let x = -720; x < 1300; x += sp) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 720, 720); ctx.stroke();
+                }
+            } else if (theme.patternType === 'crosses') {
+                ctx.lineWidth = pWidth;
+                const arm = sp * 0.28;
+                for (let x = sp / 2; x < 1300; x += sp) {
+                    for (let y = sp / 2; y < 720; y += sp) {
+                        ctx.beginPath();
+                        ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y);
+                        ctx.moveTo(x, y - arm); ctx.lineTo(x, y + arm);
+                        ctx.stroke();
+                    }
+                }
+            } else if (theme.patternType === 'hexagons') {
+                ctx.lineWidth = pWidth;
+                const r = sp * 0.6;
+                const hHex = r * Math.sqrt(3);
+                for (let y = 0, row = 0; y < 720 + hHex; y += hHex * 0.75, row++) {
+                    const off = (row % 2 === 1) ? r * 1.5 : 0;
+                    for (let x = -r + off; x < 1300 + r; x += r * 3) {
+                        ctx.beginPath();
+                        for (let a = 0; a < 6; a++) {
+                            const angle = (a * 60) * Math.PI / 180;
+                            const hx = x + r * Math.cos(angle);
+                            const hy = y + r * Math.sin(angle);
+                            if (a === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+                        }
+                        ctx.closePath();
+                        ctx.stroke();
+                    }
+                }
+            } else if (theme.patternType === 'waves') {
+                ctx.lineWidth = pWidth;
+                for (let y = sp; y < 720; y += sp) {
+                    ctx.beginPath();
+                    for (let x = 0; x <= 1300; x += 10) {
+                        const wy = y + Math.sin(x * 0.025) * (sp * 0.25);
+                        if (x === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy);
+                    }
+                    ctx.stroke();
+                }
+            } else if (theme.patternType === 'triangles') {
+                ctx.lineWidth = pWidth;
+                const th = sp * 0.866;
+                for (let y = 0; y < 720 + th; y += th) {
+                    for (let x = 0; x < 1300 + sp; x += sp) {
+                        ctx.beginPath();
+                        ctx.moveTo(x, y + th);
+                        ctx.lineTo(x + sp / 2, y);
+                        ctx.lineTo(x + sp, y + th);
+                        ctx.closePath();
+                        ctx.stroke();
+                    }
+                }
+            } else if (theme.patternType === 'scanlines') {
+                ctx.lineWidth = 1;
+                for (let y = 0; y < 720; y += 4) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                }
+            }
+            ctx.globalAlpha = 1.0;
+
+            // 2. Sombra / Viñeta de Fondo sobre el patrón (Top/Bottom, Radial, etc.)
+            if (theme.bgVignetteMode && theme.bgVignetteMode !== 'none' && theme.bgVignetteOpacity > 0) {
+                ctx.save();
+                const vColor = theme.bgVignetteColor || '#000000';
+                const vOp = theme.bgVignetteOpacity != null ? theme.bgVignetteOpacity : 0.65;
+                const vSpread = (theme.bgVignetteSpread != null ? theme.bgVignetteSpread : 35) / 100;
+                const vFeather = (theme.bgVignetteFeather != null ? theme.bgVignetteFeather : 60) / 100;
+
+                let r = 0, g = 0, b = 0;
+                if (vColor.startsWith('#') && vColor.length === 7) {
+                    r = parseInt(vColor.slice(1, 3), 16) || 0;
+                    g = parseInt(vColor.slice(3, 5), 16) || 0;
+                    b = parseInt(vColor.slice(5, 7), 16) || 0;
+                }
+                const colorSolid = `rgba(${r}, ${g}, ${b}, ${vOp})`;
+                const colorMid = `rgba(${r}, ${g}, ${b}, ${vOp * (1 - vFeather * 0.55)})`;
+                const colorTransparent = `rgba(${r}, ${g}, ${b}, 0)`;
+                const midStop = Math.max(0.1, Math.min(0.9, 1.0 - vFeather * 0.5));
+
+                if (theme.bgVignetteMode === 'top_bottom') {
+                    const topH = Math.max(20, 720 * vSpread);
+                    // Sombra superior
+                    const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
+                    gradTop.addColorStop(0, colorSolid);
+                    gradTop.addColorStop(midStop, colorMid);
+                    gradTop.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradTop;
+                    ctx.fillRect(0, 0, 1300, topH);
+
+                    // Sombra inferior
+                    const gradBot = ctx.createLinearGradient(0, 720, 0, 720 - topH);
+                    gradBot.addColorStop(0, colorSolid);
+                    gradBot.addColorStop(midStop, colorMid);
+                    gradBot.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradBot;
+                    ctx.fillRect(0, 720 - topH, 1300, topH);
+                } else if (theme.bgVignetteMode === 'radial') {
+                    const rMax = Math.hypot(650, 360);
+                    const rMin = Math.max(0, rMax * (1 - vSpread));
+                    const radGrad = ctx.createRadialGradient(650, 360, rMin, 650, 360, rMax);
+                    radGrad.addColorStop(0, colorTransparent);
+                    radGrad.addColorStop(Math.min(0.9, 0.4 + 0.5 * (1 - vFeather)), colorMid);
+                    radGrad.addColorStop(1, colorSolid);
+                    ctx.fillStyle = radGrad;
+                    ctx.fillRect(0, 0, 1300, 720);
+                } else if (theme.bgVignetteMode === 'top_only') {
+                    const topH = Math.max(20, 720 * vSpread);
+                    const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
+                    gradTop.addColorStop(0, colorSolid);
+                    gradTop.addColorStop(midStop, colorMid);
+                    gradTop.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradTop;
+                    ctx.fillRect(0, 0, 1300, topH);
+                } else if (theme.bgVignetteMode === 'bottom_only') {
+                    const botH = Math.max(20, 720 * vSpread);
+                    const gradBot = ctx.createLinearGradient(0, 720, 0, 720 - botH);
+                    gradBot.addColorStop(0, colorSolid);
+                    gradBot.addColorStop(midStop, colorMid);
+                    gradBot.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradBot;
+                    ctx.fillRect(0, 720 - botH, 1300, botH);
+                } else if (theme.bgVignetteMode === 'sides') {
+                    const sideW = Math.max(20, 650 * vSpread);
+                    // Lado izquierdo
+                    const gradL = ctx.createLinearGradient(0, 0, sideW, 0);
+                    gradL.addColorStop(0, colorSolid);
+                    gradL.addColorStop(midStop, colorMid);
+                    gradL.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradL;
+                    ctx.fillRect(0, 0, sideW, 720);
+
+                    // Lado derecho
+                    const gradR = ctx.createLinearGradient(1300, 0, 1300 - sideW, 0);
+                    gradR.addColorStop(0, colorSolid);
+                    gradR.addColorStop(midStop, colorMid);
+                    gradR.addColorStop(1, colorTransparent);
+                    ctx.fillStyle = gradR;
+                    ctx.fillRect(1300 - sideW, 0, sideW, 720);
+                } else if (theme.bgVignetteMode === 'corners') {
+                    const rCorner = Math.max(50, 600 * vSpread);
+                    const corners = [
+                        [0, 0], [1300, 0], [0, 720], [1300, 720]
+                    ];
+                    for (const [cx, cy] of corners) {
+                        const cGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rCorner);
+                        cGrad.addColorStop(0, colorSolid);
+                        cGrad.addColorStop(1 - vFeather * 0.4, colorMid);
+                        cGrad.addColorStop(1, colorTransparent);
+                        ctx.fillStyle = cGrad;
+                        ctx.fillRect(cx === 0 ? 0 : 1300 - rCorner, cy === 0 ? 0 : 720 - rCorner, rCorner, rCorner);
+                    }
+                }
+                ctx.restore();
+            }
+
+            // Función auxiliar para dibujar tarjetas estilizadas
+            function drawStyledCard(cardKey) {
+                const c = cards[cardKey];
+                if (!c) return;
+                const rad = c.customRadius != null ? c.customRadius : theme.cardRadius;
+                ctx.save();
+                if (theme.cardShadowBlur > 0 && theme.cardShadowOpacity > 0) {
+                    ctx.shadowColor = `rgba(0, 0, 0, ${theme.cardShadowOpacity})`;
+                    ctx.shadowBlur = theme.cardShadowBlur;
+                    ctx.shadowOffsetY = theme.cardShadowY;
+                }
+                ctx.fillStyle = c.customBg || theme.cardColor;
+                roundRect(ctx, c.x, c.y, c.w, c.h, rad, true);
+                ctx.restore();
+
+                // Borde
+                ctx.strokeStyle = theme.cardBorderColor;
+                ctx.lineWidth = 1;
+                roundRect(ctx, c.x, c.y, c.w, c.h, rad, false, true);
+            }
+
+            // 2. Cabecera (Título y Círculo osu!)
+            if (cards.header?.visible !== false) {
+                drawCustomText('headerTitle1', header.titleLine1, 500, header.titleY, 'center');
+                const h1Size = state.fonts.headerTitle1.size || 30;
+                drawCustomText('headerTitle2', header.titleLine2, 500, header.titleY + h1Size + 6, 'center');
+
+                // Hitcircle osu!
+                ctx.strokeStyle = '#d1d5db';
+                ctx.lineWidth = 6;
+                ctx.beginPath();
+                ctx.arc(header.circleX, 48, 32, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.fillStyle = '#cbd5e1';
+                ctx.beginPath();
+                ctx.arc(header.circleX, 48, 18, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // 3. Columna Izquierda (Avatar + Nivel + Medallas)
+            if (cards.leftCol?.visible !== false) {
+                const lc = cards.leftCol;
+                drawStyledCard('leftCol');
+
+                // Avatar
+                const avatarImg = getImage(player.avatar);
+                ctx.save();
+                const lcRad = lc.customRadius != null ? lc.customRadius : theme.cardRadius;
+                roundRect(ctx, lc.x, lc.y, lc.w, leftCol.avatarH, { tl: lcRad, tr: lcRad, bl: 0, br: 0 });
+                ctx.clip();
+                if (avatarImg) {
+                    drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, leftCol.avatarH, leftCol.avatarAlignY);
+                } else {
+                    ctx.fillStyle = '#22142a';
+                    ctx.fillRect(lc.x, lc.y, lc.w, leftCol.avatarH);
+                }
+
+                // Sombra interior en avatar
+                if (leftCol.avatarShadow) {
+                    const innerGrad = ctx.createLinearGradient(0, lc.y, 0, lc.y + leftCol.avatarH);
+                    innerGrad.addColorStop(0, 'rgba(0, 0, 0, 0.25)');
+                    innerGrad.addColorStop(0.15, 'rgba(0, 0, 0, 0)');
+                    innerGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0)');
+                    innerGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
+                    ctx.fillStyle = innerGrad;
+                    ctx.fillRect(lc.x, lc.y, lc.w, leftCol.avatarH);
+                }
+                ctx.restore();
+
+                // Nivel
+                const levelTextY = lc.y + leftCol.avatarH + 42;
+                drawCustomText('levelText', `lvl ${player.level}`, lc.x + (lc.w / 2), levelTextY, 'center');
+
+                const lvlBarX = lc.x + 15;
+                const lvlBarW = lc.w - 30;
+                const lvlBarY = levelTextY + 12;
+                ctx.fillStyle = '#2e253c';
+                roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
+                ctx.fillStyle = '#ffffff';
+                roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * player.levelProg) / 100), 8, 4, true);
+
+                // Medallas
+                const medalsTextY = lvlBarY + 58;
+                drawCustomText('medalsText', `Medals ${player.medalsPct}% ${player.medalsCount}/352`, lc.x + (lc.w / 2), medalsTextY, 'center');
+
+                const medalBarY = medalsTextY + 12;
+                ctx.fillStyle = '#2e253c';
+                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+                const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+                medalGrad.addColorStop(0, '#60a5fa');
+                medalGrad.addColorStop(0.5, '#ec4899');
+                medalGrad.addColorStop(1, '#a855f7');
+                ctx.fillStyle = medalGrad;
+                roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * player.medalsPct) / 100), 8, 4, true);
+            }
+
+            // 4. Tarjeta Rankings
+            if (cards.rankBox?.visible !== false) {
+                const rb = cards.rankBox;
+                drawStyledCard('rankBox');
+
+                // Bandera
+                const country = player.countryCode || 've';
+                const flagUrl = `https://flagcdn.com/w160/${country.toLowerCase()}.png`;
+                const flagImg = getImage(flagUrl);
+                const flagW = rankBox.flagW || 84;
+                const flagH = rankBox.flagH || 56;
+                const flagX = rb.x + 16;
+                const flagY = rb.y + 16;
+
+                if (flagImg) {
+                    ctx.save();
+                    roundRect(ctx, flagX, flagY, flagW, flagH, 8);
+                    ctx.clip();
+                    ctx.drawImage(flagImg, flagX, flagY, flagW, flagH);
+                    ctx.restore();
+                }
+
+                // Username con Auto-fit dinámico (desde size hasta minSize = 16px)
+                const uFont = state.fonts.username || { size: 42, weight: 'bold', style: 'normal', color: '#ffffff', autoFit: true, minSize: 16 };
+                const isAutoFit = uFont.autoFit !== false;
+                const minSize = uFont.minSize || 16;
+                const baseSize = uFont.size || 42;
+                let uSize = baseSize;
+
+                const startX = flagX + flagW + 12;
+                const maxUsernameW = Math.max(40, (rb.x + rb.w - 14) - startX);
+                const italic = uFont.style === 'italic' ? 'italic ' : '';
+                const weight = uFont.weight ? `${uFont.weight} ` : '';
+
+                if (isAutoFit) {
+                    while (uSize > minSize) {
+                        ctx.font = `${italic}${weight}${uSize}px ${state.theme.fontFamily}`;
+                        if (ctx.measureText(player.username).width <= maxUsernameW) break;
+                        uSize--;
+                    }
+                }
+
+                const flagCenterY = flagY + (flagH / 2);
+                const userTextY = flagCenterY + Math.round(uSize * 0.35);
+                drawCustomText('username', player.username, startX, userTextY, 'left', uSize, maxUsernameW);
+
+                const rankCenterX = rb.x + (rb.w / 2);
+                drawCustomText('globalRankLabel', 'Global Rank', rankCenterX, rb.y + 115, 'center');
+                drawCustomText('globalRankVal', player.globalRank, rankCenterX, rb.y + 168, 'center');
+
+                drawCustomText('countryRankLabel', 'Country', rankCenterX, rb.y + 208, 'center');
+                drawCustomText('countryRankVal', player.countryRank, rankCenterX, rb.y + 254, 'center');
+            }
+
+            // 5. Tarjeta Play Destacada
+            if (cards.playBox?.visible !== false) {
+                const pb = cards.playBox;
+                ctx.save();
+                const pbRad = pb.customRadius != null ? pb.customRadius : theme.cardRadius;
+                roundRect(ctx, pb.x, pb.y, pb.w, pb.h, pbRad);
+                ctx.clip();
+
+                const coverImg = getImage(player.play.cover);
+                if (coverImg) {
+                    drawImageCover(ctx, coverImg, pb.x, pb.y, pb.w, pb.h, 0.3);
+                } else {
+                    ctx.fillStyle = '#1e1026';
+                    ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+                }
+
+                const playGrad = ctx.createLinearGradient(pb.x, 0, pb.x + pb.w, 0);
+                playGrad.addColorStop(0, 'rgba(15, 8, 20, 0.94)');
+                playGrad.addColorStop(playBox.gradStop, 'rgba(15, 8, 20, 0.70)');
+                playGrad.addColorStop(0.70, 'rgba(15, 8, 20, 0.35)');
+                playGrad.addColorStop(1, 'rgba(15, 8, 20, 0.15)');
+                ctx.fillStyle = playGrad;
+                ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+
+                drawCustomText('playTitle', (player.play.title || '').slice(0, 48), pb.x + 16, pb.y + 34, 'left');
+                drawCustomText('playDiff', player.play.diff, pb.x + 16, pb.y + 76, 'left');
+                drawCustomText('playScore', player.play.score, pb.x + pb.w - 16, pb.y + 76, 'right');
+
+                // Grade S/A
+                const gradeColor = player.play.grade === 'S' ? '#facc15' : '#22c55e';
+                state.fonts.playGrade.color = gradeColor;
+                drawCustomText('playGrade', player.play.grade, pb.x + 80, pb.y + 175, 'center');
+
+                let modX = pb.x + 20;
+                const modW = 54;
+                const modH = 34;
+                const modY = pb.y + 206;
+
+                for (const mod of (player.play.mods || [])) {
+                    drawLazerModBadge(ctx, mod, modX, modY, modW, modH);
+                    modX += modW + 8;
+                }
+
+                drawCustomText('playStats', player.play.acc, pb.x + pb.w - 16, pb.y + 155, 'right');
+                drawCustomText('playStats', player.play.combo, pb.x + pb.w - 16, pb.y + 225, 'right');
+                ctx.restore();
+            }
+
+            // 6. Tarjeta Stats Generales & 4 Skills
+            if (cards.statsBox?.visible !== false) {
+                const sb = cards.statsBox;
+                drawStyledCard('statsBox');
+
+                drawCustomText('statsLabels', `Total Score: ${player.totalScore}`, sb.x + 24, sb.y + 42, 'left');
+                drawCustomText('statsLabels', `Accuracy: ${player.acc}%`, sb.x + 44, sb.y + 88, 'left');
+                drawCustomText('statsLabels', `Playcount ${player.playcount}`, sb.x + 44, sb.y + 134, 'left');
+
+                const skillsList = [
+                    { label: 'ACC', val: player.skills.acc, x: sb.x + 380 },
+                    { label: 'AIM', val: player.skills.aim, x: sb.x + 500 },
+                    { label: 'SPEED', val: player.skills.speed, x: sb.x + 620 },
+                    { label: 'READING', val: player.skills.reading, x: sb.x + 750 }
+                ];
+
+                skillsList.forEach(s => {
+                    drawCustomText('skillValues', String(s.val), s.x, sb.y + 28, 'center');
+
+                    ctx.fillStyle = '#2e233d';
+                    roundRect(ctx, s.x - (statsBox.pillarW / 2), sb.y + 38, statsBox.pillarW, statsBox.pillarH, 4, true);
+
+                    const fillH = statsBox.pillarH * (s.val / 100);
+                    ctx.fillStyle = '#ffffff';
+                    roundRect(ctx, s.x - (statsBox.pillarW / 2), sb.y + 38 + statsBox.pillarH - fillH, statsBox.pillarW, fillH, 4, true);
+
+                    drawCustomText('skillLabels', s.label, s.x, sb.y + 134, 'center');
+                });
+            }
+
+            // 7. Tarjeta Ecosistema Sengo
+            if (cards.sengoBox?.visible !== false) {
+                const sgb = cards.sengoBox;
+                drawStyledCard('sengoBox');
+
+                drawCustomText('sengoHeader', 'Sengo ecosystem & local stats', sgb.x + (sgb.w / 2), sgb.y + 26, 'center');
+
+                const sengoSpacing = sengoBox.spacing || 30;
+                const country = player.countryCode || 'VE';
+                const sengoText = `#1 ${player.sengo.tops} ${country}        Top pp: ${player.sengo.topPP}        Birthday: ${player.sengo.birthday}        Snipes: ${player.sengo.snipes}        Skin: ${player.sengo.skin}`;
+                drawCustomText('sengoContent', sengoText, sgb.x + (sgb.w / 2), sgb.y + 58, 'center');
+            }
+
+            // 8. Footer
+            if (cards.footer?.visible !== false) {
+                drawCustomText('footerBrand', 'SengoBot', 580, 695, 'right');
+                drawCustomText('footerDate', '2026-08-28', 630, 695, 'left');
+            }
+
+            // Guías si están activadas
+            if (showGrid) {
+                ctx.strokeStyle = 'rgba(236, 72, 153, 0.4)';
+                ctx.lineWidth = 1;
+                for (let x = 0; x < 1300; x += 50) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 720); ctx.stroke();
+                }
+                for (let y = 0; y < 720; y += 50) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                }
+            }
+        }
+
+        // MODAL IMPORT / EXPORT
+        let modalMode = 'export';
+
+        function openExportModal() {
+            modalMode = 'export';
+            document.getElementById('modalTitle').textContent = '📋 Exportar Configuración JSON';
+            document.getElementById('modalDesc').textContent = 'Copia este JSON para guardarlo o pasarlo al bot:';
+            document.getElementById('modalText').value = JSON.stringify(state, null, 2);
+            document.getElementById('modalText').readOnly = true;
+            document.getElementById('modalActionBtn').textContent = 'Copiar al Portapapeles';
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function openImportModal() {
+            modalMode = 'import';
+            document.getElementById('modalTitle').textContent = '📥 Importar Configuración JSON';
+            document.getElementById('modalDesc').textContent = 'Pega aquí el JSON de configuración para cargarlo en el editor:';
+            document.getElementById('modalText').value = '';
+            document.getElementById('modalText').readOnly = false;
+            document.getElementById('modalActionBtn').textContent = 'Cargar en el Editor';
+            document.getElementById('modal').style.display = 'flex';
+        }
+
+        function closeModal() {
+            document.getElementById('modal').style.display = 'none';
+        }
+
+        function modalAction() {
+            if (modalMode === 'export') {
+                const text = document.getElementById('modalText');
+                text.select();
+                document.execCommand('copy');
+                alert('¡Configuración copiada al portapapeles!');
+            } else {
+                try {
+                    const raw = document.getElementById('modalText').value;
+                    const parsed = JSON.parse(raw);
+                    Object.assign(state, parsed);
+
+                    if (state.theme.bgVignetteMode) {
+                        const sel = document.getElementById('bgVignetteModeSelect');
+                        if (sel) sel.value = state.theme.bgVignetteMode;
+                    }
+                    if (state.theme.bgVignetteSpread != null) {
+                        const inp = document.getElementById('bgVignetteSpreadInput');
+                        if (inp) { inp.value = state.theme.bgVignetteSpread; document.getElementById('val-vigSpread').textContent = state.theme.bgVignetteSpread + '%'; }
+                    }
+                    if (state.theme.bgVignetteOpacity != null) {
+                        const inp = document.getElementById('bgVignetteOpacityInput');
+                        if (inp) { inp.value = state.theme.bgVignetteOpacity; document.getElementById('val-vigOp').textContent = Math.round(state.theme.bgVignetteOpacity * 100) + '%'; }
+                    }
+                    if (state.theme.bgVignetteFeather != null) {
+                        const inp = document.getElementById('bgVignetteFeatherInput');
+                        if (inp) { inp.value = state.theme.bgVignetteFeather; document.getElementById('val-vigFeather').textContent = state.theme.bgVignetteFeather + '%'; }
+                    }
+                    if (state.theme.bgVignetteColor) {
+                        const cInp = document.getElementById('bgVignetteColor');
+                        const cTxt = document.getElementById('bgVignetteColorText');
+                        if (cInp) cInp.value = state.theme.bgVignetteColor;
+                        if (cTxt) cTxt.value = state.theme.bgVignetteColor;
+                    }
+
+                    render();
+                    closeModal();
+                    alert('¡Configuración importada con éxito!');
+                } catch (e) {
+                    alert('❌ Error al importar JSON: Formato inválido.');
+                }
+            }
+        }
+
+        function downloadPNG() {
+            try {
+                const cleanName = (state.player.username || 'card').toLowerCase().replace(/[^a-z0-9]/g, '_');
+                const fileName = `sengo_card_${cleanName}.png`;
+
+                if (canvas.toBlob) {
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            const link = document.createElement('a');
+                            link.download = fileName;
+                            const blobUrl = URL.createObjectURL(blob);
+                            link.href = blobUrl;
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+                        } else {
+                            const link = document.createElement('a');
+                            link.download = fileName;
+                            link.href = canvas.toDataURL('image/png');
+                            document.body.appendChild(link);
+                            link.click();
+                            document.body.removeChild(link);
+                        }
+                    }, 'image/png');
+                } else {
+                    const link = document.createElement('a');
+                    link.download = fileName;
+                    link.href = canvas.toDataURL('image/png');
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            } catch (err) {
+                console.error('Error al exportar PNG:', err);
+                alert('⚠️ No se pudo exportar automáticamente debido a restricciones de seguridad del navegador. Por favor haz clic derecho sobre la tarjeta -> "Guardar imagen como..." para guardarla.');
+            }
+        }
+
+        // CONTROL DE ZOOM DEL LIENZO
+        let currentZoom = 0.9;
+        function setZoom(val) {
+            currentZoom = val;
+            const container = document.getElementById('container');
+            if (container) container.style.transform = `scale(${val})`;
+            const zValEl = document.getElementById('zoomVal');
+            if (zValEl) zValEl.textContent = Math.round(val * 100) + '%';
+            const zSliderEl = document.getElementById('zoomSlider');
+            if (zSliderEl) zSliderEl.value = val;
+        }
+
+        function resetZoom() {
+            setZoom(1.0);
+        }
+
+        function fitZoom() {
+            const vp = document.querySelector('.viewport');
+            if (!vp) return;
+            const availableW = vp.clientWidth - 60;
+            const availableH = vp.clientHeight - 60;
+            const scaleW = availableW / 1300;
+            const scaleH = availableH / 720;
+            const fit = Math.min(scaleW, scaleH, 1.2);
+            setZoom(Math.max(0.4, Math.round(fit * 20) / 20));
+        }
+
+        // CONTROL DE SUPERPOSICIÓN DE REFERENCIA (YO.png)
+        function updateOverlay(val) {
+            const overlay = document.getElementById('reference-overlay');
+            const overlayVal = document.getElementById('overlayVal');
+            const opacity = parseFloat(val);
+            if (overlay) {
+                overlay.style.opacity = opacity;
+            }
+            if (overlayVal) {
+                overlayVal.textContent = Math.round(opacity * 100) + '%';
+            }
+        }
+
+        function toggleGrid() {
+            showGrid = !showGrid;
+            render();
+        }
+
+        function handleRefUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (ev) => {
+                const overlay = document.getElementById('reference-overlay');
+                if (overlay) {
+                    overlay.src = ev.target.result;
+                    document.getElementById('overlayOpacity').value = 0.5;
+                    updateOverlay(0.5);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+
+        // Inicialización
+        const overlayImg = document.getElementById('reference-overlay');
+        if (overlayImg) {
+            if (window.location.protocol.startsWith('http')) {
+                overlayImg.src = '/assets/YO.png';
+            } else {
+                overlayImg.src = '../../assets/YO.png';
+            }
+        }
+
+        selectFontElement('headerTitle1');
+        selectCard('leftCol');
+        setZoom(0.9);
+        render();
+
+        // Auto-cargar usuario por URL query params: ?user=xxx o ?u=xxx
+        try {
+            const urlParams = new URLSearchParams(window.location.search);
+            const initialUser = urlParams.get('user') || urlParams.get('u');
+            if (initialUser) {
+                document.getElementById('searchUserInput').value = initialUser;
+                searchOsuPlayer(initialUser);
+            }
+        } catch (e) {
+            console.warn('Error parseando URL params:', e);
+        }
+    </script>
+</body>
+</html>

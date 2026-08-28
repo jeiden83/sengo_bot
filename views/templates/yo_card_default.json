@@ -1,0 +1,340 @@
+{
+  "theme": {
+    "bgColor": "#27152c",
+    "cardColor": "#170c1a",
+    "cardBorderColor": "#351a44",
+    "cardRadius": 14,
+    "cardShadowBlur": 21,
+    "cardShadowY": 4,
+    "cardShadowOpacity": 0.7,
+    "patternType": "staggered_dots",
+    "patternSpacing": 20,
+    "patternOpacity": 0.11,
+    "patternColor": "#ffc8ff",
+    "patternWidth": 3.9,
+    "bgImageUrl": null,
+    "useProfileCover": true,
+    "profileCoverUrl": "https://assets.ppy.sh/user-profile-covers/11622889/8d802f4f3d56d4a1e33c5991065fe16b9ac2e3575c776189104eebfa65d23f12.png",
+    "bgImageOpacity": 0.5,
+    "bgImageBlur": 5,
+    "bgGradientMode": "vertical",
+    "bgGradientIntensity": 1,
+    "fontFamily": "\"Outfit\", \"Segoe UI\", sans-serif",
+    "bgVignetteSpread": 13,
+    "bgVignetteFeather": 34,
+    "bgVignetteMode": "top_bottom",
+    "bgVignetteColor": "#000000",
+    "bgVignetteOpacity": 0.6
+  },
+  "cards": {
+    "header": {
+      "visible": true
+    },
+    "leftCol": {
+      "visible": true,
+      "x": 77,
+      "y": 100,
+      "w": 270,
+      "h": 445,
+      "customBg": null,
+      "customRadius": 14
+    },
+    "rankBox": {
+      "visible": true,
+      "x": 368,
+      "y": 100,
+      "w": 270,
+      "h": 270,
+      "customBg": null,
+      "customRadius": 14
+    },
+    "playBox": {
+      "visible": true,
+      "x": 659,
+      "y": 100,
+      "w": 575,
+      "h": 270,
+      "customBg": null,
+      "customRadius": 14
+    },
+    "statsBox": {
+      "visible": true,
+      "x": 368,
+      "y": 390,
+      "w": 865,
+      "h": 155,
+      "customBg": null,
+      "customRadius": 14
+    },
+    "sengoBox": {
+      "visible": true,
+      "x": 79,
+      "y": 565,
+      "w": 1156,
+      "h": 75,
+      "customBg": null,
+      "customRadius": 14
+    },
+    "footer": {
+      "visible": true
+    }
+  },
+  "leftCol": {
+    "avatarH": 265,
+    "avatarAlignY": 0.2,
+    "avatarShadow": true
+  },
+  "rankBox": {
+    "flagW": 84,
+    "flagH": 56
+  },
+  "playBox": {
+    "gradStop": 0.4
+  },
+  "statsBox": {
+    "pillarW": 24,
+    "pillarH": 65
+  },
+  "sengoBox": {
+    "spacing": 31
+  },
+  "fonts": {
+    "headerTitle1": {
+      "size": 30,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectBlur": 12
+    },
+    "headerTitle2": {
+      "size": 30,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectBlur": 12,
+      "effectType": "shadow",
+      "effectColor": "#000000"
+    },
+    "username": {
+      "size": 44,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "autoFit": true
+    },
+    "globalRankVal": {
+      "size": 58,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectType": "glow",
+      "effectBlur": 6,
+      "effectColor": "#c7a1ec"
+    },
+    "globalRankLabel": {
+      "size": 22,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#cbd5e1",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectBlur": 0
+    },
+    "countryRankVal": {
+      "size": 50,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "countryRankLabel": {
+      "size": 22,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#cbd5e1",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "levelText": {
+      "size": 24,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "medalsText": {
+      "size": 22,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "playTitle": {
+      "size": 22,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "playDiff": {
+      "size": 23,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "playScore": {
+      "size": 20,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1,
+      "effectBlur": 4,
+      "effectOffsetY": 3
+    },
+    "playGrade": {
+      "size": 76,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#facc15",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "playStats": {
+      "size": 19,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectBlur": 4,
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1
+    },
+    "statsLabels": {
+      "size": 18,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "skillValues": {
+      "size": 22,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "skillLabels": {
+      "size": 18,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "sengoHeader": {
+      "size": 17,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#e2e8f0",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "sengoContent": {
+      "size": 17,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    },
+    "footerBrand": {
+      "size": 28,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectType": "glow",
+      "effectColor": "#fe4d4d",
+      "effectBlur": 22,
+      "effectOpacity": 0.6
+    },
+    "footerDate": {
+      "size": 22,
+      "weight": "normal",
+      "style": "italic",
+      "color": "#cbd5e1",
+      "glowBlur": 0,
+      "glowColor": "#c084fc"
+    }
+  },
+  "header": {
+    "titleLine1": "Expert Mod-Loving",
+    "titleLine2": "National Nemesis",
+    "titleY": 42,
+    "circleX": 870
+  },
+  "player": {
+    "username": "Jeiden",
+    "countryCode": "VE",
+    "globalRank": "41.425",
+    "countryRank": "53",
+    "level": "101",
+    "levelProg": 20,
+    "medalsPct": 28,
+    "medalsCount": 97,
+    "totalScore": "147.271.811.820",
+    "acc": "98.88",
+    "playcount": "83.535",
+    "skills": {
+      "acc": 100,
+      "aim": 100,
+      "speed": 100,
+      "reading": 100
+    },
+    "sengo": {
+      "tops": 1823,
+      "topPP": 352,
+      "birthday": "04 Oct",
+      "snipes": 445,
+      "skin": "Naranja v7"
+    },
+    "play": {
+      "title": "Maid-chan yori. by Maid-chan (CV: Horie Yui)",
+      "diff": "rollpan's Extra 6.36",
+      "score": "965.309 Score",
+      "grade": "S",
+      "acc": "99.35%",
+      "combo": "635x",
+      "mods": [
+        "CL"
+      ],
+      "cover": "https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg?1650633828"
+    },
+    "avatar": "https://a.ppy.sh/11622889?1784771164.jpeg"
+  }
+}

@@ -3,12 +3,39 @@ const fs = require('fs');
 const path = require('path');
 const os = require('os');
 const { exec, spawn } = require('child_process');
+const axios = require('axios');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder, ActivityType } = require('discord.js');
 const url = require('url');
 const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
+const { getOsuUser, getUserTopScores } = require('../utils/osu.js');
 const OsuUserModel = require('../../models/OsuUserModel.js');
 const { getWebhookChannels } = require('../../db/database.js');
+
+async function fetchPinnedScore(userId, topScores) {
+    try {
+        let globalToken = null;
+        try {
+            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+            globalToken = tokenData.access_token;
+        } catch {}
+
+        if (globalToken) {
+            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=osu&limit=1`, {
+                headers: {
+                    'Authorization': `Bearer ${globalToken}`,
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            });
+            if (res.data && res.data.length > 0) {
+                return res.data[0];
+            }
+        }
+    } catch {}
+
+    return topScores && topScores.length > 0 ? topScores[0] : null;
+}
 
 function getFlagEmoji(countryCode) {
     if (!countryCode || countryCode.length !== 2) return '';
@@ -843,6 +870,122 @@ function startServer(client, dbRes, port, config) {
             });
             return;
         }
+
+        // --- ENDPOINTS PARA SENGO CARD STUDIO (EDITOR WEB) ---
+        if (req.method === 'GET' && (pathname === '/card' || pathname === '/editor' || pathname === '/card/editor')) {
+            const editorPath = path.join(process.cwd(), 'views/web/yo_card_editor.html');
+            if (fs.existsSync(editorPath)) {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(fs.readFileSync(editorPath));
+                return;
+            }
+        }
+
+        if (req.method === 'GET' && (pathname === '/api/card/proxy' || pathname === '/api/proxy-image')) {
+            const targetUrl = parsedUrl.query.url;
+            if (!targetUrl) {
+                res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end('URL is required');
+                return;
+            }
+            try {
+                const imgRes = await axios.get(targetUrl, { responseType: 'arraybuffer', timeout: 8000 });
+                res.writeHead(200, {
+                    'Content-Type': imgRes.headers['content-type'] || 'image/jpeg',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=86400'
+                });
+                res.end(imgRes.data);
+            } catch (e) {
+                res.writeHead(500, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end('Error fetching image: ' + e.message);
+            }
+            return;
+        }
+
+        if (req.method === 'GET' && (pathname === '/api/card/user' || pathname === '/api/osu-user')) {
+            const username = parsedUrl.query.username;
+            if (!username) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Username is required' }));
+                return;
+            }
+
+            try {
+                const osuUser = await getOsuUser({ username: [username], gamemode: 'osu', server: 'bancho' });
+                if (!osuUser || !osuUser.id || typeof osuUser === 'string') {
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: `Usuario ${username} no encontrado en osu!` }));
+                    return;
+                }
+
+                const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: 'osu', server: 'bancho' }).catch(() => []);
+                const pinnedScore = await fetchPinnedScore(osuUser.id, topScores);
+
+                const stats = osuUser.statistics || {};
+                const play = pinnedScore || (topScores && topScores[0]) || {};
+                const mods = Array.isArray(play.mods)
+                    ? play.mods.map(m => (typeof m === 'string' ? m : m.acronym || '')).filter(Boolean)
+                    : ['CL'];
+
+                const resultData = {
+                    username: osuUser.username,
+                    countryCode: (osuUser.country_code || osuUser.country?.code || 'VE').toUpperCase(),
+                    globalRank: stats.global_rank ? Number(stats.global_rank).toLocaleString('de-DE') : '-',
+                    countryRank: stats.rank?.country ? String(stats.rank.country) : '-',
+                    level: String(stats.level?.current || 100),
+                    levelProg: stats.level?.progress || 0,
+                    medalsPct: Math.round(((osuUser.user_achievements?.length || 0) / 352) * 100),
+                    medalsCount: osuUser.user_achievements?.length || 0,
+                    totalScore: Number(stats.total_score || 0).toLocaleString(),
+                    acc: Number(stats.hit_accuracy || 98).toFixed(2),
+                    playcount: Number(stats.play_count || 0).toLocaleString(),
+                    avatar: osuUser.avatar_url,
+                    profileCoverUrl: osuUser.cover_url || osuUser.cover?.url || osuUser.cover?.custom_url || null,
+                    play: {
+                        title: `${play.beatmapset?.title || 'Unknown Title'} by ${play.beatmapset?.artist || 'Unknown Artist'}`,
+                        diff: `${play.beatmap?.version || 'Extra'} ${play.beatmap?.difficulty_rating ? Number(play.beatmap.difficulty_rating).toFixed(2) : ''}`.trim(),
+                        score: `${Number(play.total_score || play.score || 0).toLocaleString('de-DE')} Score`,
+                        grade: play.rank || 'S',
+                        acc: `${(Number(play.accuracy || 0.98) * 100).toFixed(2)}%`,
+                        combo: `${play.max_combo || 500}x`,
+                        mods: mods.length > 0 ? mods : ['NM'],
+                        cover: play.beatmapset?.covers?.['cover@2x'] || play.beatmapset?.covers?.cover || 'https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg'
+                    }
+                };
+
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify(resultData));
+            } catch (error) {
+                console.error('[CARD-API] Error:', error);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+            return;
+        }
+
+        // Servir assets estáticos (ej: /assets/YO.png)
+        if (req.method === 'GET' && pathname.startsWith('/assets/')) {
+            const assetPath = path.join(process.cwd(), pathname);
+            if (fs.existsSync(assetPath)) {
+                const ext = path.extname(assetPath).toLowerCase();
+                const mimeTypes = {
+                    '.png': 'image/png',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.svg': 'image/svg+xml',
+                    '.ttf': 'font/ttf'
+                };
+                res.writeHead(200, { 
+                    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=86400'
+                });
+                res.end(fs.readFileSync(assetPath));
+                return;
+            }
+        }
+
 
         // Solo aceptamos POST a /github o /webhook
         if (req.method === 'POST' && (pathname === '/github' || pathname === '/webhook' || pathname === '/')) {
