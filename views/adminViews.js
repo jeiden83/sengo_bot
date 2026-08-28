@@ -352,7 +352,7 @@ async function renderYoCard(user, topScores = []) {
     const title = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData);
     const pinnedPlay = await fetchPinnedScore(user.id, topScores);
 
-    // 1. FONDO PRINCIPAL COLOR CIRUELA / VIOLETA OSCURO EXACTO (#27152c)
+    // 1. FONDO PRINCIPAL EXACTO (#27152c)
     ctx.fillStyle = "#27152c";
     ctx.fillRect(0, 0, width, height);
 
@@ -388,39 +388,38 @@ async function renderYoCard(user, topScores = []) {
     ctx.arc(circleX, circleY, 18, 0, Math.PI * 2);
     ctx.fill();
 
-    // 3. BLOQUE IZQUIERDO: AVATAR + PROGRESIÓN
-    const avatarX = 135;
-    const avatarY = 118;
-    const avatarSize = 270;
+    // 3. COLUMNA IZQUIERDA UNIFICADA (AVATAR + NIVEL + MEDALLAS)
+    const leftColX = 135;
+    const leftColY = 100;
+    const leftColW = 270;
+    const leftColH = 445;
 
-    // Avatar sin recorte excesivo
+    // Fondo completo de la columna izquierda
+    ctx.fillStyle = "#170c1a";
+    roundRect(ctx, leftColX, leftColY, leftColW, leftColH, 14, true);
+
+    // Avatar en la parte superior (con esquinas superiores redondeadas y base recta continua)
+    const avatarH = 265;
     ctx.save();
-    roundRect(ctx, avatarX, avatarY, avatarSize, avatarSize, 14);
+    roundRect(ctx, leftColX, leftColY, leftColW, avatarH, { tl: 14, tr: 14, bl: 0, br: 0 });
     ctx.clip();
+
     const avatarImg = await fetchImageSafe(user.avatar_url);
     if (avatarImg) {
-        ctx.drawImage(avatarImg, avatarX, avatarY, avatarSize, avatarSize);
-    } else {
-        ctx.fillStyle = "#170c1a";
-        ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+        drawImageCover(ctx, avatarImg, leftColX, leftColY, leftColW, avatarH, 0.2);
     }
     ctx.restore();
 
-    // Contenedor Level & Medals
-    const progY = 405;
-    const progH = 160;
-    ctx.fillStyle = "#170c1a";
-    roundRect(ctx, avatarX, progY, avatarSize, progH, 14, true);
-
-    // Level
+    // Nivel y Medallas en la parte inferior de la columna izquierda
+    const levelTextY = leftColY + avatarH + 42;
     ctx.fillStyle = "#ffffff";
     ctx.font = `italic 24px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
-    ctx.fillText(`lvl ${level.current || 100}`, avatarX + (avatarSize / 2), progY + 44);
+    ctx.fillText(`lvl ${level.current || 100}`, leftColX + (leftColW / 2), levelTextY);
 
-    const lvlBarX = avatarX + 15;
-    const lvlBarW = avatarSize - 30;
-    const lvlBarY = progY + 56;
+    const lvlBarX = leftColX + 15;
+    const lvlBarW = leftColW - 30;
+    const lvlBarY = levelTextY + 12;
     const lvlProg = Math.min(100, Math.max(0, level.progress || 0));
 
     ctx.fillStyle = "#2e253c";
@@ -428,13 +427,13 @@ async function renderYoCard(user, topScores = []) {
     ctx.fillStyle = "#ffffff";
     roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
 
-    // Medals
+    const medalsTextY = lvlBarY + 58;
     ctx.fillStyle = "#ffffff";
     ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "center";
-    ctx.fillText(`Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, avatarX + (avatarSize / 2), progY + 116);
+    ctx.fillText(`Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, leftColX + (leftColW / 2), medalsTextY);
 
-    const medalBarY = progY + 128;
+    const medalBarY = medalsTextY + 12;
     ctx.fillStyle = "#2e253c";
     roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
 
@@ -447,15 +446,15 @@ async function renderYoCard(user, topScores = []) {
 
     // 4. BLOQUE CENTRO-IZQUIERDA: TARJETA DE PERFIL Y RANKINGS
     const rankBoxX = 425;
-    const rankBoxY = 118;
+    const rankBoxY = 100;
     const rankBoxSize = 270;
 
     ctx.fillStyle = "#170c1a";
     roundRect(ctx, rankBoxX, rankBoxY, rankBoxSize, rankBoxSize, 14, true);
 
-    // Bandera oficial (proporciones correctas)
-    const flagW = 78;
-    const flagH = 52;
+    // Bandera oficial
+    const flagW = 84;
+    const flagH = 56;
     const flagX = rankBoxX + 16;
     const flagY = rankBoxY + 16;
 
@@ -463,7 +462,7 @@ async function renderYoCard(user, topScores = []) {
     const flagImg = await fetchImageSafe(flagUrl);
     if (flagImg) {
         ctx.save();
-        roundRect(ctx, flagX, flagY, flagW, flagH, 6);
+        roundRect(ctx, flagX, flagY, flagW, flagH, 8);
         ctx.clip();
         ctx.drawImage(flagImg, flagX, flagY, flagW, flagH);
         ctx.restore();
@@ -473,7 +472,7 @@ async function renderYoCard(user, topScores = []) {
     ctx.fillStyle = "#ffffff";
     ctx.font = `bold 44px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(user.username, rankBoxX + 104, flagY + 41);
+    ctx.fillText(user.username, rankBoxX + 112, flagY + 43);
 
     // Global Rank
     ctx.fillStyle = "#cbd5e1";
@@ -489,16 +488,15 @@ async function renderYoCard(user, topScores = []) {
     // Country Rank
     ctx.fillStyle = "#cbd5e1";
     ctx.font = `italic 22px ${FONT_FAMILY}`;
-    ctx.textAlign = "center";
     ctx.fillText("Country", rankCenterX, rankBoxY + 208);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = `bold 50px ${FONT_FAMILY}`;
     ctx.fillText(countryRank, rankCenterX, rankBoxY + 254);
 
-    // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY CARD (Ancho completo e ilustración visible)
+    // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY CARD
     const playBoxX = 715;
-    const playBoxY = 118;
+    const playBoxY = 100;
     const playBoxW = 575;
     const playBoxH = 270;
 
@@ -515,7 +513,6 @@ async function renderYoCard(user, topScores = []) {
         ctx.fillRect(playBoxX, playBoxY, playBoxW, playBoxH);
     }
 
-    // Degradado sutil para iluminar el arte del beatmap
     const playGrad = ctx.createLinearGradient(playBoxX, 0, playBoxX + playBoxW, 0);
     playGrad.addColorStop(0, "rgba(15, 8, 20, 0.92)");
     playGrad.addColorStop(0.40, "rgba(15, 8, 20, 0.70)");
@@ -524,7 +521,6 @@ async function renderYoCard(user, topScores = []) {
     ctx.fillStyle = playGrad;
     ctx.fillRect(playBoxX, playBoxY, playBoxW, playBoxH);
 
-    // Contenido de la jugada
     const mapTitle = pinnedPlay?.beatmapset?.title || "Ange du Blanc Pur";
     const mapArtist = pinnedPlay?.beatmapset?.artist || "ke-ji feat. Nanahira";
     const mapDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
@@ -577,9 +573,9 @@ async function renderYoCard(user, topScores = []) {
 
     // 6. BLOQUE MEDIO: ESTADÍSTICAS Y 4 BARRAS DE SKILLS
     const statsBoxX = 425;
-    const statsBoxY = 405;
+    const statsBoxY = 390;
     const statsBoxW = 865;
-    const statsBoxH = 160;
+    const statsBoxH = 155;
 
     ctx.fillStyle = "#170c1a";
     roundRect(ctx, statsBoxX, statsBoxY, statsBoxW, statsBoxH, 14, true);
@@ -587,9 +583,9 @@ async function renderYoCard(user, topScores = []) {
     ctx.fillStyle = "#ffffff";
     ctx.font = `italic 18px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(`Total Score: ${Number(stats.total_score || 64030148109).toLocaleString()}`, statsBoxX + 24, statsBoxY + 44);
-    ctx.fillText(`Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, statsBoxX + 44, statsBoxY + 92);
-    ctx.fillText(`Playcount ${Number(stats.play_count || 41795).toLocaleString()}`, statsBoxX + 44, statsBoxY + 138);
+    ctx.fillText(`Total Score: ${Number(stats.total_score || 64030148109).toLocaleString()}`, statsBoxX + 24, statsBoxY + 42);
+    ctx.fillText(`Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, statsBoxX + 44, statsBoxY + 88);
+    ctx.fillText(`Playcount ${Number(stats.play_count || 41795).toLocaleString()}`, statsBoxX + 44, statsBoxY + 134);
 
     const skillsList = [
         { label: "ACC", val: skillData.acc, x: statsBoxX + 380 },
@@ -600,13 +596,13 @@ async function renderYoCard(user, topScores = []) {
 
     const pillarW = 24;
     const pillarH = 65;
-    const pillarY = statsBoxY + 40;
+    const pillarY = statsBoxY + 38;
 
     skillsList.forEach(s => {
         ctx.fillStyle = "#ffffff";
         ctx.font = `bold 22px ${FONT_FAMILY}`;
         ctx.textAlign = "center";
-        ctx.fillText(String(s.val), s.x, statsBoxY + 30);
+        ctx.fillText(String(s.val), s.x, statsBoxY + 28);
 
         ctx.fillStyle = "#2e233d";
         roundRect(ctx, s.x - (pillarW / 2), pillarY, pillarW, pillarH, 4, true);
@@ -618,12 +614,12 @@ async function renderYoCard(user, topScores = []) {
 
         ctx.fillStyle = "#ffffff";
         ctx.font = `italic bold 18px ${FONT_FAMILY}`;
-        ctx.fillText(s.label, s.x, statsBoxY + 138);
+        ctx.fillText(s.label, s.x, statsBoxY + 134);
     });
 
     // 7. BLOQUE INFERIOR: ECOSISTEMA SENGO Y LOCAL STATS
     const sengoBoxX = 135;
-    const sengoBoxY = 580;
+    const sengoBoxY = 565;
     const sengoBoxW = 1155;
     const sengoBoxH = 75;
 
@@ -654,12 +650,12 @@ async function renderYoCard(user, topScores = []) {
     ctx.fillStyle = "#ffffff";
     ctx.font = `italic bold 28px ${FONT_FAMILY}`;
     ctx.textAlign = "right";
-    ctx.fillText("SengoBot", 580, 700);
+    ctx.fillText("SengoBot", 580, 695);
 
     ctx.fillStyle = "#cbd5e1";
     ctx.font = `italic 22px ${FONT_FAMILY}`;
     ctx.textAlign = "left";
-    ctx.fillText(today, 630, 700);
+    ctx.fillText(today, 630, 695);
 
     return canvas.toBuffer("image/png");
 }
