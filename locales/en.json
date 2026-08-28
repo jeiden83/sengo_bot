@@ -374,6 +374,11 @@
       "header": "Search and list active or past osu! tournaments",
       "body": "Filter tournaments by mode, rank, tags/region and status.",
       "usage": "s.torneos [-modo <mode>] [-rango <rank>] [-tag <tag>] [-pasados] [-estado <status>]"
+    },
+    "yo": {
+      "header": "Sends the YO picture.",
+      "body": "Sends the YO.png asset image as a regular file or embedded in an embed using the -embed flag.",
+      "usage": "s.yo [-embed]"
     }
   },
   "contributors": {
@@ -1830,5 +1835,9 @@
     "rank_server_suffix": "(Server)",
     "rank_global_suffix": "(Global)",
     "footer": "Sengo • Mapping Tracker"
+  },
+  "yo": {
+    "err_owner_only": "❌ You cannot do this, only the bot owner can.",
+    "err_file_not_found": "❌ The YO image was not found in the local assets."
   }
 }
