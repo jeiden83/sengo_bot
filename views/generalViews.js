@@ -245,11 +245,11 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             : "The **prefix** indicates overall skill tier, calculated from **total PP** or the highest skill bar (`ACC`, `AIM`, `SPEED`, `READING`):"
         );
         embed.addFields([
-            { name: isEs ? "👑 Legendario (Legendary)" : "👑 Legendary", value: "`> 16.000 pp` o Skill $\\ge 80$", inline: true },
-            { name: isEs ? "🎖️ Experto (Expert)" : "🎖️ Expert", value: "`> 11.000 pp` o Skill $\\ge 68$", inline: true },
-            { name: isEs ? "⚔️ Avanzado (Advanced)" : "⚔️ Advanced", value: "`> 6.500 pp` o Skill $\\ge 50$", inline: true },
-            { name: isEs ? "🛡️ Veterano (Seasoned)" : "🛡️ Seasoned", value: "`> 3.500 pp` o Skill $\\ge 38$", inline: true },
-            { name: isEs ? "🏹 Intermedio (Intermediate)" : "🏹 Intermediate", value: "`> 1.500 pp` o Skill $\\ge 26$", inline: true },
+            { name: isEs ? "👑 Legendario (Legendary)" : "👑 Legendary", value: "`> 16.000 pp` o Skill ≥ 80", inline: true },
+            { name: isEs ? "🎖️ Experto (Expert)" : "🎖️ Expert", value: "`> 11.000 pp` o Skill ≥ 68", inline: true },
+            { name: isEs ? "⚔️ Avanzado (Advanced)" : "⚔️ Advanced", value: "`> 6.500 pp` o Skill ≥ 50", inline: true },
+            { name: isEs ? "🛡️ Veterano (Seasoned)" : "🛡️ Seasoned", value: "`> 3.500 pp` o Skill ≥ 38", inline: true },
+            { name: isEs ? "🏹 Intermedio (Intermediate)" : "🏹 Intermediate", value: "`> 1.500 pp` o Skill ≥ 26", inline: true },
             { name: isEs ? "🎯 Competente (Competent)" : "🎯 Competent", value: "`> 500 pp`", inline: true },
             { name: isEs ? "🌱 Novato (Novice)" : "🌱 Novice", value: isEs ? "`< 500 pp` (Por defecto)" : "`< 500 pp` (Default)", inline: false }
         ]);
@@ -260,13 +260,13 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             : "The **descriptor** reflects mod affinity based on the player's top 100 plays:"
         );
         embed.addFields([
-            { name: isEs ? "🔘 Anti-Mods (Mod-Hating)" : "🔘 Mod-Hating", value: isEs ? "$\\ge 55\\%$ de jugadas en NoMod (NM)" : "$\\ge 55\\%$ of top plays in NoMod", inline: true },
-            { name: isEs ? "⏩ Veloz (Speedy)" : "⏩ Speedy", value: isEs ? "$\\ge 40\\%$ en DoubleTime (DT/NC)" : "$\\ge 40\\%$ in DoubleTime (DT/NC)", inline: true },
-            { name: isEs ? "🎯 Preciso (Ant-Clicking)" : "🎯 Ant-Clicking", value: isEs ? "$\\ge 35\\%$ en HardRock (HR)" : "$\\ge 35\\%$ in HardRock (HR)", inline: true },
-            { name: isEs ? "👻 Abusador de HD (HD abusing)" : "👻 HD abusing", value: isEs ? "$\\ge 45\\%$ en Hidden (HD)" : "$\\ge 45\\%$ in Hidden (HD)", inline: true },
-            { name: isEs ? "🔦 Ciego (Blindsighted)" : "🔦 Blindsighted", value: isEs ? "$\\ge 5\\%$ en Flashlight (FL)" : "$\\ge 5\\%$ in Flashlight (FL)", inline: true },
-            { name: isEs ? "🐢 Paciente (Patient)" : "🐢 Patient", value: isEs ? "$\\ge 10\\%$ en Easy (EZ)" : "$\\ge 10\\%$ in Easy (EZ)", inline: true },
-            { name: isEs ? "💖 Amante de Mods (Mod-Loving)" : "💖 Mod-Loving", value: isEs ? "$\\le 15\\%$ en NoMod (alta variedad)" : "$\\le 15\\%$ in NoMod (high variety)", inline: true },
+            { name: isEs ? "🔘 Anti-Mods (Mod-Hating)" : "🔘 Mod-Hating", value: isEs ? "≥ 55% de jugadas en NoMod (NM)" : "≥ 55% of top plays in NoMod", inline: true },
+            { name: isEs ? "⏩ Veloz (Speedy)" : "⏩ Speedy", value: isEs ? "≥ 40% en DoubleTime (DT/NC)" : "≥ 40% in DoubleTime (DT/NC)", inline: true },
+            { name: isEs ? "🎯 Preciso (Ant-Clicking)" : "🎯 Ant-Clicking", value: isEs ? "≥ 35% en HardRock (HR)" : "≥ 35% in HardRock (HR)", inline: true },
+            { name: isEs ? "👻 Abusador de HD (HD abusing)" : "👻 HD abusing", value: isEs ? "≥ 45% en Hidden (HD)" : "≥ 45% in Hidden (HD)", inline: true },
+            { name: isEs ? "🔦 Ciego (Blindsighted)" : "🔦 Blindsighted", value: isEs ? "≥ 5% en Flashlight (FL)" : "≥ 5% in Flashlight (FL)", inline: true },
+            { name: isEs ? "🐢 Paciente (Patient)" : "🐢 Patient", value: isEs ? "≥ 10% en Easy (EZ)" : "≥ 10% in Easy (EZ)", inline: true },
+            { name: isEs ? "💖 Amante de Mods (Mod-Loving)" : "💖 Mod-Loving", value: isEs ? "≤ 15% en NoMod (alta variedad)" : "≤ 15% in NoMod (high variety)", inline: true },
             { name: isEs ? "✨ Versátil (Versatile)" : "✨ Versatile", value: isEs ? "Distribución balanceada de mods" : "Balanced mod distribution", inline: true }
         ]);
     } else if (pageIndex === 3) {
@@ -276,8 +276,8 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             : "The **suffix** highlights the player's standout achievement or trait in Sengo and osu!:"
         );
         embed.addFields([
-            { name: isEs ? "🏆 Némesis Nacional (National Nemesis)" : "🏆 National Nemesis", value: isEs ? "$\\ge 100$ puestos #1 Nacionales en Sengo" : "$\\ge 100$ #1 National ranks in Sengo", inline: false },
-            { name: isEs ? "🎯 Amenaza de Snipes (Snipe Menace)" : "🎯 Snipe Menace", value: isEs ? "$\\ge 10$ puestos #1 Nacionales en Sengo" : "$\\ge 10$ #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🏆 Némesis Nacional (National Nemesis)" : "🏆 National Nemesis", value: isEs ? "≥ 100 puestos #1 Nacionales en Sengo" : "≥ 100 #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🎯 Amenaza de Snipes (Snipe Menace)" : "🎯 Snipe Menace", value: isEs ? "≥ 10 puestos #1 Nacionales en Sengo" : "≥ 10 #1 National ranks in Sengo", inline: false },
             { name: isEs ? "🔨 Creador de Beatmaps (Beatmap Crafter)" : "🔨 Beatmap Crafter", value: isEs ? "Posee al menos 1 mapa rankeado en osu!" : "Has at least 1 ranked beatmap in osu!", inline: false },
             { name: isEs ? "📖 Demonio de Lectura (Sightread Demon)" : "📖 Sightread Demon", value: isEs ? "Lectura (Reading) supera a Aim y Speed" : "Reading skill exceeds Aim & Speed", inline: true },
             { name: isEs ? "🕹️ Cazador de Círculos (Whack-A-Mole)" : "🕹️ Whack-A-Mole", value: isEs ? "Puntería (Aim) es su mayor habilidad" : "Aim is the highest skill", inline: true },
