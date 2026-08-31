@@ -68,18 +68,41 @@ const MOD_COLORS = {
     'TD': { bg: '#00b8ff', fg: '#002233' }
 };
 
+// Caché en memoria para imágenes remotas (evita re-descargas repetidas en Render)
+const imageMemoryCache = new Map();
+const MAX_IMAGE_CACHE_SIZE = 120;
+const IMAGE_CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos para avatares/covers
+
 /**
  * Descarga una imagen remota de forma segura y devuelve un Image object de canvas.
+ * Utiliza caché en memoria LRU para optimizar tiempo y CPU en Render.
  */
 async function fetchImageSafe(url) {
     if (!url || typeof url !== "string") return null;
+
+    const now = Date.now();
+    const isStaticFlag = url.includes("flagcdn.com");
+    const cached = imageMemoryCache.get(url);
+
+    if (cached && (isStaticFlag || (now - cached.timestamp) < IMAGE_CACHE_TTL_MS)) {
+        return cached.img;
+    }
+
     try {
         const res = await axios.get(url, {
             responseType: "arraybuffer",
-            timeout: 8000,
+            timeout: 6000,
             headers: { "User-Agent": "Sengo/CardGenerator" }
         });
-        return await loadImage(Buffer.from(res.data));
+        const img = await loadImage(Buffer.from(res.data));
+
+        if (imageMemoryCache.size >= MAX_IMAGE_CACHE_SIZE) {
+            const oldestKey = imageMemoryCache.keys().next().value;
+            imageMemoryCache.delete(oldestKey);
+        }
+        imageMemoryCache.set(url, { img, timestamp: now });
+
+        return img;
     } catch {
         return null;
     }
@@ -328,19 +351,17 @@ function generateCardTitle(skills, modStats, pp, user, sengoData) {
  */
 async function fetchPinnedScore(userId, topScores) {
     try {
-        let globalToken = null;
-        try {
-            const tokenData = JSON.parse(fs.readFileSync("./osu_api_extended_token.json", "utf8"));
-            globalToken = tokenData.access_token;
-        } catch {}
+        const OsuUserModel = require("../models/OsuUserModel.js");
+        const tokenData = await OsuUserModel.getValidClientToken().catch(() => null);
+        const token = tokenData?.access_token;
 
-        if (globalToken) {
+        if (token) {
             const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=osu&limit=1`, {
                 headers: {
-                    "Authorization": `Bearer ${globalToken}`,
+                    "Authorization": `Bearer ${token}`,
                     "x-api-version": "20240728"
                 },
-                timeout: 5000
+                timeout: 2500
             });
             if (res.data && res.data.length > 0) {
                 return res.data[0];
@@ -594,44 +615,55 @@ async function renderOsuCard(user, topScores = []) {
     ctx.fillStyle = theme.bgColor || "#27152c";
     ctx.fillRect(0, 0, width, height);
 
-    // Cover de fondo (Profile Cover o personalizada)
     const profileCoverUrl = user.cover_url || user.cover?.url || user.cover?.custom_url || theme.profileCoverUrl;
     const activeBgUrl = theme.useProfileCover && profileCoverUrl ? profileCoverUrl : theme.bgImageUrl;
-    if (activeBgUrl) {
-        const bgImg = await fetchImageSafe(activeBgUrl);
-        if (bgImg) {
-            ctx.save();
-            ctx.globalAlpha = theme.bgImageOpacity != null ? theme.bgImageOpacity : 0.5;
-            drawImageCover(ctx, bgImg, 0, 0, width, height);
-            ctx.restore();
+    const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
+    const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
 
-            // Degradado de mezcla sobre la imagen
-            if (theme.bgGradientMode && theme.bgGradientMode !== "none") {
-                ctx.save();
-                ctx.globalAlpha = theme.bgGradientIntensity || 0.75;
-                if (theme.bgGradientMode === "radial") {
-                    const radGrad = ctx.createRadialGradient(width / 2, height / 2, 180, width / 2, height / 2, width / 1.5);
-                    radGrad.addColorStop(0, "rgba(0,0,0,0)");
-                    radGrad.addColorStop(0.65, "rgba(0,0,0,0.35)");
-                    radGrad.addColorStop(1, theme.bgColor);
-                    ctx.fillStyle = radGrad;
-                } else if (theme.bgGradientMode === "vertical") {
-                    const vertGrad = ctx.createLinearGradient(0, 0, 0, height);
-                    vertGrad.addColorStop(0, "rgba(0,0,0,0.1)");
-                    vertGrad.addColorStop(0.5, "rgba(0,0,0,0.4)");
-                    vertGrad.addColorStop(1, theme.bgColor);
-                    ctx.fillStyle = vertGrad;
-                } else if (theme.bgGradientMode === "horizontal") {
-                    const horizGrad = ctx.createLinearGradient(0, 0, width, 0);
-                    horizGrad.addColorStop(0, theme.bgColor);
-                    horizGrad.addColorStop(0.3, "rgba(0,0,0,0.2)");
-                    horizGrad.addColorStop(0.7, "rgba(0,0,0,0.2)");
-                    horizGrad.addColorStop(1, theme.bgColor);
-                    ctx.fillStyle = horizGrad;
-                }
-                ctx.fillRect(0, 0, width, height);
-                ctx.restore();
+    // Descarga paralela en segundo plano de todos los assets requeridos
+    const [bgImg, avatarImg, flagImg, mapCoverImg] = await Promise.all([
+        fetchImageSafe(activeBgUrl),
+        fetchImageSafe(user.avatar_url),
+        fetchImageSafe(flagUrl),
+        fetchImageSafe(coverUrl)
+    ]);
+
+    // 1. FONDO PRINCIPAL
+    ctx.fillStyle = theme.bgColor || "#27152c";
+    ctx.fillRect(0, 0, width, height);
+
+    if (bgImg) {
+        ctx.save();
+        ctx.globalAlpha = theme.bgImageOpacity != null ? theme.bgImageOpacity : 0.5;
+        drawImageCover(ctx, bgImg, 0, 0, width, height);
+        ctx.restore();
+
+        // Degradado de mezcla sobre la imagen
+        if (theme.bgGradientMode && theme.bgGradientMode !== "none") {
+            ctx.save();
+            ctx.globalAlpha = theme.bgGradientIntensity || 0.75;
+            if (theme.bgGradientMode === "radial") {
+                const radGrad = ctx.createRadialGradient(width / 2, height / 2, 180, width / 2, height / 2, width / 1.5);
+                radGrad.addColorStop(0, "rgba(0,0,0,0)");
+                radGrad.addColorStop(0.65, "rgba(0,0,0,0.35)");
+                radGrad.addColorStop(1, theme.bgColor);
+                ctx.fillStyle = radGrad;
+            } else if (theme.bgGradientMode === "vertical") {
+                const vertGrad = ctx.createLinearGradient(0, 0, 0, height);
+                vertGrad.addColorStop(0, "rgba(0,0,0,0.1)");
+                vertGrad.addColorStop(0.5, "rgba(0,0,0,0.4)");
+                vertGrad.addColorStop(1, theme.bgColor);
+                ctx.fillStyle = vertGrad;
+            } else if (theme.bgGradientMode === "horizontal") {
+                const horizGrad = ctx.createLinearGradient(0, 0, width, 0);
+                horizGrad.addColorStop(0, theme.bgColor);
+                horizGrad.addColorStop(0.3, "rgba(0,0,0,0.2)");
+                horizGrad.addColorStop(0.7, "rgba(0,0,0,0.2)");
+                horizGrad.addColorStop(1, theme.bgColor);
+                ctx.fillStyle = horizGrad;
             }
+            ctx.fillRect(0, 0, width, height);
+            ctx.restore();
         }
     }
 
@@ -719,7 +751,6 @@ async function renderOsuCard(user, topScores = []) {
         roundRect(ctx, lc.x, lc.y, lc.w, avatarH, { tl: avatarRadius, tr: avatarRadius, bl: 0, br: 0 });
         ctx.clip();
 
-        const avatarImg = await fetchImageSafe(user.avatar_url);
         if (avatarImg) {
             drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, config.leftCol?.avatarAlignY || 0.2);
         }
@@ -765,8 +796,6 @@ async function renderOsuCard(user, topScores = []) {
         const flagX = rb.x + 16;
         const flagY = rb.y + 16;
 
-        const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
-        const flagImg = await fetchImageSafe(flagUrl);
         if (flagImg) {
             ctx.save();
             roundRect(ctx, flagX, flagY, flagW, flagH, 8);
@@ -798,8 +827,6 @@ async function renderOsuCard(user, topScores = []) {
         roundRect(ctx, pb.x, pb.y, pb.w, pb.h, playRadius);
         ctx.clip();
 
-        const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
-        const mapCoverImg = await fetchImageSafe(coverUrl);
         if (mapCoverImg) {
             drawImageCover(ctx, mapCoverImg, pb.x, pb.y, pb.w, pb.h, 0.3);
         } else {
