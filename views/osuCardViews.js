@@ -940,8 +940,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const playcountLabel = isEs ? "Partidas" : "Playcount";
 
         drawCustomText(ctx, fonts.statsLabels, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 44, sb.y + 88, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 44, sb.y + 134, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily);
 
         const skillsList = [
             { label: "ACC", val: skillData.acc, x: sb.x + 380 },
