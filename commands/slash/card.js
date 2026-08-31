@@ -11,6 +11,12 @@ const data = new SlashCommandBuilder()
             .setName("embed")
             .setDescription("¿Enviar la tarjeta dentro de un embed?")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option
+            .setName("recargar")
+            .setDescription("¿Forzar la recarga ignorando la caché de 1 hora?")
+            .setRequired(false)
     );
 
 // Permitir instalación de usuario y servidores externos
@@ -23,10 +29,12 @@ if (typeof data.setContexts === "function") {
 
 async function run(interaction, res, chat_commands) {
     const isEmbed = interaction.options.getBoolean("embed");
+    const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
 
     const args = [];
     if (isEmbed) args.push("-embed");
+    if (isForce) args.push("-refresh");
     if (targetUser) args.push(targetUser);
 
     const messages = createSlashMessagesContext(interaction, res);

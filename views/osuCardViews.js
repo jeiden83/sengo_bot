@@ -574,13 +574,39 @@ function drawVignette(ctx, mode, spreadPct, opacity, color, width, height) {
     ctx.restore();
 }
 
+// Caché de tarjetas generadas en memoria (1 hora de TTL, máx 60 tarjetas en RAM ~ 35MB)
+const cardBufferCache = new Map();
+const CARD_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hora
+const MAX_CARD_CACHE_SIZE = 60;
+
+function setWithLimit(map, key, value, limit = 60) {
+    if (map.size >= limit && !map.has(key)) {
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+    }
+    map.set(key, value);
+}
+
+function clearCardCache(userId) {
+    if (userId) cardBufferCache.delete(`user:${userId}`);
+}
+
 /**
  * Renderiza la tarjeta de perfil en Canvas con paridad total con Sengo Card Studio.
  * @param {any} user Datos del usuario de osu!
  * @param {Array} topScores Top scores del usuario
+ * @param {object} [options] Opciones de renderizado (forceRefresh, etc.)
  * @returns {Promise<Buffer>} Buffer PNG de la imagen generada
  */
-async function renderOsuCard(user, topScores = []) {
+async function renderOsuCard(user, topScores = [], options = {}) {
+    const cacheKey = `user:${user.id}`;
+    if (!options?.forceRefresh) {
+        const cached = cardBufferCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp) < CARD_CACHE_TTL_MS) {
+            return cached.buffer;
+        }
+    }
+
     const config = getDefaultTemplate();
     const width = 1300;
     const height = 720;
@@ -953,7 +979,9 @@ async function renderOsuCard(user, topScores = []) {
         drawCustomText(ctx, fonts.footerDate, today, 630, 695, "left", fontFamily);
     }
 
-    return canvas.toBuffer("image/png");
+    const buffer = canvas.toBuffer("image/png");
+    setWithLimit(cardBufferCache, cacheKey, { buffer, timestamp: Date.now() }, MAX_CARD_CACHE_SIZE);
+    return buffer;
 }
 
 /**
@@ -968,5 +996,6 @@ function doOsuCardEmbed(message, imageName = "card.png") {
 
 module.exports = {
     renderOsuCard,
-    doOsuCardEmbed
+    doOsuCardEmbed,
+    clearCardCache
 };

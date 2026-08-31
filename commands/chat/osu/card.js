@@ -17,9 +17,23 @@ async function run(messages, args) {
         )
     );
 
+    const isForce = safeArgs.some(arg => 
+        typeof arg === "string" && (
+            arg.toLowerCase() === "-f" ||
+            arg.toLowerCase() === "-force" ||
+            arg.toLowerCase() === "--force" ||
+            arg.toLowerCase() === "-r" ||
+            arg.toLowerCase() === "-refresh" ||
+            arg.toLowerCase() === "--refresh"
+        )
+    );
+
     // Filtrar flags para obtener argumentos de usuario
     const cleanArgs = safeArgs.filter(arg => 
-        typeof arg === "string" && !["-embed", "--embed", "embed"].includes(arg.toLowerCase())
+        typeof arg === "string" && ![
+            "-embed", "--embed", "embed",
+            "-f", "-force", "--force", "-r", "-refresh", "--refresh"
+        ].includes(arg.toLowerCase())
     );
 
     let osuUser = null;
@@ -67,7 +81,7 @@ async function run(messages, args) {
         if (logger) logger.process("Obteniendo mejores puntuaciones y renderizando tarjeta");
         const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: "osu", server: "bancho" }).catch(() => []);
         
-        const canvasBuffer = await renderOsuCard(osuUser, topScores);
+        const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce });
         const attachment = new AttachmentBuilder(canvasBuffer, { name: "card.png" });
 
         if (isEmbed) {
