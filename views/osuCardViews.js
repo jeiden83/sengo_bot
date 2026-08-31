@@ -328,9 +328,9 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es")
     const rankedMaps = Number(user.ranked_and_approved_beatmapset_count || 0);
     const snipesCount = Number(sengoData.nationalTopsCount || 0);
 
-    if (snipesCount >= 100) {
+    if (snipesCount >= 500) {
         suffix = isEs ? "Némesis Nacional" : "National Nemesis";
-    } else if (snipesCount >= 10) {
+    } else if (snipesCount >= 200) {
         suffix = isEs ? "Amenaza de Snipes" : "Snipe Menace";
     } else if (rankedMaps >= 1) {
         suffix = isEs ? "Creador de Beatmaps" : "Beatmap Crafter";

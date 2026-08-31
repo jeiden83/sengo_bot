@@ -276,8 +276,8 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             : "The **suffix** highlights the player's standout achievement or trait in Sengo and osu!:"
         );
         embed.addFields([
-            { name: isEs ? "🏆 Némesis Nacional (National Nemesis)" : "🏆 National Nemesis", value: isEs ? "≥ 100 puestos #1 Nacionales en Sengo" : "≥ 100 #1 National ranks in Sengo", inline: false },
-            { name: isEs ? "🎯 Amenaza de Snipes (Snipe Menace)" : "🎯 Snipe Menace", value: isEs ? "≥ 10 puestos #1 Nacionales en Sengo" : "≥ 10 #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🏆 Némesis Nacional (National Nemesis)" : "🏆 National Nemesis", value: isEs ? "≥ 500 puestos #1 Nacionales en Sengo" : "≥ 500 #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🎯 Amenaza de Snipes (Snipe Menace)" : "🎯 Snipe Menace", value: isEs ? "≥ 200 puestos #1 Nacionales en Sengo" : "≥ 200 #1 National ranks in Sengo", inline: false },
             { name: isEs ? "🔨 Creador de Beatmaps (Beatmap Crafter)" : "🔨 Beatmap Crafter", value: isEs ? "Posee al menos 1 mapa rankeado en osu!" : "Has at least 1 ranked beatmap in osu!", inline: false },
             { name: isEs ? "📖 Demonio de Lectura (Sightread Demon)" : "📖 Sightread Demon", value: isEs ? "Lectura (Reading) supera a Aim y Speed" : "Reading skill exceeds Aim & Speed", inline: true },
             { name: isEs ? "🕹️ Cazador de Círculos (Whack-A-Mole)" : "🕹️ Whack-A-Mole", value: isEs ? "Puntería (Aim) es su mayor habilidad" : "Aim is the highest skill", inline: true },
