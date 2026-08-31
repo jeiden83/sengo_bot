@@ -107,14 +107,15 @@ async function run(messages, args) {
         if (osuUserdata && osuUserdata.gamemode && osuUserdata.gamemode !== "osu") {
             await progressPromise;
             await cleanupProgress();
-            return t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
+            const err = t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
+            return isSlash ? { content: err, embeds: [] } : err;
         }
 
         if (osuUserdata && osuUserdata.fn_response) {
             if (typeof osuUserdata.fn_response === "string") {
                 await progressPromise;
                 await cleanupProgress();
-                return osuUserdata.fn_response;
+                return isSlash ? { content: osuUserdata.fn_response, embeds: [] } : osuUserdata.fn_response;
             }
             osuUser = osuUserdata.fn_response;
         }
@@ -135,7 +136,7 @@ async function run(messages, args) {
             await progressPromise;
             const noUserErr = t(locale, "card.err_no_user") || `❌ No tienes una cuenta de osu! vinculada. Usa \`s.link\` para vincular tu cuenta o especifica un usuario con \`s.card [usuario]\`.`;
             await cleanupProgress();
-            return noUserErr;
+            return isSlash ? { content: noUserErr, embeds: [] } : noUserErr;
         }
     }
 
@@ -143,7 +144,7 @@ async function run(messages, args) {
         await progressPromise;
         const notFoundErr = t(locale, "card.err_user_not_found") || `❌ No se pudo encontrar al usuario en osu!.`;
         await cleanupProgress();
-        return notFoundErr;
+        return isSlash ? { content: notFoundErr, embeds: [] } : notFoundErr;
     }
 
     try {
@@ -169,12 +170,16 @@ async function run(messages, args) {
         }
 
         return {
+            embeds: [],
             files: [attachment]
         };
     } catch (error) {
         console.error("[s.card] Error al renderizar tarjeta en Canvas:", error);
         await cleanupProgress();
-        return `❌ Error al generar la tarjeta de perfil: \`${error.message}\``;
+        return {
+            content: `❌ Error al generar la tarjeta de perfil: \`${error.message}\``,
+            embeds: []
+        };
     }
 }
 
