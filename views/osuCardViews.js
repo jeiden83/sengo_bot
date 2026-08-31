@@ -299,45 +299,46 @@ function analyzeSkills(scores) {
 }
 
 /**
- * Genera el título dinámico de 2 líneas
+ * Genera el título dinámico de 2 líneas con soporte de localización
  */
-function generateCardTitle(skills, modStats, pp, user, sengoData) {
-    let prefix = "Novice";
+function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es") {
+    const isEs = locale === "es";
+    let prefix = isEs ? "Novato" : "Novice";
     const maxSkill = Math.max(skills.aim, skills.speed, skills.acc, skills.reading);
-    if (pp > 16000 || maxSkill >= 80) prefix = "Legendary";
-    else if (pp > 11000 || maxSkill >= 68) prefix = "Expert";
-    else if (pp > 6500 || maxSkill >= 50) prefix = "Advanced";
-    else if (pp > 3500 || maxSkill >= 38) prefix = "Seasoned";
-    else if (pp > 1500 || maxSkill >= 26) prefix = "Intermediate";
-    else if (pp > 500) prefix = "Competent";
+    if (pp > 16000 || maxSkill >= 80) prefix = isEs ? "Legendario" : "Legendary";
+    else if (pp > 11000 || maxSkill >= 68) prefix = isEs ? "Experto" : "Expert";
+    else if (pp > 6500 || maxSkill >= 50) prefix = isEs ? "Avanzado" : "Advanced";
+    else if (pp > 3500 || maxSkill >= 38) prefix = isEs ? "Veterano" : "Seasoned";
+    else if (pp > 1500 || maxSkill >= 26) prefix = isEs ? "Intermedio" : "Intermediate";
+    else if (pp > 500) prefix = isEs ? "Competente" : "Competent";
 
-    let descriptor = "Versatile";
-    if (modStats.NM >= 55) descriptor = "Mod-Hating";
-    else if (modStats.DT >= 40) descriptor = "Speedy";
-    else if (modStats.HR >= 35) descriptor = "Ant-Clicking";
-    else if (modStats.HD >= 45) descriptor = "HD abusing";
-    else if (modStats.FL >= 5) descriptor = "Blindsighted";
-    else if (modStats.EZ >= 10) descriptor = "Patient";
-    else if (modStats.NM <= 15) descriptor = "Mod-Loving";
+    let descriptor = isEs ? "Versátil" : "Versatile";
+    if (modStats.NM >= 55) descriptor = isEs ? "Anti-Mods" : "Mod-Hating";
+    else if (modStats.DT >= 40) descriptor = isEs ? "Veloz" : "Speedy";
+    else if (modStats.HR >= 35) descriptor = isEs ? "Preciso" : "Ant-Clicking";
+    else if (modStats.HD >= 45) descriptor = isEs ? "Abusador de HD" : "HD abusing";
+    else if (modStats.FL >= 5) descriptor = isEs ? "Ciego" : "Blindsighted";
+    else if (modStats.EZ >= 10) descriptor = isEs ? "Paciente" : "Patient";
+    else if (modStats.NM <= 15) descriptor = isEs ? "Amante de Mods" : "Mod-Loving";
 
-    let suffix = "All-Rounder";
+    let suffix = isEs ? "Todoterreno" : "All-Rounder";
     const rankedMaps = Number(user.ranked_and_approved_beatmapset_count || 0);
     const snipesCount = Number(sengoData.nationalTopsCount || 0);
 
     if (snipesCount >= 100) {
-        suffix = "National Nemesis";
+        suffix = isEs ? "Némesis Nacional" : "National Nemesis";
     } else if (snipesCount >= 10) {
-        suffix = "Snipe Menace";
+        suffix = isEs ? "Amenaza de Snipes" : "Snipe Menace";
     } else if (rankedMaps >= 1) {
-        suffix = "Beatmap Crafter";
+        suffix = isEs ? "Creador de Beatmaps" : "Beatmap Crafter";
     } else if (skills.reading > skills.aim && skills.reading > skills.speed) {
-        suffix = "Sightread Demon";
+        suffix = isEs ? "Demonio de Lectura" : "Sightread Demon";
     } else if (skills.aim >= skills.speed && skills.aim >= skills.acc) {
-        suffix = "Whack-A-Mole";
+        suffix = isEs ? "Cazador de Círculos" : "Whack-A-Mole";
     } else if (skills.speed >= skills.aim && skills.speed >= skills.acc) {
-        suffix = "speedtypist";
+        suffix = isEs ? "Mecanógrafo Veloz" : "speedtypist";
     } else {
-        suffix = "Rhythm-Incarnate";
+        suffix = isEs ? "Ritmo Encarnado" : "Rhythm-Incarnate";
     }
 
     return {
@@ -352,7 +353,7 @@ function generateCardTitle(skills, modStats, pp, user, sengoData) {
 async function fetchPinnedScore(userId, topScores) {
     try {
         const OsuUserModel = require("../models/OsuUserModel.js");
-        const tokenData = await OsuUserModel.getValidClientToken().catch(() => null);
+        const tokenData = await OsuUserModel.loadToken().catch(() => null);
         const token = tokenData?.access_token;
 
         if (token) {
@@ -361,13 +362,15 @@ async function fetchPinnedScore(userId, topScores) {
                     "Authorization": `Bearer ${token}`,
                     "x-api-version": "20240728"
                 },
-                timeout: 2500
+                timeout: 4000
             });
             if (res.data && res.data.length > 0) {
                 return res.data[0];
             }
         }
-    } catch {}
+    } catch (err) {
+        console.warn("[fetchPinnedScore] Error al consultar pinned score:", err.message);
+    }
 
     return topScores && topScores.length > 0 ? topScores[0] : null;
 }
@@ -591,15 +594,12 @@ function clearCardCache(userId) {
     if (userId) cardBufferCache.delete(`user:${userId}`);
 }
 
-/**
- * Renderiza la tarjeta de perfil en Canvas con paridad total con Sengo Card Studio.
- * @param {any} user Datos del usuario de osu!
- * @param {Array} topScores Top scores del usuario
- * @param {object} [options] Opciones de renderizado (forceRefresh, etc.)
- * @returns {Promise<Buffer>} Buffer PNG de la imagen generada
- */
 async function renderOsuCard(user, topScores = [], options = {}) {
-    const cacheKey = `user:${user.id}`;
+    const locale = options?.locale || user?.locale || "es";
+    const isEs = locale === "es";
+    const numLocale = isEs ? "de-DE" : "en-US";
+    const cacheKey = `user:${user.id}:${locale}`;
+
     if (!options?.forceRefresh) {
         const cached = cardBufferCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp) < CARD_CACHE_TTL_MS) {
@@ -620,8 +620,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     const countryCode = (user.country_code || user.country?.code || "VE").toUpperCase();
     const stats = user.statistics || {};
     const level = stats.level || { current: 100, progress: 0 };
-    const globalRank = stats.global_rank ? `${Number(stats.global_rank).toLocaleString("de-DE")}` : "-";
-    const countryRank = stats.rank?.country ? `${Number(stats.rank.country).toLocaleString("de-DE")}` : "-";
+    const globalRank = stats.global_rank ? `${Number(stats.global_rank).toLocaleString(numLocale)}` : "-";
+    const countryRank = stats.rank?.country ? `${Number(stats.rank.country).toLocaleString(numLocale)}` : "-";
     const pp = Number(stats.pp || 0);
     const medalsCount = user.user_achievements ? user.user_achievements.length : 0;
     const totalMedals = 352;
@@ -629,7 +629,7 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     const sengoData = await fetchSengoData(user.id, countryCode);
     const skillData = analyzeSkills(topScores);
-    const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData);
+    const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData, locale);
     const pinnedPlay = await fetchPinnedScore(user.id, topScores);
 
     const theme = config.theme || {};
@@ -798,7 +798,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
         // Medallas
         const medalsTextY = lvlBarY + 58;
-        drawCustomText(ctx, fonts.medalsText, `Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
+        const medalsLabel = isEs ? "Medallas" : "Medals";
+        drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
 
         const medalBarY = medalsTextY + 12;
         ctx.fillStyle = "#2e253c";
@@ -836,11 +837,11 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
         // Global Rank
         const rankCenterX = rb.x + (rb.w / 2);
-        drawCustomText(ctx, fonts.globalRankLabel, "Global Rank", rankCenterX, rb.y + 115, "center", fontFamily);
+        drawCustomText(ctx, fonts.globalRankLabel, isEs ? "Rango Global" : "Global Rank", rankCenterX, rb.y + 115, "center", fontFamily);
         drawCustomText(ctx, fonts.globalRankVal, globalRank, rankCenterX, rb.y + 168, "center", fontFamily);
 
         // Country Rank
-        drawCustomText(ctx, fonts.countryRankLabel, "Country", rankCenterX, rb.y + 208, "center", fontFamily);
+        drawCustomText(ctx, fonts.countryRankLabel, isEs ? "País" : "Country", rankCenterX, rb.y + 208, "center", fontFamily);
         drawCustomText(ctx, fonts.countryRankVal, countryRank, rankCenterX, rb.y + 254, "center", fontFamily);
     }
 
@@ -874,14 +875,14 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const rawDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
         const mapSR = pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating).toFixed(2) : "7.68";
         const mapDiffFormatted = rawDiff.toLowerCase().includes(mapSR) ? rawDiff : `${rawDiff} ${mapSR}★`;
-        const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString("de-DE") : "32.219.611";
+        const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString(numLocale) : "32.219.611";
         const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy || 0.96) * 100).toFixed(2) : "96.12";
         const scoreCombo = pinnedPlay?.max_combo ? `${pinnedPlay.max_combo}x` : "262x";
         const scoreGrade = pinnedPlay?.rank || "S";
 
         drawCustomText(ctx, fonts.playTitle, `${mapTitle} by ${mapArtist}`.slice(0, 48), pb.x + 16, pb.y + 34, "left", fontFamily);
         drawCustomText(ctx, fonts.playDiff, mapDiffFormatted.slice(0, 36), pb.x + 16, pb.y + 76, "left", fontFamily);
-        drawCustomText(ctx, fonts.playScore, `${scoreVal} Score`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
+        drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
         // Grade S/A
         const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade) };
@@ -925,9 +926,14 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const sb = cards.statsBox;
         drawCardBox(sb);
 
-        drawCustomText(ctx, fonts.statsLabels, `Total Score: ${Number(stats.total_score || 0).toLocaleString()}`, sb.x + 24, sb.y + 42, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 44, sb.y + 88, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `Playcount ${Number(stats.play_count || 0).toLocaleString()}`, sb.x + 44, sb.y + 134, "left", fontFamily);
+        const rankedScoreVal = Number(stats.ranked_score || stats.total_score || 0).toLocaleString(numLocale);
+        const rankedScoreLabel = isEs ? "Puntuación Ranked" : "Ranked Score";
+        const accLabel = isEs ? "Precisión" : "Accuracy";
+        const playcountLabel = isEs ? "Partidas" : "Playcount";
+
+        drawCustomText(ctx, fonts.statsLabels, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 44, sb.y + 88, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 44, sb.y + 134, "left", fontFamily);
 
         const skillsList = [
             { label: "ACC", val: skillData.acc, x: sb.x + 380 },
@@ -960,15 +966,17 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const sgb = cards.sengoBox;
         drawCardBox(sgb);
 
-        drawCustomText(ctx, fonts.sengoHeader, "Sengo ecosystem & local stats", sgb.x + (sgb.w / 2), sgb.y + 26, "center", fontFamily);
+        const sengoHeaderLabel = isEs ? "Ecosistema Sengo y estadísticas locales" : "Sengo ecosystem & local stats";
+        drawCustomText(ctx, fonts.sengoHeader, sengoHeaderLabel, sgb.x + (sgb.w / 2), sgb.y + 26, "center", fontFamily);
 
-        const bdayStr = sengoData.birthday ? `${sengoData.birthday}` : "unknown";
-        const skinStr = sengoData.skinName ? `${sengoData.skinName}` : "Unknown";
+        const bdayStr = sengoData.birthday ? `${sengoData.birthday}` : (isEs ? "Desconocido" : "unknown");
+        const skinStr = sengoData.skinName ? `${sengoData.skinName}` : (isEs ? "Desconocida" : "Unknown");
         const topPPStr = skillData.topPlayPP ? `${skillData.topPlayPP}` : "0";
         const snipesCount = sengoData.nationalTopsCount || "0";
         const snipesMade = sengoData.snipesMade || "0";
+        const bdayLabel = isEs ? "Cumpleaños" : "Birthday";
 
-        const sengoText = `#1 ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        Birthday: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`;
+        const sengoText = `#1 ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        ${bdayLabel}: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`;
         drawCustomText(ctx, fonts.sengoContent, sengoText, sgb.x + (sgb.w / 2), sgb.y + 58, "center", fontFamily);
     }
 
