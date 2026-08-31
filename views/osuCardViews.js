@@ -155,7 +155,7 @@ function roundRect(ctx, x, y, width, height, radius, fill = false, stroke = fals
 }
 
 /**
- * Consulta datos del ecosistema de Sengo (DB Turso & Supabase).
+ * Consulta datos del ecosistema de Sengo (DB Turso & Supabase) de forma ultra rápida.
  */
 async function fetchSengoData(userId, countryCode) {
     const data = {
@@ -170,39 +170,42 @@ async function fetchSengoData(userId, countryCode) {
 
     try {
         const supabase = getSupabaseClient();
-        if (supabase) {
-            const { data: sUser } = await supabase.from("users").select("*").eq("osu_id", String(userId)).maybeSingle();
-            if (sUser) {
-                data.isLinked = true;
-                data.skinName = sUser.skin_name || (sUser.skins && sUser.skins.osu ? sUser.skins.osu.name : null);
+        const userPromise = (async () => {
+            if (!supabase) return null;
+            const { data } = await supabase.from("users").select("discord_id, skin_name, skins").eq("osu_id", String(userId)).maybeSingle();
+            return data;
+        })().catch(() => null);
 
-                if (sUser.discord_id) {
-                    const bday = BirthdayModel.getUserBirthday(sUser.discord_id);
-                    if (bday && bday.day && bday.month) {
-                        const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
-                        data.birthday = `${String(bday.day).padStart(2, "0")} ${months[bday.month - 1] || bday.month}`;
-                    }
+        const topsCountPromise = OsuScoreModel.getUserNationalTopsCount(userId, 0, countryCode || "VE").catch(() => 0);
+        const snipesPromise = OsuScoreModel.getUserSnipesHistory(userId).catch(() => null);
+
+        const [sUser, topsCount, snipesHistory] = await Promise.all([
+            userPromise,
+            topsCountPromise,
+            snipesPromise
+        ]);
+
+        if (sUser) {
+            data.isLinked = true;
+            data.skinName = sUser.skin_name || (sUser.skins && sUser.skins.osu ? sUser.skins.osu.name : null);
+
+            if (sUser.discord_id) {
+                const bday = BirthdayModel.getUserBirthday(sUser.discord_id);
+                if (bday && bday.day && bday.month) {
+                    const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                    data.birthday = `${String(bday.day).padStart(2, "0")} ${months[bday.month - 1] || bday.month}`;
                 }
             }
         }
-    } catch (e) {
-        console.warn("[CARD] Error al consultar usuario en Supabase:", e.message);
-    }
 
-    try {
-        const tops = await OsuScoreModel.getUserNationalTops(userId, 0, countryCode || "VE").catch(() => []);
-        data.nationalTopsCount = Array.isArray(tops) ? tops.length : 0;
-        if (tops && tops.length > 0) {
-            data.topScore = tops[0];
-        }
+        data.nationalTopsCount = typeof topsCount === "number" ? topsCount : 0;
 
-        const snipesHistory = await OsuScoreModel.getUserSnipesHistory(userId).catch(() => null);
         if (snipesHistory) {
             data.snipesMade = (snipesHistory.made || []).length;
             data.snipesReceived = (snipesHistory.received || []).length;
         }
     } catch (e) {
-        console.warn("[CARD] Error al consultar snipes en Sengo:", e.message);
+        console.warn("[CARD] Error al consultar datos de Sengo:", e.message);
     }
 
     return data;
@@ -456,25 +459,28 @@ function drawPattern(ctx, patternType, patternColor, patternOpacity, patternSpac
 
     const sp = patternSpacing || 20;
     const pw = patternWidth || 2;
+    const radius = pw / 2;
 
     if (patternType === "staggered_dots" || patternType === "milin_dots") {
+        ctx.beginPath();
         for (let y = 11; y < height; y += sp) {
             const isOddRow = Math.floor((y - 11) / sp) % 2 === 1;
             const xOffset = isOddRow ? (sp / 2) : 0;
             for (let x = 11 + xOffset; x < width; x += sp) {
-                ctx.beginPath();
-                ctx.arc(x, y, pw / 2, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(x + radius, y);
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
             }
         }
+        ctx.fill();
     } else if (patternType === "dots") {
+        ctx.beginPath();
         for (let x = 11; x < width; x += sp) {
             for (let y = 11; y < height; y += sp) {
-                ctx.beginPath();
-                ctx.arc(x, y, pw / 2, 0, Math.PI * 2);
-                ctx.fill();
+                ctx.moveTo(x + radius, y);
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
             }
         }
+        ctx.fill();
     } else if (patternType === "grid") {
         for (let x = 0; x < width; x += sp) {
             ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
@@ -627,10 +633,12 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     const totalMedals = 352;
     const medalsPct = Math.round((medalsCount / totalMedals) * 100);
 
-    const sengoData = await fetchSengoData(user.id, countryCode);
+    const [sengoData, pinnedPlay] = await Promise.all([
+        fetchSengoData(user.id, countryCode),
+        fetchPinnedScore(user.id, topScores)
+    ]);
     const skillData = analyzeSkills(topScores);
     const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData, locale);
-    const pinnedPlay = await fetchPinnedScore(user.id, topScores);
 
     const theme = config.theme || {};
     const cards = config.cards || {};
