@@ -117,10 +117,19 @@ function isLovedScore(score) {
 }
 
 function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc) {
-    const maxPpStr = (max_pp !== null && max_pp !== undefined) ? `${max_pp.toFixed(2)}PP` : '';
-    const ppStr = pp_fc 
-        ? `${colorear(user_pp + 'PP')}/${colorear("(" + pp_fc.toFixed(2) + "PP)", "amarillo")}` 
-        : `${colorear(user_pp + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
+    const numUserPp = typeof user_pp === 'number' ? user_pp : (parseFloat(user_pp) || 0);
+    const numMaxPp = (max_pp !== null && max_pp !== undefined) ? (typeof max_pp === 'number' ? max_pp : parseFloat(max_pp)) : null;
+    const numPpFc = (pp_fc !== null && pp_fc !== undefined) ? (typeof pp_fc === 'number' ? pp_fc : parseFloat(pp_fc)) : null;
+
+    let ppStr = '';
+    if (numUserPp <= 0 && (!numMaxPp || numMaxPp <= 0)) {
+        ppStr = colorear('0.00PP');
+    } else if (numPpFc && numPpFc > 0 && numUserPp > 0) {
+        ppStr = `${colorear(numUserPp.toFixed(2) + 'PP')}/${colorear("(" + numPpFc.toFixed(2) + "PP)", "amarillo")}`;
+    } else {
+        const maxPpStr = (numMaxPp !== null && !isNaN(numMaxPp) && numMaxPp > 0) ? `${numMaxPp.toFixed(2)}PP` : '';
+        ppStr = `${colorear(numUserPp.toFixed(2) + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
+    }
     return `\`\`\`ansi\n${stats_str} • ${ppStr}\n\`\`\``;
 }
 

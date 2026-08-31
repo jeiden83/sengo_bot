@@ -140,6 +140,54 @@ function convertGatariMods(modsBitmask) {
     return mods;
 }
 
+const UNRANKED_PP_MODS = new Set([
+    'RX', 'RELAX',
+    'AP', 'AUTOPILOT',
+    'AT', 'AUTO',
+    'CN', 'CINEMA',
+    'TP', 'TARGETPRACTICE', 'TARGET PRACTICE',
+    'SV2', 'SCOREV2', 'V2',
+    'DA', 'DIFFICULTYADJUST',
+    'RD', 'RANDOM',
+    'MR', 'MIRROR',
+    'AC', 'ACCURACYCHALLENGE',
+    'BL', 'BLINDS',
+    'TR', 'TRACEABLE',
+    'ST', 'STRICTTRACKING',
+    'AS', 'ADAPTIVESPEED',
+    'WU', 'WINDUP',
+    'WD', 'WINDDOWN',
+    'NS', 'NOSCOPE',
+    'MG', 'MAGNETISED',
+    'RP', 'REPULSION',
+    'FR', 'FREEZEFRAME',
+    'BU', 'BUBBLES',
+    'SYN', 'SYNESTHESIA'
+]);
+
+function hasUnrankedPPMods(score) {
+    if (!score) return false;
+    if (score.ranked === false) return true;
+
+    const rawMods = score.mods;
+    if (!rawMods) return false;
+
+    if (Array.isArray(rawMods)) {
+        for (const m of rawMods) {
+            const acronym = (typeof m === 'string' ? m : m.acronym || m.name || '').toUpperCase();
+            if (UNRANKED_PP_MODS.has(acronym)) {
+                return true;
+            }
+        }
+    } else if (typeof rawMods === 'string') {
+        const upper = rawMods.toUpperCase();
+        for (const unrankedMod of ['RX', 'AP', 'AT', 'CN', 'TP', 'SV2', 'DA', 'RD', 'MR', 'BL', 'TR']) {
+            if (upper.includes(unrankedMod)) return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Calcula el rendimiento (PP) y el PP teórico en caso de Full Combo.
  */
@@ -147,6 +195,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     normalizeScore(recent_scores);
     const { great = 0, ok = 0, meh = 0, miss = 0, perfect = 0, good = 0, small_tick_miss = 0 } = recent_scores.statistics;
 
+    const isUnrankedPP = hasUnrankedPPMods(recent_scores);
     const engine = ppEngine.getEngine(engineChoice || recent_scores?.ppEngine);
 
     let mode = recent_scores.mode;
@@ -253,6 +302,11 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
                 maxAttrs.difficulty.stars = effectiveStars;
             }
         }
+        if (isUnrankedPP) {
+            Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
+        } else if (typeof maxAttrs.pp !== 'number' || isNaN(maxAttrs.pp)) {
+            Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
+        }
         return maxAttrs;
     }
 
@@ -281,12 +335,23 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         if (typeof targetDiffAttrs?.stars === 'number') {
             perfResult.stars = targetDiffAttrs.stars;
         }
+        if (isUnrankedPP) {
+            Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
+        } else if (typeof perfResult.pp !== 'number' || isNaN(perfResult.pp)) {
+            Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
+        }
         return perfResult;
     }
 
     // Para jugadas fallidas a mitad del mapa, calculamos progresivamente con gradualPerformance
     const difficulty = new engine.Difficulty(max_perfomance_constructor);
-    return difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
+    const gradResult = difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
+    if (gradResult) {
+        if (isUnrankedPP || typeof gradResult.pp !== 'number' || isNaN(gradResult.pp)) {
+            Object.defineProperty(gradResult, 'pp', { value: 0, writable: true, configurable: true });
+        }
+    }
+    return gradResult;
 }
 
 /**
@@ -2373,6 +2438,7 @@ const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
     calculatePP,
+    hasUnrankedPPMods,
     benchmarkPP,
     getUnrankedBeatmapUserAllScores,
     getUserRecentScores,

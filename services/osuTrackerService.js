@@ -168,6 +168,11 @@ async function processNewScore(client, userObj, score) {
     if (initialStatus && !['ranked', 'approved'].includes(initialStatus)) {
         return;
     }
+
+    // ponytail: Mods no rankeados (Relax, Autopilot, Cinema, etc.) no otorgan PP ni forman parte de Top Plays (/scores/best)
+    if (OsuScoreModel.hasUnrankedPPMods(score) || score.ranked === false) {
+        return;
+    }
     
     // 1. Obtener el Top 200 de mejores puntuaciones del usuario
     await OsuUserModel.NewloadToken();
@@ -293,7 +298,7 @@ async function processNewScore(client, userObj, score) {
         }
 
         // ponytail: Fallback predictivo por PP si la API de osu! aún no indexó la jugada en /scores/best
-        if (positionIndex === -1 && user_pp > 0 && bestScores && Array.isArray(bestScores) && bestScores.length > 0) {
+        if (positionIndex === -1 && user_pp > 0 && !OsuScoreModel.hasUnrankedPPMods(score) && score.ranked !== false && bestScores && Array.isArray(bestScores) && bestScores.length > 0) {
             const minTopPP = bestScores[bestScores.length - 1]?.pp || 0;
             if (user_pp >= minTopPP || bestScores.length < 100) {
                 const higherPlays = bestScores.filter(s => (s.pp || 0) > user_pp).length;
