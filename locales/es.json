@@ -375,11 +375,20 @@
       "body": "Filtra torneos por modo, rango, etiquetas/región y estado.",
       "usage": "s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]"
     },
+    "card": {
+      "header": "Genera una tarjeta de perfil dinámica de osu! con Canvas.",
+      "body": "Genera la tarjeta visual de perfil con estadísticas de osu! y del ecosistema Sengo. Permite embeberla con -embed.",
+      "usage": "s.card [usuario] [-embed]"
+    },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
       "body": "Envía la imagen YO.png estática o genera la tarjeta dinámica de perfil con Canvas usando el flag -canva [usuario]. Permite embeberla con -embed.",
       "usage": "s.yo [-canva [usuario]] [-embed]"
     }
+  },
+  "card": {
+    "err_no_user": "❌ No tienes una cuenta de osu! vinculada. Usa `s.link` para vincular tu cuenta o especifica un usuario con `s.card [usuario]`.",
+    "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!."
   },
   "contributors": {
     "title": "🌐 Usuarios Vinculados por OAuth",

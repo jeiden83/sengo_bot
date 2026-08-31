@@ -1,0 +1,945 @@
+const fs = require("fs");
+const path = require("path");
+const axios = require("axios");
+const { EmbedBuilder } = require("discord.js");
+const { createCanvas, loadImage, registerFont } = require("canvas");
+const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getSupabaseClient } = require("../db/database.js");
+const OsuScoreModel = require("../models/OsuScoreModel.js");
+const BirthdayModel = require("../models/BirthdayModel.js");
+
+// Cargar plantilla base predeterminada de Sengo
+const TEMPLATE_DEFAULT_PATH = path.join(__dirname, "templates", "yo_card_default.json");
+let cachedDefaultTemplate = null;
+
+function getDefaultTemplate() {
+    if (!cachedDefaultTemplate) {
+        try {
+            cachedDefaultTemplate = JSON.parse(fs.readFileSync(TEMPLATE_DEFAULT_PATH, "utf8"));
+        } catch (e) {
+            console.error("[CARD-VIEW] Error al leer plantilla base yo_card_default.json:", e.message);
+            cachedDefaultTemplate = {};
+        }
+    }
+    return JSON.parse(JSON.stringify(cachedDefaultTemplate));
+}
+
+// Registrar fuentes del sistema para coincidir con la tipografía
+const winFonts = "C:/Windows/Fonts";
+if (fs.existsSync(path.join(winFonts, "segoeui.ttf"))) {
+    registerFont(path.join(winFonts, "segoeui.ttf"), { family: "SegoeCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuib.ttf"), { family: "SegoeCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuii.ttf"), { family: "SegoeCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "segoeuiz.ttf"), { family: "SegoeCustom", weight: "bold", style: "italic" });
+}
+if (fs.existsSync(path.join(winFonts, "arial.ttf"))) {
+    registerFont(path.join(winFonts, "arial.ttf"), { family: "ArialCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "arialbd.ttf"), { family: "ArialCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "ariali.ttf"), { family: "ArialCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "arialbi.ttf"), { family: "ArialCustom", weight: "bold", style: "italic" });
+}
+
+const DEFAULT_FONT_STACK = '"Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", Arial, sans-serif';
+
+// Mapeo oficial de colores para badges de mods de osu!lazer
+const MOD_COLORS = {
+    'EZ': { bg: '#56c9a8', fg: '#002b1f' },
+    'NF': { bg: '#56c9a8', fg: '#002b1f' },
+    'HT': { bg: '#56c9a8', fg: '#002b1f' },
+    'DC': { bg: '#56c9a8', fg: '#002b1f' },
+    'DT': { bg: '#fa4277', fg: '#ffffff' },
+    'NC': { bg: '#fa4277', fg: '#ffffff' },
+    'HD': { bg: '#a3e635', fg: '#1a2e00' },
+    'HR': { bg: '#ff3b5c', fg: '#ffffff' },
+    'FL': { bg: '#f59e0b', fg: '#331a00' },
+    'SD': { bg: '#fa4277', fg: '#ffffff' },
+    'PF': { bg: '#fa4277', fg: '#ffffff' },
+    'BL': { bg: '#fa4277', fg: '#ffffff' },
+    'ST': { bg: '#fa4277', fg: '#ffffff' },
+    'CL': { bg: '#705988', fg: '#ffffff' },
+    'RX': { bg: '#00b8ff', fg: '#002233' },
+    'AP': { bg: '#00b8ff', fg: '#002233' },
+    'SO': { bg: '#00b8ff', fg: '#002233' },
+    'AT': { bg: '#00b8ff', fg: '#002233' },
+    'CN': { bg: '#00b8ff', fg: '#002233' },
+    'V2': { bg: '#bf55ec', fg: '#ffffff' },
+    'SV2': { bg: '#bf55ec', fg: '#ffffff' },
+    'MR': { bg: '#bf55ec', fg: '#ffffff' },
+    'TD': { bg: '#00b8ff', fg: '#002233' }
+};
+
+/**
+ * Descarga una imagen remota de forma segura y devuelve un Image object de canvas.
+ */
+async function fetchImageSafe(url) {
+    if (!url || typeof url !== "string") return null;
+    try {
+        const res = await axios.get(url, {
+            responseType: "arraybuffer",
+            timeout: 8000,
+            headers: { "User-Agent": "Sengo/CardGenerator" }
+        });
+        return await loadImage(Buffer.from(res.data));
+    } catch {
+        return null;
+    }
+}
+
+/**
+ * Recorta y dibuja una imagen en modo Cover sin deformarla.
+ */
+function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5) {
+    if (!img) return;
+    const imgRatio = img.width / img.height;
+    const targetRatio = w / h;
+    let sw, sh, sx, sy;
+
+    if (imgRatio > targetRatio) {
+        sh = img.height;
+        sw = img.height * targetRatio;
+        sx = (img.width - sw) / 2;
+        sy = 0;
+    } else {
+        sw = img.width;
+        sh = img.width / targetRatio;
+        sx = 0;
+        sy = (img.height - sh) * alignY;
+    }
+
+    ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+}
+
+/**
+ * Dibuja rectángulos con esquinas redondeadas.
+ */
+function roundRect(ctx, x, y, width, height, radius, fill = false, stroke = false) {
+    if (typeof radius === "number") {
+        radius = { tl: radius, tr: radius, br: radius, bl: radius };
+    }
+    ctx.beginPath();
+    ctx.moveTo(x + radius.tl, y);
+    ctx.lineTo(x + width - radius.tr, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + radius.tr);
+    ctx.lineTo(x + width, y + height - radius.br);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - radius.br, y + height);
+    ctx.lineTo(x + radius.bl, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - radius.bl);
+    ctx.lineTo(x, y + radius.tl);
+    ctx.quadraticCurveTo(x, y, x + radius.tl, y);
+    ctx.closePath();
+    if (fill) ctx.fill();
+    if (stroke) ctx.stroke();
+}
+
+/**
+ * Consulta datos del ecosistema de Sengo (DB Turso & Supabase).
+ */
+async function fetchSengoData(userId, countryCode) {
+    const data = {
+        isLinked: false,
+        skinName: null,
+        birthday: null,
+        nationalTopsCount: 0,
+        snipesMade: 0,
+        snipesReceived: 0,
+        topScore: null
+    };
+
+    try {
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            const { data: sUser } = await supabase.from("users").select("*").eq("osu_id", String(userId)).maybeSingle();
+            if (sUser) {
+                data.isLinked = true;
+                data.skinName = sUser.skin_name || (sUser.skins && sUser.skins.osu ? sUser.skins.osu.name : null);
+
+                if (sUser.discord_id) {
+                    const bday = BirthdayModel.getUserBirthday(sUser.discord_id);
+                    if (bday && bday.day && bday.month) {
+                        const months = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+                        data.birthday = `${String(bday.day).padStart(2, "0")} ${months[bday.month - 1] || bday.month}`;
+                    }
+                }
+            }
+        }
+    } catch (e) {
+        console.warn("[CARD] Error al consultar usuario en Supabase:", e.message);
+    }
+
+    try {
+        const tops = await OsuScoreModel.getUserNationalTops(userId, 0, countryCode || "VE").catch(() => []);
+        data.nationalTopsCount = Array.isArray(tops) ? tops.length : 0;
+        if (tops && tops.length > 0) {
+            data.topScore = tops[0];
+        }
+
+        const snipesHistory = await OsuScoreModel.getUserSnipesHistory(userId).catch(() => null);
+        if (snipesHistory) {
+            data.snipesMade = (snipesHistory.made || []).length;
+            data.snipesReceived = (snipesHistory.received || []).length;
+        }
+    } catch (e) {
+        console.warn("[CARD] Error al consultar snipes en Sengo:", e.message);
+    }
+
+    return data;
+}
+
+/**
+ * Analiza skills del jugador a partir de sus mejores puntuaciones.
+ */
+function analyzeSkills(scores) {
+    if (!scores || scores.length === 0) {
+        return {
+            aim: 35.00,
+            speed: 30.00,
+            acc: 50.00,
+            reading: 30.00,
+            modStats: { NM: 100 },
+            topPlayPP: 0
+        };
+    }
+
+    let dtCount = 0, hrCount = 0, hdCount = 0, flCount = 0, nmCount = 0, ezCount = 0;
+    let aimSum = 0, speedSum = 0, accSum = 0, readingSum = 0, totalWeight = 0;
+
+    for (let i = 0; i < scores.length; i++) {
+        const s = scores[i];
+        const weight = Math.pow(0.95, i);
+        totalWeight += weight;
+
+        const accuracy = Number(s.accuracy != null ? s.accuracy : 0.98);
+        const accPct = accuracy <= 1 ? accuracy * 100 : accuracy;
+
+        const modsList = Array.isArray(s.mods)
+            ? s.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+            : (typeof s.mods === "string" ? s.mods.match(/.{1,2}/g) || [] : []);
+        const modsStr = modsList.join("").toUpperCase();
+
+        if (!modsStr || modsStr === "NM") nmCount++;
+        if (modsStr.includes("DT") || modsStr.includes("NC")) dtCount++;
+        if (modsStr.includes("HR")) hrCount++;
+        if (modsStr.includes("HD")) hdCount++;
+        if (modsStr.includes("FL")) flCount++;
+        if (modsStr.includes("EZ")) ezCount++;
+
+        const bpm = Number(s.beatmap?.bpm || 180);
+        const sr = Number(s.beatmap?.difficulty_rating || 5.5);
+        const ar = Number(s.beatmap?.ar || 9.0);
+        const cs = Number(s.beatmap?.cs || 4.0);
+
+        let aimBase = sr * 7.5;
+        if (modsStr.includes("HR")) aimBase *= 1.15;
+        if (modsStr.includes("HD")) aimBase *= 1.08;
+
+        let speedBase = (bpm / 200) * (sr * 6.8);
+        if (modsStr.includes("DT") || modsStr.includes("NC")) speedBase *= 1.25;
+
+        let accBase = Math.max(0, (accPct - 85) * 5.5);
+
+        let readingBase = 32.0;
+        if (modsStr.includes("HD")) readingBase += 18.0;
+        if (modsStr.includes("FL")) readingBase += 35.0;
+        if (modsStr.includes("EZ")) readingBase += 30.0;
+        if (ar < 9.0) readingBase += (9.0 - ar) * 8.0;
+        else if (ar > 10.3) readingBase += (ar - 10.3) * 12.0;
+        if (cs >= 4.5) readingBase += (cs - 4.0) * 6.0;
+
+        aimSum += aimBase * weight;
+        speedSum += speedBase * weight;
+        accSum += accBase * weight;
+        readingSum += readingBase * weight;
+    }
+
+    const total = scores.length;
+    const aim = totalWeight > 0 ? (aimSum / totalWeight) : 40.0;
+    const speed = totalWeight > 0 ? (speedSum / totalWeight) : 30.0;
+    const acc = totalWeight > 0 ? (accSum / totalWeight) : 50.0;
+    const reading = totalWeight > 0 ? (readingSum / totalWeight) : 35.0;
+    const topPlayPP = Math.round(Number(scores[0]?.pp || 0));
+
+    return {
+        aim: Number(aim.toFixed(2)),
+        speed: Number(speed.toFixed(2)),
+        acc: Number(acc.toFixed(2)),
+        reading: Number(reading.toFixed(2)),
+        topPlayPP,
+        modStats: {
+            DT: Math.round((dtCount / total) * 100),
+            HD: Math.round((hdCount / total) * 100),
+            HR: Math.round((hrCount / total) * 100),
+            NM: Math.round((nmCount / total) * 100),
+            FL: Math.round((flCount / total) * 100),
+            EZ: Math.round((ezCount / total) * 100)
+        }
+    };
+}
+
+/**
+ * Genera el título dinámico de 2 líneas
+ */
+function generateCardTitle(skills, modStats, pp, user, sengoData) {
+    let prefix = "Novice";
+    const maxSkill = Math.max(skills.aim, skills.speed, skills.acc, skills.reading);
+    if (pp > 16000 || maxSkill >= 80) prefix = "Legendary";
+    else if (pp > 11000 || maxSkill >= 68) prefix = "Expert";
+    else if (pp > 6500 || maxSkill >= 50) prefix = "Advanced";
+    else if (pp > 3500 || maxSkill >= 38) prefix = "Seasoned";
+    else if (pp > 1500 || maxSkill >= 26) prefix = "Intermediate";
+    else if (pp > 500) prefix = "Competent";
+
+    let descriptor = "Versatile";
+    if (modStats.NM >= 55) descriptor = "Mod-Hating";
+    else if (modStats.DT >= 40) descriptor = "Speedy";
+    else if (modStats.HR >= 35) descriptor = "Ant-Clicking";
+    else if (modStats.HD >= 45) descriptor = "HD abusing";
+    else if (modStats.FL >= 5) descriptor = "Blindsighted";
+    else if (modStats.EZ >= 10) descriptor = "Patient";
+    else if (modStats.NM <= 15) descriptor = "Mod-Loving";
+
+    let suffix = "All-Rounder";
+    const rankedMaps = Number(user.ranked_and_approved_beatmapset_count || 0);
+    const snipesCount = Number(sengoData.nationalTopsCount || 0);
+
+    if (snipesCount >= 100) {
+        suffix = "National Nemesis";
+    } else if (snipesCount >= 10) {
+        suffix = "Snipe Menace";
+    } else if (rankedMaps >= 1) {
+        suffix = "Beatmap Crafter";
+    } else if (skills.reading > skills.aim && skills.reading > skills.speed) {
+        suffix = "Sightread Demon";
+    } else if (skills.aim >= skills.speed && skills.aim >= skills.acc) {
+        suffix = "Whack-A-Mole";
+    } else if (skills.speed >= skills.aim && skills.speed >= skills.acc) {
+        suffix = "speedtypist";
+    } else {
+        suffix = "Rhythm-Incarnate";
+    }
+
+    return {
+        line1: `${prefix} ${descriptor}`,
+        line2: suffix
+    };
+}
+
+/**
+ * Obtiene los pinned scores del usuario de osu! o fallback a su jugada top #1
+ */
+async function fetchPinnedScore(userId, topScores) {
+    try {
+        let globalToken = null;
+        try {
+            const tokenData = JSON.parse(fs.readFileSync("./osu_api_extended_token.json", "utf8"));
+            globalToken = tokenData.access_token;
+        } catch {}
+
+        if (globalToken) {
+            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=osu&limit=1`, {
+                headers: {
+                    "Authorization": `Bearer ${globalToken}`,
+                    "x-api-version": "20240728"
+                },
+                timeout: 5000
+            });
+            if (res.data && res.data.length > 0) {
+                return res.data[0];
+            }
+        }
+    } catch {}
+
+    return topScores && topScores.length > 0 ? topScores[0] : null;
+}
+
+/**
+ * Color de la letra de rango
+ */
+function getGradeColor(grade) {
+    const g = (grade || "A").toUpperCase();
+    if (g === "SS" || g === "X" || g === "XH") return "#e2e8f0";
+    if (g === "S" || g === "SH") return "#facc15";
+    if (g === "A") return "#22c55e";
+    if (g === "B") return "#3b82f6";
+    if (g === "C") return "#a855f7";
+    return "#ef4444";
+}
+
+/**
+ * Dibuja un texto personalizado aplicando tamaño, estilo, peso, efectos de sombra o glow, y auto-fit si aplica.
+ */
+function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontFamily = DEFAULT_FONT_STACK, maxWidth = null) {
+    if (!fontConfig || text == null) return;
+    const strText = String(text);
+    ctx.save();
+
+    if (fontConfig.effectType && fontConfig.effectType !== "none") {
+        const opacity = fontConfig.effectOpacity != null ? fontConfig.effectOpacity : 1.0;
+        let shadowCol = fontConfig.effectColor || "#c084fc";
+        if (shadowCol.startsWith("#") && shadowCol.length === 7) {
+            const r = parseInt(shadowCol.slice(1, 3), 16) || 0;
+            const g = parseInt(shadowCol.slice(3, 5), 16) || 0;
+            const b = parseInt(shadowCol.slice(5, 7), 16) || 0;
+            ctx.shadowColor = `rgba(${r}, ${g}, ${b}, ${opacity})`;
+        } else {
+            ctx.shadowColor = shadowCol;
+        }
+
+        ctx.shadowBlur = fontConfig.effectBlur || 0;
+
+        if (fontConfig.effectType === "shadow") {
+            ctx.shadowOffsetX = fontConfig.effectOffsetX != null ? fontConfig.effectOffsetX : 0;
+            ctx.shadowOffsetY = fontConfig.effectOffsetY != null ? fontConfig.effectOffsetY : 3;
+        } else {
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+        }
+    }
+
+    ctx.fillStyle = fontConfig.color || "#ffffff";
+    const italic = fontConfig.style === "italic" ? "italic " : "";
+    const weight = fontConfig.weight ? `${fontConfig.weight} ` : "";
+    let fontSize = fontConfig.size || 20;
+
+    // Auto-fit para nombres largos si está habilitado
+    if (fontConfig.autoFit && maxWidth) {
+        ctx.font = `${italic}${weight}${fontSize}px ${globalFontFamily}`;
+        let textWidth = ctx.measureText(strText).width;
+        const minSize = fontConfig.minSize || 16;
+        while (textWidth > maxWidth && fontSize > minSize) {
+            fontSize -= 1;
+            ctx.font = `${italic}${weight}${fontSize}px ${globalFontFamily}`;
+            textWidth = ctx.measureText(strText).width;
+        }
+    }
+
+    ctx.font = `${italic}${weight}${fontSize}px ${globalFontFamily}`;
+    ctx.textAlign = align;
+    ctx.fillText(strText, x, y);
+    ctx.restore();
+}
+
+/**
+ * Dibuja los patrones de fondo soportados
+ */
+function drawPattern(ctx, patternType, patternColor, patternOpacity, patternSpacing, patternWidth, width, height) {
+    if (!patternType || patternType === "none" || patternOpacity <= 0) return;
+
+    ctx.save();
+    ctx.fillStyle = patternColor;
+    ctx.strokeStyle = patternColor;
+    ctx.globalAlpha = patternOpacity;
+    ctx.lineWidth = patternWidth || 1;
+
+    const sp = patternSpacing || 20;
+    const pw = patternWidth || 2;
+
+    if (patternType === "staggered_dots" || patternType === "milin_dots") {
+        for (let y = 11; y < height; y += sp) {
+            const isOddRow = Math.floor((y - 11) / sp) % 2 === 1;
+            const xOffset = isOddRow ? (sp / 2) : 0;
+            for (let x = 11 + xOffset; x < width; x += sp) {
+                ctx.beginPath();
+                ctx.arc(x, y, pw / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    } else if (patternType === "dots") {
+        for (let x = 11; x < width; x += sp) {
+            for (let y = 11; y < height; y += sp) {
+                ctx.beginPath();
+                ctx.arc(x, y, pw / 2, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    } else if (patternType === "grid") {
+        for (let x = 0; x < width; x += sp) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, height); ctx.stroke();
+        }
+        for (let y = 0; y < height; y += sp) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+        }
+    } else if (patternType === "stripes") {
+        const diagDist = sp * 1.414;
+        for (let d = -height; d < width + height; d += diagDist) {
+            ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + height, height); ctx.stroke();
+        }
+    } else if (patternType === "diamonds") {
+        for (let x = 0; x < width + sp; x += sp) {
+            for (let y = 0; y < height + sp; y += sp) {
+                const s = pw * 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y - s);
+                ctx.lineTo(x + s, y);
+                ctx.lineTo(x, y + s);
+                ctx.lineTo(x - s, y);
+                ctx.closePath();
+                ctx.fill();
+            }
+        }
+    } else if (patternType === "crosses") {
+        const len = pw * 2.5;
+        for (let x = 10; x < width; x += sp) {
+            for (let y = 10; y < height; y += sp) {
+                ctx.beginPath(); ctx.moveTo(x - len, y); ctx.lineTo(x + len, y); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
+            }
+        }
+    } else if (patternType === "scanlines") {
+        for (let y = 0; y < height; y += Math.max(3, sp / 4)) {
+            ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
+        }
+    } else {
+        // Fallback staggered dots
+        for (let y = 11; y < height; y += sp) {
+            for (let x = 11; x < width; x += sp) {
+                ctx.beginPath();
+                ctx.arc(x, y, 1.4, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+    }
+
+    ctx.restore();
+}
+
+/**
+ * Dibuja la viñeta / sombra de fondo
+ */
+function drawVignette(ctx, mode, spreadPct, opacity, color, width, height) {
+    if (!mode || mode === "none" || opacity <= 0) return;
+
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    const spreadRatio = Math.max(0.05, Math.min(0.95, (spreadPct || 13) / 100));
+
+    if (mode === "top_bottom") {
+        const topH = height * spreadRatio;
+        const topGrad = ctx.createLinearGradient(0, 0, 0, topH);
+        topGrad.addColorStop(0, color);
+        topGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = topGrad;
+        ctx.fillRect(0, 0, width, topH);
+
+        const botH = height * spreadRatio;
+        const botGrad = ctx.createLinearGradient(0, height, 0, height - botH);
+        botGrad.addColorStop(0, color);
+        botGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = botGrad;
+        ctx.fillRect(0, height - botH, width, botH);
+    } else if (mode === "radial") {
+        const radGrad = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, width / 1.5);
+        radGrad.addColorStop(0, "rgba(0,0,0,0)");
+        radGrad.addColorStop(1 - spreadRatio, "rgba(0,0,0,0)");
+        radGrad.addColorStop(1, color);
+        ctx.fillStyle = radGrad;
+        ctx.fillRect(0, 0, width, height);
+    } else if (mode === "top_only") {
+        const topH = height * (spreadRatio * 2);
+        const topGrad = ctx.createLinearGradient(0, 0, 0, topH);
+        topGrad.addColorStop(0, color);
+        topGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = topGrad;
+        ctx.fillRect(0, 0, width, topH);
+    } else if (mode === "bottom_only") {
+        const botH = height * (spreadRatio * 2);
+        const botGrad = ctx.createLinearGradient(0, height, 0, height - botH);
+        botGrad.addColorStop(0, color);
+        botGrad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.fillStyle = botGrad;
+        ctx.fillRect(0, height - botH, width, botH);
+    }
+
+    ctx.restore();
+}
+
+/**
+ * Renderiza la tarjeta de perfil en Canvas con paridad total con Sengo Card Studio.
+ * @param {any} user Datos del usuario de osu!
+ * @param {Array} topScores Top scores del usuario
+ * @returns {Promise<Buffer>} Buffer PNG de la imagen generada
+ */
+async function renderOsuCard(user, topScores = []) {
+    const config = getDefaultTemplate();
+    const width = 1300;
+    const height = 720;
+
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+
+    const countryCode = (user.country_code || user.country?.code || "VE").toUpperCase();
+    const stats = user.statistics || {};
+    const level = stats.level || { current: 100, progress: 0 };
+    const globalRank = stats.global_rank ? `${Number(stats.global_rank).toLocaleString("de-DE")}` : "-";
+    const countryRank = stats.rank?.country ? `${Number(stats.rank.country).toLocaleString("de-DE")}` : "-";
+    const pp = Number(stats.pp || 0);
+    const medalsCount = user.user_achievements ? user.user_achievements.length : 0;
+    const totalMedals = 352;
+    const medalsPct = Math.round((medalsCount / totalMedals) * 100);
+
+    const sengoData = await fetchSengoData(user.id, countryCode);
+    const skillData = analyzeSkills(topScores);
+    const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData);
+    const pinnedPlay = await fetchPinnedScore(user.id, topScores);
+
+    const theme = config.theme || {};
+    const cards = config.cards || {};
+    const fonts = config.fonts || {};
+    const fontFamily = DEFAULT_FONT_STACK;
+
+    // 1. FONDO PRINCIPAL
+    ctx.fillStyle = theme.bgColor || "#27152c";
+    ctx.fillRect(0, 0, width, height);
+
+    // Cover de fondo (Profile Cover o personalizada)
+    const profileCoverUrl = user.cover_url || user.cover?.url || user.cover?.custom_url || theme.profileCoverUrl;
+    const activeBgUrl = theme.useProfileCover && profileCoverUrl ? profileCoverUrl : theme.bgImageUrl;
+    if (activeBgUrl) {
+        const bgImg = await fetchImageSafe(activeBgUrl);
+        if (bgImg) {
+            ctx.save();
+            ctx.globalAlpha = theme.bgImageOpacity != null ? theme.bgImageOpacity : 0.5;
+            drawImageCover(ctx, bgImg, 0, 0, width, height);
+            ctx.restore();
+
+            // Degradado de mezcla sobre la imagen
+            if (theme.bgGradientMode && theme.bgGradientMode !== "none") {
+                ctx.save();
+                ctx.globalAlpha = theme.bgGradientIntensity || 0.75;
+                if (theme.bgGradientMode === "radial") {
+                    const radGrad = ctx.createRadialGradient(width / 2, height / 2, 180, width / 2, height / 2, width / 1.5);
+                    radGrad.addColorStop(0, "rgba(0,0,0,0)");
+                    radGrad.addColorStop(0.65, "rgba(0,0,0,0.35)");
+                    radGrad.addColorStop(1, theme.bgColor);
+                    ctx.fillStyle = radGrad;
+                } else if (theme.bgGradientMode === "vertical") {
+                    const vertGrad = ctx.createLinearGradient(0, 0, 0, height);
+                    vertGrad.addColorStop(0, "rgba(0,0,0,0.1)");
+                    vertGrad.addColorStop(0.5, "rgba(0,0,0,0.4)");
+                    vertGrad.addColorStop(1, theme.bgColor);
+                    ctx.fillStyle = vertGrad;
+                } else if (theme.bgGradientMode === "horizontal") {
+                    const horizGrad = ctx.createLinearGradient(0, 0, width, 0);
+                    horizGrad.addColorStop(0, theme.bgColor);
+                    horizGrad.addColorStop(0.3, "rgba(0,0,0,0.2)");
+                    horizGrad.addColorStop(0.7, "rgba(0,0,0,0.2)");
+                    horizGrad.addColorStop(1, theme.bgColor);
+                    ctx.fillStyle = horizGrad;
+                }
+                ctx.fillRect(0, 0, width, height);
+                ctx.restore();
+            }
+        }
+    }
+
+    // Patrón de fondo
+    drawPattern(
+        ctx,
+        theme.patternType,
+        theme.patternColor || "#ffc8ff",
+        theme.patternOpacity != null ? theme.patternOpacity : 0.11,
+        theme.patternSpacing || 20,
+        theme.patternWidth || 3.9,
+        width,
+        height
+    );
+
+    // Viñeta de fondo
+    drawVignette(
+        ctx,
+        theme.bgVignetteMode || "top_bottom",
+        theme.bgVignetteSpread || 13,
+        theme.bgVignetteOpacity != null ? theme.bgVignetteOpacity : 0.6,
+        theme.bgVignetteColor || "#000000",
+        width,
+        height
+    );
+
+    // Helper para dibujar tarjetas individuales
+    function drawCardBox(boxConfig) {
+        if (!boxConfig) return;
+        const bg = boxConfig.customBg || theme.cardColor || "#170c1a";
+        const radius = boxConfig.customRadius != null ? boxConfig.customRadius : (theme.cardRadius || 14);
+
+        ctx.save();
+        if (theme.cardShadowBlur > 0) {
+            ctx.shadowColor = `rgba(0, 0, 0, ${theme.cardShadowOpacity != null ? theme.cardShadowOpacity : 0.7})`;
+            ctx.shadowBlur = theme.cardShadowBlur || 21;
+            ctx.shadowOffsetY = theme.cardShadowY != null ? theme.cardShadowY : 4;
+            ctx.shadowOffsetX = 0;
+        }
+        ctx.fillStyle = bg;
+        roundRect(ctx, boxConfig.x, boxConfig.y, boxConfig.w, boxConfig.h, radius, true, false);
+        ctx.restore();
+
+        // Borde si está configurado
+        if (theme.cardBorderColor && theme.cardBorderColor !== "transparent") {
+            ctx.save();
+            ctx.strokeStyle = theme.cardBorderColor;
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, boxConfig.x, boxConfig.y, boxConfig.w, boxConfig.h, radius, false, true);
+            ctx.restore();
+        }
+    }
+
+    // 2. CABECERA: TÍTULO SUPERIOR + HITCIRCLE
+    if (cards.header?.visible !== false) {
+        drawCustomText(ctx, fonts.headerTitle1, dynamicTitle.line1, 500, 42, "center", fontFamily);
+        drawCustomText(ctx, fonts.headerTitle2, dynamicTitle.line2, 500, 78, "center", fontFamily);
+
+        // Hitcircle de osu!
+        const circleX = config.header?.circleX || 870;
+        const circleY = 48;
+        ctx.save();
+        ctx.strokeStyle = "#d1d5db";
+        ctx.lineWidth = 6;
+        ctx.beginPath();
+        ctx.arc(circleX, circleY, 32, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = "#cbd5e1";
+        ctx.beginPath();
+        ctx.arc(circleX, circleY, 18, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // 3. COLUMNA IZQUIERDA UNIFICADA (AVATAR + NIVEL + MEDALLAS)
+    if (cards.leftCol?.visible !== false) {
+        const lc = cards.leftCol;
+        drawCardBox(lc);
+
+        const avatarH = config.leftCol?.avatarH || 265;
+        const avatarRadius = lc.customRadius != null ? lc.customRadius : (theme.cardRadius || 14);
+
+        ctx.save();
+        roundRect(ctx, lc.x, lc.y, lc.w, avatarH, { tl: avatarRadius, tr: avatarRadius, bl: 0, br: 0 });
+        ctx.clip();
+
+        const avatarImg = await fetchImageSafe(user.avatar_url);
+        if (avatarImg) {
+            drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, config.leftCol?.avatarAlignY || 0.2);
+        }
+        ctx.restore();
+
+        // Nivel
+        const levelTextY = lc.y + avatarH + 42;
+        drawCustomText(ctx, fonts.levelText, `lvl ${level.current || 100}`, lc.x + (lc.w / 2), levelTextY, "center", fontFamily);
+
+        const lvlBarX = lc.x + 15;
+        const lvlBarW = lc.w - 30;
+        const lvlBarY = levelTextY + 12;
+        const lvlProg = Math.min(100, Math.max(0, level.progress || 0));
+
+        ctx.fillStyle = "#2e253c";
+        roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
+        ctx.fillStyle = "#ffffff";
+        roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
+
+        // Medallas
+        const medalsTextY = lvlBarY + 58;
+        drawCustomText(ctx, fonts.medalsText, `Medals ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
+
+        const medalBarY = medalsTextY + 12;
+        ctx.fillStyle = "#2e253c";
+        roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+
+        const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+        medalGrad.addColorStop(0, "#60a5fa");
+        medalGrad.addColorStop(0.5, "#ec4899");
+        medalGrad.addColorStop(1, "#a855f7");
+        ctx.fillStyle = medalGrad;
+        roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * medalsPct) / 100), 8, 4, true);
+    }
+
+    // 4. BLOQUE CENTRO-IZQUIERDA: TARJETA DE PERFIL Y RANKINGS
+    if (cards.rankBox?.visible !== false) {
+        const rb = cards.rankBox;
+        drawCardBox(rb);
+
+        const flagW = config.rankBox?.flagW || 84;
+        const flagH = config.rankBox?.flagH || 56;
+        const flagX = rb.x + 16;
+        const flagY = rb.y + 16;
+
+        const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
+        const flagImg = await fetchImageSafe(flagUrl);
+        if (flagImg) {
+            ctx.save();
+            roundRect(ctx, flagX, flagY, flagW, flagH, 8);
+            ctx.clip();
+            ctx.drawImage(flagImg, flagX, flagY, flagW, flagH);
+            ctx.restore();
+        }
+
+        // Nombre de usuario con auto-fit
+        const maxUsernameW = rb.w - flagW - 32;
+        drawCustomText(ctx, fonts.username, user.username, rb.x + 112, flagY + 43, "left", fontFamily, maxUsernameW);
+
+        // Global Rank
+        const rankCenterX = rb.x + (rb.w / 2);
+        drawCustomText(ctx, fonts.globalRankLabel, "Global Rank", rankCenterX, rb.y + 115, "center", fontFamily);
+        drawCustomText(ctx, fonts.globalRankVal, globalRank, rankCenterX, rb.y + 168, "center", fontFamily);
+
+        // Country Rank
+        drawCustomText(ctx, fonts.countryRankLabel, "Country", rankCenterX, rb.y + 208, "center", fontFamily);
+        drawCustomText(ctx, fonts.countryRankVal, countryRank, rankCenterX, rb.y + 254, "center", fontFamily);
+    }
+
+    // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY / TOP PLAY CARD
+    if (cards.playBox?.visible !== false) {
+        const pb = cards.playBox;
+        const playRadius = pb.customRadius != null ? pb.customRadius : (theme.cardRadius || 14);
+
+        ctx.save();
+        roundRect(ctx, pb.x, pb.y, pb.w, pb.h, playRadius);
+        ctx.clip();
+
+        const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
+        const mapCoverImg = await fetchImageSafe(coverUrl);
+        if (mapCoverImg) {
+            drawImageCover(ctx, mapCoverImg, pb.x, pb.y, pb.w, pb.h, 0.3);
+        } else {
+            ctx.fillStyle = "#170c1a";
+            ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+        }
+
+        const gradStop = config.playBox?.gradStop || 0.4;
+        const playGrad = ctx.createLinearGradient(pb.x, 0, pb.x + pb.w, 0);
+        playGrad.addColorStop(0, "rgba(15, 8, 20, 0.94)");
+        playGrad.addColorStop(gradStop, "rgba(15, 8, 20, 0.70)");
+        playGrad.addColorStop(0.70, "rgba(15, 8, 20, 0.35)");
+        playGrad.addColorStop(1, "rgba(15, 8, 20, 0.15)");
+        ctx.fillStyle = playGrad;
+        ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
+
+        const mapTitle = pinnedPlay?.beatmapset?.title || "Ange du Blanc Pur";
+        const mapArtist = pinnedPlay?.beatmapset?.artist || "ke-ji feat. Nanahira";
+        const rawDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
+        const mapSR = pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating).toFixed(2) : "7.68";
+        const mapDiffFormatted = rawDiff.toLowerCase().includes(mapSR) ? rawDiff : `${rawDiff} ${mapSR}★`;
+        const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString("de-DE") : "32.219.611";
+        const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy || 0.96) * 100).toFixed(2) : "96.12";
+        const scoreCombo = pinnedPlay?.max_combo ? `${pinnedPlay.max_combo}x` : "262x";
+        const scoreGrade = pinnedPlay?.rank || "S";
+
+        drawCustomText(ctx, fonts.playTitle, `${mapTitle} by ${mapArtist}`.slice(0, 48), pb.x + 16, pb.y + 34, "left", fontFamily);
+        drawCustomText(ctx, fonts.playDiff, mapDiffFormatted.slice(0, 36), pb.x + 16, pb.y + 76, "left", fontFamily);
+        drawCustomText(ctx, fonts.playScore, `${scoreVal} Score`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
+
+        // Grade S/A
+        const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade) };
+        drawCustomText(ctx, gradeFont, scoreGrade, pb.x + 80, pb.y + 175, "center", fontFamily);
+
+        // Badges de mods estilo lazer
+        const mods = Array.isArray(pinnedPlay?.mods)
+            ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+            : ["HD", "DT"];
+
+        let modX = pb.x + 20;
+        const modW = 54;
+        const modH = 34;
+        const modY = pb.y + 206;
+
+        for (const mod of mods.slice(0, 4)) {
+            const cleanMod = String(mod).toUpperCase();
+            const colors = MOD_COLORS[cleanMod] || { bg: "#fa4277", fg: "#ffffff" };
+
+            ctx.save();
+            ctx.fillStyle = colors.bg;
+            roundRect(ctx, modX, modY, modW, modH, 8, true);
+
+            ctx.fillStyle = colors.fg;
+            ctx.font = `bold 16px ${fontFamily}`;
+            ctx.textAlign = "center";
+            ctx.fillText(cleanMod, modX + (modW / 2), modY + (modH / 2) + 6);
+            ctx.restore();
+
+            modX += modW + 8;
+        }
+
+        drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + 155, "right", fontFamily);
+        drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + 225, "right", fontFamily);
+
+        ctx.restore();
+    }
+
+    // 6. BLOQUE MEDIO: ESTADÍSTICAS Y 4 BARRAS DE SKILLS
+    if (cards.statsBox?.visible !== false) {
+        const sb = cards.statsBox;
+        drawCardBox(sb);
+
+        drawCustomText(ctx, fonts.statsLabels, `Total Score: ${Number(stats.total_score || 0).toLocaleString()}`, sb.x + 24, sb.y + 42, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `Accuracy: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 44, sb.y + 88, "left", fontFamily);
+        drawCustomText(ctx, fonts.statsLabels, `Playcount ${Number(stats.play_count || 0).toLocaleString()}`, sb.x + 44, sb.y + 134, "left", fontFamily);
+
+        const skillsList = [
+            { label: "ACC", val: skillData.acc, x: sb.x + 380 },
+            { label: "AIM", val: skillData.aim, x: sb.x + 500 },
+            { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
+            { label: "READING", val: skillData.reading, x: sb.x + 750 }
+        ];
+
+        const pillarW = config.statsBox?.pillarW || 24;
+        const pillarH = config.statsBox?.pillarH || 65;
+        const pillarY = sb.y + 38;
+
+        skillsList.forEach(s => {
+            drawCustomText(ctx, fonts.skillValues, String(s.val), s.x, sb.y + 28, "center", fontFamily);
+
+            ctx.fillStyle = "#2e233d";
+            roundRect(ctx, s.x - (pillarW / 2), pillarY, pillarW, pillarH, 4, true);
+
+            const fillRatio = Math.min(1, Math.max(0.08, s.val / 100));
+            const fillH = pillarH * fillRatio;
+            ctx.fillStyle = "#ffffff";
+            roundRect(ctx, s.x - (pillarW / 2), pillarY + pillarH - fillH, pillarW, fillH, 4, true);
+
+            drawCustomText(ctx, fonts.skillLabels, s.label, s.x, sb.y + 134, "center", fontFamily);
+        });
+    }
+
+    // 7. BLOQUE INFERIOR: ECOSISTEMA SENGO Y LOCAL STATS
+    if (cards.sengoBox?.visible !== false) {
+        const sgb = cards.sengoBox;
+        drawCardBox(sgb);
+
+        drawCustomText(ctx, fonts.sengoHeader, "Sengo ecosystem & local stats", sgb.x + (sgb.w / 2), sgb.y + 26, "center", fontFamily);
+
+        const bdayStr = sengoData.birthday ? `${sengoData.birthday}` : "unknown";
+        const skinStr = sengoData.skinName ? `${sengoData.skinName}` : "Unknown";
+        const topPPStr = skillData.topPlayPP ? `${skillData.topPlayPP}` : "0";
+        const snipesCount = sengoData.nationalTopsCount || "0";
+        const snipesMade = sengoData.snipesMade || "0";
+
+        const sengoText = `#1 ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        Birthday: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`;
+        drawCustomText(ctx, fonts.sengoContent, sengoText, sgb.x + (sgb.w / 2), sgb.y + 58, "center", fontFamily);
+    }
+
+    // 8. FOOTER: BRANDING & FECHA
+    if (cards.footer?.visible !== false) {
+        const today = new Date().toISOString().split("T")[0];
+        drawCustomText(ctx, fonts.footerBrand, "Sengo", 580, 695, "right", fontFamily);
+        drawCustomText(ctx, fonts.footerDate, today, 630, 695, "left", fontFamily);
+    }
+
+    return canvas.toBuffer("image/png");
+}
+
+/**
+ * Genera el embed de Discord para la tarjeta.
+ */
+function doOsuCardEmbed(message, imageName = "card.png") {
+    const embedColor = getEmbedColor(message);
+    return new EmbedBuilder()
+        .setColor(embedColor)
+        .setImage(`attachment://${imageName}`);
+}
+
+module.exports = {
+    renderOsuCard,
+    doOsuCardEmbed
+};

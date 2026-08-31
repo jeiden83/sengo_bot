@@ -375,11 +375,20 @@
       "body": "Filter tournaments by mode, rank, tags/region and status.",
       "usage": "s.torneos [-modo <mode>] [-rango <rank>] [-tag <tag>] [-pasados] [-estado <status>]"
     },
+    "card": {
+      "header": "Generates a dynamic osu! profile card with Canvas.",
+      "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Allows embedding it with -embed.",
+      "usage": "s.card [user] [-embed]"
+    },
     "yo": {
       "header": "Sends the YO picture or generates a dynamic profile card with Canvas.",
       "body": "Sends the static YO.png asset image or generates a dynamic profile card with Canvas using the -canva [user] flag. Allows embedding it with -embed.",
       "usage": "s.yo [-canva [user]] [-embed]"
     }
+  },
+  "card": {
+    "err_no_user": "❌ You don't have a linked osu! account. Use `s.link` to link your account or specify a user with `s.card [user]`.",
+    "err_user_not_found": "❌ osu! user could not be found."
   },
   "contributors": {
     "title": "🌐 Users Linked via OAuth",

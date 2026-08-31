@@ -14,7 +14,7 @@
     "patternWidth": 3.9,
     "bgImageUrl": null,
     "useProfileCover": true,
-    "profileCoverUrl": "https://assets.ppy.sh/user-profile-covers/11622889/8d802f4f3d56d4a1e33c5991065fe16b9ac2e3575c776189104eebfa65d23f12.png",
+    "profileCoverUrl": "https://assets.ppy.sh/user-profile-covers/31038461/41ff4714b7df732cb44e834e98e25087a2e85252242ea75792a0e41a03c1499e.jpeg",
     "bgImageOpacity": 0.5,
     "bgImageBlur": 5,
     "bgGradientMode": "vertical",
@@ -117,9 +117,9 @@
       "color": "#ffffff",
       "glowBlur": 0,
       "glowColor": "#c084fc",
-      "effectBlur": 12,
       "effectType": "shadow",
-      "effectColor": "#000000"
+      "effectColor": "#000000",
+      "effectBlur": 12
     },
     "username": {
       "size": 44,
@@ -128,7 +128,8 @@
       "color": "#ffffff",
       "glowBlur": 0,
       "glowColor": "#c084fc",
-      "autoFit": true
+      "autoFit": true,
+      "minSize": 16
     },
     "globalRankVal": {
       "size": 58,
@@ -199,7 +200,7 @@
       "glowColor": "#c084fc"
     },
     "playScore": {
-      "size": 20,
+      "size": 24,
       "weight": "normal",
       "style": "italic",
       "color": "#ffffff",
@@ -208,7 +209,7 @@
       "effectType": "shadow",
       "effectColor": "#000000",
       "effectOpacity": 1,
-      "effectBlur": 4,
+      "effectBlur": 2,
       "effectOffsetY": 3
     },
     "playGrade": {
@@ -220,16 +221,17 @@
       "glowColor": "#c084fc"
     },
     "playStats": {
-      "size": 19,
+      "size": 24,
       "weight": "normal",
       "style": "italic",
       "color": "#ffffff",
       "glowBlur": 0,
       "glowColor": "#c084fc",
-      "effectBlur": 4,
+      "effectBlur": 2,
       "effectType": "shadow",
       "effectColor": "#000000",
-      "effectOpacity": 1
+      "effectOpacity": 1,
+      "effectOffsetY": 3
     },
     "statsLabels": {
       "size": 18,
@@ -299,17 +301,17 @@
     "circleX": 870
   },
   "player": {
-    "username": "Jeiden",
+    "username": "Mochilo",
     "countryCode": "VE",
-    "globalRank": "41.425",
-    "countryRank": "53",
-    "level": "101",
-    "levelProg": 20,
-    "medalsPct": 28,
-    "medalsCount": 97,
-    "totalScore": "147.271.811.820",
-    "acc": "98.88",
-    "playcount": "83.535",
+    "globalRank": "23.461",
+    "countryRank": "30",
+    "level": "102",
+    "levelProg": 48,
+    "medalsPct": 32,
+    "medalsCount": 112,
+    "totalScore": "275,784,712,427",
+    "acc": "99.01",
+    "playcount": "42,576",
     "skills": {
       "acc": 100,
       "aim": 100,
@@ -324,17 +326,17 @@
       "skin": "Naranja v7"
     },
     "play": {
-      "title": "Maid-chan yori. by Maid-chan (CV: Horie Yui)",
-      "diff": "rollpan's Extra 6.36",
-      "score": "965.309 Score",
+      "title": "Tsukinami by Wakeshima Kanon",
+      "diff": "Nostalgia 5.97",
+      "score": "967.914 Score",
       "grade": "S",
-      "acc": "99.35%",
-      "combo": "635x",
+      "acc": "99.42%",
+      "combo": "1682x",
       "mods": [
         "CL"
       ],
-      "cover": "https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg?1650633828"
+      "cover": "https://assets.ppy.sh/beatmaps/896080/covers/cover@2x.jpg?1650673178"
     },
-    "avatar": "https://a.ppy.sh/11622889?1784771164.jpeg"
+    "avatar": "https://a.ppy.sh/31038461?1787089430.jpeg"
   }
 }
