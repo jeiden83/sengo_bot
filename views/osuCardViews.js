@@ -446,38 +446,37 @@ function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontF
 }
 
 /**
- * Dibuja los patrones de fondo soportados
+ * Dibuja los patrones de fondo soportados exactamente como en el editor
  */
 function drawPattern(ctx, patternType, patternColor, patternOpacity, patternSpacing, patternWidth, width, height) {
     if (!patternType || patternType === "none" || patternOpacity <= 0) return;
 
     ctx.save();
+    const sp = patternSpacing || 20;
+    const pWidth = patternWidth || 1.4;
     ctx.fillStyle = patternColor;
     ctx.strokeStyle = patternColor;
     ctx.globalAlpha = patternOpacity;
-    ctx.lineWidth = patternWidth || 1;
-
-    const sp = patternSpacing || 20;
-    const pw = patternWidth || 2;
-    const radius = pw / 2;
+    ctx.lineWidth = pWidth;
 
     if (patternType === "staggered_dots" || patternType === "milin_dots") {
+        const rowH = sp * 0.866;
+        let rowIndex = 0;
         ctx.beginPath();
-        for (let y = 11; y < height; y += sp) {
-            const isOddRow = Math.floor((y - 11) / sp) % 2 === 1;
-            const xOffset = isOddRow ? (sp / 2) : 0;
-            for (let x = 11 + xOffset; x < width; x += sp) {
-                ctx.moveTo(x + radius, y);
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
+        for (let y = pWidth; y < height + rowH; y += rowH, rowIndex++) {
+            const offsetX = (rowIndex % 2 === 1) ? sp / 2 : 0;
+            for (let x = offsetX; x < width + sp; x += sp) {
+                ctx.moveTo(x + pWidth, y);
+                ctx.arc(x, y, pWidth, 0, Math.PI * 2);
             }
         }
         ctx.fill();
     } else if (patternType === "dots") {
         ctx.beginPath();
-        for (let x = 11; x < width; x += sp) {
-            for (let y = 11; y < height; y += sp) {
-                ctx.moveTo(x + radius, y);
-                ctx.arc(x, y, radius, 0, Math.PI * 2);
+        for (let x = sp / 2; x < width; x += sp) {
+            for (let y = sp / 2; y < height; y += sp) {
+                ctx.moveTo(x + pWidth, y);
+                ctx.arc(x, y, pWidth, 0, Math.PI * 2);
             }
         }
         ctx.fill();
@@ -488,98 +487,166 @@ function drawPattern(ctx, patternType, patternColor, patternOpacity, patternSpac
         for (let y = 0; y < height; y += sp) {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
-    } else if (patternType === "stripes") {
-        const diagDist = sp * 1.414;
-        for (let d = -height; d < width + height; d += diagDist) {
-            ctx.beginPath(); ctx.moveTo(d, 0); ctx.lineTo(d + height, height); ctx.stroke();
-        }
     } else if (patternType === "diamonds") {
-        for (let x = 0; x < width + sp; x += sp) {
-            for (let y = 0; y < height + sp; y += sp) {
-                const s = pw * 2;
-                ctx.beginPath();
-                ctx.moveTo(x, y - s);
-                ctx.lineTo(x + s, y);
-                ctx.lineTo(x, y + s);
-                ctx.lineTo(x - s, y);
-                ctx.closePath();
-                ctx.fill();
-            }
+        for (let x = -height; x < width + height; x += sp * 1.4) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + height, height); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - height, height); ctx.stroke();
+        }
+    } else if (patternType === "stripes") {
+        for (let x = -height; x < width; x += sp) {
+            ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + height, height); ctx.stroke();
         }
     } else if (patternType === "crosses") {
-        const len = pw * 2.5;
-        for (let x = 10; x < width; x += sp) {
-            for (let y = 10; y < height; y += sp) {
-                ctx.beginPath(); ctx.moveTo(x - len, y); ctx.lineTo(x + len, y); ctx.stroke();
-                ctx.beginPath(); ctx.moveTo(x, y - len); ctx.lineTo(x, y + len); ctx.stroke();
+        const arm = sp * 0.28;
+        for (let x = sp / 2; x < width; x += sp) {
+            for (let y = sp / 2; y < height; y += sp) {
+                ctx.beginPath();
+                ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y);
+                ctx.moveTo(x, y - arm); ctx.lineTo(x, y + arm);
+                ctx.stroke();
+            }
+        }
+    } else if (patternType === "hexagons") {
+        const r = sp * 0.6;
+        const hHex = r * Math.sqrt(3);
+        for (let y = 0, row = 0; y < height + hHex; y += hHex * 0.75, row++) {
+            const off = (row % 2 === 1) ? r * 1.5 : 0;
+            for (let x = -r + off; x < width + r; x += r * 3) {
+                ctx.beginPath();
+                for (let a = 0; a < 6; a++) {
+                    const angle = (a * 60) * Math.PI / 180;
+                    const hx = x + r * Math.cos(angle);
+                    const hy = y + r * Math.sin(angle);
+                    if (a === 0) ctx.moveTo(hx, hy); else ctx.lineTo(hx, hy);
+                }
+                ctx.closePath();
+                ctx.stroke();
+            }
+        }
+    } else if (patternType === "waves") {
+        for (let y = sp; y < height; y += sp) {
+            ctx.beginPath();
+            for (let x = 0; x <= width; x += 10) {
+                const wy = y + Math.sin(x * 0.025) * (sp * 0.25);
+                if (x === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy);
+            }
+            ctx.stroke();
+        }
+    } else if (patternType === "triangles") {
+        const th = sp * 0.866;
+        for (let y = 0; y < height + th; y += th) {
+            for (let x = 0; x < width + sp; x += sp) {
+                ctx.beginPath();
+                ctx.moveTo(x, y + th);
+                ctx.lineTo(x + sp / 2, y);
+                ctx.lineTo(x + sp, y + th);
+                ctx.closePath();
+                ctx.stroke();
             }
         }
     } else if (patternType === "scanlines") {
-        for (let y = 0; y < height; y += Math.max(3, sp / 4)) {
+        ctx.lineWidth = 1;
+        for (let y = 0; y < height; y += 4) {
             ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(width, y); ctx.stroke();
         }
-    } else {
-        // Fallback staggered dots
-        for (let y = 11; y < height; y += sp) {
-            for (let x = 11; x < width; x += sp) {
-                ctx.beginPath();
-                ctx.arc(x, y, 1.4, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
     }
-
     ctx.restore();
 }
 
 /**
- * Dibuja la viñeta / sombra de fondo
+ * Dibuja la viñeta / sombra de fondo con difuminado (feathering) exacto
  */
-function drawVignette(ctx, mode, spreadPct, opacity, color, width, height) {
+function drawVignette(ctx, mode, spreadPct, opacity, color, featherPct, width, height) {
     if (!mode || mode === "none" || opacity <= 0) return;
 
     ctx.save();
-    ctx.globalAlpha = opacity;
+    const vColor = color || "#000000";
+    const vOp = opacity != null ? opacity : 0.6;
+    const vSpread = (spreadPct != null ? spreadPct : 13) / 100;
+    const vFeather = (featherPct != null ? featherPct : 34) / 100;
 
-    const spreadRatio = Math.max(0.05, Math.min(0.95, (spreadPct || 13) / 100));
+    let r = 0, g = 0, b = 0;
+    if (vColor.startsWith("#") && vColor.length === 7) {
+        r = parseInt(vColor.slice(1, 3), 16) || 0;
+        g = parseInt(vColor.slice(3, 5), 16) || 0;
+        b = parseInt(vColor.slice(5, 7), 16) || 0;
+    }
+    const colorSolid = `rgba(${r}, ${g}, ${b}, ${vOp})`;
+    const colorMid = `rgba(${r}, ${g}, ${b}, ${vOp * (1 - vFeather * 0.55)})`;
+    const colorTransparent = `rgba(${r}, ${g}, ${b}, 0)`;
+    const midStop = Math.max(0.1, Math.min(0.9, 1.0 - vFeather * 0.5));
 
     if (mode === "top_bottom") {
-        const topH = height * spreadRatio;
-        const topGrad = ctx.createLinearGradient(0, 0, 0, topH);
-        topGrad.addColorStop(0, color);
-        topGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = topGrad;
+        const topH = Math.max(20, height * vSpread);
+        // Sombra superior
+        const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
+        gradTop.addColorStop(0, colorSolid);
+        gradTop.addColorStop(midStop, colorMid);
+        gradTop.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradTop;
         ctx.fillRect(0, 0, width, topH);
 
-        const botH = height * spreadRatio;
-        const botGrad = ctx.createLinearGradient(0, height, 0, height - botH);
-        botGrad.addColorStop(0, color);
-        botGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = botGrad;
-        ctx.fillRect(0, height - botH, width, botH);
+        // Sombra inferior
+        const gradBot = ctx.createLinearGradient(0, height, 0, height - topH);
+        gradBot.addColorStop(0, colorSolid);
+        gradBot.addColorStop(midStop, colorMid);
+        gradBot.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradBot;
+        ctx.fillRect(0, height - topH, width, topH);
     } else if (mode === "radial") {
-        const radGrad = ctx.createRadialGradient(width / 2, height / 2, 200, width / 2, height / 2, width / 1.5);
-        radGrad.addColorStop(0, "rgba(0,0,0,0)");
-        radGrad.addColorStop(1 - spreadRatio, "rgba(0,0,0,0)");
-        radGrad.addColorStop(1, color);
+        const rMax = Math.hypot(width / 2, height / 2);
+        const rMin = Math.max(0, rMax * (1 - vSpread));
+        const radGrad = ctx.createRadialGradient(width / 2, height / 2, rMin, width / 2, height / 2, rMax);
+        radGrad.addColorStop(0, colorTransparent);
+        radGrad.addColorStop(Math.min(0.9, 0.4 + 0.5 * (1 - vFeather)), colorMid);
+        radGrad.addColorStop(1, colorSolid);
         ctx.fillStyle = radGrad;
         ctx.fillRect(0, 0, width, height);
     } else if (mode === "top_only") {
-        const topH = height * (spreadRatio * 2);
-        const topGrad = ctx.createLinearGradient(0, 0, 0, topH);
-        topGrad.addColorStop(0, color);
-        topGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = topGrad;
+        const topH = Math.max(20, height * vSpread);
+        const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
+        gradTop.addColorStop(0, colorSolid);
+        gradTop.addColorStop(midStop, colorMid);
+        gradTop.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradTop;
         ctx.fillRect(0, 0, width, topH);
     } else if (mode === "bottom_only") {
-        const botH = height * (spreadRatio * 2);
-        const botGrad = ctx.createLinearGradient(0, height, 0, height - botH);
-        botGrad.addColorStop(0, color);
-        botGrad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.fillStyle = botGrad;
+        const botH = Math.max(20, height * vSpread);
+        const gradBot = ctx.createLinearGradient(0, height, 0, height - botH);
+        gradBot.addColorStop(0, colorSolid);
+        gradBot.addColorStop(midStop, colorMid);
+        gradBot.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradBot;
         ctx.fillRect(0, height - botH, width, botH);
-    }
+    } else if (mode === "sides") {
+        const sideW = Math.max(20, (width / 2) * vSpread);
+        const gradL = ctx.createLinearGradient(0, 0, sideW, 0);
+        gradL.addColorStop(0, colorSolid);
+        gradL.addColorStop(midStop, colorMid);
+        gradL.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradL;
+        ctx.fillRect(0, 0, sideW, height);
 
+        const gradR = ctx.createLinearGradient(width, 0, width - sideW, 0);
+        gradR.addColorStop(0, colorSolid);
+        gradR.addColorStop(midStop, colorMid);
+        gradR.addColorStop(1, colorTransparent);
+        ctx.fillStyle = gradR;
+        ctx.fillRect(width - sideW, 0, sideW, height);
+    } else if (mode === "corners") {
+        const rCorner = Math.max(50, (height * 0.85) * vSpread);
+        const corners = [
+            [0, 0], [width, 0], [0, height], [width, height]
+        ];
+        for (const [cx, cy] of corners) {
+            const cGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rCorner);
+            cGrad.addColorStop(0, colorSolid);
+            cGrad.addColorStop(1 - vFeather * 0.4, colorMid);
+            cGrad.addColorStop(1, colorTransparent);
+            ctx.fillStyle = cGrad;
+            ctx.fillRect(cx === 0 ? 0 : width - rCorner, cy === 0 ? 0 : height - rCorner, rCorner, rCorner);
+        }
+    }
     ctx.restore();
 }
 
@@ -717,9 +784,10 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     drawVignette(
         ctx,
         theme.bgVignetteMode || "top_bottom",
-        theme.bgVignetteSpread || 13,
+        theme.bgVignetteSpread != null ? theme.bgVignetteSpread : 13,
         theme.bgVignetteOpacity != null ? theme.bgVignetteOpacity : 0.6,
         theme.bgVignetteColor || "#000000",
+        theme.bgVignetteFeather != null ? theme.bgVignetteFeather : 34,
         width,
         height
     );
@@ -858,6 +926,18 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const pb = cards.playBox;
         const playRadius = pb.customRadius != null ? pb.customRadius : (theme.cardRadius || 14);
 
+        // 1. Sombra y fondo base de playBox
+        ctx.save();
+        if (theme.cardShadowBlur > 0 && (theme.cardShadowOpacity || 0.7) > 0) {
+            ctx.shadowColor = `rgba(0, 0, 0, ${theme.cardShadowOpacity != null ? theme.cardShadowOpacity : 0.7})`;
+            ctx.shadowBlur = theme.cardShadowBlur || 21;
+            ctx.shadowOffsetY = theme.cardShadowY != null ? theme.cardShadowY : 4;
+        }
+        ctx.fillStyle = pb.customBg || theme.cardColor || "#170c1a";
+        roundRect(ctx, pb.x, pb.y, pb.w, pb.h, playRadius, true);
+        ctx.restore();
+
+        // 2. Imagen del beatmap con gradiente recortada
         ctx.save();
         roundRect(ctx, pb.x, pb.y, pb.w, pb.h, playRadius);
         ctx.clip();
@@ -927,6 +1007,15 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + 225, "right", fontFamily);
 
         ctx.restore();
+
+        // 3. Borde morado de playBox coincidente con theme.cardBorderColor
+        if (theme.cardBorderColor && theme.cardBorderColor !== "transparent") {
+            ctx.save();
+            ctx.strokeStyle = theme.cardBorderColor;
+            ctx.lineWidth = 1.5;
+            roundRect(ctx, pb.x, pb.y, pb.w, pb.h, playRadius, false, true);
+            ctx.restore();
+        }
     }
 
     // 6. BLOQUE MEDIO: ESTADÍSTICAS Y 4 BARRAS DE SKILLS
