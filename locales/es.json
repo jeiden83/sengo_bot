@@ -388,7 +388,8 @@
   },
   "card": {
     "err_no_user": "❌ No tienes una cuenta de osu! vinculada. Usa `s.link` para vincular tu cuenta o especifica un usuario con `s.card [usuario]`.",
-    "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!."
+    "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!.",
+    "err_only_std": "❌ El comando de tarjetas (`.card`) por ahora solo está disponible para el modo **osu! (Standard)**."
   },
   "contributors": {
     "title": "🌐 Usuarios Vinculados por OAuth",

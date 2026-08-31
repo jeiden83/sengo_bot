@@ -31,6 +31,21 @@ async function run(messages, args) {
         )
     );
 
+    // Validar si pasaron modificadores de otros modos de juego (Taiko, Catch/CTB, Mania)
+    const NON_STD_MODES = [
+        "-taiko", "--taiko", "taiko", "-t",
+        "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
+        "-mania", "--mania", "mania", "-m"
+    ];
+
+    const hasNonStdArg = safeArgs.some(arg => 
+        typeof arg === "string" && NON_STD_MODES.includes(arg.toLowerCase())
+    );
+
+    if (hasNonStdArg) {
+        return t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
+    }
+
     // Filtrar flags para obtener argumentos de usuario
     const cleanArgs = safeArgs.filter(arg => 
         typeof arg === "string" && ![
@@ -81,6 +96,14 @@ async function run(messages, args) {
             ignoreBeatmap: true
         });
 
+        if (osuUserdata && osuUserdata.gamemode && osuUserdata.gamemode !== "osu") {
+            await progressPromise;
+            if (statusMessage && typeof statusMessage.delete === "function") {
+                await statusMessage.delete().catch(() => {});
+            }
+            return t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
+        }
+
         if (osuUserdata && osuUserdata.fn_response) {
             if (typeof osuUserdata.fn_response === "string") {
                 await progressPromise;
@@ -92,12 +115,12 @@ async function run(messages, args) {
             osuUser = osuUserdata.fn_response;
         }
     } else {
-        // Buscar usuario vinculado del autor
+        // Buscar usuario vinculado del autor (usando modo osu standard)
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
             if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: linked.main_gamemode || "osu", server: "bancho" });
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: "osu", server: "bancho" });
             }
         } catch (err) {
             console.warn("[s.card] Error al obtener usuario vinculado:", err.message);

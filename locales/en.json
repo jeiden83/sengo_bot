@@ -388,7 +388,8 @@
   },
   "card": {
     "err_no_user": "❌ You don't have a linked osu! account. Use `s.link` to link your account or specify a user with `s.card [user]`.",
-    "err_user_not_found": "❌ osu! user could not be found."
+    "err_user_not_found": "❌ osu! user could not be found.",
+    "err_only_std": "❌ Profile cards (`.card`) are currently only available for **osu! (Standard)** mode."
   },
   "contributors": {
     "title": "🌐 Users Linked via OAuth",
