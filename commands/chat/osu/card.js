@@ -84,9 +84,8 @@ async function run(messages, args) {
         if (osuUserdata && osuUserdata.fn_response) {
             if (typeof osuUserdata.fn_response === "string") {
                 await progressPromise;
-                if (statusMessage && typeof statusMessage.edit === "function") {
-                    await statusMessage.edit({ embeds: [], content: osuUserdata.fn_response });
-                    return statusMessage;
+                if (statusMessage && typeof statusMessage.delete === "function") {
+                    await statusMessage.delete().catch(() => {});
                 }
                 return osuUserdata.fn_response;
             }
@@ -108,9 +107,8 @@ async function run(messages, args) {
         if (!osuUser || !osuUser.id) {
             await progressPromise;
             const noUserErr = t(locale, "card.err_no_user") || `❌ No tienes una cuenta de osu! vinculada. Usa \`s.link\` para vincular tu cuenta o especifica un usuario con \`s.card [usuario]\`.`;
-            if (statusMessage && typeof statusMessage.edit === "function") {
-                await statusMessage.edit({ embeds: [], content: noUserErr });
-                return statusMessage;
+            if (statusMessage && typeof statusMessage.delete === "function") {
+                await statusMessage.delete().catch(() => {});
             }
             return noUserErr;
         }
@@ -119,9 +117,8 @@ async function run(messages, args) {
     if (!osuUser || !osuUser.id || typeof osuUser === "string") {
         await progressPromise;
         const notFoundErr = t(locale, "card.err_user_not_found") || `❌ No se pudo encontrar al usuario en osu!.`;
-        if (statusMessage && typeof statusMessage.edit === "function") {
-            await statusMessage.edit({ embeds: [], content: notFoundErr });
-            return statusMessage;
+        if (statusMessage && typeof statusMessage.delete === "function") {
+            await statusMessage.delete().catch(() => {});
         }
         return notFoundErr;
     }
@@ -138,21 +135,16 @@ async function run(messages, args) {
         const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce, locale });
         const attachment = new AttachmentBuilder(canvasBuffer, { name: "card.png" });
 
+        if (statusMessage && typeof statusMessage.delete === "function") {
+            await statusMessage.delete().catch(() => {});
+        }
+
         if (isEmbed) {
             const embed = doOsuCardEmbed(message, "card.png");
-            if (statusMessage && typeof statusMessage.edit === "function") {
-                await statusMessage.edit({ embeds: [embed], files: [attachment] });
-                return statusMessage;
-            }
             return {
                 embeds: [embed],
                 files: [attachment]
             };
-        }
-
-        if (statusMessage && typeof statusMessage.edit === "function") {
-            await statusMessage.edit({ embeds: [], files: [attachment] });
-            return statusMessage;
         }
 
         return {
@@ -160,9 +152,8 @@ async function run(messages, args) {
         };
     } catch (error) {
         console.error("[s.card] Error al renderizar tarjeta en Canvas:", error);
-        if (statusMessage && typeof statusMessage.edit === "function") {
-            await statusMessage.edit({ embeds: [], content: `❌ Error al generar la tarjeta de perfil: \`${error.message}\`` });
-            return statusMessage;
+        if (statusMessage && typeof statusMessage.delete === "function") {
+            await statusMessage.delete().catch(() => {});
         }
         return `❌ Error al generar la tarjeta de perfil: \`${error.message}\``;
     }
