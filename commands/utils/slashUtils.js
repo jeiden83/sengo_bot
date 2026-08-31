@@ -70,7 +70,9 @@ function createSlashMessagesContext(interaction, res) {
                     return async () => {
                         try {
                             if (!isFollowUp) {
-                                return await interaction.deleteReply();
+                                // ponytail: En comandos Slash, no eliminar la respuesta @original
+                                // para evitar error DiscordAPIError[10008] (Unknown Message) al hacer editReply.
+                                return;
                             } else {
                                 return await interaction.webhook.deleteMessage(target.id);
                             }
@@ -78,7 +80,7 @@ function createSlashMessagesContext(interaction, res) {
                             try {
                                 return await target.delete();
                             } catch (secondErr) {
-                                throw err;
+                                // Silenciar fallo de eliminación en contexto slash
                             }
                         }
                     };
