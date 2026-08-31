@@ -28,7 +28,9 @@
   },
   "cards": {
     "header": {
-      "visible": true
+      "visible": true,
+      "circleX": 870,
+      "circleY": 38
     },
     "leftCol": {
       "visible": true,
@@ -189,7 +191,12 @@
       "style": "italic",
       "color": "#ffffff",
       "glowBlur": 0,
-      "glowColor": "#c084fc"
+      "glowColor": "#c084fc",
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1,
+      "effectBlur": 2,
+      "effectOffsetY": 3
     },
     "playDiff": {
       "size": 23,
@@ -197,7 +204,12 @@
       "style": "italic",
       "color": "#ffffff",
       "glowBlur": 0,
-      "glowColor": "#c084fc"
+      "glowColor": "#c084fc",
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1,
+      "effectBlur": 2,
+      "effectOffsetY": 3
     },
     "playScore": {
       "size": 24,

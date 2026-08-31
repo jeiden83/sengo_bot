@@ -826,8 +826,13 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
         // Hitcircle de osu!
         const circleX = config.header?.circleX || 870;
-        const circleY = 48;
+        const circleY = config.header?.circleY || 38;
         ctx.save();
+        ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+        ctx.shadowBlur = 12;
+        ctx.shadowOffsetY = 3;
+        ctx.shadowOffsetX = 0;
+
         ctx.strokeStyle = "#d1d5db";
         ctx.lineWidth = 6;
         ctx.beginPath();
