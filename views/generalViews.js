@@ -196,10 +196,135 @@ function buildAboutNavigationRows(currentPageIndex, locale = 'es') {
     return [row1, row2];
 }
 
+/**
+ * Genera el embed de ayuda para .card con paginación interactiva por botones.
+ */
+function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
+    const isEs = locale === 'es';
+    const roleColor = message.member?.roles?.highest?.color || '#ff66aa';
+    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : '#ff66aa';
+
+    const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
+        .setFooter({
+            text: isEs ? `Página ${pageIndex + 1}/4 • Sengo Card Studio • .help card` : `Page ${pageIndex + 1}/4 • Sengo Card Studio • .help card`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+
+    if (pageIndex === 0) {
+        embed.setTitle(isEs ? "ℹ️ Guía del Comando .card (Perfil Visual)" : "ℹ️ .card Command Guide (Visual Profile)");
+        embed.setDescription(isEs
+            ? "Genera una tarjeta visual de perfil de osu! con estadísticas locales del ecosistema Sengo y habilidades calculadas."
+            : "Generates a visual osu! profile card with local Sengo ecosystem stats and calculated skills."
+        );
+        embed.addFields([
+            {
+                name: isEs ? "📋 Uso del Comando" : "📋 Command Usage",
+                value: `\`\`\`\n${prefix}card\n  ▸ [usuario] : ${isEs ? 'Especifica el jugador a consultar' : 'Specify player to check'}\n  ▸ -embed    : ${isEs ? 'Envía la tarjeta en un embed' : 'Send card inside an embed'}\n  ▸ -refresh  : ${isEs ? 'Fuerza recarga ignorando caché de 1h' : 'Force refresh ignoring 1h cache'}\n\`\`\``,
+                inline: false
+            },
+            {
+                name: isEs ? "🏷️ Alias Disponibles" : "🏷️ Available Aliases",
+                value: `\`${prefix}tarjeta\`, \`${prefix}tarjetadeperfil\`, \`${prefix}profilecard\`, \`${prefix}idcard\``,
+                inline: false
+            },
+            {
+                name: isEs ? "✨ Títulos Dinámicos" : "✨ Dynamic Titles",
+                value: isEs
+                    ? "La tarjeta calcula automáticamente un título de 2 líneas (`[Prefijo] [Descriptor]` / `[Sufijo]`).\n👉 **Usa los botones de abajo para navegar por las tablas de títulos.**"
+                    : "The card calculates a 2-line title (`[Prefix] [Descriptor]` / `[Suffix]`).\n👉 **Use the buttons below to browse the title tables.**",
+                inline: false
+            }
+        ]);
+    } else if (pageIndex === 1) {
+        embed.setTitle(isEs ? "🏆 Títulos Dinámicos: Prefijos de Habilidad (Línea 1)" : "🏆 Dynamic Titles: Skill Prefixes (Line 1)");
+        embed.setDescription(isEs
+            ? "El **prefijo** indica el nivel de maestría general del jugador, calculado a partir de su **PP total** o el valor más alto en sus 4 barras de skills (`ACC`, `AIM`, `SPEED`, `READING`):"
+            : "The **prefix** indicates overall skill tier, calculated from **total PP** or the highest skill bar (`ACC`, `AIM`, `SPEED`, `READING`):"
+        );
+        embed.addFields([
+            { name: isEs ? "👑 Legendario (Legendary)" : "👑 Legendary", value: "`> 16.000 pp` o Skill $\\ge 80$", inline: true },
+            { name: isEs ? "🎖️ Experto (Expert)" : "🎖️ Expert", value: "`> 11.000 pp` o Skill $\\ge 68$", inline: true },
+            { name: isEs ? "⚔️ Avanzado (Advanced)" : "⚔️ Advanced", value: "`> 6.500 pp` o Skill $\\ge 50$", inline: true },
+            { name: isEs ? "🛡️ Veterano (Seasoned)" : "🛡️ Seasoned", value: "`> 3.500 pp` o Skill $\\ge 38$", inline: true },
+            { name: isEs ? "🏹 Intermedio (Intermediate)" : "🏹 Intermediate", value: "`> 1.500 pp` o Skill $\\ge 26$", inline: true },
+            { name: isEs ? "🎯 Competente (Competent)" : "🎯 Competent", value: "`> 500 pp`", inline: true },
+            { name: isEs ? "🌱 Novato (Novice)" : "🌱 Novice", value: isEs ? "`< 500 pp` (Por defecto)" : "`< 500 pp` (Default)", inline: false }
+        ]);
+    } else if (pageIndex === 2) {
+        embed.setTitle(isEs ? "⚡ Títulos Dinámicos: Descriptores de Mods (Línea 1)" : "⚡ Dynamic Titles: Mod Descriptors (Line 1)");
+        embed.setDescription(isEs
+            ? "El **descriptor** refleja la afinidad o estilo de mods predominante según sus 100 mejores puntuaciones:"
+            : "The **descriptor** reflects mod affinity based on the player's top 100 plays:"
+        );
+        embed.addFields([
+            { name: isEs ? "🔘 Anti-Mods (Mod-Hating)" : "🔘 Mod-Hating", value: isEs ? "$\\ge 55\\%$ de jugadas en NoMod (NM)" : "$\\ge 55\\%$ of top plays in NoMod", inline: true },
+            { name: isEs ? "⏩ Veloz (Speedy)" : "⏩ Speedy", value: isEs ? "$\\ge 40\\%$ en DoubleTime (DT/NC)" : "$\\ge 40\\%$ in DoubleTime (DT/NC)", inline: true },
+            { name: isEs ? "🎯 Preciso (Ant-Clicking)" : "🎯 Ant-Clicking", value: isEs ? "$\\ge 35\\%$ en HardRock (HR)" : "$\\ge 35\\%$ in HardRock (HR)", inline: true },
+            { name: isEs ? "👻 Abusador de HD (HD abusing)" : "👻 HD abusing", value: isEs ? "$\\ge 45\\%$ en Hidden (HD)" : "$\\ge 45\\%$ in Hidden (HD)", inline: true },
+            { name: isEs ? "🔦 Ciego (Blindsighted)" : "🔦 Blindsighted", value: isEs ? "$\\ge 5\\%$ en Flashlight (FL)" : "$\\ge 5\\%$ in Flashlight (FL)", inline: true },
+            { name: isEs ? "🐢 Paciente (Patient)" : "🐢 Patient", value: isEs ? "$\\ge 10\\%$ en Easy (EZ)" : "$\\ge 10\\%$ in Easy (EZ)", inline: true },
+            { name: isEs ? "💖 Amante de Mods (Mod-Loving)" : "💖 Mod-Loving", value: isEs ? "$\\le 15\\%$ en NoMod (alta variedad)" : "$\\le 15\\%$ in NoMod (high variety)", inline: true },
+            { name: isEs ? "✨ Versátil (Versatile)" : "✨ Versatile", value: isEs ? "Distribución balanceada de mods" : "Balanced mod distribution", inline: true }
+        ]);
+    } else if (pageIndex === 3) {
+        embed.setTitle(isEs ? "🌟 Títulos Dinámicos: Sufijos de Especialidad (Línea 2)" : "🌟 Dynamic Titles: Specialty Suffixes (Line 2)");
+        embed.setDescription(isEs
+            ? "El **sufijo** destaca el logro, especialidad o rasgo más sobresaliente del jugador en Sengo y osu!:"
+            : "The **suffix** highlights the player's standout achievement or trait in Sengo and osu!:"
+        );
+        embed.addFields([
+            { name: isEs ? "🏆 Némesis Nacional (National Nemesis)" : "🏆 National Nemesis", value: isEs ? "$\\ge 100$ puestos #1 Nacionales en Sengo" : "$\\ge 100$ #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🎯 Amenaza de Snipes (Snipe Menace)" : "🎯 Snipe Menace", value: isEs ? "$\\ge 10$ puestos #1 Nacionales en Sengo" : "$\\ge 10$ #1 National ranks in Sengo", inline: false },
+            { name: isEs ? "🔨 Creador de Beatmaps (Beatmap Crafter)" : "🔨 Beatmap Crafter", value: isEs ? "Posee al menos 1 mapa rankeado en osu!" : "Has at least 1 ranked beatmap in osu!", inline: false },
+            { name: isEs ? "📖 Demonio de Lectura (Sightread Demon)" : "📖 Sightread Demon", value: isEs ? "Lectura (Reading) supera a Aim y Speed" : "Reading skill exceeds Aim & Speed", inline: true },
+            { name: isEs ? "🕹️ Cazador de Círculos (Whack-A-Mole)" : "🕹️ Whack-A-Mole", value: isEs ? "Puntería (Aim) es su mayor habilidad" : "Aim is the highest skill", inline: true },
+            { name: isEs ? "⚡ Mecanógrafo Veloz (speedtypist)" : "⚡ speedtypist", value: isEs ? "Velocidad (Speed) es su mayor habilidad" : "Speed is the highest skill", inline: true },
+            { name: isEs ? "🎵 Ritmo Encarnado (Rhythm-Incarnate)" : "🎵 Rhythm-Incarnate", value: isEs ? "Precisión (ACC) es su mayor habilidad" : "Accuracy is the highest skill", inline: true },
+            { name: isEs ? "🌐 Todoterreno (All-Rounder)" : "🌐 All-Rounder", value: isEs ? "Estadísticas balanceadas (Por defecto)" : "Balanced statistics (Default)", inline: true }
+        ]);
+    }
+
+    return embed;
+}
+
+/**
+ * Fila de botones para navegar entre las páginas de ayuda de .card
+ */
+function buildCardHelpNavigationRow(currentPageIndex = 0, locale = 'es') {
+    const isEs = locale === 'es';
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId("help_cardpage_0")
+            .setLabel(isEs ? "Información" : "Info")
+            .setEmoji("ℹ️")
+            .setStyle(currentPageIndex === 0 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("help_cardpage_1")
+            .setLabel(isEs ? "Prefijos" : "Prefixes")
+            .setEmoji("🏆")
+            .setStyle(currentPageIndex === 1 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("help_cardpage_2")
+            .setLabel(isEs ? "Mods" : "Mods")
+            .setEmoji("⚡")
+            .setStyle(currentPageIndex === 2 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("help_cardpage_3")
+            .setLabel(isEs ? "Especialidad" : "Specialty")
+            .setEmoji("🌟")
+            .setStyle(currentPageIndex === 3 ? ButtonStyle.Success : ButtonStyle.Secondary)
+    );
+}
+
 module.exports = {
     doHelpListEmbed,
     doHelpCommandEmbed,
     buildHelpNavigationRow,
     doAboutEmbed,
-    buildAboutNavigationRows
+    buildAboutNavigationRows,
+    doCardHelpEmbed,
+    buildCardHelpNavigationRow
 };

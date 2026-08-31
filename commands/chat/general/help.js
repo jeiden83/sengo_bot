@@ -1,4 +1,10 @@
-const { doHelpListEmbed, doHelpCommandEmbed, buildHelpNavigationRow } = require("../../../views/generalViews.js");
+const {
+    doHelpListEmbed,
+    doHelpCommandEmbed,
+    buildHelpNavigationRow,
+    doCardHelpEmbed,
+    buildCardHelpNavigationRow
+} = require("../../../views/generalViews.js");
 const { t } = require("../../../utils/i18n.js");
 const config = require("../../../config.js");
 
@@ -213,10 +219,15 @@ async function run(messages, args, intialized_data) {
         const helpData = getCommandHelpData(queryName, commandsMap, mainCommandsSet, locale);
         if (!helpData) return;
 
-        const embed = doHelpCommandEmbed(message, helpData.mainName, queryName, helpData, locale, prefix);
+        const isCard = helpData.mainName === "card";
+        const embed = isCard
+            ? doCardHelpEmbed(message, 0, locale, prefix)
+            : doHelpCommandEmbed(message, helpData.mainName, queryName, helpData, locale, prefix);
 
         const categoryCmds = getCategoryCommands(helpData.category, commandsMap, mainCommandsSet);
-        const row = buildHelpNavigationRow(helpData.mainName, categoryCmds, locale, prefix);
+        const row = isCard
+            ? buildCardHelpNavigationRow(0, locale)
+            : buildHelpNavigationRow(helpData.mainName, categoryCmds, locale, prefix);
 
         const targetSend = typeof messages.reply === 'function' ? messages.reply : (message.channel?.send ? message.channel.send.bind(message.channel) : null);
         if (!targetSend) return;
@@ -238,14 +249,34 @@ async function run(messages, args, intialized_data) {
             try {
                 await i.deferUpdate();
 
+                if (i.customId.startsWith("help_cardpage_")) {
+                    const parts = i.customId.split("_");
+                    const pageIdx = parseInt(parts[2], 10) || 0;
+
+                    const nextEmbed = doCardHelpEmbed(message, pageIdx, locale, prefix);
+                    const nextRow = buildCardHelpNavigationRow(pageIdx, locale);
+
+                    await i.editReply({
+                        embeds: [nextEmbed],
+                        components: [nextRow]
+                    });
+                    return;
+                }
+
                 const parts = i.customId.split("_");
                 const targetCmd = parts[2];
 
                 const nextHelpData = getCommandHelpData(targetCmd, commandsMap, mainCommandsSet, locale);
                 if (!nextHelpData) return;
 
-                const nextEmbed = doHelpCommandEmbed(message, nextHelpData.mainName, targetCmd, nextHelpData, locale, prefix);
-                const nextRow = buildHelpNavigationRow(nextHelpData.mainName, categoryCmds, locale, prefix);
+                const isNextCard = nextHelpData.mainName === "card";
+                const nextEmbed = isNextCard
+                    ? doCardHelpEmbed(message, 0, locale, prefix)
+                    : doHelpCommandEmbed(message, nextHelpData.mainName, targetCmd, nextHelpData, locale, prefix);
+
+                const nextRow = isNextCard
+                    ? buildCardHelpNavigationRow(0, locale)
+                    : buildHelpNavigationRow(nextHelpData.mainName, categoryCmds, locale, prefix);
 
                 await i.editReply({
                     embeds: [nextEmbed],
