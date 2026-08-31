@@ -118,6 +118,7 @@ function createSlashMessagesContext(interaction, res) {
         member: interaction.member,
         guild: interaction.guild,
         locale: interaction.resolvedLocale || interaction.locale || 'es',
+        isSlash: true,
         reply: replyFn,
         content: targetMsg ? targetMsg.content : '',
         embeds: targetMsg ? targetMsg.embeds : [],
@@ -153,7 +154,8 @@ function createSlashMessagesContext(interaction, res) {
         message: messageObj,
         res: res,
         reply: replyWrapper,
-        logger: interaction.logger
+        logger: interaction.logger,
+        isSlash: true
     };
 }
 
