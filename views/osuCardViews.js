@@ -783,20 +783,26 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
     const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
 
-    // Descarga paralela en segundo plano de todos los assets requeridos y cálculo de Star Rating con mods
+    // Descarga paralela en segundo plano de todos los assets requeridos y cálculo de Star Rating con mods físicos
     const srPromise = (async () => {
         if (!pinnedPlay?.beatmap?.id) return null;
         try {
             const BeatmapModel = require("../models/BeatmapModel.js");
-            const OsuScoreModel = require("../models/OsuScoreModel.js");
+            const ppEngine = require("../utils/ppEngine.js");
             const mapObj = await BeatmapModel.getBeatmap_osu(
                 pinnedPlay.beatmapset?.id || pinnedPlay.beatmap.beatmapset_id,
                 pinnedPlay.beatmap.id,
                 pinnedPlay.beatmap
             );
             if (mapObj) {
-                const maxAttrs = OsuScoreModel.calculatePP(pinnedPlay, mapObj, "maximo_pp");
-                const stars = maxAttrs.stars || maxAttrs.difficulty?.stars;
+                const engine = ppEngine.getEngine();
+                const rawMods = Array.isArray(pinnedPlay.mods)
+                    ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+                    : (typeof pinnedPlay.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : []);
+                // Solo mods que alteran la física/tiempo del mapa (DT, HT, HR, EZ) modifican el Star Rating
+                const srMods = rawMods.filter(m => !["FL", "HD", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
+                const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
+                const stars = diffAttrs?.stars;
                 if (typeof stars === "number" && !isNaN(stars) && stars > 0) {
                     return stars;
                 }
