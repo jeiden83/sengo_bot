@@ -164,6 +164,11 @@
       "body": "Muestra información sobre Sengo y las características avanzadas que lo hacen único.",
       "usage": "s.acerca"
     },
+    "invite": {
+      "header": "Invita a Sengo a tu servidor",
+      "body": "Obtén el enlace oficial de invitación para añadir a Sengo a tu servidor de Discord o instalarlo en tu cuenta.",
+      "usage": "s.invite"
+    },
     "contribuidores": {
       "header": "Lista de usuarios vinculados",
       "body": "Muestra la comunidad vinculada por OAuth agrupada por país con su estado de supporter.",
@@ -1854,5 +1859,10 @@
     "err_owner_only": "❌ No puedes hacer esto, solo el dueño del bot puede.",
     "err_file_not_found": "❌ No se encontró la imagen de YO en los archivos locales.",
     "err_user_not_found": "❌ No se pudo encontrar al usuario `{user}` en osu!."
+  },
+  "invite": {
+    "title": "🔗 Invita a Sengo a tu servidor",
+    "description": "¡Haz que las estadísticas de osu!, comparaciones de puntuaciones, leaderboards nacionales, snipes y utilidades de Sengo estén disponibles en tu servidor!\n\n🔗 **Enlace de Invitación Oficial:**\n[Haz clic aquí para añadir a Sengo]({url})",
+    "button_label": "Invitar a Sengo"
   }
 }

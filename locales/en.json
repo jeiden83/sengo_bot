@@ -164,6 +164,11 @@
       "body": "Shows detailed information about Sengo and the advanced features that make it unique.",
       "usage": "s.acerca"
     },
+    "invite": {
+      "header": "Invite Sengo to your server",
+      "body": "Get the official invitation link to add Sengo to your Discord server or install it to your account.",
+      "usage": "s.invite"
+    },
     "contribuidores": {
       "header": "Linked users list",
       "body": "Shows the community linked via OAuth grouped by country with their supporter status.",
@@ -1850,5 +1855,10 @@
     "err_owner_only": "❌ You cannot do this, only the bot owner can.",
     "err_file_not_found": "❌ The YO image was not found in the local assets.",
     "err_user_not_found": "❌ Could not find user `{user}` on osu!."
+  },
+  "invite": {
+    "title": "🔗 Invite Sengo to your server",
+    "description": "Bring osu! stats, score comparisons, national leaderboards, snipes, and Sengo utilities to your server!\n\n🔗 **Official Invitation Link:**\n[Click here to add Sengo]({url})",
+    "button_label": "Invite Sengo"
   }
 }

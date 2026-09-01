@@ -319,6 +319,41 @@ function buildCardHelpNavigationRow(currentPageIndex = 0, locale = 'es') {
     );
 }
 
+/**
+ * Genera el embed del comando s.invite
+ */
+function doInviteEmbed(message, locale = 'es', inviteUrl) {
+    const embedColor = getEmbedColor(message);
+    const botIcon = message.client?.user?.displayAvatarURL({ dynamic: true, size: 512 }) || "https://jeiden.s-ul.eu/3ssHl9Gd";
+
+    return new EmbedBuilder()
+        .setAuthor({
+            name: t(locale, 'invite.title'),
+            iconURL: botIcon
+        })
+        .setDescription(t(locale, 'invite.description', { url: inviteUrl }))
+        .setColor(embedColor)
+        .setThumbnail(botIcon)
+        .setFooter({
+            text: "Sengo • s.invite",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+}
+
+/**
+ * Fila de botones para el enlace de invitación
+ */
+function buildInviteRow(locale = 'es', inviteUrl) {
+    return new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setLabel(t(locale, 'invite.button_label'))
+            .setStyle(ButtonStyle.Link)
+            .setURL(inviteUrl)
+            .setEmoji("🔗")
+    );
+}
+
 module.exports = {
     doHelpListEmbed,
     doHelpCommandEmbed,
@@ -326,5 +361,7 @@ module.exports = {
     doAboutEmbed,
     buildAboutNavigationRows,
     doCardHelpEmbed,
-    buildCardHelpNavigationRow
+    buildCardHelpNavigationRow,
+    doInviteEmbed,
+    buildInviteRow
 };
