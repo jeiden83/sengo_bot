@@ -212,7 +212,36 @@ async function fetchSengoData(userId, countryCode) {
 }
 
 /**
- * Analiza skills del jugador a partir de sus mejores puntuaciones.
+ * Calcula el AR efectivo tomando en cuenta modificaciones de tiempo y escalado de mods.
+ */
+function calculateEffectiveAR(baseAR, modsStr) {
+    let ar = baseAR;
+    if (modsStr.includes("HR")) ar = Math.min(10.0, ar * 1.4);
+    if (modsStr.includes("EZ")) ar = ar * 0.5;
+
+    if (modsStr.includes("DT") || modsStr.includes("NC")) {
+        let ms = ar <= 5 ? 1800 - 120 * ar : 1200 - 150 * (ar - 5);
+        ms = ms / 1.5;
+        if (ms >= 1200) {
+            ar = (1800 - ms) / 120;
+        } else {
+            ar = 5 + (1200 - ms) / 150;
+        }
+    } else if (modsStr.includes("HT") || modsStr.includes("DC")) {
+        let ms = ar <= 5 ? 1800 - 120 * ar : 1200 - 150 * (ar - 5);
+        ms = ms / 0.75;
+        if (ms >= 1200) {
+            ar = (1800 - ms) / 120;
+        } else {
+            ar = 5 + (1200 - ms) / 150;
+        }
+    }
+    return ar;
+}
+
+/**
+ * Analiza skills del jugador a partir de sus mejores puntuaciones mediante
+ * descomposición de strains de patrones y cinética calibrada con sengo-pp.
  */
 function analyzeSkills(scores) {
     if (!scores || scores.length === 0) {
@@ -249,27 +278,61 @@ function analyzeSkills(scores) {
         if (modsStr.includes("FL")) flCount++;
         if (modsStr.includes("EZ")) ezCount++;
 
+        const isDT = modsStr.includes("DT") || modsStr.includes("NC");
+        const isHT = modsStr.includes("HT") || modsStr.includes("DC");
+        const isHR = modsStr.includes("HR");
+        const isHD = modsStr.includes("HD");
+        const isEZ = modsStr.includes("EZ");
+        const isFL = modsStr.includes("FL");
+
         const bpm = Number(s.beatmap?.bpm || 180);
         const sr = Number(s.beatmap?.difficulty_rating || 5.5);
         const ar = Number(s.beatmap?.ar || 9.0);
         const cs = Number(s.beatmap?.cs || 4.0);
+        const circles = Number(s.beatmap?.count_circles || 0);
+        const sliders = Number(s.beatmap?.count_sliders || 0);
+        const totalObj = circles + sliders;
 
-        let aimBase = sr * 7.5;
-        if (modsStr.includes("HR")) aimBase *= 1.15;
-        if (modsStr.includes("HD")) aimBase *= 1.08;
+        const effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
+        const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
+        const circleRatio = totalObj > 0 ? (circles / totalObj) : 0.65;
+        const circleDensity = circles / effLen;
 
-        let speedBase = (bpm / 200) * (sr * 6.8);
-        if (modsStr.includes("DT") || modsStr.includes("NC")) speedBase *= 1.25;
+        // Índice de corriente S ∈ [0.05, 0.95]
+        let streaminess = ((circleRatio - 0.45) / 0.35) * Math.pow(Math.max(0.5, circleDensity) / 5.0, 0.4);
+        streaminess = Math.max(0.05, Math.min(0.95, streaminess));
 
+        // AIM STRAIN
+        let aimBase = Math.pow(sr / 5.5, 1.16) * 48.0;
+        aimBase *= (1.0 - 0.23 * streaminess);
+        if (isHR) aimBase *= (1.21 + Math.max(0, cs - 4.0) * 0.05);
+        if (isHD) aimBase *= 1.15;
+        if (isEZ) aimBase *= 0.92;
+
+        // SPEED STRAIN
+        let speedBase = Math.pow(sr / 5.5, 0.45) * 45.0;
+        speedBase *= Math.pow(effBPM / 185, 0.53);
+        speedBase *= (0.50 + 0.276 * streaminess);
+        if (isEZ) speedBase *= 0.90;
+        if (streaminess > 0.50 && effBPM > 220) {
+            speedBase *= (1.0 + (streaminess - 0.50) * (effBPM - 220) * 0.007);
+        }
+
+        // ACCURACY
         let accBase = Math.max(0, (accPct - 85) * 5.5);
 
-        let readingBase = 32.0;
-        if (modsStr.includes("HD")) readingBase += 18.0;
-        if (modsStr.includes("FL")) readingBase += 35.0;
-        if (modsStr.includes("EZ")) readingBase += 30.0;
-        if (ar < 9.0) readingBase += (9.0 - ar) * 8.0;
-        else if (ar > 10.3) readingBase += (ar - 10.3) * 12.0;
-        if (cs >= 4.5) readingBase += (cs - 4.0) * 6.0;
+        // READING STRAIN
+        let readingBase = (aimBase * 0.52 + speedBase * 0.65);
+        if (isHD) readingBase *= 1.12;
+        if (isEZ) readingBase *= 1.76;
+        if (isFL) readingBase *= 1.77;
+
+        const effAR = calculateEffectiveAR(ar, modsStr);
+        if (effAR < 9.0) {
+            readingBase *= (1 + Math.min(6.0, 9.0 - effAR) * 0.005);
+        } else if (effAR > 10.3) {
+            readingBase *= (1 + Math.min(2.0, effAR - 10.3) * 0.09);
+        }
 
         aimSum += aimBase * weight;
         speedSum += speedBase * weight;
