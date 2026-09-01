@@ -134,8 +134,8 @@ async function forceDiscordReconnect(client, config, reason = "Socket zombie det
             }
             
             await new Promise(resolve => setTimeout(resolve, 2500));
-            await client.login(token);
-            setBotPresence(client);
+            const { login } = require("../../listeners/login.js");
+            await login(client, config);
             Logger.system("[DISCORD-WATCHDOG] ✅ Cliente de Discord relogueado y recuperado exitosamente.");
             consecutiveUnhealthyChecks = 0;
         }

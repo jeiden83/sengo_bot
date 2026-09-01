@@ -96,9 +96,9 @@ async function main(reload) {
 
     await load_listeners(res, client, config);
 
-    // 2. Iniciar sesión en Discord e inicializar servicios con reintento continuo en caso de límites de red
+    // 2. Iniciar sesión en Discord e inicializar servicios con reintento continuo y backoff progresivo
     async function startDiscordWithRetry() {
-        let delayMs = 5000;
+        let delayMs = 15000; // Iniciar en 15s para dar espacio a la API de Discord en caso de 429/bloqueo
         while (true) {
             try {
                 await login(client, config);
@@ -107,8 +107,11 @@ async function main(reload) {
                 break;
             } catch (err) {
                 Logger.system(`Error al conectar con Discord: ${err.message}. Reintentando en ${Math.round(delayMs / 1000)}s...`);
+                try {
+                    client.destroy();
+                } catch (_) {}
                 await new Promise(resolve => setTimeout(resolve, delayMs));
-                delayMs = Math.min(delayMs * 1.5, 30000); // Máximo 30 segundos entre reintentos
+                delayMs = Math.min(delayMs * 2, 120000); // 15s -> 30s -> 60s -> 120s máximo
             }
         }
     }

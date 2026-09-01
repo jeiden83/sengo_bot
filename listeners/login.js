@@ -14,6 +14,8 @@ function setBotPresence(client) {
 
 let listenersRegistered = false;
 
+const LOGIN_TIMEOUT_MS = 20000;
+
 async function login(client, config) {
     Logger.system("Intentando iniciar sesión en Discord...");
     
@@ -74,12 +76,25 @@ async function login(client, config) {
             throw new Error("El token de Discord no está configurado (TOKEN es undefined o nulo)");
         }
         Logger.system(`Ejecutando client.login con token prefijo: ${config.TOKEN.substring(0, 10)}...`);
-        const loginResult = await client.login(config.TOKEN);
+        
+        let timeoutId;
+        const timeoutPromise = new Promise((_, reject) => {
+            timeoutId = setTimeout(() => {
+                reject(new Error("Tiempo de espera agotado (20s) al conectar con el Gateway/API de Discord. Posible rate-limit o bloqueo de IP."));
+            }, LOGIN_TIMEOUT_MS);
+        });
+
+        const loginResult = await Promise.race([
+            client.login(config.TOKEN),
+            timeoutPromise
+        ]).finally(() => {
+            if (timeoutId) clearTimeout(timeoutId);
+        });
+
         Logger.system(`client.login completado. Resultado de la conexión: ${loginResult ? "Conexión exitosa" : "Sin resultado"}`);
         setBotPresence(client);
     } catch (err) {
-        Logger.system(`Error crítico al iniciar sesión en Discord: ${err.message}`);
-        console.error(err);
+        Logger.system(`Error al iniciar sesión en Discord: ${err.message}`);
         throw err;
     }
 }
