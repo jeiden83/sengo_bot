@@ -799,8 +799,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
                 const rawMods = Array.isArray(pinnedPlay.mods)
                     ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
                     : (typeof pinnedPlay.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : []);
-                // Solo mods que alteran la física/tiempo del mapa (DT, HT, HR, EZ) modifican el Star Rating
-                const srMods = rawMods.filter(m => !["FL", "HD", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
+                // HD, DT, HT, HR, EZ alteran el Star Rating en osu!lazer; FL se excluye por disparar el strain exponencial de memorización
+                const srMods = rawMods.filter(m => !["FL", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
                 const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
                 const stars = diffAttrs?.stars;
                 if (typeof stars === "number" && !isNaN(stars) && stars > 0) {
