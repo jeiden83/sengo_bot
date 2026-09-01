@@ -1077,8 +1077,9 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const snipesCount = sengoData.nationalTopsCount || "0";
         const snipesMade = sengoData.snipesMade || "0";
         const bdayLabel = isEs ? "Cumpleaños" : "Birthday";
+        const topsLabel = isEs ? "N° Tops nacionales" : "National Tops";
 
-        const sengoText = `#1 ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        ${bdayLabel}: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`;
+        const sengoText = `${topsLabel}: ${snipesCount} ${countryCode}        Top pp: ${topPPStr}        ${bdayLabel}: ${bdayStr}        Snipes: ${snipesMade}        Skin: ${skinStr}`;
         drawCustomText(ctx, fonts.sengoContent, sengoText, sgb.x + (sgb.w / 2), sgb.y + 58, "center", fontFamily);
     }
 
