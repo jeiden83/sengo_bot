@@ -241,15 +241,15 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
     } else if (pageIndex === 1) {
         embed.setTitle(isEs ? "🏆 Títulos Dinámicos: Prefijos de Habilidad (Línea 1)" : "🏆 Dynamic Titles: Skill Prefixes (Line 1)");
         embed.setDescription(isEs
-            ? "El **prefijo** indica el nivel de maestría general del jugador, calculado a partir de su **PP total** o el valor más alto en sus 4 barras de skills (`ACC`, `AIM`, `SPEED`, `READING`):"
-            : "The **prefix** indicates overall skill tier, calculated from **total PP** or the highest skill bar (`ACC`, `AIM`, `SPEED`, `READING`):"
+            ? "El **prefijo** indica el nivel de maestría general del jugador, calculado a partir de su **PP total**:"
+            : "The **prefix** indicates overall skill tier, calculated from **total PP**:"
         );
         embed.addFields([
-            { name: isEs ? "👑 Legendario (Legendary)" : "👑 Legendary", value: "`> 16.000 pp` o Skill ≥ 80", inline: true },
-            { name: isEs ? "🎖️ Experto (Expert)" : "🎖️ Expert", value: "`> 11.000 pp` o Skill ≥ 68", inline: true },
-            { name: isEs ? "⚔️ Avanzado (Advanced)" : "⚔️ Advanced", value: "`> 6.500 pp` o Skill ≥ 50", inline: true },
-            { name: isEs ? "🛡️ Veterano (Seasoned)" : "🛡️ Seasoned", value: "`> 3.500 pp` o Skill ≥ 38", inline: true },
-            { name: isEs ? "🏹 Intermedio (Intermediate)" : "🏹 Intermediate", value: "`> 1.500 pp` o Skill ≥ 26", inline: true },
+            { name: isEs ? "👑 Legendario (Legendary)" : "👑 Legendary", value: "`> 16.000 pp`", inline: true },
+            { name: isEs ? "🎖️ Experto (Expert)" : "🎖️ Expert", value: "`> 11.000 pp`", inline: true },
+            { name: isEs ? "⚔️ Avanzado (Advanced)" : "⚔️ Advanced", value: "`> 6.500 pp`", inline: true },
+            { name: isEs ? "🛡️ Veterano (Seasoned)" : "🛡️ Seasoned", value: "`> 3.500 pp`", inline: true },
+            { name: isEs ? "🏹 Intermedio (Intermediate)" : "🏹 Intermediate", value: "`> 1.500 pp`", inline: true },
             { name: isEs ? "🎯 Competente (Competent)" : "🎯 Competent", value: "`> 500 pp`", inline: true },
             { name: isEs ? "🌱 Novato (Novice)" : "🌱 Novice", value: isEs ? "`< 500 pp` (Por defecto)" : "`< 500 pp` (Default)", inline: false }
         ]);

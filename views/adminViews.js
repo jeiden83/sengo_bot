@@ -237,12 +237,11 @@ function analyzeSkills(scores) {
  */
 function generateCardTitle(skills, modStats, pp, user, sengoData) {
     let prefix = "Novice";
-    const maxSkill = Math.max(skills.aim, skills.speed, skills.acc, skills.reading);
-    if (pp > 16000 || maxSkill >= 80) prefix = "Legendary";
-    else if (pp > 11000 || maxSkill >= 68) prefix = "Expert";
-    else if (pp > 6500 || maxSkill >= 50) prefix = "Advanced";
-    else if (pp > 3500 || maxSkill >= 38) prefix = "Seasoned";
-    else if (pp > 1500 || maxSkill >= 26) prefix = "Intermediate";
+    if (pp > 16000) prefix = "Legendary";
+    else if (pp > 11000) prefix = "Expert";
+    else if (pp > 6500) prefix = "Advanced";
+    else if (pp > 3500) prefix = "Seasoned";
+    else if (pp > 1500) prefix = "Intermediate";
     else if (pp > 500) prefix = "Competent";
 
     let descriptor = "Versatile";
