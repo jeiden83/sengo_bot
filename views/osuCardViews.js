@@ -721,12 +721,34 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     const flagUrl = `https://flagcdn.com/w160/${countryCode.toLowerCase()}.png`;
     const coverUrl = pinnedPlay?.beatmapset?.covers?.["cover@2x"] || pinnedPlay?.beatmapset?.covers?.cover || "https://jeiden.s-ul.eu/3ssHl9Gd";
 
-    // Descarga paralela en segundo plano de todos los assets requeridos
-    const [bgImg, avatarImg, flagImg, mapCoverImg] = await Promise.all([
+    // Descarga paralela en segundo plano de todos los assets requeridos y cálculo de Star Rating con mods
+    const srPromise = (async () => {
+        if (!pinnedPlay?.beatmap?.id) return null;
+        try {
+            const BeatmapModel = require("../models/BeatmapModel.js");
+            const OsuScoreModel = require("../models/OsuScoreModel.js");
+            const mapObj = await BeatmapModel.getBeatmap_osu(
+                pinnedPlay.beatmapset?.id || pinnedPlay.beatmap.beatmapset_id,
+                pinnedPlay.beatmap.id,
+                pinnedPlay.beatmap
+            );
+            if (mapObj) {
+                const maxAttrs = OsuScoreModel.calculatePP(pinnedPlay, mapObj, "maximo_pp");
+                const stars = maxAttrs.stars || maxAttrs.difficulty?.stars;
+                if (typeof stars === "number" && !isNaN(stars) && stars > 0) {
+                    return stars;
+                }
+            }
+        } catch (_) {}
+        return null;
+    })();
+
+    const [bgImg, avatarImg, flagImg, mapCoverImg, calculatedPlaySR] = await Promise.all([
         fetchImageSafe(activeBgUrl),
         fetchImageSafe(user.avatar_url),
         fetchImageSafe(flagUrl),
-        fetchImageSafe(coverUrl)
+        fetchImageSafe(coverUrl),
+        srPromise
     ]);
 
     // 1. FONDO PRINCIPAL
@@ -966,7 +988,10 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const mapTitle = pinnedPlay?.beatmapset?.title || "Ange du Blanc Pur";
         const mapArtist = pinnedPlay?.beatmapset?.artist || "ke-ji feat. Nanahira";
         const rawDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
-        const mapSR = pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating).toFixed(2) : "7.68";
+        const effectiveSRNumber = (calculatedPlaySR && !isNaN(calculatedPlaySR) && calculatedPlaySR > 0)
+            ? calculatedPlaySR
+            : (pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating) : 7.68);
+        const mapSR = Number(effectiveSRNumber).toFixed(2);
         const mapDiffFormatted = rawDiff.toLowerCase().includes(mapSR) ? rawDiff : `${rawDiff} ${mapSR}★`;
         const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString(numLocale) : "32.219.611";
         const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy || 0.96) * 100).toFixed(2) : "96.12";
