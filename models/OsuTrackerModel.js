@@ -59,6 +59,91 @@ async function setTrackChannel(guildId, channelId) {
 }
 
 /**
+ * Obtiene el límite de Top Plays configurado para un servidor (default 100).
+ * @param {string} guildId ID del servidor
+ * @returns {Promise<number>} Límite de top plays (entre 1 y 100)
+ */
+async function getTrackTopLimit(guildId) {
+    const supabase = getSupabaseClient();
+    if (!supabase) return 100;
+
+    try {
+        const { data, error } = await supabase
+            .from('guild_configs')
+            .select('track_top_limit')
+            .eq('guild_id', guildId)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data && data.track_top_limit !== null && data.track_top_limit !== undefined ? data.track_top_limit : 100;
+    } catch (err) {
+        console.error(`[TRACKER-MODEL] Error al obtener track_top_limit para guild ${guildId}:`, err);
+        return 100;
+    }
+}
+
+/**
+ * Guarda o actualiza el límite de Top Plays de un servidor en guild_configs.
+ * @param {string} guildId ID del servidor
+ * @param {number} limit Límite entre 1 y 100
+ * @returns {Promise<object>} Configuración actualizada
+ */
+async function setTrackTopLimit(guildId, limit) {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw new Error("El cliente de Supabase no está inicializado.");
+
+    try {
+        const { data, error } = await supabase
+            .from('guild_configs')
+            .upsert({
+                guild_id: guildId,
+                track_top_limit: limit
+            }, { onConflict: 'guild_id' })
+            .select()
+            .single();
+
+        if (error) throw error;
+
+        const { guildConfigCache } = require('./GuildConfigModel.js');
+        guildConfigCache.delete(guildId);
+
+        return data;
+    } catch (err) {
+        console.error(`[TRACKER-MODEL] Error al guardar track_top_limit para guild ${guildId}:`, err);
+        throw err;
+    }
+}
+
+/**
+ * Obtiene todos los límites configurados por servidor en memoria.
+ * @returns {Promise<Map<string, number>>} Mapa de guildId a límite
+ */
+async function getAllGuildTrackLimits() {
+    const supabase = getSupabaseClient();
+    if (!supabase) return new Map();
+
+    try {
+        const { data, error } = await supabase
+            .from('guild_configs')
+            .select('guild_id, track_top_limit');
+
+        if (error) throw error;
+        const map = new Map();
+        if (data) {
+            for (const row of data) {
+                if (row.track_top_limit !== null && row.track_top_limit !== undefined) {
+                    map.set(row.guild_id, row.track_top_limit);
+                }
+            }
+        }
+        return map;
+    } catch (err) {
+        console.error('[TRACKER-MODEL] Error al obtener límites de servidores:', err);
+        return new Map();
+    }
+}
+
+/**
  * Obtiene todos los usuarios que están siendo trackeados.
  * @returns {Promise<Array>} Lista de registros de tracking
  */
@@ -86,9 +171,10 @@ async function getTrackedUsers() {
  * @param {string} osuId ID de osu!
  * @param {string} osuUsername Nombre de usuario de osu!
  * @param {string|null} discordId ID de Discord si está vinculado
+ * @param {number|null} topLimit Límite de top plays específico para este usuario (o null para heredar el del server)
  * @returns {Promise<object>} Registro creado
  */
-async function addTrackedUser(guildId, channelId, osuId, osuUsername, discordId = null) {
+async function addTrackedUser(guildId, channelId, osuId, osuUsername, discordId = null, topLimit = null) {
     const supabase = getSupabaseClient();
     if (!supabase) throw new Error("El cliente de Supabase no está inicializado.");
 
@@ -104,11 +190,18 @@ async function addTrackedUser(guildId, channelId, osuId, osuUsername, discordId 
         if (findError) throw findError;
 
         if (existing) {
-            // Si ya está pero en otro canal, actualizamos el canal
+            const updates = {};
             if (existing.channel_id !== channelId) {
+                updates.channel_id = channelId;
+            }
+            if (topLimit !== undefined && existing.top_limit !== topLimit) {
+                updates.top_limit = topLimit;
+            }
+
+            if (Object.keys(updates).length > 0) {
                 const { data, error } = await supabase
                     .from('osu_tracker')
-                    .update({ channel_id: channelId })
+                    .update(updates)
                     .eq('id', existing.id)
                     .select()
                     .single();
@@ -127,6 +220,7 @@ async function addTrackedUser(guildId, channelId, osuId, osuUsername, discordId 
                 discord_id: discordId,
                 guild_id: guildId,
                 channel_id: channelId,
+                top_limit: topLimit,
                 is_active: false
             })
             .select()
@@ -263,6 +357,9 @@ async function syncOAuthUserToTracking(discordId, osuId, osuUsername) {
 module.exports = {
     getTrackChannel,
     setTrackChannel,
+    getTrackTopLimit,
+    setTrackTopLimit,
+    getAllGuildTrackLimits,
     getTrackedUsers,
     addTrackedUser,
     removeTrackedUser,

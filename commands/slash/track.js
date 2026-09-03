@@ -21,12 +21,30 @@ const data = new SlashCommandBuilder()
             )
     )
     .addSubcommand(sub =>
+        sub.setName("limite")
+            .setDescription("Configura o consulta el límite de Top Plays por defecto para el servidor")
+            .addIntegerOption(opt =>
+                opt.setName("limite")
+                    .setDescription("Límite de top plays (entre 1 y 100)")
+                    .setMinValue(1)
+                    .setMaxValue(100)
+                    .setRequired(false)
+            )
+    )
+    .addSubcommand(sub =>
         sub.setName("add")
             .setDescription("Añade un usuario de osu! al seguimiento en este servidor")
             .addStringOption(opt =>
                 opt.setName("usuario")
                     .setDescription("Nombre de usuario o ID de osu!")
                     .setRequired(true)
+            )
+            .addIntegerOption(opt =>
+                opt.setName("limite")
+                    .setDescription("Límite de top plays específico para este usuario (1-100, opcional)")
+                    .setMinValue(1)
+                    .setMaxValue(100)
+                    .setRequired(false)
             )
     )
     .addSubcommand(sub =>
@@ -55,7 +73,19 @@ async function run(interaction, res) {
         } else if (channel) {
             args.push(`<#${channel.id}>`);
         }
-    } else if (sub === "add" || sub === "remove") {
+    } else if (sub === "limite") {
+        const limit = interaction.options.getInteger("limite");
+        if (limit) {
+            args.push(limit.toString());
+        }
+    } else if (sub === "add") {
+        const user = interaction.options.getString("usuario");
+        args.push(user);
+        const limit = interaction.options.getInteger("limite");
+        if (limit) {
+            args.push(limit.toString());
+        }
+    } else if (sub === "remove") {
         const user = interaction.options.getString("usuario");
         args.push(user);
     }

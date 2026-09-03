@@ -85,6 +85,23 @@ async function run(messages, args) {
         return t(locale, "track.channel_success", { channelId });
     }
 
+    if (sub === "limite" || sub === "limit") {
+        if (!cleanArgs[1]) {
+            const currentLimit = await OsuTrackerModel.getTrackTopLimit(guild.id);
+            return t(locale, "track.limit_current", { limit: currentLimit, prefix });
+        }
+
+        const newLimit = parseInt(cleanArgs[1], 10);
+        if (isNaN(newLimit) || newLimit < 1 || newLimit > 100) {
+            return t(locale, "track.limit_invalid");
+        }
+
+        await OsuTrackerModel.setTrackTopLimit(guild.id, newLimit);
+        osuTrackerService.updateGuildTrackLimitInMemory(guild.id, newLimit);
+
+        return t(locale, "track.limit_success", { limit: newLimit });
+    }
+
     if (sub === "add" || sub === "agregar") {
         if (!cleanArgs[1]) {
             return t(locale, "track.add_usage", { prefix });
@@ -116,7 +133,18 @@ async function run(messages, args) {
             }
         }
 
-        const queryUsername = cleanArgs.slice(1).join(" ");
+        // Detectar si el último argumento es un límite numérico para este usuario específico
+        let userTopLimit = null;
+        let queryArgs = cleanArgs.slice(1);
+        const lastArg = queryArgs[queryArgs.length - 1];
+        if (queryArgs.length > 1 && /^\d+$/.test(lastArg)) {
+            const parsedLimit = parseInt(lastArg, 10);
+            if (parsedLimit >= 1 && parsedLimit <= 100) {
+                userTopLimit = parsedLimit;
+                queryArgs = queryArgs.slice(0, -1);
+            }
+        }
+        const queryUsername = queryArgs.join(" ");
 
         // Buscar usuario en la API de osu!
         const osuUser = await OsuUserModel.getOsuUser({ username: [queryUsername], gamemode: 'osu' });
@@ -140,13 +168,14 @@ async function run(messages, args) {
         }
 
         // Añadir a la base de datos
-        const record = await OsuTrackerModel.addTrackedUser(guild.id, trackChannelId, osuId, osuUsername, discordId);
+        const record = await OsuTrackerModel.addTrackedUser(guild.id, trackChannelId, osuId, osuUsername, discordId, userTopLimit);
         
         // Añadir a la memoria en caliente
         await osuTrackerService.addTrackedUserInMemory(record);
 
+        const guildLimit = await OsuTrackerModel.getTrackTopLimit(guild.id);
         const userMention = discordId ? `<@${discordId}>` : "";
-        const embed = doTrackAddEmbed(osuUsername, osuId, userMention, trackChannelId, locale);
+        const embed = doTrackAddEmbed(osuUsername, osuId, userMention, trackChannelId, locale, userTopLimit, guildLimit);
         return { embeds: [embed] };
     }
 
@@ -332,7 +361,8 @@ async function run(messages, args) {
         }
 
         const currentChannelId = await OsuTrackerModel.getTrackChannel(guild.id);
-        const embed = doTrackListEmbed(guild.name, trackedInGuild, currentChannelId, locale);
+        const guildLimit = await OsuTrackerModel.getTrackTopLimit(guild.id);
+        const embed = doTrackListEmbed(guild.name, trackedInGuild, currentChannelId, locale, guildLimit);
         return { embeds: [embed] };
     }
 

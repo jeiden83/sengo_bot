@@ -10,7 +10,8 @@ const { getBeatmap, getBeatmap_osu, calculatePP, normalizeScore } = require('../
 const { doOsuEmbed } = require('../views/osuEmbeds.js');
 
 // Estado en memoria del tracking
-const usersMap = new Map(); // osuId -> { osuId, osuUsername, discordId, lastScoreId, isActive, lastActiveAt, servers: [{ guildId, channelId, id }] }
+const usersMap = new Map(); // osuId -> { osuId, osuUsername, discordId, lastScoreId, isActive, lastActiveAt, servers: [{ guildId, channelId, id, topLimit }] }
+const guildTrackLimits = new Map(); // guildId -> limit (number, default 100)
 let slowQueue = []; // Array de osuIds
 let fastQueue = []; // Array de osuIds
 
@@ -74,17 +75,22 @@ async function fetchLatestScoreIdForUser(osuId, mode = 'osu') {
  */
 async function addTrackedUserInMemory(record) {
     const osuId = record.osu_id.toString();
+    const topLimit = record.top_limit !== undefined && record.top_limit !== null ? Number(record.top_limit) : null;
     
-    // Si ya existe en memoria, agregamos el servidor si no está
+    // Si ya existe en memoria, agregamos el servidor si no está o actualizamos
     if (usersMap.has(osuId)) {
         const userObj = usersMap.get(osuId);
-        const serverExists = userObj.servers.some(s => s.guildId === record.guild_id);
+        const serverExists = userObj.servers.find(s => s.guildId === record.guild_id);
         if (!serverExists) {
             userObj.servers.push({
                 guildId: record.guild_id,
                 channelId: record.channel_id,
-                id: record.id
+                id: record.id,
+                topLimit: topLimit
             });
+        } else {
+            if (record.channel_id) serverExists.channelId = record.channel_id;
+            if (record.top_limit !== undefined) serverExists.topLimit = topLimit;
         }
         // Si el registro de la DB tenía un lastScoreId configurado, lo actualizamos si es mayor
         if (record.last_score_id && (!userObj.lastScoreId || String(record.last_score_id) > String(userObj.lastScoreId))) {
@@ -112,7 +118,8 @@ async function addTrackedUserInMemory(record) {
         servers: [{
             guildId: record.guild_id,
             channelId: record.channel_id,
-            id: record.id
+            id: record.id,
+            topLimit: topLimit
         }]
     };
 
@@ -155,6 +162,24 @@ function updateTrackChannelInMemory(guildId, channelId) {
             }
         }
     }
+}
+
+/**
+ * Actualiza el límite de top plays configurado para un servidor en memoria.
+ */
+function updateGuildTrackLimitInMemory(guildId, limit) {
+    if (limit !== null && limit !== undefined) {
+        guildTrackLimits.set(guildId, Number(limit));
+    } else {
+        guildTrackLimits.delete(guildId);
+    }
+}
+
+/**
+ * Obtiene el límite de top plays de un servidor desde la memoria (default 100).
+ */
+function getGuildTrackLimitFromMemory(guildId) {
+    return guildTrackLimits.get(guildId) || 100;
 }
 
 /**
@@ -329,6 +354,23 @@ async function processNewScore(client, userObj, score) {
         // 4. Enviar el anuncio a cada servidor trackeado
         for (const srv of userObj.servers) {
             if (!srv.channelId) continue;
+
+            // ponytail: compatibilidad total hacia atrás. Si no hay límite explícito o del server, default estricto a 100
+            let effectiveLimit = 100;
+            if (srv.topLimit !== null && srv.topLimit !== undefined && !isNaN(srv.topLimit) && srv.topLimit > 0) {
+                effectiveLimit = Number(srv.topLimit);
+            } else {
+                const guildLimit = guildTrackLimits.get(srv.guildId);
+                if (guildLimit !== null && guildLimit !== undefined && !isNaN(guildLimit) && guildLimit > 0) {
+                    effectiveLimit = Number(guildLimit);
+                } else {
+                    effectiveLimit = 100;
+                }
+            }
+
+            if ((positionIndex + 1) > effectiveLimit) {
+                continue;
+            }
 
             const channel = await client.channels.fetch(srv.channelId).catch(() => null);
             if (!channel || !channel.isTextBased()) continue;
@@ -560,6 +602,12 @@ async function initOsuTracker(client) {
     // Ejecutar en segundo plano de forma no bloqueante para el arranque de la app
     (async () => {
         try {
+            // Cargar límites de servidor configurados
+            const limitsMap = await OsuTrackerModel.getAllGuildTrackLimits();
+            for (const [gId, lim] of limitsMap) {
+                guildTrackLimits.set(gId, lim);
+            }
+
             // Cargar todos los registros del tracker desde la base de datos
             const records = await OsuTrackerModel.getTrackedUsers();
             
@@ -583,5 +631,7 @@ module.exports = {
     initOsuTracker,
     addTrackedUserInMemory,
     removeTrackedUserInMemory,
-    updateTrackChannelInMemory
+    updateTrackChannelInMemory,
+    updateGuildTrackLimitInMemory,
+    getGuildTrackLimitFromMemory
 };
