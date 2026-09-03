@@ -346,18 +346,27 @@ function analyzeSkills(scores, returnBreakdown = false) {
         // 2. Strain PP total
         const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
-        // 3. Descomposición rítmica en Aim y Speed
-        const streamFactor = Math.max(0, Math.min(1.0, (notesPerBeat - 1.70) / 0.65));
-        const highBpmFactor = Math.max(0, Math.min(1.0, (effBPM - 180) / 90));
+        // 3. Descomposición rítmica en Aim y Speed calibrada con rosu-pp
+        const streamDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.50) / 0.70));
+        const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.62) / 0.22));
 
-        let speedDominance = streamFactor * (0.35 + 0.65 * highBpmFactor) * Math.min(1.2, circleRatio / 0.70);
+        // Maratones y stamina: mapas largos con alta cantidad de círculos a ritmo de stream
+        const circleCountBonus = (circles >= 900 && effBPM >= 170) ? Math.min(0.35, (circles - 800) / 2500) : 0;
+        const lengthStaminaBonus = (totalObj >= 1400 && effBPM >= 170) ? Math.min(0.25, (totalObj - 1200) / 3000) : 0;
+
+        const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 160) / 95));
+
+        let speedDominance = (streamDensity * circleStreamBias * 0.65) + (bpmSpeedFactor * 0.35) + circleCountBonus + lengthStaminaBonus;
+        if (streamDensity > 0.65 && circleStreamBias > 0.65) {
+            speedDominance += 0.15;
+        }
         speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
-        let aimFraction = 0.88 - (speedDominance * 0.50);
-        let speedFraction = 0.20 + (speedDominance * 0.65);
+        let aimFraction = 0.90 - (speedDominance * 0.46);
+        let speedFraction = 0.14 + (speedDominance * 0.66);
 
-        if (isHR) aimFraction += 0.06;
-        if (isHD) aimFraction += 0.03;
+        if (isHR) aimFraction += 0.05;
+        if (isHD) aimFraction += 0.02;
 
         const rawAimPP = strainPP * aimFraction;
         const rawSpeedPP = strainPP * speedFraction;
