@@ -303,41 +303,49 @@ function analyzeSkills(scores, returnBreakdown = false) {
 
         const effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
         const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
-        const circleRatio = totalObj > 0 ? (circles / totalObj) : 0.65;
-        const circleDensity = circles / effLen;
 
-        // Índice de corriente S ∈ [0.05, 0.95]
-        let streaminess = ((circleRatio - 0.45) / 0.35) * Math.pow(Math.max(0.5, circleDensity) / 5.0, 0.4);
-        streaminess = Math.max(0.05, Math.min(0.95, streaminess));
+        const beats = (effLen / 60) * effBPM;
+        const notesPerBeat = beats > 0 ? (totalObj / beats) : 1.5;
+        const circleRatio = totalObj > 0 ? (circles / totalObj) : 0.65;
+
+        // Calibración rítmica: diferencia streams a 1/4 (NPB >= 2.2) de saltos a 1/2 (NPB <= 1.8)
+        const streamFactor = Math.max(0, Math.min(1.2, (notesPerBeat - 1.75) / 1.05));
+
+        // Peso cinético de velocidad W_speed calibrado contra 1,400 casos de osu! C# (sengo-pp)
+        let speedWeight = 0.35 + 0.16 * streamFactor;
+        speedWeight += (Math.max(120, effBPM) - 180) * 0.0004;
+        speedWeight += (circleRatio - 0.60) * 0.09;
+        if (isDT) speedWeight += 0.03;
+        if (isHT) speedWeight += -0.045;
+        if (isHR) speedWeight += -0.04;
+        if (isEZ) speedWeight += 0.04;
+        speedWeight = Math.max(0.18, Math.min(0.55, speedWeight));
+
+        const aimWeight = 1.0 - speedWeight;
 
         // AIM STRAIN
-        let aimBase = Math.pow(sr / 5.5, 1.16) * 48.0;
-        aimBase *= (1.0 - 0.23 * streaminess);
-        if (isHR) aimBase *= (1.21 + Math.max(0, cs - 4.0) * 0.05);
-        if (isHD) aimBase *= 1.15;
-        if (isEZ) aimBase *= 0.92;
+        let aimBase = Math.pow(sr / 5.5, 1.15) * 50.0 * (aimWeight / 0.65);
+        if (isHR) aimBase *= (1.20 + Math.max(0, cs - 4.0) * 0.05);
+        if (isHD) aimBase *= 1.12;
+        if (isEZ) aimBase *= 0.90;
 
         // SPEED STRAIN
-        let speedBase = Math.pow(sr / 5.5, 0.45) * 45.0;
-        speedBase *= Math.pow(effBPM / 185, 0.53);
-        speedBase *= (0.50 + 0.276 * streaminess);
+        let speedBase = Math.pow(sr / 5.5, 0.85) * 45.0 * (speedWeight / 0.35);
+        speedBase *= Math.pow(effBPM / 185, 0.40);
         if (isEZ) speedBase *= 0.90;
-        if (streaminess > 0.50 && effBPM > 220) {
-            speedBase *= (1.0 + (streaminess - 0.50) * (effBPM - 220) * 0.007);
-        }
 
         // ACCURACY
         let accBase = Math.max(0, (accPct - 85) * 5.5);
 
         // READING STRAIN
-        let readingBase = (aimBase * 0.52 + speedBase * 0.65);
-        if (isHD) readingBase *= 1.12;
+        let readingBase = (aimBase * 0.48 + speedBase * 0.52);
+        if (isHD) readingBase *= 1.15;
         if (isEZ) readingBase *= 1.76;
         if (isFL) readingBase *= 1.77;
 
         const effAR = calculateEffectiveAR(ar, modsStr);
         if (effAR < 9.0) {
-            readingBase *= (1 + Math.min(6.0, 9.0 - effAR) * 0.005);
+            readingBase *= (1 + Math.min(6.0, 9.0 - effAR) * 0.008);
         } else if (effAR > 10.3) {
             readingBase *= (1 + Math.min(2.0, effAR - 10.3) * 0.09);
         }
@@ -424,25 +432,28 @@ async function analyzeSkillsBreakdown(scores) {
         try {
             const beatmap = await getBeatmap(bmId);
             const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
-            const diffAttrs = new engine.Difficulty({ mods: score.mods }).calculate(map);
+            const modsList = Array.isArray(score.mods)
+                ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+                : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
+            const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true }).calculate(map);
             calculatedStars.set(bmId, diffAttrs.stars);
         } catch (err) {
             calculatedStars.set(bmId, Number(score.beatmap?.difficulty_rating || 0));
         }
     }));
 
-    const attachStarsAndSort = (list) => {
+    const attachStarsAndSort = (list, skillKey) => {
         const withStars = (list || []).map(item => ({
             ...item,
             stars: calculatedStars.get(item.score.beatmap.id) ?? Number(item.score.beatmap?.difficulty_rating || 0)
         }));
-        return withStars.sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 3);
+        return withStars.sort((a, b) => (b[skillKey] || 0) - (a[skillKey] || 0)).slice(0, 3);
     };
 
-    const finalTopAim = attachStarsAndSort(base.topAim);
-    const finalTopSpeed = attachStarsAndSort(base.topSpeed);
-    const finalTopAcc = attachStarsAndSort(base.topAcc);
-    const finalTopReading = attachStarsAndSort(base.topReading);
+    const finalTopAim = attachStarsAndSort(base.topAim, "aim");
+    const finalTopSpeed = attachStarsAndSort(base.topSpeed, "speed");
+    const finalTopAcc = attachStarsAndSort(base.topAcc, "acc");
+    const finalTopReading = attachStarsAndSort(base.topReading, "reading");
 
     const avgStars = (list) => {
         if (!list || list.length === 0) return 0;
