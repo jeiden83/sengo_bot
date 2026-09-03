@@ -107,11 +107,73 @@ function normalizeScore(score) {
     if (!score.user.username && score.username) {
         score.user.username = score.username;
     }
-    if (!score.user.country_code && score.country_code) {
-        score.user.country_code = score.country_code;
+    // Fallback: Si la API de osu! devolvió accuracy = 0 o nulo pero hay notas registradas (común en mapas Graveyard/Unranked de stable)
+    if (score.accuracy === undefined || score.accuracy === null || Number(score.accuracy) === 0) {
+        const calculatedAcc = calculateScoreAccuracy(score);
+        if (calculatedAcc > 0) {
+            score.accuracy = calculatedAcc;
+            if (score.passed !== false && score.rank === 'D' && calculatedAcc >= 0.70) {
+                score.rank = calculateScoreRank(score, calculatedAcc);
+            }
+        }
     }
 
     return score;
+}
+
+function calculateScoreAccuracy(score) {
+    if (!score) return 0;
+    const stats = score.statistics || {};
+    const mode = score.beatmap?.mode || score.mode || (score.ruleset_id === 1 ? 'taiko' : score.ruleset_id === 2 ? 'fruits' : score.ruleset_id === 3 ? 'mania' : 'osu');
+    
+    const great = stats.great != null ? stats.great : 0;
+    const ok = stats.ok != null ? stats.ok : 0;
+    const meh = stats.meh != null ? stats.meh : 0;
+    const miss = stats.miss != null ? stats.miss : 0;
+
+    if (mode === 'mania' || score.ruleset_id === 3) {
+        const perfect = stats.perfect != null ? stats.perfect : 0;
+        const good = stats.good != null ? stats.good : 0;
+        const totalHits = perfect + great + good + ok + meh + miss;
+        if (totalHits === 0) return 0;
+        return ((300 * (perfect + great)) + (200 * good) + (100 * ok) + (50 * meh)) / (300 * totalHits);
+    } else if (mode === 'taiko' || score.ruleset_id === 1) {
+        const totalHits = great + ok + miss;
+        if (totalHits === 0) return 0;
+        return (great + 0.5 * ok) / totalHits;
+    } else if (mode === 'fruits' || score.ruleset_id === 2) {
+        const smallTickMiss = stats.small_tick_miss || 0;
+        const totalHits = great + ok + meh + miss + smallTickMiss;
+        if (totalHits === 0) return 0;
+        return (great + ok + meh) / totalHits;
+    } else {
+        const totalHits = great + ok + meh + miss;
+        if (totalHits === 0) return 0;
+        return (300 * great + 100 * ok + 50 * meh) / (300 * totalHits);
+    }
+}
+
+function calculateScoreRank(score, acc) {
+    const mode = score.beatmap?.mode || score.mode || (score.ruleset_id === 1 ? 'taiko' : score.ruleset_id === 2 ? 'fruits' : score.ruleset_id === 3 ? 'mania' : 'osu');
+    const mods = Array.isArray(score.mods) ? score.mods.map(m => (typeof m === 'string' ? m : m.acronym || '')) : [];
+    const hasSilver = mods.some(m => m === 'HD' || m === 'FL');
+
+    if (mode === 'mania' || score.ruleset_id === 3) {
+        if (acc >= 1.0) return hasSilver ? 'XH' : 'X';
+        if (acc > 0.95) return hasSilver ? 'SH' : 'S';
+        if (acc > 0.90) return 'A';
+        if (acc > 0.80) return 'B';
+        if (acc > 0.70) return 'C';
+        return 'D';
+    }
+    const stats = score.statistics || {};
+    const miss = stats.miss != null ? stats.miss : 0;
+    if (acc >= 1.0) return hasSilver ? 'XH' : 'X';
+    if (acc > 0.95 && miss === 0) return hasSilver ? 'SH' : 'S';
+    if (acc > 0.90) return 'A';
+    if (acc > 0.80) return 'B';
+    if (acc > 0.70) return 'C';
+    return 'D';
 }
 
 function convertGatariMods(modsBitmask) {
@@ -2436,6 +2498,8 @@ function benchmarkPP(score, mapInstance) {
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
+    calculateScoreAccuracy,
+    calculateScoreRank,
     calculatePP,
     hasUnrankedPPMods,
     benchmarkPP,
