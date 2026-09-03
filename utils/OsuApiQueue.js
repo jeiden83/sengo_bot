@@ -3,7 +3,7 @@ class OsuApiQueue {
         this.queue = [];
         this.running = false;
         this.lastRequestTime = 0;
-        this.delayBetweenRequests = 100; // 100ms mínimo base para evitar ráfagas excesivas
+        this.delayBetweenRequests = 250; // 250ms mínimo base (~4 req/s) para evitar ráfagas excesivas contra Cloudflare/API v2
         this.cooldownUntil = 0;
     }
 
@@ -67,9 +67,9 @@ class OsuApiQueue {
                 const result = await runWithTimeout(item.requestFn, 15000);
                 item.resolve(result);
                 
-                // Si la petición fue exitosa, reducir gradualmente el delay de vuelta al mínimo (100ms)
-                if (this.delayBetweenRequests > 100) {
-                    this.delayBetweenRequests = Math.max(100, this.delayBetweenRequests - 2);
+                // Si la petición fue exitosa, reducir gradualmente el delay de vuelta al mínimo (250ms)
+                if (this.delayBetweenRequests > 250) {
+                    this.delayBetweenRequests = Math.max(250, this.delayBetweenRequests - 5);
                 }
             } catch (error) {
                 const status = error.response?.status || error.status;
@@ -81,9 +81,14 @@ class OsuApiQueue {
                     } else {
                         item.reject(error);
                     }
-                    // Activar el pare general: pausar 3 segundos
-                    this.cooldownUntil = Date.now() + 3000;
-                    this.delayBetweenRequests = Math.min(this.delayBetweenRequests + 50, 500);
+                    // ponytail: Respetar Retry-After de Cloudflare/osu! si existe, o enfriar 30s por defecto
+                    const retryHeader = error.response?.headers?.['retry-after'];
+                    const retrySeconds = retryHeader && !isNaN(retryHeader) ? Number(retryHeader) : 30;
+                    const cooldownMs = Math.max(retrySeconds * 1000, 30000);
+
+                    this.cooldownUntil = Date.now() + cooldownMs;
+                    this.delayBetweenRequests = Math.min(this.delayBetweenRequests + 100, 1000);
+                    console.warn(`[OsuApiQueue] HTTP 429 detectado. Cooldown activado por ${Math.round(cooldownMs / 1000)}s.`);
                 } else {
                     item.reject(error);
                 }

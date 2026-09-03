@@ -3,10 +3,20 @@ const { WebhookClient, EmbedBuilder } = require('discord.js');
 const { getSetting } = require('../models/BotSettingsModel.js');
 const Logger = require('../utils/logger.js');
 
-const DEFAULT_SERVICE_ID = process.env.RENDER_SERVICE_ID || 'srv-da4pr7m7bikc73ac33lg';
+const DEFAULT_SERVICE_ID = process.env.RENDER_SERVICE_ID || 'srv-da1mte01ne8s73akjfcg';
 let lastSeenTimestamp = new Date().toISOString();
 let isPolling = false;
 let pollingInterval = null;
+
+// Pool de clientes webhook para coordinar rate limits internamente con discord.js
+const webhookClientsPool = new Map();
+
+function getWebhookClient(url) {
+    if (!webhookClientsPool.has(url)) {
+        webhookClientsPool.set(url, new WebhookClient({ url }));
+    }
+    return webhookClientsPool.get(url);
+}
 
 function requestRender(urlPath, apiKey) {
     return new Promise((resolve, reject) => {
@@ -57,17 +67,18 @@ function isEntryAnError(cleanMsg, labels = []) {
 }
 
 /**
- * Envía un mensaje o lote a un webhook de Discord con reintento básico y control de límites.
+ * Envía un mensaje o lote a un webhook de Discord reutilizando clientes para respetar rate limits.
  */
 async function sendToWebhook(webhookUrl, payload) {
     if (!webhookUrl) return;
     try {
-        const webhookClient = new WebhookClient({ url: webhookUrl });
+        const webhookClient = getWebhookClient(webhookUrl);
         await webhookClient.send(payload);
     } catch (err) {
-        // Si el webhook fue eliminado o es inválido, log silencioso
         if (err.code === 10015 || err.status === 404) {
             console.error('[RenderLogService] Webhook no encontrado o inválido.');
+        } else if (err.status === 429) {
+            console.warn('[RenderLogService] Rate limit 429 en webhook de Discord.');
         } else {
             console.error('[RenderLogService] Error enviando webhook:', err.message);
         }
@@ -182,6 +193,7 @@ async function pollRenderLogs() {
                         content: `⚠️ **[Render Errors]**\n\`\`\`ansi\n${errorChunk}\n\`\`\``
                     });
                     errorChunk = '';
+                    await new Promise(r => setTimeout(r, 600));
                 }
                 errorChunk += errLine + '\n';
             }
@@ -189,6 +201,7 @@ async function pollRenderLogs() {
                 await sendToWebhook(errorWebhookUrl, {
                     content: `⚠️ **[Render Errors]**\n\`\`\`ansi\n${errorChunk}\n\`\`\``
                 });
+                await new Promise(r => setTimeout(r, 600));
             }
         }
 
@@ -201,6 +214,7 @@ async function pollRenderLogs() {
                         content: `\`\`\`ansi\n${infoChunk}\n\`\`\``
                     });
                     infoChunk = '';
+                    await new Promise(r => setTimeout(r, 600));
                 }
                 infoChunk += logLine + '\n';
             }

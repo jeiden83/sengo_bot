@@ -272,36 +272,49 @@ async function findBeatmapInChannel(message, isReply, targetIndex = 1) {
                 : { beatmap_url: null, gamemode: null, fromList: false, bad_response: '❌ No se encontró un mapa al cual hacerle c' };
         }
 
-        const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
-        for (const msg of fetch_messages.values()) {
-            // Comprobar si el mensaje contiene un enlace de Discord a otro mensaje
-            const linkMatch = msg.content?.match(discordLinkRegex);
-            if (linkMatch) {
-                const channelId = linkMatch[2] || linkMatch[4];
-                const messageId = linkMatch[3] || linkMatch[5];
-                if (channelId && messageId) {
-                    const resolved = await resolveDiscordLink(channelId, messageId);
-                    if (resolved) {
-                        if (resolved.error) {
-                            // Si el link proviene del propio comando, abortamos inmediatamente con el error específico
-                            if (msg.id === message.id) {
-                                return { beatmap_url: null, gamemode: null, fromList: false, bad_response: `❌ Error al acceder al enlace de Discord: ${resolved.error}` };
+        // ponytail: Reutilizar lógica de escaneo para buscar primero en la caché en memoria (0 HTTP) y solo llamar a la API si es necesario
+        const scanMessages = async (messagesIterable) => {
+            for (const msg of messagesIterable) {
+                const linkMatch = msg.content?.match(discordLinkRegex);
+                if (linkMatch) {
+                    const channelId = linkMatch[2] || linkMatch[4];
+                    const messageId = linkMatch[3] || linkMatch[5];
+                    if (channelId && messageId) {
+                        const resolved = await resolveDiscordLink(channelId, messageId);
+                        if (resolved) {
+                            if (resolved.error) {
+                                if (msg.id === message.id) {
+                                    return { beatmap_url: null, gamemode: null, fromList: false, bad_response: `❌ Error al acceder al enlace de Discord: ${resolved.error}` };
+                                }
+                                continue;
                             }
-                            // Si proviene de otro mensaje del historial, lo ignoramos y seguimos buscando
-                            continue;
+                            return { ...resolved, bad_response: 'shh' };
                         }
-                        return { ...resolved, bad_response: 'shh' };
                     }
                 }
-            }
 
-            // Extracción directa del mensaje
-            const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
-            if (beatmap_url) {
-                const gamemode = getGamemodeFromMessage(msg);
-                return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
+                const { beatmap_url, fromList } = getBeatmapIdFromMessage(msg, targetIndex);
+                if (beatmap_url) {
+                    const gamemode = getGamemodeFromMessage(msg);
+                    return { beatmap_url, gamemode, fromList, bad_response: 'shh' };
+                }
             }
+            return null;
+        };
+
+        // 1. Escanear primero la caché en memoria del WebSocket (0 peticiones REST)
+        if (message.channel?.messages?.cache?.size > 0) {
+            const cachedMessages = Array.from(message.channel.messages.cache.values())
+                .sort((a, b) => b.createdTimestamp - a.createdTimestamp)
+                .slice(0, 30);
+            const foundInCache = await scanMessages(cachedMessages);
+            if (foundInCache) return foundInCache;
         }
+
+        // 2. Si no se encontró en caché, consultar el historial vía API como fallback
+        const fetch_messages = await message.channel.messages.fetch({ limit: 30 });
+        const foundInFetch = await scanMessages(fetch_messages.values());
+        if (foundInFetch) return foundInFetch;
 
         return { beatmap_url: null, gamemode: null, fromList: false, bad_response: '❌ No se encontró ningún mapa en el historial del canal ni se especificó un ID válido.' };
     } catch (error) {

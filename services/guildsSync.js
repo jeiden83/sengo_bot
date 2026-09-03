@@ -99,26 +99,19 @@ async function syncAllGuilds(force = false) {
 
         for (const [guildId, guild] of discordClient.guilds.cache) {
             const presentInGuild = new Set();
-            const chunkSize = 100;
-            for (let i = 0; i < discordIds.length; i += chunkSize) {
-                const chunk = discordIds.slice(i, i + chunkSize);
-                try {
-                    const fetched = await guild.members.fetch({ user: chunk }).catch(async () => {
-                        const map = new Map();
-                        for (const id of chunk) {
-                            try {
-                                const member = await guild.members.fetch(id);
-                                if (member) map.set(id, member);
-                            } catch {}
-                        }
-                        return map;
-                    });
-                    for (const id of fetched.keys()) {
+            try {
+                // ponytail: Precargar miembros vía Gateway WebSocket (0 peticiones REST HTTP) si la caché está incompleta
+                if (guild.memberCount && guild.members.cache.size < guild.memberCount) {
+                    await guild.members.fetch().catch(() => null);
+                }
+
+                for (const id of discordIds) {
+                    if (guild.members.cache.has(id)) {
                         presentInGuild.add(id);
                     }
-                } catch (err) {
-                    console.error(`[guildsSync] Error al verificar lote en guild ${guild.name} (${guildId}):`, err);
                 }
+            } catch (err) {
+                console.error(`[guildsSync] Error al verificar miembros en guild ${guild.name} (${guildId}):`, err);
             }
 
             for (const id of presentInGuild) {
