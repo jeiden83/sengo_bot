@@ -240,8 +240,34 @@ function calculateEffectiveAR(baseAR, modsStr) {
 }
 
 /**
+ * Función de mapeo asintótico calibrada para normalizar la maestría a escala 0-100.
+ * Satura hacia 99-100 en desempeños sobrehumanos y escala de forma fluida en rangos intermedios.
+ */
+function mapToSkillCurve(val) {
+    if (!val || val <= 0) return 0;
+    const factor = Math.pow(8.0 / (val / 72.0 + 8.0), 10);
+    return Math.min(100, Math.max(0, -101.0 * factor + 101.0));
+}
+
+/**
+ * Calcula el Acc PP estimado a partir del OD, precisión y cantidad de objetos.
+ * Basado en la formulación de rendimiento de osu! estándar.
+ */
+function estimateAccPP(od, accPct, totalHits, isHR, isEZ, isDT) {
+    const acc = Math.max(0, Math.min(100, accPct)) / 100;
+    if (acc < 0.8) return 0;
+    let effOD = od;
+    if (isHR) effOD = Math.min(10, od * 1.4);
+    if (isEZ) effOD = od * 0.5;
+    if (isDT) effOD = Math.min(11.1, effOD * 1.11);
+    const nObjects = Math.max(1, totalHits || 1000);
+    const lengthBonus = Math.min(1.15, Math.pow(nObjects / 1500, 0.3));
+    return Math.pow(1.52163, effOD) * Math.pow((acc - 0.8) / 0.2, 2.4) * lengthBonus * 2.83;
+}
+
+/**
  * Analiza skills del jugador a partir de sus mejores puntuaciones mediante
- * descomposición de strains de patrones y cinética calibrada con sengo-pp.
+ * descomposición cinético-analítica de PP y curva de saturación de maestría.
  */
 function analyzeSkills(scores, returnBreakdown = false) {
     if (!scores || scores.length === 0) {
@@ -266,11 +292,17 @@ function analyzeSkills(scores, returnBreakdown = false) {
     let aimSum = 0, speedSum = 0, accSum = 0, readingSum = 0, totalWeight = 0;
     const scoredPlays = [];
 
+    const AIM_NERF = 3.7;
+    const SPEED_NERF = 2.5;
+    const ACC_NERF = 1.1;
+    const READING_NERF = 3.2;
+
     for (let i = 0; i < scores.length; i++) {
         const s = scores[i];
         const weight = Math.pow(0.95, i);
         totalWeight += weight;
 
+        const pp = Number(s.pp || 0);
         const accuracy = Number(s.accuracy != null ? s.accuracy : 0.98);
         const accPct = accuracy <= 1 ? accuracy * 100 : accuracy;
 
@@ -294,103 +326,90 @@ function analyzeSkills(scores, returnBreakdown = false) {
         const isFL = modsStr.includes("FL");
 
         const bpm = Number(s.beatmap?.bpm || 180);
-        const sr = Number(s.beatmap?.difficulty_rating || 5.5);
         const ar = Number(s.beatmap?.ar || 9.0);
-        const cs = Number(s.beatmap?.cs || 4.0);
+        const od = Number(s.beatmap?.accuracy || 8.0);
         const circles = Number(s.beatmap?.count_circles || 0);
         const sliders = Number(s.beatmap?.count_sliders || 0);
-        const totalObj = circles + sliders;
+        const totalObj = Math.max(1, circles + sliders);
 
         const effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
         const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
 
         const beats = (effLen / 60) * effBPM;
         const notesPerBeat = beats > 0 ? (totalObj / beats) : 1.5;
-        const circleRatio = totalObj > 0 ? (circles / totalObj) : 0.65;
+        const circleRatio = circles / totalObj;
 
-        // Calibración rítmica: diferencia streams a 1/4 (NPB >= 2.2) de saltos a 1/2 (NPB <= 1.8)
-        const streamFactor = Math.max(0, Math.min(1.2, (notesPerBeat - 1.75) / 1.05));
+        // 1. Acc PP estimado
+        let rawAccPP = estimateAccPP(od, accPct, totalObj, isHR, isEZ, isDT);
+        rawAccPP = Math.min(rawAccPP, pp * 0.28);
 
-        // Peso cinético de velocidad W_speed calibrado contra 1,400 casos de osu! C# (sengo-pp)
-        let speedWeight = 0.35 + 0.16 * streamFactor;
-        speedWeight += (Math.max(120, effBPM) - 180) * 0.0004;
-        speedWeight += (circleRatio - 0.60) * 0.09;
-        if (isDT) speedWeight += 0.03;
-        if (isHT) speedWeight += -0.045;
-        if (isHR) speedWeight += -0.04;
-        if (isEZ) speedWeight += 0.04;
-        speedWeight = Math.max(0.18, Math.min(0.55, speedWeight));
+        // 2. Strain PP total
+        const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
-        const aimWeight = 1.0 - speedWeight;
+        // 3. Descomposición rítmica en Aim y Speed
+        const streamFactor = Math.max(0, Math.min(1.0, (notesPerBeat - 1.70) / 0.65));
+        const highBpmFactor = Math.max(0, Math.min(1.0, (effBPM - 180) / 90));
 
-        // AIM STRAIN
-        let aimBase = Math.pow(sr / 5.5, 1.15) * 50.0 * (aimWeight / 0.65);
-        if (isHR) aimBase *= (1.20 + Math.max(0, cs - 4.0) * 0.05);
-        if (isHD) aimBase *= 1.12;
-        if (isEZ) aimBase *= 0.90;
+        let speedDominance = streamFactor * (0.35 + 0.65 * highBpmFactor) * Math.min(1.2, circleRatio / 0.70);
+        speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
-        // SPEED STRAIN
-        let speedBase = Math.pow(sr / 5.5, 0.85) * 45.0 * (speedWeight / 0.35);
-        speedBase *= Math.pow(effBPM / 185, 0.40);
-        if (isEZ) speedBase *= 0.90;
+        let aimFraction = 0.88 - (speedDominance * 0.50);
+        let speedFraction = 0.20 + (speedDominance * 0.65);
 
-        // ACCURACY
-        let accBase = Math.max(0, (accPct - 85) * 5.5);
+        if (isHR) aimFraction += 0.06;
+        if (isHD) aimFraction += 0.03;
 
-        // READING STRAIN
-        let readingBase = (aimBase * 0.48 + speedBase * 0.52);
-        if (isHD) readingBase *= 1.15;
-        if (isEZ) readingBase *= 1.76;
-        if (isFL) readingBase *= 1.77;
+        const rawAimPP = strainPP * aimFraction;
+        const rawSpeedPP = strainPP * speedFraction;
 
-        const effAR = calculateEffectiveAR(ar, modsStr);
-        if (effAR < 9.0) {
-            readingBase *= (1 + Math.min(6.0, 9.0 - effAR) * 0.008);
-        } else if (effAR > 10.3) {
-            readingBase *= (1 + Math.min(2.0, effAR - 10.3) * 0.09);
-        }
+        // 4. Reading PP
+        let effAR = ar;
+        if (isHR) effAR = Math.min(10, ar * 1.4);
+        if (isEZ) effAR = ar * 0.5;
+        if (isDT) effAR = ar <= 5 ? (5 + (ar * 0.75)) : (5 + (ar - 5) * 0.75 * (2 / 3) + 2.5);
 
-        // FACTORES DE RENDIMIENTO (Performance del jugador en la jugada)
-        const misses = Number(s.statistics?.miss ?? s.count_miss ?? 0);
-        const aimExecFactor = Math.pow(accPct / 100.0, 1.5) * Math.pow(0.97, misses);
-        const speedExecFactor = Math.pow(accPct / 100.0, 2.0) * Math.pow(0.96, misses);
-        const readingExecFactor = Math.pow(accPct / 100.0, 1.2) * Math.pow(0.97, misses);
-        const accExecFactor = Math.pow(0.97, misses);
+        let readingMultiplier = 1.0;
+        if (isHD) readingMultiplier *= 1.18;
+        if (isFL) readingMultiplier *= 1.75;
+        if (isEZ) readingMultiplier *= 1.65;
+        if (effAR < 9.0) readingMultiplier *= (1 + (9.0 - effAR) * 0.08);
+        else if (effAR > 10.3) readingMultiplier *= (1 + (effAR - 10.3) * 0.10);
 
-        // Puntuaciones efectivas demostradas por el usuario
-        const effectiveAim = aimBase * aimExecFactor;
-        const effectiveSpeed = speedBase * speedExecFactor;
-        const effectiveReading = readingBase * readingExecFactor;
-        const effectiveAcc = accBase * accExecFactor;
+        const rawReadingPP = (rawAimPP * 0.48 + rawSpeedPP * 0.48) * readingMultiplier;
+
+        const playAim = mapToSkillCurve(rawAimPP / AIM_NERF);
+        const playSpeed = mapToSkillCurve(rawSpeedPP / SPEED_NERF);
+        const playAcc = mapToSkillCurve(rawAccPP / ACC_NERF);
+        const playReading = mapToSkillCurve(rawReadingPP / READING_NERF);
 
         if (returnBreakdown) {
             scoredPlays.push({
                 score: s,
-                aim: effectiveAim,
-                speed: effectiveSpeed,
-                acc: effectiveAcc,
-                reading: effectiveReading
+                aim: playAim,
+                speed: playSpeed,
+                acc: playAcc,
+                reading: playReading
             });
         }
 
-        aimSum += effectiveAim * weight;
-        speedSum += effectiveSpeed * weight;
-        accSum += effectiveAcc * weight;
-        readingSum += effectiveReading * weight;
+        aimSum += (rawAimPP / AIM_NERF) * weight;
+        speedSum += (rawSpeedPP / SPEED_NERF) * weight;
+        accSum += (rawAccPP / ACC_NERF) * weight;
+        readingSum += (rawReadingPP / READING_NERF) * weight;
     }
 
     const total = scores.length;
-    const aim = totalWeight > 0 ? (aimSum / totalWeight) : 40.0;
-    const speed = totalWeight > 0 ? (speedSum / totalWeight) : 30.0;
-    const acc = totalWeight > 0 ? (accSum / totalWeight) : 50.0;
-    const reading = totalWeight > 0 ? (readingSum / totalWeight) : 35.0;
+    const aimAvg = totalWeight > 0 ? (aimSum / totalWeight) : 40.0;
+    const speedAvg = totalWeight > 0 ? (speedSum / totalWeight) : 30.0;
+    const accAvg = totalWeight > 0 ? (accSum / totalWeight) : 50.0;
+    const readingAvg = totalWeight > 0 ? (readingSum / totalWeight) : 35.0;
     const topPlayPP = Math.round(Number(scores[0]?.pp || 0));
 
     const result = {
-        aim: Number(aim.toFixed(2)),
-        speed: Number(speed.toFixed(2)),
-        acc: Number(acc.toFixed(2)),
-        reading: Number(reading.toFixed(2)),
+        aim: Number(mapToSkillCurve(aimAvg).toFixed(2)),
+        speed: Number(mapToSkillCurve(speedAvg).toFixed(2)),
+        acc: Number(mapToSkillCurve(accAvg).toFixed(2)),
+        reading: Number(mapToSkillCurve(readingAvg).toFixed(2)),
         topPlayPP,
         modStats: {
             DT: Math.round((dtCount / total) * 100),
@@ -494,16 +513,22 @@ async function analyzeSkillsBreakdown(scores) {
  */
 function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es") {
     const isEs = locale === "es";
+    const maxSkill = Math.max(skills.aim || 0, skills.speed || 0, skills.acc || 0, skills.reading || 0);
+
     let prefix = isEs ? "Novato" : "Novice";
-    if (pp > 16000) prefix = isEs ? "Legendario" : "Legendary";
-    else if (pp > 11000) prefix = isEs ? "Experto" : "Expert";
-    else if (pp > 6500) prefix = isEs ? "Avanzado" : "Advanced";
-    else if (pp > 3500) prefix = isEs ? "Veterano" : "Seasoned";
-    else if (pp > 1500) prefix = isEs ? "Intermedio" : "Intermediate";
-    else if (pp > 500) prefix = isEs ? "Competente" : "Competent";
+    if (maxSkill >= 96 || pp > 25000) prefix = isEs ? "Dios" : "God";
+    else if (maxSkill >= 90 || pp > 16000) prefix = isEs ? "Legendario" : "Legendary";
+    else if (maxSkill >= 85 || pp > 11000) prefix = isEs ? "Maestro" : "Master";
+    else if (maxSkill >= 78 || pp > 7500) prefix = isEs ? "Experto" : "Expert";
+    else if (maxSkill >= 68 || pp > 4500) prefix = isEs ? "Profesional" : "Professional";
+    else if (maxSkill >= 58 || pp > 2800) prefix = isEs ? "Veterano" : "Seasoned";
+    else if (maxSkill >= 48 || pp > 1500) prefix = isEs ? "Avanzado" : "Advanced";
+    else if (maxSkill >= 35 || pp > 700) prefix = isEs ? "Intermedio" : "Intermediate";
 
     let descriptor = isEs ? "Versátil" : "Versatile";
-    if (modStats.NM >= 55) descriptor = isEs ? "Anti-Mods" : "Mod-Hating";
+    if (modStats.DT >= 50 && modStats.HD >= 50) descriptor = isEs ? "Veloz Abusador de HD" : "Speedy HD-Abusing";
+    else if (modStats.HR >= 40 && modStats.HD >= 40) descriptor = isEs ? "Preciso Abusador de HD" : "Ant-Clicking HD-Abusing";
+    else if (modStats.NM >= 55) descriptor = isEs ? "Anti-Mods" : "Mod-Hating";
     else if (modStats.DT >= 40) descriptor = isEs ? "Veloz" : "Speedy";
     else if (modStats.HR >= 35) descriptor = isEs ? "Preciso" : "Ant-Clicking";
     else if (modStats.HD >= 45) descriptor = isEs ? "Abusador de HD" : "HD abusing";
@@ -513,20 +538,20 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es")
 
     let suffix = isEs ? "Todoterreno" : "All-Rounder";
     const rankedMaps = Number(user.ranked_and_approved_beatmapset_count || 0);
-    const snipesCount = Number(sengoData.nationalTopsCount || 0);
+    const snipesCount = Number(sengoData?.nationalTopsCount || 0);
 
     if (snipesCount >= 500) {
         suffix = isEs ? "Némesis Nacional" : "National Nemesis";
     } else if (snipesCount >= 200) {
         suffix = isEs ? "Amenaza de Snipes" : "Snipe Menace";
-    } else if (rankedMaps >= 1) {
+    } else if (rankedMaps >= 10) {
         suffix = isEs ? "Creador de Beatmaps" : "Beatmap Crafter";
-    } else if (skills.reading > skills.aim && skills.reading > skills.speed) {
-        suffix = isEs ? "Demonio de Lectura" : "Sightread Demon";
-    } else if (skills.aim >= skills.speed && skills.aim >= skills.acc) {
+    } else if (skills.aim >= skills.speed && skills.aim >= skills.acc && skills.aim >= skills.reading) {
         suffix = isEs ? "Cazador de Círculos" : "Whack-A-Mole";
-    } else if (skills.speed >= skills.aim && skills.speed >= skills.acc) {
+    } else if (skills.speed >= skills.aim && skills.speed >= skills.acc && skills.speed >= skills.reading) {
         suffix = isEs ? "Mecanógrafo Veloz" : "speedtypist";
+    } else if (skills.reading >= skills.aim && skills.reading >= skills.speed && skills.reading >= skills.acc) {
+        suffix = isEs ? "Demonio de Lectura" : "Sightread Demon";
     } else {
         suffix = isEs ? "Ritmo Encarnado" : "Rhythm-Incarnate";
     }
@@ -1328,5 +1353,6 @@ module.exports = {
     doOsuCardEmbed,
     clearCardCache,
     analyzeSkills,
-    analyzeSkillsBreakdown
+    analyzeSkillsBreakdown,
+    generateCardTitle
 };
