@@ -167,7 +167,6 @@ const UNRANKED_PP_MODS = new Set([
 
 function hasUnrankedPPMods(score) {
     if (!score) return false;
-    if (score.ranked === false) return true;
 
     const rawMods = score.mods;
     if (!rawMods) return false;
