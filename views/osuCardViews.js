@@ -382,10 +382,10 @@ function analyzeSkills(scores, returnBreakdown = false) {
     };
 
     if (returnBreakdown) {
-        result.topAim = scoredPlays.slice().sort((a, b) => b.aim - a.aim).slice(0, 3);
-        result.topSpeed = scoredPlays.slice().sort((a, b) => b.speed - a.speed).slice(0, 3);
-        result.topAcc = scoredPlays.slice().sort((a, b) => b.acc - a.acc).slice(0, 3);
-        result.topReading = scoredPlays.slice().sort((a, b) => b.reading - a.reading).slice(0, 3);
+        result.topAim = scoredPlays.slice().sort((a, b) => b.aim - a.aim).slice(0, 6);
+        result.topSpeed = scoredPlays.slice().sort((a, b) => b.speed - a.speed).slice(0, 6);
+        result.topAcc = scoredPlays.slice().sort((a, b) => b.acc - a.acc).slice(0, 6);
+        result.topReading = scoredPlays.slice().sort((a, b) => b.reading - a.reading).slice(0, 6);
     }
 
     return result;
@@ -431,17 +431,18 @@ async function analyzeSkillsBreakdown(scores) {
         }
     }));
 
-    const attachStars = (list) => {
-        return (list || []).map(item => ({
+    const attachStarsAndSort = (list) => {
+        const withStars = (list || []).map(item => ({
             ...item,
             stars: calculatedStars.get(item.score.beatmap.id) ?? Number(item.score.beatmap?.difficulty_rating || 0)
         }));
+        return withStars.sort((a, b) => (b.stars || 0) - (a.stars || 0)).slice(0, 3);
     };
 
-    const finalTopAim = attachStars(base.topAim);
-    const finalTopSpeed = attachStars(base.topSpeed);
-    const finalTopAcc = attachStars(base.topAcc);
-    const finalTopReading = attachStars(base.topReading);
+    const finalTopAim = attachStarsAndSort(base.topAim);
+    const finalTopSpeed = attachStarsAndSort(base.topSpeed);
+    const finalTopAcc = attachStarsAndSort(base.topAcc);
+    const finalTopReading = attachStarsAndSort(base.topReading);
 
     const avgStars = (list) => {
         if (!list || list.length === 0) return 0;
