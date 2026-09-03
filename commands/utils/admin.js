@@ -32,23 +32,29 @@ async function localBeatmapStatus(beatmap_osu_id, beatmap_metadata){
 		const version = beatmap_metadata.version || '';
 		const name = (artist && title) ? `${artist} - ${title} [${version}]` : (version ? `[${version}]` : `Beatmap ${beatmap_osu_id}`);
 
+		const payload = {
+			beatmap_id: beatmap_osu_id.toString(),
+			status: beatmap_metadata.status || 'ranked',
+			last_updated: beatmap_metadata.last_updated,
+			name: name
+		};
+		if (beatmap_metadata.checksum) {
+			payload.checksum = beatmap_metadata.checksum;
+		}
+
 		const { error } = await supabase
 			.from('local_beatmaps')
-			.upsert({
-				beatmap_id: beatmap_osu_id.toString(),
-				status: beatmap_metadata.status,
-				last_updated: beatmap_metadata.last_updated,
-				name: name
-			}, { onConflict: 'beatmap_id' });
+			.upsert(payload, { onConflict: 'beatmap_id' });
 
 		if (error) {
 			console.error(`❌ Error actualizando beatmap ${beatmap_osu_id} en Supabase:`, error.message);
 		}
 
 		return {
-			status: beatmap_metadata.status,
-			last_updated: beatmap_metadata.last_updated,
-			name: name
+			status: payload.status,
+			last_updated: payload.last_updated,
+			name: name,
+			checksum: payload.checksum
 		};
 	}
 

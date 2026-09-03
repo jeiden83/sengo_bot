@@ -1,5 +1,6 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 const axios = require('axios');
 const https = require('https');
 const ppEngine = require("../utils/ppEngine.js");
@@ -52,8 +53,24 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
 
     // 1. Verificar si el archivo ya existe en caché local y es válido
     if (fs.existsSync(filePath)) {
-        if (!unranked_statuses.has(beatmap_metadata.status)) {
-            localFileIsValid = true;
+        if (beatmap_metadata && beatmap_metadata.checksum) {
+            beatmap_index = await localBeatmapStatus(beatmap_osu_id);
+            if (beatmap_index && beatmap_index.checksum) {
+                if (beatmap_index.checksum === beatmap_metadata.checksum) {
+                    localFileIsValid = true;
+                }
+            } else {
+                const localMD5 = crypto.createHash('md5').update(fs.readFileSync(filePath)).digest('hex');
+                if (localMD5 === beatmap_metadata.checksum) {
+                    localFileIsValid = true;
+                    localBeatmapStatus(beatmap_osu_id, { ...beatmap_metadata, checksum: localMD5 }).catch(() => {});
+                }
+            }
+        } else if (!unranked_statuses.has(beatmap_metadata.status)) {
+            beatmap_index = await localBeatmapStatus(beatmap_osu_id);
+            if (!beatmap_index || !beatmap_metadata.last_updated || beatmap_index.last_updated == beatmap_metadata.last_updated) {
+                localFileIsValid = true;
+            }
         } else {
             beatmap_index = await localBeatmapStatus(beatmap_osu_id);
             if (beatmap_index && beatmap_index.last_updated == beatmap_metadata.last_updated) {
@@ -73,7 +90,11 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     }
 
     if (beatmap_index) {
-        if (!unranked_statuses.has(beatmap_metadata.status) || 
+        if (beatmap_metadata && beatmap_metadata.checksum) {
+            if (beatmap_index.checksum && beatmap_index.checksum === beatmap_metadata.checksum) {
+                trySupabase = true;
+            }
+        } else if (!unranked_statuses.has(beatmap_metadata.status) || 
             (beatmap_index.last_updated == beatmap_metadata.last_updated)) {
             trySupabase = true;
         }
@@ -153,8 +174,13 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
         // Guardar el archivo físicamente
         fs.writeFileSync(filePath, data);
 
-        // Actualizar el index de beatmaps locales
-        await localBeatmapStatus(beatmap_osu_id, beatmap_metadata);
+        const calculatedMD5 = crypto.createHash('md5').update(data).digest('hex');
+
+        // Actualizar el index de beatmaps locales con el checksum
+        await localBeatmapStatus(beatmap_osu_id, {
+            ...beatmap_metadata,
+            checksum: beatmap_metadata?.checksum || calculatedMD5
+        });
 
         // Subir a Supabase Storage en segundo plano
         const supabase = getSupabaseClient();
