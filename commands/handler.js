@@ -853,10 +853,17 @@ async function loadSlashCommands(chat_commands, config) {
 
 	let lastHash = '';
 	try {
-		if (fs.existsSync(hashPath)) {
-			lastHash = fs.readFileSync(hashPath, 'utf8').trim();
-		}
+		const { getSetting } = require('../models/BotSettingsModel.js');
+		lastHash = await getSetting('slash_commands_hash');
 	} catch (_) {}
+
+	if (!lastHash) {
+		try {
+			if (fs.existsSync(hashPath)) {
+				lastHash = fs.readFileSync(hashPath, 'utf8').trim();
+			}
+		} catch (_) {}
+	}
 
 	if (lastHash === commandsHash) {
 		console.log('# Slash commands sincronizados (sin cambios, omitiendo petición a Discord).');
@@ -868,6 +875,11 @@ async function loadSlashCommands(chat_commands, config) {
 					Routes.applicationCommands(config.CLIENT_ID),
 					{ body: commands }
 				);
+				// Guardar en Supabase para persistir entre deploys/contenedores de Render
+				try {
+					const { setSetting } = require('../models/BotSettingsModel.js');
+					await setSetting('slash_commands_hash', commandsHash);
+				} catch (_) {}
 				try {
 					const hashDir = path.dirname(hashPath);
 					if (!fs.existsSync(hashDir)) fs.mkdirSync(hashDir, { recursive: true });
