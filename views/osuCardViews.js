@@ -350,20 +350,33 @@ function analyzeSkills(scores, returnBreakdown = false) {
             readingBase *= (1 + Math.min(2.0, effAR - 10.3) * 0.09);
         }
 
+        // FACTORES DE RENDIMIENTO (Performance del jugador en la jugada)
+        const misses = Number(s.statistics?.miss ?? s.count_miss ?? 0);
+        const aimExecFactor = Math.pow(accPct / 100.0, 1.5) * Math.pow(0.97, misses);
+        const speedExecFactor = Math.pow(accPct / 100.0, 2.0) * Math.pow(0.96, misses);
+        const readingExecFactor = Math.pow(accPct / 100.0, 1.2) * Math.pow(0.97, misses);
+        const accExecFactor = Math.pow(0.97, misses);
+
+        // Puntuaciones efectivas demostradas por el usuario
+        const effectiveAim = aimBase * aimExecFactor;
+        const effectiveSpeed = speedBase * speedExecFactor;
+        const effectiveReading = readingBase * readingExecFactor;
+        const effectiveAcc = accBase * accExecFactor;
+
         if (returnBreakdown) {
             scoredPlays.push({
                 score: s,
-                aim: aimBase,
-                speed: speedBase,
-                acc: accBase,
-                reading: readingBase
+                aim: effectiveAim,
+                speed: effectiveSpeed,
+                acc: effectiveAcc,
+                reading: effectiveReading
             });
         }
 
-        aimSum += aimBase * weight;
-        speedSum += speedBase * weight;
-        accSum += accBase * weight;
-        readingSum += readingBase * weight;
+        aimSum += effectiveAim * weight;
+        speedSum += effectiveSpeed * weight;
+        accSum += effectiveAcc * weight;
+        readingSum += effectiveReading * weight;
     }
 
     const total = scores.length;
