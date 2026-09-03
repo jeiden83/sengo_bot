@@ -7,6 +7,8 @@ const { t } = require("../utils/i18n.js");
 const Logger = require("../utils/logger.js");
 
 const MAX_MESSAGE_LENGTH = 2000;
+const lastTypingPerChannel = new Map();
+const TYPING_COOLDOWN_MS = 7000; // En Discord el indicador de typing dura hasta 10 segundos
 
 function getFriendlyErrorMessage(error) {
     const errorStr = (error.message || String(error)).toLowerCase();
@@ -228,7 +230,21 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
-        // ponytail: Se omite sendTyping() global obligatorio para evitar saturar el rate limit de Discord (5 req/5s por canal) y eliminar latencia innecesaria en comandos rápidos.
+        // ponytail: Typing asíncrono no bloqueante con debounce de 7s por canal (0 latencia al comando y 0 riesgo de rate limit 429)
+        const channelId = message.channel?.id;
+        if (channelId) {
+            const now = Date.now();
+            const lastTyping = lastTypingPerChannel.get(channelId) || 0;
+            if (now - lastTyping > TYPING_COOLDOWN_MS) {
+                lastTypingPerChannel.set(channelId, now);
+                message.channel.sendTyping().catch(() => {});
+                if (lastTypingPerChannel.size > 200) {
+                    for (const [id, time] of lastTypingPerChannel) {
+                        if (now - time > 60000) lastTypingPerChannel.delete(id);
+                    }
+                }
+            }
+        }
         
         const logger = new Logger(message, message_command, message_args);
         const startTime = logger.startTime;
