@@ -59,37 +59,36 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
 
     const authorName = `${flag} ${username}: ${ppFormatted}pp (${globalRank} ${countryRank})`;
 
-    const avgStars = skillsBreakdown.averageStars || { aim: 0, speed: 0, acc: 0, reading: 0 };
     const aimScore = skillsBreakdown.aim ?? 0;
     const speedScore = skillsBreakdown.speed ?? 0;
     const accScore = skillsBreakdown.acc ?? 0;
     const readingScore = skillsBreakdown.reading ?? 0;
 
-    // Encabezado de promedios
+    // Encabezado de promedios en puntos
     const avgLines = [
-        `**${t(locale, "skills.avg_aim")}:** ${avgStars.aim.toFixed(2)}★ *(Card: ${aimScore.toFixed(2)})*`,
-        `**${t(locale, "skills.avg_speed")}:** ${avgStars.speed.toFixed(2)}★ *(Card: ${speedScore.toFixed(2)})*`,
-        `**${t(locale, "skills.avg_acc")}:** ${avgStars.acc.toFixed(2)}★ *(Card: ${accScore.toFixed(2)})*`,
-        `**${t(locale, "skills.avg_reading")}:** ${avgStars.reading.toFixed(2)}★ *(Card: ${readingScore.toFixed(2)})*`
+        `**${t(locale, "skills.avg_aim")}:** ${aimScore.toFixed(2)} pts`,
+        `**${t(locale, "skills.avg_speed")}:** ${speedScore.toFixed(2)} pts`,
+        `**${t(locale, "skills.avg_acc")}:** ${accScore.toFixed(2)} pts`,
+        `**${t(locale, "skills.avg_reading")}:** ${readingScore.toFixed(2)} pts`
     ];
 
     /**
-     * Construye las líneas de jugadas para una habilidad específica
+     * Construye las líneas de jugadas para una habilidad específica mostrando sus puntos
      */
-    const buildSkillLines = (plays) => {
+    const buildSkillLines = (plays, skillKey) => {
         if (!plays || plays.length === 0) {
             return `*${t(locale, "skills.no_plays")}*`;
         }
         return plays.map(item => {
             const sc = item.score;
-            const stars = Number(item.stars || sc.beatmap?.difficulty_rating || 0).toFixed(2);
+            const points = Number(item[skillKey] != null ? item[skillKey] : (item.points || 0)).toFixed(2);
             const grade = getGradeEmoji(sc.rank, sc.passed !== false);
             const songTitle = sc.beatmapset?.title || sc.beatmap?.title || "Beatmap";
             const diffName = sc.beatmap?.version || "Normal";
             const mapUrl = `https://osu.ppy.sh/b/${sc.beatmap?.id}`;
             const mods = formatModsCleanText(sc.mods);
 
-            return `\`${stars}★\` ${grade} [${songTitle} [${diffName}]](${mapUrl})${mods}`;
+            return `\`${points} pts\` ${grade} [${songTitle} [${diffName}]](${mapUrl})${mods}`;
         }).join("\n");
     };
 
@@ -97,16 +96,16 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
         avgLines.join("\n"),
         "",
         `**${t(locale, "skills.section_aim")}**`,
-        buildSkillLines(skillsBreakdown.topAim),
+        buildSkillLines(skillsBreakdown.topAim, "aim"),
         "",
         `**${t(locale, "skills.section_speed")}**`,
-        buildSkillLines(skillsBreakdown.topSpeed),
+        buildSkillLines(skillsBreakdown.topSpeed, "speed"),
         "",
         `**${t(locale, "skills.section_acc")}**`,
-        buildSkillLines(skillsBreakdown.topAcc),
+        buildSkillLines(skillsBreakdown.topAcc, "acc"),
         "",
         `**${t(locale, "skills.section_reading")}**`,
-        buildSkillLines(skillsBreakdown.topReading)
+        buildSkillLines(skillsBreakdown.topReading, "reading")
     ].join("\n");
 
     return new EmbedBuilder()
