@@ -66,22 +66,28 @@ async function main(reload) {
         }
     }
 
-    client = new Client({ 
-        intents: [
-            GatewayIntentBits.Guilds, 
-            GatewayIntentBits.GuildMessages, 
-            GatewayIntentBits.MessageContent, 
-            GatewayIntentBits.GuildMembers,
-            GatewayIntentBits.DirectMessages,
-            GatewayIntentBits.DirectMessageReactions,
-            GatewayIntentBits.GuildMessageReactions
-        ],
-        partials: [Partials.Channel, Partials.Message, Partials.Reaction],
-        rest: {
-            timeout: 15000,
-            retries: 3
-        }
-    });
+    function createDiscordClient() {
+        return new Client({ 
+            shards: 0,
+            shardCount: 1,
+            intents: [
+                GatewayIntentBits.Guilds, 
+                GatewayIntentBits.GuildMessages, 
+                GatewayIntentBits.MessageContent, 
+                GatewayIntentBits.GuildMembers,
+                GatewayIntentBits.DirectMessages,
+                GatewayIntentBits.DirectMessageReactions,
+                GatewayIntentBits.GuildMessageReactions
+            ],
+            partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+            rest: {
+                timeout: 15000,
+                retries: 3
+            }
+        });
+    }
+
+    client = createDiscordClient();
     
     res = await connectDB(config);
 
@@ -110,6 +116,8 @@ async function main(reload) {
                 try {
                     client.destroy();
                 } catch (_) {}
+                client = createDiscordClient();
+                await load_listeners(res, client, config);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 delayMs = Math.min(delayMs * 2, 120000); // 15s -> 30s -> 60s -> 120s máximo
             }

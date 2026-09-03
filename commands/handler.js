@@ -846,20 +846,39 @@ async function loadSlashCommands(chat_commands, config) {
 		commands.push(builder.toJSON());
 	}
 
-	// Registrar los comandos con la API de Discord
-	const rest = new REST({ version: '10' }).setToken(config.TOKEN);
-	(async () => {
-		try {
-			await rest.put(
-				Routes.applicationCommands(config.CLIENT_ID),
-				{ body: commands }
-			);
+	// Registrar los comandos con la API de Discord solo si han cambiado para prevenir 429 de Cloudflare
+	const crypto = require('crypto');
+	const commandsHash = crypto.createHash('sha256').update(JSON.stringify(commands)).digest('hex');
+	const hashPath = path.join(process.cwd(), 'db/local/slash_commands_hash.txt');
 
-			console.log('# Slashs cargados a discord.');
-		} catch (error) {
-			console.error(error);
+	let lastHash = '';
+	try {
+		if (fs.existsSync(hashPath)) {
+			lastHash = fs.readFileSync(hashPath, 'utf8').trim();
 		}
-	})();
+	} catch (_) {}
+
+	if (lastHash === commandsHash) {
+		console.log('# Slash commands sincronizados (sin cambios, omitiendo petición a Discord).');
+	} else {
+		const rest = new REST({ version: '10' }).setToken(config.TOKEN);
+		(async () => {
+			try {
+				await rest.put(
+					Routes.applicationCommands(config.CLIENT_ID),
+					{ body: commands }
+				);
+				try {
+					const hashDir = path.dirname(hashPath);
+					if (!fs.existsSync(hashDir)) fs.mkdirSync(hashDir, { recursive: true });
+					fs.writeFileSync(hashPath, commandsHash, 'utf8');
+				} catch (_) {}
+				console.log('# Slashs cargados a discord (sincronizados con éxito).');
+			} catch (error) {
+				console.error('[SLASH REGISTER ERROR]', error);
+			}
+		})();
+	}
 
 	console.log(`# Cargados ${slash_commands_map.size} comandos slash`)
 	return new Collection()

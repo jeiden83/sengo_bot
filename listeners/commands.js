@@ -228,11 +228,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
-        try {
-            await message.channel.sendTyping();
-        } catch (err) {
-            console.error("[LISTENER] No se pudo enviar el indicador de escritura:", err.message);
-        }
+        // ponytail: Se omite sendTyping() global obligatorio para evitar saturar el rate limit de Discord (5 req/5s por canal) y eliminar latencia innecesaria en comandos rápidos.
         
         const logger = new Logger(message, message_command, message_args);
         const startTime = logger.startTime;
