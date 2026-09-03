@@ -163,6 +163,15 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `-skin [nombre]`: Utiliza una skin específica del catálogo.
     * `-res [1280x720|1920x1080]`: Configura la resolución del vídeo.
     * `-config`: Consulta o configura tu preset predeterminado de renderizado.
+* **`s.card [usuario]`**
+  Genera una tarjeta de perfil visual en Canvas con estadísticas, pilares de habilidades (Aim, Speed, Acc, Reading) y títulos dinámicos.
+  * *Flags:*
+    * `-embed`: Envía la tarjeta dentro de un embed interactivo.
+    * `-refresh`: Fuerza la recarga ignorando la caché de 1 hora.
+* **`s.skills [usuario]`**
+  Desglosa las habilidades de la tarjeta de perfil con matemática cinética calibrada y factor de rendimiento real.
+  * Muestra los promedios en puntos de Aim, Speed, Accuracy y Reading junto con el Top 3 de jugadas demostradas por cada habilidad.
+  * *Alias:* `s.skill`, `s.ts`.
 
 ---
 
@@ -253,13 +262,14 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `s.torneos -canal #canal`: Configura el canal para recibir el feed automático de nuevos torneos (Admin).
     * `s.torneos -canal -borrar`: Desactiva el feed de torneos en el servidor.
 * **`s.track`**
-  Sistema de tracking de Top Plays en vivo para servidores de Discord.
+  Sistema de tracking de Top Plays en vivo para servidores de Discord con filtros jerárquicos de límite.
   * *Subcomandos (Requiere Administrador):*
     * `s.track canal #canal`: Configura el canal para anuncios automáticos de jugadas.
     * `s.track canal quitar`: Desactiva el canal de tracking.
-    * `s.track add <usuario_osu>`: Añade un jugador al tracking del servidor.
+    * `s.track limite <1-100>`: Configura el límite de Top Plays por defecto para todo el servidor (ej: `s.track limite 50`).
+    * `s.track add <usuario_osu> [1-100]`: Añade un jugador al tracking (opcionalmente con límite propio independiente del servidor, ej: `s.track add Jeiden 100`).
     * `s.track remove <usuario_osu>`: Elimina un jugador del tracking.
-    * `s.track list`: Lista todos los jugadores monitoreados en el servidor.
+    * `s.track list`: Lista todos los jugadores monitoreados en el servidor indicando su límite configurado (`servidor` o `propio`).
 * **`s.populate` o `s.pop`**
   Sistema distribuido para colaborar poblando la base de datos de #1s nacionales de Sengo.
   * *Opciones:*
