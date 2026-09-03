@@ -385,6 +385,11 @@
       "body": "Genera la tarjeta visual de perfil con estadísticas de osu! y del ecosistema Sengo. Permite embeberla con -embed.",
       "usage": "s.card [usuario] [-embed]"
     },
+    "skills": {
+      "header": "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas.",
+      "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad.",
+      "usage": "s.skills [usuario]"
+    },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
       "body": "Envía la imagen YO.png estática o genera la tarjeta dinámica de perfil con Canvas usando el flag -canva [usuario]. Permite embeberla con -embed.",
@@ -395,6 +400,24 @@
     "err_no_user": "❌ No tienes una cuenta de osu! vinculada. Usa `s.link` para vincular tu cuenta o especifica un usuario con `s.card [usuario]`.",
     "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!.",
     "err_only_std": "❌ El comando de tarjetas (`.card`) por ahora solo está disponible para el modo **osu! (Standard)**."
+  },
+  "skills": {
+    "embed_title": "Skills",
+    "embed_footer": "Desglose de habilidades (.card)",
+    "avg_aim": "Average aim",
+    "avg_speed": "Average speed",
+    "avg_acc": "Average accuracy",
+    "avg_reading": "Average reading",
+    "section_aim": "Aim skill",
+    "section_speed": "Speed skill",
+    "section_acc": "Accuracy skill",
+    "section_reading": "Reading skill",
+    "no_plays": "No hay suficientes jugadas para analizar esta habilidad.",
+    "err_no_user": "❌ No tienes una cuenta de osu! vinculada. Usa `s.link` para vincular tu cuenta o especifica un usuario con `s.skills [usuario]`.",
+    "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!.",
+    "err_only_std": "❌ El comando de habilidades (`.skills`) por ahora solo está disponible para el modo **osu! (Standard)**.",
+    "err_no_scores": "❌ No se encontraron puntuaciones en el Top de **{username}**.",
+    "err_generic": "Error al procesar las habilidades: `{error}`"
   },
   "contributors": {
     "title": "🌐 Usuarios Vinculados por OAuth",

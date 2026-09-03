@@ -243,9 +243,9 @@ function calculateEffectiveAR(baseAR, modsStr) {
  * Analiza skills del jugador a partir de sus mejores puntuaciones mediante
  * descomposición de strains de patrones y cinética calibrada con sengo-pp.
  */
-function analyzeSkills(scores) {
+function analyzeSkills(scores, returnBreakdown = false) {
     if (!scores || scores.length === 0) {
-        return {
+        const defaultStats = {
             aim: 35.00,
             speed: 30.00,
             acc: 50.00,
@@ -253,10 +253,18 @@ function analyzeSkills(scores) {
             modStats: { NM: 100 },
             topPlayPP: 0
         };
+        if (returnBreakdown) {
+            defaultStats.topAim = [];
+            defaultStats.topSpeed = [];
+            defaultStats.topAcc = [];
+            defaultStats.topReading = [];
+        }
+        return defaultStats;
     }
 
     let dtCount = 0, hrCount = 0, hdCount = 0, flCount = 0, nmCount = 0, ezCount = 0;
     let aimSum = 0, speedSum = 0, accSum = 0, readingSum = 0, totalWeight = 0;
+    const scoredPlays = [];
 
     for (let i = 0; i < scores.length; i++) {
         const s = scores[i];
@@ -334,6 +342,16 @@ function analyzeSkills(scores) {
             readingBase *= (1 + Math.min(2.0, effAR - 10.3) * 0.09);
         }
 
+        if (returnBreakdown) {
+            scoredPlays.push({
+                score: s,
+                aim: aimBase,
+                speed: speedBase,
+                acc: accBase,
+                reading: readingBase
+            });
+        }
+
         aimSum += aimBase * weight;
         speedSum += speedBase * weight;
         accSum += accBase * weight;
@@ -347,7 +365,7 @@ function analyzeSkills(scores) {
     const reading = totalWeight > 0 ? (readingSum / totalWeight) : 35.0;
     const topPlayPP = Math.round(Number(scores[0]?.pp || 0));
 
-    return {
+    const result = {
         aim: Number(aim.toFixed(2)),
         speed: Number(speed.toFixed(2)),
         acc: Number(acc.toFixed(2)),
@@ -360,6 +378,88 @@ function analyzeSkills(scores) {
             NM: Math.round((nmCount / total) * 100),
             FL: Math.round((flCount / total) * 100),
             EZ: Math.round((ezCount / total) * 100)
+        }
+    };
+
+    if (returnBreakdown) {
+        result.topAim = scoredPlays.slice().sort((a, b) => b.aim - a.aim).slice(0, 3);
+        result.topSpeed = scoredPlays.slice().sort((a, b) => b.speed - a.speed).slice(0, 3);
+        result.topAcc = scoredPlays.slice().sort((a, b) => b.acc - a.acc).slice(0, 3);
+        result.topReading = scoredPlays.slice().sort((a, b) => b.reading - a.reading).slice(0, 3);
+    }
+
+    return result;
+}
+
+/**
+ * Realiza el desglose completo de habilidades para el comando .skills,
+ * calculando las 4 métricas base y las estrellas exactas con mods para el Top 3 de cada habilidad.
+ */
+async function analyzeSkillsBreakdown(scores) {
+    const base = analyzeSkills(scores, true);
+    if (!scores || scores.length === 0) {
+        return {
+            ...base,
+            topAim: [],
+            topSpeed: [],
+            topAcc: [],
+            topReading: [],
+            averageStars: { aim: 0, speed: 0, acc: 0, reading: 0 }
+        };
+    }
+
+    const { getBeatmap, getBeatmap_osu } = require('../commands/utils/osu.js');
+    const ppEngine = require('../utils/ppEngine.js');
+    const engine = ppEngine.getEngine();
+
+    const uniqueMapIds = new Map();
+    [...(base.topAim || []), ...(base.topSpeed || []), ...(base.topAcc || []), ...(base.topReading || [])].forEach(item => {
+        if (item.score?.beatmap?.id) {
+            uniqueMapIds.set(item.score.beatmap.id, item.score);
+        }
+    });
+
+    const calculatedStars = new Map();
+    await Promise.all(Array.from(uniqueMapIds.entries()).map(async ([bmId, score]) => {
+        try {
+            const beatmap = await getBeatmap(bmId);
+            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
+            const diffAttrs = new engine.Difficulty({ mods: score.mods }).calculate(map);
+            calculatedStars.set(bmId, diffAttrs.stars);
+        } catch (err) {
+            calculatedStars.set(bmId, Number(score.beatmap?.difficulty_rating || 0));
+        }
+    }));
+
+    const attachStars = (list) => {
+        return (list || []).map(item => ({
+            ...item,
+            stars: calculatedStars.get(item.score.beatmap.id) ?? Number(item.score.beatmap?.difficulty_rating || 0)
+        }));
+    };
+
+    const finalTopAim = attachStars(base.topAim);
+    const finalTopSpeed = attachStars(base.topSpeed);
+    const finalTopAcc = attachStars(base.topAcc);
+    const finalTopReading = attachStars(base.topReading);
+
+    const avgStars = (list) => {
+        if (!list || list.length === 0) return 0;
+        const sum = list.reduce((acc, curr) => acc + (curr.stars || 0), 0);
+        return Number((sum / list.length).toFixed(2));
+    };
+
+    return {
+        ...base,
+        topAim: finalTopAim,
+        topSpeed: finalTopSpeed,
+        topAcc: finalTopAcc,
+        topReading: finalTopReading,
+        averageStars: {
+            aim: avgStars(finalTopAim),
+            speed: avgStars(finalTopSpeed),
+            acc: avgStars(finalTopAcc),
+            reading: avgStars(finalTopReading)
         }
     };
 }
@@ -1201,5 +1301,7 @@ function doOsuCardEmbed(message, imageName = "card.png") {
 module.exports = {
     renderOsuCard,
     doOsuCardEmbed,
-    clearCardCache
+    clearCardCache,
+    analyzeSkills,
+    analyzeSkillsBreakdown
 };

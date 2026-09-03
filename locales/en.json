@@ -385,6 +385,11 @@
       "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Allows embedding it with -embed.",
       "usage": "s.card [user] [-embed]"
     },
+    "skills": {
+      "header": "Breaks down osu! profile card skills (.card) with top plays.",
+      "body": "Shows the breakdown of Aim, Speed, Accuracy, and Reading with averages and Top 3 plays for each skill.",
+      "usage": "s.skills [user]"
+    },
     "yo": {
       "header": "Sends the YO picture or generates a dynamic profile card with Canvas.",
       "body": "Sends the static YO.png asset image or generates a dynamic profile card with Canvas using the -canva [user] flag. Allows embedding it with -embed.",
@@ -395,6 +400,24 @@
     "err_no_user": "❌ You don't have a linked osu! account. Use `s.link` to link your account or specify a user with `s.card [user]`.",
     "err_user_not_found": "❌ osu! user could not be found.",
     "err_only_std": "❌ Profile cards (`.card`) are currently only available for **osu! (Standard)** mode."
+  },
+  "skills": {
+    "embed_title": "Skills",
+    "embed_footer": "Profile card skills breakdown (.card)",
+    "avg_aim": "Average aim",
+    "avg_speed": "Average speed",
+    "avg_acc": "Average accuracy",
+    "avg_reading": "Average reading",
+    "section_aim": "Aim skill",
+    "section_speed": "Speed skill",
+    "section_acc": "Accuracy skill",
+    "section_reading": "Reading skill",
+    "no_plays": "Not enough plays to analyze this skill.",
+    "err_no_user": "❌ You don't have a linked osu! account. Use `s.link` to link your account or specify a user with `s.skills [user]`.",
+    "err_user_not_found": "❌ osu! user could not be found.",
+    "err_only_std": "❌ The skills command (`.skills`) is currently only available for **osu! (Standard)** mode.",
+    "err_no_scores": "❌ No top scores found for **{username}**.",
+    "err_generic": "Error processing skills: `{error}`"
   },
   "contributors": {
     "title": "🌐 Users Linked via OAuth",
