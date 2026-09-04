@@ -45,6 +45,7 @@ function doMappingTrackerGuideEmbed(message, activeConfig, trackedCount, locale 
 
     desc += t(locale, 'mapping_tracker.guide_header_users');
     desc += t(locale, 'mapping_tracker.guide_line_user_add');
+    desc += t(locale, 'mapping_tracker.guide_line_user_remove');
     desc += t(locale, 'mapping_tracker.guide_line_user_server');
 
     desc += t(locale, 'mapping_tracker.guide_header_flags');

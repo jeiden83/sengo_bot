@@ -68,6 +68,7 @@ const data = new SlashCommandBuilder()
                 sub.setName("usuario")
                     .setDescription("Configura tus alertas de tracking (o de otro usuario si eres Admin)")
                     .addStringOption(opt => opt.setName("usuario").setDescription("ID, mención o username del mapper (dejar vacío para ti)").setRequired(false))
+                    .addBooleanOption(opt => opt.setName("quitar").setDescription("Eliminar a este mapper del tracking en este servidor").setRequired(false))
                     .addBooleanOption(opt => opt.setName("upload").setDescription("Notificar cuando subas/suban un nuevo mapa por primera vez").setRequired(false))
                     .addBooleanOption(opt => opt.setName("disqualified").setDescription("Notificar cuando el mapa sea descalificado").setRequired(false))
                     .addBooleanOption(opt => opt.setName("ranked").setDescription("Notificar cuando pase a Ranked / Approved").setRequired(false))
@@ -124,8 +125,10 @@ async function run(interaction, res) {
             args.push('-usuario');
             const user = interaction.options.getString('usuario');
             const server = interaction.options.getBoolean('servidor');
+            const quitar = interaction.options.getBoolean('quitar');
             if (user) args.push(user);
             if (server) args.push('-server');
+            if (quitar) args.push('-quitar');
 
             if (interaction.options.getBoolean('upload')) args.push('-upload');
             if (interaction.options.getBoolean('disqualified')) args.push('-disqualified');

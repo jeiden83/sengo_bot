@@ -757,12 +757,13 @@ async function handleMappingTrackerCommand(messages, args) {
 
     // Helper de verificación de permisos de admin del canal/servidor
     const isAdmin = () => {
-        if (message.guild.ownerId === message.author?.id) return true;
+        if (process.env.OWNER_ID && message.author?.id === process.env.OWNER_ID) return true;
+        if (message.guild?.ownerId && message.guild.ownerId === message.author?.id) return true;
         const member = message.member;
         if (!member) return false;
-        return member.permissions.has(PermissionFlagsBits.Administrator) ||
-               member.permissions.has(PermissionFlagsBits.ManageChannels) ||
-               member.permissions.has(PermissionFlagsBits.ManageGuild);
+        return member.permissions?.has(PermissionFlagsBits.Administrator) ||
+               member.permissions?.has(PermissionFlagsBits.ManageChannels) ||
+               member.permissions?.has(PermissionFlagsBits.ManageGuild);
     };
 
     const isCanal = args.some(a => a.toLowerCase() === '-canal');
@@ -1082,6 +1083,9 @@ async function handleMappingTrackerCommand(messages, args) {
         if (!activeConfig || !activeConfig.channel_id) {
             return { content: t(locale, 'mapping_tracker.err_no_channel_set') };
         }
+
+        const isRemove = args.some(a => ['-quitar', '-remove', '-del', '-eliminar', '-delete'].includes(a.toLowerCase()));
+
         let userInput = null;
         for (let i = 0; i < args.length; i++) {
             if (args[i].toLowerCase() === '-usuario' && i + 1 < args.length) {
@@ -1097,7 +1101,15 @@ async function handleMappingTrackerCommand(messages, args) {
             }
         }
 
-        // Si no especifica usuario, asume el propio autor del mensaje
+        // Si no especifica usuario después de -usuario, revisar si hay argumentos sueltos que no sean flags
+        if (!userInput) {
+            const nonFlagArgs = args.filter(a => !a.startsWith('-'));
+            if (nonFlagArgs.length > 0) {
+                userInput = nonFlagArgs.join(' ');
+            }
+        }
+
+        // Si aún no especifica usuario, asume el propio autor del mensaje
         if (!userInput) {
             userInput = message.author.id;
         }
@@ -1105,8 +1117,13 @@ async function handleMappingTrackerCommand(messages, args) {
         const linkedMap = await OsuUserModel.getLinkedUsersMap();
         let targetOsuId = null;
         let targetDiscordId = null;
-        // ponytail: remueve comillas envolventes del input si las tiene y permite buscar por ID de Discord plano o mención
-        const cleanInput = userInput.replace(/^["']+|["']+$|"/g, '').trim();
+        // ponytail: remueve comillas envolventes del input si las tiene y decodifica urls de perfil osu!
+        let cleanInput = userInput.replace(/^["']+|["']+$|"/g, '').trim();
+        const urlMatch = cleanInput.match(/(?:https?:\/\/)?osu\.ppy\.sh\/(?:users|u)\/([a-zA-Z0-9_\-\[\]% ]+)/i);
+        if (urlMatch) {
+            cleanInput = decodeURIComponent(urlMatch[1]).trim();
+        }
+
         let targetUsername = cleanInput;
 
         const mentionMatch = cleanInput.match(/^<@!?(\d+)>$/);
@@ -1125,17 +1142,58 @@ async function handleMappingTrackerCommand(messages, args) {
             }
         }
 
-        if (!targetOsuId) {
+        // Si se especificó una mención o Discord ID pero no está vinculado en Sengo
+        if (!targetOsuId && discordIdMatch) {
             return { content: t(locale, 'mapping_tracker.err_user_not_linked', { user: userInput }) };
         }
 
-        // Verificación de permisos: Usuarios no administradores solo pueden modificar sus propias alertas
-        if (!isAdmin() && targetDiscordId !== message.author.id) {
+        // Si no se encontró en vinculados y no es una mención/ID de Discord, buscar directamente en la API de osu!
+        if (!targetOsuId) {
+            try {
+                const osuUser = await OsuUserModel.getOsuUser({ username: [cleanInput], gamemode: "osu", server: "bancho" });
+                if (osuUser && typeof osuUser === 'object' && osuUser.id && osuUser.username && osuUser.username !== "El usuario no se encuentra en osu!") {
+                    targetOsuId = String(osuUser.id);
+                    targetUsername = osuUser.username;
+                    targetDiscordId = null;
+
+                    // Registrar o actualizar metadatos básicos en mapper_statistics para mostrar el nombre real en la lista
+                    try {
+                        const supabase = getSupabaseClient();
+                        if (supabase) {
+                            await supabase
+                                .from('mapper_statistics')
+                                .upsert({
+                                    osu_id: String(osuUser.id),
+                                    username: osuUser.username,
+                                    country_code: osuUser.country_code || osuUser.country?.code || null,
+                                    updated_at: new Date().toISOString()
+                                }, { onConflict: 'osu_id' });
+                        }
+                    } catch (dbErr) {
+                        // Ignorar fallo no crítico al actualizar caché de estadísticas
+                    }
+                }
+            } catch (e) {
+                console.error('[MAPPING-TRACKER] Error al buscar mapper externo en osu! API:', e.message);
+            }
+        }
+
+        if (!targetOsuId) {
+            return { content: t(locale, 'mapping_tracker.err_user_not_found', { user: cleanInput }) };
+        }
+
+        // Verificación de permisos: Usuarios no administradores solo pueden modificar sus propias alertas si están vinculados
+        if (!isAdmin() && (!targetDiscordId || targetDiscordId !== message.author.id)) {
             return { content: t(locale, 'mapping_tracker.err_no_perms_other_user') };
         }
 
-        if (!targetOsuId) {
-            return { content: t(locale, 'mapping_tracker.err_user_not_linked', { user: userInput }) };
+        // Si se especificó flag de remover/quitar mapper del tracking
+        if (isRemove) {
+            const resDel = await MappingTrackerModel.removeTrackedUser(guildId, targetOsuId);
+            if (!resDel.success) {
+                return { content: t(locale, 'mapping_tracker.err_remove_user', { error: resDel.error }) };
+            }
+            return { content: t(locale, 'mapping_tracker.success_remove_user', { username: targetUsername, osuId: targetOsuId }) };
         }
 
         const resSub = await MappingTrackerModel.addTrackedUser(guildId, activeConfig.channel_id, targetOsuId, finalEvents, message.author.id);
