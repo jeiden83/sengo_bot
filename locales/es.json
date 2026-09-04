@@ -185,6 +185,11 @@
       "body": "Añade un globo de texto tipo cómic en la parte superior de la imagen adjunta.",
       "usage": "s.globo (adjuntando una imagen)"
     },
+    "milin": {
+      "header": "Milin",
+      "body": "Muestra el gif de Milin.",
+      "usage": "s.milin"
+    },
     "yuri": {
       "header": "Yuri",
       "body": "Al creador del bot le gusta leer mangas yuri.",

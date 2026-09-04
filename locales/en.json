@@ -185,6 +185,11 @@
       "body": "Adds a comic speech bubble on top of the attached image.",
       "usage": "s.globo (attaching an image)"
     },
+    "milin": {
+      "header": "Milin",
+      "body": "Shows the Milin gif.",
+      "usage": "s.milin"
+    },
     "yuri": {
       "header": "Yuri",
       "body": "The creator of the bot likes reading yuri manga.",
