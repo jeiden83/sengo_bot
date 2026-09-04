@@ -171,14 +171,17 @@ function analyzeSkills(scores) {
         const modsList = Array.isArray(s.mods)
             ? s.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
             : (typeof s.mods === "string" ? s.mods.match(/.{1,2}/g) || [] : []);
-        const modsStr = modsList.join("").toUpperCase();
+        const upperMods = modsList.map(m => m.toUpperCase());
+        const modsSet = new Set(upperMods);
 
-        if (!modsStr || modsStr === "NM") nmCount++;
-        if (modsStr.includes("DT") || modsStr.includes("NC")) dtCount++;
-        if (modsStr.includes("HR")) hrCount++;
-        if (modsStr.includes("HD")) hdCount++;
-        if (modsStr.includes("FL")) flCount++;
-        if (modsStr.includes("EZ")) ezCount++;
+        // ponytail: excluye mods de sistema (CL) y visuales (NM) para no distorsionar NoMod
+        const gameplayMods = upperMods.filter(m => m !== "CL" && m !== "NM");
+        if (gameplayMods.length === 0) nmCount++;
+        if (modsSet.has("DT") || modsSet.has("NC")) dtCount++;
+        if (modsSet.has("HR")) hrCount++;
+        if (modsSet.has("HD")) hdCount++;
+        if (modsSet.has("FL")) flCount++;
+        if (modsSet.has("EZ")) ezCount++;
 
         const bpm = Number(s.beatmap?.bpm || 180);
         const sr = Number(s.beatmap?.difficulty_rating || 5.5);
@@ -186,18 +189,18 @@ function analyzeSkills(scores) {
         const cs = Number(s.beatmap?.cs || 4.0);
 
         let aimBase = sr * 7.5;
-        if (modsStr.includes("HR")) aimBase *= 1.15;
-        if (modsStr.includes("HD")) aimBase *= 1.08;
+        if (modsSet.has("HR")) aimBase *= 1.15;
+        if (modsSet.has("HD")) aimBase *= 1.08;
 
         let speedBase = (bpm / 200) * (sr * 6.8);
-        if (modsStr.includes("DT") || modsStr.includes("NC")) speedBase *= 1.25;
+        if (modsSet.has("DT") || modsSet.has("NC")) speedBase *= 1.25;
 
         let accBase = Math.max(0, (accPct - 85) * 5.5);
 
         let readingBase = 32.0;
-        if (modsStr.includes("HD")) readingBase += 18.0;
-        if (modsStr.includes("FL")) readingBase += 35.0;
-        if (modsStr.includes("EZ")) readingBase += 30.0;
+        if (modsSet.has("HD")) readingBase += 18.0;
+        if (modsSet.has("FL")) readingBase += 35.0;
+        if (modsSet.has("EZ")) readingBase += 30.0;
         if (ar < 9.0) readingBase += (9.0 - ar) * 8.0;
         else if (ar > 10.3) readingBase += (ar - 10.3) * 12.0;
         if (cs >= 4.5) readingBase += (cs - 4.0) * 6.0;

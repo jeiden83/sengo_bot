@@ -214,12 +214,17 @@ async function fetchSengoData(userId, countryCode) {
 /**
  * Calcula el AR efectivo tomando en cuenta modificaciones de tiempo y escalado de mods.
  */
-function calculateEffectiveAR(baseAR, modsStr) {
+function calculateEffectiveAR(baseAR, mods) {
     let ar = baseAR;
-    if (modsStr.includes("HR")) ar = Math.min(10.0, ar * 1.4);
-    if (modsStr.includes("EZ")) ar = ar * 0.5;
+    const list = Array.isArray(mods)
+        ? mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+        : (typeof mods === "string" ? mods.match(/.{1,2}/g) || [] : []);
+    const set = new Set(list.map(m => m.toUpperCase()));
 
-    if (modsStr.includes("DT") || modsStr.includes("NC")) {
+    if (set.has("HR")) ar = Math.min(10.0, ar * 1.4);
+    if (set.has("EZ")) ar = ar * 0.5;
+
+    if (set.has("DT") || set.has("NC")) {
         let ms = ar <= 5 ? 1800 - 120 * ar : 1200 - 150 * (ar - 5);
         ms = ms / 1.5;
         if (ms >= 1200) {
@@ -227,7 +232,7 @@ function calculateEffectiveAR(baseAR, modsStr) {
         } else {
             ar = 5 + (1200 - ms) / 150;
         }
-    } else if (modsStr.includes("HT") || modsStr.includes("DC")) {
+    } else if (set.has("HT") || set.has("DC")) {
         let ms = ar <= 5 ? 1800 - 120 * ar : 1200 - 150 * (ar - 5);
         ms = ms / 0.75;
         if (ms >= 1200) {
@@ -309,21 +314,24 @@ function analyzeSkills(scores, returnBreakdown = false) {
         const modsList = Array.isArray(s.mods)
             ? s.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
             : (typeof s.mods === "string" ? s.mods.match(/.{1,2}/g) || [] : []);
-        const modsStr = modsList.join("").toUpperCase();
+        const upperMods = modsList.map(m => m.toUpperCase());
+        const modsSet = new Set(upperMods);
 
-        if (!modsStr || modsStr === "NM") nmCount++;
-        if (modsStr.includes("DT") || modsStr.includes("NC")) dtCount++;
-        if (modsStr.includes("HR")) hrCount++;
-        if (modsStr.includes("HD")) hdCount++;
-        if (modsStr.includes("FL")) flCount++;
-        if (modsStr.includes("EZ")) ezCount++;
+        // ponytail: excluye mods de sistema (CL) y visuales (NM) para no distorsionar NoMod ni concatenar falsos HT
+        const gameplayMods = upperMods.filter(m => m !== "CL" && m !== "NM");
+        if (gameplayMods.length === 0) nmCount++;
+        if (modsSet.has("DT") || modsSet.has("NC")) dtCount++;
+        if (modsSet.has("HR")) hrCount++;
+        if (modsSet.has("HD")) hdCount++;
+        if (modsSet.has("FL")) flCount++;
+        if (modsSet.has("EZ")) ezCount++;
 
-        const isDT = modsStr.includes("DT") || modsStr.includes("NC");
-        const isHT = modsStr.includes("HT") || modsStr.includes("DC");
-        const isHR = modsStr.includes("HR");
-        const isHD = modsStr.includes("HD");
-        const isEZ = modsStr.includes("EZ");
-        const isFL = modsStr.includes("FL");
+        const isDT = modsSet.has("DT") || modsSet.has("NC");
+        const isHT = modsSet.has("HT") || modsSet.has("DC");
+        const isHR = modsSet.has("HR");
+        const isHD = modsSet.has("HD");
+        const isEZ = modsSet.has("EZ");
+        const isFL = modsSet.has("FL");
 
         const bpm = Number(s.beatmap?.bpm || 180);
         const ar = Number(s.beatmap?.ar || 9.0);
