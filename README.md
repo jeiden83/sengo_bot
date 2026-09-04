@@ -362,5 +362,4 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 
 * **`s.help` o `s.h [comando]`**: Menú de ayuda interactivo con paginación y búsqueda por comando.
 * **`s.acerca` o `s.about`**: Presentación interactiva y detalles técnicos sobre la arquitectura de Sengo.
-* **`s.contribuidores` o `s.con`**: Lista de usuarios de la comunidad vinculados mediante OAuth organizados por país con su estado de supporter (`-force` para sincronizar).
 * **`s.donadores`**: Lista de usuarios que apoyan económicamente el desarrollo del bot.
