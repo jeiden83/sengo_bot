@@ -69,7 +69,12 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             const randStr = randFlags.length > 0 ? ` 🎲 *(${randFlags.join(", ")})*` : "";
             
             description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**${randStr}\n`;
-            description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
+            if (c.pushPP && c.pushAcc) {
+                const pushPct = (c.pushAcc * 100).toFixed(1);
+                description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC) | 🎯 **${c.pushPP}pp** (~${pushPct}% Push)\n`;
+            } else {
+                description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
+            }
 
             const speedMultiplier = (c.mods.includes("DT") || c.mods.includes("NC")) ? 1.5 : (c.mods.includes("HT") ? 0.75 : 1.0);
             const adjustedLength = Math.floor(c.length / speedMultiplier);
@@ -86,9 +91,20 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
         });
     }
 
+    const modeNameMap = {
+        'osu': 'osu!',
+        'taiko': 'osu!taiko',
+        'fruits': 'osu!catch',
+        'catch': 'osu!catch',
+        'ctb': 'osu!catch',
+        'mania': 'osu!mania'
+    };
+    const currentMode = params.gamemode || 'osu';
+    const modeBadge = currentMode !== 'osu' ? ` [${modeNameMap[currentMode] || currentMode}]` : '';
+
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'recommend.embed_author', { username: profile.username }),
+            name: t(locale, 'recommend.embed_author', { username: profile.username }) + modeBadge,
             url: `https://osu.ppy.sh/users/${profile.id}`,
             iconURL: profile.avatar_url
         })
@@ -103,7 +119,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
                     mods: mods || t(locale, 'recommend.label_mods_any'),
                     played: showPlayed ? t(locale, 'recommend.label_yes') : t(locale, 'recommend.label_no'),
                     style: currentStyleLabel
-                })
+                }) + (currentMode !== 'osu' ? `\n▸ **Modo:** \`${modeNameMap[currentMode] || currentMode}\`` : '')
             }
         )
         .setColor(embedColor)

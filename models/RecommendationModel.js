@@ -1,5 +1,6 @@
 const { getSupabaseClient } = require("../db/database.js");
 const Logger = require("../utils/logger.js");
+const SkillsModel = require("./SkillsModel.js");
 
 const AIM_TAGS = ['jump', 'aim', 'cross-screen', 'wide-angle', 'farm', 'sotarks', 'nevo', 'fieryrage', 'complexity'];
 const SPEED_TAGS = ['stream', 'burst', 'speed', 'stamina', 'deathstream', 'alt', 'alternate', 'finger control'];
@@ -45,7 +46,7 @@ function ppToStars(pp) {
  * Analiza el Top 100 de jugadas de un usuario de forma asíncrona para construir su perfil
  * utilizando los tags enriquecidos de la base de datos local.
  */
-async function buildUserProfileAsync(topScores, supabase = null) {
+async function buildUserProfileAsync(topScores, supabase = null, gamemode = 'osu') {
     if (!Array.isArray(topScores) || topScores.length === 0) {
         return null;
     }
@@ -267,6 +268,9 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         .sort((a, b) => tagCounts[b] - tagCounts[a])
         .slice(0, 20); // Incrementar a 20 para capturar más variedad de user tags
 
+    const skills = SkillsModel.analyzeSkills(topScores, false, gamemode);
+    const pushProfile = SkillsModel.analyzePlayerPushProfile(topScores, gamemode);
+
     return {
         avgStars,
         avgBpm,
@@ -277,14 +281,17 @@ async function buildUserProfileAsync(topScores, supabase = null) {
         isEZPlayer,
         isFLPlayer,
         isLowArPlayer,
-        avgFlDuration
+        avgFlDuration,
+        skills,
+        pushProfile,
+        gamemode
     };
 }
 
 /**
  * Analiza el perfil de forma síncrona (compatibilidad).
  */
-function buildUserProfile(topScores) {
+function buildUserProfile(topScores, gamemode = 'osu') {
     if (!Array.isArray(topScores) || topScores.length === 0) {
         return null;
     }
@@ -439,6 +446,9 @@ function buildUserProfile(topScores) {
         .sort((a, b) => tagCounts[b] - tagCounts[a])
         .slice(0, 15);
 
+    const skills = SkillsModel.analyzeSkills(topScores, false, gamemode);
+    const pushProfile = SkillsModel.analyzePlayerPushProfile(topScores, gamemode);
+
     return {
         avgStars,
         avgBpm,
@@ -449,7 +459,10 @@ function buildUserProfile(topScores) {
         isEZPlayer,
         isFLPlayer,
         isLowArPlayer,
-        avgFlDuration
+        avgFlDuration,
+        skills,
+        pushProfile,
+        gamemode
     };
 }
 
@@ -474,7 +487,81 @@ function getDifferentMod(mainMod) {
 }
 
 /**
- * Obtiene recomendaciones de mapas para un usuario.
+ * Consulta mapas nativos de modos específicos (Taiko, Catch, Mania) desde la API de osu!
+ * y los guarda en segundo plano en la base de datos local para enriquecer el catálogo.
+ */
+async function fetchNativeBeatmapsFromOsuApi(modeInt, minStars, maxStars) {
+    try {
+        const fs = require('fs');
+        let token = null;
+        try {
+            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+            token = tokenData.access_token;
+        } catch {}
+        if (!token) {
+            const OsuUserModel = require('./OsuUserModel.js');
+            const tokenObj = await OsuUserModel.loadToken();
+            token = tokenObj?.access_token;
+        }
+        if (!token) return [];
+
+        const sortParam = minStars >= 6.0 ? 'difficulty_desc' : 'plays_desc';
+        const url = `https://osu.ppy.sh/api/v2/beatmapsets/search?m=${modeInt}&s=ranked&sort=${sortParam}`;
+        const res = await fetch(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'x-api-version': '20240728'
+            }
+        });
+        if (!res.ok) return [];
+        const json = await res.json();
+        const sets = json.beatmapsets || [];
+        const candidates = [];
+        const BeatmapModel = require('./BeatmapModel.js');
+
+        for (const set of sets) {
+            if (!set.beatmaps) continue;
+            for (const b of set.beatmaps) {
+                if (b.mode_int === modeInt) {
+                    const stars = Number(b.difficulty_rating || 0);
+                    if (stars >= Math.max(0.5, minStars - 0.5) && stars <= maxStars + 0.6) {
+                        const formatted = {
+                            beatmap_id: b.id,
+                            beatmapset_id: set.id,
+                            title: set.title,
+                            artist: set.artist,
+                            creator: set.creator,
+                            version: b.version,
+                            stars: stars,
+                            mode: modeInt,
+                            bpm: b.bpm || set.bpm || 180,
+                            total_length: b.total_length || 100,
+                            hit_length: b.hit_length || b.total_length || 100,
+                            ar: b.ar || 9,
+                            cs: b.cs || 4,
+                            od: b.accuracy || 8,
+                            hp: b.drain || 5,
+                            max_combo: b.max_combo || null,
+                            playcount: b.playcount || set.play_count || 10000,
+                            ranked_status: 1,
+                            user_tags: []
+                        };
+                        candidates.push(formatted);
+                        BeatmapModel.saveBeatmapToDB(b, set).catch(() => {});
+                    }
+                }
+            }
+        }
+        return candidates;
+    } catch (e) {
+        return [];
+    }
+}
+
+/**
+ * Obtiene recomendaciones de mapas para un usuario adaptadas por habilidades (Skills).
+ * Soporta los 4 modos: osu (Standard), taiko, fruits (Catch) y mania.
  */
 async function getPersonalizedRecommendations({
     topScores,
@@ -484,43 +571,58 @@ async function getPersonalizedRecommendations({
     style = 'standard', // standard, aim, speed, length, rarezas
     customUserTag = null,
     showPlayed = false,
-    skipSet = new Set()
+    skipSet = new Set(),
+    gamemode = 'osu'
 }) {
     const supabase = getSupabaseClient();
     if (!supabase) {
         throw new Error("Supabase client not initialized");
     }
 
-    // 1. Perfilado asíncrono
-    const profile = await buildUserProfileAsync(topScores, supabase);
+    const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
+    const modeInt = MODE_INT[gamemode] ?? 0;
+
+    // 1. Perfilado asíncrono con SkillsModel
+    const profile = await buildUserProfileAsync(topScores, supabase, gamemode);
     if (!profile) {
         throw new Error("Could not build user profile");
     }
 
     const activeMods = customMods || profile.preferredMod;
+    const isChokePusher = profile.pushProfile?.isChokePusher || false;
 
-    // Determinar rango de estrellas objetivo
+    // Determinar rango de estrellas objetivo considerando pushStars si es choke pusher
     let targetStars = profile.avgStars;
+    const pushStars = profile.pushProfile?.pushStars || targetStars;
     let minStars = Math.max(1, targetStars - 0.85);
-    let maxStars = targetStars + 0.85;
+    let maxStars = isChokePusher ? Math.max(targetStars + 1.25, pushStars + 0.55) : (targetStars + 0.85);
 
     if (customMinPP !== null) {
-        const minTargetStars = ppToStars(customMinPP);
-        const maxTargetStars = ppToStars(customMaxPP !== null ? customMaxPP : customMinPP * 1.3);
-        
-        let scale = 1.0;
-        if (activeMods.includes("DT") || activeMods.includes("NC")) {
-            scale = 1.35;
-        } else if (activeMods.includes("HR")) {
-            scale = 1.06;
-        } else if (activeMods.includes("EZ") && activeMods.includes("HD")) {
-            scale = 1.05;
-        } else if (activeMods.includes("EZ")) {
-            scale = 0.95;
+        if (modeInt === 0) {
+            const minTargetStars = ppToStars(customMinPP);
+            const maxTargetStars = ppToStars(customMaxPP !== null ? customMaxPP : customMinPP * 1.3);
+            
+            let scale = 1.0;
+            if (activeMods.includes("DT") || activeMods.includes("NC")) {
+                scale = 1.35;
+            } else if (activeMods.includes("HR")) {
+                scale = 1.06;
+            } else if (activeMods.includes("EZ") && activeMods.includes("HD")) {
+                scale = 1.05;
+            } else if (activeMods.includes("EZ")) {
+                scale = 0.95;
+            }
+            
+            minStars = Math.max(1, (minTargetStars / scale) - 0.1);
+            maxStars = (maxTargetStars / scale) + (isChokePusher ? 0.90 : 0.45);
+        } else {
+            // Calibración por ratio de estrellas para Taiko, Catch y Mania
+            const avgPlayPP = topScores[0]?.pp || 200;
+            const ratio = customMinPP / Math.max(50, avgPlayPP);
+            const scaledTarget = profile.avgStars * Math.pow(ratio, 0.25);
+            minStars = Math.max(1, scaledTarget - 0.7);
+            maxStars = scaledTarget + (isChokePusher ? 1.3 : 0.7);
         }
-        
-        minStars = Math.max(1, (minTargetStars / scale) - 0.1);
-        maxStars = (maxTargetStars / scale) + 0.45;
     }
 
     // Calcular el ID de beatmapset del corte de hace 6 meses
@@ -545,7 +647,7 @@ async function getPersonalizedRecommendations({
         // Silenciar
     }
 
-    // 2. Query de candidatos en Supabase (Obtenemos un mix de popularidad: Alta, Media y Nicho, priorizando validados)
+    // 2. Query de candidatos en Supabase
     const useTagsFilter = ['tags', 'aim', 'speed'].includes(style) || !!customUserTag;
     
     const buildBaseQuery = (validatedOnly = false, unvalidatedOnly = false) => {
@@ -554,7 +656,7 @@ async function getPersonalizedRecommendations({
             .select('*')
             .gte('stars', minStars)
             .lte('stars', maxStars)
-            .eq('mode', 0); // standard
+            .eq('mode', modeInt);
 
         if (style === 'rarezas') {
             q = q.in('ranked_status', [3, 4]); // Qualified, Loved
@@ -582,7 +684,6 @@ async function getPersonalizedRecommendations({
         return q;
     };
 
-    // Consultamos por separado los ya validados y los pendientes de validar
     const [valHigh, valMid, valLow, unvalHigh, unvalMid, unvalLow] = await Promise.all([
         buildBaseQuery(true, false).gte('playcount', 1000000).order('playcount', { ascending: false }).limit(200),
         buildBaseQuery(true, false).lt('playcount', 1000000).gte('playcount', 150000).order('playcount', { ascending: false }).limit(150),
@@ -606,18 +707,21 @@ async function getPersonalizedRecommendations({
         }
     };
 
-    // Agregar validados primero
     addCandidates(valHigh.data);
     addCandidates(valMid.data);
     addCandidates(valLow.data);
-
-    // Luego agregar no validados como fallback
     addCandidates(unvalHigh.data);
     addCandidates(unvalMid.data);
     addCandidates(unvalLow.data);
 
-    // Fallback: si intentamos filtrar por user_tags pero no encontramos suficientes candidatos,
-    // reintentamos sin el filtro de user_tags para aim/speed.
+    // Si es un modo no-standard (Taiko, Catch, Mania) y la base de datos local tiene pocos candidatos,
+    // consultar directamente la API de osu! y guardar en BD en background
+    if (modeInt !== 0 && candidates.length < 15) {
+        const apiCandidates = await fetchNativeBeatmapsFromOsuApi(modeInt, minStars, maxStars);
+        addCandidates(apiCandidates);
+    }
+
+    // Fallback si intentamos filtrar por user_tags pero no encontramos suficientes candidatos
     if (useTagsFilter && style !== 'tags' && candidates.length < 5) {
         const buildFallbackQuery = () => {
             let q = supabase
@@ -625,7 +729,7 @@ async function getPersonalizedRecommendations({
                 .select('*')
                 .gte('stars', minStars)
                 .lte('stars', maxStars)
-                .eq('mode', 0);
+                .eq('mode', modeInt);
 
             if (style === 'rarezas') {
                 q = q.in('ranked_status', [3, 4]);
@@ -652,7 +756,6 @@ async function getPersonalizedRecommendations({
         return [];
     }
 
-    // Listado de IDs jugados en el Top 100
     const top100MapIds = new Set(topScores.map(score => score.beatmap.id.toString()));
 
     const getCleanTags = (c) => {
@@ -662,16 +765,13 @@ async function getPersonalizedRecommendations({
             .filter(t => t !== 'meta/validated' && !t.startsWith('meta/') && t !== 'validated');
     };
 
-    // 3. Scoring
+    // 3. Scoring cinético con Skills
     const scoredCandidates = candidates
         .filter(c => {
             const idStr = c.beatmap_id.toString();
-            // Filtrar jugados si no se solicita mostrarlos explicitamente con flag -jugados
             if (!showPlayed && top100MapIds.has(idStr)) return false;
-            // Filtrar mostrados en esta sesión (por beatmapId o beatmapsetId)
             if (skipSet.has(idStr) || (c.beatmapset_id && skipSet.has(c.beatmapset_id.toString()))) return false;
 
-            // Determinar mod para este candidato (si no hay customMods)
             let candidateMod = customMods || profile.preferredMod;
             let isRandomMod = false;
             if (!customMods) {
@@ -683,16 +783,18 @@ async function getPersonalizedRecommendations({
             c._assignedMod = candidateMod;
             c._isRandomMod = isRandomMod;
 
-            // 1. Filtrar estrictamente por el rango de PP estimado al 100% de acc
-            if (customMinPP !== null) {
+            if (modeInt === 0 && customMinPP !== null) {
+                const targetPushAcc = profile.pushProfile?.targetPushAcc || 0.985;
                 const est100 = estimatePP(c.stars, 1.0, candidateMod);
-                const limitMaxPP = customMaxPP !== null ? customMaxPP : customMinPP * 1.3;
-                if (est100 < customMinPP || est100 > limitMaxPP) {
+                const estPush = isChokePusher ? estimatePP(c.stars, targetPushAcc, candidateMod) : est100;
+                const limitMaxPP = customMaxPP !== null ? customMaxPP : customMinPP * (isChokePusher ? 1.60 : 1.30);
+                
+                const evalPP = isChokePusher ? estPush : est100;
+                if (evalPP < customMinPP * 0.85 || evalPP > limitMaxPP) {
                     return false;
                 }
             }
 
-            // Filtro por usertag específico
             if (customUserTag) {
                 const tags = getCleanTags(c);
                 const cleanTarget = customUserTag.toLowerCase().trim();
@@ -700,7 +802,6 @@ async function getPersonalizedRecommendations({
                 if (!hasTargetTag) return false;
             }
 
-            // 2. Filtrar estrictamente por estilo para Aim/Streams (usando user_tags y tags de creador como fallback)
             if (style === 'aim') {
                 const tags = getCleanTags(c);
                 const hasAimTag = tags.some(t => {
@@ -720,21 +821,16 @@ async function getPersonalizedRecommendations({
             } else if (style === 'length') {
                 const isDT = candidateMod.includes("DT") || candidateMod.includes("NC");
                 if (isDT) {
-                    // Si es DT/NC, queremos mapas de más de 4 minutos (240 segundos) de duración real.
-                    // 240 segs reales * 1.5 = 360 segs NoMod.
                     if (c.total_length < 360) return false;
                 } else {
-                    // Si no es DT/NC, mínimo 4 minutos (240 segundos) NoMod.
                     if (c.total_length < 240) return false;
                 }
             } else if (style === 'tags') {
-                // Filtrar estrictamente: solo mapas que contengan user_tags
                 if (!c.user_tags || c.user_tags.length === 0) return false;
                 const isMatchingTag = c.user_tags.some(t => {
                     const cleanTag = t.toLowerCase().trim();
                     return profile.frequentTags.includes(cleanTag);
                 });
-                // 60% alineado con top tags, 40% diferente al top tags del usuario
                 const wantMatching = Math.random() < 0.60;
                 let isRandomTag = false;
                 if (wantMatching) {
@@ -797,17 +893,14 @@ async function getPersonalizedRecommendations({
                     return;
                 }
                 if (combinedTags.includes(cleanTag)) {
-                    // Si el estilo es speed, no coincidir con tags de aim/jumps del usuario
                     if (style === 'speed' && (cleanTag === 'aim' || cleanTag === 'jump' || cleanTag === 'jumps' || cleanTag.includes('aim') || cleanTag.includes('jump') || AIM_TAGS.some(at => cleanTag.includes(at)))) {
                         return;
                     }
-                    // Si el estilo es aim, no coincidir con tags de speed/streams del usuario
                     if (style === 'aim' && (cleanTag === 'stream' || cleanTag === 'streams' || cleanTag === 'speed' || cleanTag === 'burst' || cleanTag === 'bursts' || cleanTag === 'alt' || cleanTag === 'alternate' || cleanTag === 'stamina' || cleanTag.includes('stream') || cleanTag.includes('speed') || cleanTag.includes('burst') || cleanTag.includes('alt') || SPEED_TAGS.some(st => cleanTag.includes(st)))) {
                         return;
                     }
 
                     tagMatches++;
-                    // Si es un tag de estilo específico, darle doble peso
                     if (cleanTag.includes('/') || ['jumps', 'streams', 'speed', 'aim', 'technical', 'reading'].includes(cleanTag)) {
                         userTagMatches++;
                     }
@@ -831,15 +924,13 @@ async function getPersonalizedRecommendations({
                 reasons.push("Mapper favorito");
             }
 
-            // Popularity/Playcount influence (Max 15 pts)
-            // Logarítmico para suavizar grandes números
-            const playcountScore = Math.min(15, Math.log10(c.playcount + 1) * 2.5);
+            // Popularity (Max 15 pts)
+            const playcountScore = Math.min(15, Math.log10((c.playcount || 0) + 1) * 2.5);
             score += playcountScore;
             if (playcountScore >= 12) {
                 reasons.push("Mapa popular");
             }
 
-            // Ajuste por estilo solicitado o tag personalizado
             if (customUserTag) {
                 const cleanTarget = customUserTag.toLowerCase().trim();
                 if (combinedTags.some(t => t === cleanTarget || t.includes(cleanTarget))) {
@@ -856,7 +947,7 @@ async function getPersonalizedRecommendations({
                 }
                 const hasSpeedTag = combinedTags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
                 if (hasSpeedTag) {
-                    score -= 35; // Penalizar mapas de Speed cuando se pide Aim
+                    score -= 35;
                 }
             } else if (style === 'speed') {
                 const hasSpeedTag = combinedTags.some(t => SPEED_TAGS.includes(t) || t.includes('stream'));
@@ -866,15 +957,14 @@ async function getPersonalizedRecommendations({
                 }
                 const hasAimTag = combinedTags.some(t => AIM_TAGS.includes(t) || t.includes('jump'));
                 if (hasAimTag) {
-                    score -= 35; // Penalizar mapas de Aim cuando se pide Speed
+                    score -= 35;
                 }
             } else if (style === 'tags') {
                 score += 25;
                 reasons.push("Afinidad de patrones");
             }
 
-            // Niche / Rarezas player boosts
-            // A) EZ Player Boost
+            // Boosts de nicho
             if (profile.isEZPlayer) {
                 if (candidateMod.includes("EZ")) {
                     score += 25;
@@ -886,7 +976,6 @@ async function getPersonalizedRecommendations({
                 }
             }
 
-            // B) FL Player Boost
             if (profile.isFLPlayer) {
                 if (candidateMod.includes("FL")) {
                     score += 25;
@@ -896,19 +985,16 @@ async function getPersonalizedRecommendations({
                     score += 35;
                     reasons.push("Estilo Flashlight");
                 }
-                
-                // Si el jugador tiene jugadas de FL en su top, recomendar mapas de esa duración o mayor
                 if (candidateMod.includes("FL") && profile.avgFlDuration !== undefined && profile.avgFlDuration !== null) {
                     if (c.total_length >= profile.avgFlDuration) {
                         score += 25;
                         reasons.push(`Duración adecuada para FL (≥ ${Math.round(profile.avgFlDuration)}s)`);
                     } else {
-                        score -= 30; // Penalizar mapas notablemente más cortos que su promedio FL
+                        score -= 30;
                     }
                 }
             }
 
-            // C) Low AR Player Boost
             if (profile.isLowArPlayer) {
                 const mapAr = parseFloat(c.ar);
                 if (mapAr <= 8.0) {
@@ -920,13 +1006,118 @@ async function getPersonalizedRecommendations({
                 }
             }
 
+            // ----------------------------------------------------
+            // 4. Integración de SkillsModel: Evaluación Cinética Multi-Modo
+            // ----------------------------------------------------
+            const mapSkills = SkillsModel.estimateMapSkills(c, candidateMod, gamemode);
+            let skillBonus = 0;
+            const skillReasons = [];
+
+            if (modeInt === 0) {
+                // osu! Standard
+                const aimSpeedGap = (profile.skills?.aim || 50) - (profile.skills?.speed || 50);
+                if (aimSpeedGap > 14) {
+                    if (mapSkills.speedDominance > 0.60) {
+                        skillBonus -= 35;
+                        skillReasons.push("Exceso de streams para tu perfil de speed");
+                    } else if (mapSkills.speedDominance < 0.40) {
+                        skillBonus += 25;
+                        skillReasons.push("Ideal para tu maestría de Aim");
+                    }
+                } else if (aimSpeedGap < -14) {
+                    if (mapSkills.speedDominance > 0.55) {
+                        skillBonus += 30;
+                        skillReasons.push("Aprovecha tu velocidad/stamina");
+                    } else if (mapSkills.speedDominance < 0.35) {
+                        skillBonus -= 25;
+                    }
+                } else {
+                    skillBonus += 15;
+                    skillReasons.push("Equilibrio Aim/Speed adecuado");
+                }
+
+                if ((profile.skills?.reading || 50) >= 65) {
+                    if (mapSkills.readingReq >= 60 || candidateMod.includes("EZ") || candidateMod.includes("HD")) {
+                        skillBonus += 30;
+                        skillReasons.push("Alineado a tu alta lectura");
+                    }
+                } else if ((profile.skills?.reading || 50) < 45 && mapSkills.readingReq > 65) {
+                    skillBonus -= 25;
+                    skillReasons.push("Alta exigencia de lectura");
+                }
+            } else if (modeInt === 1) {
+                // osu!taiko
+                const stamColorGap = (profile.skills?.stamina || 50) - (profile.skills?.color || 50);
+                if (stamColorGap > 10) {
+                    if (mapSkills.staminaReq >= 45) {
+                        skillBonus += 25;
+                        skillReasons.push("Alineado a tu stamina de golpeo");
+                    }
+                } else {
+                    if (mapSkills.colorReq >= 45) {
+                        skillBonus += 25;
+                        skillReasons.push("Alineado a tu técnica de switching");
+                    }
+                }
+            } else if (modeInt === 2) {
+                // osu!catch
+                const moveSpeedGap = (profile.skills?.movement || 50) - (profile.skills?.speed || 50);
+                if (moveSpeedGap > 10) {
+                    if (mapSkills.movementReq >= 45) {
+                        skillBonus += 25;
+                        skillReasons.push("Ideal para tu control de plato");
+                    }
+                } else {
+                    if (mapSkills.speedReq >= 45) {
+                        skillBonus += 25;
+                        skillReasons.push("Ideal para hyperdashes veloces");
+                    }
+                }
+            } else if (modeInt === 3) {
+                // osu!mania
+                if (profile.keymodeInfo?.mode && mapSkills.keymode) {
+                    if (profile.keymodeInfo.mode === mapSkills.keymode) {
+                        skillBonus += 35;
+                        skillReasons.push(`Modo ${mapSkills.keymode} preferido`);
+                    } else {
+                        skillBonus -= 35;
+                    }
+                }
+                const streamJackGap = (profile.skills?.stream || 50) - (profile.skills?.jack || 50);
+                if (streamJackGap > 10) {
+                    if (mapSkills.streamReq >= 45) {
+                        skillBonus += 20;
+                        skillReasons.push("Alineado a tu velocidad de stream");
+                    }
+                } else {
+                    skillBonus += 20;
+                    skillReasons.push("Alineado a tu control de acordes");
+                }
+            }
+
+            // Adaptación de Push y Choke
+            const targetPushAcc = profile.pushProfile?.targetPushAcc || 0.985;
+            if (profile.pushProfile?.isChokePusher) {
+                if (parseFloat(c.stars) >= (profile.pushProfile.avgPlayedStars - 0.2)) {
+                    skillBonus += 20;
+                    skillReasons.push("Potencial de push en alta dificultad");
+                }
+            }
+            if ((profile.skills?.acc || 50) < 45) {
+                skillReasons.push(`PP calibrado para tu push (~${(targetPushAcc * 100).toFixed(1)}% acc)`);
+            } else if ((profile.skills?.acc || 50) > 70) {
+                skillReasons.push("Aprovecha tu alta precisión");
+            }
+
+            score += skillBonus;
+            reasons.push(...skillReasons);
+
             if (reasons.length === 0) {
                 reasons.push("Compatible con tu nivel");
             }
 
-            // Estimar PP
-            const est100 = estimatePP(c.stars, 1.0, candidateMod);
-            const est99 = estimatePP(c.stars, 0.99, candidateMod);
+            const est100 = modeInt === 0 ? estimatePP(c.stars, 1.0, candidateMod) : Math.round(c.stars * 55);
+            const est99 = modeInt === 0 ? estimatePP(c.stars, 0.99, candidateMod) : Math.round(c.stars * 50);
 
             return {
                 beatmapId: c.beatmap_id.toString(),
@@ -946,16 +1137,18 @@ async function getPersonalizedRecommendations({
                 cs: parseFloat(c.cs),
                 bpm: parseFloat(c.bpm),
                 creator: c.creator,
-                matchScore: Math.min(100, Math.round(score)),
+                matchScore: Math.min(100, Math.max(0, Math.round(score))),
                 rawScore: score,
                 matchReasons: reasons,
                 isRandomMod: c._isRandomMod || false,
                 isRandomTag: c._isRandomTag || false,
-                userTags: c.user_tags || []
+                userTags: c.user_tags || [],
+                mapSkills,
+                targetPushAcc,
+                isChokePusher
             };
         });
 
-    // Separar candidatos en 3 categorías de popularidad para asegurar que no se eclipsen
     const highTier = [];
     const midTier = [];
     const lowTier = [];
@@ -971,24 +1164,23 @@ async function getPersonalizedRecommendations({
         }
     }
 
-    // Ordenar cada tier por afinidad descendente (usando rawScore para que los boosts de nicho destaquen sobre la popularidad)
     highTier.sort((a, b) => b.rawScore - a.rawScore);
     midTier.sort((a, b) => b.rawScore - a.rawScore);
     lowTier.sort((a, b) => b.rawScore - a.rawScore);
 
-    // Tomar hasta 10 candidatos de cada tier
     const selectedHigh = highTier.slice(0, 10);
     const selectedMid = midTier.slice(0, 10);
     const selectedLow = lowTier.slice(0, 10);
 
-    // Combinar en una lista final equilibrada
     return [...selectedHigh, ...selectedMid, ...selectedLow];
 }
 
-async function recalculateExactPP(recs, activeMods) {
+async function recalculateExactPP(recs, activeMods, gamemode = 'osu', targetPushAcc = null) {
     try {
         const ppEngine = require("../utils/ppEngine.js");
         const BeatmapModel = require("./BeatmapModel.js");
+        const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
+        const modeInt = MODE_INT[gamemode] ?? 0;
 
         for (const rec of recs) {
             try {
@@ -1005,16 +1197,28 @@ async function recalculateExactPP(recs, activeMods) {
                 };
                 const map = await BeatmapModel.getBeatmap_osu(rec.beatmapsetId, rec.beatmapId, meta);
                 if (map) {
-                    const diffAttrs = new ppEngine.Difficulty({ mods: activeModsStr }).calculate(map);
-                    const perfAttrs = new ppEngine.Performance({ mods: activeModsStr }).calculate(diffAttrs);
+                    if (modeInt !== 0 && typeof map.convert === "function") {
+                        map.convert(modeInt);
+                    }
+                    const diffAttrs = new ppEngine.Difficulty({ mods: activeModsStr, mode: modeInt }).calculate(map);
+                    const perfAttrs = new ppEngine.Performance({ mods: activeModsStr, mode: modeInt }).calculate(diffAttrs);
                     const ppSS = perfAttrs.pp;
-                    const pp99 = new ppEngine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(diffAttrs).pp;
+                    const pp99 = new ppEngine.Performance({ mods: activeModsStr, mode: modeInt, accuracy: 99 }).calculate(diffAttrs).pp;
 
                     rec.maxPP = Math.round(ppSS);
                     rec.pp99 = Math.round(pp99);
                     const starsVal = diffAttrs.stars;
                     if (typeof starsVal === 'number') {
                         rec.stars = starsVal;
+                    }
+
+                    // Push PP calibrado entre el promedio y el máximo para instigar a pushear
+                    const pushAcc = targetPushAcc || rec.targetPushAcc;
+                    if (pushAcc && (pushAcc < 0.99 || rec.isChokePusher)) {
+                        const pushAccPct = pushAcc * 100;
+                        const pushPerf = new ppEngine.Performance({ mods: activeModsStr, mode: modeInt, accuracy: pushAccPct }).calculate(diffAttrs);
+                        rec.pushPP = Math.round(pushPerf.pp);
+                        rec.pushAcc = pushAcc;
                     }
 
                     map.free();

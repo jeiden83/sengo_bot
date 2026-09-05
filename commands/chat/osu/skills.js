@@ -1,6 +1,6 @@
 const { t } = require("../../../utils/i18n.js");
 const { getOsuUser, getUserTopScores, argsParser } = require("../../utils/osu.js");
-const { analyzeSkillsBreakdown } = require("../../../views/osuCardViews.js");
+const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
 const { doOsuSkillsEmbed } = require("../../../views/osuSkillsView.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 

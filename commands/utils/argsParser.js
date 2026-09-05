@@ -499,7 +499,7 @@ function argsParserNoCommand(args, options = {}) {
     };
 
     const gamemode_set = {
-        'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits'
+        'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits', 'catch': 'fruits'
     };
     const server_set = {
         'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu'

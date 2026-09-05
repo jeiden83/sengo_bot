@@ -101,7 +101,6 @@ function selectRecommendedFromTier(tier) {
 async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res, gamemode = 'osu') {
     try {
         const gamemodeKey = gamemode || 'osu';
-        if (gamemodeKey !== 'osu') return;
         const cacheKey = `${osuUserId}:${gamemodeKey}`;
         const existing = recommendCache.get(cacheKey);
         if (existing && (Date.now() - existing.timestamp < CACHE_TTL)) {
@@ -122,7 +121,7 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             avatar_url: avatarUrl || topScores[0].user.avatar_url
         };
 
-        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores);
+        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores, null, gamemodeKey);
         if (!userProfile) return;
 
         const top15 = topScores.slice(0, 15);
@@ -150,7 +149,8 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             customMaxPP: maxPP,
             customMods: null, // Permitir 80/20 mod selection
             style: 'standard',
-            showPlayed: false
+            showPlayed: false,
+            gamemode: gamemodeKey
         });
 
         const filteredCandidates = [];
@@ -191,12 +191,15 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
             finalRecs = filteredCandidates;
         }
 
-        await RecommendationModel.recalculateExactPP(finalRecs);
+        await RecommendationModel.recalculateExactPP(finalRecs, null, gamemodeKey);
 
         // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
         const minAllowedPreload = minPP * 0.75;
         const maxAllowedPreload = maxPP * 1.25;
-        const strictlyValidPreload = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowedPreload && r.maxPP <= maxAllowedPreload));
+        const strictlyValidPreload = finalRecs.filter(r => {
+            const comparePP = (r.isChokePusher && r.pushPP) ? r.pushPP : (r.maxPP || 0);
+            return !comparePP || (comparePP >= minAllowedPreload && comparePP <= maxAllowedPreload * 1.35);
+        });
         if (strictlyValidPreload.length > 0) {
             finalRecs = strictlyValidPreload;
         }
@@ -473,6 +476,7 @@ async function run(messages, args) {
 
     const topScores = parser_res.fn_response;
     const osuUserId = parser_res.parsed_args.username[0];
+    const activeGamemode = parser_res.parsed_args.gamemode || "osu";
     const top100Ids = new Set(topScores.map(score => score.beatmap.id.toString()));
 
     if (!customMods) {
@@ -492,7 +496,7 @@ async function run(messages, args) {
 
     // Si se usa -force, borrar la caché del usuario antes de continuar
     if (forceRefresh) {
-        const forceCacheKey = `${osuUserId}:${parser_res.parsed_args.gamemode || 'osu'}`;
+        const forceCacheKey = `${osuUserId}:${activeGamemode}`;
         recommendCache.delete(forceCacheKey);
     }
 
@@ -514,7 +518,8 @@ async function run(messages, args) {
             style: currentStyle,
             customUserTag: customUserTag,
             showPlayed,
-            skipSet: localSkipSet
+            skipSet: localSkipSet,
+            gamemode: activeGamemode
         });
 
         const acceptedHigh = [];
@@ -632,18 +637,6 @@ async function run(messages, args) {
         return result;
     }
 
-    const activeGamemode = parser_res.parsed_args.gamemode || "osu";
-    if (activeGamemode !== "osu") {
-        const errorMsg = t(locale, 'recommend.err_only_std');
-        if (isSlash) {
-            await interaction.editReply({ content: errorMsg });
-        } else if (statusMessage) {
-            await statusMessage.edit({ content: errorMsg });
-        } else {
-            await message.channel.send(errorMsg);
-        }
-        return;
-    }
     const cacheKey = `${osuUserId}:${activeGamemode}`;
     const cached = isDefaultRun ? recommendCache.get(cacheKey) : null;
 
@@ -673,7 +666,7 @@ async function run(messages, args) {
             };
         }
 
-        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores);
+        const userProfile = await RecommendationModel.buildUserProfileAsync(topScores, null, activeGamemode);
         preferredMod = userProfile.preferredMod || "NM";
         activeMods = customMods || preferredMod;
         suggestedMod = activeMods === "NM" ? (preferredMod === "NM" ? "DT" : preferredMod) : "NM";
@@ -748,12 +741,15 @@ async function run(messages, args) {
                     finalRecs.forEach(r => r.isPPExpanded = true);
                 }
 
-                await RecommendationModel.recalculateExactPP(finalRecs, customMods);
+                await RecommendationModel.recalculateExactPP(finalRecs, customMods, activeGamemode);
 
                 // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
                 const minAllowed = minPP * 0.75;
                 const maxAllowed = maxPP * 1.25;
-                const strictlyValid = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowed && r.maxPP <= maxAllowed));
+                const strictlyValid = finalRecs.filter(r => {
+                    const comparePP = (r.isChokePusher && r.pushPP) ? r.pushPP : (r.maxPP || 0);
+                    return !comparePP || (comparePP >= minAllowed && comparePP <= maxAllowed * 1.35);
+                });
                 if (strictlyValid.length > 0) {
                     finalRecs = strictlyValid;
                 }
@@ -806,7 +802,7 @@ async function run(messages, args) {
         }
     });
 
-    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag };
+    let params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag, gamemode: activeGamemode };
     let embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
     let rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 
@@ -872,12 +868,15 @@ async function run(messages, args) {
                 finalRecs.forEach(r => r.isPPExpanded = true);
             }
 
-            await RecommendationModel.recalculateExactPP(finalRecs, customMods);
+            await RecommendationModel.recalculateExactPP(finalRecs, customMods, activeGamemode);
 
             // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
             const minAllowedReroll = minPP * 0.75;
             const maxAllowedReroll = maxPP * 1.25;
-            const strictlyValidReroll = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowedReroll && r.maxPP <= maxAllowedReroll));
+            const strictlyValidReroll = finalRecs.filter(r => {
+                const comparePP = (r.isChokePusher && r.pushPP) ? r.pushPP : (r.maxPP || 0);
+                return !comparePP || (comparePP >= minAllowedReroll && comparePP <= maxAllowedReroll * 1.35);
+            });
             if (strictlyValidReroll.length > 0) {
                 finalRecs = strictlyValidReroll;
             }
@@ -949,7 +948,7 @@ async function run(messages, args) {
                 }
             });
 
-            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag };
+            params = { minPP, maxPP, mods: activeMods, showPlayed, hasSupporter, style: currentStyle, customUserTag, gamemode: activeGamemode };
             embed = doOsuRecommendEmbed(message, profile, currentRecs, params, locale);
             rows = buildRecommendButtonsRow(params, suggestedMod, currentRecs.length > 0, currentRecs, hasSupporter, locale);
 
