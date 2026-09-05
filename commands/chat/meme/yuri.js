@@ -184,11 +184,11 @@ async function run(messages, args) {
 
                 let currentFile = list_order.shift();
 
-                // Si es un comando de texto y se especifica un número por argumento
+                // Si se especifica un número por argumento (1-indexed para el usuario)
                 if (args?.[0]) {
                     const requestedIndex = parseInt(args[0]);
-                    if (!isNaN(requestedIndex) && requestedIndex >= 0) {
-                        const idx = Math.min(requestedIndex, imageFiles.length - 1);
+                    if (!isNaN(requestedIndex)) {
+                        const idx = Math.min(Math.max(1, requestedIndex), imageFiles.length) - 1;
                         currentFile = imageFiles[idx];
                     }
                 }
@@ -282,10 +282,11 @@ async function run(messages, args) {
 
     let currentFile = list_order.shift();
 
+    // Si se especifica un número por argumento (1-indexed para el usuario)
     if (args?.[0]) {
         const requestedIndex = parseInt(args[0]);
-        if (!isNaN(requestedIndex) && requestedIndex >= 0) {
-            const idx = Math.min(requestedIndex, files.length - 1);
+        if (!isNaN(requestedIndex)) {
+            const idx = Math.min(Math.max(1, requestedIndex), files.length) - 1;
             currentFile = files[idx];
         }
     }
