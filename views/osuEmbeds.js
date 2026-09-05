@@ -433,6 +433,10 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
     if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
     if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
+    if (parsed_args.skillInfo) {
+        const skillName = parsed_args.skillInfo.key.toUpperCase();
+        active_filters.push(`Skill: ${skillName} (${parsed_args.skillInfo.avgPoints.toFixed(2)} pts)`);
+    }
 
     if (active_filters.length > 0) {
         prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
@@ -446,13 +450,19 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         : '';
     const time_relative = `${snipedPrefixSingle}${time_relative_val}`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
-    const line2 = `${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
+    const skillLine = (score.skillPoints !== undefined && score.selectedSkill)
+        ? `⭐ **Skill (${score.selectedSkill.toUpperCase()}):** \`${score.skillPoints.toFixed(2)} pts\`\n`
+        : "";
+    const line2 = `${prefix_desc}${skillLine}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
     const line3 = getBeatmapStatsLine(map, score.mods, map.mode || 'osu');
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
 
-    const authorName = parsed_args.nochoke
+    let authorName = parsed_args.nochoke
         ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
         : t(locale, 'top.single_embed_author', { rank: score.originalRank || index, username });
+    if (parsed_args.skillInfo) {
+        authorName += ` (Skill: ${parsed_args.skillInfo.key.toUpperCase()})`;
+    }
 
     const footerText = parsed_args.nochoke
         ? t(locale, 'top.single_embed_footer_nc', { index, total: total_plays })
@@ -507,6 +517,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
         active_filters.push(...srTexts);
     }
+    if (parsed_args.skillInfo) {
+        const skillName = parsed_args.skillInfo.key.toUpperCase();
+        active_filters.push(`Skill: ${skillName} (${parsed_args.skillInfo.avgPoints.toFixed(2)} pts)`);
+    }
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
@@ -545,24 +559,31 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         let time_set = `${snipedPrefixList}<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
 
+        const rankPrefix = score.skillRank
+            ? `**#${score.skillRank} [PP #${score.originalRank || globalIndex}]**`
+            : `**#${score.originalRank || globalIndex}**`;
+        const skillPrefix = score.skillPoints !== undefined
+            ? `\`${score.skillPoints.toFixed(2)} pts\` ▸ `
+            : "";
+
         let score_line = "";
         if (parsed_args.nochoke) {
-            score_line += `**#${globalIndex} [${score.originalRank}]** ▸ ${map_link} +${mods_used} [${stars}]\n`;
+            score_line += `${rankPrefix} ▸ ${map_link} +${mods_used} [${stars}]\n`;
             if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
                 const old_grade = getGradeEmoji(score.originalRankGrade, score.passed);
                 const old_pp = `${score.originalPP.toFixed(2)}pp`;
                 const old_acc = `${(score.originalAccuracy * 100).toFixed(2)}%`;
                 const old_stats = `\`${getPlainStatsString(score.originalStats, score.beatmap.mode)}\``;
                 
-                score_line += ` ▸ ${old_grade} ➔ ${grade_emoji} ▸ \`${old_pp}\` ➔ **\`${pp}\`** ▸ \`${old_acc}\` ➔ **\`${accuracy}%\`**\n` +
+                score_line += ` ▸ ${skillPrefix}${old_grade} ➔ ${grade_emoji} ▸ \`${old_pp}\` ➔ **\`${pp}\`** ▸ \`${old_acc}\` ➔ **\`${accuracy}%\`**\n` +
                     ` ▸ x${score.originalCombo} ➔ **x${maxComboStr}/${maxComboStr}** ▸ ${old_stats} ➔ ${stats_str}\n`;
             } else {
-                score_line += ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n`;
+                score_line += ` ▸ ${skillPrefix}${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n`;
             }
             score_line += ` ▸ ${time_set}\n\n`;
         } else {
-            score_line = `**#${score.originalRank || globalIndex}** ▸ ${map_link} +${mods_used} [${stars}]\n` +
-                ` ▸ ${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
+            score_line = `${rankPrefix} ▸ ${map_link} +${mods_used} [${stars}]\n` +
+                ` ▸ ${skillPrefix}${grade_emoji} ▸ **${pp}** ▸ **${accuracy}%**${ratio_str} ▸ ${combo_val_str} ▸ ${stats_str}\n ▸ ${time_set}\n\n`;
         }
 
         embed_description = embed_description.concat(score_line);
@@ -572,7 +593,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     const avatar_url = top_scores_chunk[0].user.avatar_url;
     const embedColor = getEmbedColor(message);
 
-    const authorSuffix = parsed_args.nochoke ? " (No Choke)" : "";
+    let authorSuffix = parsed_args.nochoke ? " (No Choke)" : "";
+    if (parsed_args.skillInfo) {
+        authorSuffix += ` (Skill: ${parsed_args.skillInfo.key.toUpperCase()})`;
+    }
     const footerSuffix = parsed_args.nochoke ? " (No Choke)" : "";
 
     const embed = new EmbedBuilder()

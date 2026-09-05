@@ -24,6 +24,41 @@ async function run(messages, args) {
         return t(locale, "skills.err_only_std");
     }
 
+    // ponytail: Si se incluye -top, delegar al flujo de mejores jugadas desglosadas por habilidad
+    const isTopMode = safeArgs.some(arg => typeof arg === "string" && (arg.toLowerCase() === "-top" || arg.toLowerCase() === "--top"));
+    if (isTopMode) {
+        let requestedSkill = null;
+        const cleanArgs = [];
+        for (const arg of safeArgs) {
+            if (typeof arg !== "string") continue;
+            const lower = arg.toLowerCase();
+            if (lower === "-top" || lower === "--top") continue;
+            if (["-aim", "--aim"].includes(lower)) {
+                requestedSkill = "aim";
+                continue;
+            }
+            if (["-acc", "--acc"].includes(lower)) {
+                requestedSkill = "acc";
+                continue;
+            }
+            if (["-speed", "--speed"].includes(lower)) {
+                requestedSkill = "speed";
+                continue;
+            }
+            if (["-reading", "--reading"].includes(lower)) {
+                requestedSkill = "reading";
+                continue;
+            }
+            cleanArgs.push(arg);
+        }
+
+        const topCommand = require("./top.js");
+        return await topCommand.run(messages, cleanArgs, {
+            isSkillTop: true,
+            requestedSkill
+        });
+    }
+
     let osuUser = null;
 
     if (logger) logger.process("Consultando usuario de osu!");

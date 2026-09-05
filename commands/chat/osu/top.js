@@ -34,7 +34,7 @@ function matchCondition(stars, cond) {
     return true;
 }
 
-async function run(messages, args) {
+async function run(messages, args, options = {}) {
     const { message, res } = messages;
     const locale = message.locale || 'es';
 
@@ -57,6 +57,44 @@ async function run(messages, args) {
 
     let originalScores = parser_res.fn_response;
     let sentMessage = null;
+
+    // ponytail: Soporte de desglose de skills para s.skills -top
+    if (options.isSkillTop) {
+        if (parser_res.parsed_args.gamemode && parser_res.parsed_args.gamemode !== "osu") {
+            return t(locale, "skills.err_only_std");
+        }
+        const { analyzeSkills } = require("../../../views/osuCardViews.js");
+        const skillsData = analyzeSkills(originalScores, true);
+
+        let selectedSkill = options.requestedSkill;
+        if (!selectedSkill) {
+            const candidates = [
+                { key: 'aim', val: skillsData.aim || 0 },
+                { key: 'speed', val: skillsData.speed || 0 },
+                { key: 'acc', val: skillsData.acc || 0 },
+                { key: 'reading', val: skillsData.reading || 0 }
+            ];
+            candidates.sort((a, b) => b.val - a.val);
+            selectedSkill = candidates[0].key;
+        }
+
+        originalScores.forEach(s => {
+            s.skillPoints = s.skills ? (s.skills[selectedSkill] || 0) : 0;
+            s.selectedSkill = selectedSkill;
+        });
+
+        if (!parser_res.parsed_args.recentSort && !parser_res.parsed_args.comboSort && !parser_res.parsed_args.accSort) {
+            originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));
+            originalScores.forEach((score, idx) => {
+                score.skillRank = idx + 1;
+            });
+        }
+
+        parser_res.parsed_args.skillInfo = {
+            key: selectedSkill,
+            avgPoints: skillsData[selectedSkill] || 0
+        };
+    }
 
     if (parser_res.parsed_args.nochoke) {
         const processStartTime = Date.now();
@@ -144,6 +182,13 @@ async function run(messages, args) {
         originalScores.forEach((score, idx) => {
             score.noChokeRank = idx + 1;
         });
+
+        if (options.isSkillTop && !parser_res.parsed_args.recentSort && !parser_res.parsed_args.comboSort && !parser_res.parsed_args.accSort) {
+            originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));
+            originalScores.forEach((score, idx) => {
+                score.skillRank = idx + 1;
+            });
+        }
     }
 
 

@@ -399,6 +399,14 @@ function analyzeSkills(scores, returnBreakdown = false) {
         const playAcc = mapToSkillCurve(rawAccPP / ACC_NERF);
         const playReading = mapToSkillCurve(rawReadingPP / READING_NERF);
 
+        // ponytail: Adjuntar skills directamente al score para que comandos derivados (.skills -top) accedan sin recomputar
+        s.skills = {
+            aim: playAim,
+            speed: playSpeed,
+            acc: playAcc,
+            reading: playReading
+        };
+
         if (returnBreakdown) {
             scoredPlays.push({
                 score: s,

@@ -5,7 +5,36 @@ const { createSlashMessagesContext, addUsuarioOption } = require("../utils/slash
 const data = new SlashCommandBuilder()
     .setName("skills")
     .setDescription("Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas")
-    .addStringOption(addUsuarioOption);
+    .addStringOption(addUsuarioOption)
+    .addBooleanOption(option =>
+        option.setName("top")
+            .setDescription("Desglosar habilidades en formato de lista de mejores jugadas (.top)")
+    )
+    .addStringOption(option =>
+        option.setName("skill")
+            .setDescription("Filtrar por habilidad específica")
+            .addChoices(
+                { name: "Aim", value: "aim" },
+                { name: "Speed", value: "speed" },
+                { name: "Accuracy", value: "acc" },
+                { name: "Reading", value: "reading" }
+            )
+    )
+    .addStringOption(option =>
+        option.setName("mods")
+            .setDescription("Filtrar por mods (ej: HDHR o NM)")
+    )
+    .addIntegerOption(option =>
+        option.setName("page")
+            .setDescription("Número de página de la lista")
+            .setMinValue(1)
+    )
+    .addIntegerOption(option =>
+        option.setName("index")
+            .setDescription("Mostrar una jugada específica (1-100)")
+            .setMinValue(1)
+            .setMaxValue(100)
+    );
 
 // Permitir instalación de usuario y servidores externos
 if (typeof data.setIntegrationTypes === "function") {
@@ -17,9 +46,19 @@ if (typeof data.setContexts === "function") {
 
 async function run(interaction, res, chat_commands) {
     const targetUser = interaction.options.getString("usuario");
+    const isTop = interaction.options.getBoolean("top");
+    const skill = interaction.options.getString("skill");
+    const mods = interaction.options.getString("mods");
+    const page = interaction.options.getInteger("page");
+    const index = interaction.options.getInteger("index");
 
     const args = [];
     if (targetUser) args.push(targetUser);
+    if (isTop) args.push("-top");
+    if (skill) args.push(`-${skill}`);
+    if (mods) args.push("-m", mods);
+    if (page) args.push("-p", String(page));
+    if (index) args.push("-i", String(index));
 
     const messages = createSlashMessagesContext(interaction, res);
 
