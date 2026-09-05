@@ -6,6 +6,16 @@ const data = new SlashCommandBuilder()
     .setName("skills")
     .setDescription("Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas")
     .addStringOption(addUsuarioOption)
+    .addStringOption(option =>
+        option.setName("modo")
+            .setDescription("Modo de juego")
+            .addChoices(
+                { name: "osu! (Standard)", value: "osu" },
+                { name: "osu!taiko", value: "taiko" },
+                { name: "osu!catch", value: "fruits" },
+                { name: "osu!mania", value: "mania" }
+            )
+    )
     .addBooleanOption(option =>
         option.setName("top")
             .setDescription("Desglosar habilidades en formato de lista de mejores jugadas (.top)")
@@ -14,10 +24,17 @@ const data = new SlashCommandBuilder()
         option.setName("skill")
             .setDescription("Filtrar por habilidad específica")
             .addChoices(
-                { name: "Aim", value: "aim" },
-                { name: "Speed", value: "speed" },
-                { name: "Accuracy", value: "acc" },
-                { name: "Reading", value: "reading" }
+                { name: "Aim (osu!)", value: "aim" },
+                { name: "Speed (osu! / catch)", value: "speed" },
+                { name: "Accuracy (todos)", value: "acc" },
+                { name: "Reading (osu! / catch)", value: "reading" },
+                { name: "Stamina (taiko)", value: "stamina" },
+                { name: "Color / Switching (taiko)", value: "color" },
+                { name: "Rhythm (taiko)", value: "rhythm" },
+                { name: "Movement (catch)", value: "movement" },
+                { name: "Stream / Speed (mania)", value: "stream" },
+                { name: "Jack / Stamina (mania)", value: "jack" },
+                { name: "LN / Tech (mania)", value: "tech" }
             )
     )
     .addStringOption(option =>
@@ -46,6 +63,7 @@ if (typeof data.setContexts === "function") {
 
 async function run(interaction, res, chat_commands) {
     const targetUser = interaction.options.getString("usuario");
+    const modo = interaction.options.getString("modo");
     const isTop = interaction.options.getBoolean("top");
     const skill = interaction.options.getString("skill");
     const mods = interaction.options.getString("mods");
@@ -54,6 +72,7 @@ async function run(interaction, res, chat_commands) {
 
     const args = [];
     if (targetUser) args.push(targetUser);
+    if (modo) args.push(`-${modo}`);
     if (isTop) args.push("-top");
     if (skill) args.push(`-${skill}`);
     if (mods) args.push("-m", mods);

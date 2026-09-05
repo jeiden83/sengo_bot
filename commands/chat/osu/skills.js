@@ -9,20 +9,28 @@ async function run(messages, args) {
     const locale = message?.locale || "es";
     const safeArgs = Array.isArray(args) ? args : [];
 
-    // Validar si pasaron flags de otros modos de juego (Taiko, Catch/CTB, Mania)
-    const NON_STD_MODES = [
-        "-taiko", "--taiko", "taiko", "-t",
-        "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
-        "-mania", "--mania", "mania", "-m"
-    ];
-
-    const hasNonStdArg = safeArgs.some(arg => 
-        typeof arg === "string" && NON_STD_MODES.includes(arg.toLowerCase())
-    );
-
-    if (hasNonStdArg) {
-        return t(locale, "skills.err_only_std");
-    }
+    // Mapeo de alias de habilidades para filtrado en -top
+    const SKILL_ALIASES = {
+        aim: "aim",
+        speed: "speed",
+        acc: "acc",
+        accuracy: "acc",
+        precision: "acc",
+        reading: "reading",
+        read: "reading",
+        stamina: "stamina",
+        stam: "stamina",
+        color: "color",
+        colour: "color",
+        rhythm: "rhythm",
+        movement: "movement",
+        move: "movement",
+        stream: "stream",
+        jack: "jack",
+        jacks: "jack",
+        tech: "tech",
+        ln: "tech"
+    };
 
     // ponytail: Si se incluye -top, delegar al flujo de mejores jugadas desglosadas por habilidad
     const isTopMode = safeArgs.some(arg => typeof arg === "string" && (arg.toLowerCase() === "-top" || arg.toLowerCase() === "--top"));
@@ -33,20 +41,10 @@ async function run(messages, args) {
             if (typeof arg !== "string") continue;
             const lower = arg.toLowerCase();
             if (lower === "-top" || lower === "--top") continue;
-            if (["-aim", "--aim"].includes(lower)) {
-                requestedSkill = "aim";
-                continue;
-            }
-            if (["-acc", "--acc"].includes(lower)) {
-                requestedSkill = "acc";
-                continue;
-            }
-            if (["-speed", "--speed"].includes(lower)) {
-                requestedSkill = "speed";
-                continue;
-            }
-            if (["-reading", "--reading"].includes(lower)) {
-                requestedSkill = "reading";
+
+            const stripped = lower.replace(/^--?/, "");
+            if (SKILL_ALIASES[stripped]) {
+                requestedSkill = SKILL_ALIASES[stripped];
                 continue;
             }
             cleanArgs.push(arg);
@@ -59,7 +57,19 @@ async function run(messages, args) {
         });
     }
 
+    // Detectar modo explícito si fue especificado por argumentos
+    let explicitMode = null;
+    for (const arg of safeArgs) {
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        if (["-t", "-taiko", "--taiko", "taiko"].includes(lower)) explicitMode = "taiko";
+        else if (["-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits"].includes(lower)) explicitMode = "fruits";
+        else if (["-mania", "--mania", "mania"].includes(lower) || lower === "-m") explicitMode = "mania";
+        else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) explicitMode = "osu";
+    }
+
     let osuUser = null;
+    let detectedMode = explicitMode;
 
     if (logger) logger.process("Consultando usuario de osu!");
 
@@ -68,12 +78,14 @@ async function run(messages, args) {
             message,
             res: res || {},
             command_function: getOsuUser,
+            gamemode: explicitMode,
+            ignore_main_gamemode: Boolean(explicitMode),
             resolveUserByIndex: true,
             ignoreBeatmap: true
         });
 
-        if (osuUserdata && osuUserdata.gamemode && osuUserdata.gamemode !== "osu") {
-            return t(locale, "skills.err_only_std");
+        if (osuUserdata && osuUserdata.gamemode) {
+            detectedMode = explicitMode || osuUserdata.gamemode;
         }
 
         if (osuUserdata && osuUserdata.fn_response) {
@@ -82,13 +94,17 @@ async function run(messages, args) {
             }
             osuUser = osuUserdata.fn_response;
         }
-    } else {
+    }
+
+    const targetMode = detectedMode || osuUser?.playmode || "osu";
+
+    if (!osuUser || !osuUser.id) {
         // Buscar usuario vinculado del autor
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
             if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: "osu", server: "bancho" });
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: "bancho" });
             }
         } catch (err) {
             console.warn("[s.skills] Error al obtener usuario vinculado:", err.message);
@@ -104,14 +120,14 @@ async function run(messages, args) {
     }
 
     try {
-        if (logger) logger.process("Obteniendo Top 100 puntuaciones y analizando habilidades");
-        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: "osu", server: "bancho" }).catch(() => []);
+        if (logger) logger.process(`Obteniendo Top 100 puntuaciones en ${targetMode} y analizando habilidades`);
+        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: "bancho" }).catch(() => []);
 
         if (!topScores || topScores.length === 0) {
             return t(locale, "skills.err_no_scores", { username: osuUser.username });
         }
 
-        const skillsBreakdown = await analyzeSkillsBreakdown(topScores);
+        const skillsBreakdown = await analyzeSkillsBreakdown(topScores, targetMode);
         const embed = doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale);
 
         return { embeds: [embed] };

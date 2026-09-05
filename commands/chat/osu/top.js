@@ -58,22 +58,16 @@ async function run(messages, args, options = {}) {
     let originalScores = parser_res.fn_response;
     let sentMessage = null;
 
-    // ponytail: Soporte de desglose de skills para s.skills -top
+    // ponytail: Soporte de desglose de skills para s.skills -top en todos los modos de juego
     if (options.isSkillTop) {
-        if (parser_res.parsed_args.gamemode && parser_res.parsed_args.gamemode !== "osu") {
-            return t(locale, "skills.err_only_std");
-        }
+        const mode = parser_res.parsed_args.gamemode || "osu";
         const { analyzeSkills } = require("../../../views/osuCardViews.js");
-        const skillsData = analyzeSkills(originalScores, true);
+        const skillsData = analyzeSkills(originalScores, true, mode);
 
         let selectedSkill = options.requestedSkill;
         if (!selectedSkill) {
-            const candidates = [
-                { key: 'aim', val: skillsData.aim || 0 },
-                { key: 'speed', val: skillsData.speed || 0 },
-                { key: 'acc', val: skillsData.acc || 0 },
-                { key: 'reading', val: skillsData.reading || 0 }
-            ];
+            const keys = skillsData.skillKeys || ['aim', 'speed', 'acc', 'reading'];
+            const candidates = keys.map(k => ({ key: k, val: skillsData[k] || 0 }));
             candidates.sort((a, b) => b.val - a.val);
             selectedSkill = candidates[0].key;
         }

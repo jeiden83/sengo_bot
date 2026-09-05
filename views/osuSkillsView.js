@@ -59,18 +59,29 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
 
     const authorName = `${flag} ${username}: ${ppFormatted}pp (${globalRank} ${countryRank})`;
 
-    const aimScore = skillsBreakdown.aim ?? 0;
-    const speedScore = skillsBreakdown.speed ?? 0;
-    const accScore = skillsBreakdown.acc ?? 0;
-    const readingScore = skillsBreakdown.reading ?? 0;
+    const mode = skillsBreakdown.mode || "osu";
+    const MODE_NAMES = {
+        osu: "osu!",
+        taiko: "osu!taiko",
+        fruits: "osu!catch",
+        mania: "osu!mania"
+    };
+    const modeDisplayName = MODE_NAMES[mode] || "osu!";
+
+    const skillKeys = skillsBreakdown.skillKeys || ["aim", "speed", "acc", "reading"];
 
     // Encabezado de promedios en puntos
-    const avgLines = [
-        `**${t(locale, "skills.avg_aim")}:** ${aimScore.toFixed(2)} pts`,
-        `**${t(locale, "skills.avg_speed")}:** ${speedScore.toFixed(2)} pts`,
-        `**${t(locale, "skills.avg_acc")}:** ${accScore.toFixed(2)} pts`,
-        `**${t(locale, "skills.avg_reading")}:** ${readingScore.toFixed(2)} pts`
-    ];
+    const avgLines = skillKeys.map(k => {
+        const val = Number(skillsBreakdown[k] ?? 0).toFixed(2);
+        return `**${t(locale, `skills.avg_${k}`)}:** ${val} pts`;
+    });
+
+    if (skillsBreakdown.keymodeInfo) {
+        avgLines.push(t(locale, "skills.keymode_info", {
+            mode: skillsBreakdown.keymodeInfo.mode,
+            pct: skillsBreakdown.keymodeInfo.pct
+        }));
+    }
 
     /**
      * Construye las líneas de jugadas para una habilidad específica mostrando sus puntos
@@ -92,21 +103,16 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
         }).join("\n");
     };
 
-    const description = [
-        avgLines.join("\n"),
-        "",
-        `**${t(locale, "skills.section_aim")}**`,
-        buildSkillLines(skillsBreakdown.topAim, "aim"),
-        "",
-        `**${t(locale, "skills.section_speed")}**`,
-        buildSkillLines(skillsBreakdown.topSpeed, "speed"),
-        "",
-        `**${t(locale, "skills.section_acc")}**`,
-        buildSkillLines(skillsBreakdown.topAcc, "acc"),
-        "",
-        `**${t(locale, "skills.section_reading")}**`,
-        buildSkillLines(skillsBreakdown.topReading, "reading")
-    ].join("\n");
+    const descBlocks = [avgLines.join("\n")];
+    skillKeys.forEach(k => {
+        const cap = k.charAt(0).toUpperCase() + k.slice(1);
+        const plays = skillsBreakdown[`top${cap}`] || [];
+        descBlocks.push("");
+        descBlocks.push(`**${t(locale, `skills.section_${k}`)}**`);
+        descBlocks.push(buildSkillLines(plays, k));
+    });
+
+    const description = descBlocks.join("\n");
 
     return new EmbedBuilder()
         .setColor(embedColor)
@@ -115,7 +121,7 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
             iconURL: avatarUrl,
             url: userUrl
         })
-        .setTitle(t(locale, "skills.embed_title"))
+        .setTitle(t(locale, "skills.embed_title", { mode: modeDisplayName }))
         .setThumbnail(avatarUrl)
         .setDescription(description)
         .setFooter({
