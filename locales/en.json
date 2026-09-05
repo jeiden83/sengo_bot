@@ -190,6 +190,11 @@
       "body": "Shows the Milin gif.",
       "usage": "s.milin"
     },
+    "fate": {
+      "header": "Fate anime order",
+      "body": "Shows the complete guide with the watch order for the Fate anime series.",
+      "usage": "s.fate"
+    },
     "yuri": {
       "header": "Yuri",
       "body": "The creator of the bot likes reading yuri manga.",
