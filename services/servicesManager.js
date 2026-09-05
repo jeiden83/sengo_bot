@@ -154,6 +154,14 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         } catch (err) {
             Logger.system(`Error al iniciar Render Log Service: ${err.message}`);
         }
+
+        // 12. Servicio de Tracking de Amigos y Mutuales del Creador (cada 8 horas)
+        try {
+            const { initOwnerFriendsTracker } = require("./ownerFriendsTrackerService.js");
+            initOwnerFriendsTracker(client);
+        } catch (err) {
+            Logger.system(`Error al iniciar Owner Friends Tracker: ${err.message}`);
+        }
     }
 }
 

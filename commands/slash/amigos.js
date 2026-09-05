@@ -8,14 +8,49 @@ const data = new SlashCommandBuilder()
         option.setName("pais")
             .setDescription("Filtra amigos por código de país (ej. CL, AR) o 'self'")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("mutuals")
+            .setDescription("Filtra solo amigos que son mutuales (💕)")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("nomutuals")
+            .setDescription("Filtra solo amigos que no te siguen de vuelta (❌)")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("track")
+            .setDescription("Configura el canal para tracking de mutuales cada 8h (Solo Creador)")
+            .setRequired(false)
+            .addChoices(
+                { name: "Activar en este canal", value: "on" },
+                { name: "Desactivar", value: "off" },
+                { name: "Comprobar ahora", value: "check" }
+            )
     );
 
 async function run(interaction, res) {
     const args = [];
     const pais = interaction.options.getString("pais");
+    const mutuals = interaction.options.getBoolean("mutuals");
+    const nomutuals = interaction.options.getBoolean("nomutuals");
+    const track = interaction.options.getString("track");
 
     if (pais) {
         args.push("-pais", pais);
+    }
+    if (mutuals) {
+        args.push("-mutuals");
+    }
+    if (nomutuals) {
+        args.push("-nomutuals");
+    }
+    if (track) {
+        args.push("-track");
+        if (track === "off" || track === "check") {
+            args.push(track);
+        }
     }
 
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");

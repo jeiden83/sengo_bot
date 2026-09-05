@@ -58,9 +58,10 @@ function doOsuMissingFriendsEmbed(message, missingFriends) {
 /**
  * Renderiza una página de la lista de amigos en osu! (amigos.js)
  */
-function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends, filterCountryCode, user = null, showLegend = true) {
+function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startIndex, totalFriends, filterCountryCode, user = null, showLegend = true, extraOptions = {}) {
     const embedColor = getEmbedColor(message);
     const locale = message.locale || 'es';
+    const { mutualFilter = null, isSessionUser = false } = extraOptions;
     let desc = "";
 
     if (filterCountryCode) {
@@ -70,7 +71,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
     }
 
     if (showLegend) {
-        desc += t(locale, 'amigos.list_legend');
+        desc += isSessionUser ? t(locale, 'amigos.list_legend_session') : t(locale, 'amigos.list_legend');
     }
 
     // Calcular la longitud máxima del nombre en la página actual para alineación perfecta en columna
@@ -85,7 +86,7 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
 
         const onlineSymbol = friend.is_online ? '🟢' : '⚫';
         const suppSymbol = friend.is_supporter ? '💖' : '';
-        const mutualSymbol = friend.mutual === 'yes' ? '👥' : '';
+        const mutualSymbol = (friend.mutual === 'yes' || friend.is_mutual) ? (isSessionUser ? '💕' : '👥') : '';
 
         let line = `${indexStr} ▸ ${flag} ${nameLink}   ${onlineSymbol}`;
         if (suppSymbol) {
@@ -98,7 +99,15 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
         desc += `${line}\n`;
     });
 
-    const title = filterCountryCode ? t(locale, 'amigos.list_title_country', { country: filterCountryCode }) : t(locale, 'amigos.list_title');
+    let title = t(locale, 'amigos.list_title');
+    if (mutualFilter === 'mutuals') {
+        title = filterCountryCode ? `${t(locale, 'amigos.list_title_mutuals')} - ${filterCountryCode}` : t(locale, 'amigos.list_title_mutuals');
+    } else if (mutualFilter === 'nomutuals') {
+        title = filterCountryCode ? `${t(locale, 'amigos.list_title_nomutuals')} - ${filterCountryCode}` : t(locale, 'amigos.list_title_nomutuals');
+    } else if (filterCountryCode) {
+        title = t(locale, 'amigos.list_title_country', { country: filterCountryCode });
+    }
+
     const avatarUrl = user?.avatar_url || (user?.id ? `https://a.ppy.sh/${user.id}` : (message?.author?.displayAvatarURL ? message.author.displayAvatarURL({ extension: 'png' }) : "https://jeiden.s-ul.eu/3ssHl9Gd"));
 
     return new EmbedBuilder()
@@ -984,10 +993,94 @@ function doOsuIdentityEmbed(message, osuUser, results, locale = 'es') {
     return embed;
 }
 
+/**
+ * Renderiza el embed de alerta para el tracking periódico de seguidores y amigos mutuales.
+ * @param {Object} context - Mensaje o cliente de Discord
+ * @param {Object} data - Datos del diferencial de seguidores y mutuales
+ * @returns {EmbedBuilder}
+ */
+function doOsuFriendsTrackerEmbed(context, data) {
+    const embedColor = getEmbedColor(context);
+    const locale = context?.locale || 'es';
+    const {
+        oldFollowers,
+        newFollowers,
+        newMutuals = [],
+        lostMutuals = [],
+        newFriends = [],
+        removedFriends = [],
+        totalFriends = 0,
+        totalMutuals = 0,
+        user = null
+    } = data;
+
+    const diff = newFollowers - oldFollowers;
+    const diffSign = diff > 0 ? `+${diff}` : `${diff}`;
+    const followersVal = t(locale, 'amigos.tracker_followers_val', {
+        current: newFollowers,
+        diff: diffSign
+    });
+
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'amigos.tracker_embed_title'))
+        .setColor(embedColor)
+        .addFields({
+            name: t(locale, 'amigos.tracker_followers_title'),
+            value: followersVal,
+            inline: true
+        });
+
+    if (newMutuals.length > 0) {
+        const formatted = newMutuals.slice(0, 15).map(m => `• [**${m.username}**](https://osu.ppy.sh/users/${m.id}) (${getFlagEmoji(m.country_code)})`).join('\n') + (newMutuals.length > 15 ? `\n*...+${newMutuals.length - 15} más*` : '');
+        embed.addFields({
+            name: t(locale, 'amigos.tracker_new_mutuals', { count: newMutuals.length }),
+            value: formatted,
+            inline: false
+        });
+    }
+
+    if (lostMutuals.length > 0) {
+        const formatted = lostMutuals.slice(0, 15).map(m => `• [**${m.username}**](https://osu.ppy.sh/users/${m.id}) (${getFlagEmoji(m.country_code)})`).join('\n') + (lostMutuals.length > 15 ? `\n*...+${lostMutuals.length - 15} más*` : '');
+        embed.addFields({
+            name: t(locale, 'amigos.tracker_lost_mutuals', { count: lostMutuals.length }),
+            value: formatted,
+            inline: false
+        });
+    }
+
+    if (newFriends.length > 0) {
+        const formatted = newFriends.slice(0, 10).map(m => `• [**${m.username}**](https://osu.ppy.sh/users/${m.id})`).join('\n') + (newFriends.length > 10 ? `\n*...+${newFriends.length - 10} más*` : '');
+        embed.addFields({
+            name: t(locale, 'amigos.tracker_new_friends', { count: newFriends.length }),
+            value: formatted,
+            inline: false
+        });
+    }
+
+    if (removedFriends.length > 0) {
+        const formatted = removedFriends.slice(0, 10).map(m => `• [**${m.username}**](https://osu.ppy.sh/users/${m.id})`).join('\n') + (removedFriends.length > 10 ? `\n*...+${removedFriends.length - 10} más*` : '');
+        embed.addFields({
+            name: t(locale, 'amigos.tracker_removed_friends', { count: removedFriends.length }),
+            value: formatted,
+            inline: false
+        });
+    }
+
+    embed.setDescription(t(locale, 'amigos.tracker_summary', { totalFriends, totalMutuals }));
+
+    const avatarUrl = user?.avatar_url || (user?.id ? `https://a.ppy.sh/${user.id}` : "https://jeiden.s-ul.eu/3ssHl9Gd");
+    embed.setThumbnail(avatarUrl);
+    embed.setFooter({ text: "Sengo • osu! Mutuals Tracker", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" });
+    embed.setTimestamp();
+
+    return embed;
+}
+
 module.exports = {
     doOsuOAuthEmbed,
     doOsuMissingFriendsEmbed,
     doOsuFriendsListEmbed,
+    doOsuFriendsTrackerEmbed,
     doOsuMapperEmbed,
     buildMapperButtonsRow,
     doOsuMapperListEmbed,
