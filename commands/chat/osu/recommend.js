@@ -193,6 +193,14 @@ async function preloadDefaultRecommendation(osuUserId, username, avatarUrl, res,
 
         await RecommendationModel.recalculateExactPP(finalRecs);
 
+        // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
+        const minAllowedPreload = minPP * 0.75;
+        const maxAllowedPreload = maxPP * 1.25;
+        const strictlyValidPreload = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowedPreload && r.maxPP <= maxAllowedPreload));
+        if (strictlyValidPreload.length > 0) {
+            finalRecs = strictlyValidPreload;
+        }
+
         if (isPPExpanded) {
             finalRecs.forEach(r => r.isPPExpanded = true);
         }
@@ -741,6 +749,15 @@ async function run(messages, args) {
                 }
 
                 await RecommendationModel.recalculateExactPP(finalRecs, customMods);
+
+                // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
+                const minAllowed = minPP * 0.75;
+                const maxAllowed = maxPP * 1.25;
+                const strictlyValid = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowed && r.maxPP <= maxAllowed));
+                if (strictlyValid.length > 0) {
+                    finalRecs = strictlyValid;
+                }
+
                 return finalRecs;
             } catch (err) {
                 console.error("Error al obtener recomendaciones de base de datos:", err);
@@ -856,6 +873,15 @@ async function run(messages, args) {
             }
 
             await RecommendationModel.recalculateExactPP(finalRecs, customMods);
+
+            // ponytail: Filtro post-recalculación para evitar discrepancias groseras con el rango solicitado
+            const minAllowedReroll = minPP * 0.75;
+            const maxAllowedReroll = maxPP * 1.25;
+            const strictlyValidReroll = finalRecs.filter(r => !r.maxPP || (r.maxPP >= minAllowedReroll && r.maxPP <= maxAllowedReroll));
+            if (strictlyValidReroll.length > 0) {
+                finalRecs = strictlyValidReroll;
+            }
+
             return finalRecs;
         } catch (err) {
             console.error("Error al obtener recomendaciones de botones:", err);

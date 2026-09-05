@@ -13,8 +13,11 @@ function estimatePP(stars, accuracy = 0.99, mods = "NM") {
         scaledStars *= 1.35;
     } else if (mods.includes("HR")) {
         scaledStars *= 1.06;
+    } else if (mods.includes("EZ") && mods.includes("HD")) {
+        // En osu! moderno (lazer/rosu-pp), HDEZ añade un enorme bonus de lectura por densidad y baja AR
+        scaledStars *= 1.05;
     } else if (mods.includes("EZ")) {
-        scaledStars *= 0.88;
+        scaledStars *= 0.95;
     }
     
     let basePP = 0.15 * Math.pow(scaledStars, 4.15);
@@ -510,8 +513,10 @@ async function getPersonalizedRecommendations({
             scale = 1.35;
         } else if (activeMods.includes("HR")) {
             scale = 1.06;
+        } else if (activeMods.includes("EZ") && activeMods.includes("HD")) {
+            scale = 1.05;
         } else if (activeMods.includes("EZ")) {
-            scale = 0.88;
+            scale = 0.95;
         }
         
         minStars = Math.max(1, (minTargetStars / scale) - 0.1);
