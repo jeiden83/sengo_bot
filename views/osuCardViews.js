@@ -779,9 +779,11 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
 /**
  * Genera el título dinámico de 2 líneas con soporte de localización
  */
-function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es") {
+function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es", mode = "osu") {
     const isEs = locale === "es";
-    const maxSkill = Math.max(skills.aim || 0, skills.speed || 0, skills.acc || 0, skills.reading || 0);
+    const skillKeys = skills.skillKeys || Object.keys(skills).filter(k => typeof skills[k] === "number");
+    const skillVals = skillKeys.map(k => skills[k] || 0);
+    const maxSkill = Math.max(0, ...skillVals);
 
     let prefix = isEs ? "Novato" : "Novice";
     if (maxSkill >= 96 || pp > 25000) prefix = isEs ? "Dios" : "God";
@@ -814,14 +816,47 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es")
         suffix = isEs ? "Amenaza de Snipes" : "Snipe Menace";
     } else if (rankedMaps >= 10) {
         suffix = isEs ? "Creador de Beatmaps" : "Beatmap Crafter";
-    } else if (skills.aim >= skills.speed && skills.aim >= skills.acc && skills.aim >= skills.reading) {
-        suffix = isEs ? "Cazador de Círculos" : "Whack-A-Mole";
-    } else if (skills.speed >= skills.aim && skills.speed >= skills.acc && skills.speed >= skills.reading) {
-        suffix = isEs ? "Mecanógrafo Veloz" : "speedtypist";
-    } else if (skills.reading >= skills.aim && skills.reading >= skills.speed && skills.reading >= skills.acc) {
-        suffix = isEs ? "Demonio de Lectura" : "Sightread Demon";
+    } else if (mode === "taiko") {
+        if (skills.stamina >= skills.color && skills.stamina >= skills.rhythm && skills.stamina >= skills.acc) {
+            suffix = isEs ? "Baterista Incansable" : "Relentless Drummer";
+        } else if (skills.color >= skills.stamina && skills.color >= skills.rhythm && skills.color >= skills.acc) {
+            suffix = isEs ? "Maestro del Switching" : "Switching Master";
+        } else if (skills.rhythm >= skills.stamina && skills.rhythm >= skills.color && skills.rhythm >= skills.acc) {
+            suffix = isEs ? "Metrónomo Viviente" : "Living Metronome";
+        } else {
+            suffix = isEs ? "Ritmo Encarnado" : "Rhythm-Incarnate";
+        }
+    } else if (mode === "fruits") {
+        if (skills.movement >= skills.speed && skills.movement >= skills.acc && skills.movement >= skills.reading) {
+            suffix = isEs ? "Velocista del Plato" : "Plate Sprinter";
+        } else if (skills.speed >= skills.movement && skills.speed >= skills.acc && skills.speed >= skills.reading) {
+            suffix = isEs ? "Demonio de Hyperdashes" : "Hyperdash Demon";
+        } else if (skills.reading >= skills.movement && skills.reading >= skills.speed && skills.reading >= skills.acc) {
+            suffix = isEs ? "Lector de Frutas" : "Fruit Reader";
+        } else {
+            suffix = isEs ? "Recolector Impecable" : "Flawless Catcher";
+        }
+    } else if (mode === "mania") {
+        if (skills.jack >= skills.stream && skills.jack >= skills.acc && skills.jack >= skills.tech) {
+            suffix = isEs ? "Triturador de Acordes" : "Chord Crusher";
+        } else if (skills.stream >= skills.jack && skills.stream >= skills.acc && skills.stream >= skills.tech) {
+            suffix = isEs ? "Mecanógrafo Veloz" : "Speedtypist";
+        } else if (skills.tech >= skills.jack && skills.tech >= skills.stream && skills.tech >= skills.acc) {
+            suffix = isEs ? "Virtuoso de Long Notes" : "LN Virtuoso";
+        } else {
+            suffix = isEs ? "Dios de la Precisión" : "Timing God";
+        }
     } else {
-        suffix = isEs ? "Ritmo Encarnado" : "Rhythm-Incarnate";
+        // osu! Standard
+        if (skills.aim >= skills.speed && skills.aim >= skills.acc && skills.aim >= skills.reading) {
+            suffix = isEs ? "Cazador de Círculos" : "Whack-A-Mole";
+        } else if (skills.speed >= skills.aim && skills.speed >= skills.acc && skills.speed >= skills.reading) {
+            suffix = isEs ? "Mecanógrafo Veloz" : "speedtypist";
+        } else if (skills.reading >= skills.aim && skills.reading >= skills.speed && skills.reading >= skills.acc) {
+            suffix = isEs ? "Demonio de Lectura" : "Sightread Demon";
+        } else {
+            suffix = isEs ? "Ritmo Encarnado" : "Rhythm-Incarnate";
+        }
     }
 
     return {
@@ -833,14 +868,14 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es")
 /**
  * Obtiene los pinned scores del usuario de osu! o fallback a su jugada top #1
  */
-async function fetchPinnedScore(userId, topScores) {
+async function fetchPinnedScore(userId, topScores, mode = "osu") {
     try {
         const OsuUserModel = require("../models/OsuUserModel.js");
         const tokenData = await OsuUserModel.loadToken().catch(() => null);
         const token = tokenData?.access_token;
 
         if (token) {
-            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=osu&limit=1`, {
+            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=${mode}&limit=1`, {
                 headers: {
                     "Authorization": `Bearer ${token}`,
                     "x-api-version": "20240728"
@@ -1144,14 +1179,24 @@ function setWithLimit(map, key, value, limit = 60) {
 }
 
 function clearCardCache(userId) {
-    if (userId) cardBufferCache.delete(`user:${userId}`);
+    if (userId) {
+        for (const key of cardBufferCache.keys()) {
+            if (key.startsWith(`user:${userId}:`)) {
+                cardBufferCache.delete(key);
+            }
+        }
+    }
 }
 
 async function renderOsuCard(user, topScores = [], options = {}) {
     const locale = options?.locale || user?.locale || "es";
+    let mode = (options?.mode || user?.playmode || "osu").toLowerCase();
+    if (mode === "std") mode = "osu";
+    if (mode === "catch" || mode === "ctb") mode = "fruits";
+
     const isEs = locale === "es";
     const numLocale = isEs ? "de-DE" : "en-US";
-    const cacheKey = `user:${user.id}:${locale}`;
+    const cacheKey = `user:${user.id}:${mode}:${locale}`;
 
     if (!options?.forceRefresh) {
         const cached = cardBufferCache.get(cacheKey);
@@ -1182,10 +1227,10 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     const [sengoData, pinnedPlay] = await Promise.all([
         fetchSengoData(user.id, countryCode),
-        fetchPinnedScore(user.id, topScores)
+        fetchPinnedScore(user.id, topScores, mode)
     ]);
-    const skillData = analyzeSkills(topScores);
-    const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData, locale);
+    const skillData = analyzeSkills(topScores, false, mode);
+    const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData, locale, mode);
 
     const theme = config.theme || {};
     const cards = config.cards || {};
@@ -1548,12 +1593,36 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily);
         drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily);
 
-        const skillsList = [
-            { label: "ACC", val: skillData.acc, x: sb.x + 380 },
-            { label: "AIM", val: skillData.aim, x: sb.x + 500 },
-            { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
-            { label: "READING", val: skillData.reading, x: sb.x + 750 }
-        ];
+        let skillsList = [];
+        if (mode === "taiko") {
+            skillsList = [
+                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
+                { label: "STAMINA", val: skillData.stamina, x: sb.x + 500 },
+                { label: "COLOR", val: skillData.color, x: sb.x + 620 },
+                { label: "RHYTHM", val: skillData.rhythm, x: sb.x + 750 }
+            ];
+        } else if (mode === "fruits") {
+            skillsList = [
+                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
+                { label: "MOVEMENT", val: skillData.movement, x: sb.x + 500 },
+                { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
+                { label: "READING", val: skillData.reading, x: sb.x + 750 }
+            ];
+        } else if (mode === "mania") {
+            skillsList = [
+                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
+                { label: "STREAM", val: skillData.stream, x: sb.x + 500 },
+                { label: "JACK", val: skillData.jack, x: sb.x + 620 },
+                { label: "TECH", val: skillData.tech, x: sb.x + 750 }
+            ];
+        } else {
+            skillsList = [
+                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
+                { label: "AIM", val: skillData.aim, x: sb.x + 500 },
+                { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
+                { label: "READING", val: skillData.reading, x: sb.x + 750 }
+            ];
+        }
 
         const pillarW = config.statsBox?.pillarW || 24;
         const pillarH = config.statsBox?.pillarH || 65;
@@ -1597,7 +1666,14 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     // 8. FOOTER: BRANDING & FECHA
     if (cards.footer?.visible !== false) {
         const today = new Date().toISOString().split("T")[0];
-        drawCustomText(ctx, fonts.footerBrand, "Sengo", 580, 695, "right", fontFamily);
+        const MODE_NAMES = {
+            osu: "osu!",
+            taiko: "osu!taiko",
+            fruits: "osu!catch",
+            mania: "osu!mania"
+        };
+        const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : "Sengo";
+        drawCustomText(ctx, fonts.footerBrand, footerTitle, 580, 695, "right", fontFamily);
         drawCustomText(ctx, fonts.footerDate, today, 630, 695, "left", fontFamily);
     }
 

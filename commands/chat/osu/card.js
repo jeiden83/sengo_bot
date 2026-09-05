@@ -31,28 +31,30 @@ async function run(messages, args) {
         )
     );
 
-    // Validar si pasaron modificadores de otros modos de juego (Taiko, Catch/CTB, Mania)
-    const NON_STD_MODES = [
-        "-taiko", "--taiko", "taiko", "-t",
-        "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
-        "-mania", "--mania", "mania", "-m"
-    ];
-
-    const hasNonStdArg = safeArgs.some(arg => 
-        typeof arg === "string" && NON_STD_MODES.includes(arg.toLowerCase())
-    );
-
-    if (hasNonStdArg) {
-        return t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
+    // Detectar modo de juego explícito si fue pasado en los argumentos
+    let explicitMode = null;
+    for (const arg of safeArgs) {
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        if (["-t", "-taiko", "--taiko", "taiko"].includes(lower)) explicitMode = "taiko";
+        else if (["-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits"].includes(lower)) explicitMode = "fruits";
+        else if (["-mania", "--mania", "mania"].includes(lower) || lower === "-m") explicitMode = "mania";
+        else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) explicitMode = "osu";
     }
 
-    // Filtrar flags para obtener argumentos de usuario
-    const cleanArgs = safeArgs.filter(arg => 
-        typeof arg === "string" && ![
+    // Filtrar flags para obtener argumentos de usuario limpios
+    const cleanArgs = safeArgs.filter(arg => {
+        if (typeof arg !== "string") return false;
+        const lower = arg.toLowerCase();
+        return ![
             "-embed", "--embed", "embed",
-            "-f", "-force", "--force", "-r", "-refresh", "--refresh"
-        ].includes(arg.toLowerCase())
-    );
+            "-f", "-force", "--force", "-r", "-refresh", "--refresh",
+            "-t", "-taiko", "--taiko", "taiko",
+            "-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
+            "-mania", "--mania", "mania", "-m",
+            "-std", "--std", "std", "-osu", "--osu", "osu"
+        ].includes(lower);
+    });
 
     async function sendInitialProgress() {
         const totalElapsed = Date.now() - startTime;
@@ -84,6 +86,7 @@ async function run(messages, args) {
     const progressPromise = sendInitialProgress();
 
     let osuUser = null;
+    let detectedMode = explicitMode;
 
     if (logger) logger.process("Consultando datos de usuario para la tarjeta");
 
@@ -100,15 +103,14 @@ async function run(messages, args) {
             message,
             res,
             command_function: getOsuUser,
+            gamemode: explicitMode,
+            ignore_main_gamemode: Boolean(explicitMode),
             resolveUserByIndex: true,
             ignoreBeatmap: true
         });
 
-        if (osuUserdata && osuUserdata.gamemode && osuUserdata.gamemode !== "osu") {
-            await progressPromise;
-            await cleanupProgress();
-            const err = t(locale, "card.err_only_std") || `❌ El comando de tarjetas (\`.card\`) por ahora solo está disponible para el modo **osu! (Standard)**.`;
-            return isSlash ? { content: err, embeds: [] } : err;
+        if (osuUserdata && osuUserdata.gamemode) {
+            detectedMode = explicitMode || osuUserdata.gamemode;
         }
 
         if (osuUserdata && osuUserdata.fn_response) {
@@ -119,13 +121,17 @@ async function run(messages, args) {
             }
             osuUser = osuUserdata.fn_response;
         }
-    } else {
-        // Buscar usuario vinculado del autor (usando modo osu standard)
+    }
+
+    const targetMode = detectedMode || osuUser?.playmode || "osu";
+
+    if (!osuUser || !osuUser.id) {
+        // Buscar usuario vinculado del autor
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
             if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: "osu", server: "bancho" });
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: "bancho" });
             }
         } catch (err) {
             console.warn("[s.card] Error al obtener usuario vinculado:", err.message);
@@ -148,15 +154,15 @@ async function run(messages, args) {
     }
 
     try {
-        if (logger) logger.process("Obteniendo mejores puntuaciones y renderizando tarjeta");
-        const topScoresPromise = getUserTopScores({ username: [String(osuUser.id)], gamemode: "osu", server: "bancho" }).catch(() => []);
+        if (logger) logger.process(`Obteniendo mejores puntuaciones en ${targetMode} y renderizando tarjeta`);
+        const topScoresPromise = getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: "bancho" }).catch(() => []);
 
         const [topScores] = await Promise.all([
             topScoresPromise,
             progressPromise
         ]);
 
-        const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce, locale });
+        const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce, locale, mode: targetMode });
         const attachment = new AttachmentBuilder(canvasBuffer, { name: "card.png" });
 
         await cleanupProgress();

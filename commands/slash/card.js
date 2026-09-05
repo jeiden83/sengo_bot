@@ -6,6 +6,17 @@ const data = new SlashCommandBuilder()
     .setName("card")
     .setDescription("Genera una tarjeta de perfil dinámica de osu! con Canvas")
     .addStringOption(addUsuarioOption)
+    .addStringOption(option =>
+        option.setName("modo")
+            .setDescription("Modo de juego de la tarjeta")
+            .setRequired(false)
+            .addChoices(
+                { name: "osu! (Standard)", value: "osu" },
+                { name: "osu!taiko", value: "taiko" },
+                { name: "osu!catch", value: "fruits" },
+                { name: "osu!mania", value: "mania" }
+            )
+    )
     .addBooleanOption(option =>
         option
             .setName("embed")
@@ -31,11 +42,13 @@ async function run(interaction, res, chat_commands) {
     const isEmbed = interaction.options.getBoolean("embed");
     const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
+    const modo = interaction.options.getString("modo");
 
     const args = [];
+    if (targetUser) args.push(targetUser);
+    if (modo) args.push(`-${modo}`);
     if (isEmbed) args.push("-embed");
     if (isForce) args.push("-refresh");
-    if (targetUser) args.push(targetUser);
 
     const messages = createSlashMessagesContext(interaction, res);
 
