@@ -30,8 +30,8 @@ async function run(interaction, res, chat_commands) {
     const messages = createSlashMessagesContext(interaction, res);
     messages.logger = interaction.logger;
 
-    // Ejecutar el comando help de chat pasándole la colección chat_commands
-    return await helpChatCommand.run(messages, args, chat_commands);
+    const result = await helpChatCommand.run(messages, args, chat_commands);
+    return result || true;
 }
 
 module.exports = { data, run, description: "Muestra la lista de comandos de Sengo o ayuda para uno específico" };

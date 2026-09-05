@@ -93,7 +93,8 @@ async function run(interaction, res) {
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");
     const messages = createSlashMessagesContext(interaction, res);
 
-    return await trackChatCommand.run(messages, args);
+    const result = await trackChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Configura el tracking de plays de osu! en este servidor";

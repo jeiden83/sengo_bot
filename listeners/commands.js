@@ -442,9 +442,12 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         const startTime = logger.startTime;
         let cachedLatencyText = null;
 
+        let commandSentResponse = false;
+
         // Wrap interaction.reply
         const originalIReply = interaction.reply.bind(interaction);
         interaction.reply = async (options) => {
+            commandSentResponse = true;
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
@@ -462,6 +465,7 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         // Wrap interaction.editReply
         const originalIEditReply = interaction.editReply.bind(interaction);
         interaction.editReply = async (options) => {
+            commandSentResponse = true;
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
@@ -476,6 +480,7 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
         // Wrap interaction.followUp
         const originalIFollowUp = interaction.followUp.bind(interaction);
         interaction.followUp = async (options) => {
+            commandSentResponse = true;
             if (!cachedLatencyText) {
                 const duration = Date.now() - startTime;
                 cachedLatencyText = `Latencia: ${duration}ms`;
@@ -520,6 +525,10 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             }
 
             if (!slash_result) {
+                if (commandSentResponse) {
+                    logger.success(`/${message_command} completado con éxito.`);
+                    return;
+                }
                 if (interaction.deferred || interaction.replied) {
                     await interaction.editReply("El comando no devolvió ningún resultado.");
                 } else {

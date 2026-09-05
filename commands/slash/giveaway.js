@@ -76,7 +76,8 @@ async function run(interaction, res, chat_commands) {
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");
     const messages = createSlashMessagesContext(interaction, res);
 
-    return await giveawayChatCommand.run(messages, args, chat_commands);
+    const result = await giveawayChatCommand.run(messages, args, chat_commands);
+    return result || true;
 }
 
 module.exports = { data, run, description: "Gestión de sorteos en el servidor" };

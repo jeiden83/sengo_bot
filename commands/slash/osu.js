@@ -11,7 +11,8 @@ const data = new SlashCommandBuilder()
 
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
-    return await osuChatCommand.run(messages, args);
+    const result = await osuChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Muestra el perfil de un usuario en osu!";

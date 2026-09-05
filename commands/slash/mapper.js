@@ -190,7 +190,8 @@ async function run(interaction, res) {
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");
     const messages = createSlashMessagesContext(interaction, res);
 
-    return await mapperChatCommand.run(messages, args);
+    const result = await mapperChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Comandos de estadísticas y tracking de mappers en osu!";

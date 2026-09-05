@@ -52,7 +52,8 @@ async function run(interaction, res) {
         args.push("-sr", dificultad);
     }
 
-    return await snipesChatCommand.run(messages, args);
+    const result = await snipesChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Muestra estadísticas de tops nacionales (#1) de un usuario";

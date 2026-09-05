@@ -112,30 +112,35 @@ async function run(interaction, res, chat_commands) {
             const att = interaction.options.getAttachment(`imagen${i}`);
             if (att) attachments.push(att);
         }
-        return await fumoChatCommand.handleUpload(supabase, interaction.user, interaction.guild, attachments, interaction);
+        const result = await fumoChatCommand.handleUpload(supabase, interaction.user, interaction.guild, attachments, interaction);
+        return result || true;
     }
 
     if (sub === "listar") {
         const page = interaction.options.getInteger("pagina");
-        return await fumoChatCommand.handleList(supabase, interaction.user, interaction.member, page, interaction);
+        const result = await fumoChatCommand.handleList(supabase, interaction.user, interaction.member, page, interaction);
+        return result || true;
     }
 
     if (sub === "borrar") {
         const id = interaction.options.getInteger("id");
-        return await fumoChatCommand.handleDelete(supabase, interaction.user, interaction.member, id, interaction);
+        const result = await fumoChatCommand.handleDelete(supabase, interaction.user, interaction.member, id, interaction);
+        return result || true;
     }
 
     if (sub === "editar") {
         const id = interaction.options.getInteger("id");
         const attachment = interaction.options.getAttachment("nueva_imagen");
-        return await fumoChatCommand.handleEdit(supabase, interaction.user, interaction.member, id, [attachment], interaction);
+        const result = await fumoChatCommand.handleEdit(supabase, interaction.user, interaction.member, id, [attachment], interaction);
+        return result || true;
     }
 
     if (sub === "blacklist") {
         const action = interaction.options.getString("accion");
         const userOpt = interaction.options.getUser("usuario");
         const targetUserId = userOpt ? userOpt.id : null;
-        return await fumoChatCommand.handleBlacklist(supabase, interaction.user, interaction.member, action, targetUserId, interaction);
+        const result = await fumoChatCommand.handleBlacklist(supabase, interaction.user, interaction.member, action, targetUserId, interaction);
+        return result || true;
     }
 
     return "❌ Subcomando desconocido.";

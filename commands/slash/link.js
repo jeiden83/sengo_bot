@@ -15,8 +15,8 @@ const data = new SlashCommandBuilder()
 async function run(interaction, res) {
     const { args, messages } = parseOsuSlashArgs(interaction, res);
     messages.isSlash = true;
-    messages.interaction = interaction;
-    return await linkChatCommand.run(messages, args);
+    const result = await linkChatCommand.run(messages, args);
+    return result || true;
 }
 
 run.description = "Vincula o desvincula tu cuenta de discord con un usuario de osu!";
