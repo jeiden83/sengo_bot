@@ -231,7 +231,33 @@ function buildRecommendButtons(params, suggestedMod, hasRecs, recommendations = 
     return rows;
 }
 
+
+/**
+ * Genera el embed con el catálogo de user tags comunitarios disponibles para recomendaciones.
+ */
+function doRecommendUserTagsEmbed(message, categories, categoryEmojis, locale = 'es') {
+    const embed = new EmbedBuilder()
+        .setTitle(t(locale, 'recommend.usertags_title'))
+        .setColor(getEmbedColor(message))
+        .setDescription(t(locale, 'recommend.usertags_desc'))
+        .setFooter({
+            text: "Sengo",
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+
+    for (const [cat, items] of Object.entries(categories)) {
+        const displayName = categoryEmojis[cat] ? categoryEmojis[cat].toUpperCase() : cat.toUpperCase();
+        items.sort((a, b) => b.count - a.count);
+        const itemsStr = items.map(item => `\`${item.full}\` (${item.count.toLocaleString()})`).join(" • ");
+        const truncatedStr = itemsStr.length > 1020 ? itemsStr.substring(0, 1017) + "..." : itemsStr;
+        embed.addFields({ name: displayName, value: truncatedStr || t(locale, 'recommend.usertags_none') });
+    }
+    return embed;
+}
+
 module.exports = {
     doOsuRecommendEmbed,
+    doRecommendUserTagsEmbed,
     buildRecommendButtonsRow: buildRecommendButtons
 };

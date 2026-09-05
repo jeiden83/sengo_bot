@@ -216,12 +216,21 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
   Calcula y muestra estadísticas detalladas y valores de PP ajustados a mods de cualquier beatmap. Si no se provee ID, busca en el historial del canal.
   * *Flags:* `+<mods>` / `-m <mods>`, `-mapset` (muestra dificultades del mapset), `-std` / `-taiko` / `-ctb` / `-mania`.
 * **`s.recommend` o `s.rec`**
-  Recomendador inteligente de mapas de rendimiento (farm/PP) adaptados a tu estilo de juego.
+  Recomendador inteligente de mapas de rendimiento (farm/PP) adaptados a tu nivel, estilo cinético de juego (Aim, Speed, Reading, Stamina, Acc) y push profile (calibrado tanto para FC como para jugadores de alto SR / choke pushers).
   * *Flags:*
+    * `-std` / `-taiko` / `-catch` / `-mania`: Cambia el modo de juego para recomendaciones de mapas nativos.
     * `-pp <valor|rango>`: Filtra por PP objetivo (ej: `-pp 300` o `-pp 250-300`).
-    * `-mods <mods>`: Filtra por mods específicos (ej: `-mods HDDT`).
-    * `-jugados`: Incluye mapas que ya estén en tu Top 100.
+    * `-mods <mods>`: Filtra por mods específicos (ej: `-mods HDDT`, `-mods NM`).
+    * `-aim` / `-speed` / `-length` / `-rarezas` / `-tags`: Filtra directamente por estilo de juego o patrones.
+    * `-usertag <tag>`: Filtra por un tag específico de la comunidad (ej: `-usertag jumps/cross-screen`).
+    * `-usertags`: Muestra la lista interactiva de tags comunitarios disponibles.
+    * `-jugados`: Incluye mapas que ya estén en tu Top 100 (por defecto los excluye).
     * `-force`: Fuerza la recarga ignorando la caché.
+  * *Ejemplos:*
+    * `s.rec -taiko -pp 350`
+    * `s.rec -pp 250-300 -mods HDDT`
+    * `s.rec -aim -jugados`
+    * `s.rec -usertag jumps/cross-screen`
 * **`s.rework`**
   Estima el PP de mapas o compara el perfil de un usuario frente a los reworks próximos de PP calculados por [pp.huismetbenen.nl](https://pp.huismetbenen.nl/).
   * *Flags:* `-lista` (lista reworks activos), `-top` (top 5 recalculado), `[mapa] +mods` (estima PP del mapa bajo el rework).

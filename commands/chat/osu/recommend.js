@@ -1,8 +1,7 @@
 const { argsParser, getUserTopScores, getBeatmapUserScore } = require("../../utils/osu.js");
-const { doOsuRecommendEmbed, buildRecommendButtonsRow } = require("../../../views/recommendViews.js");
+const { doOsuRecommendEmbed, buildRecommendButtonsRow, doRecommendUserTagsEmbed } = require("../../../views/recommendViews.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const RecommendationModel = require("../../../models/RecommendationModel.js");
-const { EmbedBuilder } = require("discord.js");
 const { t } = require("../../../utils/i18n.js");
 
 const recommendCache = new Map();
@@ -410,23 +409,7 @@ async function run(messages, args) {
                 'otros': locale === 'es' ? '📁 otros' : '📁 others'
             };
 
-            const embed = new EmbedBuilder()
-                .setTitle(t(locale, 'recommend.usertags_title'))
-                .setColor(getEmbedColor(message))
-                .setDescription(t(locale, 'recommend.usertags_desc'))
-                .setFooter({
-                    text: "Sengo",
-                    iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
-                })
-                .setTimestamp();
-
-            for (const [cat, items] of Object.entries(categories)) {
-                const displayName = categoryEmojis[cat] ? categoryEmojis[cat].toUpperCase() : cat.toUpperCase();
-                items.sort((a, b) => b.count - a.count);
-                const itemsStr = items.map(item => `\`${item.full}\` (${item.count.toLocaleString()})`).join(" • ");
-                const truncatedStr = itemsStr.length > 1020 ? itemsStr.substring(0, 1017) + "..." : itemsStr;
-                embed.addFields({ name: displayName, value: truncatedStr || t(locale, 'recommend.usertags_none') });
-            }
+            const embed = doRecommendUserTagsEmbed(message, categories, categoryEmojis, locale);
 
             if (isSlash) {
                 await interaction.editReply({ embeds: [embed] });
