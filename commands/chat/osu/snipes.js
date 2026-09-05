@@ -892,18 +892,20 @@ async function run(messages, args){
     if (starsList.length > 0) {
         const p05Idx = Math.floor(starsList.length * 0.005);
         const p995Idx = Math.min(starsList.length - 1, Math.floor(starsList.length * 0.995));
-        minStars = starsList[p05Idx];
-        maxStars = starsList[p995Idx];
-        if (minStars === maxStars) {
-            minStars = starsList[0];
-            maxStars = starsList[starsList.length - 1];
-            if (minStars === maxStars) {
-                maxStars = minStars + 5;
-            }
+        
+        // ponytail: Mantener un spread dinámico acotado a un máximo de 10★ para que mapas Aspire/Loved no rompan el histograma
+        const rawMin = starsList[p05Idx];
+        const rawMax = starsList[p995Idx];
+        minStars = Math.max(0, Math.floor(rawMin * 10) / 10);
+        maxStars = Math.min(10.0, Math.ceil(rawMax * 10) / 10);
+
+        if (maxStars - minStars < 2.0) {
+            maxStars = Math.min(10.0, minStars + 3.0);
+            minStars = Math.max(0, maxStars - 3.0);
         }
     }
 
-    const numBuckets = 15;
+    const numBuckets = 12;
     const range = maxStars - minStars;
     const step = range / numBuckets;
 
