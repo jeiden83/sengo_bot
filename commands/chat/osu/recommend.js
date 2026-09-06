@@ -1,5 +1,5 @@
 const { argsParser, getUserTopScores, getBeatmapUserScore } = require("../../utils/osu.js");
-const { doOsuRecommendEmbed, buildRecommendButtonsRow, doRecommendUserTagsEmbed } = require("../../../views/recommendViews.js");
+const { doOsuRecommendEmbed, buildRecommendButtonsRow, doRecommendUserTagsEmbed, doRecommendLoadingEmbed } = require("../../../views/recommendViews.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const RecommendationModel = require("../../../models/RecommendationModel.js");
 const { t } = require("../../../utils/i18n.js");
@@ -257,7 +257,7 @@ async function run(messages, args) {
     let isInitialRun = true;
 
     async function updateStatus(stepText, consoleText) {
-        if (logger) {
+        if (logger && typeof logger.process === 'function') {
             logger.process(consoleText || stepText);
         }
         try {
@@ -813,6 +813,10 @@ async function run(messages, args) {
 
     isInitialRun = false;
 
+    if (!sentMessage || typeof sentMessage.createMessageComponentCollector !== 'function') {
+        return;
+    }
+
     const collector = sentMessage.createMessageComponentCollector({
         filter: btnInt => btnInt.user.id === message.author.id,
         idle: 120000
@@ -875,8 +879,7 @@ async function run(messages, args) {
         try {
             await i.deferUpdate();
 
-            const loadingEmbed = EmbedBuilder.from(embed)
-                .setDescription(t(locale, 'recommend.msg_searching_custom'));
+            const loadingEmbed = doRecommendLoadingEmbed(embed, locale);
             await i.editReply({ embeds: [loadingEmbed] });
 
             if (i.customId === 'rec_refresh') {

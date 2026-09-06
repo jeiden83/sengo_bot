@@ -256,8 +256,21 @@ function doRecommendUserTagsEmbed(message, categories, categoryEmojis, locale = 
     return embed;
 }
 
+/**
+ * Genera el embed de carga temporal durante la interacción con botones de recomendación.
+ * @param {EmbedBuilder} embed Embed previo base
+ * @param {string} locale Idioma del usuario ('es' o 'en')
+ * @returns {EmbedBuilder} Embed de estado de carga
+ */
+function doRecommendLoadingEmbed(embed, locale = 'es') {
+    return EmbedBuilder.from(embed)
+        .setDescription(t(locale, 'recommend.msg_searching_custom'));
+}
+
 module.exports = {
     doOsuRecommendEmbed,
     doRecommendUserTagsEmbed,
+    doRecommendLoadingEmbed,
     buildRecommendButtonsRow: buildRecommendButtons
 };
+
