@@ -35,6 +35,67 @@ function addServidorOption(option) {
 }
 
 /**
+ * Envuelve un objeto Message de Discord en un Proxy para redirigir operaciones
+ * como .edit(), .editReply() y .delete() hacia los webhooks de interacción en entornos
+ * como DMs o servidores externos (User-Installable Apps), previniendo errores 50001 (Missing Access).
+ * 
+ * @param {import('discord.js').Message} msg 
+ * @param {import('discord.js').ChatInputCommandInteraction} interaction 
+ * @param {boolean} isFollowUp 
+ * @returns {import('discord.js').Message}
+ */
+function wrapSlashMessage(msg, interaction, isFollowUp = false) {
+    if (!msg) return msg;
+    return new Proxy(msg, {
+        get(target, prop) {
+            if (prop === 'edit') {
+                return async (options) => {
+                    try {
+                        if (!isFollowUp) {
+                            return await interaction.editReply(options);
+                        } else {
+                            return await interaction.webhook.editMessage(target.id, options);
+                        }
+                    } catch (err) {
+                        try {
+                            return await target.edit(options);
+                        } catch (secondErr) {
+                            throw err;
+                        }
+                    }
+                };
+            }
+            if (prop === 'editReply') {
+                return async (options) => {
+                    return await interaction.editReply(options);
+                };
+            }
+            if (prop === 'delete') {
+                return async () => {
+                    try {
+                        if (!isFollowUp) {
+                            // ponytail: En comandos Slash, no eliminar la respuesta @original
+                            // para evitar error DiscordAPIError[10008] (Unknown Message) al hacer editReply.
+                            return;
+                        } else {
+                            return await interaction.webhook.deleteMessage(target.id);
+                        }
+                    } catch (err) {
+                        try {
+                            return await target.delete();
+                        } catch (secondErr) {
+                            // Silenciar fallo de eliminación en contexto slash
+                        }
+                    }
+                };
+            }
+            const val = Reflect.get(target, prop);
+            return typeof val === 'function' ? val.bind(target) : val;
+        }
+    });
+}
+
+/**
  * Crea un contexto de mensajes seguro para comandos slash que redirige respuestas
  * e interactúa usando los tokens de la interacción, compatible con servidores externos.
  * 
@@ -45,51 +106,7 @@ function addServidorOption(option) {
 function createSlashMessagesContext(interaction, res) {
     let interactionUsed = false;
 
-    const wrapMessage = (msg, isFollowUp = false) => {
-        if (!msg) return msg;
-        return new Proxy(msg, {
-            get(target, prop) {
-                if (prop === 'edit') {
-                    return async (options) => {
-                        try {
-                            if (!isFollowUp) {
-                                return await interaction.editReply(options);
-                            } else {
-                                return await interaction.webhook.editMessage(target.id, options);
-                            }
-                        } catch (err) {
-                            try {
-                                return await target.edit(options);
-                            } catch (secondErr) {
-                                throw err;
-                            }
-                        }
-                    };
-                }
-                if (prop === 'delete') {
-                    return async () => {
-                        try {
-                            if (!isFollowUp) {
-                                // ponytail: En comandos Slash, no eliminar la respuesta @original
-                                // para evitar error DiscordAPIError[10008] (Unknown Message) al hacer editReply.
-                                return;
-                            } else {
-                                return await interaction.webhook.deleteMessage(target.id);
-                            }
-                        } catch (err) {
-                            try {
-                                return await target.delete();
-                            } catch (secondErr) {
-                                // Silenciar fallo de eliminación en contexto slash
-                            }
-                        }
-                    };
-                }
-                const val = Reflect.get(target, prop);
-                return typeof val === 'function' ? val.bind(target) : val;
-            }
-        });
-    };
+    const wrapMessage = (msg, isFollowUp = false) => wrapSlashMessage(msg, interaction, isFollowUp);
 
     const replyFn = async (options) => {
         if (!interaction.replied && !interaction.deferred) {
@@ -157,7 +174,8 @@ function createSlashMessagesContext(interaction, res) {
         res: res,
         reply: replyWrapper,
         logger: interaction.logger,
-        isSlash: true
+        isSlash: true,
+        interaction: interaction
     };
 }
 
@@ -197,6 +215,7 @@ module.exports = {
     addModoOption,
     addServidorOption,
     createSlashMessagesContext,
-    parseOsuSlashArgs
+    parseOsuSlashArgs,
+    wrapSlashMessage
 };
 

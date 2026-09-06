@@ -5,7 +5,7 @@ const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow, buildRecentButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 
 async function run(messages, args) {
-    const { message, res } = messages;
+    const { message, res, interaction } = messages;
     const locale = message.locale || 'es';
 
     const OsuUserModel = require("../../../models/OsuUserModel.js");
@@ -555,12 +555,30 @@ async function run(messages, args) {
                     components,
                     files: [strainsAttachment]
                 });
-            } else {
-                await sentMessageOrInteraction.edit({
+            } else if (interaction && typeof interaction.editReply === 'function') {
+                await interaction.editReply({
                     embeds: [mainEmbed, strainEmbed],
                     components,
                     files: [strainsAttachment]
                 });
+            } else {
+                try {
+                    await sentMessageOrInteraction.edit({
+                        embeds: [mainEmbed, strainEmbed],
+                        components,
+                        files: [strainsAttachment]
+                    });
+                } catch (editErr) {
+                    if ((editErr.code === 50001 || editErr.status === 403) && interaction && typeof interaction.editReply === 'function') {
+                        await interaction.editReply({
+                            embeds: [mainEmbed, strainEmbed],
+                            components,
+                            files: [strainsAttachment]
+                        });
+                    } else {
+                        throw editErr;
+                    }
+                }
             }
         } catch (err) {
             console.error("Error al generar gráfico de fail-strain en rs:", err);

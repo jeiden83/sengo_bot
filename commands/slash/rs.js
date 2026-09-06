@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const rsChatCommand = require("../chat/osu/rs.js");
-const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs } = require("../utils/slashUtils.js");
+const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs, wrapSlashMessage } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("rs")
@@ -52,9 +52,12 @@ async function run(interaction, res) {
         args.push("-rework");
     }
 
-    // Redirigimos el canal de envío virtual a la interacción deferida
+    messages.interaction = interaction;
+
+    // Redirigimos el canal de envío virtual a la interacción deferida asegurando el proxy envoltorio
     messages.message.channel.send = async (options) => {
-        return await interaction.editReply(options);
+        const msg = await interaction.editReply(options);
+        return wrapSlashMessage(msg, interaction, false);
     };
 
     await rsChatCommand.run(messages, args);
