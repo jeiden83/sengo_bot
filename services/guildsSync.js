@@ -26,6 +26,7 @@ async function syncUserGuilds(discordId) {
         if (!user) return; // Si no está vinculado, no hacemos nada
 
         // 2. Determinar en qué servidores activos del bot está presente este usuario
+        const botGuildIds = new Set(discordClient.guilds.cache.keys());
         const currentGuilds = [];
         for (const [guildId, guild] of discordClient.guilds.cache) {
             let isMember = guild.members.cache.has(discordId);
@@ -42,15 +43,19 @@ async function syncUserGuilds(discordId) {
             }
         }
 
+        // ponytail: Preservar guilds que este cliente no gestiona (ej: bot de dev o shard parcial)
+        const preservedGuilds = (user.guilds || []).filter(gId => !botGuildIds.has(gId));
+        const finalGuilds = [...new Set([...preservedGuilds, ...currentGuilds])];
+
         // 3. Actualizar la base de datos
         const { error: updateError } = await supabase
             .from('users')
-            .update({ guilds: currentGuilds })
+            .update({ guilds: finalGuilds })
             .eq('discord_id', discordId);
 
         if (updateError) throw updateError;
 
-        Logger.system(`[guildsSync] Servidores sincronizados para usuario ${discordId}: [${currentGuilds.join(', ')}]`);
+        Logger.system(`[guildsSync] Servidores sincronizados para usuario ${discordId}: [${finalGuilds.join(', ')}]`);
     } catch (err) {
         console.error(`[guildsSync] Error al sincronizar servidores para el usuario ${discordId}:`, err);
     }
@@ -121,21 +126,27 @@ async function syncAllGuilds(force = false) {
             }
         }
 
+        const botGuildIds = new Set(discordClient.guilds.cache.keys());
+
         // 3. Actualizar base de datos de aquellos que difieran
         let updatedCount = 0;
         for (const user of allUsers) {
             const currentSet = userGuildsMap[user.discord_id] || new Set();
             const currentArray = Array.from(currentSet);
 
+            // ponytail: Preservar guilds que este cliente no gestiona (evita que un bot de dev borre producción)
+            const preservedGuilds = (user.guilds || []).filter(gId => !botGuildIds.has(gId));
+            const finalGuilds = [...new Set([...preservedGuilds, ...currentArray])];
+
             const dbArray = user.guilds || [];
-            const isSame = dbArray.length === currentArray.length && 
-                           dbArray.every(g => currentArray.includes(g));
+            const isSame = dbArray.length === finalGuilds.length && 
+                           dbArray.every(g => finalGuilds.includes(g));
 
             if (!isSame) {
                 try {
                     const { error: updateError } = await supabase
                         .from('users')
-                        .update({ guilds: currentArray })
+                        .update({ guilds: finalGuilds })
                         .eq('discord_id', user.discord_id);
                     if (updateError) throw updateError;
                     updatedCount++;
