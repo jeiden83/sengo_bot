@@ -74,11 +74,15 @@ function initializeServices(client, dbRes, config, todayLogExists) {
     // 7. Sincronizaciones específicas de la base de datos (Supabase)
     if (dbRes && dbRes.status === 1) {
         // Sincronización de Servidores (Guilds Sync)
-        try {
-            const { initGuildsSync } = require("./guildsSync.js");
-            initGuildsSync(client, dbRes.supabaseClient);
-        } catch (err) {
-            Logger.system(`Error al iniciar Guilds Sync: ${err.message}`);
+        if (!isDev) {
+            try {
+                const { initGuildsSync } = require("./guildsSync.js");
+                initGuildsSync(client, dbRes.supabaseClient);
+            } catch (err) {
+                Logger.system(`Error al iniciar Guilds Sync: ${err.message}`);
+            }
+        } else {
+            Logger.system("Servicio de Sincronización de Servidores omitido (Modo Dev).");
         }
 
         // Inicializar almacenamiento persistente de cumpleaños

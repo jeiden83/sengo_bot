@@ -41,6 +41,7 @@ const userGuildCache = new Set(); // Guarda "userId:guildId"
 
 async function trackUserGuild(userId, guildId, res) {
     if (!userId || !guildId || !res?.supabaseClient) return;
+    if (process.env.BOT_PREFIX === 'sd.') return;
 
     const cacheKey = `${userId}:${guildId}`;
     if (userGuildCache.has(cacheKey)) return;

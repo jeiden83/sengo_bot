@@ -7,12 +7,18 @@ let supabase = null;
 const SYNC_SETTING_KEY = "last_guilds_sync_time";
 const SYNC_INTERVAL_MS = 24 * 60 * 60 * 1000; // 24 horas
 
+function isDevInstance() {
+    const prefix = process.env.BOT_PREFIX || '';
+    const clientId = process.env.CLIENT_ID || (discordClient?.user?.id);
+    return prefix === 'sd.' || prefix.startsWith('sd') || clientId === '1506320639072665610';
+}
+
 /**
  * Sincroniza los servidores (guilds) en los que se encuentra un usuario específico.
  * @param {string} discordId
  */
 async function syncUserGuilds(discordId) {
-    if (!discordClient || !supabase) return;
+    if (!discordClient || !supabase || isDevInstance()) return;
 
     try {
         // 1. Obtener el registro del usuario de Supabase
@@ -67,6 +73,11 @@ async function syncUserGuilds(discordId) {
  */
 async function syncAllGuilds(force = false) {
     if (!discordClient || !supabase) return;
+
+    if (isDevInstance() && !force) {
+        Logger.system("[guildsSync] Sincronización completa omitida (Modo Dev).");
+        return;
+    }
 
     try {
         if (!force) {
@@ -156,8 +167,10 @@ async function syncAllGuilds(force = false) {
             }
         }
 
-        // Guardar la marca de tiempo de sincronización exitosa de forma persistente
-        await BotSettingsModel.setSetting(SYNC_SETTING_KEY, new Date().toISOString());
+        // Guardar la marca de tiempo de sincronización exitosa de forma persistente (solo en producción)
+        if (!isDevInstance()) {
+            await BotSettingsModel.setSetting(SYNC_SETTING_KEY, new Date().toISOString());
+        }
         Logger.system(`[guildsSync] Sincronización completa terminada. Se actualizaron ${updatedCount} usuarios.`);
     } catch (err) {
         console.error('[guildsSync] Error en la sincronización completa:', err);
@@ -170,6 +183,11 @@ async function syncAllGuilds(force = false) {
 function initGuildsSync(client, supabaseClient) {
     discordClient = client;
     supabase = supabaseClient;
+
+    if (isDevInstance()) {
+        Logger.system("[guildsSync] Modo Dev detectado. Se omiten sincronizaciones automáticas de servidores.");
+        return;
+    }
 
     Logger.system("[guildsSync] Sincronización completa persistente y asíncrona iniciada.");
 
