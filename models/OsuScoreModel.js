@@ -22,6 +22,91 @@ const GAP_DISK_CACHE_TTL = 300000; // 5 minutos de vigencia en RAM antes de leer
 const userPreloadRegistry = new Map();
 const PRELOAD_REGISTRY_TTL = 10 * 60 * 1000; // 10 minutos de expiración de sesión
 
+// Cache en memoria para la pool de tokens OAuth y mapeo de países
+let cachedTokenPool = [];
+let cachedTokenCountryCodes = {};
+let lastTokenPoolRefresh = 0;
+let isRefreshingTokenPool = false;
+const TOKEN_POOL_REFRESH_INTERVAL_MS = 6 * 60 * 60 * 1000; // Cada 6 horas
+
+/**
+ * Refresca la pool de tokens OAuth en memoria. Si ya está fresca, retorna de inmediato.
+ * @param {boolean} force - Si es true, ignora el intervalo y refresca de Supabase.
+ */
+async function refreshTokenPool(force = false) {
+    const now = Date.now();
+    if (!force && cachedTokenPool.length > 0 && (now - lastTokenPoolRefresh < TOKEN_POOL_REFRESH_INTERVAL_MS)) {
+        return { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes };
+    }
+    if (isRefreshingTokenPool) {
+        return { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes };
+    }
+
+    isRefreshingTokenPool = true;
+    try {
+        const supabase = getSupabaseClient();
+        if (!supabase) return { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes };
+
+        const { data: dbTokens, error } = await supabase
+            .from('oauth_tokens')
+            .select('discord_id, osu_id, username, access_token, refresh_token, expires_at, country_code');
+
+        if (error || !dbTokens) {
+            return { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes };
+        }
+
+        const newCountryCodes = {};
+        for (const row of dbTokens) {
+            if (row.osu_id && row.country_code) {
+                newCountryCodes[row.osu_id.toString()] = row.country_code;
+            }
+        }
+
+        const OsuUserModel = require("./OsuUserModel.js");
+        const refreshed = await Promise.all(dbTokens.map(async (row) => {
+            try {
+                const token = await OsuUserModel.getValidTokenForUser(row.discord_id, 2, row);
+                if (token) {
+                    return {
+                        token,
+                        username: row.username || row.discord_id
+                    };
+                }
+            } catch (err) {
+                // Silenciar error individual de usuario
+            }
+            return null;
+        }));
+
+        cachedTokenPool = refreshed.filter(Boolean);
+        cachedTokenCountryCodes = newCountryCodes;
+        lastTokenPoolRefresh = Date.now();
+        const Logger = require("../utils/logger.js");
+        Logger.system(`[OAuth Pool] Pool de tokens actualizada en segundo plano: ${cachedTokenPool.length} activos.`);
+    } catch (err) {
+        console.error("[OAuth Pool] Error al actualizar la pool de tokens en segundo plano:", err);
+    } finally {
+        isRefreshingTokenPool = false;
+    }
+
+    return { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes };
+}
+
+/**
+ * Inicializa el planificador en segundo plano para mantener la pool de tokens OAuth actualizada.
+ */
+function initTokenPoolScheduler() {
+    // 1. Carga inicial asíncrona a los 10 segundos de arrancar
+    setTimeout(() => {
+        refreshTokenPool(true).catch(() => {});
+    }, 10000);
+
+    // 2. Programar actualización periódica cada 6 horas (4 veces al día)
+    setInterval(() => {
+        refreshTokenPool(true).catch(() => {});
+    }, TOKEN_POOL_REFRESH_INTERVAL_MS);
+}
+
 function setWithLimit(map, key, value, limit = 100) {
     if (map.size >= limit) {
         const firstKey = map.keys().next().value;
@@ -1269,44 +1354,27 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
 
     const supabase = getSupabaseClient();
 
-    // Mezclar con los scores de Supabase y tokens en paralelo
-    const tokenCountryCodes = {};
+    // Obtener la pool de tokens desde la caché en memoria (0 ms si ya cargó en segundo plano)
+    let poolData = cachedTokenPool.length > 0
+        ? { tokenPool: cachedTokenPool, tokenCountryCodes: cachedTokenCountryCodes }
+        : await refreshTokenPool(false);
+
+    const tokenCountryCodes = poolData.tokenCountryCodes || {};
+    let tokenPool = poolData.tokenPool || [];
     let dbScores = null;
-    let dbTokens = null;
 
-    if (supabase) {
+    if (supabase && !forceUpdate) {
         try {
-            const promises = [
-                supabase
-                    .from('oauth_tokens')
-                    .select('discord_id, osu_id, username, access_token, refresh_token, expires_at, country_code')
-            ];
-            if (!forceUpdate) {
-                promises.push(
-                    supabase
-                        .from('local_scores')
-                        .select('*')
-                        .eq('beatmap_id', beatmapId.toString())
-                );
-            }
+            const { data: scoresData, error: scoresError } = await supabase
+                .from('local_scores')
+                .select('*')
+                .eq('beatmap_id', beatmapId.toString());
 
-            const results = await Promise.all(promises);
-            const tokensRes = results[0];
-            const scoresRes = results[1];
-
-            if (tokensRes && !tokensRes.error && tokensRes.data) {
-                dbTokens = tokensRes.data;
-                for (const row of tokensRes.data) {
-                    if (row.osu_id && row.country_code) {
-                        tokenCountryCodes[row.osu_id.toString()] = row.country_code;
-                    }
-                }
-            }
-            if (scoresRes && !scoresRes.error && scoresRes.data) {
-                dbScores = scoresRes.data;
+            if (!scoresError && scoresData) {
+                dbScores = scoresData;
             }
         } catch (e) {
-            console.error("[GAP] Error en precarga paralela de Supabase:", e);
+            console.error("[GAP] Error al consultar local_scores en Supabase:", e);
         }
     }
 
@@ -1427,31 +1495,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
         }
     }
 
-    let tokenPool = [];
     let tokenIndex = 0;
-
-    if (supabase && dbTokens) {
-        try {
-            const OsuUserModel = require("./OsuUserModel.js");
-            const refreshed = await Promise.all(dbTokens.map(async (row) => {
-                try {
-                    const token = await OsuUserModel.getValidTokenForUser(row.discord_id, 2, row);
-                    if (token) {
-                        return {
-                            token,
-                            username: row.username || row.discord_id
-                        };
-                    }
-                } catch (err) {
-                    console.error(`[GAP] Error al refrescar token para el usuario ${row.discord_id} en la pool:`, err);
-                }
-                return null;
-            }));
-            tokenPool = refreshed.filter(t => t !== null);
-        } catch (e) {
-            console.error("[GAP] Error al cargar la pool de tokens OAuth:", e);
-        }
-    }
 
     if (tokenPool.length > 0 && logger) {
         logger.process(`Pool de tokens OAuth cargada con ${tokenPool.length} tokens activos.`);
@@ -2523,7 +2567,9 @@ const OsuScoreModel = {
     getUserNationalTops,
     getUserNationalTopsCount,
     getUserSnipesHistory,
-    checkAndRecordRealtimeSnipe
+    checkAndRecordRealtimeSnipe,
+    refreshTokenPool,
+    initTokenPoolScheduler
 };
 
 async function getUserSnipesHistory(userId) {

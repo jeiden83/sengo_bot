@@ -40,6 +40,16 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         Logger.system(`Error al iniciar Supporter Sync: ${err.message}`);
     }
 
+    // 3.5 Scheduler de Pool de Tokens OAuth (Carga en segundo plano al inicio y cada 6 horas)
+    try {
+        const OsuScoreModel = require("../models/OsuScoreModel.js");
+        if (OsuScoreModel.initTokenPoolScheduler) {
+            OsuScoreModel.initTokenPoolScheduler();
+        }
+    } catch (err) {
+        Logger.system(`Error al iniciar Token Pool Scheduler: ${err.message}`);
+    }
+
     // 4. Crawler de Beatmaps (Sincronización diaria)
     try {
         const { initBeatmapCrawler } = require("./beatmapCrawler.js");

@@ -17,22 +17,14 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
     let embed_description = '';
     let position = startIndex + 1;
 
-    const OsuUserModel = require("../models/OsuUserModel.js");
-
     for (let i = 0; i < user_scores.length; i++) {
         const score = user_scores[i];
         const countryCode = score.user?.country_code || score.country_code;
         const flag = getFlagEmoji(countryCode ? countryCode : "XX");
         const username = score.user?.username || score.username || `User ${score.user_id}`;
 
-        const osuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
-        
-        let username_link = '';
-        if (!osuUser || typeof osuUser === 'string') {
-            username_link = `*${username}*`;
-        } else {
-            username_link = `[${username}](https://osu.ppy.sh/users/${osuUser.id})`;
-        }
+        const userId = score.user?.id || score.user_id;
+        const username_link = userId ? `[${username}](https://osu.ppy.sh/users/${userId})` : `*${username}*`;
 
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
