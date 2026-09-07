@@ -18,13 +18,14 @@ function mapToSkillCurve(val) {
  * Calcula el Acc PP estimado a partir del OD, precisión y cantidad de objetos.
  * Basado en la formulación de rendimiento de osu! estándar.
  */
-function estimateAccPP(od, accPct, totalHits, isHR, isEZ, isDT) {
+function estimateAccPP(od, accPct, totalHits, isHR, isEZ, isDT, isHT) {
     const acc = Math.max(0, Math.min(100, accPct)) / 100;
     if (acc < 0.8) return 0;
     let effOD = od;
     if (isHR) effOD = Math.min(10, od * 1.4);
     if (isEZ) effOD = od * 0.5;
     if (isDT) effOD = Math.min(11.1, effOD * 1.11);
+    if (isHT) effOD = Math.max(0, od * 0.75);
     const nObjects = Math.max(1, totalHits || 1000);
     const lengthBonus = Math.min(1.15, Math.pow(nObjects / 1500, 0.3));
     return Math.pow(1.52163, effOD) * Math.pow((acc - 0.8) / 0.2, 2.4) * lengthBonus * 2.83;
@@ -338,32 +339,57 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const circleRatio = circles / totalObj;
 
             // 1. Acc PP estimado
-            let rawAccPP = estimateAccPP(od, accPct, totalObj, isHR, isEZ, isDT);
+            let rawAccPP = estimateAccPP(od, accPct, totalObj, isHR, isEZ, isDT, isHT);
             rawAccPP = Math.min(rawAccPP, pp * 0.28);
 
             // 2. Strain PP total
             const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
             // 3. Descomposición rítmica en Aim y Speed calibrada con rosu-pp
-            const streamDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.50) / 0.70));
+            // Un mapa de puros saltos 1/2 tiene notesPerBeat <= 1.52.
+            // Los streams y ráfagas 1/4 elevan notesPerBeat por encima de 1.65 hacia 2.5+.
+            const streamDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.48) / 0.65));
             const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.62) / 0.22));
 
-            const circleCountBonus = (circles >= 900 && effBPM >= 170) ? Math.min(0.35, (circles - 800) / 2500) : 0;
-            const lengthStaminaBonus = (totalObj >= 1400 && effBPM >= 170) ? Math.min(0.25, (totalObj - 1200) / 3000) : 0;
+            // El speed strain crece a partir de 170 BPM efectivos
+            const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 170) / 85));
 
-            const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 160) / 95));
+            // A altas velocidades (235+ BPM con DT), incluso el tapping de saltos y ráfagas cortas genera strain de velocidad
+            const highBpmTappingBonus = isDT ? Math.max(0, Math.min(0.25, (effBPM - 235) / 80)) : 0;
 
-            let speedDominance = (streamDensity * circleStreamBias * 0.65) + (bpmSpeedFactor * 0.35) + circleCountBonus + lengthStaminaBonus;
-            if (streamDensity > 0.65 && circleStreamBias > 0.65) {
-                speedDominance += 0.15;
-            }
+            // Los bonos de stamina solo aportan a speed si el mapa realmente tiene densidad rítmica de streams
+            const circleCountBonus = (circles >= 900 && effBPM >= 180) ? Math.min(0.20, (circles - 800) / 2500) : 0;
+            const lengthStaminaBonus = (totalObj >= 1400 && effBPM >= 180) ? Math.min(0.15, (totalObj - 1200) / 3000) : 0;
+            const staminaBonus = (circleCountBonus + lengthStaminaBonus) * streamDensity * bpmSpeedFactor;
+
+            // Dominancia de velocidad:
+            // Requiere densidad rítmica (streams) para activarse. Si no hay streams (streamDensity ~ 0),
+            // la velocidad no puede dominar aunque el BPM de los saltos sea alto.
+            let speedDominance = (Math.pow(streamDensity, 0.85) * bpmSpeedFactor * (0.50 + 0.50 * circleStreamBias))
+                               + highBpmTappingBonus
+                               + staminaBonus;
+
+            if (isHT) speedDominance *= 0.35; // Castigo de velocidad por reducción drástica de BPM
+            if (isHR) speedDominance *= 0.80; // HR reduce la proporción de speed en favor de aim por el CS más pequeño
+            if (isEZ) speedDominance = Math.min(1.0, speedDominance * 1.25);
+
             speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
-            let aimFraction = 0.90 - (speedDominance * 0.46);
-            let speedFraction = 0.14 + (speedDominance * 0.66);
+            // Fracción de Strain:
+            // En mapas sin streams con HR (ej. Brazil), el Speed PP real es apenas 3-4% del strain.
+            // En mapas DT rápidos sin streams completos, el Speed PP ronda 20-30%.
+            // En mapas con streams densos, speedDominance escala la fracción hasta 60-70%.
+            let baselineSpeed = 0.04;
+            if (isHR) baselineSpeed = 0.025;
+            if (isHT) baselineSpeed = 0.035;
+            if (isDT) baselineSpeed = 0.06 + Math.max(0, (effBPM - 225) / 120) * 0.10;
 
-            if (isHR) aimFraction += 0.05;
-            if (isHD) aimFraction += 0.02;
+            let speedFraction = baselineSpeed + (speedDominance * (0.65 - baselineSpeed));
+            let aimFraction = Math.max(0.15, 1.0 - (speedFraction * 0.85));
+
+            if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
+            if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
+            if (isEZ) aimFraction = Math.max(0.15, aimFraction - 0.08);
 
             const rawAimPP = strainPP * aimFraction;
             const rawSpeedPP = strainPP * speedFraction;
