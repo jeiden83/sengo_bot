@@ -182,8 +182,8 @@
     },
     "globo": {
       "header": "Generates image with a speech bubble",
-      "body": "Adds a comic speech bubble on top of the attached image.",
-      "usage": "s.globo (attaching an image)"
+      "body": "Adds a comic speech bubble on top of an attached, replied or linked image.",
+      "usage": "s.globo (attaching, replying or with image link)"
     },
     "milin": {
       "header": "Milin",

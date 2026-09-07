@@ -182,8 +182,8 @@
     },
     "globo": {
       "header": "Genera imagen con globo",
-      "body": "Añade un globo de texto tipo cómic en la parte superior de la imagen adjunta.",
-      "usage": "s.globo (adjuntando una imagen)"
+      "body": "Añade un globo de texto tipo cómic en la parte superior de una imagen adjunta, citada o enlace.",
+      "usage": "s.globo (adjuntando, citando o con enlace de imagen)"
     },
     "milin": {
       "header": "Milin",
