@@ -21,11 +21,15 @@ function mapToSkillCurve(val) {
 function estimateAccPP(od, accPct, totalHits, isHR, isEZ, isDT, isHT) {
     const acc = Math.max(0, Math.min(100, accPct)) / 100;
     if (acc < 0.8) return 0;
-    let effOD = od;
-    if (isHR) effOD = Math.min(10, od * 1.4);
-    if (isEZ) effOD = od * 0.5;
-    if (isDT) effOD = Math.min(11.1, effOD * 1.11);
-    if (isHT) effOD = Math.max(0, od * 0.75);
+    // ponytail: Cálculo nativo del OD efectivo según ventana de impacto 300 (HitWindow300)
+    let hitWindow300 = 80 - 6 * od;
+    if (isEZ) hitWindow300 = 80 - 6 * (od * 0.5);
+    if (isHR) hitWindow300 = 80 - 6 * Math.min(10, od * 1.4);
+
+    if (isDT) hitWindow300 /= 1.5;
+    if (isHT) hitWindow300 /= 0.75;
+
+    const effOD = Math.max(0, Math.min(11.1, (80 - hitWindow300) / 6));
     const nObjects = Math.max(1, totalHits || 1000);
     const lengthBonus = Math.min(1.15, Math.pow(nObjects / 1500, 0.3));
     return Math.pow(1.52163, effOD) * Math.pow((acc - 0.8) / 0.2, 2.4) * lengthBonus * 2.83;
@@ -364,12 +368,17 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.58) / 0.22));
 
             // A altas velocidades (218+ BPM), el strain de tapping se incrementa naturalmente
-            const highBpmTappingBonus = isDT
-                ? Math.max(0, Math.min(0.25, (effBPM - 235) / 80))
-                : Math.max(0, Math.min(0.20, (effBPM - 218) / 50));
+            let highBpmTappingBonus = 0;
+            if (isDT && !isEZ) {
+                highBpmTappingBonus = Math.max(0, Math.min(0.25, (effBPM - 235) / 80));
+            } else if (isDT && isEZ) {
+                highBpmTappingBonus = streamConfidence > 0.2 ? Math.max(0, Math.min(0.12, (effBPM - 240) / 80)) * streamConfidence : 0;
+            } else if (!isEZ) {
+                highBpmTappingBonus = Math.max(0, Math.min(0.20, (effBPM - 218) / 50));
+            }
 
             // Stamina en maratones largas de streams (requiere notesPerBeat >= 1.45)
-            const staminaBonus = (circles >= 700 && effBPM >= 180 && notesPerBeat >= 1.45)
+            const staminaBonus = (circles >= 700 && effBPM >= 180 && notesPerBeat >= 1.45 && !isEZ)
                 ? Math.min(0.35, (circles - 500) / 1400) * bpmSpeedFactor * streamConfidence
                 : 0;
 
@@ -378,8 +387,8 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                                + highBpmTappingBonus
                                + staminaBonus;
 
-            // Mapas cortos de saltos puros con HR (ej. Brazil): 100% Aim, 0% dominancia de speed
-            if (isHR && (circles < 350 || effLen < 70)) {
+            // Mapas cortos de saltos puros (<70s o <350 círculos): 100% Aim
+            if ((isHR || isEZ) && (circles < 350 || effLen < 70)) {
                 speedDominance = 0;
             }
 
@@ -391,7 +400,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             }
 
             if (isHT) speedDominance *= 0.25; // Castigo de velocidad por reducción drástica de BPM
-            if (isEZ) speedDominance = Math.min(1.0, speedDominance * 1.30);
+            if (isEZ) speedDominance *= 0.35; // EZ reduce el speed strain debido al OD relajado y la gran proporción de Reading/Aim
 
             speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
@@ -401,7 +410,9 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             else if (isHR && effBPM < 205) baselineSpeed = 0.03;
             else if (isHR) baselineSpeed = 0.04;
             if (isHT) baselineSpeed = 0.03;
-            if (isDT) baselineSpeed = 0.06 + Math.max(0, (effBPM - 225) / 120) * 0.10;
+            if (isDT && !isEZ) baselineSpeed = 0.06 + Math.max(0, (effBPM - 225) / 120) * 0.10;
+            else if (isDT && isEZ) baselineSpeed = 0.04 + Math.max(0, (effBPM - 230) / 100) * 0.04;
+            if (isEZ && !isDT) baselineSpeed = 0.035;
 
             // En maratones puras de streams sin HR (ej: Save Me, Lies in Reality), la fracción máxima de speed sube
             const maxSpeedFraction = (!isHR && !isHT && circles >= 1000 && effBPM >= 185) ? 0.68 : 0.60;
@@ -411,7 +422,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
 
             if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
-            if (isEZ) aimFraction = Math.max(0.15, aimFraction - 0.08);
+            if (isEZ) aimFraction = Math.min(1.0, aimFraction + 0.04);
 
             const rawAimPP = strainPP * aimFraction;
             const rawSpeedPP = strainPP * speedFraction;
