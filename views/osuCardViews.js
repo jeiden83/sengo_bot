@@ -385,10 +385,59 @@ function getGradeColor(grade) {
     return "#ef4444";
 }
 
+// Espectro de dificultad de osu! basado en especificaciones oficiales
+const difficultySpectrum = [
+    { stars: 0.0, color: '#3884F7' }, // Light Blue
+    { stars: 1.5, color: '#38BAF7' }, // Cyan
+    { stars: 2.0, color: '#4FFF30' }, // Neon Green
+    { stars: 2.8, color: '#F7E638' }, // Yellow
+    { stars: 3.8, color: '#F78A38' }, // Orange
+    { stars: 4.7, color: '#F7386C' }, // Pink / Magenta
+    { stars: 5.5, color: '#AF38F7' }, // Purple
+    { stars: 6.5, color: '#5C5BF7' }, // Blue / Violet
+    { stars: 7.5, color: '#1A1899' }, // Dark Blue
+    { stars: 9.0, color: '#111111' }  // Dark Indigo/Black
+];
+
+function getDifficultyColor(stars) {
+    if (stars < 0.1) return '#aaaaaa';
+    if (stars >= 9.0) return '#111111';
+    let lower = difficultySpectrum[0];
+    let upper = difficultySpectrum[difficultySpectrum.length - 1];
+    for (let i = 0; i < difficultySpectrum.length - 1; i++) {
+        if (stars >= difficultySpectrum[i].stars && stars <= difficultySpectrum[i + 1].stars) {
+            lower = difficultySpectrum[i];
+            upper = difficultySpectrum[i + 1];
+            break;
+        }
+    }
+    const r1 = parseInt(lower.color.slice(1, 3), 16);
+    const g1 = parseInt(lower.color.slice(3, 5), 16);
+    const b1 = parseInt(lower.color.slice(5, 7), 16);
+    const r2 = parseInt(upper.color.slice(1, 3), 16);
+    const g2 = parseInt(upper.color.slice(3, 5), 16);
+    const b2 = parseInt(upper.color.slice(5, 7), 16);
+    const range = upper.stars - lower.stars;
+    const factor = range > 0 ? (stars - lower.stars) / range : 0;
+    const r = Math.round(r1 + (r2 - r1) * factor);
+    const g = Math.round(g1 + (g2 - g1) * factor);
+    const b = Math.round(b1 + (b2 - b1) * factor);
+    const hex = (x) => x.toString(16).padStart(2, '0');
+    return `#${hex(r)}${hex(g)}${hex(b)}`;
+}
+
+function getDifficultyOutlineColor(stars) {
+    if (stars <= 6.0) return 'rgba(0, 0, 0, 0.85)';
+    if (stars >= 8.5) return 'rgba(255, 255, 255, 0.85)';
+    const factor = (stars - 6.0) / 2.5;
+    const v = Math.round(255 * factor);
+    return `rgba(${v}, ${v}, ${v}, 0.85)`;
+}
+
 /**
  * Dibuja un texto personalizado aplicando tamaño, estilo, peso, efectos de sombra o glow, y auto-fit si aplica.
  */
-function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontFamily = DEFAULT_FONT_STACK, maxWidth = null) {
+function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontFamily = DEFAULT_FONT_STACK, maxWidth = null, overrideStyle = null) {
     if (!fontConfig || text == null) return;
     const strText = String(text);
     ctx.save();
@@ -416,7 +465,7 @@ function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontF
         }
     }
 
-    ctx.fillStyle = fontConfig.color || "#ffffff";
+    ctx.fillStyle = overrideStyle?.color || fontConfig.color || "#ffffff";
     const italic = fontConfig.style === "italic" ? "italic " : "";
     const weight = fontConfig.weight ? `${fontConfig.weight} ` : "";
     let fontSize = fontConfig.size || 20;
@@ -435,6 +484,18 @@ function drawCustomText(ctx, fontConfig, text, x, y, align = "left", globalFontF
 
     ctx.font = `${italic}${weight}${fontSize}px ${globalFontFamily}`;
     ctx.textAlign = align;
+
+    // Delineado / contorno opcional antes del relleno
+    if (overrideStyle?.outlineColor) {
+        ctx.save();
+        ctx.strokeStyle = overrideStyle.outlineColor;
+        ctx.lineWidth = overrideStyle.outlineWidth || 2.8;
+        ctx.lineJoin = "round";
+        ctx.miterLimit = 2;
+        ctx.strokeText(strText, x, y);
+        ctx.restore();
+    }
+
     ctx.fillText(strText, x, y);
     ctx.restore();
 }
@@ -704,10 +765,11 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     const totalMedals = 352;
     const medalsPct = Math.round((medalsCount / totalMedals) * 100);
 
-    const [sengoData, pinnedPlay] = await Promise.all([
+    const [sengoData, pinnedPlayRaw] = await Promise.all([
         fetchSengoData(user.id, countryCode),
-        fetchPinnedScore(user.id, topScores, mode)
+        options?.pinnedPlay ? Promise.resolve(options.pinnedPlay) : fetchPinnedScore(user.id, topScores, mode)
     ]);
+    const pinnedPlay = options?.pinnedPlay || pinnedPlayRaw;
     const skillData = analyzeSkills(topScores, false, mode);
     const dynamicTitle = generateCardTitle(skillData, skillData.modStats, pp, user, sengoData, locale, mode);
 
@@ -727,6 +789,7 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     // Descarga paralela en segundo plano de todos los assets requeridos y cálculo de Star Rating con mods físicos
     const srPromise = (async () => {
+        if (options?.overrideSR != null) return Number(options.overrideSR);
         if (!pinnedPlay?.beatmap?.id) return null;
         try {
             const BeatmapModel = require("../models/BeatmapModel.js");
@@ -1002,14 +1065,54 @@ async function renderOsuCard(user, topScores = [], options = {}) {
             ? calculatedPlaySR
             : (pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating) : 7.68);
         const mapSR = Number(effectiveSRNumber).toFixed(2);
-        const mapDiffFormatted = rawDiff.toLowerCase().includes(mapSR) ? rawDiff : `${rawDiff} ${mapSR}★`;
+        const cleanDiff = rawDiff.replace(/\s*\d+\.?\d*★?\s*$/, "").trim() || rawDiff;
+        const srText = `${mapSR}★`;
         const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString(numLocale) : "32.219.611";
         const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy || 0.96) * 100).toFixed(2) : "96.12";
         const scoreCombo = pinnedPlay?.max_combo ? `${pinnedPlay.max_combo}x` : "262x";
         const scoreGrade = pinnedPlay?.rank || "S";
 
         drawCustomText(ctx, fonts.playTitle, `${mapTitle} by ${mapArtist}`.slice(0, 48), pb.x + 16, pb.y + 34, "left", fontFamily);
-        drawCustomText(ctx, fonts.playDiff, mapDiffFormatted.slice(0, 36), pb.x + 16, pb.y + 76, "left", fontFamily);
+
+        // Fuentes independientes para Dificultad y SR pero alineadas consecutivamente
+        const diffFont = fonts.playDiff || { size: 23, weight: "bold", style: "italic", color: "#ffffff" };
+        const srFont = fonts.playSR || diffFont;
+
+        // Medir ancho requerido para el SR
+        const srItalic = srFont.style === "italic" ? "italic " : "";
+        const srWeight = srFont.weight ? `${srFont.weight} ` : "";
+        const srSize = srFont.size || 23;
+        ctx.save();
+        ctx.font = `${srItalic}${srWeight}${srSize}px ${fontFamily}`;
+        const srWidth = ctx.measureText(srText).width;
+
+        // Truncar nombre de dificultad si es muy largo para asegurar espacio a SR y Score
+        const dItalic = diffFont.style === "italic" ? "italic " : "";
+        const dWeight = diffFont.weight ? `${diffFont.weight} ` : "";
+        const dSize = diffFont.size || 23;
+        ctx.font = `${dItalic}${dWeight}${dSize}px ${fontFamily}`;
+        const maxDiffWidth = pb.w - srWidth - 270;
+        let displayDiff = cleanDiff;
+        while (displayDiff.length > 3 && ctx.measureText(displayDiff + "...").width > maxDiffWidth) {
+            displayDiff = displayDiff.slice(0, -1);
+        }
+        if (displayDiff !== cleanDiff) displayDiff += "...";
+        const diffWidth = ctx.measureText(displayDiff).width;
+        ctx.restore();
+
+        // 1. Dibujar nombre de dificultad
+        drawCustomText(ctx, diffFont, displayDiff, pb.x + 16, pb.y + 76, "left", fontFamily);
+
+        // 2. Dibujar SR con color dinámico de dificultad y delineado adaptable
+        const srX = pb.x + 16 + diffWidth + 8;
+        const srColor = getDifficultyColor(effectiveSRNumber);
+        const srOutline = getDifficultyOutlineColor(effectiveSRNumber);
+        drawCustomText(ctx, srFont, srText, srX, pb.y + 76, "left", fontFamily, null, {
+            color: srColor,
+            outlineColor: srOutline,
+            outlineWidth: 2.8
+        });
+
         drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
         // Grade S/A

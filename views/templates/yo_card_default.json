@@ -211,6 +211,19 @@
       "effectBlur": 2,
       "effectOffsetY": 3
     },
+    "playSR": {
+      "size": 23,
+      "weight": "bold",
+      "style": "italic",
+      "color": "#ffffff",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1,
+      "effectBlur": 2,
+      "effectOffsetY": 3
+    },
     "playScore": {
       "size": 24,
       "weight": "normal",

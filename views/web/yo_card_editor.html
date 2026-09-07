@@ -801,7 +801,8 @@
                             <option value="levelText">Nivel (lvl 101)</option>
                             <option value="medalsText">Medallas (Medals 28% 97/352)</option>
                             <option value="playTitle">Título de Beatmap Play</option>
-                            <option value="playDiff">Dificultad y SR de Play</option>
+                            <option value="playDiff">Dificultad de Play (Nombre)</option>
+                            <option value="playSR">SR de Play (Estrellas)</option>
                             <option value="playScore">Puntaje de Play</option>
                             <option value="playGrade">Letra de Rango (S/A)</option>
                             <option value="playStats">Accuracy y Combo de Play</option>
@@ -950,18 +951,23 @@
                     <div class="grid-2">
                         <div class="control-group">
                             <label class="control-label">Título de Canción</label>
-                            <input type="text" id="pPlayTitle" value="Maid-chan yori. by Maid-chan (CV: Horie Yui)" oninput="state.player.play.title=this.value; render();">
+                            <input type="text" id="pPlayTitle" value="Tsukinami by Wakeshima Kanon" oninput="state.player.play.title=this.value; render();">
                         </div>
                         <div class="control-group">
-                            <label class="control-label">Dificultad y SR</label>
-                            <input type="text" id="pPlayDiff" value="rollpan's Extra 6.36" oninput="state.player.play.diff=this.value; render();">
+                            <label class="control-label">Dificultad (Nombre)</label>
+                            <input type="text" id="pPlayDiff" value="Nostalgia" oninput="state.player.play.diff=this.value; render();">
                         </div>
                     </div>
-                    <div class="grid-3">
+                    <div class="grid-2" style="margin-top: 8px;">
+                        <div class="control-group">
+                            <label class="control-label">SR (Estrellas)</label>
+                            <input type="number" id="pPlaySR" step="0.01" min="0" max="15" value="5.97" oninput="state.player.play.sr=parseFloat(this.value)||0; render();">
+                        </div>
                         <div class="control-group">
                             <label class="control-label">Score</label>
-                            <input type="text" id="pPlayScore" value="965.309 Score" oninput="state.player.play.score=this.value; render();">
+                            <input type="text" id="pPlayScore" value="967.914 Score" oninput="state.player.play.score=this.value; render();">
                         </div>
+                    <div class="grid-2" style="margin-top: 8px;">
                         <div class="control-group">
                             <label class="control-label">Letra Rango</label>
                             <input type="text" id="pPlayGrade" value="S" oninput="state.player.play.grade=this.value.toUpperCase(); render();">
@@ -1146,8 +1152,9 @@
                 countryRankLabel: { size: 22, weight: 'normal', style: 'italic', color: '#cbd5e1', glowBlur: 0, glowColor: '#c084fc' },
                 levelText: { size: 24, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
                 medalsText: { size: 22, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
-                playTitle: { size: 22, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
-                playDiff: { size: 23, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
+                playTitle: { size: 22, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 2, effectOffsetY: 3 },
+                playDiff: { size: 23, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 2, effectOffsetY: 3 },
+                playSR: { size: 23, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 2, effectOffsetY: 3 },
                 playScore: { size: 24, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 2, effectOffsetY: 3 },
                 playGrade: { size: 76, weight: 'bold', style: 'normal', color: '#facc15', glowBlur: 0, glowColor: '#c084fc' },
                 playStats: { size: 24, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectBlur: 2, effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectOffsetY: 3 },
@@ -1181,7 +1188,8 @@
                 sengo: { tops: 1823, topPP: 352, birthday: "04 Oct", snipes: 445, skin: "Naranja v7" },
                 play: {
                     title: "Tsukinami by Wakeshima Kanon",
-                    diff: "Nostalgia 5.97",
+                    diff: "Nostalgia",
+                    sr: 5.97,
                     score: "967.914 Score",
                     grade: "S",
                     acc: "99.42%",
@@ -1582,7 +1590,13 @@
                     document.getElementById('pAvatarUrl').value = state.player.avatar;
                     if (document.getElementById('pCoverUrl') && data.play?.cover) document.getElementById('pCoverUrl').value = data.play.cover;
                     if (document.getElementById('pPlayTitle') && data.play?.title) document.getElementById('pPlayTitle').value = data.play.title;
-                    if (document.getElementById('pPlayDiff') && data.play?.diff) document.getElementById('pPlayDiff').value = data.play.diff;
+                    if (data.play?.diff) {
+                        const parts = data.play.diff.match(/^(.*?)(?:\s+(\d+(?:\.\d+)?))?$/);
+                        state.player.play.diff = parts?.[1] || data.play.diff;
+                        state.player.play.sr = parts?.[2] ? parseFloat(parts[2]) : (data.play.sr || 5.97);
+                        if (document.getElementById('pPlayDiff')) document.getElementById('pPlayDiff').value = state.player.play.diff;
+                        if (document.getElementById('pPlaySR')) document.getElementById('pPlaySR').value = state.player.play.sr;
+                    }
                     if (document.getElementById('pPlayScore') && data.play?.score) document.getElementById('pPlayScore').value = data.play.score;
                     if (document.getElementById('pPlayGrade') && data.play?.grade) document.getElementById('pPlayGrade').value = data.play.grade;
                     if (document.getElementById('pPlayMods') && data.play?.mods) document.getElementById('pPlayMods').value = Array.isArray(data.play.mods) ? data.play.mods.join(', ') : data.play.mods;
@@ -1605,7 +1619,8 @@
                     state.theme.profileCoverUrl = "https://assets.ppy.sh/user-profile-covers/11622889/8d802f4f3d56d4a1e33c5991065fe16b9ac2e3575c776189104eebfa65d23f12.png";
                     state.player.play.cover = "https://assets.ppy.sh/beatmaps/369623/covers/cover@2x.jpg";
                     state.player.play.title = "Maid-chan yori. by Maid-chan (CV: Horie Yui)";
-                    state.player.play.diff = "rollpan's Extra 6.36";
+                    state.player.play.diff = "rollpan's Extra";
+                    state.player.play.sr = 6.36;
                     state.player.play.score = "965.309 Score";
                     state.player.play.grade = "S";
                     state.player.play.mods = ["CL"];
@@ -1618,6 +1633,7 @@
                     document.getElementById('pCoverUrl').value = state.player.play.cover;
                     document.getElementById('pPlayTitle').value = state.player.play.title;
                     document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    if (document.getElementById('pPlaySR')) document.getElementById('pPlaySR').value = state.player.play.sr;
                     document.getElementById('pPlayScore').value = state.player.play.score;
                     document.getElementById('pPlayGrade').value = state.player.play.grade;
                     document.getElementById('pPlayMods').value = "CL";
@@ -1632,7 +1648,8 @@
                     state.player.avatar = "https://a.ppy.sh/31038461?1787089430.jpeg";
                     state.player.play.cover = "https://assets.ppy.sh/beatmaps/896080/covers/cover@2x.jpg?1650673178";
                     state.player.play.title = "Tsukinami by Wakeshima Kanon";
-                    state.player.play.diff = "Nostalgia 5.97";
+                    state.player.play.diff = "Nostalgia";
+                    state.player.play.sr = 5.97;
                     state.player.play.score = "967.914 Score";
                     state.player.play.grade = "S";
                     state.player.play.mods = ["CL"];
@@ -1647,6 +1664,7 @@
                     document.getElementById('pCoverUrl').value = state.player.play.cover;
                     document.getElementById('pPlayTitle').value = state.player.play.title;
                     document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    if (document.getElementById('pPlaySR')) document.getElementById('pPlaySR').value = state.player.play.sr;
                     document.getElementById('pPlayScore').value = state.player.play.score;
                     document.getElementById('pPlayGrade').value = state.player.play.grade;
                     document.getElementById('pPlayMods').value = "CL";
@@ -1662,7 +1680,8 @@
                     state.theme.profileCoverUrl = "https://assets.ppy.sh/user-profile-covers/16688497/7b00281f563b14da83ebcb4f19b0791375a44f9936b33008c9f7b24366756094.png";
                     state.player.play.cover = "https://assets.ppy.sh/beatmaps/38235/covers/cover@2x.jpg?1622050466";
                     state.player.play.title = "Eiji Kuinbii by 07th Expansion";
-                    state.player.play.diff = "Collapse 4.94";
+                    state.player.play.diff = "Collapse";
+                    state.player.play.sr = 4.94;
                     state.player.play.grade = "A";
                     state.player.play.score = "23.286.714 Score";
                     state.player.play.acc = "97.91%";
@@ -1677,6 +1696,7 @@
                     document.getElementById('pCoverUrl').value = state.player.play.cover;
                     document.getElementById('pPlayTitle').value = state.player.play.title;
                     document.getElementById('pPlayDiff').value = state.player.play.diff;
+                    if (document.getElementById('pPlaySR')) document.getElementById('pPlaySR').value = state.player.play.sr;
                     document.getElementById('pPlayScore').value = state.player.play.score;
                     document.getElementById('pPlayGrade').value = state.player.play.grade;
                     document.getElementById('pPlayMods').value = "DT, CL";
@@ -1750,8 +1770,57 @@
             }
         }
 
+        // Espectro de dificultad de osu! para coloreado dinámico de SR
+        const difficultySpectrum = [
+            { stars: 0.0, color: '#3884F7' }, // Light Blue
+            { stars: 1.5, color: '#38BAF7' }, // Cyan
+            { stars: 2.0, color: '#4FFF30' }, // Neon Green
+            { stars: 2.8, color: '#F7E638' }, // Yellow
+            { stars: 3.8, color: '#F78A38' }, // Orange
+            { stars: 4.7, color: '#F7386C' }, // Pink / Magenta
+            { stars: 5.5, color: '#AF38F7' }, // Purple
+            { stars: 6.5, color: '#5C5BF7' }, // Blue / Violet
+            { stars: 7.5, color: '#1A1899' }, // Dark Blue
+            { stars: 9.0, color: '#111111' }  // Dark Indigo/Black
+        ];
+
+        function getDifficultyColor(stars) {
+            if (stars < 0.1) return '#aaaaaa';
+            if (stars >= 9.0) return '#111111';
+            let lower = difficultySpectrum[0];
+            let upper = difficultySpectrum[difficultySpectrum.length - 1];
+            for (let i = 0; i < difficultySpectrum.length - 1; i++) {
+                if (stars >= difficultySpectrum[i].stars && stars <= difficultySpectrum[i + 1].stars) {
+                    lower = difficultySpectrum[i];
+                    upper = difficultySpectrum[i + 1];
+                    break;
+                }
+            }
+            const r1 = parseInt(lower.color.slice(1, 3), 16);
+            const g1 = parseInt(lower.color.slice(3, 5), 16);
+            const b1 = parseInt(lower.color.slice(5, 7), 16);
+            const r2 = parseInt(upper.color.slice(1, 3), 16);
+            const g2 = parseInt(upper.color.slice(3, 5), 16);
+            const b2 = parseInt(upper.color.slice(5, 7), 16);
+            const range = upper.stars - lower.stars;
+            const factor = range > 0 ? (stars - lower.stars) / range : 0;
+            const r = Math.round(r1 + (r2 - r1) * factor);
+            const g = Math.round(g1 + (g2 - g1) * factor);
+            const b = Math.round(b1 + (b2 - b1) * factor);
+            const hex = (x) => x.toString(16).padStart(2, '0');
+            return `#${hex(r)}${hex(g)}${hex(b)}`;
+        }
+
+        function getDifficultyOutlineColor(stars) {
+            if (stars <= 6.0) return 'rgba(0, 0, 0, 0.85)';
+            if (stars >= 8.5) return 'rgba(255, 255, 255, 0.85)';
+            const factor = (stars - 6.0) / 2.5;
+            const v = Math.round(255 * factor);
+            return `rgba(${v}, ${v}, ${v}, 0.85)`;
+        }
+
         // DIBUJAR TEXTO CON PROPIEDADES INDIVIDUALES (GLOW O SHADOW)
-        function drawCustomText(key, text, x, y, align = 'left', customFontSize = null, maxWidth = null) {
+        function drawCustomText(key, text, x, y, align = 'left', customFontSize = null, maxWidth = null, overrideStyle = null) {
             const f = state.fonts[key] || { size: 20, weight: 'normal', style: 'normal', color: '#fff' };
             ctx.save();
 
@@ -1778,12 +1847,27 @@
                 }
             }
 
-            ctx.fillStyle = f.color || '#ffffff';
+            ctx.fillStyle = overrideStyle?.color || f.color || '#ffffff';
             const italic = f.style === 'italic' ? 'italic ' : '';
             const weight = f.weight ? `${f.weight} ` : '';
             const fontSize = customFontSize || f.size || 20;
             ctx.font = `${italic}${weight}${fontSize}px ${state.theme.fontFamily}`;
             ctx.textAlign = align;
+
+            if (overrideStyle?.outlineColor) {
+                ctx.save();
+                ctx.strokeStyle = overrideStyle.outlineColor;
+                ctx.lineWidth = overrideStyle.outlineWidth || 2.8;
+                ctx.lineJoin = 'round';
+                ctx.miterLimit = 2;
+                if (maxWidth) {
+                    ctx.strokeText(text, x, y, maxWidth);
+                } else {
+                    ctx.strokeText(text, x, y);
+                }
+                ctx.restore();
+            }
+
             if (maxWidth) {
                 ctx.fillText(text, x, y, maxWidth);
             } else {
@@ -2217,7 +2301,50 @@
                 ctx.fillRect(pb.x, pb.y, pb.w, pb.h);
 
                 drawCustomText('playTitle', (player.play.title || '').slice(0, 48), pb.x + 16, pb.y + 34, 'left');
-                drawCustomText('playDiff', player.play.diff, pb.x + 16, pb.y + 76, 'left');
+
+                // Separar Dificultad y SR play
+                const rawDiff = player.play.diff || 'Nostalgia';
+                const cleanDiff = rawDiff.replace(/\s*\d+\.?\d*★?\s*$/, "").trim() || rawDiff;
+                const srVal = parseFloat(player.play.sr != null ? player.play.sr : (String(rawDiff).match(/(\d+(?:\.\d+)?)/) || [0, 5.97])[1]) || 5.97;
+                const srText = `${srVal.toFixed(2)}★`;
+
+                // Medir ancho de SR
+                const srFont = state.fonts.playSR || state.fonts.playDiff || { size: 23, weight: 'bold', style: 'italic' };
+                const srItalic = srFont.style === 'italic' ? 'italic ' : '';
+                const srWeight = srFont.weight ? `${srFont.weight} ` : '';
+                const srSize = srFont.size || 23;
+                ctx.save();
+                ctx.font = `${srItalic}${srWeight}${srSize}px ${state.theme.fontFamily}`;
+                const srWidth = ctx.measureText(srText).width;
+
+                // Truncar nombre de dificultad si es muy largo
+                const diffFont = state.fonts.playDiff || { size: 23, weight: 'bold', style: 'italic' };
+                const dItalic = diffFont.style === 'italic' ? 'italic ' : '';
+                const dWeight = diffFont.weight ? `${diffFont.weight} ` : '';
+                const dSize = diffFont.size || 23;
+                ctx.font = `${dItalic}${dWeight}${dSize}px ${state.theme.fontFamily}`;
+                const maxDiffWidth = pb.w - srWidth - 270;
+                let displayDiff = cleanDiff;
+                while (displayDiff.length > 3 && ctx.measureText(displayDiff + '...').width > maxDiffWidth) {
+                    displayDiff = displayDiff.slice(0, -1);
+                }
+                if (displayDiff !== cleanDiff) displayDiff += '...';
+                const diffWidth = ctx.measureText(displayDiff).width;
+                ctx.restore();
+
+                // 1. Dificultad (Nombre)
+                drawCustomText('playDiff', displayDiff, pb.x + 16, pb.y + 76, 'left');
+
+                // 2. SR con color dinámico de dificultad y delineado adaptable
+                const srX = pb.x + 16 + diffWidth + 8;
+                const srColor = getDifficultyColor(srVal);
+                const srOutline = getDifficultyOutlineColor(srVal);
+                drawCustomText('playSR', srText, srX, pb.y + 76, 'left', null, null, {
+                    color: srColor,
+                    outlineColor: srOutline,
+                    outlineWidth: 2.8
+                });
+
                 drawCustomText('playScore', player.play.score, pb.x + pb.w - 16, pb.y + 76, 'right');
 
                 // Grade S/A

@@ -881,6 +881,15 @@ function startServer(client, dbRes, port, config) {
             }
         }
 
+        if (req.method === 'GET' && (pathname === '/api/card/default-template' || pathname === '/api/card/template')) {
+            const tplPath = path.join(process.cwd(), 'views/templates/yo_card_default.json');
+            if (fs.existsSync(tplPath)) {
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(fs.readFileSync(tplPath));
+                return;
+            }
+        }
+
         if (req.method === 'GET' && (pathname === '/api/card/proxy' || pathname === '/api/proxy-image')) {
             const targetUrl = parsedUrl.query.url;
             if (!targetUrl) {
