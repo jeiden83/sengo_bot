@@ -422,7 +422,8 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
 
             if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
-            if (isEZ) aimFraction = Math.min(1.0, aimFraction + 0.04);
+            // ponytail: en EZ los círculos son 2x más grandes y ~35% del PP proviene de Reading, reduciendo el strain de Aim puro
+            if (isEZ) aimFraction = Math.max(0.15, aimFraction * 0.72);
 
             const rawAimPP = strainPP * aimFraction;
             const rawSpeedPP = strainPP * speedFraction;
