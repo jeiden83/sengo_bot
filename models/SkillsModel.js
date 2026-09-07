@@ -417,13 +417,27 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             // En maratones puras de streams sin HR (ej: Save Me, Lies in Reality), la fracción máxima de speed sube
             const maxSpeedFraction = (!isHR && !isHT && circles >= 1000 && effBPM >= 185) ? 0.68 : 0.60;
 
+            // ponytail: en maratones continuas con EZ sin DT:
+            // - Si es deathstream (>1800 círculos, CS 2, ej: Ice Angel, Crimsonic dimension): Aim ~11%, Speed ~21%
+            // - Si es híbrido maratón con sliders/ritmo (>200s, ej: Mynarco Addiction): Aim ~22%, Speed ~10%
+            const isEZStreamHeavy = isEZ && !isDT && circles >= 1800 && circleRatio >= 0.85 && effLen >= 200 && effBPM >= 145;
+            const isEZLongHybrid = isEZ && isHD && !isDT && effLen >= 200 && !isEZStreamHeavy;
+
             let speedFraction = baselineSpeed + (speedDominance * (maxSpeedFraction - baselineSpeed));
             let aimFraction = Math.max(0.18, 1.0 - (speedFraction * 0.85));
 
             if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
-            // ponytail: en EZ los círculos son 2x más grandes y ~35% del PP proviene de Reading, reduciendo el strain de Aim puro
-            if (isEZ) aimFraction = Math.max(0.15, aimFraction * 0.72);
+            if (isEZStreamHeavy) {
+                aimFraction = 0.11;
+                speedFraction = 0.21;
+            } else if (isEZLongHybrid) {
+                aimFraction = 0.22;
+                speedFraction = 0.10;
+            } else if (isEZ) {
+                // ponytail: en EZ los círculos son 2x más grandes y ~35% del PP proviene de Reading, reduciendo el strain de Aim puro
+                aimFraction = Math.max(0.15, aimFraction * 0.72);
+            }
 
             const rawAimPP = strainPP * aimFraction;
             const rawSpeedPP = strainPP * speedFraction;
@@ -441,7 +455,10 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             if (effAR < 9.0) readingMultiplier *= (1 + (9.0 - effAR) * 0.08);
             else if (effAR > 10.3) readingMultiplier *= (1 + (effAR - 10.3) * 0.10);
 
-            const rawReadingPP = (rawAimPP * 0.48 + rawSpeedPP * 0.48) * readingMultiplier;
+            let rawReadingPP = (rawAimPP * 0.48 + rawSpeedPP * 0.48) * readingMultiplier;
+            if (isEZStreamHeavy) {
+                rawReadingPP = Math.max(rawReadingPP, strainPP * 0.62);
+            }
 
             playSkills = {
                 aim: mapToSkillCurve(rawAimPP / AIM_NERF),
