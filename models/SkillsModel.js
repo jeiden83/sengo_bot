@@ -346,46 +346,68 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
             // 3. Descomposición rítmica en Aim y Speed calibrada con rosu-pp
-            // Un mapa de puros saltos 1/2 tiene notesPerBeat <= 1.52.
-            // Los streams y ráfagas 1/4 elevan notesPerBeat por encima de 1.65 hacia 2.5+.
-            const streamDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.48) / 0.65));
-            const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.62) / 0.22));
+            // El strain de velocidad relevante en streams y ráfagas empieza a partir de 165-175 BPM
+            const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 165) / 55));
 
-            // El speed strain crece a partir de 170 BPM efectivos
-            const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 170) / 85));
+            // Densidad rítmica directa (para mapas cortos o con ritmo sostenido constante)
+            const shortRhythmDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.35) / 0.55));
 
-            // A altas velocidades (235+ BPM con DT), incluso el tapping de saltos y ráfagas cortas genera strain de velocidad
-            const highBpmTappingBonus = isDT ? Math.max(0, Math.min(0.25, (effBPM - 235) / 80)) : 0;
+            // En maratones y mapas largos (Save Me, Lies in Reality, -ELIS-), descansos e intros lentas
+            // diluyen notesPerBeat, pero el gran volumen de círculos a BPM sostenido revela streams continuos
+            // si el mapa mantiene una densidad rítmica mínima de streams (notesPerBeat >= 1.45)
+            const isMarathon = effLen >= 180 || circles >= 500;
+            const marathonStreamFactor = (isMarathon && effBPM >= 178 && notesPerBeat >= 1.45)
+                ? Math.min(1.0, Math.max(0, (circles - 300) / 500) * bpmSpeedFactor)
+                : 0;
 
-            // Los bonos de stamina solo aportan a speed si el mapa realmente tiene densidad rítmica de streams
-            const circleCountBonus = (circles >= 900 && effBPM >= 180) ? Math.min(0.20, (circles - 800) / 2500) : 0;
-            const lengthStaminaBonus = (totalObj >= 1400 && effBPM >= 180) ? Math.min(0.15, (totalObj - 1200) / 3000) : 0;
-            const staminaBonus = (circleCountBonus + lengthStaminaBonus) * streamDensity * bpmSpeedFactor;
+            const streamConfidence = Math.max(shortRhythmDensity, marathonStreamFactor);
+            const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.58) / 0.22));
+
+            // A altas velocidades (218+ BPM), el strain de tapping se incrementa naturalmente
+            const highBpmTappingBonus = isDT
+                ? Math.max(0, Math.min(0.25, (effBPM - 235) / 80))
+                : Math.max(0, Math.min(0.20, (effBPM - 218) / 50));
+
+            // Stamina en maratones largas de streams (requiere notesPerBeat >= 1.45)
+            const staminaBonus = (circles >= 700 && effBPM >= 180 && notesPerBeat >= 1.45)
+                ? Math.min(0.35, (circles - 500) / 1400) * bpmSpeedFactor * streamConfidence
+                : 0;
 
             // Dominancia de velocidad:
-            // Requiere densidad rítmica (streams) para activarse. Si no hay streams (streamDensity ~ 0),
-            // la velocidad no puede dominar aunque el BPM de los saltos sea alto.
-            let speedDominance = (Math.pow(streamDensity, 0.85) * bpmSpeedFactor * (0.50 + 0.50 * circleStreamBias))
+            let speedDominance = (Math.pow(streamConfidence, 0.70) * bpmSpeedFactor * (0.45 + 0.55 * circleStreamBias))
                                + highBpmTappingBonus
                                + staminaBonus;
 
-            if (isHT) speedDominance *= 0.35; // Castigo de velocidad por reducción drástica de BPM
-            if (isHR) speedDominance *= 0.80; // HR reduce la proporción de speed en favor de aim por el CS más pequeño
-            if (isEZ) speedDominance = Math.min(1.0, speedDominance * 1.25);
+            // Mapas cortos de saltos puros con HR (ej. Brazil): 100% Aim, 0% dominancia de speed
+            if (isHR && (circles < 350 || effLen < 70)) {
+                speedDominance = 0;
+            }
+
+            // En HR con BPM moderado (<205 BPM, ej. Quaver), el CS reducido multiplica la dificultad de Aim sobre Speed
+            if (isHR && effBPM < 205) {
+                speedDominance *= 0.35;
+            } else if (isHR) {
+                speedDominance *= 0.65;
+            }
+
+            if (isHT) speedDominance *= 0.25; // Castigo de velocidad por reducción drástica de BPM
+            if (isEZ) speedDominance = Math.min(1.0, speedDominance * 1.30);
 
             speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
             // Fracción de Strain:
-            // En mapas sin streams con HR (ej. Brazil), el Speed PP real es apenas 3-4% del strain.
-            // En mapas DT rápidos sin streams completos, el Speed PP ronda 20-30%.
-            // En mapas con streams densos, speedDominance escala la fracción hasta 60-70%.
             let baselineSpeed = 0.04;
-            if (isHR) baselineSpeed = 0.025;
-            if (isHT) baselineSpeed = 0.035;
+            if (isHR && (circles < 350 || effLen < 70)) baselineSpeed = 0.025;
+            else if (isHR && effBPM < 205) baselineSpeed = 0.03;
+            else if (isHR) baselineSpeed = 0.04;
+            if (isHT) baselineSpeed = 0.03;
             if (isDT) baselineSpeed = 0.06 + Math.max(0, (effBPM - 225) / 120) * 0.10;
 
-            let speedFraction = baselineSpeed + (speedDominance * (0.65 - baselineSpeed));
-            let aimFraction = Math.max(0.15, 1.0 - (speedFraction * 0.85));
+            // En maratones puras de streams sin HR (ej: Save Me, Lies in Reality), la fracción máxima de speed sube
+            const maxSpeedFraction = (!isHR && !isHT && circles >= 1000 && effBPM >= 185) ? 0.68 : 0.60;
+
+            let speedFraction = baselineSpeed + (speedDominance * (maxSpeedFraction - baselineSpeed));
+            let aimFraction = Math.max(0.18, 1.0 - (speedFraction * 0.85));
 
             if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
