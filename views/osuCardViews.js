@@ -748,6 +748,131 @@ function clearCardCache(userId) {
     }
 }
 
+// Presets de disposición (Canvas + Tarjetas ajustadas por defecto para cada formato)
+const LAYOUT_PRESETS = {
+    standard: {
+        name: "Estándar Completo",
+        canvas: { width: 1300, height: 720 },
+        cards: {
+            header: { visible: true, circleX: 870, circleY: 38 },
+            leftCol: { visible: true, format: "full", x: 77, y: 100, w: 270, h: 445, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 368, y: 100, w: 270, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 659, y: 100, w: 575, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "full", x: 368, y: 390, w: 865, h: 155, customBg: null, customRadius: 14 },
+            sengoBox: { visible: true, x: 79, y: 565, w: 1156, h: 75, customBg: null, customRadius: 14 },
+            footer: { visible: true }
+        },
+        leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 65 }
+    },
+    compact: {
+        name: "Compacto 2 Filas",
+        canvas: { width: 1300, height: 485 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "full", x: 77, y: 20, w: 270, h: 445, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 368, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 659, y: 20, w: 575, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "full", x: 368, y: 310, w: 865, h: 155, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 65 }
+    },
+    single_row: {
+        name: "1 Sola Línea",
+        canvas: { width: 1300, height: 310 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "compact", x: 30, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 325, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: false },
+            statsBox: { visible: true, format: "compact", x: 695, y: 20, w: 575, h: 270, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 80 }
+    },
+    ultra: {
+        name: "Ultra-Compacto",
+        canvas: { width: 1200, height: 420 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "compact", x: 30, y: 20, w: 250, h: 380, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 305, y: 20, w: 270, h: 240, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 595, y: 20, w: 575, h: 240, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 305, y: 280, w: 865, h: 120, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 380, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 60 }
+    },
+    single_row_play: {
+        name: "1 Línea + Play",
+        canvas: { width: 1400, height: 310 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "compact", x: 25, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 320, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 690, y: 20, w: 680, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: false },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 65 }
+    },
+    single_row_all: {
+        name: "1 Fila Todo en Uno (Panorámica)",
+        canvas: { width: 1680, height: 310 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 310, y: 20, w: 320, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 650, y: 20, w: 560, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 1230, y: 20, w: 430, h: 270, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 20, pillarH: 80 }
+    },
+    mini_card: {
+        name: "Mini Tarjeta Móvil",
+        canvas: { width: 640, height: 600 },
+        cards: {
+            header: { visible: false },
+            leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 240, h: 240, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 280, y: 20, w: 340, h: 240, customBg: null, customRadius: 14 },
+            playBox: { visible: false },
+            statsBox: { visible: true, format: "compact", x: 20, y: 280, w: 600, h: 300, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: false }
+        },
+        leftCol: { avatarH: 240, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 26, pillarH: 90 }
+    }
+};
+
+function applyLayoutPresetToConfig(config, presetKey) {
+    let key = String(presetKey).toLowerCase().replace(/[-\s]/g, "_");
+    if (key === "1_linea" || key === "linea" || key === "one_line" || key === "single" || key === "1linea" || key === "fila") key = "single_row";
+    if (key === "play_line" || key === "linea_play" || key === "playline" || key === "single_play") key = "single_row_play";
+    if (key === "panoramica" || key === "panorama" || key === "all_line" || key === "linea_completa" || key === "all" || key === "lineatodo") key = "single_row_all";
+    if (key === "mini" || key === "mobile" || key === "movil" || key === "cuadrada") key = "mini_card";
+    if (key === "compacto") key = "compact";
+    if (key === "full" || key === "default" || key === "standar") key = "standard";
+    const preset = LAYOUT_PRESETS[key];
+    if (!preset) return;
+    config.canvas = { ...preset.canvas };
+    config.cards = JSON.parse(JSON.stringify(preset.cards));
+    if (preset.leftCol) config.leftCol = { ...(config.leftCol || {}), ...preset.leftCol };
+    if (preset.statsBox) config.statsBox = { ...(config.statsBox || {}), ...preset.statsBox };
+}
+
 async function renderOsuCard(user, topScores = [], options = {}) {
     const locale = options?.locale || user?.locale || "es";
     let mode = (options?.mode || user?.playmode || "osu").toLowerCase();
@@ -766,6 +891,9 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     }
 
     const config = options?.templateConfig || getDefaultTemplate();
+    if (options?.preset || config.preset) {
+        applyLayoutPresetToConfig(config, options?.preset || config.preset);
+    }
     const width = options?.canvasWidth || config.canvas?.width || 1300;
     const height = options?.canvasHeight || config.canvas?.height || 720;
 
@@ -1049,14 +1177,15 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const maxUsernameW = rb.w - flagW - 32;
         drawCustomText(ctx, fonts.username, user.username, rb.x + 112, flagY + 43, "left", fontFamily, maxUsernameW);
 
-        // Global Rank
+        // Global Rank & Country Rank con ajuste vertical dinamico
+        const rankH = rb.h || 270;
+        const rScale = rankH < 265 ? (rankH / 270) : 1.0;
         const rankCenterX = rb.x + (rb.w / 2);
-        drawCustomText(ctx, fonts.globalRankLabel, isEs ? "Rango Global" : "Global Rank", rankCenterX, rb.y + 115, "center", fontFamily);
-        drawCustomText(ctx, fonts.globalRankVal, globalRank, rankCenterX, rb.y + 168, "center", fontFamily);
+        drawCustomText(ctx, fonts.globalRankLabel, isEs ? "Rango Global" : "Global Rank", rankCenterX, rb.y + Math.round(115 * rScale), "center", fontFamily);
+        drawCustomText(ctx, fonts.globalRankVal, globalRank, rankCenterX, rb.y + Math.round(168 * rScale), "center", fontFamily);
 
-        // Country Rank
-        drawCustomText(ctx, fonts.countryRankLabel, isEs ? "País" : "Country", rankCenterX, rb.y + 208, "center", fontFamily);
-        drawCustomText(ctx, fonts.countryRankVal, countryRank, rankCenterX, rb.y + 254, "center", fontFamily);
+        drawCustomText(ctx, fonts.countryRankLabel, isEs ? "País" : "Country", rankCenterX, rb.y + Math.round(208 * rScale), "center", fontFamily);
+        drawCustomText(ctx, fonts.countryRankVal, countryRank, rankCenterX, rb.y + Math.round(254 * rScale), "center", fontFamily);
     }
 
     // 5. BLOQUE SUPERIOR DERECHO: PINNED PLAY / TOP PLAY CARD
@@ -1338,5 +1467,7 @@ module.exports = {
     generateCardTitle,
     difficultySpectrum,
     getDifficultyColor,
-    getDifficultyOutlineColor
+    getDifficultyOutlineColor,
+    LAYOUT_PRESETS,
+    applyLayoutPresetToConfig
 };

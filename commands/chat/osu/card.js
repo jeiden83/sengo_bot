@@ -42,6 +42,20 @@ async function run(messages, args) {
         else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) explicitMode = "osu";
     }
 
+    // Detectar preset de formato de tarjeta (ej: -compact, -linea, -ultra, etc.)
+    let explicitPreset = null;
+    for (const arg of safeArgs) {
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        if (["-compact", "--compact", "compact", "-compacto", "--compacto"].includes(lower)) explicitPreset = "compact";
+        else if (["-linea", "--linea", "-1linea", "--1linea", "-single", "--single", "single", "-fila", "--fila"].includes(lower)) explicitPreset = "single_row";
+        else if (["-lineaplay", "--lineaplay", "-playline", "--playline", "-singleplay", "--singleplay"].includes(lower)) explicitPreset = "single_row_play";
+        else if (["-panoramica", "--panoramica", "-allline", "--allline", "-lineatodo", "--lineatodo"].includes(lower)) explicitPreset = "single_row_all";
+        else if (["-ultra", "--ultra", "ultra"].includes(lower)) explicitPreset = "ultra";
+        else if (["-mini", "--mini", "mini", "-movil", "--movil"].includes(lower)) explicitPreset = "mini_card";
+        else if (["-standard", "--standard", "standard", "-full", "--full"].includes(lower)) explicitPreset = "standard";
+    }
+
     // Filtrar flags para obtener argumentos de usuario limpios
     const cleanArgs = safeArgs.filter(arg => {
         if (typeof arg !== "string") return false;
@@ -52,7 +66,14 @@ async function run(messages, args) {
             "-t", "-taiko", "--taiko", "taiko",
             "-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
             "-mania", "--mania", "mania", "-m",
-            "-std", "--std", "std", "-osu", "--osu", "osu"
+            "-std", "--std", "std", "-osu", "--osu", "osu",
+            "-compact", "--compact", "compact", "-compacto", "--compacto",
+            "-linea", "--linea", "-1linea", "--1linea", "-single", "--single", "single", "-fila", "--fila",
+            "-lineaplay", "--lineaplay", "-playline", "--playline", "-singleplay", "--singleplay",
+            "-panoramica", "--panoramica", "-allline", "--allline", "-lineatodo", "--lineatodo",
+            "-ultra", "--ultra", "ultra",
+            "-mini", "--mini", "mini", "-movil", "--movil",
+            "-standard", "--standard", "standard", "-full", "--full"
         ].includes(lower);
     });
 
@@ -162,7 +183,7 @@ async function run(messages, args) {
             progressPromise
         ]);
 
-        const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce, locale, mode: targetMode });
+        const canvasBuffer = await renderOsuCard(osuUser, topScores, { forceRefresh: isForce, locale, mode: targetMode, preset: explicitPreset });
         const attachment = new AttachmentBuilder(canvasBuffer, { name: "card.png" });
 
         await cleanupProgress();

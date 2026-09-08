@@ -310,35 +310,65 @@
             white-space: nowrap;
         }
 
-        /* Lienzo Principal (Viewport) */
-        .viewport {
+        /* Área de Trabajo y Lienzo (Workspace & Viewport Centrado) */
+        .workspace {
             flex: 1;
             display: flex;
             flex-direction: column;
             background: #060309;
             position: relative;
-            overflow: auto;
-            align-items: center;
-            justify-content: center;
-            padding: 40px;
+            overflow: hidden;
+            height: 100vh;
         }
 
-        .canvas-container {
+        .toolbar {
+            position: absolute;
+            top: 14px;
+            right: 20px;
+            background: var(--panel-bg);
+            border: 1px solid var(--panel-border);
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            z-index: 20;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        }
+
+        .viewport {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 60px 30px 30px 30px;
+        }
+
+        .canvas-stage {
+            margin: auto;
             position: relative;
+            flex-shrink: 0;
+            display: block;
             box-shadow: 0 25px 70px rgba(0, 0, 0, 0.95), 0 0 0 1px rgba(255, 255, 255, 0.1);
             border-radius: 10px;
             overflow: hidden;
             background: #27152c;
-            display: inline-block;
+            transition: width 0.15s ease, height 0.15s ease;
+        }
+
+        .canvas-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            transform-origin: top left;
             transition: transform 0.15s ease;
         }
 
         canvas {
             display: block;
-            width: 1300px;
-            height: 720px;
-            max-width: 100%;
-            height: auto;
         }
 
         #reference-overlay {
@@ -353,19 +383,58 @@
             object-fit: fill;
         }
 
-        .toolbar {
-            position: absolute;
-            top: 16px;
-            right: 20px;
-            background: var(--panel-bg);
+        /* Botones y Grilla de Presets */
+        .presets-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+
+        .preset-card-btn {
+            background: rgba(255, 255, 255, 0.03);
             border: 1px solid var(--panel-border);
             border-radius: 8px;
-            padding: 6px 12px;
+            padding: 9px 10px;
+            text-align: left;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            color: var(--text-main);
+        }
+
+        .preset-card-btn:hover {
+            background: rgba(168, 85, 247, 0.1);
+            border-color: rgba(168, 85, 247, 0.4);
+            transform: translateY(-1px);
+        }
+
+        .preset-card-btn.active {
+            background: rgba(168, 85, 247, 0.18);
+            border-color: #a855f7;
+            box-shadow: 0 0 14px rgba(168, 85, 247, 0.35);
+        }
+
+        .preset-btn-header {
             display: flex;
             align-items: center;
-            gap: 14px;
-            z-index: 5;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            gap: 6px;
+            font-size: 0.78rem;
+            font-weight: 700;
+        }
+
+        .preset-dim {
+            font-family: 'Roboto Mono', monospace;
+            font-size: 0.68rem;
+            color: #c084fc;
+            font-weight: 600;
+        }
+
+        .preset-desc {
+            font-size: 0.66rem;
+            color: var(--text-muted);
+            line-height: 1.25;
         }
 
         .toolbar label {
@@ -426,7 +495,7 @@
     <div class="sidebar">
         <div class="sidebar-header">
             <h1>🎨 Sengo Card Studio</h1>
-            <span style="font-size: 0.75rem; color: #c084fc; font-weight: 600;">1300 × 720</span>
+            <span id="headerCanvasSizeLabel" style="font-size: 0.75rem; color: #c084fc; font-weight: 600;">1300 × 720</span>
         </div>
 
         <!-- Barra de Pestañas -->
@@ -441,22 +510,98 @@
             <!-- PESTAÑA 1: ESTILO GLOBAL Y FONDOS -->
             <div id="tab-style" class="tab-content active">
                 <div class="section-card">
-                    <div class="section-title">📐 Dimensiones del Lienzo (Canvas)</div>
+                    <div class="section-title">
+                        <span>📐 PRESETS DE DISPOSICIÓN Y LIENZO</span>
+                        <span id="activePresetBadge" style="font-size: 0.68rem; padding: 2px 8px; border-radius: 12px; background: rgba(168, 85, 247, 0.2); color: #c084fc; border: 1px solid #a855f7;">Estándar Completo</span>
+                    </div>
+                    <p style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.4; margin-bottom: 8px;">
+                        Selecciona un preset para ajustar el <strong>tamaño del lienzo</strong> y ordenar automáticamente <strong>todas las tarjetas por defecto</strong> para ese formato:
+                    </p>
+
+                    <div class="presets-grid">
+                        <!-- Preset 1: Estándar -->
+                        <button type="button" class="preset-card-btn active" data-preset="standard" onclick="applyLayoutPreset('standard')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">🏛️</span>
+                                <strong>Estándar</strong>
+                            </div>
+                            <span class="preset-dim">1300 × 720</span>
+                            <span class="preset-desc">Completo: Header + Avatar + Rank + Play + Stats + Sengo</span>
+                        </button>
+
+                        <!-- Preset 2: Compacto 2 Filas -->
+                        <button type="button" class="preset-card-btn" data-preset="compact" onclick="applyLayoutPreset('compact')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">📦</span>
+                                <strong>Compacto 2 Filas</strong>
+                            </div>
+                            <span class="preset-dim">1300 × 485</span>
+                            <span class="preset-desc">2 filas limpias: Avatar Full + Rank + Play + Stats Full</span>
+                        </button>
+
+                        <!-- Preset 3: 1 Sola Línea con Skills -->
+                        <button type="button" class="preset-card-btn" data-preset="single_row" onclick="applyLayoutPreset('single_row')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">⚡</span>
+                                <strong>1 Sola Línea</strong>
+                            </div>
+                            <span class="preset-dim">1300 × 310</span>
+                            <span class="preset-desc">1 fila: Avatar 1:1 + Nombre/Rank + 4 Skills</span>
+                        </button>
+
+                        <!-- Preset 4: 1 Sola Línea con Play -->
+                        <button type="button" class="preset-card-btn" data-preset="single_row_play" onclick="applyLayoutPreset('single_row_play')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">🎮</span>
+                                <strong>1 Línea con Play</strong>
+                            </div>
+                            <span class="preset-dim">1400 × 310</span>
+                            <span class="preset-desc">1 fila: Avatar 1:1 + Nombre/Rank + Play Destacada</span>
+                        </button>
+
+                        <!-- Preset 5: Panorámica Todo en Uno -->
+                        <button type="button" class="preset-card-btn" data-preset="single_row_all" onclick="applyLayoutPreset('single_row_all')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">🌟</span>
+                                <strong>Panorámica Todo</strong>
+                            </div>
+                            <span class="preset-dim">1680 × 310</span>
+                            <span class="preset-desc">1 fila ancha: Avatar 1:1 + Rank + Play + Skills</span>
+                        </button>
+
+                        <!-- Preset 6: Ultra-Compacto -->
+                        <button type="button" class="preset-card-btn" data-preset="ultra" onclick="applyLayoutPreset('ultra')">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">📏</span>
+                                <strong>Ultra-Compacto</strong>
+                            </div>
+                            <span class="preset-dim">1200 × 420</span>
+                            <span class="preset-desc">Proporción 16:6 para Discord banners reducidos</span>
+                        </button>
+                    </div>
+
+                    <!-- Preset 7: Mini Tarjeta Móvil -->
+                    <div style="margin-top: 8px;">
+                        <button type="button" class="preset-card-btn" data-preset="mini_card" onclick="applyLayoutPreset('mini_card')" style="width: 100%;">
+                            <div class="preset-btn-header">
+                                <span class="preset-emoji">📱</span>
+                                <strong>Mini Tarjeta Móvil</strong>
+                            </div>
+                            <span class="preset-dim">640 × 600</span>
+                            <span class="preset-desc">Formato cuadrado optimizado para chat móvil (Avatar 1:1 + Rank + Skills)</span>
+                        </button>
+                    </div>
+
+                    <div class="section-title" style="margin-top: 14px; font-size: 0.78rem;">Ajuste Milimétrico Manual</div>
                     <div class="grid-2">
                         <div class="control-group">
-                            <label class="control-label">Ancho del Lienzo <span class="val" id="val-canvasWidth">1300px</span></label>
+                            <label class="control-label">Ancho <span class="val" id="val-canvasWidth">1300px</span></label>
                             <input type="range" id="canvasWidthSlider" min="600" max="2400" step="10" value="1300" oninput="updateCanvasDimension('width', parseInt(this.value));">
                         </div>
                         <div class="control-group">
-                            <label class="control-label">Alto del Lienzo <span class="val" id="val-canvasHeight">720px</span></label>
-                            <input type="range" id="canvasHeightSlider" min="300" max="1600" step="10" value="720" oninput="updateCanvasDimension('height', parseInt(this.value));">
+                            <label class="control-label">Alto <span class="val" id="val-canvasHeight">720px</span></label>
+                            <input type="range" id="canvasHeightSlider" min="260" max="1600" step="10" value="720" oninput="updateCanvasDimension('height', parseInt(this.value));">
                         </div>
-                    </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
-                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 720)">Estándar (1300x720)</button>
-                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 480)">Compacto (1300x480)</button>
-                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1200, 420)">Ultra-Compacto (1200x420)</button>
-                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem; border-color: #a855f7; color: #c084fc; font-weight: 700;" onclick="applySingleRowPreset()">⚡ 1 Sola Línea (1300x310)</button>
                     </div>
                 </div>
 
@@ -1110,12 +1255,12 @@
         </div>
     </div>
 
-    <!-- Viewport con el Canvas -->
-    <div class="viewport">
+    <!-- Área de Trabajo con Viewport Centrado -->
+    <div class="workspace">
         <div class="toolbar">
             <label>
                 <span>🔍 Zoom:</span>
-                <input type="range" id="zoomSlider" min="0.4" max="2.2" step="0.05" value="0.9" oninput="setZoom(parseFloat(this.value))" style="width: 95px;">
+                <input type="range" id="zoomSlider" min="0.3" max="2.2" step="0.05" value="0.9" oninput="setZoom(parseFloat(this.value))" style="width: 95px;">
                 <span id="zoomVal" style="font-family: 'Roboto Mono', monospace; font-size: 0.8rem; color: #c084fc;">90%</span>
             </label>
             <button class="btn-secondary" style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" onclick="resetZoom()">100%</button>
@@ -1133,9 +1278,13 @@
             <button class="btn-secondary" style="padding: 4px 8px; border-radius: 6px; font-size: 0.75rem; cursor: pointer;" onclick="toggleGrid()">📐 Guías</button>
         </div>
 
-        <div class="canvas-container" id="container">
-            <canvas id="cardCanvas" width="1300" height="720"></canvas>
-            <img id="reference-overlay" src="../../assets/YO.png" onerror="if(this.src.indexOf('assets/YO.png')!==-1 && !this.dataset.fallback){ this.dataset.fallback='1'; this.src='/assets/YO.png'; } else if(!this.dataset.fallback2){ this.dataset.fallback2='1'; this.src='../assets/YO.png'; }" alt="YO Original">
+        <div class="viewport">
+            <div class="canvas-stage" id="canvasStage">
+                <div class="canvas-container" id="container">
+                    <canvas id="cardCanvas" width="1300" height="720"></canvas>
+                    <img id="reference-overlay" src="../../assets/YO.png" onerror="if(this.src.indexOf('assets/YO.png')!==-1 && !this.dataset.fallback){ this.dataset.fallback='1'; this.src='/assets/YO.png'; } else if(!this.dataset.fallback2){ this.dataset.fallback2='1'; this.src='../assets/YO.png'; }" alt="YO Original">
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1577,37 +1726,192 @@
             render();
         }
 
-        function applySingleRowPreset() {
-            setCanvasPreset(1300, 310);
-            state.cards.header.visible = false;
-            state.cards.playBox.visible = false;
-            state.cards.sengoBox.visible = false;
-            state.cards.footer.visible = false;
+        // CATÁLOGO DE PRESETS DE DISPOSICIÓN (CANVAS + TARJETAS POR DEFECTO)
+        const LAYOUT_PRESETS = {
+            standard: {
+                name: "Estándar Completo",
+                canvas: { width: 1300, height: 720 },
+                cards: {
+                    header: { visible: true, circleX: 870, circleY: 38 },
+                    leftCol: { visible: true, format: "full", x: 77, y: 100, w: 270, h: 445, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 368, y: 100, w: 270, h: 270, customBg: null, customRadius: 14 },
+                    playBox: { visible: true, x: 659, y: 100, w: 575, h: 270, customBg: null, customRadius: 14 },
+                    statsBox: { visible: true, format: "full", x: 368, y: 390, w: 865, h: 155, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: true, x: 79, y: 565, w: 1156, h: 75, customBg: null, customRadius: 14 },
+                    footer: { visible: true }
+                },
+                leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 24, pillarH: 65 }
+            },
+            compact: {
+                name: "Compacto 2 Filas",
+                canvas: { width: 1300, height: 485 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "full", x: 77, y: 20, w: 270, h: 445, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 368, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+                    playBox: { visible: true, x: 659, y: 20, w: 575, h: 270, customBg: null, customRadius: 14 },
+                    statsBox: { visible: true, format: "full", x: 368, y: 310, w: 865, h: 155, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 24, pillarH: 65 }
+            },
+            single_row: {
+                name: "1 Sola Línea con Skills",
+                canvas: { width: 1300, height: 310 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "compact", x: 25, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 320, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
+                    playBox: { visible: false },
+                    statsBox: { visible: true, format: "compact", x: 690, y: 20, w: 585, h: 270, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 24, pillarH: 80 }
+            },
+            single_row_play: {
+                name: "1 Línea con Play Destacada",
+                canvas: { width: 1400, height: 310 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "compact", x: 25, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 320, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
+                    playBox: { visible: true, x: 690, y: 20, w: 685, h: 270, customBg: null, customRadius: 14 },
+                    statsBox: { visible: false },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 24, pillarH: 65 }
+            },
+            single_row_all: {
+                name: "Panorámica Todo en Uno",
+                canvas: { width: 1680, height: 310 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 310, y: 20, w: 320, h: 270, customBg: null, customRadius: 14 },
+                    playBox: { visible: true, x: 650, y: 20, w: 560, h: 270, customBg: null, customRadius: 14 },
+                    statsBox: { visible: true, format: "compact", x: 1230, y: 20, w: 430, h: 270, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 20, pillarH: 80 }
+            },
+            ultra: {
+                name: "Ultra-Compacto",
+                canvas: { width: 1200, height: 420 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "compact", x: 25, y: 20, w: 250, h: 380, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 295, y: 20, w: 280, h: 235, customBg: null, customRadius: 14 },
+                    playBox: { visible: true, x: 595, y: 20, w: 580, h: 235, customBg: null, customRadius: 14 },
+                    statsBox: { visible: true, format: "compact", x: 295, y: 275, w: 880, h: 125, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 380, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 24, pillarH: 60 }
+            },
+            mini_card: {
+                name: "Mini Tarjeta Móvil",
+                canvas: { width: 640, height: 600 },
+                cards: {
+                    header: { visible: false },
+                    leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 240, h: 240, customBg: null, customRadius: 14 },
+                    rankBox: { visible: true, x: 280, y: 20, w: 340, h: 240, customBg: null, customRadius: 14 },
+                    playBox: { visible: false },
+                    statsBox: { visible: true, format: "compact", x: 20, y: 280, w: 600, h: 300, customBg: null, customRadius: 14 },
+                    sengoBox: { visible: false },
+                    footer: { visible: false }
+                },
+                leftCol: { avatarH: 240, avatarAlignY: 0.2, avatarShadow: true, avatarFit: 'cover' },
+                statsBox: { pillarW: 26, pillarH: 90 }
+            }
+        };
 
-            // Avatar cuadrado 270x270 en formato compacto
-            state.cards.leftCol.visible = true;
-            state.cards.leftCol.format = 'compact';
-            state.cards.leftCol.x = 30;
-            state.cards.leftCol.y = 20;
-            state.cards.leftCol.w = 270;
-            state.cards.leftCol.h = 270;
+        let currentActivePreset = 'standard';
 
-            // Rango y Nombre
-            state.cards.rankBox.visible = true;
-            state.cards.rankBox.x = 325;
-            state.cards.rankBox.y = 20;
-            state.cards.rankBox.w = 345;
-            state.cards.rankBox.h = 270;
+        function updatePresetButtonsUI(activeKey) {
+            currentActivePreset = activeKey;
+            document.querySelectorAll('.preset-card-btn').forEach(btn => {
+                const pKey = btn.getAttribute('data-preset');
+                if (pKey === activeKey) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            });
+            const badge = document.getElementById('activePresetBadge');
+            if (badge) {
+                if (LAYOUT_PRESETS[activeKey]) {
+                    badge.textContent = LAYOUT_PRESETS[activeKey].name;
+                    badge.style.color = '#c084fc';
+                    badge.style.borderColor = '#a855f7';
+                    badge.style.background = 'rgba(168, 85, 247, 0.2)';
+                } else {
+                    const W = state.canvas?.width || 1300;
+                    const H = state.canvas?.height || 720;
+                    badge.textContent = `Personalizado (${W}×${H})`;
+                    badge.style.color = '#fbbf24';
+                    badge.style.borderColor = '#f59e0b';
+                    badge.style.background = 'rgba(245, 158, 11, 0.2)';
+                }
+            }
+        }
 
-            // Skills compactas distribuidas
-            state.cards.statsBox.visible = true;
-            state.cards.statsBox.format = 'compact';
-            state.cards.statsBox.x = 695;
-            state.cards.statsBox.y = 20;
-            state.cards.statsBox.w = 575;
-            state.cards.statsBox.h = 270;
+        function applyLayoutPreset(key) {
+            const preset = LAYOUT_PRESETS[key];
+            if (!preset) return;
 
-            if (selectedCardKey) selectCard(selectedCardKey);
+            // 1. Asignar dimensiones del canvas
+            setCanvasPreset(preset.canvas.width, preset.canvas.height);
+
+            // 2. Asignar configuración de tarjetas
+            state.cards = JSON.parse(JSON.stringify(preset.cards));
+            if (preset.leftCol) Object.assign(state.leftCol, preset.leftCol);
+            if (preset.statsBox) Object.assign(state.statsBox, preset.statsBox);
+
+            // 3. Sincronizar checkboxes de visibilidad en pestaña Tarjetas
+            Object.keys(state.cards).forEach(cKey => {
+                const chk = document.getElementById(`vis-${cKey}`);
+                if (chk) chk.checked = state.cards[cKey]?.visible !== false;
+            });
+
+            // 4. Sincronizar selectores de formato de avatar y statsBox
+            const lcFormatSel = document.getElementById('leftColFormatSelect');
+            if (lcFormatSel && state.cards.leftCol?.format) {
+                lcFormatSel.value = state.cards.leftCol.format;
+            }
+            const lcFitSel = document.getElementById('leftColFitSelect');
+            if (lcFitSel && state.leftCol?.avatarFit) {
+                lcFitSel.value = state.leftCol.avatarFit;
+            }
+            const sbFormatSel = document.getElementById('statsBoxFormatSelect');
+            if (sbFormatSel && state.cards.statsBox?.format) {
+                sbFormatSel.value = state.cards.statsBox.format;
+            }
+
+            // 5. Actualizar botones visuales de presets
+            updatePresetButtonsUI(key);
+
+            // 6. Si la tarjeta seleccionada quedó oculta en este preset, seleccionar una visible
+            if (!state.cards[selectedCardKey] || state.cards[selectedCardKey].visible === false) {
+                const firstVis = Object.keys(state.cards).find(k => state.cards[k]?.visible !== false);
+                if (firstVis) selectCard(firstVis);
+            } else {
+                selectCard(selectedCardKey);
+            }
+
+            // 7. Ajustar zoom automáticamente para centrar en pantalla
+            fitZoom();
+
+            // 8. Renderizar
             render();
         }
 
@@ -1658,7 +1962,7 @@
             }
         }
 
-        function updateCanvasDimension(dim, val) {
+        function updateCanvasDimension(dim, val, fromPreset = false) {
             if (!state.canvas) state.canvas = { width: 1300, height: 720 };
             state.canvas[dim] = val;
             if (dim === 'width') {
@@ -1672,12 +1976,16 @@
                 const sld = document.getElementById('canvasHeightSlider');
                 if (sld) sld.value = val;
             }
+            if (!fromPreset) {
+                updatePresetButtonsUI('custom');
+                setZoom(currentZoom);
+            }
             render();
         }
 
         function setCanvasPreset(w, h) {
-            updateCanvasDimension('width', w);
-            updateCanvasDimension('height', h);
+            updateCanvasDimension('width', w, true);
+            updateCanvasDimension('height', h, true);
         }
 
         function updateCurrentCard(prop, val) {
@@ -2128,6 +2436,8 @@
             const H = state.canvas?.height || 720;
             if (canvas.width !== W) canvas.width = W;
             if (canvas.height !== H) canvas.height = H;
+            const sizeLabel = document.getElementById('headerCanvasSizeLabel');
+            if (sizeLabel) sizeLabel.textContent = `${W} × ${H}`;
 
             // 1. Fondo base
             ctx.fillStyle = theme.bgColor;
@@ -2528,12 +2838,14 @@
                 const userTextY = flagCenterY + Math.round(uSize * 0.35);
                 drawCustomText('username', player.username, startX, userTextY, 'left', uSize, maxUsernameW);
 
+                const rankH = rb.h || 270;
+                const rScale = rankH < 265 ? (rankH / 270) : 1.0;
                 const rankCenterX = rb.x + (rb.w / 2);
-                drawCustomText('globalRankLabel', 'Global Rank', rankCenterX, rb.y + 115, 'center');
-                drawCustomText('globalRankVal', player.globalRank, rankCenterX, rb.y + 168, 'center');
+                drawCustomText('globalRankLabel', 'Global Rank', rankCenterX, rb.y + Math.round(115 * rScale), 'center');
+                drawCustomText('globalRankVal', player.globalRank, rankCenterX, rb.y + Math.round(168 * rScale), 'center');
 
-                drawCustomText('countryRankLabel', 'Country', rankCenterX, rb.y + 208, 'center');
-                drawCustomText('countryRankVal', player.countryRank, rankCenterX, rb.y + 254, 'center');
+                drawCustomText('countryRankLabel', 'Country', rankCenterX, rb.y + Math.round(208 * rScale), 'center');
+                drawCustomText('countryRankVal', player.countryRank, rankCenterX, rb.y + Math.round(254 * rScale), 'center');
             }
 
             // 5. Tarjeta Play Destacada
@@ -2817,12 +3129,24 @@
             }
         }
 
-        // CONTROL DE ZOOM DEL LIENZO
+        // CONTROL DE ZOOM DEL LIENZO Y CENTRADO DE STAGE
         let currentZoom = 0.9;
         function setZoom(val) {
             currentZoom = val;
+            const stage = document.getElementById('canvasStage');
             const container = document.getElementById('container');
-            if (container) container.style.transform = `scale(${val})`;
+            const W = state.canvas?.width || 1300;
+            const H = state.canvas?.height || 720;
+
+            if (stage) {
+                stage.style.width = Math.round(W * val) + 'px';
+                stage.style.height = Math.round(H * val) + 'px';
+            }
+            if (container) {
+                container.style.width = W + 'px';
+                container.style.height = H + 'px';
+                container.style.transform = `scale(${val})`;
+            }
             const zValEl = document.getElementById('zoomVal');
             if (zValEl) zValEl.textContent = Math.round(val * 100) + '%';
             const zSliderEl = document.getElementById('zoomSlider');
@@ -2836,12 +3160,14 @@
         function fitZoom() {
             const vp = document.querySelector('.viewport');
             if (!vp) return;
-            const availableW = vp.clientWidth - 60;
-            const availableH = vp.clientHeight - 60;
-            const scaleW = availableW / 1300;
-            const scaleH = availableH / 720;
-            const fit = Math.min(scaleW, scaleH, 1.2);
-            setZoom(Math.max(0.4, Math.round(fit * 20) / 20));
+            const availableW = vp.clientWidth - 80;
+            const availableH = vp.clientHeight - 80;
+            const W = state.canvas?.width || 1300;
+            const H = state.canvas?.height || 720;
+            const scaleW = availableW / W;
+            const scaleH = availableH / H;
+            const fit = Math.min(scaleW, scaleH, 1.0);
+            setZoom(Math.max(0.3, Math.round(fit * 20) / 20));
         }
 
         // CONTROL DE SUPERPOSICIÓN DE REFERENCIA (YO.png)
@@ -2889,8 +3215,13 @@
 
         selectFontElement('headerTitle1');
         selectCard('leftCol');
-        setZoom(0.9);
+        updatePresetButtonsUI('standard');
+        fitZoom();
         render();
+
+        window.addEventListener('resize', () => {
+            fitZoom();
+        });
 
         // Auto-cargar usuario por URL query params: ?user=xxx o ?u=xxx
         try {
