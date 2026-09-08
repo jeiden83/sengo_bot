@@ -392,8 +392,8 @@
     },
     "card": {
       "header": "Genera una tarjeta de perfil dinámica de osu! con Canvas.",
-      "body": "Genera la tarjeta visual de perfil con estadísticas de osu! y del ecosistema Sengo. Permite embeberla con -embed.",
-      "usage": "s.card [usuario] [-embed]"
+      "body": "Genera la tarjeta visual de perfil con estadísticas de osu! y del ecosistema Sengo. Soporta presets de diseño (-compact, -linea, -panoramica, etc.) y -userpage para obtener el BBCode por privado.",
+      "usage": "s.card [usuario] [-embed] [-userpage] [-compact|-linea|-panoramica|-ultra|-mini] [-taiko|-catch|-mania]"
     },
     "skills": {
       "header": "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas.",

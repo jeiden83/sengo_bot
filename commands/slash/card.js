@@ -25,6 +25,27 @@ const data = new SlashCommandBuilder()
     )
     .addBooleanOption(option =>
         option
+            .setName("userpage")
+            .setDescription("¿Obtener el código BBCode seguro por mensaje privado para tu perfil de osu!?")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
+        option
+            .setName("preset")
+            .setDescription("Preset de diseño y dimensiones de la tarjeta")
+            .setRequired(false)
+            .addChoices(
+                { name: "Standard (Completa)", value: "standard" },
+                { name: "Compacta (Solo avatar y skills)", value: "compact" },
+                { name: "Línea (Fila única de 3 tarjetas)", value: "single_row" },
+                { name: "Línea con Pinned Play (4 tarjetas)", value: "single_row_play" },
+                { name: "Panorámica Completa (5 tarjetas)", value: "single_row_all" },
+                { name: "Ultra Panorámica", value: "ultra" },
+                { name: "Mini Card", value: "mini_card" }
+            )
+    )
+    .addBooleanOption(option =>
+        option
             .setName("recargar")
             .setDescription("¿Forzar la recarga ignorando la caché de 1 hora?")
             .setRequired(false)
@@ -40,6 +61,8 @@ if (typeof data.setContexts === "function") {
 
 async function run(interaction, res, chat_commands) {
     const isEmbed = interaction.options.getBoolean("embed");
+    const isUserpage = interaction.options.getBoolean("userpage");
+    const preset = interaction.options.getString("preset");
     const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
     const modo = interaction.options.getString("modo");
@@ -47,7 +70,9 @@ async function run(interaction, res, chat_commands) {
     const args = [];
     if (targetUser) args.push(targetUser);
     if (modo) args.push(`-${modo}`);
+    if (preset) args.push(`-${preset}`);
     if (isEmbed) args.push("-embed");
+    if (isUserpage) args.push("-userpage");
     if (isForce) args.push("-refresh");
 
     const messages = createSlashMessagesContext(interaction, res);
