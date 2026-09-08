@@ -12,7 +12,7 @@ const { getOsuUser, getUserTopScores } = require('../utils/osu.js');
 const OsuUserModel = require('../../models/OsuUserModel.js');
 const { getWebhookChannels } = require('../../db/database.js');
 
-async function fetchPinnedScore(userId, topScores) {
+async function fetchPinnedScore(userId, topScores, mode = 'osu') {
     try {
         let globalToken = null;
         try {
@@ -21,7 +21,8 @@ async function fetchPinnedScore(userId, topScores) {
         } catch {}
 
         if (globalToken) {
-            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=osu&limit=1`, {
+            const validMode = (mode === 'fruits' || mode === 'catch' || mode === 'ctb') ? 'fruits' : mode;
+            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=${validMode}&limit=1`, {
                 headers: {
                     'Authorization': `Bearer ${globalToken}`,
                     'x-api-version': '20240728'
@@ -106,6 +107,7 @@ let ngrokProcess = null;
 let isReconnectingDiscord = false;
 let consecutiveUnhealthyChecks = 0;
 let watchdogInterval = null;
+const inFlightCardRequests = new Map();
 
 /**
  * Autorecuperación proactiva del cliente Discord ante sockets zombie o desconexiones silenciosas.
@@ -995,8 +997,123 @@ function startServer(client, dbRes, port, config) {
             }
         }
 
+        // --- ENDPOINT PARA OBTENER TOKEN / ENLACE BBCODE DE USERPAGE ---
+        if (req.method === 'GET' && pathname === '/api/card/token') {
+            const rawUser = parsedUrl.query.u || parsedUrl.query.user || parsedUrl.query.username;
+            const masterKey = parsedUrl.query.key || parsedUrl.query.secret;
+            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET || 'sengo_card_secure_token';
 
-        // Solo aceptamos POST a /github o /webhook
+            if (!masterKey || masterKey !== secretKey) {
+                res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Forbidden: Clave maestra inválida o faltante (?key=...)' }));
+                return;
+            }
+
+            if (!rawUser) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Parámetro user (?u=nombre) requerido.' }));
+                return;
+            }
+
+            const username = String(rawUser).trim();
+            const crypto = require('crypto');
+            const userToken = crypto.createHmac('sha256', secretKey).update(username.toLowerCase()).digest('hex').slice(0, 16);
+            const host = req.headers.host || `localhost:${port}`;
+            const proto = req.headers['x-forwarded-proto'] || 'http';
+            const imageUrl = `${proto}://${host}/api/card.png?u=${encodeURIComponent(username)}&m=osu&token=${userToken}`;
+            const bbcode = `[img]${imageUrl}[/img]`;
+
+            res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({
+                username,
+                token: userToken,
+                url: imageUrl,
+                bbcode,
+                params_available: ['m=osu|taiko|fruits|mania', 'preset=standard|compact|single_row|single_row_play|single_row_all|ultra|mini_card']
+            }));
+            return;
+        }
+
+        // --- ENDPOINT PROTEGIDO PARA GENERAR IMAGEN PNG DE LA CARD (USERPAGE / EMBED) ---
+        if (req.method === 'GET' && (pathname === '/api/card/image' || pathname === '/api/card.png' || pathname === '/api/card/render')) {
+            const rawUser = parsedUrl.query.u || parsedUrl.query.user || parsedUrl.query.username;
+            if (!rawUser) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Parámetro user (?u=nombre o ID) requerido.' }));
+                return;
+            }
+
+            const username = String(rawUser).trim();
+            const rawMode = (parsedUrl.query.m || parsedUrl.query.mode || 'osu').toLowerCase();
+            const mode = (rawMode === 'catch' || rawMode === 'ctb') ? 'fruits' : rawMode;
+            const preset = (parsedUrl.query.preset || parsedUrl.query.p || 'standard').toLowerCase();
+            const token = parsedUrl.query.token || parsedUrl.query.key || parsedUrl.query.secret;
+
+            // Validación de protección por token / HMAC
+            const crypto = require('crypto');
+            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET || 'sengo_card_secure_token';
+            const expectedUserToken = crypto.createHmac('sha256', secretKey).update(username.toLowerCase()).digest('hex').slice(0, 16);
+
+            const isAuthorized = token && (token === secretKey || token === expectedUserToken);
+            if (!isAuthorized) {
+                res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({
+                    error: 'Forbidden: Token inválido o no proporcionado.',
+                    hint: 'Debes pasar ?token=<CARD_API_KEY> o el token HMAC de tu usuario generado en /api/card/token.'
+                }));
+                return;
+            }
+
+            // Deduplicación de peticiones simultáneas (Request Coalescing / Singleflight)
+            const flightKey = `${username.toLowerCase()}:${mode}:${preset}`;
+
+            try {
+                let renderPromise = inFlightCardRequests.get(flightKey);
+
+                if (!renderPromise) {
+                    renderPromise = (async () => {
+                        const osuCardViews = require('../../views/osuCardViews.js');
+                        const osuUser = await getOsuUser({ username: [username], gamemode: mode, server: 'bancho' });
+                        if (!osuUser || !osuUser.id || typeof osuUser === 'string') {
+                            throw new Error(`Usuario '${username}' no encontrado en osu!`);
+                        }
+
+                        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: mode, server: 'bancho' }).catch(() => []);
+                        const pinnedScore = await fetchPinnedScore(osuUser.id, topScores, mode);
+
+                        return await osuCardViews.renderOsuCard(osuUser, topScores, {
+                            locale: 'es',
+                            mode,
+                            pinnedPlay: pinnedScore,
+                            preset
+                        });
+                    })();
+
+                    inFlightCardRequests.set(flightKey, renderPromise);
+                    renderPromise.finally(() => {
+                        inFlightCardRequests.delete(flightKey);
+                    });
+                }
+
+                const buffer = await renderPromise;
+
+                // Headers de caché optimizados para Camo / Cloudflare CDN y navegadores
+                res.writeHead(200, {
+                    'Content-Type': 'image/png',
+                    'Content-Length': buffer.length,
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=1800, s-maxage=3600, stale-while-revalidate=86400',
+                    'ETag': `"${flightKey}-${Math.floor(Date.now() / (30 * 60 * 1000))}"`
+                });
+                res.end(buffer);
+            } catch (err) {
+                console.error(`[CARD-ENDPOINT] Error generando imagen para ${username}:`, err.message);
+                const statusCode = err.message.includes('no encontrado') ? 404 : 500;
+                res.writeHead(statusCode, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: err.message }));
+            }
+            return;
+        }
         if (req.method === 'POST' && (pathname === '/github' || pathname === '/webhook' || pathname === '/')) {
             let body = '';
             req.on('data', chunk => {

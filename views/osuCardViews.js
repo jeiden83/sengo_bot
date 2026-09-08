@@ -881,7 +881,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     const isEs = locale === "es";
     const numLocale = isEs ? "de-DE" : "en-US";
-    const cacheKey = `user:${user.id}:${mode}:${locale}`;
+    const presetKey = options?.preset || options?.templateConfig?.preset || "standard";
+    const cacheKey = `user:${user.id}:${mode}:${locale}:${presetKey}`;
 
     if (!options?.forceRefresh) {
         const cached = cardBufferCache.get(cacheKey);
