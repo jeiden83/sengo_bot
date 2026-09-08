@@ -2,6 +2,8 @@ const { getSupabaseClient } = require('../db/database.js');
 const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const https = require('https');
+const cheerio = require('cheerio');
+const sharp = require('sharp');
 
 /**
  * Busca torneos en la base de datos aplicando diversos filtros.
@@ -388,7 +390,10 @@ function parseRegexMetadata(title, rawBody) {
                 } else if (urlPart.includes('docs.google.com/spreadsheets') || label.includes('sheet') || label.includes('planilla') || label.includes('mainsheet')) {
                     links.mainsheet = urlPart;
                 } else if (urlPart.includes('docs.google.com/forms') || urlPart.includes('forms.gle') || label.includes('register') || label.includes('registration') || label.includes('inscrip') || label.includes('signup')) {
-                    links.registration = urlPart;
+                    const isStaff = label.includes('staff') || label.includes('ref') || label.includes('referee');
+                    if (!links.registration || !isStaff) {
+                        links.registration = urlPart;
+                    }
                 } else if (urlPart.includes('twitch.tv')) {
                     links.twitch = urlPart;
                 } else if (urlPart.includes('challonge.com')) {
@@ -400,6 +405,14 @@ function parseRegexMetadata(title, rawBody) {
         }
     }
 
+    const allFormUrls = [];
+    const formRegex = /https?:\/\/(?:docs\.google\.com\/forms|forms\.gle)\/[a-zA-Z0-9-_]+/gi;
+    let fm;
+    while ((fm = formRegex.exec(rawBody)) !== null) {
+        allFormUrls.push(fm[0]);
+    }
+    links.allFormUrls = [...new Set(allFormUrls)];
+
     if (!links.discord) {
         const discMatch = rawBody.match(/https?:\/\/(?:www\.)?(?:discord\.gg|discord\.com\/invite)\/[a-zA-Z0-9]+/i);
         if (discMatch) links.discord = discMatch[0];
@@ -408,9 +421,8 @@ function parseRegexMetadata(title, rawBody) {
         const sheetMatch = rawBody.match(/https?:\/\/docs\.google\.com\/spreadsheets\/d\/[a-zA-Z0-9-_]+/i);
         if (sheetMatch) links.mainsheet = sheetMatch[0];
     }
-    if (!links.registration) {
-        const formMatch = rawBody.match(/https?:\/\/(?:docs\.google\.com\/forms|forms\.gle)\/[a-zA-Z0-9-_]+/i);
-        if (formMatch) links.registration = formMatch[0];
+    if (!links.registration && links.allFormUrls.length > 0) {
+        links.registration = links.allFormUrls[0];
     }
     if (!links.challonge) {
         const challongeMatch = rawBody.match(/https?:\/\/(?:www\.)?challonge\.com\/[a-zA-Z0-9-_]+/i);
@@ -444,6 +456,185 @@ function cleanAndNormalizeTags(tagsArray) {
             )
             .filter(t => t.length > 0)
     )];
+}
+
+/**
+ * Extrae URLs de imágenes incrustadas en el post (tanto [imagemap] como [img]).
+ */
+function extractImageUrls(rawBody) {
+    if (!rawBody || typeof rawBody !== 'string') return [];
+    const urls = [];
+
+    const imagemapRegex = /\[imagemap\]\s*(https?:\/\/[^\s\n\r]+)/gi;
+    let m;
+    while ((m = imagemapRegex.exec(rawBody)) !== null) {
+        urls.push(m[1].trim());
+    }
+
+    const imgRegex = /\[img\]\s*(https?:\/\/[^\s\]\n\r]+)\s*\[\/img\]/gi;
+    while ((m = imgRegex.exec(rawBody)) !== null) {
+        urls.push(m[1].trim());
+    }
+
+    return [...new Set(urls)];
+}
+
+/**
+ * Inspecciona un formulario de Google (Forms) para extraer divisiones y rangos de inscripción.
+ */
+async function inspectGoogleFormForRanks(formUrl) {
+    if (!formUrl || typeof formUrl !== 'string') return null;
+    if (!formUrl.includes('docs.google.com/forms') && !formUrl.includes('forms.gle')) return null;
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 6000);
+        const res = await fetch(formUrl, { signal: controller.signal, headers: { 'User-Agent': 'Mozilla/5.0' } });
+        clearTimeout(timeoutId);
+        if (!res.ok) return null;
+
+        const html = await res.text();
+        const $ = cheerio.load(html);
+
+        // 1. Buscar divisiones en el HTML del form: ej. Division 1 (#1000-#30000), Tier 1 (#1k - #50k)
+        const divRegex = /(?:division|tier|div|bracket)\s*(\d+)\s*\(([^)]+)\)/gi;
+        let match;
+        const foundMinRanks = [];
+        const foundMaxRanks = [];
+
+        while ((match = divRegex.exec(html)) !== null) {
+            const rawRange = match[2];
+            const parsed = parseNumericRankFromText(rawRange);
+            if (parsed) {
+                const rMin = Math.min(parsed.rankMin || Infinity, parsed.rankMax || Infinity);
+                const rMax = Math.max(parsed.rankMin || 0, parsed.rankMax || 0);
+                if (rMin !== Infinity && rMin > 0) foundMinRanks.push(rMin);
+                if (rMax > 0) foundMaxRanks.push(rMax);
+            }
+        }
+
+        if (foundMinRanks.length > 0) {
+            const minRank = Math.min(...foundMinRanks);
+            const maxRank = Math.max(...foundMaxRanks);
+            return {
+                rankMin: minRank > 0 ? minRank : 1,
+                rankMax: maxRank === Infinity || isNaN(maxRank) ? null : maxRank,
+                isOpenRange: false
+            };
+        }
+
+        // 2. Si no hubo divisiones explícitas, buscar rangos en el texto general del form
+        const bodyText = $('body').text();
+        const rangeMatch = parseNumericRankFromText(bodyText);
+        if (rangeMatch && !rangeMatch.isOpen) {
+            return {
+                rankMin: rangeMatch.rankMin || 1,
+                rankMax: rangeMatch.rankMax === Infinity ? null : rangeMatch.rankMax,
+                isOpenRange: rangeMatch.isOpen || false
+            };
+        }
+        const digitMatch = parseDigitRankFromText(bodyText);
+        if (digitMatch && !digitMatch.isOpen) {
+            return {
+                rankMin: digitMatch.rankMin || 1,
+                rankMax: digitMatch.rankMax === Infinity ? null : digitMatch.rankMax,
+                isOpenRange: digitMatch.isOpen || false
+            };
+        }
+    } catch (e) {
+        console.warn(`[Google Form Inspect] No se pudo analizar el formulario ${formUrl}:`, e.message);
+    }
+    return null;
+}
+
+/**
+ * Consulta a Google Gemini Vision (modelos Flash Lite) para extraer datos de afiches gráficos de torneos.
+ */
+async function parseWithGeminiVision(imageUrl, title) {
+    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    if (!GEMINI_API_KEY || !imageUrl) return null;
+
+    try {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        const imgRes = await fetch(imageUrl, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!imgRes.ok) return null;
+
+        const rawBuffer = Buffer.from(await imgRes.arrayBuffer());
+
+        // Optimizar y redimensionar con Sharp a max 1200px para respuestas ultra rápidas
+        const optBuffer = await sharp(rawBuffer)
+            .resize({ width: 1200, withoutEnlargement: true })
+            .png({ quality: 85, compressionLevel: 6 })
+            .toBuffer();
+
+        const base64Data = optBuffer.toString('base64');
+
+        const prompt = `
+Analiza detalladamente este afiche de torneo de osu! (título: "${title}") y extrae en formato JSON estricto:
+- rankMin: número entero del rango mínimo global permitido (ej: si Division 1 es #1,000-30,000 y Division 2 es #30,000-100,000, rankMin es 1000).
+- rankMax: número entero del rango máximo global permitido (ej: 100000). Si es abierto sin restricción o infinito, null.
+- isOpenRange: boolean (true solo si no hay restricción de rango).
+- divisions: lista de objetos { name: string, rankMin: number, rankMax: number, starRating: string } si las hay.
+- teamFormat: string (ej: '1v1', '2v2', etc.).
+- schedule: breve texto o resumen con fechas clave (inscripción, qualifiers, etc.).
+- rules: breve resumen de reglas principales (score v2, vidas, etc.).
+- prizes: texto de premios si se mencionan, o null.
+
+Devuelve estrictamente un JSON válido con estas claves.
+`;
+
+        const payload = {
+            contents: [
+                {
+                    parts: [
+                        { text: prompt },
+                        {
+                            inline_data: {
+                                mime_type: 'image/png',
+                                data: base64Data
+                            }
+                        }
+                    ]
+                }
+            ],
+            generationConfig: {
+                response_mime_type: 'application/json',
+                temperature: 0.1
+            }
+        };
+
+        // Modelos rápidos validados en benchmark (2 a 3 segundos de respuesta)
+        const modelsToTry = ['gemini-3.1-flash-lite-preview', 'gemini-3.1-flash-lite', 'gemini-3.5-flash-lite'];
+
+        for (const model of modelsToTry) {
+            try {
+                const apiCtrl = new AbortController();
+                const apiTimeout = setTimeout(() => apiCtrl.abort(), 7000);
+                const apiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GEMINI_API_KEY}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload),
+                    signal: apiCtrl.signal
+                });
+                clearTimeout(apiTimeout);
+
+                if (apiRes.status === 200) {
+                    const jsonRes = await apiRes.json();
+                    if (jsonRes.candidates && jsonRes.candidates[0]?.content?.parts?.[0]?.text) {
+                        return JSON.parse(jsonRes.candidates[0].content.parts[0].text);
+                    }
+                }
+            } catch {
+                continue;
+            }
+        }
+    } catch (e) {
+        console.warn(`[Gemini Vision] Error al procesar imagen ${imageUrl}:`, e.message);
+    }
+
+    return null;
 }
 
 /**
@@ -624,14 +815,66 @@ async function syncLatestTournaments(limit = 10) {
                 // Extraer metadatos básicos con Regex
                 const meta = parseRegexMetadata(topic.title, rawBody);
 
-                // Obtener datos avanzados usando Groq si está configurado
+                // Cascada híbrida para torneos en imagen o afiches gráficos
+                const imageUrls = extractImageUrls(rawBody);
+                const isImageOnlyPost = rawBody.length < 400 || (imageUrls.length > 0 && !rawBody.includes('[b]'));
+                const isUnresolvedRank = (meta.isOpenRange && meta.rankMin === 1 && meta.rankMax === null);
+
+                let formRankData = null;
+                const formsToInspect = [...new Set([meta.links?.registration, ...(meta.links?.allFormUrls || [])].filter(Boolean))];
+                if ((isUnresolvedRank || isImageOnlyPost) && formsToInspect.length > 0) {
+                    for (const formUrl of formsToInspect) {
+                        try {
+                            formRankData = await inspectGoogleFormForRanks(formUrl);
+                            if (formRankData) {
+                                meta.rankMin = formRankData.rankMin || meta.rankMin;
+                                meta.rankMax = formRankData.rankMax !== undefined ? formRankData.rankMax : meta.rankMax;
+                                meta.isOpenRange = formRankData.isOpenRange !== undefined ? formRankData.isOpenRange : meta.isOpenRange;
+                                break;
+                            }
+                        } catch (formErr) {
+                            console.error(`[Tournament Sync] Error en Google Form inspect (${topic.id}):`, formErr.message);
+                        }
+                    }
+                }
+
+                let visionData = null;
+                const stillUnresolved = (meta.isOpenRange && meta.rankMin === 1 && meta.rankMax === null);
+                if ((stillUnresolved || isImageOnlyPost) && imageUrls.length > 0 && process.env.GEMINI_API_KEY) {
+                    try {
+                        visionData = await parseWithGeminiVision(imageUrls[0], topic.title);
+                        if (visionData) {
+                            if (visionData.rankMin) meta.rankMin = visionData.rankMin;
+                            if (visionData.rankMax !== undefined) meta.rankMax = visionData.rankMax;
+                            if (visionData.isOpenRange !== undefined) meta.isOpenRange = visionData.isOpenRange;
+                            if (visionData.teamFormat && meta.format === '1v1') meta.format = visionData.teamFormat;
+                        }
+                    } catch (visionErr) {
+                        console.error(`[Tournament Sync] Error en Gemini Vision (${topic.id}):`, visionErr.message);
+                    }
+                }
+
+                // Obtener datos avanzados usando Groq si está configurado y hay texto suficiente
                 let aiData = { prizes: null, schedule: null, rules: null, tags: [], status: 'unknown' };
                 const GROQ_API_KEY = process.env.GROQ_API_KEY;
-                if (GROQ_API_KEY) {
+                if (GROQ_API_KEY && rawBody.length >= 200) {
                     try {
                         aiData = await parseWithGroq(topic.title, rawBody);
                     } catch (groqErr) {
                         console.error(`[Tournament Sync] Error al consultar Groq para el tema ${topic.id}:`, groqErr.message);
+                    }
+                }
+
+                // Si Vision extrajo cronograma, reglas o premios en afiches gráficos, enriquecer aiData
+                if (visionData) {
+                    if (!aiData.schedule && visionData.schedule) {
+                        aiData.schedule = typeof visionData.schedule === 'object' ? JSON.stringify(visionData.schedule) : visionData.schedule;
+                    }
+                    if (!aiData.rules && visionData.rules) {
+                        aiData.rules = typeof visionData.rules === 'object' ? JSON.stringify(visionData.rules) : visionData.rules;
+                    }
+                    if (!aiData.prizes && visionData.prizes) {
+                        aiData.prizes = visionData.prizes;
                     }
                 }
 
@@ -829,5 +1072,8 @@ module.exports = {
     saveSentMessage,
     getSentMessages,
     deleteSentMessage,
-    parseRegexMetadata
+    parseRegexMetadata,
+    extractImageUrls,
+    inspectGoogleFormForRanks,
+    parseWithGeminiVision
 };
