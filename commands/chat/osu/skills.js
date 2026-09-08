@@ -32,8 +32,9 @@ async function run(messages, args) {
         ln: "tech"
     };
 
-    // ponytail: Si se incluye -top, delegar al flujo de mejores jugadas desglosadas por habilidad
-    const isTopMode = safeArgs.some(arg => typeof arg === "string" && (arg.toLowerCase() === "-top" || arg.toLowerCase() === "--top"));
+    // ponytail: Si se incluye -top o un flag de habilidad (-reading, -aim, etc.), delegar al flujo de mejores jugadas desglosadas por habilidad
+    const hasSkillArg = safeArgs.some(arg => typeof arg === "string" && Boolean(SKILL_ALIASES[arg.toLowerCase().replace(/^--?/, "")]));
+    const isTopMode = safeArgs.some(arg => typeof arg === "string" && (arg.toLowerCase() === "-top" || arg.toLowerCase() === "--top")) || hasSkillArg;
     if (isTopMode) {
         let requestedSkill = null;
         const cleanArgs = [];

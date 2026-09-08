@@ -310,7 +310,7 @@ async function chatCommand(intialized_data, command_data) {
                 // 2. Sugerencia de Nombre de Usuario Redundante
                 if (!suggestion && parsed_args.username && parsed_args.username.length > 0 && parsed_args.username[0] !== "") {
                     const inputName = String(parsed_args.username[0]);
-                    const cleanInput = inputName.replace(/<@!?(\d+)>/, '$1').toLowerCase();
+                    const cleanInput = inputName.replace(/["']/g, '').replace(/<@!?(\d+)>/, '$1').toLowerCase().trim();
                     
                     user_found = await OsuUserModel.getLinkedUser(res.User, discordId);
                     
@@ -327,6 +327,22 @@ async function chatCommand(intialized_data, command_data) {
                         }
                         if (userToken && userToken.username && cleanInput === userToken.username.toLowerCase()) {
                             isSelf = true;
+                        } else if (user_found && user_found.osu_id) {
+                            try {
+                                const { getTursoClient } = require("../db/database.js");
+                                const turso = getTursoClient();
+                                if (turso) {
+                                    const dbRes = await turso.execute({
+                                        sql: "SELECT username FROM top_scores WHERE user_id = ? LIMIT 1",
+                                        args: [String(user_found.osu_id)]
+                                    });
+                                    if (dbRes.rows && dbRes.rows.length > 0 && dbRes.rows[0].username) {
+                                        if (cleanInput === String(dbRes.rows[0].username).toLowerCase()) {
+                                            isSelf = true;
+                                        }
+                                    }
+                                }
+                            } catch {}
                         }
                     }
 

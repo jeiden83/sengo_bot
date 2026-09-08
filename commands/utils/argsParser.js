@@ -474,6 +474,7 @@ function argsParserNoCommand(args, options = {}) {
     let ppBenchmark = false;
     let topsSort = false;
     let ppSort = false;
+    let skillFilter = null;
 
     const extractId = str => {
         if (!str) return null;
@@ -1229,6 +1230,67 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
+        // Si es un flag de habilidad (ej: -aim, -speed, -reading, -acc, -stamina, -tech, etc.)
+        const potentialSkill = arg.toLowerCase().replace(/^--?/, "");
+        const SKILL_FLAGS = new Set([
+            'aim', 'speed', 'acc', 'accuracy', 'precision', 'reading', 'read',
+            'stamina', 'stam', 'color', 'colour', 'rhythm', 'movement', 'move',
+            'stream', 'jack', 'jacks', 'tech', 'ln'
+        ]);
+        if (arg.startsWith("-") && SKILL_FLAGS.has(potentialSkill)) {
+            const SKILL_NORMALIZE = {
+                accuracy: 'acc',
+                precision: 'acc',
+                read: 'reading',
+                stam: 'stamina',
+                colour: 'color',
+                move: 'movement',
+                jacks: 'jack',
+                ln: 'tech'
+            };
+            skillFilter = SKILL_NORMALIZE[potentialSkill] || potentialSkill;
+            continue;
+        }
+        if (arg === "-skill" || arg === "--skill") {
+            if (i + 1 < args_list.length) {
+                let next_arg = args_list[i + 1].trim();
+                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                    const norm = next_arg.toLowerCase();
+                    const SKILL_NORMALIZE = {
+                        accuracy: 'acc',
+                        precision: 'acc',
+                        read: 'reading',
+                        stam: 'stamina',
+                        colour: 'color',
+                        move: 'movement',
+                        jacks: 'jack',
+                        ln: 'tech'
+                    };
+                    skillFilter = SKILL_NORMALIZE[norm] || norm;
+                    skip_next = true;
+                    continue;
+                }
+            }
+            continue;
+        }
+        if (arg.startsWith("-skill=") || arg.startsWith("--skill=")) {
+            let val = arg.split("=")[1]?.toLowerCase().trim();
+            if (val) {
+                const SKILL_NORMALIZE = {
+                    accuracy: 'acc',
+                    precision: 'acc',
+                    read: 'reading',
+                    stam: 'stamina',
+                    colour: 'color',
+                    move: 'movement',
+                    jacks: 'jack',
+                    ln: 'tech'
+                };
+                skillFilter = SKILL_NORMALIZE[val] || val;
+                continue;
+            }
+        }
+
         // Si es exactamente "-rework" o "-rew"
         if (arg === "-rework" || arg === "-rew") {
             reworkMode = true;
@@ -1308,7 +1370,8 @@ function argsParserNoCommand(args, options = {}) {
         'ppEngine': ppEngine,
         'ppBenchmark': ppBenchmark,
         'topsSort': topsSort,
-        'ppSort': ppSort
+        'ppSort': ppSort,
+        'skillFilter': skillFilter
     };
     return parsed_args;
 }
