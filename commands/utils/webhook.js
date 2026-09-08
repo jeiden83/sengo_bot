@@ -38,19 +38,6 @@ async function fetchPinnedScore(userId, topScores, mode = 'osu') {
     return topScores && topScores.length > 0 ? topScores[0] : null;
 }
 
-function getFlagEmoji(countryCode) {
-    if (!countryCode || countryCode.length !== 2) return '';
-    const codePoints = countryCode
-        .toUpperCase()
-        .split('')
-        .map(char => 127397 + char.charCodeAt(0));
-    try {
-        return String.fromCodePoint(...codePoints);
-    } catch (e) {
-        return '';
-    }
-}
-
 /**
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
  */
@@ -565,6 +552,17 @@ function startServer(client, dbRes, port, config) {
         .status-value {
             font-size: 15px;
             font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .flag-icon {
+            width: 22px;
+            height: 15px;
+            object-fit: cover;
+            border-radius: 3px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
         }
 
         .status-value.success {
@@ -626,7 +624,10 @@ function startServer(client, dbRes, port, config) {
                 </div>
                 <div class="status-row">
                     <span class="status-label">País</span>
-                    <span class="status-value">${getFlagEmoji(osuUser.country_code)} ${osuUser.country_code}</span>
+                    <span class="status-value"${osuUser.country?.name ? ` title="${osuUser.country.name}"` : ''}>
+                        ${osuUser.country_code ? `<img class="flag-icon" src="https://osu.ppy.sh/images/flags/${osuUser.country_code.toUpperCase()}.png" alt="${osuUser.country_code}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src='https://flagcdn.com/w40/${osuUser.country_code.toLowerCase()}.png';">` : ''}
+                        <span>${osuUser.country_code || 'XX'}</span>
+                    </span>
                 </div>
                 <div class="status-row">
                     <span class="status-label">osu! Supporter</span>
