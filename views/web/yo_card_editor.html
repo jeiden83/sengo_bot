@@ -1254,6 +1254,8 @@
             <button class="btn btn-secondary" onclick="downloadPNG()">💾 Descargar Imagen PNG</button>
         </div>
     </div>
+</div>
+    <!-- Fin Panel Lateral (Sidebar) -->
 
     <!-- Área de Trabajo con Viewport Centrado -->
     <div class="workspace">
@@ -3160,8 +3162,8 @@
         function fitZoom() {
             const vp = document.querySelector('.viewport');
             if (!vp) return;
-            const availableW = vp.clientWidth - 80;
-            const availableH = vp.clientHeight - 80;
+            const availableW = Math.max(200, vp.clientWidth - 80);
+            const availableH = Math.max(200, vp.clientHeight - 80);
             const W = state.canvas?.width || 1300;
             const H = state.canvas?.height || 720;
             const scaleW = availableW / W;
@@ -3217,6 +3219,7 @@
         selectCard('leftCol');
         updatePresetButtonsUI('standard');
         fitZoom();
+        setTimeout(fitZoom, 50);
         render();
 
         window.addEventListener('resize', () => {
