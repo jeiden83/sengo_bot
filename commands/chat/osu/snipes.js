@@ -102,6 +102,10 @@ async function run(messages, args){
     const playmode = osu_userdata.fn_response.playmode || 'osu';
     const look_gamemode = modeToInt[playmode] ?? 0;
 
+    if (playmode !== 'osu') {
+        return t(locale, 'snipes.err_std_only');
+    }
+
     // Verificar dinámicamente en RAM si el país ya ha sido poblado
     const isScraped = await OsuUserModel.isCountryScraped(country_code);
     if (!isScraped) {

@@ -197,7 +197,7 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `-stable` / `-lazer`: Alterna entre rankings clásicos o estandarizados de lazer.
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
 * **`s.snipes [usuario]`**
-  Monitoreo de tops nacionales (#1s del país), rivales y estadísticas de francotirador.
+  Monitoreo de tops nacionales (#1s del país en **osu!std**), rivales y estadísticas de francotirador (exclusivo para el modo osu!standard).
   * *Modos y Flags:*
     * `s.snipes`: Resumen general con gráfico de barras por dificultad.
     * `s.snipes -d`: Perfil detallado de habilidad (estrellas, mappers más jugados, stats técnicos e hitos).

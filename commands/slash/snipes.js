@@ -4,7 +4,7 @@ const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs } 
 
 const data = new SlashCommandBuilder()
     .setName("snipes")
-    .setDescription("Muestra estadísticas de tops nacionales (#1) de un usuario")
+    .setDescription("Muestra estadísticas de tops nacionales (#1) en osu!std de un usuario")
     .addStringOption(addUsuarioOption)
     .addStringOption(addModoOption)
     .addStringOption(addServidorOption)
@@ -76,6 +76,6 @@ async function run(interaction, res) {
     return result || true;
 }
 
-run.description = "Muestra estadísticas de tops nacionales (#1) de un usuario";
+run.description = "Muestra estadísticas de tops nacionales (#1) en osu!std de un usuario";
 
 module.exports = { data, run, description: run.description };
