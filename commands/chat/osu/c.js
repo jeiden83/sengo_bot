@@ -369,7 +369,7 @@ async function run(messages, args) {
         const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata, parsed_args.ppEngine);
         
         const activeGamemode = parsed_args.gamemode || targetGamemode || beatmap_metadata.mode;
-        const rosuModeMap = {
+        const gameModeMap = {
             'osu': engine.GameMode.Osu,
             'taiko': engine.GameMode.Taiko,
             'fruits': engine.GameMode.Catch,
@@ -379,7 +379,7 @@ async function run(messages, args) {
             2: engine.GameMode.Catch,
             3: engine.GameMode.Mania
         };
-        const activeMode = rosuModeMap[activeGamemode] !== undefined ? rosuModeMap[activeGamemode] : engine.GameMode.Osu;
+        const activeMode = gameModeMap[activeGamemode] !== undefined ? gameModeMap[activeGamemode] : engine.GameMode.Osu;
         if (map.mode !== activeMode) {
             map.convert(activeMode);
         }

@@ -285,7 +285,7 @@ async function recalculateUserTops(task) {
             const calculated = OsuScoreModel.calculatePP(normalizedPlay, map);
             const newPP = calculated ? calculated.pp : null;
 
-            // Liberar memoria del mapa parser en rosu
+            // Liberar memoria del mapa parser en sengo-pp
             if (map && typeof map.free === 'function') {
                 map.free();
             }

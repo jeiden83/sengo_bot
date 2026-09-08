@@ -15,7 +15,7 @@ function estimatePP(stars, accuracy = 0.99, mods = "NM") {
     } else if (mods.includes("HR")) {
         scaledStars *= 1.06;
     } else if (mods.includes("EZ") && mods.includes("HD")) {
-        // En osu! moderno (lazer/rosu-pp), HDEZ añade un enorme bonus de lectura por densidad y baja AR
+        // En osu! moderno (lazer/sengo-pp), HDEZ añade un enorme bonus de lectura por densidad y baja AR
         scaledStars *= 1.05;
     } else if (mods.includes("EZ")) {
         scaledStars *= 0.95;

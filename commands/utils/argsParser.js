@@ -889,13 +889,9 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es selector de motor de PP (-sengo / -rosu / -pp=sengo / -pp=rosu / -engine=sengo / -engine=rosu)
+        // Si es selector de motor de PP (-sengo / -rust / -native)
         if (arg === "-sengo" || arg === "--sengo" || arg === "-rust" || arg === "-native") {
             ppEngine = 'sengo';
-            continue;
-        }
-        if (arg === "-rosu" || arg === "--rosu" || arg === "-wasm" || arg === "-legacy") {
-            ppEngine = 'rosu';
             continue;
         }
         if (arg.startsWith("-pp=") || arg.startsWith("--pp=")) {

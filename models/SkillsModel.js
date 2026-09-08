@@ -349,7 +349,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             // 2. Strain PP total
             const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
-            // 3. Descomposición rítmica en Aim y Speed calibrada con rosu-pp
+            // 3. Descomposición rítmica en Aim y Speed calibrada con sengo-pp
             // El strain de velocidad relevante en streams y ráfagas empieza a partir de 165-175 BPM
             const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 165) / 55));
 
@@ -563,20 +563,20 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
     });
 
     const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
-    const rosuMode = MODE_INT[base.mode] ?? 0;
+    const targetModeInt = MODE_INT[base.mode] ?? 0;
 
     const calculatedStars = new Map();
     await Promise.all(Array.from(uniqueMapIds.entries()).map(async ([bmId, score]) => {
         try {
             const beatmap = await getBeatmap(bmId);
             const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
-            if (rosuMode !== 0 && typeof map.convert === "function") {
-                map.convert(rosuMode);
+            if (targetModeInt !== 0 && typeof map.convert === "function") {
+                map.convert(targetModeInt);
             }
             const modsList = Array.isArray(score.mods)
                 ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
                 : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
-            const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true, mode: rosuMode }).calculate(map);
+            const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true, mode: targetModeInt }).calculate(map);
             calculatedStars.set(bmId, diffAttrs.stars);
             map.free();
         } catch (err) {

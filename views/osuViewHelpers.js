@@ -457,7 +457,7 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
         }
     }
 
-    const rosuModeMap = {
+    const gameModeMap = {
         'osu': ppEngine.GameMode.Osu,
         'taiko': ppEngine.GameMode.Taiko,
         'fruits': ppEngine.GameMode.Catch,
@@ -469,7 +469,7 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
         2: ppEngine.GameMode.Catch,
         3: ppEngine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : ppEngine.GameMode.Osu;
+    const activeMode = gameModeMap[mode] !== undefined ? gameModeMap[mode] : ppEngine.GameMode.Osu;
 
     let modCs = baseCs;
     let modAr = baseAr;

@@ -359,7 +359,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     }
     mode = mode || 'osu';
 
-    const rosuModeMap = {
+    const gameModeMap = {
         'osu': engine.GameMode.Osu,
         'taiko': engine.GameMode.Taiko,
         'fruits': engine.GameMode.Catch,
@@ -369,7 +369,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         2: engine.GameMode.Catch,
         3: engine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : engine.GameMode.Osu;
+    const activeMode = gameModeMap[mode] !== undefined ? gameModeMap[mode] : engine.GameMode.Osu;
 
     if (map.mode !== activeMode) {
         try {

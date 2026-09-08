@@ -106,13 +106,13 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs) {
         }
     }
 
-    const rosuModeMap = {
+    const gameModeMap = {
         'osu': ppEngine.GameMode.Osu,
         'taiko': ppEngine.GameMode.Taiko,
         'fruits': ppEngine.GameMode.Catch,
         'mania': ppEngine.GameMode.Mania
     };
-    const activeMode = rosuModeMap[mode] !== undefined ? rosuModeMap[mode] : ppEngine.GameMode.Osu;
+    const activeMode = gameModeMap[mode] !== undefined ? gameModeMap[mode] : ppEngine.GameMode.Osu;
 
     if (map.mode !== activeMode) {
         try {

@@ -175,9 +175,8 @@ function parseSimArgs(args) {
         if (lower === '-mania') { options.mode = 'mania'; continue; }
         if (lower === '-std' || lower === '-osu') { options.mode = 'osu'; continue; }
 
-        // Flags de motor de PP
+        // Flags de motor de PP (sengo-pp nativo)
         if (lower === '-sengo' || lower === '--sengo' || lower === '-rust' || lower === '-native') { options.ppEngine = 'sengo'; continue; }
-        if (lower === '-rosu' || lower === '--rosu' || lower === '-wasm' || lower === '-legacy') { options.ppEngine = 'rosu'; continue; }
         if (lower.startsWith('-pp=') || lower.startsWith('--pp=')) { options.ppEngine = lower.split('=')[1]?.trim(); continue; }
         if (lower.startsWith('-engine=') || lower.startsWith('--engine=')) { options.ppEngine = lower.split('=')[1]?.trim(); continue; }
         if (lower === '-bench' || lower === '--bench' || lower === '-benchmark' || lower === '--benchmark') { options.ppBenchmark = true; continue; }
