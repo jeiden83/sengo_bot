@@ -169,18 +169,30 @@ function parseNumericRankFromText(text) {
     const rangeRegex = /#?([0-9.,]+[kK]?)\s*(?:-|to|und)\s*#?([0-9.,]+[kK]?|inf|infinity|∞)/i;
     const match = text.match(rangeRegex);
     if (match) {
-        const minVal = parseRankNumber(match[1]);
-        let maxVal = parseRankNumber(match[2]);
-        if (match[2].toLowerCase() === '999k') maxVal = 999999;
-        else if (match[2].toLowerCase() === '99k') maxVal = 99999;
-        else if (match[2].toLowerCase() === '9k') maxVal = 9999;
+        let part1 = match[1].replace(/[.,]+$/, '');
+        let part2 = match[2].replace(/[.,]+$/, '');
+
+        const minVal = parseRankNumber(part1);
+        let maxVal = parseRankNumber(part2);
+        if (part2.toLowerCase() === '999k') maxVal = 999999;
+        else if (part2.toLowerCase() === '99k') maxVal = 99999;
+        else if (part2.toLowerCase() === '9k') maxVal = 9999;
 
         if (minVal !== null && maxVal !== null && minVal < 2000000 && maxVal <= Infinity) {
-            if (match[1].includes('k') || match[2].includes('k') || 
-                match[0].includes('#') || match[1].includes('.') || 
-                match[1].includes(',') || match[2].includes('.') || 
-                match[2].includes(',') || match[2].toLowerCase().includes('inf') ||
-                match[2].includes('∞')) {
+            const hasSep = /[.,]\d+/.test(part1) || /[.,]\d+/.test(part2);
+            const hasK = /[kK]/.test(part1) || /[kK]/.test(part2);
+            const hasHash = match[0].includes('#');
+            const hasInf = /inf|infinity|∞/i.test(part2);
+
+            if (hasSep || hasK || hasHash || hasInf) {
+                // Validación para evitar falsos positivos con rangos pequeños (#1-#10, #1-#3) que suelen ser premios o puestos
+                if (maxVal <= 50) {
+                    const hasExplicitLimit = /\b(rank\s*(?:range|limit|restriction|boundary|cap)|rango\s*(?:l[ií]mite|permitido|de\s*rango|restringido))\b/i.test(text);
+                    const isPrize = /\b(prizes?|premios?|rewards?|banners?|supporter|badges?|cash|1st|2nd|3rd|1er|2do|3er|lugar|place)\b/i.test(text);
+                    if (!hasExplicitLimit || isPrize) {
+                        return null;
+                    }
+                }
                 return { rankMin: minVal, rankMax: maxVal, isOpen: false };
             }
         }
@@ -189,8 +201,13 @@ function parseNumericRankFromText(text) {
     // B) Límite inferior abierto con + (ej. 100k+, #100k+, 100k and above)
     const plusMatch = text.match(/#?([0-9.,]+[kK]?)\s*(?:\+|and above|and lower|>)\b/i);
     if (plusMatch) {
-        const val = parseRankNumber(plusMatch[1]);
-        if (val !== null && val < 2000000 && (plusMatch[1].includes('k') || plusMatch[0].includes('#') || plusMatch[1].includes('.') || plusMatch[1].includes(','))) {
+        let part = plusMatch[1].replace(/[.,]+$/, '');
+        const val = parseRankNumber(part);
+        const hasSep = /[.,]\d+/.test(part);
+        const hasK = /[kK]/.test(part);
+        const hasHash = plusMatch[0].includes('#');
+        if (val !== null && val < 2000000 && (hasSep || hasK || hasHash)) {
+            if (val <= 50) return null;
             return { rankMin: val, rankMax: Infinity, isOpen: false };
         }
     }
@@ -198,9 +215,13 @@ function parseNumericRankFromText(text) {
     // C) Límite superior (ej. under 50k, < 50k, top 50k, #50k and under) -> Rango de 1 a 50.000
     const underMatch = text.match(/(?:top|<|under)\s*#?([0-9.,]+[kK]?)\b|#?([0-9.,]+[kK]?)\s*(?:and better|and higher|and under|& under|and below)\b/i);
     if (underMatch) {
-        const valStr = underMatch[1] || underMatch[2];
+        const valStr = (underMatch[1] || underMatch[2]).replace(/[.,]+$/, '');
         const val = parseRankNumber(valStr);
-        if (val !== null && val < 2000000 && (valStr.includes('k') || underMatch[0].includes('#') || valStr.includes('.') || valStr.includes(','))) {
+        const hasSep = /[.,]\d+/.test(valStr);
+        const hasK = /[kK]/.test(valStr);
+        const hasHash = underMatch[0].includes('#');
+        if (val !== null && val < 2000000 && (hasSep || hasK || hasHash)) {
+            if (val <= 50) return null;
             return { rankMin: 1, rankMax: val, isOpen: false };
         }
     }
@@ -253,9 +274,11 @@ function parseRegexMetadata(title, rawBody) {
     let rankMin = null;
     let rankMax = null;
     let isOpen = false;
+
+    const openKeywords = /\b(open rank|open-rank|open division|open tier|no rank limit|no rank restriction|all ranks|all rank|open to all players|open to all|open for all|for all players|for everyone|everyone can join|anyone can join|abierto a todos|sin restricci[oó]n de rango|sin l[ií]mite de rango|rango libre|todos los rangos)\b/i;
     
     // Prioridad 1: Título del torneo
-    if (/\b(open rank|open-rank|no rank limit|open division)\b/i.test(titleLower)) {
+    if (openKeywords.test(titleLower)) {
         isOpen = true;
         rankMin = 1;
         rankMax = Infinity;
@@ -281,18 +304,25 @@ function parseRegexMetadata(title, rawBody) {
 
     // Prioridad 2: Cuerpo del post
     if (!isOpen && rankMin === null) {
-        if (/\b(open rank|open-rank|no rank limit|open division)\b/i.test(bodyLower)) {
+        if (openKeywords.test(bodyLower)) {
             isOpen = true;
             rankMin = 1;
             rankMax = Infinity;
         }
     }
 
+    const prizeLineRegex = /\b(prizes?|premios?|rewards?|recompensas?|banners?|supporter|badges?|cash|pot|1st|2nd|3rd|1er|2do|3er|lugar|place)\b/i;
+    const teamSizeLineRegex = /\b(team size|teams? of|ts\s*\d|equipo de|jugadores por equipo|roster size)\b/i;
+
     if (!isOpen && rankMin === null) {
         const lines = rawBody.split('\n');
         const rankKeywords = ['rank', 'rango', 'limit', 'bws', 'ceil', 'ceiling', 'digit', 'digits', 'range', 'restriction', 'eligibility'];
         for (const line of lines) {
             const lineLower = line.toLowerCase();
+            // Ignorar líneas de premios o de tamaño de equipo para no capturar falsos positivos
+            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower)) {
+                continue;
+            }
             if (rankKeywords.some(kw => lineLower.includes(kw))) {
                 const lineNumeric = parseNumericRankFromText(line);
                 if (lineNumeric) {
@@ -313,17 +343,25 @@ function parseRegexMetadata(title, rawBody) {
     }
 
     if (!isOpen && rankMin === null) {
-        const bodyNumeric = parseNumericRankFromText(rawBody);
-        if (bodyNumeric) {
-            rankMin = bodyNumeric.rankMin;
-            rankMax = bodyNumeric.rankMax;
-            isOpen = bodyNumeric.isOpen;
-        } else {
-            const bodyDigit = parseDigitRankFromText(rawBody);
-            if (bodyDigit) {
-                rankMin = bodyDigit.rankMin;
-                rankMax = bodyDigit.rankMax;
-                isOpen = bodyDigit.isOpen;
+        const lines = rawBody.split('\n');
+        for (const line of lines) {
+            const lineLower = line.toLowerCase();
+            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower)) {
+                continue;
+            }
+            const lineNumeric = parseNumericRankFromText(line);
+            if (lineNumeric) {
+                rankMin = lineNumeric.rankMin;
+                rankMax = lineNumeric.rankMax;
+                isOpen = lineNumeric.isOpen;
+                break;
+            }
+            const lineDigit = parseDigitRankFromText(line);
+            if (lineDigit) {
+                rankMin = lineDigit.rankMin;
+                rankMax = lineDigit.rankMax;
+                isOpen = lineDigit.isOpen;
+                break;
             }
         }
     }
@@ -438,7 +476,7 @@ function parseRegexMetadata(title, rawBody) {
         format,
         rankMin: rankMin || 1,
         rankMax: rankMax === Infinity ? null : rankMax,
-        isOpenRange: isOpen || (rankMin === 1 && rankMax === Infinity),
+        isOpenRange: isOpen || (!rankMin && !rankMax) || (rankMin === 1 && (!rankMax || rankMax === Infinity)),
         regStatus,
         links
     };
