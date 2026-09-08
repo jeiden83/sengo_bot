@@ -767,90 +767,90 @@ const LAYOUT_PRESETS = {
     },
     compact: {
         name: "Compacto 2 Filas",
-        canvas: { width: 1300, height: 485 },
+        canvas: { width: 1300, height: 610 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "full", x: 77, y: 20, w: 270, h: 445, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 368, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
-            playBox: { visible: true, x: 659, y: 20, w: 575, h: 270, customBg: null, customRadius: 14 },
-            statsBox: { visible: true, format: "full", x: 368, y: 310, w: 865, h: 155, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "full", x: 77, y: 110, w: 270, h: 435, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 368, y: 110, w: 270, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 659, y: 110, w: 575, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 368, y: 400, w: 865, h: 145, customBg: null, customRadius: 14 },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
         leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
-        statsBox: { pillarW: 24, pillarH: 65 }
+        statsBox: { pillarW: 24, pillarH: 70 }
     },
     single_row: {
         name: "1 Sola Línea",
-        canvas: { width: 1300, height: 310 },
+        canvas: { width: 1300, height: 450 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "compact", x: 30, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 325, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "compact", x: 25, y: 120, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 315, y: 120, w: 320, h: 270, customBg: null, customRadius: 14 },
             playBox: { visible: false },
-            statsBox: { visible: true, format: "compact", x: 695, y: 20, w: 575, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 655, y: 120, w: 620, h: 270, customBg: null, customRadius: 14 },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
         leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 24, pillarH: 80 }
     },
     ultra: {
         name: "Ultra-Compacto",
-        canvas: { width: 1200, height: 420 },
+        canvas: { width: 1200, height: 560 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "compact", x: 30, y: 20, w: 250, h: 380, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 305, y: 20, w: 270, h: 240, customBg: null, customRadius: 14 },
-            playBox: { visible: true, x: 595, y: 20, w: 575, h: 240, customBg: null, customRadius: 14 },
-            statsBox: { visible: true, format: "compact", x: 305, y: 280, w: 865, h: 120, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "compact", x: 30, y: 110, w: 250, h: 375, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 300, y: 110, w: 270, h: 235, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 590, y: 110, w: 580, h: 235, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 300, y: 360, w: 870, h: 125, customBg: null, customRadius: 14 },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
-        leftCol: { avatarH: 380, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        leftCol: { avatarH: 375, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 24, pillarH: 60 }
     },
     single_row_play: {
         name: "1 Línea + Play",
-        canvas: { width: 1400, height: 310 },
+        canvas: { width: 1400, height: 450 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "compact", x: 25, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 320, y: 20, w: 345, h: 270, customBg: null, customRadius: 14 },
-            playBox: { visible: true, x: 690, y: 20, w: 680, h: 270, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "compact", x: 25, y: 120, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 315, y: 120, w: 335, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 670, y: 120, w: 705, h: 270, customBg: null, customRadius: 14 },
             statsBox: { visible: false },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
         leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 24, pillarH: 65 }
     },
     single_row_all: {
         name: "1 Fila Todo en Uno (Panorámica)",
-        canvas: { width: 1680, height: 310 },
+        canvas: { width: 1680, height: 460 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 270, h: 270, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 310, y: 20, w: 320, h: 270, customBg: null, customRadius: 14 },
-            playBox: { visible: true, x: 650, y: 20, w: 560, h: 270, customBg: null, customRadius: 14 },
-            statsBox: { visible: true, format: "compact", x: 1230, y: 20, w: 430, h: 270, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "compact", x: 20, y: 125, w: 270, h: 270, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 310, y: 125, w: 320, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 650, y: 125, w: 560, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 1230, y: 125, w: 430, h: 270, customBg: null, customRadius: 14 },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
         leftCol: { avatarH: 270, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 20, pillarH: 80 }
     },
     mini_card: {
         name: "Mini Tarjeta Móvil",
-        canvas: { width: 640, height: 600 },
+        canvas: { width: 640, height: 660 },
         cards: {
-            header: { visible: false },
-            leftCol: { visible: true, format: "compact", x: 20, y: 20, w: 240, h: 240, customBg: null, customRadius: 14 },
-            rankBox: { visible: true, x: 280, y: 20, w: 340, h: 240, customBg: null, customRadius: 14 },
+            header: { visible: true },
+            leftCol: { visible: true, format: "compact", x: 20, y: 105, w: 240, h: 240, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 280, y: 105, w: 340, h: 240, customBg: null, customRadius: 14 },
             playBox: { visible: false },
-            statsBox: { visible: true, format: "compact", x: 20, y: 280, w: 600, h: 300, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "compact", x: 20, y: 365, w: 600, h: 250, customBg: null, customRadius: 14 },
             sengoBox: { visible: false },
-            footer: { visible: false }
+            footer: { visible: true }
         },
         leftCol: { avatarH: 240, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 26, pillarH: 90 }
@@ -1064,29 +1064,34 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     // 2. CABECERA: TÍTULO SUPERIOR + HITCIRCLE
     if (cards.header?.visible !== false) {
-        drawCustomText(ctx, fonts.headerTitle1, dynamicTitle.line1, 500, 42, "center", fontFamily);
-        drawCustomText(ctx, fonts.headerTitle2, dynamicTitle.line2, 500, 78, "center", fontFamily);
-
-        // Hitcircle de osu!
-        const circleX = config.header?.circleX || 870;
+        const hasRoomForCircle = width >= 800;
+        const titleX = hasRoomForCircle ? Math.round(width / 2 - 120) : Math.round(width / 2);
+        const circleX = (config.header?.circleX && width === 1300) ? config.header.circleX : (hasRoomForCircle ? Math.round(width / 2 + 190) : -999);
         const circleY = config.header?.circleY || 38;
-        ctx.save();
-        ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetY = 3;
-        ctx.shadowOffsetX = 0;
 
-        ctx.strokeStyle = "#d1d5db";
-        ctx.lineWidth = 6;
-        ctx.beginPath();
-        ctx.arc(circleX, circleY, 32, 0, Math.PI * 2);
-        ctx.stroke();
+        drawCustomText(ctx, fonts.headerTitle1, dynamicTitle.line1, titleX, 42, "center", fontFamily);
+        drawCustomText(ctx, fonts.headerTitle2, dynamicTitle.line2, titleX, 78, "center", fontFamily);
 
-        ctx.fillStyle = "#cbd5e1";
-        ctx.beginPath();
-        ctx.arc(circleX, circleY, 18, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
+        if (hasRoomForCircle && circleX > 0) {
+            // Hitcircle de osu!
+            ctx.save();
+            ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+            ctx.shadowBlur = 12;
+            ctx.shadowOffsetY = 3;
+            ctx.shadowOffsetX = 0;
+
+            ctx.strokeStyle = "#d1d5db";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, 32, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = "#cbd5e1";
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, 18, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
     }
 
     // 3. COLUMNA IZQUIERDA UNIFICADA (AVATAR + NIVEL + MEDALLAS)
@@ -1439,8 +1444,10 @@ async function renderOsuCard(user, topScores = [], options = {}) {
             mania: "osu!mania"
         };
         const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : "Sengo";
-        drawCustomText(ctx, fonts.footerBrand, footerTitle, 580, 695, "right", fontFamily);
-        drawCustomText(ctx, fonts.footerDate, today, 630, 695, "left", fontFamily);
+        const footerY = height - 22;
+        const footerCenterX = Math.round(width / 2);
+        drawCustomText(ctx, fonts.footerBrand, footerTitle, footerCenterX - 35, footerY, "right", fontFamily);
+        drawCustomText(ctx, fonts.footerDate, today, footerCenterX + 15, footerY, "left", fontFamily);
     }
 
     const buffer = canvas.toBuffer("image/png");
