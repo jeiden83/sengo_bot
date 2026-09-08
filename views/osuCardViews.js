@@ -396,12 +396,13 @@ const difficultySpectrum = [
     { stars: 5.5, color: '#AF38F7' }, // Purple
     { stars: 6.5, color: '#5C5BF7' }, // Blue / Violet
     { stars: 7.5, color: '#1A1899' }, // Dark Blue
-    { stars: 9.0, color: '#111111' }  // Dark Indigo/Black
+    { stars: 9.0, color: '#54505F' }  // Carbón Grafito / Dark Charcoal
 ];
 
 function getDifficultyColor(stars) {
     if (stars < 0.1) return '#aaaaaa';
-    if (stars >= 9.0) return '#111111';
+    const maxSpec = difficultySpectrum[difficultySpectrum.length - 1];
+    if (stars >= maxSpec.stars) return maxSpec.color;
     let lower = difficultySpectrum[0];
     let upper = difficultySpectrum[difficultySpectrum.length - 1];
     for (let i = 0; i < difficultySpectrum.length - 1; i++) {
@@ -427,11 +428,7 @@ function getDifficultyColor(stars) {
 }
 
 function getDifficultyOutlineColor(stars) {
-    if (stars <= 6.0) return 'rgba(0, 0, 0, 0.85)';
-    if (stars >= 8.5) return 'rgba(255, 255, 255, 0.85)';
-    const factor = (stars - 6.0) / 2.5;
-    const v = Math.round(255 * factor);
-    return `rgba(${v}, ${v}, ${v}, 0.85)`;
+    return 'rgba(0, 0, 0, 0.85)';
 }
 
 /**
@@ -1280,5 +1277,8 @@ module.exports = {
     clearCardCache,
     analyzeSkills,
     analyzeSkillsBreakdown,
-    generateCardTitle
+    generateCardTitle,
+    difficultySpectrum,
+    getDifficultyColor,
+    getDifficultyOutlineColor
 };
