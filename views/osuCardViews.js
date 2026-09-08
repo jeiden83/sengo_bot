@@ -132,6 +132,29 @@ function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5) {
     ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
 }
 
+function drawImageFit(ctx, img, x, y, w, h, fit = "cover", alignY = 0.5) {
+    if (!img) return;
+    if (fit === "contain") {
+        const imgRatio = img.width / img.height;
+        const targetRatio = w / h;
+        let dw, dh, dx, dy;
+        if (imgRatio > targetRatio) {
+            dw = w;
+            dh = w / imgRatio;
+            dx = x;
+            dy = y + (h - dh) * alignY;
+        } else {
+            dh = h;
+            dw = h * imgRatio;
+            dx = x + (w - dw) / 2;
+            dy = y;
+        }
+        ctx.drawImage(img, dx, dy, dw, dh);
+    } else {
+        drawImageCover(ctx, img, x, y, w, h, alignY);
+    }
+}
+
 /**
  * Dibuja rectángulos con esquinas redondeadas.
  */
@@ -956,7 +979,18 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         ctx.clip();
 
         if (avatarImg) {
-            drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, config.leftCol?.avatarAlignY || 0.2);
+            const avatarFit = config.leftCol?.avatarFit || "cover";
+            drawImageFit(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, avatarFit, config.leftCol?.avatarAlignY || 0.2);
+        }
+
+        if (config.leftCol?.avatarShadow !== false) {
+            const innerGrad = ctx.createLinearGradient(0, lc.y, 0, lc.y + avatarH);
+            innerGrad.addColorStop(0, "rgba(0, 0, 0, 0.25)");
+            innerGrad.addColorStop(0.15, "rgba(0, 0, 0, 0)");
+            innerGrad.addColorStop(0.85, "rgba(0, 0, 0, 0)");
+            innerGrad.addColorStop(1, "rgba(0, 0, 0, 0.4)");
+            ctx.fillStyle = innerGrad;
+            ctx.fillRect(lc.x, lc.y, lc.w, avatarH);
         }
         ctx.restore();
 
@@ -1226,11 +1260,13 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         });
 
         const pillarW = config.statsBox?.pillarW || 24;
-        const pillarH = config.statsBox?.pillarH || 65;
-        const pillarY = sb.y + 38;
+        const pillarH = config.statsBox?.pillarH || (isCompact && sb.h >= 240 ? 80 : 65);
+        const pillarY = isCompact ? Math.round(sb.y + (sb.h / 2) - (pillarH / 2) + 2) : sb.y + 38;
+        const valY = isCompact ? pillarY - 12 : sb.y + 28;
+        const labelY = isCompact ? pillarY + pillarH + 24 : sb.y + 134;
 
         skillsList.forEach(s => {
-            drawCustomText(ctx, fonts.skillValues, String(s.val), s.x, sb.y + 28, "center", fontFamily);
+            drawCustomText(ctx, fonts.skillValues, String(s.val), s.x, valY, "center", fontFamily);
 
             ctx.fillStyle = "#2e233d";
             roundRect(ctx, s.x - (pillarW / 2), pillarY, pillarW, pillarH, 4, true);
@@ -1240,7 +1276,7 @@ async function renderOsuCard(user, topScores = [], options = {}) {
             ctx.fillStyle = "#ffffff";
             roundRect(ctx, s.x - (pillarW / 2), pillarY + pillarH - fillH, pillarW, fillH, 4, true);
 
-            drawCustomText(ctx, fonts.skillLabels, s.label, s.x, sb.y + 134, "center", fontFamily);
+            drawCustomText(ctx, fonts.skillLabels, s.label, s.x, labelY, "center", fontFamily);
         });
     }
 

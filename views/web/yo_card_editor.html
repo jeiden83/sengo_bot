@@ -452,10 +452,11 @@
                             <input type="range" id="canvasHeightSlider" min="300" max="1600" step="10" value="720" oninput="updateCanvasDimension('height', parseInt(this.value));">
                         </div>
                     </div>
-                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                    <div style="display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
                         <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 720)">Estándar (1300x720)</button>
                         <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 480)">Compacto (1300x480)</button>
                         <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1200, 420)">Ultra-Compacto (1200x420)</button>
+                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem; border-color: #a855f7; color: #c084fc; font-weight: 700;" onclick="applySingleRowPreset()">⚡ 1 Sola Línea (1300x310)</button>
                     </div>
                 </div>
 
@@ -690,22 +691,34 @@
                     </label>
                     <div class="grid-2">
                         <div class="control-group">
-                            <label class="control-label">Posición X <span class="val" id="val-cardX">135</span></label>
-                            <input type="range" id="cardX" min="20" max="1100" value="135" oninput="updateCurrentCard('x', parseInt(this.value));">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                <label class="control-label" style="margin: 0;">Posición X</label>
+                                <input type="number" id="num-cardX" value="135" style="width: 65px; padding: 2px 5px; font-size: 0.75rem; background: #1a0f26; border: 1px solid #3d235a; color: #fff; border-radius: 4px;" onchange="updateCurrentCard('x', parseInt(this.value));">
+                            </div>
+                            <input type="range" id="cardX" min="0" max="2200" value="135" oninput="updateCurrentCard('x', parseInt(this.value));">
                         </div>
                         <div class="control-group">
-                            <label class="control-label">Posición Y <span class="val" id="val-cardY">100</span></label>
-                            <input type="range" id="cardY" min="20" max="650" value="100" oninput="updateCurrentCard('y', parseInt(this.value));">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                <label class="control-label" style="margin: 0;">Posición Y</label>
+                                <input type="number" id="num-cardY" value="100" style="width: 65px; padding: 2px 5px; font-size: 0.75rem; background: #1a0f26; border: 1px solid #3d235a; color: #fff; border-radius: 4px;" onchange="updateCurrentCard('y', parseInt(this.value));">
+                            </div>
+                            <input type="range" id="cardY" min="0" max="1400" value="100" oninput="updateCurrentCard('y', parseInt(this.value));">
                         </div>
                     </div>
                     <div class="grid-2">
                         <div class="control-group">
-                            <label class="control-label">Ancho (W) <span class="val" id="val-cardW">270</span></label>
-                            <input type="range" id="cardW" min="50" max="1200" value="270" oninput="updateCurrentCard('w', parseInt(this.value));">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                <label class="control-label" style="margin: 0;">Ancho (W)</label>
+                                <input type="number" id="num-cardW" value="270" style="width: 65px; padding: 2px 5px; font-size: 0.75rem; background: #1a0f26; border: 1px solid #3d235a; color: #fff; border-radius: 4px;" onchange="updateCurrentCard('w', parseInt(this.value));">
+                            </div>
+                            <input type="range" id="cardW" min="40" max="2200" value="270" oninput="updateCurrentCard('w', parseInt(this.value));">
                         </div>
                         <div class="control-group">
-                            <label class="control-label">Alto (H) <span class="val" id="val-cardH">445</span></label>
-                            <input type="range" id="cardH" min="40" max="600" value="445" oninput="updateCurrentCard('h', parseInt(this.value));">
+                            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px;">
+                                <label class="control-label" style="margin: 0;">Alto (H)</label>
+                                <input type="number" id="num-cardH" value="445" style="width: 65px; padding: 2px 5px; font-size: 0.75rem; background: #1a0f26; border: 1px solid #3d235a; color: #fff; border-radius: 4px;" onchange="updateCurrentCard('h', parseInt(this.value));">
+                            </div>
+                            <input type="range" id="cardH" min="40" max="1400" value="445" oninput="updateCurrentCard('h', parseInt(this.value));">
                         </div>
                     </div>
                     <div class="grid-2">
@@ -730,14 +743,32 @@
                     <div id="spec-leftCol" class="specific-panel">
                         <div class="control-group" style="margin-bottom: 8px;">
                             <label class="control-label">Formato de Tarjeta</label>
-                            <select id="leftColFormatSelect" onchange="state.cards.leftCol.format=this.value; render();">
+                            <select id="leftColFormatSelect" onchange="setLeftColFormat(this.value);">
                                 <option value="full">Completa (Avatar + Nivel + Medallas)</option>
                                 <option value="compact">Compacta (Solo Avatar)</option>
                             </select>
                         </div>
-                        <div class="grid-2">
+                        <div class="control-group" style="margin-bottom: 8px;">
+                            <label class="control-label">Escalar Forma del Avatar</label>
+                            <div style="display: flex; gap: 6px; margin-bottom: 6px;">
+                                <button type="button" class="btn btn-secondary" onclick="setAvatarShape('square');" style="flex: 1; padding: 6px 8px; font-size: 0.75rem; border-color: #a855f7;">📐 Cuadrado (1:1)</button>
+                                <button type="button" class="btn btn-secondary" onclick="setAvatarShape('full');" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;">📏 Original (270x445)</button>
+                            </div>
+                            <label class="checkbox-label">
+                                <input type="checkbox" id="lockAvatarSquareChk" onchange="toggleLockAvatarSquare(this.checked);">
+                                <span style="font-size: 0.78rem;">Bloquear proporción cuadrada 1:1 (W = H)</span>
+                            </label>
+                        </div>
+                        <div class="control-group" style="margin-bottom: 8px;">
+                            <label class="control-label">Modo de Ajuste (Foto de Perfil)</label>
+                            <select id="leftColFitSelect" onchange="state.leftCol.avatarFit=this.value; render();">
+                                <option value="cover">Cubrir Todo (Cover - Rellena caja)</option>
+                                <option value="contain">Contener Completo (Contain - Sin recorte)</option>
+                            </select>
+                        </div>
+                        <div class="grid-2" id="leftColFullSettings">
                             <div class="control-group">
-                                <label class="control-label">Alto de Avatar <span class="val" id="val-avatarH">265</span></label>
+                                <label class="control-label">Alto de Avatar (Modo Full) <span class="val" id="val-avatarH">265</span></label>
                                 <input type="range" min="150" max="450" value="265" oninput="state.leftCol.avatarH=parseInt(this.value); render();">
                             </div>
                             <div class="control-group">
@@ -746,7 +777,7 @@
                             </div>
                         </div>
                         <label class="checkbox-label" style="margin-top: 6px;">
-                            <input type="checkbox" checked onchange="state.leftCol.avatarShadow=this.checked; render();">
+                            <input type="checkbox" id="avatarShadowCheckbox" checked onchange="state.leftCol.avatarShadow=this.checked; render();">
                             <span>Sombra Interior Suave en Avatar</span>
                         </label>
                     </div>
@@ -782,14 +813,22 @@
                                 <option value="compact">Compacta (Solo 4 Skills)</option>
                             </select>
                         </div>
+                        <div class="control-group" style="margin-bottom: 8px;">
+                            <label class="control-label">Ajuste Horizontal Rápido</label>
+                            <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                                <button type="button" class="btn btn-secondary" onclick="setStatsBoxPreset(575, 270);" style="flex: 1; padding: 6px 8px; font-size: 0.72rem; border-color: #a855f7;">1 Línea (575x270)</button>
+                                <button type="button" class="btn btn-secondary" onclick="setStatsBoxPreset(450, 270);" style="flex: 1; padding: 6px 8px; font-size: 0.72rem;">Angosto (450x270)</button>
+                                <button type="button" class="btn btn-secondary" onclick="setStatsBoxPreset(865, 155);" style="flex: 1; padding: 6px 8px; font-size: 0.72rem;">Original (865x155)</button>
+                            </div>
+                        </div>
                         <div class="grid-2">
                             <div class="control-group">
                                 <label class="control-label">Ancho Pilares Skill <span class="val" id="val-pilW">24</span></label>
-                                <input type="range" min="14" max="45" value="24" oninput="state.statsBox.pillarW=parseInt(this.value); render();">
+                                <input type="range" min="14" max="50" value="24" oninput="state.statsBox.pillarW=parseInt(this.value); render();">
                             </div>
                             <div class="control-group">
                                 <label class="control-label">Alto Pilares Skill <span class="val" id="val-pilH">65</span></label>
-                                <input type="range" min="35" max="95" value="65" oninput="state.statsBox.pillarH=parseInt(this.value); render();">
+                                <input type="range" min="35" max="140" value="65" oninput="state.statsBox.pillarH=parseInt(this.value); render();">
                             </div>
                         </div>
                     </div>
@@ -1163,7 +1202,8 @@
             leftCol: {
                 avatarH: 265,
                 avatarAlignY: 0.2,
-                avatarShadow: true
+                avatarShadow: true,
+                avatarFit: 'cover'
             },
             rankBox: {
                 flagW: 84,
@@ -1492,6 +1532,85 @@
         }
 
         // CONTROL DE TARJETAS INDIVIDUALES
+        let lockAvatarSquare = false;
+
+        function toggleLockAvatarSquare(val) {
+            lockAvatarSquare = val;
+            if (lockAvatarSquare) {
+                setAvatarShape('square');
+            }
+        }
+
+        function setAvatarShape(mode) {
+            const lc = state.cards.leftCol;
+            if (!lc) return;
+            if (mode === 'square') {
+                const size = lc.w || 270;
+                lc.h = size;
+                updateCurrentCard('h', size);
+            } else if (mode === 'full') {
+                lc.w = 270;
+                lc.h = 445;
+                updateCurrentCard('w', 270);
+                updateCurrentCard('h', 445);
+            }
+            render();
+        }
+
+        function setLeftColFormat(fmt) {
+            state.cards.leftCol.format = fmt;
+            if (fmt === 'compact') {
+                if (state.cards.leftCol.h > state.cards.leftCol.w) {
+                    setAvatarShape('square');
+                }
+            }
+            render();
+        }
+
+        function setStatsBoxPreset(w, h) {
+            const sb = state.cards.statsBox;
+            if (!sb) return;
+            sb.w = w;
+            sb.h = h;
+            updateCurrentCard('w', w);
+            updateCurrentCard('h', h);
+            render();
+        }
+
+        function applySingleRowPreset() {
+            setCanvasPreset(1300, 310);
+            state.cards.header.visible = false;
+            state.cards.playBox.visible = false;
+            state.cards.sengoBox.visible = false;
+            state.cards.footer.visible = false;
+
+            // Avatar cuadrado 270x270 en formato compacto
+            state.cards.leftCol.visible = true;
+            state.cards.leftCol.format = 'compact';
+            state.cards.leftCol.x = 30;
+            state.cards.leftCol.y = 20;
+            state.cards.leftCol.w = 270;
+            state.cards.leftCol.h = 270;
+
+            // Rango y Nombre
+            state.cards.rankBox.visible = true;
+            state.cards.rankBox.x = 325;
+            state.cards.rankBox.y = 20;
+            state.cards.rankBox.w = 345;
+            state.cards.rankBox.h = 270;
+
+            // Skills compactas distribuidas
+            state.cards.statsBox.visible = true;
+            state.cards.statsBox.format = 'compact';
+            state.cards.statsBox.x = 695;
+            state.cards.statsBox.y = 20;
+            state.cards.statsBox.w = 575;
+            state.cards.statsBox.h = 270;
+
+            if (selectedCardKey) selectCard(selectedCardKey);
+            render();
+        }
+
         function selectCard(key) {
             selectedCardKey = key;
             const c = state.cards[key];
@@ -1499,14 +1618,24 @@
 
             document.getElementById('cardEditorTitle').textContent = `🛠️ Editando: ${key}`;
             document.getElementById('cardVisibleCheckbox').checked = c.visible !== false;
-            document.getElementById('cardX').value = c.x || 100;
-            document.getElementById('val-cardX').textContent = c.x || 100;
-            document.getElementById('cardY').value = c.y || 100;
-            document.getElementById('val-cardY').textContent = c.y || 100;
-            document.getElementById('cardW').value = c.w || 300;
-            document.getElementById('val-cardW').textContent = c.w || 300;
-            document.getElementById('cardH').value = c.h || 200;
-            document.getElementById('val-cardH').textContent = c.h || 200;
+
+            const xVal = c.x != null ? c.x : 100;
+            const yVal = c.y != null ? c.y : 100;
+            const wVal = c.w != null ? c.w : 300;
+            const hVal = c.h != null ? c.h : 200;
+
+            document.getElementById('cardX').value = xVal;
+            const numX = document.getElementById('num-cardX'); if (numX) numX.value = xVal;
+
+            document.getElementById('cardY').value = yVal;
+            const numY = document.getElementById('num-cardY'); if (numY) numY.value = yVal;
+
+            document.getElementById('cardW').value = wVal;
+            const numW = document.getElementById('num-cardW'); if (numW) numW.value = wVal;
+
+            document.getElementById('cardH').value = hVal;
+            const numH = document.getElementById('num-cardH'); if (numH) numH.value = hVal;
+
             document.getElementById('cardCustomBg').value = c.customBg || state.theme.cardColor;
             document.getElementById('cardCustomBgText').value = c.customBg || state.theme.cardColor;
             document.getElementById('cardIndivRadius').value = c.customRadius != null ? c.customRadius : state.theme.cardRadius;
@@ -1519,6 +1648,10 @@
             if (key === 'leftCol') {
                 const sel = document.getElementById('leftColFormatSelect');
                 if (sel) sel.value = c.format || 'full';
+                const fitSel = document.getElementById('leftColFitSelect');
+                if (fitSel) fitSel.value = state.leftCol.avatarFit || 'cover';
+                const sqChk = document.getElementById('lockAvatarSquareChk');
+                if (sqChk) sqChk.checked = !!lockAvatarSquare;
             } else if (key === 'statsBox') {
                 const sel = document.getElementById('statsBoxFormatSelect');
                 if (sel) sel.value = c.format || 'full';
@@ -1554,10 +1687,32 @@
                 const toggleEl = document.getElementById(`vis-${selectedCardKey}`);
                 if (toggleEl) toggleEl.checked = val;
             }
-            if (prop === 'x') document.getElementById('val-cardX').textContent = val;
-            if (prop === 'y') document.getElementById('val-cardY').textContent = val;
-            if (prop === 'w') document.getElementById('val-cardW').textContent = val;
-            if (prop === 'h') document.getElementById('val-cardH').textContent = val;
+            if (prop === 'x') {
+                const sld = document.getElementById('cardX'); if (sld) sld.value = val;
+                const num = document.getElementById('num-cardX'); if (num) num.value = val;
+            }
+            if (prop === 'y') {
+                const sld = document.getElementById('cardY'); if (sld) sld.value = val;
+                const num = document.getElementById('num-cardY'); if (num) num.value = val;
+            }
+            if (prop === 'w') {
+                const sld = document.getElementById('cardW'); if (sld) sld.value = val;
+                const num = document.getElementById('num-cardW'); if (num) num.value = val;
+                if (selectedCardKey === 'leftCol' && lockAvatarSquare) {
+                    state.cards.leftCol.h = val;
+                    const hSld = document.getElementById('cardH'); if (hSld) hSld.value = val;
+                    const hNum = document.getElementById('num-cardH'); if (hNum) hNum.value = val;
+                }
+            }
+            if (prop === 'h') {
+                const sld = document.getElementById('cardH'); if (sld) sld.value = val;
+                const num = document.getElementById('num-cardH'); if (num) num.value = val;
+                if (selectedCardKey === 'leftCol' && lockAvatarSquare) {
+                    state.cards.leftCol.w = val;
+                    const wSld = document.getElementById('cardW'); if (wSld) wSld.value = val;
+                    const wNum = document.getElementById('num-cardW'); if (wNum) wNum.value = val;
+                }
+            }
             if (prop === 'customRadius') document.getElementById('val-cardRadius').textContent = val + 'px';
             if (prop === 'customBg') document.getElementById('cardCustomBgText').value = val;
             render();
@@ -1834,6 +1989,33 @@
                 ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
             } catch (e) {
                 console.warn('drawImage failed:', e);
+            }
+        }
+
+        function drawImageFit(ctx, img, x, y, w, h, fit = 'cover', alignY = 0.5) {
+            if (!img || !img.complete || !img.naturalWidth || !img.naturalHeight) return;
+            if (fit === 'contain') {
+                const imgRatio = img.naturalWidth / img.naturalHeight;
+                const targetRatio = w / h;
+                let dw, dh, dx, dy;
+                if (imgRatio > targetRatio) {
+                    dw = w;
+                    dh = w / imgRatio;
+                    dx = x;
+                    dy = y + (h - dh) * alignY;
+                } else {
+                    dh = h;
+                    dw = h * imgRatio;
+                    dx = x + (w - dw) / 2;
+                    dy = y;
+                }
+                try {
+                    ctx.drawImage(img, dx, dy, dw, dh);
+                } catch (e) {
+                    console.warn('drawImage contain failed:', e);
+                }
+            } else {
+                drawImageCover(ctx, img, x, y, w, h, alignY);
             }
         }
 
@@ -2252,7 +2434,8 @@
                 }
                 ctx.clip();
                 if (avatarImg) {
-                    drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, leftCol.avatarAlignY);
+                    const avatarFit = leftCol.avatarFit || 'cover';
+                    drawImageFit(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, avatarFit, leftCol.avatarAlignY);
                 } else {
                     ctx.fillStyle = '#22142a';
                     ctx.fillRect(lc.x, lc.y, lc.w, avatarH);
@@ -2472,17 +2655,23 @@
                         : sb.x + (defaultFullOffsets[idx] || (380 + idx * 120))
                 }));
 
+                const pillarW = statsBox.pillarW || 24;
+                const pillarH = statsBox.pillarH || (isCompact && sb.h >= 240 ? 80 : 65);
+                const pillarY = isCompact ? Math.round(sb.y + (sb.h / 2) - (pillarH / 2) + 2) : sb.y + 38;
+                const valY = isCompact ? pillarY - 12 : sb.y + 28;
+                const labelY = isCompact ? pillarY + pillarH + 24 : sb.y + 134;
+
                 skillsList.forEach(s => {
-                    drawCustomText('skillValues', String(s.val), s.x, sb.y + 28, 'center');
+                    drawCustomText('skillValues', String(s.val), s.x, valY, 'center');
 
                     ctx.fillStyle = '#2e233d';
-                    roundRect(ctx, s.x - (statsBox.pillarW / 2), sb.y + 38, statsBox.pillarW, statsBox.pillarH, 4, true);
+                    roundRect(ctx, s.x - (pillarW / 2), pillarY, pillarW, pillarH, 4, true);
 
-                    const fillH = statsBox.pillarH * (s.val / 100);
+                    const fillH = pillarH * (s.val / 100);
                     ctx.fillStyle = '#ffffff';
-                    roundRect(ctx, s.x - (statsBox.pillarW / 2), sb.y + 38 + statsBox.pillarH - fillH, statsBox.pillarW, fillH, 4, true);
+                    roundRect(ctx, s.x - (pillarW / 2), pillarY + pillarH - fillH, pillarW, fillH, 4, true);
 
-                    drawCustomText('skillLabels', s.label, s.x, sb.y + 134, 'center');
+                    drawCustomText('skillLabels', s.label, s.x, labelY, 'center');
                 });
             }
 

@@ -90,7 +90,8 @@
   "leftCol": {
     "avatarH": 265,
     "avatarAlignY": 0.2,
-    "avatarShadow": true
+    "avatarShadow": true,
+    "avatarFit": "cover"
   },
   "rankBox": {
     "flagW": 84,
