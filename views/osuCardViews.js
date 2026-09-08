@@ -742,9 +742,9 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         }
     }
 
-    const config = getDefaultTemplate();
-    const width = 1300;
-    const height = 720;
+    const config = options?.templateConfig || getDefaultTemplate();
+    const width = options?.canvasWidth || config.canvas?.width || 1300;
+    const height = options?.canvasHeight || config.canvas?.height || 720;
 
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
@@ -815,7 +815,7 @@ async function renderOsuCard(user, topScores = [], options = {}) {
 
     const [bgImg, avatarImg, flagImg, mapCoverImg, calculatedPlaySR] = await Promise.all([
         fetchImageSafe(activeBgUrl),
-        fetchImageSafe(user.avatar_url),
+        fetchImageSafe(user.avatar_url || (user.id ? `https://a.ppy.sh/${user.id}` : null)),
         fetchImageSafe(flagUrl),
         fetchImageSafe(coverUrl),
         srPromise
@@ -943,11 +943,16 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const lc = cards.leftCol;
         drawCardBox(lc);
 
-        const avatarH = config.leftCol?.avatarH || 265;
+        const isCompact = lc.format === "compact";
         const avatarRadius = lc.customRadius != null ? lc.customRadius : (theme.cardRadius || 14);
+        const avatarH = isCompact ? lc.h : (config.leftCol?.avatarH || 265);
 
         ctx.save();
-        roundRect(ctx, lc.x, lc.y, lc.w, avatarH, { tl: avatarRadius, tr: avatarRadius, bl: 0, br: 0 });
+        if (isCompact) {
+            roundRect(ctx, lc.x, lc.y, lc.w, avatarH, avatarRadius);
+        } else {
+            roundRect(ctx, lc.x, lc.y, lc.w, avatarH, { tl: avatarRadius, tr: avatarRadius, bl: 0, br: 0 });
+        }
         ctx.clip();
 
         if (avatarImg) {
@@ -955,35 +960,37 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         }
         ctx.restore();
 
-        // Nivel
-        const levelTextY = lc.y + avatarH + 42;
-        drawCustomText(ctx, fonts.levelText, `lvl ${level.current || 100}`, lc.x + (lc.w / 2), levelTextY, "center", fontFamily);
+        if (!isCompact) {
+            // Nivel
+            const levelTextY = lc.y + avatarH + 42;
+            drawCustomText(ctx, fonts.levelText, `lvl ${level.current || 100}`, lc.x + (lc.w / 2), levelTextY, "center", fontFamily);
 
-        const lvlBarX = lc.x + 15;
-        const lvlBarW = lc.w - 30;
-        const lvlBarY = levelTextY + 12;
-        const lvlProg = Math.min(100, Math.max(0, level.progress || 0));
+            const lvlBarX = lc.x + 15;
+            const lvlBarW = lc.w - 30;
+            const lvlBarY = levelTextY + 12;
+            const lvlProg = Math.min(100, Math.max(0, level.progress || 0));
 
-        ctx.fillStyle = "#2e253c";
-        roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
-        ctx.fillStyle = "#ffffff";
-        roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
+            ctx.fillStyle = "#2e253c";
+            roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
+            ctx.fillStyle = "#ffffff";
+            roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
 
-        // Medallas
-        const medalsTextY = lvlBarY + 58;
-        const medalsLabel = isEs ? "Medallas" : "Medals";
-        drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
+            // Medallas
+            const medalsTextY = lvlBarY + 58;
+            const medalsLabel = isEs ? "Medallas" : "Medals";
+            drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
 
-        const medalBarY = medalsTextY + 12;
-        ctx.fillStyle = "#2e253c";
-        roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+            const medalBarY = medalsTextY + 12;
+            ctx.fillStyle = "#2e253c";
+            roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
 
-        const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
-        medalGrad.addColorStop(0, "#60a5fa");
-        medalGrad.addColorStop(0.5, "#ec4899");
-        medalGrad.addColorStop(1, "#a855f7");
-        ctx.fillStyle = medalGrad;
-        roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * medalsPct) / 100), 8, 4, true);
+            const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+            medalGrad.addColorStop(0, "#60a5fa");
+            medalGrad.addColorStop(0.5, "#ec4899");
+            medalGrad.addColorStop(1, "#a855f7");
+            ctx.fillStyle = medalGrad;
+            roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * medalsPct) / 100), 8, 4, true);
+        }
     }
 
     // 4. BLOQUE CENTRO-IZQUIERDA: TARJETA DE PERFIL Y RANKINGS
@@ -1163,45 +1170,60 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         const sb = cards.statsBox;
         drawCardBox(sb);
 
-        const rankedScoreVal = Number(stats.ranked_score || stats.total_score || 0).toLocaleString(numLocale);
-        const rankedScoreLabel = isEs ? "Puntuación Ranked" : "Ranked Score";
-        const accLabel = isEs ? "Precisión" : "Accuracy";
-        const playcountLabel = isEs ? "Partidas" : "Playcount";
+        const isCompact = sb.format === "compact";
 
-        drawCustomText(ctx, fonts.statsLabels, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily);
-        drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily);
+        if (!isCompact) {
+            const rankedScoreVal = Number(stats.ranked_score || stats.total_score || 0).toLocaleString(numLocale);
+            const rankedScoreLabel = isEs ? "Puntuación Ranked" : "Ranked Score";
+            const accLabel = isEs ? "Precisión" : "Accuracy";
+            const playcountLabel = isEs ? "Partidas" : "Playcount";
 
-        let skillsList = [];
+            drawCustomText(ctx, fonts.statsLabels, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily);
+            drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily);
+            drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily);
+        }
+
+        let rawSkills = [];
         if (mode === "taiko") {
-            skillsList = [
-                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
-                { label: "STAMINA", val: skillData.stamina, x: sb.x + 500 },
-                { label: "COLOR", val: skillData.color, x: sb.x + 620 },
-                { label: "RHYTHM", val: skillData.rhythm, x: sb.x + 750 }
+            rawSkills = [
+                { label: "ACC", val: skillData.acc },
+                { label: "STAMINA", val: skillData.stamina },
+                { label: "COLOR", val: skillData.color },
+                { label: "RHYTHM", val: skillData.rhythm }
             ];
         } else if (mode === "fruits") {
-            skillsList = [
-                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
-                { label: "MOVEMENT", val: skillData.movement, x: sb.x + 500 },
-                { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
-                { label: "READING", val: skillData.reading, x: sb.x + 750 }
+            rawSkills = [
+                { label: "ACC", val: skillData.acc },
+                { label: "MOVEMENT", val: skillData.movement },
+                { label: "SPEED", val: skillData.speed },
+                { label: "READING", val: skillData.reading }
             ];
         } else if (mode === "mania") {
-            skillsList = [
-                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
-                { label: "STREAM", val: skillData.stream, x: sb.x + 500 },
-                { label: "JACK", val: skillData.jack, x: sb.x + 620 },
-                { label: "TECH", val: skillData.tech, x: sb.x + 750 }
+            rawSkills = [
+                { label: "ACC", val: skillData.acc },
+                { label: "STREAM", val: skillData.stream },
+                { label: "JACK", val: skillData.jack },
+                { label: "TECH", val: skillData.tech }
             ];
         } else {
-            skillsList = [
-                { label: "ACC", val: skillData.acc, x: sb.x + 380 },
-                { label: "AIM", val: skillData.aim, x: sb.x + 500 },
-                { label: "SPEED", val: skillData.speed, x: sb.x + 620 },
-                { label: "READING", val: skillData.reading, x: sb.x + 750 }
+            rawSkills = [
+                { label: "ACC", val: skillData.acc },
+                { label: "AIM", val: skillData.aim },
+                { label: "SPEED", val: skillData.speed },
+                { label: "READING", val: skillData.reading }
             ];
         }
+
+        const defaultFullOffsets = [380, 500, 620, 750];
+        const skillsList = rawSkills.map((s, idx) => {
+            let x;
+            if (isCompact) {
+                x = sb.x + (sb.w * (idx + 0.5) / rawSkills.length);
+            } else {
+                x = sb.x + (defaultFullOffsets[idx] || (380 + idx * 120));
+            }
+            return { ...s, x };
+        });
 
         const pillarW = config.statsBox?.pillarW || 24;
         const pillarH = config.statsBox?.pillarH || 65;

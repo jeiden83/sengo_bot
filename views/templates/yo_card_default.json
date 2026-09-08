@@ -1,4 +1,8 @@
 {
+  "canvas": {
+    "width": 1300,
+    "height": 720
+  },
   "theme": {
     "bgColor": "#27152c",
     "cardColor": "#170c1a",
@@ -34,6 +38,7 @@
     },
     "leftCol": {
       "visible": true,
+      "format": "full",
       "x": 77,
       "y": 100,
       "w": 270,
@@ -61,6 +66,7 @@
     },
     "statsBox": {
       "visible": true,
+      "format": "full",
       "x": 368,
       "y": 390,
       "w": 865,

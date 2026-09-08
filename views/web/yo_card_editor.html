@@ -441,6 +441,25 @@
             <!-- PESTAÑA 1: ESTILO GLOBAL Y FONDOS -->
             <div id="tab-style" class="tab-content active">
                 <div class="section-card">
+                    <div class="section-title">📐 Dimensiones del Lienzo (Canvas)</div>
+                    <div class="grid-2">
+                        <div class="control-group">
+                            <label class="control-label">Ancho del Lienzo <span class="val" id="val-canvasWidth">1300px</span></label>
+                            <input type="range" id="canvasWidthSlider" min="600" max="2400" step="10" value="1300" oninput="updateCanvasDimension('width', parseInt(this.value));">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label">Alto del Lienzo <span class="val" id="val-canvasHeight">720px</span></label>
+                            <input type="range" id="canvasHeightSlider" min="300" max="1600" step="10" value="720" oninput="updateCanvasDimension('height', parseInt(this.value));">
+                        </div>
+                    </div>
+                    <div style="display: flex; gap: 8px; margin-top: 8px;">
+                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 720)">Estándar (1300x720)</button>
+                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1300, 480)">Compacto (1300x480)</button>
+                        <button type="button" class="btn btn-secondary" style="flex: 1; padding: 6px 8px; font-size: 0.75rem;" onclick="setCanvasPreset(1200, 420)">Ultra-Compacto (1200x420)</button>
+                    </div>
+                </div>
+
+                <div class="section-card">
                     <div class="section-title">🎨 Colores Base Globales</div>
                     <div class="grid-2">
                         <div class="control-group">
@@ -709,10 +728,17 @@
                     <div class="section-title">⚙️ Ajustes de Contenido de la Tarjeta</div>
                     <!-- Left Col Specifics -->
                     <div id="spec-leftCol" class="specific-panel">
+                        <div class="control-group" style="margin-bottom: 8px;">
+                            <label class="control-label">Formato de Tarjeta</label>
+                            <select id="leftColFormatSelect" onchange="state.cards.leftCol.format=this.value; render();">
+                                <option value="full">Completa (Avatar + Nivel + Medallas)</option>
+                                <option value="compact">Compacta (Solo Avatar)</option>
+                            </select>
+                        </div>
                         <div class="grid-2">
                             <div class="control-group">
                                 <label class="control-label">Alto de Avatar <span class="val" id="val-avatarH">265</span></label>
-                                <input type="range" min="150" max="350" value="265" oninput="state.leftCol.avatarH=parseInt(this.value); render();">
+                                <input type="range" min="150" max="450" value="265" oninput="state.leftCol.avatarH=parseInt(this.value); render();">
                             </div>
                             <div class="control-group">
                                 <label class="control-label">Alineación Y Avatar</label>
@@ -749,6 +775,13 @@
 
                     <!-- Stats Box Specifics -->
                     <div id="spec-statsBox" class="specific-panel" style="display: none;">
+                        <div class="control-group" style="margin-bottom: 8px;">
+                            <label class="control-label">Formato de Tarjeta</label>
+                            <select id="statsBoxFormatSelect" onchange="state.cards.statsBox.format=this.value; render();">
+                                <option value="full">Completa (Stats + 4 Skills)</option>
+                                <option value="compact">Compacta (Solo 4 Skills)</option>
+                            </select>
+                        </div>
                         <div class="grid-2">
                             <div class="control-group">
                                 <label class="control-label">Ancho Pilares Skill <span class="val" id="val-pilW">24</span></label>
@@ -1087,6 +1120,10 @@
 
         // ESTADO GLOBAL COMPLETO REACTIVO
         const state = {
+            canvas: {
+                width: 1300,
+                height: 720
+            },
             theme: {
                 bgColor: '#27152c',
                 cardColor: '#170c1a',
@@ -1116,10 +1153,10 @@
             },
             cards: {
                 header: { visible: true },
-                leftCol: { visible: true, x: 77, y: 100, w: 270, h: 445, customBg: null, customRadius: 14 },
+                leftCol: { visible: true, format: 'full', x: 77, y: 100, w: 270, h: 445, customBg: null, customRadius: 14 },
                 rankBox: { visible: true, x: 368, y: 100, w: 270, h: 270, customBg: null, customRadius: 14 },
                 playBox: { visible: true, x: 659, y: 100, w: 575, h: 270, customBg: null, customRadius: 14 },
-                statsBox: { visible: true, x: 368, y: 390, w: 865, h: 155, customBg: null, customRadius: 14 },
+                statsBox: { visible: true, format: 'full', x: 368, y: 390, w: 865, h: 155, customBg: null, customRadius: 14 },
                 sengoBox: { visible: true, x: 79, y: 565, w: 1156, h: 75, customBg: null, customRadius: 14 },
                 footer: { visible: true }
             },
@@ -1478,6 +1515,36 @@
             document.querySelectorAll('.specific-panel').forEach(p => p.style.display = 'none');
             const specEl = document.getElementById(`spec-${key}`);
             if (specEl) specEl.style.display = 'block';
+
+            if (key === 'leftCol') {
+                const sel = document.getElementById('leftColFormatSelect');
+                if (sel) sel.value = c.format || 'full';
+            } else if (key === 'statsBox') {
+                const sel = document.getElementById('statsBoxFormatSelect');
+                if (sel) sel.value = c.format || 'full';
+            }
+        }
+
+        function updateCanvasDimension(dim, val) {
+            if (!state.canvas) state.canvas = { width: 1300, height: 720 };
+            state.canvas[dim] = val;
+            if (dim === 'width') {
+                const lbl = document.getElementById('val-canvasWidth');
+                if (lbl) lbl.textContent = val + 'px';
+                const sld = document.getElementById('canvasWidthSlider');
+                if (sld) sld.value = val;
+            } else {
+                const lbl = document.getElementById('val-canvasHeight');
+                if (lbl) lbl.textContent = val + 'px';
+                const sld = document.getElementById('canvasHeightSlider');
+                if (sld) sld.value = val;
+            }
+            render();
+        }
+
+        function setCanvasPreset(w, h) {
+            updateCanvasDimension('width', w);
+            updateCanvasDimension('height', h);
         }
 
         function updateCurrentCard(prop, val) {
@@ -1875,10 +1942,14 @@
 
         function render() {
             const { theme, cards, header, leftCol, rankBox, playBox, statsBox, sengoBox, player } = state;
+            const W = state.canvas?.width || 1300;
+            const H = state.canvas?.height || 720;
+            if (canvas.width !== W) canvas.width = W;
+            if (canvas.height !== H) canvas.height = H;
 
             // 1. Fondo base
             ctx.fillStyle = theme.bgColor;
-            ctx.fillRect(0, 0, 1300, 720);
+            ctx.fillRect(0, 0, W, H);
 
             // Imagen de fondo (Cover del perfil de osu o Imagen personalizada)
             const activeBgUrl = theme.useProfileCover && theme.profileCoverUrl ? theme.profileCoverUrl : theme.bgImageUrl;
@@ -1890,7 +1961,7 @@
                     if (theme.bgImageBlur > 0) {
                         ctx.filter = `blur(${theme.bgImageBlur}px)`;
                     }
-                    drawImageCover(ctx, bgImg, 0, 0, 1300, 720);
+                    drawImageCover(ctx, bgImg, 0, 0, W, H);
                     ctx.restore();
 
                     // Degradado de mezcla sobre la imagen
@@ -1898,26 +1969,26 @@
                         ctx.save();
                         ctx.globalAlpha = theme.bgGradientIntensity || 0.75;
                         if (theme.bgGradientMode === 'radial') {
-                            const radGrad = ctx.createRadialGradient(650, 360, 180, 650, 360, 720);
+                            const radGrad = ctx.createRadialGradient(W / 2, H / 2, 180, W / 2, H / 2, Math.max(W, H) / 1.5);
                             radGrad.addColorStop(0, 'rgba(0,0,0,0)');
                             radGrad.addColorStop(0.65, 'rgba(0,0,0,0.35)');
                             radGrad.addColorStop(1, theme.bgColor);
                             ctx.fillStyle = radGrad;
                         } else if (theme.bgGradientMode === 'vertical') {
-                            const vertGrad = ctx.createLinearGradient(0, 0, 0, 720);
+                            const vertGrad = ctx.createLinearGradient(0, 0, 0, H);
                             vertGrad.addColorStop(0, 'rgba(0,0,0,0.1)');
                             vertGrad.addColorStop(0.5, 'rgba(0,0,0,0.4)');
                             vertGrad.addColorStop(1, theme.bgColor);
                             ctx.fillStyle = vertGrad;
                         } else if (theme.bgGradientMode === 'horizontal') {
-                            const horizGrad = ctx.createLinearGradient(0, 0, 1300, 0);
+                            const horizGrad = ctx.createLinearGradient(0, 0, W, 0);
                             horizGrad.addColorStop(0, theme.bgColor);
                             horizGrad.addColorStop(0.3, 'rgba(0,0,0,0.2)');
                             horizGrad.addColorStop(0.7, 'rgba(0,0,0,0.2)');
                             horizGrad.addColorStop(1, theme.bgColor);
                             ctx.fillStyle = horizGrad;
                         }
-                        ctx.fillRect(0, 0, 1300, 720);
+                        ctx.fillRect(0, 0, W, H);
                         ctx.restore();
                     }
                 }
@@ -1933,17 +2004,17 @@
             if (theme.patternType === 'staggered_dots' || theme.patternType === 'milin_dots') {
                 const rowH = sp * 0.866;
                 let rowIndex = 0;
-                for (let y = pWidth; y < 720 + rowH; y += rowH, rowIndex++) {
+                for (let y = pWidth; y < H + rowH; y += rowH, rowIndex++) {
                     const offsetX = (rowIndex % 2 === 1) ? sp / 2 : 0;
-                    for (let x = offsetX; x < 1300 + sp; x += sp) {
+                    for (let x = offsetX; x < W + sp; x += sp) {
                         ctx.beginPath();
                         ctx.arc(x, y, pWidth, 0, Math.PI * 2);
                         ctx.fill();
                     }
                 }
             } else if (theme.patternType === 'dots') {
-                for (let x = sp / 2; x < 1300; x += sp) {
-                    for (let y = sp / 2; y < 720; y += sp) {
+                for (let x = sp / 2; x < W; x += sp) {
+                    for (let y = sp / 2; y < H; y += sp) {
                         ctx.beginPath();
                         ctx.arc(x, y, pWidth, 0, Math.PI * 2);
                         ctx.fill();
@@ -1951,28 +2022,28 @@
                 }
             } else if (theme.patternType === 'grid') {
                 ctx.lineWidth = pWidth;
-                for (let x = 0; x < 1300; x += sp) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 720); ctx.stroke();
+                for (let x = 0; x < W; x += sp) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
                 }
-                for (let y = 0; y < 720; y += sp) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                for (let y = 0; y < H; y += sp) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
                 }
             } else if (theme.patternType === 'diamonds') {
                 ctx.lineWidth = pWidth;
-                for (let x = -720; x < 1300 + 720; x += sp * 1.4) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 720, 720); ctx.stroke();
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - 720, 720); ctx.stroke();
+                for (let x = -H; x < W + H; x += sp * 1.4) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + H, H); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x - H, H); ctx.stroke();
                 }
             } else if (theme.patternType === 'stripes') {
                 ctx.lineWidth = pWidth;
-                for (let x = -720; x < 1300; x += sp) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + 720, 720); ctx.stroke();
+                for (let x = -H; x < W; x += sp) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x + H, H); ctx.stroke();
                 }
             } else if (theme.patternType === 'crosses') {
                 ctx.lineWidth = pWidth;
                 const arm = sp * 0.28;
-                for (let x = sp / 2; x < 1300; x += sp) {
-                    for (let y = sp / 2; y < 720; y += sp) {
+                for (let x = sp / 2; x < W; x += sp) {
+                    for (let y = sp / 2; y < H; y += sp) {
                         ctx.beginPath();
                         ctx.moveTo(x - arm, y); ctx.lineTo(x + arm, y);
                         ctx.moveTo(x, y - arm); ctx.lineTo(x, y + arm);
@@ -1983,9 +2054,9 @@
                 ctx.lineWidth = pWidth;
                 const r = sp * 0.6;
                 const hHex = r * Math.sqrt(3);
-                for (let y = 0, row = 0; y < 720 + hHex; y += hHex * 0.75, row++) {
+                for (let y = 0, row = 0; y < H + hHex; y += hHex * 0.75, row++) {
                     const off = (row % 2 === 1) ? r * 1.5 : 0;
-                    for (let x = -r + off; x < 1300 + r; x += r * 3) {
+                    for (let x = -r + off; x < W + r; x += r * 3) {
                         ctx.beginPath();
                         for (let a = 0; a < 6; a++) {
                             const angle = (a * 60) * Math.PI / 180;
@@ -1999,9 +2070,9 @@
                 }
             } else if (theme.patternType === 'waves') {
                 ctx.lineWidth = pWidth;
-                for (let y = sp; y < 720; y += sp) {
+                for (let y = sp; y < H; y += sp) {
                     ctx.beginPath();
-                    for (let x = 0; x <= 1300; x += 10) {
+                    for (let x = 0; x <= W; x += 10) {
                         const wy = y + Math.sin(x * 0.025) * (sp * 0.25);
                         if (x === 0) ctx.moveTo(x, wy); else ctx.lineTo(x, wy);
                     }
@@ -2010,8 +2081,8 @@
             } else if (theme.patternType === 'triangles') {
                 ctx.lineWidth = pWidth;
                 const th = sp * 0.866;
-                for (let y = 0; y < 720 + th; y += th) {
-                    for (let x = 0; x < 1300 + sp; x += sp) {
+                for (let y = 0; y < H + th; y += th) {
+                    for (let x = 0; x < W + sp; x += sp) {
                         ctx.beginPath();
                         ctx.moveTo(x, y + th);
                         ctx.lineTo(x + sp / 2, y);
@@ -2022,8 +2093,8 @@
                 }
             } else if (theme.patternType === 'scanlines') {
                 ctx.lineWidth = 1;
-                for (let y = 0; y < 720; y += 4) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                for (let y = 0; y < H; y += 4) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
                 }
             }
             ctx.globalAlpha = 1.0;
@@ -2048,68 +2119,68 @@
                 const midStop = Math.max(0.1, Math.min(0.9, 1.0 - vFeather * 0.5));
 
                 if (theme.bgVignetteMode === 'top_bottom') {
-                    const topH = Math.max(20, 720 * vSpread);
+                    const topH = Math.max(20, H * vSpread);
                     // Sombra superior
                     const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
                     gradTop.addColorStop(0, colorSolid);
                     gradTop.addColorStop(midStop, colorMid);
                     gradTop.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradTop;
-                    ctx.fillRect(0, 0, 1300, topH);
+                    ctx.fillRect(0, 0, W, topH);
 
                     // Sombra inferior
-                    const gradBot = ctx.createLinearGradient(0, 720, 0, 720 - topH);
+                    const gradBot = ctx.createLinearGradient(0, H, 0, H - topH);
                     gradBot.addColorStop(0, colorSolid);
                     gradBot.addColorStop(midStop, colorMid);
                     gradBot.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradBot;
-                    ctx.fillRect(0, 720 - topH, 1300, topH);
+                    ctx.fillRect(0, H - topH, W, topH);
                 } else if (theme.bgVignetteMode === 'radial') {
-                    const rMax = Math.hypot(650, 360);
+                    const rMax = Math.hypot(W / 2, H / 2);
                     const rMin = Math.max(0, rMax * (1 - vSpread));
-                    const radGrad = ctx.createRadialGradient(650, 360, rMin, 650, 360, rMax);
+                    const radGrad = ctx.createRadialGradient(W / 2, H / 2, rMin, W / 2, H / 2, rMax);
                     radGrad.addColorStop(0, colorTransparent);
                     radGrad.addColorStop(Math.min(0.9, 0.4 + 0.5 * (1 - vFeather)), colorMid);
                     radGrad.addColorStop(1, colorSolid);
                     ctx.fillStyle = radGrad;
-                    ctx.fillRect(0, 0, 1300, 720);
+                    ctx.fillRect(0, 0, W, H);
                 } else if (theme.bgVignetteMode === 'top_only') {
-                    const topH = Math.max(20, 720 * vSpread);
+                    const topH = Math.max(20, H * vSpread);
                     const gradTop = ctx.createLinearGradient(0, 0, 0, topH);
                     gradTop.addColorStop(0, colorSolid);
                     gradTop.addColorStop(midStop, colorMid);
                     gradTop.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradTop;
-                    ctx.fillRect(0, 0, 1300, topH);
+                    ctx.fillRect(0, 0, W, topH);
                 } else if (theme.bgVignetteMode === 'bottom_only') {
-                    const botH = Math.max(20, 720 * vSpread);
-                    const gradBot = ctx.createLinearGradient(0, 720, 0, 720 - botH);
+                    const botH = Math.max(20, H * vSpread);
+                    const gradBot = ctx.createLinearGradient(0, H, 0, H - botH);
                     gradBot.addColorStop(0, colorSolid);
                     gradBot.addColorStop(midStop, colorMid);
                     gradBot.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradBot;
-                    ctx.fillRect(0, 720 - botH, 1300, botH);
+                    ctx.fillRect(0, H - botH, W, botH);
                 } else if (theme.bgVignetteMode === 'sides') {
-                    const sideW = Math.max(20, 650 * vSpread);
+                    const sideW = Math.max(20, (W / 2) * vSpread);
                     // Lado izquierdo
                     const gradL = ctx.createLinearGradient(0, 0, sideW, 0);
                     gradL.addColorStop(0, colorSolid);
                     gradL.addColorStop(midStop, colorMid);
                     gradL.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradL;
-                    ctx.fillRect(0, 0, sideW, 720);
+                    ctx.fillRect(0, 0, sideW, H);
 
                     // Lado derecho
-                    const gradR = ctx.createLinearGradient(1300, 0, 1300 - sideW, 0);
+                    const gradR = ctx.createLinearGradient(W, 0, W - sideW, 0);
                     gradR.addColorStop(0, colorSolid);
                     gradR.addColorStop(midStop, colorMid);
                     gradR.addColorStop(1, colorTransparent);
                     ctx.fillStyle = gradR;
-                    ctx.fillRect(1300 - sideW, 0, sideW, 720);
+                    ctx.fillRect(W - sideW, 0, sideW, H);
                 } else if (theme.bgVignetteMode === 'corners') {
-                    const rCorner = Math.max(50, 600 * vSpread);
+                    const rCorner = Math.max(50, Math.min(W, H) * 0.85 * vSpread);
                     const corners = [
-                        [0, 0], [1300, 0], [0, 720], [1300, 720]
+                        [0, 0], [W, 0], [0, H], [W, H]
                     ];
                     for (const [cx, cy] of corners) {
                         const cGrad = ctx.createRadialGradient(cx, cy, 0, cx, cy, rCorner);
@@ -2117,7 +2188,7 @@
                         cGrad.addColorStop(1 - vFeather * 0.4, colorMid);
                         cGrad.addColorStop(1, colorTransparent);
                         ctx.fillStyle = cGrad;
-                        ctx.fillRect(cx === 0 ? 0 : 1300 - rCorner, cy === 0 ? 0 : 720 - rCorner, rCorner, rCorner);
+                        ctx.fillRect(cx === 0 ? 0 : W - rCorner, cy === 0 ? 0 : H - rCorner, rCorner, rCorner);
                     }
                 }
                 ctx.restore();
@@ -2167,56 +2238,65 @@
                 const lc = cards.leftCol;
                 drawStyledCard('leftCol');
 
+                const isCompact = lc.format === 'compact';
+                const avatarH = isCompact ? lc.h : leftCol.avatarH;
+
                 // Avatar
                 const avatarImg = getImage(player.avatar);
                 ctx.save();
                 const lcRad = lc.customRadius != null ? lc.customRadius : theme.cardRadius;
-                roundRect(ctx, lc.x, lc.y, lc.w, leftCol.avatarH, { tl: lcRad, tr: lcRad, bl: 0, br: 0 });
+                if (isCompact) {
+                    roundRect(ctx, lc.x, lc.y, lc.w, avatarH, lcRad);
+                } else {
+                    roundRect(ctx, lc.x, lc.y, lc.w, avatarH, { tl: lcRad, tr: lcRad, bl: 0, br: 0 });
+                }
                 ctx.clip();
                 if (avatarImg) {
-                    drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, leftCol.avatarH, leftCol.avatarAlignY);
+                    drawImageCover(ctx, avatarImg, lc.x, lc.y, lc.w, avatarH, leftCol.avatarAlignY);
                 } else {
                     ctx.fillStyle = '#22142a';
-                    ctx.fillRect(lc.x, lc.y, lc.w, leftCol.avatarH);
+                    ctx.fillRect(lc.x, lc.y, lc.w, avatarH);
                 }
 
                 // Sombra interior en avatar
                 if (leftCol.avatarShadow) {
-                    const innerGrad = ctx.createLinearGradient(0, lc.y, 0, lc.y + leftCol.avatarH);
+                    const innerGrad = ctx.createLinearGradient(0, lc.y, 0, lc.y + avatarH);
                     innerGrad.addColorStop(0, 'rgba(0, 0, 0, 0.25)');
                     innerGrad.addColorStop(0.15, 'rgba(0, 0, 0, 0)');
                     innerGrad.addColorStop(0.85, 'rgba(0, 0, 0, 0)');
                     innerGrad.addColorStop(1, 'rgba(0, 0, 0, 0.4)');
                     ctx.fillStyle = innerGrad;
-                    ctx.fillRect(lc.x, lc.y, lc.w, leftCol.avatarH);
+                    ctx.fillRect(lc.x, lc.y, lc.w, avatarH);
                 }
                 ctx.restore();
 
-                // Nivel
-                const levelTextY = lc.y + leftCol.avatarH + 42;
-                drawCustomText('levelText', `lvl ${player.level}`, lc.x + (lc.w / 2), levelTextY, 'center');
+                if (!isCompact) {
+                    // Nivel
+                    const levelTextY = lc.y + leftCol.avatarH + 42;
+                    drawCustomText('levelText', `lvl ${player.level}`, lc.x + (lc.w / 2), levelTextY, 'center');
 
-                const lvlBarX = lc.x + 15;
-                const lvlBarW = lc.w - 30;
-                const lvlBarY = levelTextY + 12;
-                ctx.fillStyle = '#2e253c';
-                roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
-                ctx.fillStyle = '#ffffff';
-                roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * player.levelProg) / 100), 8, 4, true);
+                    const lvlBarX = lc.x + 15;
+                    const lvlBarW = lc.w - 30;
+                    const lvlBarY = levelTextY + 12;
+                    ctx.fillStyle = '#2e253c';
+                    roundRect(ctx, lvlBarX, lvlBarY, lvlBarW, 8, 4, true);
+                    ctx.fillStyle = '#ffffff';
+                    roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * player.levelProg) / 100), 8, 4, true);
 
-                // Medallas
-                const medalsTextY = lvlBarY + 58;
-                drawCustomText('medalsText', `Medals ${player.medalsPct}% ${player.medalsCount}/352`, lc.x + (lc.w / 2), medalsTextY, 'center');
+                    // Medallas
+                    const medalsTextY = lvlBarY + 58;
+                    drawCustomText('medalsText', `Medals ${player.medalsPct}% ${player.medalsCount}/352`, lc.x + (lc.w / 2), medalsTextY, 'center');
 
-                const medalBarY = medalsTextY + 12;
-                ctx.fillStyle = '#2e253c';
-                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
-                const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
-                medalGrad.addColorStop(0, '#60a5fa');
-                medalGrad.addColorStop(0.5, '#ec4899');
-                medalGrad.addColorStop(1, '#a855f7');
-                ctx.fillStyle = medalGrad;
-                roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * player.medalsPct) / 100), 8, 4, true);
+                    const medalBarY = medalsTextY + 12;
+                    ctx.fillStyle = '#2e253c';
+                    roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+                    const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+                    medalGrad.addColorStop(0, '#60a5fa');
+                    medalGrad.addColorStop(0.5, '#ec4899');
+                    medalGrad.addColorStop(1, '#a855f7');
+                    ctx.fillStyle = medalGrad;
+                    roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * player.medalsPct) / 100), 8, 4, true);
+                }
             }
 
             // 4. Tarjeta Rankings
@@ -2369,16 +2449,28 @@
                 const sb = cards.statsBox;
                 drawStyledCard('statsBox');
 
-                drawCustomText('statsLabels', `Total Score: ${player.totalScore}`, sb.x + 24, sb.y + 42, 'left');
-                drawCustomText('statsLabels', `Accuracy: ${player.acc}%`, sb.x + 44, sb.y + 88, 'left');
-                drawCustomText('statsLabels', `Playcount ${player.playcount}`, sb.x + 44, sb.y + 134, 'left');
+                const isCompact = sb.format === 'compact';
 
-                const skillsList = [
-                    { label: 'ACC', val: player.skills.acc, x: sb.x + 380 },
-                    { label: 'AIM', val: player.skills.aim, x: sb.x + 500 },
-                    { label: 'SPEED', val: player.skills.speed, x: sb.x + 620 },
-                    { label: 'READING', val: player.skills.reading, x: sb.x + 750 }
+                if (!isCompact) {
+                    drawCustomText('statsLabels', `Total Score: ${player.totalScore}`, sb.x + 24, sb.y + 42, 'left');
+                    drawCustomText('statsLabels', `Accuracy: ${player.acc}%`, sb.x + 44, sb.y + 88, 'left');
+                    drawCustomText('statsLabels', `Playcount ${player.playcount}`, sb.x + 44, sb.y + 134, 'left');
+                }
+
+                const skills = [
+                    { label: 'ACC', val: player.skills.acc },
+                    { label: 'AIM', val: player.skills.aim },
+                    { label: 'SPEED', val: player.skills.speed },
+                    { label: 'READING', val: player.skills.reading }
                 ];
+
+                const defaultFullOffsets = [380, 500, 620, 750];
+                const skillsList = skills.map((s, idx) => ({
+                    ...s,
+                    x: isCompact
+                        ? sb.x + (sb.w * (idx + 0.5) / skills.length)
+                        : sb.x + (defaultFullOffsets[idx] || (380 + idx * 120))
+                }));
 
                 skillsList.forEach(s => {
                     drawCustomText('skillValues', String(s.val), s.x, sb.y + 28, 'center');
@@ -2417,11 +2509,11 @@
             if (showGrid) {
                 ctx.strokeStyle = 'rgba(236, 72, 153, 0.4)';
                 ctx.lineWidth = 1;
-                for (let x = 0; x < 1300; x += 50) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, 720); ctx.stroke();
+                for (let x = 0; x < W; x += 50) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
                 }
-                for (let y = 0; y < 720; y += 50) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(1300, y); ctx.stroke();
+                for (let y = 0; y < H; y += 50) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
                 }
             }
         }
