@@ -472,6 +472,7 @@ function argsParserNoCommand(args, options = {}) {
     let srFilters = [];
     let ppEngine = null;
     let ppBenchmark = false;
+    let topsSort = false;
 
     const extractId = str => {
         if (!str) return null;
@@ -1030,7 +1031,7 @@ function argsParserNoCommand(args, options = {}) {
             const knownFlags = new Set([
                 'pm', 'mx', 'pp', 'ps', 'server', 'srv', 'regional', 'region',
                 'pais', 'country', 'friends', 'amigo', 'amigos', 'page', 'pagina',
-                'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke',
+                'wins', 'w', 'wr', 'winrate', 'nc', 'nochoke', 'tops', 'top',
                 // ponytail: flags de skin y modos de juego para evitar falsos positivos
                 'delete', 'set', 'nombre', 'name', 'borrar',
                 'osu', 'std', 'standard', 'ctb', 'catch', 'fruits', 'fruit',
@@ -1212,9 +1213,16 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
+        // Si es exactamente "-tops"
+        if (arg === "-tops") {
+            topsSort = true;
+            continue;
+        }
+
         // Si es exactamente "-top"
         if (arg === "-top") {
             reworkTop = true;
+            topsSort = true;
             continue;
         }
 
@@ -1295,7 +1303,8 @@ function argsParserNoCommand(args, options = {}) {
         'nemesis': nemesis,
         'srFilters': srFilters,
         'ppEngine': ppEngine,
-        'ppBenchmark': ppBenchmark
+        'ppBenchmark': ppBenchmark,
+        'topsSort': topsSort
     };
     return parsed_args;
 }

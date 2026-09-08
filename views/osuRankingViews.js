@@ -6,22 +6,30 @@ const { t } = require("../utils/i18n.js");
 /**
  * Genera el embed con la tabla del ranking nacional o regional comprimido.
  */
-function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isScoreSort, isTotalScoreSort, isRegional, regionName, message }) {
+function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeName, targetGamemode, isAccSort, isScoreSort, isTotalScoreSort, isRegional, regionName, message, isTopsSort }) {
     const locale = message.locale || 'es';
     const countryInfo = country_codes[countryFilter];
     const countryName = countryInfo ? countryInfo.country : (chunk[0]?.user?.country?.name || countryFilter);
     const embedColor = getEmbedColor(message);
 
     const lines = chunk.map((item, index) => {
-        const flag = `:flag_${item.user.country_code.toLowerCase()}:`;
+        const flagCode = (item.user?.country_code || countryFilter).toLowerCase();
+        const flag = `:flag_${flagCode}:`;
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
+        const userId = item.user_id || item.user?.id;
+        const username = item.username || item.user?.username;
         
         let mainValueStr = "";
         let secondLine = "";
         const rankLabel = t(locale, 'nacional.rank_label');
 
-        if (isScoreSort || isTotalScoreSort) {
+        if (isTopsSort) {
+            const topsCount = (item.tops_count || 0).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US');
+            const snipesCount = (item.snipes_count || 0).toLocaleString(locale === 'es' ? 'es-ES' : 'en-US');
+            mainValueStr = `**${topsCount} ${t(locale, 'nacional.tops_label')}**`;
+            secondLine = `  ↳ ${t(locale, 'nacional.snipes_label')}: **${snipesCount}**`;
+        } else if (isScoreSort || isTotalScoreSort) {
             const scoreVal = isTotalScoreSort ? (item.total_score || 0) : (item.ranked_score || 0);
             const scoreSuffix = isTotalScoreSort ? (locale === 'es' ? 'score total' : 'total score') : 'score';
             const scoreStr = `**${scoreVal.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')} ${scoreSuffix}**`;
@@ -59,7 +67,7 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
             }
         }
 
-        const firstLine = `${localRank} ${flag} [**${item.user.username}**](https://osu.ppy.sh/users/${item.user.id}) - ${mainValueStr}`;
+        const firstLine = `${localRank} ${flag} [**${username}**](https://osu.ppy.sh/users/${userId}) - ${mainValueStr}`;
         return `${firstLine}\n${secondLine}`;
     });
 
@@ -69,7 +77,9 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
     const toRank = startIndex + chunk.length;
 
     let titlePrefix = t(locale, 'nacional.embed_title_national');
-    if (isRegional) {
+    if (isTopsSort) {
+        titlePrefix = t(locale, 'nacional.embed_title_tops');
+    } else if (isRegional) {
         titlePrefix = t(locale, 'nacional.embed_title_regional');
         if (isScoreSort) {
             titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score' : 'by Score'}`;

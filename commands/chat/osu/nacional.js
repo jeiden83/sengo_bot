@@ -1,4 +1,5 @@
 const OsuUserModel = require("../../../models/OsuUserModel.js");
+const OsuScoreModel = require("../../../models/OsuScoreModel.js");
 const { doOsuRankingEmbed, doSubdivisionsEmbed } = require("../../../views/osuRankingViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const { argsParserNoCommand } = require("../../utils/argsParser.js");
@@ -161,15 +162,24 @@ async function run(messages, args) {
     const pageSize = viewMode === 'subdivisions' ? 20 : 10;
     let startIndex = (embedPage - 1) * pageSize;
 
-    const isAccSort = !!parsed_args.accSort;
-    const isScoreSort = !!parsed_args.scoreSort;
-    const isTotalScoreSort = !!parsed_args.totalScoreSort;
+    const isTopsSort = Boolean(parsed_args.topsSort || (Array.isArray(args) && args.some(a => typeof a === 'string' && (a.toLowerCase() === '-tops' || a.toLowerCase() === '-top'))));
+    const isAccSort = !isTopsSort && !!parsed_args.accSort;
+    const isScoreSort = !isTopsSort && !!parsed_args.scoreSort;
+    const isTotalScoreSort = !isTopsSort && !!parsed_args.totalScoreSort;
     let playersList = [];
     let total = 0;
     let progressMessage = null;
 
     if (viewMode === 'subdivisions') {
         total = subdivisions.length;
+    } else if (isTopsSort) {
+        try {
+            playersList = await OsuScoreModel.getCountryTopsLeaderboard(countryFilter);
+            total = playersList.length;
+        } catch (err) {
+            console.error("Error al obtener ranking nacional de tops:", err);
+            return t(locale, 'nacional.err_fetch_national', { country: countryFilter });
+        }
     } else if (viewMode === 'regional') {
         try {
             const currentData = await OsuUserModel.fetchRegionalRankingPage(countryFilter, selectedRegion, targetGamemode, embedPage);
@@ -305,9 +315,14 @@ async function run(messages, args) {
     }
 
     if (viewMode !== 'subdivisions' && (!playersList || playersList.length === 0)) {
-        const noPlayersMsg = viewMode === 'regional'
-            ? t(locale, 'nacional.err_no_regional_players', { region: selectedRegionName, mode: gamemodeName })
-            : t(locale, 'nacional.err_no_national_players', { country: countryFilter, mode: gamemodeName });
+        let noPlayersMsg;
+        if (isTopsSort) {
+            noPlayersMsg = t(locale, 'nacional.err_no_tops_players', { country: countryFilter });
+        } else if (viewMode === 'regional') {
+            noPlayersMsg = t(locale, 'nacional.err_no_regional_players', { region: selectedRegionName, mode: gamemodeName });
+        } else {
+            noPlayersMsg = t(locale, 'nacional.err_no_national_players', { country: countryFilter, mode: gamemodeName });
+        }
         if (progressMessage) {
             await progressMessage.edit(noPlayersMsg);
             return;
@@ -337,6 +352,21 @@ async function run(messages, args) {
             isTotalScoreSort,
             isRegional: true,
             regionName: selectedRegionName,
+            message
+        });
+    } else if (isTopsSort) {
+        const chunk = playersList.slice(startIndex, startIndex + 10);
+        embed = doOsuRankingEmbed({
+            chunk,
+            total,
+            startIndex,
+            countryFilter,
+            gamemodeName: 'osu!standard',
+            targetGamemode: 'osu',
+            isAccSort: false,
+            isScoreSort: false,
+            isTotalScoreSort: false,
+            isTopsSort: true,
             message
         });
     } else {
@@ -447,6 +477,21 @@ async function run(messages, args) {
                     isScoreSort,
                     isRegional: true,
                     regionName: selectedRegionName,
+                    message
+                });
+            } else if (isTopsSort) {
+                const currentChunk = playersList.slice(startIndex, startIndex + 10);
+                currentEmbed = doOsuRankingEmbed({
+                    chunk: currentChunk,
+                    total,
+                    startIndex,
+                    countryFilter,
+                    gamemodeName: 'osu!standard',
+                    targetGamemode: 'osu',
+                    isAccSort: false,
+                    isScoreSort: false,
+                    isTotalScoreSort: false,
+                    isTopsSort: true,
                     message
                 });
             } else {

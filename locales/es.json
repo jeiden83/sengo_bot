@@ -276,9 +276,9 @@
       "usage": "s.replay [adjuntando archivo .osr]"
     },
     "nacional": {
-      "header": "Ranking nacional de rendimiento",
-      "body": "Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!.",
-      "usage": "s.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).\ns.nacional -regional : Muestra el ranking regional para tu región.\ns.nacional -regional lista : Muestra las regiones/subdivisiones de tu país.\ns.nacional -regional Anzoategui : Muestra el ranking de la región Anzoátegui."
+      "header": "Ranking nacional de rendimiento y tops",
+      "body": "Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!, o el ranking nacional de tops (#1s) y snipes con el flag -tops.",
+      "usage": "s.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional -tops : Muestra el ranking nacional de tops (#1s) y snipes de tu país.\ns.nacional -tops -pais MX : Muestra el ranking de tops (#1s) y snipes de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).\ns.nacional -regional : Muestra el ranking regional para tu región.\ns.nacional -regional lista : Muestra las regiones/subdivisiones de tu país.\ns.nacional -regional Anzoategui : Muestra el ranking de la región Anzoátegui."
     },
     "regional": {
       "header": "Ranking regional de rendimiento",
@@ -332,8 +332,8 @@
     },
     "snipes": {
       "header": "Número de tops nacionales (#1s)",
-      "body": "Muestra cuántos tops nacionales tienes, promedio de PP, mods más usados y año con más snipes.\n\n**Modos de vista:**\n• **Normal**: Resumen con gráfico de barras por dificultad.\n• **`-d`**: Perfil de habilidad (estrellas, mappers, stats técnicos, hitos).\n• **`-nemesis`**: Rivales (a quién snipeaste y quién te snipeó).\n• **`-top`**: Lista paginada de tus #1s con filtros.\n\n**Filtros (en -top):**\n• `-m <mods>` / `-mx <mods>`: Mods exactos o contenidos.\n• `-? \"texto\"`: Busca por título/artista/dificultad.\n• `-g <pp>`: PP >= umbral.\n• `-sr<op><val>` o `-diff<op><val>`: Star rating (ej. `-sr>5`, `-sr<=7`).\n• `-r` / `-c` / `-acc`: Ordena por reciente, combo o precisión.\n• `-i <n>`: Embed individual del #1 en posición n.",
-      "usage": "s.snipes : Resumen de tus #1s nacionales.\ns.snipes 'usuario' : Los #1s del usuario indicado.\ns.snipes -d : Perfil de habilidad detallado.\ns.snipes -nemesis : Muestra rivales y actividad de snipes.\ns.snipes -top : Lista paginada de tus #1s.\ns.snipes -top -m HDHR : Filtra los #1s por mods exactos.\ns.snipes -top -sr>5 -sr<8 : Filtra por star rating entre 5★ y 8★.\ns.snipes -top -? \"freedom dive\" : Busca un mapa específico en tus #1s.\ns.snipes -top -g 300 : Muestra tus #1s con 300pp o más."
+      "body": "Muestra cuántos tops nacionales tienes, promedio de PP, mods más usados y año con más snipes.\n\n**Modos de vista:**\n• **Normal**: Resumen con gráfico de barras por dificultad.\n• **`-d`**: Perfil de habilidad (estrellas, mappers, stats técnicos, hitos).\n• **`-nemesis`**: Rivales (a quién snipeaste y quién te snipeó).\n• **`-top`**: Lista paginada de tus #1s con filtros.\n• **`-top -nacional`**: Ranking de tops (#1s) y snipes del país (admite `-pais <código>`).\n\n**Filtros (en -top):**\n• `-m <mods>` / `-mx <mods>`: Mods exactos o contenidos.\n• `-? \"texto\"`: Busca por título/artista/dificultad.\n• `-g <pp>`: PP >= umbral.\n• `-sr<op><val>` o `-diff<op><val>`: Star rating (ej. `-sr>5`, `-sr<=7`).\n• `-r` / `-c` / `-acc`: Ordena por reciente, combo o precisión.\n• `-i <n>`: Embed individual del #1 en posición n.",
+      "usage": "s.snipes : Resumen de tus #1s nacionales.\ns.snipes 'usuario' : Los #1s del usuario indicado.\ns.snipes -d : Perfil de habilidad detallado.\ns.snipes -nemesis : Muestra rivales y actividad de snipes.\ns.snipes -top : Lista paginada de tus #1s.\ns.snipes -top -nacional : Ranking de tops (#1s) y snipes de tu país.\ns.snipes -top -nacional -pais MX : Ranking de tops (#1s) y snipes de México.\ns.snipes -top -m HDHR : Filtra los #1s por mods exactos.\ns.snipes -top -sr>5 -sr<8 : Filtra por star rating entre 5★ y 8★.\ns.snipes -top -? \"freedom dive\" : Busca un mapa específico en tus #1s.\ns.snipes -top -g 300 : Muestra tus #1s con 300pp o más."
     },
     "mapper": {
       "header": "Estadísticas de creador/mapper y Mapping Tracker",
@@ -930,11 +930,15 @@
     "err_fetch_national": "❌ Hubo un error al consultar el ranking nacional de **{country}** en la API de osu!.",
     "err_no_regional_players": "❌ No se encontraron jugadores en el ranking regional de **{region}** (Modo: `{mode}`).",
     "err_no_national_players": "❌ No se encontraron jugadores en el ranking nacional de **{country}** (Modo: `{mode}`).",
+    "err_no_tops_players": "❌ No se encontraron jugadores con tops nacionales en **{country}**.",
     "embed_title_national": "Ranking Nacional",
     "embed_title_regional": "Ranking Regional",
     "embed_title_acc": "Ranking Nacional por Precisión (Acc)",
     "embed_title_score": "Ranking Nacional por Score",
     "embed_title_totalscore": "Ranking Nacional por Score Total",
+    "embed_title_tops": "Ranking Nacional de Tops y Snipes",
+    "tops_label": "#1s",
+    "snipes_label": "Snipes",
     "no_players": "*No hay jugadores registrados en esta región.*",
     "footer_page_info": "Página {page} de {pages} • Rango #{from} - #{to} • Total: {total} jugadores",
     "subdivisions_title": "Regiones Disponibles - :flag_{code}: {country}",

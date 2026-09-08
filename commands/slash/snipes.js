@@ -27,6 +27,16 @@ const data = new SlashCommandBuilder()
         option.setName("dificultad")
             .setDescription("Filtra por Star Rating (ej: >5, >=5.5, <7, =5)")
             .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option.setName("nacional")
+            .setDescription("Muestra el ranking nacional de tops y snipes de un país (-nacional)")
+            .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("pais")
+            .setDescription("Código de país de 2 letras (ej: MX, VE, CL)")
+            .setRequired(false)
     );
 
 async function run(interaction, res) {
@@ -45,6 +55,16 @@ async function run(interaction, res) {
     const top = interaction.options.getBoolean("top");
     if (top) {
         args.push("-top");
+    }
+
+    const nacional = interaction.options.getBoolean("nacional");
+    if (nacional) {
+        args.push("-nacional");
+    }
+
+    const pais = interaction.options.getString("pais");
+    if (pais) {
+        args.push("-pais", pais);
     }
 
     const dificultad = interaction.options.getString("dificultad");

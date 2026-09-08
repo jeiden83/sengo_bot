@@ -47,6 +47,7 @@ async function executeTursoBatch(statements) {
 const topsCache = new Map();
 const countCache = new Map();
 const snipesCache = new Map();
+const countryTopsCache = new Map();
 const scoreRamDedupeCache = new Map();
 const MAX_DEDUPE_CACHE_SIZE = 250000;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
@@ -61,6 +62,7 @@ async function ensureTursoIndexes() {
             { sql: `CREATE INDEX IF NOT EXISTS idx_top_scores_user_country ON top_scores(user_id, country_code)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniper ON snipes_history(sniper_id)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniped ON snipes_history(sniped_id)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_country_sniper ON snipes_history(country_code, sniper_id)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_ranked_beatmaps_mode ON ranked_beatmaps(mode, status)` }
         ];
         await executeTursoBatch(statements);
@@ -184,6 +186,47 @@ async function getUserNationalTopsCount(userId, mode, countryCode = 'VE') {
     const cnt = rows[0]?.count || 0;
     setCachedItem(countCache, cacheKey, cnt);
     return cnt;
+}
+
+/**
+ * Obtiene el ranking de jugadores por tops nacionales (#1s) y snipes de un país
+ */
+async function getCountryTopsLeaderboard(countryCode = 'VE') {
+    await ensureTursoIndexes();
+    const cleanCountry = countryCode.toUpperCase().trim();
+    const cached = getCachedItem(countryTopsCache, cleanCountry);
+    if (cached) {
+        return cached;
+    }
+
+    const sql = `
+        SELECT 
+            t.user_id,
+            MAX(t.username) as username,
+            COUNT(*) as tops_count,
+            COALESCE(s.snipes_count, 0) as snipes_count
+        FROM top_scores t
+        LEFT JOIN (
+            SELECT sniper_id, COUNT(*) as snipes_count 
+            FROM snipes_history 
+            WHERE country_code = ? AND sniper_id != '0' AND sniper_id != '0.0'
+            GROUP BY sniper_id
+        ) s ON t.user_id = s.sniper_id
+        WHERE t.country_code = ? AND t.user_id != '0' AND t.user_id != '0.0' AND t.username != 'SYSTEM_NO_SCORE'
+        GROUP BY t.user_id
+        ORDER BY tops_count DESC, snipes_count DESC
+    `;
+
+    const rows = await executeTurso(sql, [cleanCountry, cleanCountry]);
+    const formatted = rows.map(r => ({
+        user_id: r.user_id.toString().replace(/\.0+$/, ''),
+        username: r.username,
+        tops_count: Number(r.tops_count) || 0,
+        snipes_count: Number(r.snipes_count) || 0
+    }));
+
+    setCachedItem(countryTopsCache, cleanCountry, formatted);
+    return formatted;
 }
 
 /**
@@ -610,5 +653,6 @@ module.exports = {
     recordSnipe,
     saveBeatmap,
     saveBeatmapsBatch,
-    saveBatchScoresAndSnipes
+    saveBatchScoresAndSnipes,
+    getCountryTopsLeaderboard
 };

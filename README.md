@@ -204,9 +204,15 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `s.snipes -nemesis`: Análisis de rivales (a quién has snipeado y quién te ha snipeado).
     * `s.snipes -top`: Lista paginada interactiva de tus #1s nacionales.
       * *Filtros en `-top`:* `-sr>5 -sr<8` (rango de estrellas), `+<mods>`, `-? "<texto>"`, `-g <pp>`, `-r`, `-c`, `-acc`, `-i <n>`.
+    * `s.snipes -top -nacional`: Tabla de clasificación de tops nacionales (#1s) y snipes de tu país (admite `-pais <código>` ej: `-pais MX`).
 * **`s.nacional [código/nombre]`**
-  Muestra la tabla de clasificación por PP de un país específico.
-  * *Flags:* `-acc` (ordena por precisión), `-regional [región]`, `-std` / `-taiko` / `-ctb` / `-mania`.
+  Muestra la tabla de clasificación por PP o por tops (#1s) de un país específico.
+  * *Flags:*
+    * `-tops`: Muestra el ranking nacional ordenado por cantidad de #1s y snipes del país (admite `-pais <código>` ej: `s.nacional -tops -pais MX`).
+    * `-acc`: Ordena por precisión (Acc).
+    * `-score` / `-totalscore`: Ordena por Ranked Score o Score Total.
+    * `-regional [región]`: Muestra la clasificación regional (osu!World).
+    * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
 * **`s.regional [región]`**
   Consulta clasificaciones regionales de [osu!World](https://osuworld.octo.moe/).
   * *Flags:* `lista` (muestra regiones disponibles), `-pais [código]`.

@@ -45,6 +45,22 @@ async function run(messages, args){
     const { message, res, reply } = messages;
     const locale = message.locale || 'es';
 
+    // Delegar a ranking nacional si se solicita el modo nacional (-nacional / -nac / -national)
+    const hasNacionalFlag = Array.isArray(args) && args.some(a => typeof a === 'string' && ['-nacional', '-nac', '-national'].includes(a.toLowerCase()));
+    if (hasNacionalFlag) {
+        const nacionalCommand = require("./nacional.js");
+        const passArgs = ['-tops'];
+        for (let i = 0; i < args.length; i++) {
+            const a = args[i];
+            const lower = typeof a === 'string' ? a.toLowerCase() : '';
+            if (['-nacional', '-nac', '-national', '-top', '-tops'].includes(lower)) {
+                continue;
+            }
+            passArgs.push(a);
+        }
+        return await nacionalCommand.run(messages, passArgs);
+    }
+
     // Extraer filtro de víctima (-user / -u / -victima)
     let targetVictimFilter = null;
     const cleanArgs = [];
@@ -94,7 +110,7 @@ async function run(messages, args){
 
     const isDetailed = osu_userdata.parsed_args?.detailed === true;
     const isNemesis = osu_userdata.parsed_args?.nemesis === true || cleanArgs.some(a => a.toLowerCase() === '-nemesis') || Boolean(targetVictimFilter);
-    const isTop = osu_userdata.parsed_args?.reworkTop === true || cleanArgs.some(a => a.toLowerCase() === '-top');
+    const isTop = osu_userdata.parsed_args?.reworkTop === true || cleanArgs.some(a => a.toLowerCase() === '-top' || a.toLowerCase() === '-tops');
     const isDetailedQuery = isDetailed || isTop;
  
     // Inicializar barra de progreso
