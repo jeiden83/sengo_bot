@@ -208,7 +208,7 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
         .setColor(embedColor)
         .setThumbnail("https://jeiden.s-ul.eu/3ssHl9Gd")
         .setFooter({
-            text: isEs ? `Página ${pageIndex + 1}/4 • Sengo Card Studio • .help card` : `Page ${pageIndex + 1}/4 • Sengo Card Studio • .help card`,
+            text: isEs ? `Página ${pageIndex + 1}/5 • Sengo Card Studio • ${prefix}help card` : `Page ${pageIndex + 1}/5 • Sengo Card Studio • ${prefix}help card`,
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
@@ -216,18 +216,25 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
     if (pageIndex === 0) {
         embed.setTitle(isEs ? "ℹ️ Guía del Comando .card (Perfil Visual)" : "ℹ️ .card Command Guide (Visual Profile)");
         embed.setDescription(isEs
-            ? "Genera una tarjeta visual de perfil de osu! con estadísticas locales del ecosistema Sengo y habilidades calculadas."
-            : "Generates a visual osu! profile card with local Sengo ecosystem stats and calculated skills."
+            ? "Genera una tarjeta visual de perfil de osu! con estadísticas locales del ecosistema Sengo, habilidades calculadas, personalización modular de lienzo y enlaces para userpages."
+            : "Generates a visual osu! profile card with local Sengo ecosystem stats, calculated skills, modular canvas customization, and osu! userpage support."
         );
         embed.addFields([
             {
                 name: isEs ? "📋 Uso del Comando" : "📋 Command Usage",
-                value: `\`\`\`\n${prefix}card\n  ▸ [usuario] : ${isEs ? 'Especifica el jugador a consultar' : 'Specify player to check'}\n  ▸ -embed    : ${isEs ? 'Envía la tarjeta en un embed' : 'Send card inside an embed'}\n  ▸ -refresh  : ${isEs ? 'Fuerza recarga ignorando caché de 1h' : 'Force refresh ignoring 1h cache'}\n\`\`\``,
+                value: `\`\`\`\n${prefix}card [usuario] [flags...]\n  ▸ [usuario]   : ${isEs ? 'Jugador a consultar (o tu cuenta vinculada)' : 'Player to check (or linked account)'}\n  ▸ -userpage   : ${isEs ? 'Envía por DM el BBCode seguro para tu perfil de osu!' : 'Sends secure BBCode to your DM for your osu! profile'}\n  ▸ -preset     : ${isEs ? 'Preset de diseño (-compact, -linea, -panoramica, etc.)' : 'Design preset (-compact, -single, -allline, etc.)'}\n  ▸ -modo       : ${isEs ? 'Modo de juego (-std, -taiko, -catch, -mania)' : 'Game mode (-std, -taiko, -catch, -mania)'}\n  ▸ -embed      : ${isEs ? 'Envía la tarjeta en un embed' : 'Send card inside an embed'}\n  ▸ -refresh    : ${isEs ? 'Fuerza recarga ignorando caché de 1h' : 'Force refresh ignoring 1h cache'}\n\`\`\``,
                 inline: false
             },
             {
                 name: isEs ? "🏷️ Alias Disponibles" : "🏷️ Available Aliases",
                 value: `\`${prefix}tarjeta\`, \`${prefix}tarjetadeperfil\`, \`${prefix}profilecard\`, \`${prefix}idcard\``,
+                inline: false
+            },
+            {
+                name: isEs ? "📐 Presets & Userpage" : "📐 Presets & Userpage",
+                value: isEs
+                    ? "Puedes elegir entre **7 presets de disposición de tarjetas** y generar un enlace dinámico para tu perfil oficial de osu!.\n👉 **Usa el botón `Presets` para ver todos los formatos y ejemplos.**"
+                    : "Choose between **7 card layout presets** and generate a dynamic link for your official osu! userpage.\n👉 **Use the `Presets` button to view all layouts and examples.**",
                 inline: false
             },
             {
@@ -239,6 +246,54 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             }
         ]);
     } else if (pageIndex === 1) {
+        embed.setTitle(isEs ? "📐 Presets de Diseño y Userpage de osu!" : "📐 Layout Presets & osu! Userpage");
+        embed.setDescription(isEs
+            ? "Personaliza el tamaño del lienzo y la disposición de las tarjetas modulares, o genera tu código **BBCode** dinámico para tu perfil de osu!:"
+            : "Customize canvas dimensions and modular card layouts, or generate dynamic **BBCode** for your osu! profile:"
+        );
+        embed.addFields([
+            {
+                name: isEs ? "🖼️ Presets de Diseño Disponibles" : "🖼️ Available Design Presets",
+                value: isEs
+                    ? [
+                        "• **`standard`** (`-full`): Formato original completo de 6 tarjetas (1920×1080).",
+                        "• **`compact`** (`-compacto`): Formato compacto (solo avatar y skills, sin nivel ni score).",
+                        "• **`linea`** (`-single`, `-1linea`): Fila única de 3 tarjetas (Avatar, Nombre y Skills).",
+                        "• **`lineaplay`** (`-singleplay`): Fila única de 4 tarjetas (+ Pinned Score).",
+                        "• **`panoramica`** (`-allline`): Fila panorámica de 5 tarjetas en una sola línea.",
+                        "• **`ultra`**: Formato ultrawide panorámico alargado.",
+                        "• **`mini`** (`-movil`): Tarjeta angosta y estilizada para móviles."
+                    ].join("\n")
+                    : [
+                        "• **`standard`** (`-full`): Original full 6-card canvas (1920×1080).",
+                        "• **`compact`**: Compact layout (avatar & skills only, no level or total score).",
+                        "• **`single_row`** (`-single`, `-linea`): Single row of 3 cards (Avatar, Name, Skills).",
+                        "• **`single_row_play`** (`-singleplay`): Single row of 4 cards (+ Pinned Score).",
+                        "• **`single_row_all`** (`-allline`, `-panoramica`): Panoramic row of 5 cards.",
+                        "• **`ultra`**: Extended ultrawide format.",
+                        "• **`mini_card`** (`-mini`, `-movil`): Narrow vertical card optimized for mobile."
+                    ].join("\n"),
+                inline: false
+            },
+            {
+                name: isEs ? "🔒 Flag -userpage (BBCode Privado)" : "🔒 -userpage Flag (Private BBCode)",
+                value: isEs
+                    ? `Usa \`${prefix}card -userpage\` (o con presets como \`${prefix}card -userpage -linea\`) para que el bot te envíe a tus **Mensajes Directos (DM)** el código BBCode seguro listo para pegar en tu perfil de osu!. La imagen se actualizará automáticamente cada vez que alguien visite tu perfil.`
+                    : `Use \`${prefix}card -userpage\` (or with presets like \`${prefix}card -userpage -linea\`) to receive a secure BBCode in your **Direct Messages (DM)** ready for your osu! profile. It updates automatically whenever someone visits your profile.`,
+                inline: false
+            },
+            {
+                name: isEs ? "💡 Ejemplos Rápidos" : "💡 Quick Examples",
+                value: [
+                    `\`${prefix}card -userpage\``,
+                    `\`${prefix}card -userpage -linea\``,
+                    `\`${prefix}card -userpage -compact -mania\``,
+                    `\`${prefix}card WhiteCat -panoramica\``
+                ].join("\n"),
+                inline: false
+            }
+        ]);
+    } else if (pageIndex === 2) {
         embed.setTitle(isEs ? "🏆 Títulos Dinámicos: Prefijos de Habilidad (Línea 1)" : "🏆 Dynamic Titles: Skill Prefixes (Line 1)");
         embed.setDescription(isEs
             ? "El **prefijo** indica el nivel de maestría general del jugador, calculado a partir de su **PP total**:"
@@ -253,7 +308,7 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             { name: isEs ? "🎯 Competente (Competent)" : "🎯 Competent", value: "`> 500 pp`", inline: true },
             { name: isEs ? "🌱 Novato (Novice)" : "🌱 Novice", value: isEs ? "`< 500 pp` (Por defecto)" : "`< 500 pp` (Default)", inline: false }
         ]);
-    } else if (pageIndex === 2) {
+    } else if (pageIndex === 3) {
         embed.setTitle(isEs ? "⚡ Títulos Dinámicos: Descriptores de Mods (Línea 1)" : "⚡ Dynamic Titles: Mod Descriptors (Line 1)");
         embed.setDescription(isEs
             ? "El **descriptor** refleja la afinidad o estilo de mods predominante según sus 100 mejores puntuaciones:"
@@ -269,7 +324,7 @@ function doCardHelpEmbed(message, pageIndex = 0, locale = 'es', prefix = 's.') {
             { name: isEs ? "💖 Amante de Mods (Mod-Loving)" : "💖 Mod-Loving", value: isEs ? "≤ 15% en NoMod (alta variedad)" : "≤ 15% in NoMod (high variety)", inline: true },
             { name: isEs ? "✨ Versátil (Versatile)" : "✨ Versatile", value: isEs ? "Distribución balanceada de mods" : "Balanced mod distribution", inline: true }
         ]);
-    } else if (pageIndex === 3) {
+    } else if (pageIndex === 4) {
         embed.setTitle(isEs ? "🌟 Títulos Dinámicos: Sufijos de Especialidad (Línea 2)" : "🌟 Dynamic Titles: Specialty Suffixes (Line 2)");
         embed.setDescription(isEs
             ? "El **sufijo** destaca el logro, especialidad o rasgo más sobresaliente del jugador en Sengo y osu!:"
@@ -303,19 +358,24 @@ function buildCardHelpNavigationRow(currentPageIndex = 0, locale = 'es') {
             .setStyle(currentPageIndex === 0 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("help_cardpage_1")
-            .setLabel(isEs ? "Prefijos" : "Prefixes")
-            .setEmoji("🏆")
+            .setLabel(isEs ? "Presets" : "Presets")
+            .setEmoji("📐")
             .setStyle(currentPageIndex === 1 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("help_cardpage_2")
-            .setLabel(isEs ? "Mods" : "Mods")
-            .setEmoji("⚡")
+            .setLabel(isEs ? "Prefijos" : "Prefixes")
+            .setEmoji("🏆")
             .setStyle(currentPageIndex === 2 ? ButtonStyle.Success : ButtonStyle.Secondary),
         new ButtonBuilder()
             .setCustomId("help_cardpage_3")
+            .setLabel(isEs ? "Mods" : "Mods")
+            .setEmoji("⚡")
+            .setStyle(currentPageIndex === 3 ? ButtonStyle.Success : ButtonStyle.Secondary),
+        new ButtonBuilder()
+            .setCustomId("help_cardpage_4")
             .setLabel(isEs ? "Especialidad" : "Specialty")
             .setEmoji("🌟")
-            .setStyle(currentPageIndex === 3 ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .setStyle(currentPageIndex === 4 ? ButtonStyle.Success : ButtonStyle.Secondary)
     );
 }
 
