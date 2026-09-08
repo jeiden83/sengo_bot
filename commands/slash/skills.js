@@ -73,7 +73,7 @@ async function run(interaction, res, chat_commands) {
     const args = [];
     if (targetUser) args.push(targetUser);
     if (modo) args.push(`-${modo}`);
-    if (isTop) args.push("-top");
+    if (isTop || skill || page || index) args.push("-top");
     if (skill) args.push(`-${skill}`);
     if (mods) args.push("-m", mods);
     if (page) args.push("-p", String(page));
