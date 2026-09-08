@@ -7,6 +7,7 @@ const { getEmbedColor } = require("./osuViewHelpers.js");
 const { getSupabaseClient } = require("../db/database.js");
 const OsuScoreModel = require("../models/OsuScoreModel.js");
 const BirthdayModel = require("../models/BirthdayModel.js");
+const { renderQueue } = require("../utils/RenderQueue.js");
 
 // Cargar plantilla base predeterminada de Sengo
 const TEMPLATE_DEFAULT_PATH = path.join(__dirname, "templates", "yo_card_default.json");
@@ -879,8 +880,6 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     if (mode === "std") mode = "osu";
     if (mode === "catch" || mode === "ctb") mode = "fruits";
 
-    const isEs = locale === "es";
-    const numLocale = isEs ? "de-DE" : "en-US";
     const presetKey = options?.preset || options?.templateConfig?.preset || "standard";
     const cacheKey = `user:${user.id}:${mode}:${locale}:${presetKey}`;
 
@@ -891,6 +890,21 @@ async function renderOsuCard(user, topScores = [], options = {}) {
         }
     }
 
+    // Limitar concurrencia mediante renderQueue para proteger la memoria RAM en Render.com
+    return renderQueue.add(async () => {
+        if (!options?.forceRefresh) {
+            const cached = cardBufferCache.get(cacheKey);
+            if (cached && (Date.now() - cached.timestamp) < CARD_CACHE_TTL_MS) {
+                return cached.buffer;
+            }
+        }
+        return _renderOsuCardCanvas(user, topScores, options, locale, mode, cacheKey);
+    });
+}
+
+async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cacheKey) {
+    const isEs = locale === "es";
+    const numLocale = isEs ? "de-DE" : "en-US";
     const config = options?.templateConfig || getDefaultTemplate();
     if (options?.preset || config.preset) {
         applyLayoutPresetToConfig(config, options?.preset || config.preset);

@@ -266,8 +266,8 @@ async function recalculateUserTops(task) {
 
             console.log(`[ReworkRecalcQueue] [${task.username}] Procesando jugada ${i + 1}/${plays.length} (Mapa: ${beatmapId})...`);
 
-            // 1. Obtener metadatos del mapa
-            const beatmap = await BeatmapModel.getBeatmap(beatmapId);
+            // 1. Obtener metadatos del mapa (prioridad 5: recálculo)
+            const beatmap = await BeatmapModel.getBeatmap(beatmapId, 5);
             if (!beatmap) continue;
 
             // 2. Obtener el archivo .osu
