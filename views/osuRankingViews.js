@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
-const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 /**
@@ -259,9 +259,85 @@ function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serve
     return embed;
 }
 
+/**
+ * Genera el embed de lista con las mejores jugadas por PP a nivel nacional (s.nacional -pp).
+ */
+async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFilter, gamemodeName, message, parsed_args, starsMap = {} }) {
+    const locale = message.locale || 'es';
+    const countryInfo = country_codes[countryFilter];
+    const countryName = countryInfo ? countryInfo.country : countryFilter;
+    const embedColor = getEmbedColor(message);
+
+    let active_filters = [];
+    if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
+    if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
+    if (parsed_args.searchFilter !== null && parsed_args.searchFilter !== undefined) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
+    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
+    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
+    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
+    if (parsed_args.ppThreshold !== null && parsed_args.ppThreshold !== undefined) active_filters.push(`PP >= ${parsed_args.ppThreshold}`);
+    if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
+        const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
+        active_filters.push(...srTexts);
+    }
+
+    let filterLine = active_filters.length > 0
+        ? `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`
+        : "";
+
+    const lines = chunk.map((score, i) => {
+        const globalIndex = score.originalRank || (startIndex + i + 1);
+        const rankPrefix = `**#${globalIndex}**`;
+        const userLink = `[**${score.user.username}**](https://osu.ppy.sh/users/${score.user.id})`;
+        const mapLink = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
+        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const modsUsed = formatMods(score.mods, isLazer);
+        const gradeEmoji = getGradeEmoji(score.rank, score.passed);
+        const ppStr = score.pp ? `${score.pp.toFixed(2)}pp` : "0.00pp";
+        const accStr = (score.accuracy * 100).toFixed(2);
+        const comboStr = score.max_combo !== null && score.max_combo !== undefined ? `x${score.max_combo}` : 'x?';
+        const statsStr = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
+        
+        let starsVal = starsMap[score.beatmap.id] || score.beatmap.difficulty_rating || 0;
+        const starsStr = starsVal ? `[${starsVal.toFixed(2)}★]` : "";
+        const timeSet = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
+
+        return `${rankPrefix} ${userLink} ▸ ${mapLink} +${modsUsed} ${starsStr}\n` +
+               ` ▸ ${gradeEmoji} ▸ **${ppStr}** ▸ **${accStr}%** ▸ ${comboStr} ▸ ${statsStr}\n` +
+               ` ▸ ${timeSet}`;
+    });
+
+    const currentPage = Math.floor(startIndex / 5) + 1;
+    const maxPages = Math.ceil(total / 5) || 1;
+    const fromRank = startIndex + 1;
+    const toRank = startIndex + chunk.length;
+
+    const title = `${t(locale, 'nacional.embed_title_pp_plays')} (${gamemodeName}) - :flag_${countryFilter.toLowerCase()}: ${countryName}`;
+
+    const embed = new EmbedBuilder()
+        .setTitle(title)
+        .setDescription(filterLine + (lines.length > 0 ? lines.join('\n\n') : t(locale, 'nacional.err_no_pp_plays', { country: countryFilter })))
+        .setColor(embedColor)
+        .setThumbnail(`https://flagcdn.com/w160/${countryFilter.toLowerCase()}.png`)
+        .setFooter({
+            text: t(locale, 'nacional.footer_page_info_plays', {
+                page: currentPage,
+                pages: maxPages,
+                from: fromRank,
+                to: toRank,
+                total: total.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')
+            }),
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+
+    return embed;
+}
+
 module.exports = {
     doOsuRankingEmbed,
     doSubdivisionsEmbed,
     doOsuRankedProfileEmbed,
-    doOsuRankedLeaderboardEmbed
+    doOsuRankedLeaderboardEmbed,
+    doOsuNationalPlaysListEmbed
 };

@@ -277,8 +277,8 @@
     },
     "nacional": {
       "header": "National performance and tops ranking",
-      "body": "Shows the leaderboard by Performance Points (pp) for a specific country in osu!, or national tops (#1s) and snipes with the -tops flag.",
-      "usage": "s.nacional -pais MX : Shows the national ranking of Mexico.\ns.nacional -tops : Shows the national #1s & snipes ranking of your country.\ns.nacional -tops -pais MX : Shows the national #1s & snipes ranking of Mexico.\ns.nacional : Autodetects your country and shows its ranking.\ns.nacional CL -p2 : Shows page 2 of Chile's ranking.\ns.nacional -taiko : Shows the national ranking in Taiko mode.\ns.nacional -acc MX : Shows Mexico's ranking sorted by accuracy (Acc).\ns.nacional -regional : Shows the regional ranking for your region.\ns.nacional -regional list : Shows the regions/subdivisions of your country.\ns.nacional -regional Anzoategui : Shows the ranking of the Anzoátegui region."
+      "body": "Shows the leaderboard by Performance Points (pp) for a specific country in osu!, national tops (#1s) with -tops, or top plays by PP across the country with -pp (supports filters like -m, -sr, -g, -?, -i).",
+      "usage": "s.nacional -pais MX : Shows the national ranking of Mexico.\ns.nacional -pp : Shows top plays by PP in your country.\ns.nacional -pp -pais MX : Top plays by PP in Mexico.\ns.nacional -pp -m HDDT : Top plays with HDDT in the country.\ns.nacional -pp -sr>7 -g 600 : Plays over 7★ and 600pp+.\ns.nacional -pp -i 1 : Shows the #1 individual top play of the country.\ns.nacional -tops : Shows the national #1s & snipes ranking of your country.\ns.nacional -tops -pais MX : Shows the national #1s & snipes ranking of Mexico.\ns.nacional : Autodetects your country and shows its ranking.\ns.nacional CL -p2 : Shows page 2 of Chile's ranking.\ns.nacional -taiko : Shows the national ranking in Taiko mode.\ns.nacional -acc MX : Shows Mexico's ranking sorted by accuracy (Acc).\ns.nacional -regional : Shows the regional ranking for your region.\ns.nacional -regional list : Shows the regions/subdivisions of your country.\ns.nacional -regional Anzoategui : Shows the ranking of the Anzoátegui region."
     },
     "regional": {
       "header": "Regional performance ranking",
@@ -931,16 +931,19 @@
     "err_no_regional_players": "❌ No players found in the regional ranking of **{region}** (Mode: `{mode}`).",
     "err_no_national_players": "❌ No players found in the national ranking of **{country}** (Mode: `{mode}`).",
     "err_no_tops_players": "❌ No players with national tops found in **{country}**.",
+    "err_no_pp_plays": "❌ No plays with PP found in the national ranking of **{country}**.",
     "embed_title_national": "National Ranking",
     "embed_title_regional": "Regional Ranking",
     "embed_title_acc": "National Ranking by Accuracy (Acc)",
     "embed_title_score": "National Ranking by Ranked Score",
     "embed_title_totalscore": "National Ranking by Total Score",
     "embed_title_tops": "National #1s & Snipes Ranking",
+    "embed_title_pp_plays": "National Top Plays by PP Ranking",
     "tops_label": "#1s",
     "snipes_label": "Snipes",
     "no_players": "*No players registered in this region.*",
     "footer_page_info": "Page {page} of {pages} • Rank #{from} - #{to} • Total: {total} players",
+    "footer_page_info_plays": "Page {page} of {pages} • Plays #{from} - #{to} • Total: {total} plays",
     "subdivisions_title": "Available Regions - :flag_{code}: {country}",
     "subdivisions_desc": "To check a region's ranking, use:\n`.regional [name or code]`\n\n**Regions List:**\n{lines}",
     "subdivisions_footer": "Page {page} of {pages} • Total: {total} regions",

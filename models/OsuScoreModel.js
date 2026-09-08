@@ -2568,10 +2568,23 @@ const OsuScoreModel = {
     getUserNationalTopsCount,
     getUserSnipesHistory,
     getCountryTopsLeaderboard,
+    getCountryTopPlays,
     checkAndRecordRealtimeSnipe,
     refreshTokenPool,
     initTokenPoolScheduler
 };
+
+async function getCountryTopPlays(countryCode = 'VE', mode = 0, limit = 1000) {
+    const TursoDB = require('../db/turso.js');
+    if (TursoDB.isTursoAvailable()) {
+        try {
+            return await TursoDB.getCountryTopPlays(countryCode, mode, limit);
+        } catch (tursoErr) {
+            console.error(`[OsuScoreModel] Error en Turso getCountryTopPlays para ${countryCode}:`, tursoErr.message);
+        }
+    }
+    return [];
+}
 
 async function getCountryTopsLeaderboard(countryCode = 'VE') {
     const TursoDB = require('../db/turso.js');

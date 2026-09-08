@@ -473,6 +473,7 @@ function argsParserNoCommand(args, options = {}) {
     let ppEngine = null;
     let ppBenchmark = false;
     let topsSort = false;
+    let ppSort = false;
 
     const extractId = str => {
         if (!str) return null;
@@ -1159,10 +1160,11 @@ function argsParserNoCommand(args, options = {}) {
             }
         }
 
-        // Si es exactamente "-g" o "-pp"
-        if (arg === "-g" || arg === "-pp") {
-            if (arg === "-pp") {
+        // Si es exactamente "-g", "-pp" o "-plays"
+        if (arg === "-g" || arg === "-pp" || arg === "-plays") {
+            if (arg === "-pp" || arg === "-plays") {
                 sortByPPChange = true;
+                ppSort = true;
             }
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
@@ -1194,6 +1196,7 @@ function argsParserNoCommand(args, options = {}) {
         }
         if (arg.startsWith("-pp") && arg !== "-pp") {
             sortByPPChange = true;
+            ppSort = true;
             let val = arg.slice(3).trim();
             if (/^\d{17,20}$/.test(val)) {
                 username.push(val);
@@ -1304,7 +1307,8 @@ function argsParserNoCommand(args, options = {}) {
         'srFilters': srFilters,
         'ppEngine': ppEngine,
         'ppBenchmark': ppBenchmark,
-        'topsSort': topsSort
+        'topsSort': topsSort,
+        'ppSort': ppSort
     };
     return parsed_args;
 }

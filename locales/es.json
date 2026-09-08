@@ -277,8 +277,8 @@
     },
     "nacional": {
       "header": "Ranking nacional de rendimiento y tops",
-      "body": "Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!, o el ranking nacional de tops (#1s) y snipes con el flag -tops.",
-      "usage": "s.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional -tops : Muestra el ranking nacional de tops (#1s) y snipes de tu país.\ns.nacional -tops -pais MX : Muestra el ranking de tops (#1s) y snipes de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).\ns.nacional -regional : Muestra el ranking regional para tu región.\ns.nacional -regional lista : Muestra las regiones/subdivisiones de tu país.\ns.nacional -regional Anzoategui : Muestra el ranking de la región Anzoátegui."
+      "body": "Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!, el ranking nacional de tops (#1s) con -tops, o las mejores jugadas por PP de todo el país con -pp (admite filtros como -m, -sr, -g, -?, -i).",
+      "usage": "s.nacional -pais MX : Muestra el ranking nacional de México.\ns.nacional -pp : Muestra las mejores jugadas por PP de tu país.\ns.nacional -pp -pais MX : Mejores jugadas por PP de México.\ns.nacional -pp -m HDDT : Mejores jugadas con HDDT del país.\ns.nacional -pp -sr>7 -g 600 : Jugadas de más de 7★ y 600pp+.\ns.nacional -pp -i 1 : Muestra la mejor jugada individual del país.\ns.nacional -tops : Muestra el ranking nacional de tops (#1s) y snipes de tu país.\ns.nacional -tops -pais MX : Muestra el ranking de tops (#1s) y snipes de México.\ns.nacional : Autodetecta tu país y muestra su ranking.\ns.nacional CL -p2 : Muestra la página 2 del ranking de Chile.\ns.nacional -taiko : Muestra el ranking nacional en modo Taiko.\ns.nacional -acc MX : Muestra el ranking de México ordenado por precisión (Acc).\ns.nacional -regional : Muestra el ranking regional para tu región.\ns.nacional -regional lista : Muestra las regiones/subdivisiones de tu país.\ns.nacional -regional Anzoategui : Muestra el ranking de la región Anzoátegui."
     },
     "regional": {
       "header": "Ranking regional de rendimiento",
@@ -931,16 +931,19 @@
     "err_no_regional_players": "❌ No se encontraron jugadores en el ranking regional de **{region}** (Modo: `{mode}`).",
     "err_no_national_players": "❌ No se encontraron jugadores en el ranking nacional de **{country}** (Modo: `{mode}`).",
     "err_no_tops_players": "❌ No se encontraron jugadores con tops nacionales en **{country}**.",
+    "err_no_pp_plays": "❌ No se encontraron jugadas registradas con PP en **{country}**.",
     "embed_title_national": "Ranking Nacional",
     "embed_title_regional": "Ranking Regional",
     "embed_title_acc": "Ranking Nacional por Precisión (Acc)",
     "embed_title_score": "Ranking Nacional por Score",
     "embed_title_totalscore": "Ranking Nacional por Score Total",
     "embed_title_tops": "Ranking Nacional de Tops y Snipes",
+    "embed_title_pp_plays": "Ranking Nacional de Mejores Jugadas por PP",
     "tops_label": "#1s",
     "snipes_label": "Snipes",
     "no_players": "*No hay jugadores registrados en esta región.*",
     "footer_page_info": "Página {page} de {pages} • Rango #{from} - #{to} • Total: {total} jugadores",
+    "footer_page_info_plays": "Página {page} de {pages} • Jugadas #{from} - #{to} • Total: {total} jugadas",
     "subdivisions_title": "Regiones Disponibles - :flag_{code}: {country}",
     "subdivisions_desc": "Para consultar el ranking de una región, usa:\n`.regional [nombre o código]`\n\n**Lista de regiones:**\n{lines}",
     "subdivisions_footer": "Página {page} de {pages} • Total: {total} regiones",

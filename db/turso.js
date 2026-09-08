@@ -48,6 +48,7 @@ const topsCache = new Map();
 const countCache = new Map();
 const snipesCache = new Map();
 const countryTopsCache = new Map();
+const countryTopPlaysCache = new Map();
 const scoreRamDedupeCache = new Map();
 const MAX_DEDUPE_CACHE_SIZE = 250000;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutos
@@ -63,6 +64,7 @@ async function ensureTursoIndexes() {
             { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniper ON snipes_history(sniper_id)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_sniped ON snipes_history(sniped_id)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_snipes_country_sniper ON snipes_history(country_code, sniper_id)` },
+            { sql: `CREATE INDEX IF NOT EXISTS idx_top_scores_country_pp ON top_scores(country_code, pp DESC)` },
             { sql: `CREATE INDEX IF NOT EXISTS idx_ranked_beatmaps_mode ON ranked_beatmaps(mode, status)` }
         ];
         await executeTursoBatch(statements);
@@ -226,6 +228,82 @@ async function getCountryTopsLeaderboard(countryCode = 'VE') {
     }));
 
     setCachedItem(countryTopsCache, cleanCountry, formatted);
+    return formatted;
+}
+
+/**
+ * Obtiene las mejores jugadas por PP de un país desde Turso
+ */
+async function getCountryTopPlays(countryCode = 'VE', mode = 0, limit = 1000) {
+    await ensureTursoIndexes();
+    const cleanCountry = countryCode.toUpperCase().trim();
+    const modeInt = Number(mode) || 0;
+    const cacheKey = `${cleanCountry}:${modeInt}:${limit}`;
+    const cached = getCachedItem(countryTopPlaysCache, cacheKey);
+    if (cached) {
+        return cached;
+    }
+
+    const sql = `
+        SELECT 
+            t.pp, t.mods, t.ended_at, t.score, t.accuracy, t.beatmap_id, t.max_combo, t.perfect, 
+            t.statistics, t.rank, t.build_id, t.mod_settings, t.user_id, t.username,
+            b.mode, b.title, b.artist, b.version, b.creator, b.stars, b.bpm, b.ar, b.od, b.cs, b.hp, b.beatmapset_id, b.max_combo as b_max_combo, b.status
+        FROM top_scores t
+        INNER JOIN ranked_beatmaps b ON t.beatmap_id = b.beatmap_id
+        WHERE t.country_code = ? AND b.mode = ? AND t.pp > 0 AND t.user_id != '0' AND t.user_id != '0.0' AND t.username != 'SYSTEM_NO_SCORE'
+        ORDER BY t.pp DESC
+        LIMIT ?
+    `;
+
+    const rows = await executeTurso(sql, [cleanCountry, modeInt, Number(limit) || 1000]);
+
+    const formatted = rows.map(r => {
+        let statsObj = r.statistics;
+        if (typeof statsObj === 'string' && statsObj) {
+            try { statsObj = JSON.parse(statsObj); } catch (e) {}
+        }
+        let modSettingsObj = r.mod_settings;
+        if (typeof modSettingsObj === 'string' && modSettingsObj) {
+            try { modSettingsObj = JSON.parse(modSettingsObj); } catch (e) {}
+        }
+
+        return {
+            pp: r.pp,
+            mods: r.mods || 'NM',
+            ended_at: r.ended_at,
+            score: r.score,
+            accuracy: r.accuracy,
+            beatmap_id: r.beatmap_id,
+            max_combo: r.max_combo,
+            perfect: Boolean(r.perfect),
+            statistics: statsObj,
+            rank: r.rank,
+            build_id: r.build_id,
+            mod_settings: modSettingsObj,
+            user_id: r.user_id.toString().replace(/\.0+$/, ''),
+            username: r.username,
+            ranked_beatmaps: {
+                mode: r.mode,
+                title: r.title,
+                artist: r.artist,
+                version: r.version,
+                creator: r.creator,
+                stars: r.stars,
+                bpm: r.bpm,
+                ar: r.ar,
+                od: r.od,
+                cs: r.cs,
+                hp: r.hp,
+                beatmapset_id: r.beatmapset_id,
+                max_combo: r.b_max_combo,
+                status: r.status,
+                ranked_status: r.status === 'loved' ? 4 : (r.status === 'ranked' ? 1 : (r.status === 'approved' ? 2 : (r.status === 'qualified' ? 3 : null)))
+            }
+        };
+    });
+
+    setCachedItem(countryTopPlaysCache, cacheKey, formatted);
     return formatted;
 }
 
@@ -654,5 +732,6 @@ module.exports = {
     saveBeatmap,
     saveBeatmapsBatch,
     saveBatchScoresAndSnipes,
-    getCountryTopsLeaderboard
+    getCountryTopsLeaderboard,
+    getCountryTopPlays
 };
