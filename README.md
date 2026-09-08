@@ -76,6 +76,9 @@ TATSU_API_KEY=tu_tatsu_key_aqui
 # Groq API (para análisis inteligente con IA de torneos y hojas de cálculo)
 GROQ_API_KEY=tu_api_key_de_groq_aqui
 
+# Google Gemini API (para análisis multimodal y OCR de afiches de torneos en foros)
+GEMINI_API_KEY=tu_api_key_de_gemini_aqui
+
 # Token de GitHub (para webhooks de commits)
 GITHUB_TOKEN=tu_token_de_github_aqui
 
@@ -92,6 +95,16 @@ ERROR_WEBHOOK_URL=url_de_tu_webhook_de_errores_aqui
 OWNER_ID=tu_discord_id_aqui
 SENGOBOT_GUILD_ID=tu_guild_id_aqui
 ```
+
+> [!IMPORTANT]
+> **Configuraciones adicionales obligatorias en portales externos:**
+> 1. **Discord Developer Portal:** En la sección **Bot**, debes habilitar obligatoriamente los **Privileged Gateway Intents**:
+>    - `Message Content Intent` (para que el bot pueda leer los comandos de chat).
+>    - `Server Members Intent` (para comandos de roles, identidad y tracking).
+> 2. **osu! OAuth Application:** En tus ajustes de osu! (*Account Settings -> OAuth*), debes registrar el **Redirect URI**:
+>    - Para local: `http://localhost:3000/oauth/callback`
+>    - Para producción/VPS: `https://<tu-dominio>/oauth/callback`
+> 3. **Bases de Datos:** Si usas un Supabase/Turso nuevo desde cero, asegúrate de tener creadas las tablas necesarias. Si apuntas a la misma base de datos existente, funcionará directamente sin pasos adicionales.
 
 5. Inicia Sengo:
    ```bash
