@@ -308,7 +308,7 @@
     "top": {
       "header": "Get your top 200 PP plays",
       "body": "Shows a paginated list of a player's best plays (top) in osu! with advanced filtering.",
-      "usage": "s.top : Shows your best plays.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy."
+      "usage": "s.top : Shows your best plays.\ns.top -nc : Shows simulated top recalculated as Full Combo and previous vs simulated PP count.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy."
     },
     "lb": {
       "header": "Global and national leaderboard",
@@ -1045,7 +1045,9 @@
     "pp_threshold_filter_exact": " with exact mods {mod}",
     "pp_threshold_filter_contain": " with {mod}",
     "pp_threshold_filter_search": " matching \"{search}\"",
-    "calc_pp_footer": "⏳ Calculating pp of play #{index} of {total}..."
+    "calc_pp_footer": "⏳ Calculating pp of play #{index} of {total}...",
+    "nochoke_total_pp": "Total PP",
+    "nochoke_play_pp": "Play PP"
   },
   "leaderboard": {
     "err_oauth_required": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth. **I have sent you a private message with the linking link.** 🔒",

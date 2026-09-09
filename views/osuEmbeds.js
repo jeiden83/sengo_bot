@@ -443,6 +443,24 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         prefix_desc += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
     }
 
+    if (parsed_args.noChokePPSummary) {
+        const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
+        const origStr = formatNumber(originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const simStr = formatNumber(simulatedPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const sign = diffPP >= 0 ? '+' : '';
+        const diffStr = sign + formatNumber(diffPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        prefix_desc += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n`;
+        if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
+            const playOrigStr = formatNumber(score.originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const playSimStr = formatNumber(score.pp, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const playDiff = score.pp - score.originalPP;
+            const playSign = playDiff >= 0 ? '+' : '';
+            const playDiffStr = playSign + formatNumber(playDiff, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            prefix_desc += `🎯 **${t(locale, 'top.nochoke_play_pp')}:** \`${playOrigStr}pp\` ➔ **\`${playSimStr}pp\`** (\`${playDiffStr}pp\`)\n`;
+        }
+        prefix_desc += '\n';
+    }
+
     const map = score.beatmap || {};
     const playDate = score.ended_at || score.created_at || new Date();
     const time_relative_val = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
@@ -525,6 +543,15 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     if (active_filters.length > 0) {
         embed_description += `🔍 *${t(locale, 'top.active_filters')}: ${active_filters.join(" | ")}*\n\n`;
+    }
+
+    if (parsed_args.noChokePPSummary) {
+        const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
+        const origStr = formatNumber(originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const simStr = formatNumber(simulatedPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const sign = diffPP >= 0 ? '+' : '';
+        const diffStr = sign + formatNumber(diffPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        embed_description += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n\n`;
     }
 
     for (let i = 0; i < top_scores_chunk.length; i++) {

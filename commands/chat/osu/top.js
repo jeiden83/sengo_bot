@@ -1,4 +1,4 @@
-const { getBeatmap_osu, getUserTopScores, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
+const { getBeatmap_osu, getUserTopScores, getOsuUser, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
 
 const { doOsuTopSingleEmbed, doOsuTopListEmbed, doOsuTopProgressEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
@@ -91,6 +91,13 @@ async function run(messages, args, options = {}) {
     }
 
     if (parser_res.parsed_args.nochoke) {
+        const originalSorted = [...originalScores].sort((a, b) => (b.pp || 0) - (a.pp || 0));
+        let originalTopPP = 0;
+        for (let i = 0; i < Math.min(originalSorted.length, 100); i++) {
+            originalTopPP += (originalSorted[i].pp || 0) * Math.pow(0.95, i);
+        }
+        const userProfilePromise = getOsuUser(parser_res.parsed_args).catch(() => null);
+
         const processStartTime = Date.now();
         let stepStartTime = Date.now();
 
@@ -176,6 +183,29 @@ async function run(messages, args, options = {}) {
         originalScores.forEach((score, idx) => {
             score.noChokeRank = idx + 1;
         });
+
+        let simulatedTopPP = 0;
+        for (let i = 0; i < Math.min(originalScores.length, 100); i++) {
+            simulatedTopPP += (originalScores[i].pp || 0) * Math.pow(0.95, i);
+        }
+
+        const osuUser = await userProfilePromise;
+        let originalTotalPP = originalTopPP;
+        let simulatedTotalPP = simulatedTopPP;
+
+        if (osuUser && osuUser.statistics && typeof osuUser.statistics.pp === 'number') {
+            const profilePP = osuUser.statistics.pp;
+            const bonusPP = Math.max(0, profilePP - originalTopPP);
+            originalTotalPP = profilePP;
+            simulatedTotalPP = simulatedTopPP + bonusPP;
+        }
+
+        const diffPP = simulatedTotalPP - originalTotalPP;
+        parser_res.parsed_args.noChokePPSummary = {
+            originalPP: originalTotalPP,
+            simulatedPP: simulatedTotalPP,
+            diffPP: diffPP
+        };
 
         if (options.isSkillTop && !parser_res.parsed_args.recentSort && !parser_res.parsed_args.comboSort && !parser_res.parsed_args.accSort) {
             originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));

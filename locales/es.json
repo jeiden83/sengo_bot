@@ -308,7 +308,7 @@
     "top": {
       "header": "Obtén el top 200 de jugadas de PP",
       "body": "Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.",
-      "usage": "s.top : Muestra tus mejores jugadas.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta."
+      "usage": "s.top : Muestra tus mejores jugadas.\ns.top -nc : Muestra el top simulado recalculado como Full Combo y el conteo de PP anterior y simulado.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta."
     },
     "lb": {
       "header": "Tabla de clasificación global y nacional",
@@ -1045,7 +1045,9 @@
     "pp_threshold_filter_exact": " con mods exactos {mod}",
     "pp_threshold_filter_contain": " con {mod}",
     "pp_threshold_filter_search": " que coinciden con \"{search}\"",
-    "calc_pp_footer": "⏳ Calculando pp de la play #{index} de {total}..."
+    "calc_pp_footer": "⏳ Calculando pp de la play #{index} de {total}...",
+    "nochoke_total_pp": "PP Total",
+    "nochoke_play_pp": "PP Jugada"
   },
   "leaderboard": {
     "err_oauth_required": "❌ Para utilizar filtros de mods, amigos o país, necesitas vincular tu cuenta de osu! de forma segura con OAuth. **Te he enviado un mensaje privado con el enlace de vinculación.** 🔒",
