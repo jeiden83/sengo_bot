@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
-const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString, formatNumber } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString, formatNumber, formatDecimal } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 /**
@@ -37,7 +37,7 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
             
             let accStr = "";
             if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
-                accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
+                accStr = ` | \`${formatDecimal(item.hit_accuracy, locale, 2)}%\` acc`;
             }
 
             mainValueStr = `${scoreStr}${accStr}`;
@@ -53,7 +53,7 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
             
             let accStr = "";
             if (item.hit_accuracy !== undefined && item.hit_accuracy !== null) {
-                accStr = ` | \`${item.hit_accuracy.toFixed(2)}%\` acc`;
+                accStr = ` | \`${formatDecimal(item.hit_accuracy, locale, 2)}%\` acc`;
             }
 
             mainValueStr = `${ppStr}${accStr}`;
@@ -159,7 +159,7 @@ function doSubdivisionsEmbed({ subdivisions, countryFilter, page, total, message
  */
 function doOsuRankedProfileEmbed(message, osuUser, matchmaking, locale = 'es') {
     const embedColor = getEmbedColor(message);
-    const winRate = matchmaking.plays > 0 ? ((matchmaking.first_placements / matchmaking.plays) * 100).toFixed(1) : "0.0";
+    const winRate = matchmaking.plays > 0 ? formatDecimal((matchmaking.first_placements / matchmaking.plays) * 100, locale, 1) : formatDecimal(0, locale, 1);
     const formattedRank = matchmaking.rank ? formatNumber(matchmaking.rank, locale) : t(locale, 'nacional.no_players'); // o similar
     const formattedRating = formatNumber(matchmaking.rating || 0, locale);
     const isProvisionalStr = matchmaking.is_rating_provisional ? ` *(${t(locale, 'ranked.profile_provisional')})*` : '';
@@ -203,7 +203,7 @@ function doOsuRankedLeaderboardEmbed({ chunk, total, startIndex, isServer, serve
         const displayRank = startIndex + index + 1;
         const localRank = `**#${displayRank}**`;
         const ratingStr = `**${formatNumber(player.rating, activeLocale)}** rating${player.isProvisional ? '*' : ''}`;
-        const winRate = player.plays > 0 ? ((player.wins / player.plays) * 100).toFixed(1) : "0.0";
+        const winRate = player.plays > 0 ? formatDecimal((player.wins / player.plays) * 100, activeLocale, 1) : formatDecimal(0, activeLocale, 1);
         
         let statsStr = "";
         if (activeLocale === 'es') {
@@ -292,13 +292,13 @@ async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFi
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const modsUsed = formatMods(score.mods, isLazer);
         const gradeEmoji = getGradeEmoji(score.rank, score.passed);
-        const ppStr = score.pp ? `${score.pp.toFixed(2)}pp` : "0.00pp";
-        const accStr = (score.accuracy * 100).toFixed(2);
+        const ppStr = score.pp ? `${formatDecimal(score.pp, locale, 2)}pp` : `${formatDecimal(0, locale, 2)}pp`;
+        const accStr = formatDecimal(score.accuracy * 100, locale, 2);
         const comboStr = score.max_combo !== null && score.max_combo !== undefined ? `x${score.max_combo}` : 'x?';
         const statsStr = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
         
         let starsVal = starsMap[score.beatmap.id] || score.beatmap.difficulty_rating || 0;
-        const starsStr = starsVal ? `[${starsVal.toFixed(2)}★]` : "";
+        const starsStr = starsVal ? `[${formatDecimal(starsVal, locale, 2)}★]` : "";
         const timeSet = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         return `${rankPrefix} ${userLink} ▸ ${mapLink} +${modsUsed} ${starsStr}\n` +

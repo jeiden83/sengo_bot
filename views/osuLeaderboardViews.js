@@ -6,7 +6,8 @@ const {
     formatMods,
     getPlainStatsString,
     getFlagEmoji,
-    getDisplayGamemode
+    getDisplayGamemode,
+    formatDecimal
 } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
@@ -29,8 +30,8 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
 
-        const total_score = getFormattedScore(score);
-        let accuracy = (score.accuracy * 100).toFixed(2);
+        const total_score = getFormattedScore(score, 'classic', locale);
+        let accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
@@ -41,17 +42,17 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
             ratio_str = ` - ${ratio}:1`;
         }
         accuracy = `${accuracy}%${ratio_str}`;
     
-        const pp = `${score.pp ? score.pp.toFixed(2) : 0}`;
+        const pp = `${score.pp ? formatDecimal(score.pp, locale, 2) : formatDecimal(0, locale, 2)}`;
         const time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
     
         let grade_emoji = getGradeEmoji(score.rank, score.passed);
         if (!score.passed && score.map_completion !== undefined) {
-            grade_emoji += ` (${(score.map_completion * 100).toFixed(2)}%)`;
+            grade_emoji += ` (${formatDecimal(score.map_completion * 100, locale, 2)}%)`;
         }
  
         const isFirstGlobal = position === 1;
@@ -122,8 +123,8 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
         const mods_used = formatMods(score.mods, isLazer);
 
         const isLazerMode = parsed_args.lazerMode || parsed_args.isLazerMode;
-        const legacy_score = getFormattedScore(score, isLazerMode ? 'lazer' : 'classic');
-        const accuracy = (score.accuracy * 100).toFixed(2);
+        const legacy_score = getFormattedScore(score, isLazerMode ? 'lazer' : 'classic', locale);
+        const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
 
@@ -133,11 +134,11 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
-        const pp = score.pp ? score.pp.toFixed(2) : "0.00";
+        const pp = score.pp ? formatDecimal(score.pp, locale, 2) : formatDecimal(0, locale, 2);
         const time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         let grade_emoji = getGradeEmoji(score.rank, score.passed);

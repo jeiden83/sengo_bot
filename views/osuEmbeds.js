@@ -661,13 +661,13 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const beatmap_cover = beatmap_metadata.beatmapset.covers["cover@2x"];
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    const score_val = getFormattedScore(score, scoreMode);
-    const accuracy = (score.accuracy * 100).toFixed(2);
+    const score_val = getFormattedScore(score, scoreMode, locale);
+    const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     const user_max_combo = score.max_combo;
 
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
+    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
+    const difficulty = formatDecimal(((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
@@ -675,7 +675,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
 
     let compVal = pre_calculated.map_completion;
     if (compVal < 1.0) compVal = compVal * 100;
-    const map_completion = score.passed ? `` : `(${compVal.toFixed(2)}%)`;
+    const map_completion = score.passed ? `` : `(${formatDecimal(compVal, locale, 2)}%)`;
 
     const stats = score.statistics || {};
     const stats_str = getStatsString(stats, beatmap_metadata.mode);
@@ -684,7 +684,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     if (beatmap_metadata.mode === 'mania') {
         const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+        const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
@@ -745,8 +745,8 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `${disclaimer}${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || parsed_args.gamemode || 'osu');
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
+    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || parsed_args.gamemode || 'osu', locale);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -791,15 +791,15 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
-        const legacy_score = getFormattedScore(score, scoreMode);
-        const accuracy = (score.accuracy * 100).toFixed(2);
+        const legacy_score = getFormattedScore(score, scoreMode, locale);
+        const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
 
         let map_completion = "";
         if (score.map_completion !== undefined && !score.passed) {
             let compVal = score.map_completion;
             if (compVal < 1.0) compVal = compVal * 100;
-            map_completion = `*(${compVal.toFixed(1)}% pass)*`;
+            map_completion = `*(${formatDecimal(compVal, locale, 1)}% pass)*`;
         }
 
         const stats_str = `\`${getPlainStatsString(score.statistics, beatmap_metadata.mode)}\``;
@@ -809,12 +809,12 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
         const isLoved = isLovedScore(score) || (beatmap_metadata?.status === 'loved' || beatmap_metadata?.status === 4 || beatmap_metadata?.ranked_status === 4);
-        let pp = (isLoved && (!score.pp || score.pp === 0)) ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        let pp = (isLoved && (!score.pp || score.pp === 0)) ? "💖" : `${score.pp ? formatDecimal(score.pp, locale, 2) + "pp" : `${formatDecimal(0, locale, 2)}pp`}`;
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         const OsuUserModel = require("../models/OsuUserModel.js");
@@ -880,7 +880,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
     const mods_used = formatMods(recent_scores.mods, isLazer);
-    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
+    const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = recent_scores.statistics || {};
     let stats_str = getStatsString(stats, recent_scores.beatmap.mode);
@@ -893,14 +893,14 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         stats_str = `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}/${colorear(small_tick_miss, "magenta")}]`;
     }
 
-    const formatted_score_val = getFormattedScore(recent_scores);
-    const accuracy = (recent_scores.accuracy * 100).toFixed(2);
+    const formatted_score_val = getFormattedScore(recent_scores, 'classic', locale);
+    const accuracy = formatDecimal(recent_scores.accuracy * 100, locale, 2);
     const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
     const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
 
     let ratio_str = "";
     if (recent_scores.beatmap.mode === 'mania') {
-        const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+        const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
@@ -909,8 +909,8 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${formatted_score_val}** **▸** **\`${recent_scores.max_combo || 0}x\`**/*\`${pre_calculated.beatmap_max_combo ? pre_calculated.beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu');
-    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp.toFixed(2), pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
+    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu', locale);
+    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
     let authorUrl = `https://osu.ppy.sh/users/${user_id}`;
@@ -935,7 +935,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
         }
     }
 
-    const mapStars = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
+    const mapStars = formatDecimal(((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -1026,9 +1026,9 @@ function doOsuMapEmbed({
     }
 
     const descLines = [
-        `▸ **${t(locale, 'map.status')}:** \`${statusName}\`  •  **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''}  •  **${t(locale, 'map.difficulty')}:** \`${stars.toFixed(2)}★\`${Math.abs(stars - baseStars) > 0.01 ? ` *(${baseStars.toFixed(2)}★)*` : ''}`,
+        `▸ **${t(locale, 'map.status')}:** \`${statusName}\`  •  **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''}  •  **${t(locale, 'map.difficulty')}:** \`${formatDecimal(stars, locale, 2)}★\`${Math.abs(stars - baseStars) > 0.01 ? ` *(${formatDecimal(baseStars, locale, 2)}★)*` : ''}`,
         `▸ **BPM:** \`${attributes.bpm}\`${attributes.speedMultiplier !== 1.0 ? ` *(${attributes.baseBpm})*` : ''}  •  **${t(locale, 'map.length')}:** \`${formatLength(attributes.totalLength)}\`${attributes.totalLength !== attributes.hitLength ? ` *(Drain: ${formatLength(attributes.hitLength)})*` : ''}  •  **${t(locale, 'map.combo')}:** \`x${attributes.maxCombo}\``,
-        `▸ ${attributes.csLabel}: \`${activeMode === 'mania' ? attributes.cs.toFixed(0) : attributes.cs.toFixed(1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? ` *(${activeMode === 'mania' ? attributes.baseCs.toFixed(0) : attributes.baseCs.toFixed(1)})*` : ''}  •  AR: \`${attributes.ar.toFixed(1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? ` *(${attributes.baseAr.toFixed(1)})*` : ''}  •  OD: \`${attributes.od.toFixed(1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? ` *(${attributes.baseOd.toFixed(1)})*` : ''}  •  HP: \`${attributes.hp.toFixed(1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? ` *(${attributes.baseHp.toFixed(1)})*` : ''}`,
+        `▸ ${attributes.csLabel}: \`${activeMode === 'mania' ? formatDecimal(attributes.cs, locale, 0) : formatDecimal(attributes.cs, locale, 1)}\`${Math.abs(attributes.cs - attributes.baseCs) > 0.01 ? ` *(${activeMode === 'mania' ? formatDecimal(attributes.baseCs, locale, 0) : formatDecimal(attributes.baseCs, locale, 1)})*` : ''}  •  AR: \`${formatDecimal(attributes.ar, locale, 1)}\`${Math.abs(attributes.ar - attributes.baseAr) > 0.01 ? ` *(${formatDecimal(attributes.baseAr, locale, 1)})*` : ''}  •  OD: \`${formatDecimal(attributes.od, locale, 1)}\`${Math.abs(attributes.od - attributes.baseOd) > 0.01 ? ` *(${formatDecimal(attributes.baseOd, locale, 1)})*` : ''}  •  HP: \`${formatDecimal(attributes.hp, locale, 1)}\`${Math.abs(attributes.hp - attributes.baseHp) > 0.01 ? ` *(${formatDecimal(attributes.baseHp, locale, 1)})*` : ''}`,
         `\n▸ **${t(locale, 'map.objects')}:** ${objectsValue}`
     ];
 
@@ -1144,7 +1144,7 @@ function doOsuMapsetEmbed({
         const diffEmoji = getDifficultyEmoji(starsVal, map.mode);
         const displayEmoji = diffEmoji;
 
-        const stars = map.difficulty_rating ? map.difficulty_rating.toFixed(2) : '0.00';
+        const stars = formatDecimal(starsVal, locale, 2);
         const maxCombo = map.max_combo ? `x${map.max_combo}` : '-';
         description += `${displayEmoji} **[${map.version}](https://osu.ppy.sh/b/${map.id})** ▸ \`${stars}★\` ▸ Max Combo: \`${maxCombo}\` ▸ ${t(locale, 'map.duration')}: \`${formatLength(map.total_length)}\`\n`;
     }

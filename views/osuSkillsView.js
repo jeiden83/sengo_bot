@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
-const { t } = require("../utils/i18n.js");
+const { t, formatNumber, formatDecimal } = require("../utils/i18n.js");
 const { getEmbedColor, getGradeEmoji } = require("./osuViewHelpers.js");
 
 /**
@@ -52,10 +52,10 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
 
     const stats = osuUser.statistics || {};
     const rawPP = Number(stats.pp || 0);
-    const ppFormatted = rawPP.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    const globalRank = stats.global_rank ? `#${stats.global_rank.toLocaleString()}` : "#-";
+    const ppFormatted = formatDecimal(rawPP, locale, 2);
+    const globalRank = stats.global_rank ? `#${formatNumber(stats.global_rank, locale)}` : "#-";
     const countryCode = (osuUser.country_code || "").toUpperCase();
-    const countryRank = stats.country_rank ? `${countryCode}${stats.country_rank}` : `${countryCode}-`;
+    const countryRank = stats.country_rank ? `${countryCode}${formatNumber(stats.country_rank, locale)}` : `${countryCode}-`;
 
     const authorName = `${flag} ${username}: ${ppFormatted}pp (${globalRank} ${countryRank})`;
 
@@ -72,7 +72,7 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
 
     // Encabezado de promedios en puntos
     const avgLines = skillKeys.map(k => {
-        const val = Number(skillsBreakdown[k] ?? 0).toFixed(2);
+        const val = formatDecimal(skillsBreakdown[k] ?? 0, locale, 2);
         return `**${t(locale, `skills.avg_${k}`)}:** ${val} pts`;
     });
 
@@ -92,7 +92,7 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
         }
         return plays.map(item => {
             const sc = item.score;
-            const points = Number(item[skillKey] != null ? item[skillKey] : (item.points || 0)).toFixed(2);
+            const points = formatDecimal(item[skillKey] != null ? item[skillKey] : (item.points || 0), locale, 2);
             const grade = getGradeEmoji(sc.rank, sc.passed !== false);
             const songTitle = sc.beatmapset?.title || sc.beatmap?.title || "Beatmap";
             const diffName = sc.beatmap?.version || "Normal";
@@ -190,26 +190,26 @@ function doOsuSkillsRankingEmbed({
     const lines = players.map((p, index) => {
         const rankNum = startIndex + index + 1;
         const userUrl = `https://osu.ppy.sh/users/${p.osu_id}`;
-        const skillVal = Number(p[skill] ?? 0).toFixed(2);
-        const ppFormatted = Number(p.pp || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+        const skillVal = formatDecimal(p[skill] ?? 0, locale, 2);
+        const ppFormatted = formatNumber(Math.round(p.pp || 0), locale);
 
         let subDetails = `  ↳ **${ppFormatted} pp**`;
         if (p.country_rank && p.country_rank > 0) {
-            subDetails += ` (#${p.country_rank} ${p.country_code})`;
+            subDetails += ` (#${formatNumber(p.country_rank, locale)} ${p.country_code})`;
         }
         if (p.global_rank && p.global_rank > 0) {
-            subDetails += ` • Global: **#${p.global_rank.toLocaleString("en-US")}**`;
+            subDetails += ` • Global: **#${formatNumber(p.global_rank, locale)}**`;
         }
         if (p.top_play_pp && p.top_play_pp > 0) {
-            subDetails += ` • Top: **${Math.round(p.top_play_pp)}pp**`;
+            subDetails += ` • Top: **${formatNumber(Math.round(p.top_play_pp), locale)}pp**`;
         }
 
         // Mostrar habilidades secundarias clave si no es la habilidad ordenada
         const secondarySkills = [];
-        if (skill !== "aim" && p.aim > 0) secondarySkills.push(`Aim: ${Number(p.aim).toFixed(1)}`);
-        if (skill !== "speed" && p.speed > 0) secondarySkills.push(`Spd: ${Number(p.speed).toFixed(1)}`);
-        if (skill !== "acc" && p.acc > 0) secondarySkills.push(`Acc: ${Number(p.acc).toFixed(1)}`);
-        if (skill !== "reading" && p.reading > 0) secondarySkills.push(`Read: ${Number(p.reading).toFixed(1)}`);
+        if (skill !== "aim" && p.aim > 0) secondarySkills.push(`Aim: ${formatDecimal(p.aim, locale, 1)}`);
+        if (skill !== "speed" && p.speed > 0) secondarySkills.push(`Spd: ${formatDecimal(p.speed, locale, 1)}`);
+        if (skill !== "acc" && p.acc > 0) secondarySkills.push(`Acc: ${formatDecimal(p.acc, locale, 1)}`);
+        if (skill !== "reading" && p.reading > 0) secondarySkills.push(`Read: ${formatDecimal(p.reading, locale, 1)}`);
 
         let secStr = "";
         if (secondarySkills.length > 0) {

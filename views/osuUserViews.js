@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getEmbedColor, getFlagEmoji, formatNumber } = require("./osuViewHelpers.js");
+const { getEmbedColor, getFlagEmoji, formatNumber, formatDecimal } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 const country_codes = require("../src/country_codes.json");
 
@@ -253,8 +253,8 @@ function formatBeatmapset(set, index, type, userId, locale = 'es') {
     let starsStr = "N/A";
     if (diffs.length > 0) {
         const ratings = diffs.map(b => b.difficulty_rating || 0);
-        const minS = Math.min(...ratings).toFixed(2);
-        const maxS = Math.max(...ratings).toFixed(2);
+        const minS = formatDecimal(Math.min(...ratings), locale, 2);
+        const maxS = formatDecimal(Math.max(...ratings), locale, 2);
         starsStr = minS === maxS ? `${maxS}★` : `${minS}★ - ${maxS}★`;
     }
 
@@ -350,7 +350,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         } else {
             desc += rankedList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
-                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                const maxS = ratings.length > 0 ? formatDecimal(Math.max(...ratings), locale, 2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
             }).join("\n") + (rankedList.length > 3 ? t(locale, 'mapper.and_more', { count: rankedCount - 3 }) : "") + `\n\n`;
         }
@@ -364,7 +364,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         } else {
             desc += lovedList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
-                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                const maxS = ratings.length > 0 ? formatDecimal(Math.max(...ratings), locale, 2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
             }).join("\n") + (lovedList.length > 3 ? t(locale, 'mapper.and_more', { count: lovedCount - 3 }) : "") + `\n\n`;
         }
@@ -378,7 +378,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         } else {
             desc += pendingList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
-                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                const maxS = ratings.length > 0 ? formatDecimal(Math.max(...ratings), locale, 2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
             }).join("\n") + (pendingList.length > 3 ? t(locale, 'mapper.and_more', { count: pendingCount - 3 }) : "") + `\n\n`;
         }
@@ -392,7 +392,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         } else {
             desc += graveyardList.slice(0, 3).map((set, idx) => {
                 const ratings = (set.beatmaps || []).map(b => b.difficulty_rating || 0);
-                const maxS = ratings.length > 0 ? Math.max(...ratings).toFixed(2) : '0';
+                const maxS = ratings.length > 0 ? formatDecimal(Math.max(...ratings), locale, 2) : '0';
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) (⭐${maxS}★)`;
             }).join("\n") + (graveyardList.length > 3 ? t(locale, 'mapper.and_more', { count: graveyardCount - 3 }) : "") + `\n\n`;
         }
@@ -406,7 +406,7 @@ function doOsuMapperListEmbed(message, user, type, data, page = 1, locale = 'es'
         } else {
             desc += guestList.slice(0, 3).map((set, idx) => {
                 const guestDiffs = (set.beatmaps || []).filter(b => b.user_id === user.id);
-                const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${(b.difficulty_rating || 0).toFixed(2)}★)`).join(", ");
+                const diffsNames = guestDiffs.map(b => `\`${b.version}\` (⭐${formatDecimal(b.difficulty_rating || 0, locale, 2)}★)`).join(", ");
                 return `• [${set.title}](https://osu.ppy.sh/s/${set.id}) - GDs: ${diffsNames}`;
             }).join("\n") + (guestList.length > 3 ? t(locale, 'mapper.and_more', { count: guestCount - 3 }) : "") + `\n\n`;
         }
@@ -790,8 +790,8 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const accA = userA.statistics.hit_accuracy || 0;
     const accB = userB.statistics.hit_accuracy || 0;
     const markersAcc = getMarkers(accA, accB);
-    const accAStr = accA.toFixed(2) + '%';
-    const accBStr = accB.toFixed(2) + '%';
+    const accAStr = formatDecimal(accA, locale, 2) + '%';
+    const accBStr = formatDecimal(accB, locale, 2) + '%';
 
     // Play Count
     const pcA = userA.statistics.play_count || 0;
@@ -816,15 +816,15 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
 
     // Top PP
     const markersTopPp = getMarkers(topPpA, topPpB);
-    const topPpAStr = topPpA > 0 ? topPpA.toFixed(1) + ' pp' : '0 pp';
-    const topPpBStr = topPpB > 0 ? topPpB.toFixed(1) + ' pp' : '0 pp';
+    const topPpAStr = topPpA > 0 ? formatDecimal(topPpA, locale, 1) + ' pp' : '0 pp';
+    const topPpBStr = topPpB > 0 ? formatDecimal(topPpB, locale, 1) + ' pp' : '0 pp';
 
     // Level
     const lvlA = (userA.statistics.level?.current || 0) + (userA.statistics.level?.progress || 0) / 100;
     const lvlB = (userB.statistics.level?.current || 0) + (userB.statistics.level?.progress || 0) / 100;
     const markersLvl = getMarkers(lvlA, lvlB);
-    const lvlAStr = lvlA.toFixed(2);
-    const lvlBStr = lvlB.toFixed(2);
+    const lvlAStr = formatDecimal(lvlA, locale, 2);
+    const lvlBStr = formatDecimal(lvlB, locale, 2);
 
     // National Tops (optional)
     let nationalTopsAStr = '';

@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getEmbedColor, formatNumber } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatNumber, formatDecimal } = require("./osuViewHelpers.js");
 const emoji_mods = require("../src/emoji_mods.json");
 const { t } = require("../utils/i18n.js");
 
@@ -46,8 +46,8 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
 
     if (recommendations.length === 0) {
         description = t(locale, 'recommend.embed_no_recs', {
-            min: minPP.toFixed(0),
-            max: maxPP.toFixed(0)
+            min: formatNumber(Math.round(minPP), locale),
+            max: formatNumber(Math.round(maxPP), locale)
         });
     } else {
         recommendations.forEach((c, index) => {
@@ -67,9 +67,9 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             
             const randStr = randFlags.length > 0 ? ` 🎲 *(${randFlags.join(", ")})*` : "";
             
-            description += `   ▸ ⭐ **${c.stars.toFixed(2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**${randStr}\n`;
+            description += `   ▸ ⭐ **${formatDecimal(c.stars, locale, 2)}★** | Mod sugerido: ${formatRecommendMods(c.mods)} | **${affinityStr}**${randStr}\n`;
             if (c.pushPP && c.pushAcc) {
-                const pushPct = (c.pushAcc * 100).toFixed(1);
+                const pushPct = formatDecimal(c.pushAcc * 100, locale, 1);
                 description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC) | 🎯 **${c.pushPP}pp** (~${pushPct}% Push)\n`;
             } else {
                 description += `   ▸ **${c.maxPP}pp** (100% FC) | **${c.pp99}pp** (99% FC)\n`;
@@ -107,14 +107,14 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             url: `https://osu.ppy.sh/users/${profile.id}`,
             iconURL: profile.avatar_url
         })
-        .setTitle(t(locale, 'recommend.embed_title', { pp: ((minPP + maxPP) / 2).toFixed(0) }))
+        .setTitle(t(locale, 'recommend.embed_title', { pp: formatNumber(Math.round((minPP + maxPP) / 2), locale) }))
         .setDescription(description)
         .addFields(
             {
                 name: t(locale, 'recommend.embed_field_filters'),
                 value: t(locale, 'recommend.embed_field_filters_value', {
-                    min: minPP.toFixed(0),
-                    max: maxPP.toFixed(0),
+                    min: formatNumber(Math.round(minPP), locale),
+                    max: formatNumber(Math.round(maxPP), locale),
                     mods: mods || t(locale, 'recommend.label_mods_any'),
                     played: showPlayed ? t(locale, 'recommend.label_yes') : t(locale, 'recommend.label_no'),
                     style: currentStyleLabel

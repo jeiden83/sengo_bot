@@ -1,5 +1,5 @@
 const { EmbedBuilder } = require("discord.js");
-const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatDecimal, formatNumber } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 function doYuriStatsEmbed({ message, total, mediosCount, sortedUploaders, sortedSeries, lastUploadText, isLocal, locale = 'es' }) {
@@ -7,9 +7,9 @@ function doYuriStatsEmbed({ message, total, mediosCount, sortedUploaders, sorted
     const titleKey = isLocal ? 'yuri.stats_title_local' : 'yuri.stats_title';
     
     // Distribución por medio
-    const mangaPct = total > 0 ? ((mediosCount.manga / total) * 100).toFixed(1) : '0.0';
-    const novelPct = total > 0 ? ((mediosCount['novela ligera'] / total) * 100).toFixed(1) : '0.0';
-    const animePct = total > 0 ? ((mediosCount.anime / total) * 100).toFixed(1) : '0.0';
+    const mangaPct = total > 0 ? formatDecimal((mediosCount.manga / total) * 100, locale, 1) : formatDecimal(0, locale, 1);
+    const novelPct = total > 0 ? formatDecimal((mediosCount['novela ligera'] / total) * 100, locale, 1) : formatDecimal(0, locale, 1);
+    const animePct = total > 0 ? formatDecimal((mediosCount.anime / total) * 100, locale, 1) : formatDecimal(0, locale, 1);
 
     const distributionValue = t(locale, 'yuri.stats_medium_values', {
         manga: mediosCount.manga,
@@ -32,7 +32,7 @@ function doYuriStatsEmbed({ message, total, mediosCount, sortedUploaders, sorted
             },
             {
                 name: t(locale, 'yuri.stats_uploaders'),
-                value: sortedUploaders.map(([user, count]) => `• **${user}**: ${count} (${((count / total) * 100).toFixed(1)}%)`).join('\n') || t(locale, 'yuri.none'),
+                value: sortedUploaders.map(([user, count]) => `• **${user}**: ${formatNumber(count, locale)} (${formatDecimal((count / total) * 100, locale, 1)}%)`).join('\n') || t(locale, 'yuri.none'),
                 inline: false
             },
             {
