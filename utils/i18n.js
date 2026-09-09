@@ -80,12 +80,33 @@ function formatNumber(num, locale = 'es', options = {}) {
     return val.toLocaleString(tag, { useGrouping: true, ...options });
 }
 
+/**
+ * Formatea un número decimal con separadores localizados (coma decimal y punto de miles en es-ES; punto decimal y coma de miles en en-US).
+ * ponytail: estandariza el renderizado de decimales (pp, estrellas, precisión) según el idioma del bot.
+ * @param {number|string} num - Número a formatear
+ * @param {string} [locale='es'] - Código de idioma ('es' o 'en')
+ * @param {number} [decimals=2] - Cantidad fija de decimales
+ * @returns {string}
+ */
+function formatDecimal(num, locale = 'es', decimals = 2) {
+    if (num === null || num === undefined) return '0';
+    const val = Number(num);
+    if (isNaN(val)) return String(num);
+    const tag = (locale && String(locale).toLowerCase().startsWith('en')) ? 'en-US' : 'es-ES';
+    return val.toLocaleString(tag, {
+        useGrouping: true,
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+    });
+}
+
 // Cargar las traducciones al importar el módulo
 loadTranslations();
 
 module.exports = {
     t,
     formatNumber,
+    formatDecimal,
     loadTranslations,
     locales
 };

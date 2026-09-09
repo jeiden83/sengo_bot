@@ -15,7 +15,8 @@ const {
     getDisplayGamemode,
     getBeatmapStatsLine,
     hasLazerCustomMods,
-    formatNumber
+    formatNumber,
+    formatDecimal
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -46,13 +47,13 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
 
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
-    const score = getFormattedScore(recent_scores, scoreMode);
-    const accuracy = (recent_scores.accuracy * 100).toFixed(2);
+    const score = getFormattedScore(recent_scores, scoreMode, locale);
+    const accuracy = formatDecimal(recent_scores.accuracy * 100, locale, 2);
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = `${pre_calculated.pp.toFixed(2)}`;
+    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
     const difficultyStars = pre_calculated.reworkStars || pre_calculated.maxAttrs.stars || (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0);
-    const difficulty = (difficultyStars || 0).toFixed(2);
+    const difficulty = formatDecimal(difficultyStars || 0, locale, 2);
     const embedColor = getEmbedColor(message);
 
     const stats = recent_scores.statistics || {};
@@ -61,12 +62,12 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
 
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const mods_used = formatMods(recent_scores.mods, isLazer);
-    const map_completion = recent_scores.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
+    const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats_str = getStatsString(stats, recent_scores.beatmap.mode);
     let ratio_str = "";
     if (recent_scores.beatmap.mode === 'mania') {
-        const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+        const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
@@ -248,8 +249,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${score}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}`;
-    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu');
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
+    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu', locale);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
     const reworkDisclaimer = isLazerCustomRework ? `\n${t(locale, 'rework.lazer_custom_mods_warning')}` : '';
 
     const embed = new EmbedBuilder()
@@ -292,13 +293,13 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
-        const accuracy = (score.accuracy * 100).toFixed(2);
+        const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
 
         let map_completion = "";
         if (score.calculatedPassPercent !== undefined) {
             if (!score.passed && score.calculatedPassPercent > 0) {
-                map_completion = `*(${score.calculatedPassPercent.toFixed(1)}% pass)*`;
+                map_completion = `*(${formatDecimal(score.calculatedPassPercent, locale, 1)}% pass)*`;
             }
         } else if (!score.passed) {
             const count_circles = score.beatmap.count_circles || 0;
@@ -311,7 +312,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
                 const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
                 const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
                 const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-                map_completion = `*(${((great + ok + meh + miss) / total_objects * 100).toFixed(1)}% pass)*`;
+                map_completion = `*(${formatDecimal((great + ok + meh + miss) / total_objects * 100, locale, 1)}% pass)*`;
             }
         }
 
@@ -322,16 +323,16 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
         let ppVal = score.calculatedPP !== undefined ? score.calculatedPP : score.pp;
         const isLoved = isLovedScore(score);
-        let pp = (isLoved && (!ppVal || ppVal === 0)) ? "💖" : `${ppVal ? ppVal.toFixed(2) + "pp" : "⏳ pp"}`;
+        let pp = (isLoved && (!ppVal || ppVal === 0)) ? "💖" : `${ppVal ? formatDecimal(ppVal, locale, 2) + "pp" : "⏳ pp"}`;
 
         let starsVal = score.calculatedStars !== undefined ? score.calculatedStars : score.beatmap.difficulty_rating;
-        const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
+        const stars = starsVal ? `${formatDecimal(starsVal, locale, 2)}★` : "";
 
         let time_set = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
@@ -393,17 +394,17 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const beatmap_cover = score.beatmapset.covers["cover@2x"];
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
-    const score_val = getFormattedScore(score, scoreMode);
-    const accuracy = (score.accuracy * 100).toFixed(2);
+    const score_val = getFormattedScore(score, scoreMode, locale);
+    const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = `${pre_calculated.pp.toFixed(2)}`;
-    const difficulty = ((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0).toFixed(2);
+    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
+    const difficulty = formatDecimal(((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
     const mods_used = formatMods(score.mods, isLazer);
-    const map_completion = score.passed ? `` : `(${((pre_calculated.map_completion) * 100).toFixed(2)}%)`;
+    const map_completion = score.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = score.statistics || {};
     const stats_str = getStatsString(stats, score.beatmap.mode);
@@ -412,7 +413,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (score.beatmap.mode === 'mania') {
         const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-        const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+        const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
 
@@ -436,7 +437,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
     if (parsed_args.skillInfo) {
         const skillName = parsed_args.skillInfo.key.toUpperCase();
-        active_filters.push(`Skill: ${skillName} (${parsed_args.skillInfo.avgPoints.toFixed(2)} pts)`);
+        active_filters.push(`Skill: ${skillName} (${formatDecimal(parsed_args.skillInfo.avgPoints, locale, 2)} pts)`);
     }
 
     if (active_filters.length > 0) {
@@ -445,17 +446,17 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
 
     if (parsed_args.noChokePPSummary) {
         const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
-        const origStr = formatNumber(originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const simStr = formatNumber(simulatedPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const origStr = formatDecimal(originalPP, locale, 2);
+        const simStr = formatDecimal(simulatedPP, locale, 2);
         const sign = diffPP >= 0 ? '+' : '';
-        const diffStr = sign + formatNumber(diffPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const diffStr = sign + formatDecimal(diffPP, locale, 2);
         prefix_desc += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n`;
         if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
-            const playOrigStr = formatNumber(score.originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            const playSimStr = formatNumber(score.pp, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const playOrigStr = formatDecimal(score.originalPP, locale, 2);
+            const playSimStr = formatDecimal(score.pp, locale, 2);
             const playDiff = score.pp - score.originalPP;
             const playSign = playDiff >= 0 ? '+' : '';
-            const playDiffStr = playSign + formatNumber(playDiff, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            const playDiffStr = playSign + formatDecimal(playDiff, locale, 2);
             prefix_desc += `🎯 **${t(locale, 'top.nochoke_play_pp')}:** \`${playOrigStr}pp\` ➔ **\`${playSimStr}pp\`** (\`${playDiffStr}pp\`)\n`;
         }
         prefix_desc += '\n';
@@ -470,11 +471,11 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const time_relative = `${snipedPrefixSingle}${time_relative_val}`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const skillLine = (score.skillPoints !== undefined && score.selectedSkill)
-        ? `⭐ **Skill (${score.selectedSkill.toUpperCase()}):** \`${score.skillPoints.toFixed(2)} pts\`\n`
+        ? `⭐ **Skill (${score.selectedSkill.toUpperCase()}):** \`${formatDecimal(score.skillPoints, locale, 2)} pts\`\n`
         : "";
     const line2 = `${prefix_desc}${skillLine}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || 'osu');
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc);
+    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || 'osu', locale);
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     let authorName = parsed_args.nochoke
         ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
@@ -538,7 +539,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     }
     if (parsed_args.skillInfo) {
         const skillName = parsed_args.skillInfo.key.toUpperCase();
-        active_filters.push(`Skill: ${skillName} (${parsed_args.skillInfo.avgPoints.toFixed(2)} pts)`);
+        active_filters.push(`Skill: ${skillName} (${formatDecimal(parsed_args.skillInfo.avgPoints, locale, 2)} pts)`);
     }
 
     if (active_filters.length > 0) {
@@ -547,10 +548,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     if (parsed_args.noChokePPSummary) {
         const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
-        const origStr = formatNumber(originalPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const simStr = formatNumber(simulatedPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const origStr = formatDecimal(originalPP, locale, 2);
+        const simStr = formatDecimal(simulatedPP, locale, 2);
         const sign = diffPP >= 0 ? '+' : '';
-        const diffStr = sign + formatNumber(diffPP, locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const diffStr = sign + formatDecimal(diffPP, locale, 2);
         embed_description += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n\n`;
     }
 
@@ -561,7 +562,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
         const isLazer = score.build_id !== null && score.build_id !== undefined;
         const mods_used = formatMods(score.mods, isLazer);
-        const accuracy = (score.accuracy * 100).toFixed(2);
+        const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
         const combo_val_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
         const maxComboStr = max_combo !== null && max_combo !== undefined ? max_combo : '?';
@@ -573,14 +574,14 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
-            const ratio = great > 0 ? (perfect / great).toFixed(2) : perfect;
+            const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
             ratio_str = ` ▸ **${ratio}:1**`;
         }
 
         const isLoved = isLovedScore(score) || (!score.pp || score.pp === 0);
-        let pp = isLoved ? "💖" : `${score.pp ? score.pp.toFixed(2) + "pp" : "0.00pp"}`;
+        let pp = isLoved ? "💖" : `${score.pp ? formatDecimal(score.pp, locale, 2) + "pp" : formatDecimal(0, locale, 2) + "pp"}`;
         let starsVal = calculated_stars[i];
-        const stars = starsVal ? `${starsVal.toFixed(2)}★` : "";
+        const stars = starsVal ? `${formatDecimal(starsVal, locale, 2)}★` : "";
         const snipedPrefixList = score.sniped_name
             ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
             : '';
@@ -591,7 +592,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             ? `**#${score.skillRank} [PP #${score.originalRank || globalIndex}]**`
             : `**#${score.originalRank || globalIndex}**`;
         const skillPrefix = score.skillPoints !== undefined
-            ? `\`${score.skillPoints.toFixed(2)} pts\` ▸ `
+            ? `\`${formatDecimal(score.skillPoints, locale, 2)} pts\` ▸ `
             : "";
 
         let score_line = "";
@@ -599,8 +600,8 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             score_line += `${rankPrefix} ▸ ${map_link} +${mods_used} [${stars}]\n`;
             if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
                 const old_grade = getGradeEmoji(score.originalRankGrade, score.passed);
-                const old_pp = `${score.originalPP.toFixed(2)}pp`;
-                const old_acc = `${(score.originalAccuracy * 100).toFixed(2)}%`;
+                const old_pp = `${formatDecimal(score.originalPP, locale, 2)}pp`;
+                const old_acc = `${formatDecimal(score.originalAccuracy * 100, locale, 2)}%`;
                 const old_stats = `\`${getPlainStatsString(score.originalStats, score.beatmap.mode)}\``;
                 
                 score_line += ` ▸ ${skillPrefix}${old_grade} ➔ ${grade_emoji} ▸ \`${old_pp}\` ➔ **\`${pp}\`** ▸ \`${old_acc}\` ➔ **\`${accuracy}%\`**\n` +

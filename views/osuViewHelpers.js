@@ -3,20 +3,20 @@ const emoji_mods = require("../src/emoji_mods.json");
 const emoji_grades = require("../src/emoji_grades.json");
 const emoji_difficulties = require("../src/emoji_difficulties.json");
 const { colorear } = require("../commands/utils/admin.js");
-const { formatNumber } = require("../utils/i18n.js");
+const { formatNumber, formatDecimal } = require("../utils/i18n.js");
 
 function getEmbedColor(message) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
     return roleColor !== 0 && roleColor !== undefined ? roleColor : '#ffffff';
 }
 
-function getFormattedScore(score, scoreMode = 'classic') {
+function getFormattedScore(score, scoreMode = 'classic', locale = 'es') {
     const raw_score = scoreMode === 'lazer'
         ? (score.total_score || score.score || 0)
         : ((score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
            (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
            score.total_score || score.score || 0);
-    return formatNumber(raw_score, 'es');
+    return formatNumber(raw_score, locale);
 }
 
 function getGradeEmoji(rank, passed) {
@@ -117,19 +117,26 @@ function isLovedScore(score) {
     return false;
 }
 
-function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc) {
-    const numUserPp = typeof user_pp === 'number' ? user_pp : (parseFloat(user_pp) || 0);
-    const numMaxPp = (max_pp !== null && max_pp !== undefined) ? (typeof max_pp === 'number' ? max_pp : parseFloat(max_pp)) : null;
-    const numPpFc = (pp_fc !== null && pp_fc !== undefined) ? (typeof pp_fc === 'number' ? pp_fc : parseFloat(pp_fc)) : null;
+function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, locale = 'es') {
+    const parseVal = (v) => {
+        if (typeof v === 'number') return v;
+        if (!v) return 0;
+        const normalized = String(v).replace(',', '.');
+        return parseFloat(normalized) || 0;
+    };
+    const numUserPp = parseVal(user_pp);
+    const numMaxPp = (max_pp !== null && max_pp !== undefined) ? parseVal(max_pp) : null;
+    const numPpFc = (pp_fc !== null && pp_fc !== undefined) ? parseVal(pp_fc) : null;
 
     let ppStr = '';
+    const zeroPpFormatted = `${formatDecimal(0, locale)}PP`;
     if (numUserPp <= 0 && (!numMaxPp || numMaxPp <= 0)) {
-        ppStr = colorear('0.00PP');
+        ppStr = colorear(zeroPpFormatted);
     } else if (numPpFc && numPpFc > 0 && numUserPp > 0) {
-        ppStr = `${colorear(numUserPp.toFixed(2) + 'PP')}/${colorear("(" + numPpFc.toFixed(2) + "PP)", "amarillo")}`;
+        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}/${colorear("(" + formatDecimal(numPpFc, locale) + "PP)", "amarillo")}`;
     } else {
-        const maxPpStr = (numMaxPp !== null && !isNaN(numMaxPp) && numMaxPp > 0) ? `${numMaxPp.toFixed(2)}PP` : '';
-        ppStr = `${colorear(numUserPp.toFixed(2) + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
+        const maxPpStr = (numMaxPp !== null && !isNaN(numMaxPp) && numMaxPp > 0) ? `${formatDecimal(numMaxPp, locale)}PP` : '';
+        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
     }
     return `\`\`\`ansi\n${stats_str} • ${ppStr}\n\`\`\``;
 }
@@ -426,7 +433,7 @@ function hasLazerCustomMods(mods) {
  * con indicadores de aumento (▲) o disminución (▼).
  * Ej: `CS 5.2▲ | AR 10▲ | OD 10▲ | HP 7▲ | BPM 180`
  */
-function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
+function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu', locale = 'es') {
     const ppEngine = require('../utils/ppEngine.js');
     let baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
     let baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
@@ -507,8 +514,9 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu') {
         if (diff > 0.01) prefix = '▲ ';
         else if (diff < -0.01) prefix = '▼ ';
 
-        const rounded = Number(modVal.toFixed(decimals));
-        return `${prefix}${label} ${rounded}`;
+        const hasDecimals = decimals > 0 && Math.abs(modVal % 1) > 0.001;
+        const valStr = hasDecimals ? formatDecimal(modVal, locale, decimals) : Math.round(modVal).toString();
+        return `${prefix}${label} ${valStr}`;
     };
 
     const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
@@ -540,6 +548,7 @@ module.exports = {
     getDisplayGamemode,
     getBeatmapStatsLine,
     hasLazerCustomMods,
-    formatNumber
+    formatNumber,
+    formatDecimal
 };
 
