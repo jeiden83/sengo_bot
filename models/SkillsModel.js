@@ -806,6 +806,147 @@ function estimateMapSkills(map, activeMod = "NM", gamemode = "osu") {
     };
 }
 
+/**
+ * Guarda o actualiza las métricas de habilidad analítica de un usuario en Supabase.
+ * @param {object} params Datos del usuario y resultado del desglose de habilidades
+ * @returns {Promise<object>} Resultado de la operación
+ */
+async function saveUserSkills({ osuUser, skillsBreakdown, gamemode, discordId = null }) {
+    try {
+        const { getSupabaseClient } = require("../db/database.js");
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            console.warn("[SkillsModel.saveUserSkills] Cliente de Supabase no disponible");
+            return { success: false, error: "Supabase client not available" };
+        }
+
+        const osuId = String(osuUser.id || osuUser.osu_id);
+        const username = osuUser.username || "Desconocido";
+        const rawCountry = osuUser.country_code || osuUser.country?.code || "XX";
+        const countryCode = String(rawCountry).toUpperCase();
+        const mode = gamemode || skillsBreakdown?.mode || osuUser.playmode || "osu";
+
+        const stats = osuUser.statistics || {};
+        const pp = Number(stats.pp != null ? stats.pp : (osuUser.pp || 0));
+        const globalRank = Number(stats.global_rank != null ? stats.global_rank : (osuUser.global_rank || 0));
+        const countryRank = Number(stats.country_rank != null ? stats.country_rank : (osuUser.country_rank || 0));
+
+        const aim = Number(skillsBreakdown?.aim || 0);
+        const speed = Number(skillsBreakdown?.speed || 0);
+        const acc = Number(skillsBreakdown?.acc || 0);
+        const reading = Number(skillsBreakdown?.reading || 0);
+        const stamina = Number(skillsBreakdown?.stamina || 0);
+        const topPlayPP = Number(skillsBreakdown?.topPlayPP || 0);
+
+        const record = {
+            osu_id: osuId,
+            discord_id: discordId ? String(discordId) : null,
+            username,
+            country_code: countryCode,
+            gamemode: mode,
+            pp,
+            global_rank: globalRank,
+            country_rank: countryRank,
+            aim,
+            speed,
+            acc,
+            reading,
+            stamina,
+            top_play_pp: topPlayPP,
+            skills_data: {
+                modStats: skillsBreakdown?.modStats || {},
+                averageStars: skillsBreakdown?.averageStars || {},
+                keymodeInfo: skillsBreakdown?.keymodeInfo || null
+            },
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await supabase
+            .from("user_skills")
+            .upsert(record, { onConflict: "osu_id,gamemode" })
+            .select()
+            .maybeSingle();
+
+        if (error) {
+            console.error(`[SkillsModel.saveUserSkills] Error al guardar habilidades de ${username}:`, error.message);
+            return { success: false, error: error.message };
+        }
+
+        return { success: true, data };
+    } catch (err) {
+        console.error("[SkillsModel.saveUserSkills] Error inesperado:", err.message);
+        return { success: false, error: err.message };
+    }
+}
+
+/**
+ * Consulta la tabla de clasificación de habilidades por país en Supabase.
+ * @param {object} params Filtros de país, modo, habilidad y paginación
+ * @returns {Promise<object>} Lista de jugadores y conteo total
+ */
+async function getCountrySkillsLeaderboard({ countryCode = "VE", gamemode = "osu", skill = "aim", limit = 10, offset = 0 } = {}) {
+    try {
+        const { getSupabaseClient } = require("../db/database.js");
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            return { players: [], totalCount: 0, error: "Supabase client not available" };
+        }
+
+        const validSkills = ["aim", "speed", "acc", "reading", "stamina", "pp"];
+        const normalizedSkill = validSkills.includes(skill?.toLowerCase()) ? skill.toLowerCase() : "aim";
+        const normalizedCountry = String(countryCode || "VE").trim().toUpperCase();
+        const normalizedMode = String(gamemode || "osu").trim().toLowerCase();
+
+        const { data, count, error } = await supabase
+            .from("user_skills")
+            .select("*", { count: "exact" })
+            .eq("country_code", normalizedCountry)
+            .eq("gamemode", normalizedMode)
+            .order(normalizedSkill, { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (error) {
+            console.error("[SkillsModel.getCountrySkillsLeaderboard] Error al consultar leaderboard:", error.message);
+            return { players: [], totalCount: 0, error: error.message };
+        }
+
+        return {
+            players: data || [],
+            totalCount: count || 0,
+            countryCode: normalizedCountry,
+            gamemode: normalizedMode,
+            skill: normalizedSkill
+        };
+    } catch (err) {
+        console.error("[SkillsModel.getCountrySkillsLeaderboard] Error inesperado:", err.message);
+        return { players: [], totalCount: 0, error: err.message };
+    }
+}
+
+/**
+ * Consulta las habilidades almacenadas para un usuario específico.
+ */
+async function getUserSkills({ osuId, gamemode = "osu" }) {
+    try {
+        const { getSupabaseClient } = require("../db/database.js");
+        const supabase = getSupabaseClient();
+        if (!supabase) return null;
+
+        const { data, error } = await supabase
+            .from("user_skills")
+            .select("*")
+            .eq("osu_id", String(osuId))
+            .eq("gamemode", gamemode)
+            .maybeSingle();
+
+        if (error) throw error;
+        return data;
+    } catch (err) {
+        console.error("[SkillsModel.getUserSkills] Error al consultar usuario:", err.message);
+        return null;
+    }
+}
+
 module.exports = {
     mapToSkillCurve,
     estimateAccPP,
@@ -815,5 +956,9 @@ module.exports = {
     analyzeSkills,
     analyzeSkillsBreakdown,
     analyzePlayerPushProfile,
-    estimateMapSkills
+    estimateMapSkills,
+    saveUserSkills,
+    getCountrySkillsLeaderboard,
+    getUserSkills
 };
+

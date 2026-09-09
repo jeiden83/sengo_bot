@@ -397,8 +397,8 @@
     },
     "skills": {
       "header": "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas.",
-      "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad.",
-      "usage": "s.skills [usuario]"
+      "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad. Admite ranking nacional con -nacional / -pais.",
+      "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO]"
     },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
@@ -414,6 +414,10 @@
   "skills": {
     "embed_title": "Skills ({mode})",
     "embed_footer": "Desglose de habilidades (.skills)",
+    "ranking_title": "Ranking Nacional de Habilidades ({skill}) - {country} ({mode})",
+    "ranking_no_players": "No hay jugadores registrados en el ranking de habilidades para **{country}**.",
+    "ranking_footer_empty": "Ranking de Habilidades • Sin datos",
+    "ranking_page_info": "Pág. {page}/{totalPages} • {totalPlayers} jugadores registrados",
     "avg_aim": "Promedio aim",
     "avg_speed": "Promedio speed",
     "avg_acc": "Promedio accuracy",

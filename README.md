@@ -184,6 +184,11 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.skills [usuario]`**
   Desglosa las habilidades de la tarjeta de perfil con matemática cinética calibrada y factor de rendimiento real.
   * Muestra los promedios en puntos de Aim, Speed, Accuracy y Reading junto con el Top 3 de jugadas demostradas por cada habilidad.
+  * *Ranking Nacional de Habilidades:*
+    * `s.skills -top -nacional` (o `s.skills -nacional`): Tabla de clasificación nacional de habilidades de los jugadores vinculados en Sengo (con respuesta instantánea y paginada en base de datos).
+    * `s.skills -aim -nacional` / `s.skills -speed -pais CL` / `s.skills -reading -pais MX`: Clasificación nacional filtrada por habilidad específica y país (admite `-pais <código>` ej: `VE`, `CL`, `MX`, `AR`, `CO`, etc.).
+  * *Mejores Jugadas por Habilidad:*
+    * `s.skills -top` o `s.skills -aim` / `-speed` / `-acc` / `-reading`: Muestra la lista interactiva de mejores jugadas del usuario ordenadas por los puntos de esa habilidad.
   * *Alias:* `s.skill`, `s.ts`.
 
 ---
@@ -208,12 +213,14 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.nacional [código/nombre]`**
   Muestra la tabla de clasificación por PP, por tops (#1s), o las mejores jugadas individuales por PP de un país específico.
   * *Flags:*
+    * `-skills` / `-aim` / `-speed` / `-acc` / `-reading`: Muestra el ranking nacional de habilidades de los jugadores registrados del país (ej: `s.nacional -skills` o `s.nacional -speed CL`).
     * `-pp`: Muestra el ranking de mejores jugadas por PP a nivel nacional (admite `-pais <código>`, `-m <mods>`, `-mx <mods>`, `-sr>X`, `-g <pp>`, `-? "<texto>"`, `-r`, `-c`, `-acc`, `-i <n>`).
     * `-tops`: Muestra el ranking nacional ordenado por cantidad de #1s y snipes del país (admite `-pais <código>` ej: `s.nacional -tops -pais MX`).
     * `-acc`: Ordena por precisión (Acc).
     * `-score` / `-totalscore`: Ordena por Ranked Score o Score Total.
     * `-regional [región]`: Muestra la clasificación regional (osu!World).
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
+
 * **`s.regional [región]`**
   Consulta clasificaciones regionales de [osu!World](https://osuworld.octo.moe/).
   * *Flags:* `lista` (muestra regiones disponibles), `-pais [código]`.

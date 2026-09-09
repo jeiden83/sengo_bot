@@ -131,8 +131,112 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
         .setTimestamp();
 }
 
+/**
+ * Genera el embed con la tabla de clasificación de habilidades por país.
+ * @param {object} params
+ * @param {Array} params.players Lista de jugadores obtenidos de user_skills
+ * @param {number} params.totalCount Total de jugadores en la categoría
+ * @param {number} params.startIndex Índice inicial para la numeración (0-based)
+ * @param {string} params.countryCode Código de dos letras del país (ej: "VE")
+ * @param {string} params.gamemode Modo de juego ("osu", "taiko", etc.)
+ * @param {string} params.skill Habilidad ordenada ("aim", "speed", "acc", "reading", "stamina", "pp")
+ * @param {object} params.message Mensaje o interacción de Discord
+ * @param {string} params.locale Idioma ('es' o 'en')
+ * @returns {EmbedBuilder} EmbedBuilder configurado
+ */
+function doOsuSkillsRankingEmbed({
+    players = [],
+    totalCount = 0,
+    startIndex = 0,
+    countryCode = "VE",
+    gamemode = "osu",
+    skill = "aim",
+    message,
+    locale = "es"
+}) {
+    const embedColor = getEmbedColor(message);
+    const countryCodesData = require("../src/country_codes.json");
+    const countryInfo = countryCodesData[countryCode.toUpperCase()];
+    const countryName = countryInfo ? countryInfo.country : countryCode.toUpperCase();
+    const flag = getCountryFlag(countryCode);
+
+    const MODE_NAMES = {
+        osu: "osu!",
+        taiko: "osu!taiko",
+        fruits: "osu!catch",
+        mania: "osu!mania"
+    };
+    const modeDisplayName = MODE_NAMES[gamemode] || "osu!";
+
+    const skillUpper = (skill || "aim").toUpperCase();
+    const title = `${flag} ${t(locale, "skills.ranking_title", {
+        country: countryName,
+        skill: skillUpper,
+        mode: modeDisplayName
+    })}`;
+
+    if (!players || players.length === 0) {
+        return new EmbedBuilder()
+            .setColor(embedColor)
+            .setTitle(title)
+            .setDescription(`*${t(locale, "skills.ranking_no_players", { country: countryName })}*`)
+            .setFooter({
+                text: `Sengo • ${t(locale, "skills.ranking_footer_empty")}`,
+                iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+            })
+            .setTimestamp();
+    }
+
+    const lines = players.map((p, index) => {
+        const rankNum = startIndex + index + 1;
+        const userUrl = `https://osu.ppy.sh/users/${p.osu_id}`;
+        const skillVal = Number(p[skill] ?? 0).toFixed(2);
+        const ppFormatted = Number(p.pp || 0).toLocaleString("en-US", { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+
+        let subDetails = `  ↳ **${ppFormatted} pp**`;
+        if (p.country_rank && p.country_rank > 0) {
+            subDetails += ` (#${p.country_rank} ${p.country_code})`;
+        }
+        if (p.global_rank && p.global_rank > 0) {
+            subDetails += ` • Global: **#${p.global_rank.toLocaleString("en-US")}**`;
+        }
+        if (p.top_play_pp && p.top_play_pp > 0) {
+            subDetails += ` • Top: **${Math.round(p.top_play_pp)}pp**`;
+        }
+
+        // Mostrar habilidades secundarias clave si no es la habilidad ordenada
+        const secondarySkills = [];
+        if (skill !== "aim" && p.aim > 0) secondarySkills.push(`Aim: ${Number(p.aim).toFixed(1)}`);
+        if (skill !== "speed" && p.speed > 0) secondarySkills.push(`Spd: ${Number(p.speed).toFixed(1)}`);
+        if (skill !== "acc" && p.acc > 0) secondarySkills.push(`Acc: ${Number(p.acc).toFixed(1)}`);
+        if (skill !== "reading" && p.reading > 0) secondarySkills.push(`Read: ${Number(p.reading).toFixed(1)}`);
+
+        let secStr = "";
+        if (secondarySkills.length > 0) {
+            secStr = `\n    *${secondarySkills.slice(0, 3).join(" • ")}*`;
+        }
+
+        return `**#${rankNum}** [${p.username}](${userUrl}) ▸ **${skillVal} pts** \`${skillUpper}\`\n${subDetails}${secStr}`;
+    });
+
+    const currentPage = Math.floor(startIndex / 10) + 1;
+    const totalPages = Math.max(1, Math.ceil(totalCount / 10));
+
+    return new EmbedBuilder()
+        .setColor(embedColor)
+        .setTitle(title)
+        .setDescription(lines.join("\n\n"))
+        .setFooter({
+            text: `Sengo • ${t(locale, "skills.ranking_page_info", { page: currentPage, totalPages, totalPlayers: totalCount })}`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
+        })
+        .setTimestamp();
+}
+
 module.exports = {
     doOsuSkillsEmbed,
+    doOsuSkillsRankingEmbed,
     getCountryFlag,
     formatModsCleanText
 };
+

@@ -138,6 +138,14 @@ async function run(messages, args) {
         return await handleNationalPPPlays(messages, args, parsed_args, countryFilter, targetGamemode, gamemodeName, embedPage);
     }
 
+    // Modo de habilidades a nivel nacional (-skills / -aim / -speed / -acc / -reading / -stamina)
+    const SKILL_FLAGS = new Set(["-skills", "--skills", "-skill", "--skill", "-aim", "--aim", "-speed", "--speed", "-acc", "--acc", "-reading", "--reading", "-read", "--read", "-stamina", "--stamina", "-stam", "--stam"]);
+    const hasSkillFlag = Array.isArray(args) && args.some(a => typeof a === 'string' && SKILL_FLAGS.has(a.toLowerCase()));
+    if (hasSkillFlag) {
+        const skillsCommand = require("./skills.js");
+        return await skillsCommand.run(messages, [...(args || []), "-nacional", "-pais", countryFilter]);
+    }
+
     let viewMode = 'national'; // 'national', 'regional', 'subdivisions'
     let selectedRegion = null;
     let selectedRegionName = null;

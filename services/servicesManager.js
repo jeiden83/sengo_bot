@@ -40,6 +40,15 @@ function initializeServices(client, dbRes, config, todayLogExists) {
         Logger.system(`Error al iniciar Supporter Sync: ${err.message}`);
     }
 
+    // 3.1 Sincronizador periódico de habilidades de usuarios (user_skills en segundo plano)
+    try {
+        const { initUserSkillsSync } = require("./userSkillsSync.js");
+        initUserSkillsSync();
+    } catch (err) {
+        Logger.system(`Error al iniciar User Skills Sync: ${err.message}`);
+    }
+
+
     // 3.5 Scheduler de Pool de Tokens OAuth (Carga en segundo plano al inicio y cada 6 horas)
     try {
         const OsuScoreModel = require("../models/OsuScoreModel.js");

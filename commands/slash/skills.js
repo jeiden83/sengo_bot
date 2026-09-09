@@ -51,6 +51,14 @@ const data = new SlashCommandBuilder()
             .setDescription("Mostrar una jugada específica (1-100)")
             .setMinValue(1)
             .setMaxValue(100)
+    )
+    .addBooleanOption(option =>
+        option.setName("nacional")
+            .setDescription("Mostrar tabla de clasificación nacional de habilidades")
+    )
+    .addStringOption(option =>
+        option.setName("pais")
+            .setDescription("Código de país de 2 letras (ej: VE, CL, MX, CO, AR)")
     );
 
 // Permitir instalación de usuario y servidores externos
@@ -69,15 +77,24 @@ async function run(interaction, res, chat_commands) {
     const mods = interaction.options.getString("mods");
     const page = interaction.options.getInteger("page");
     const index = interaction.options.getInteger("index");
+    const isNacional = interaction.options.getBoolean("nacional");
+    const pais = interaction.options.getString("pais");
 
     const args = [];
-    if (targetUser) args.push(targetUser);
-    if (modo) args.push(`-${modo}`);
-    if (isTop || skill || page || index) args.push("-top");
-    if (skill) args.push(`-${skill}`);
-    if (mods) args.push("-m", mods);
-    if (page) args.push("-p", String(page));
-    if (index) args.push("-i", String(index));
+    if (isNacional || pais) {
+        args.push("-nacional");
+        if (pais) args.push("-pais", pais);
+        if (skill) args.push(`-${skill}`);
+        if (modo) args.push(`-${modo}`);
+    } else {
+        if (targetUser) args.push(targetUser);
+        if (modo) args.push(`-${modo}`);
+        if (isTop || skill || page || index) args.push("-top");
+        if (skill) args.push(`-${skill}`);
+        if (mods) args.push("-m", mods);
+        if (page) args.push("-p", String(page));
+        if (index) args.push("-i", String(index));
+    }
 
     const messages = createSlashMessagesContext(interaction, res);
 

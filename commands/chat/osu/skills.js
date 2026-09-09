@@ -1,7 +1,8 @@
 const { t } = require("../../../utils/i18n.js");
 const { getOsuUser, getUserTopScores, argsParser } = require("../../utils/osu.js");
-const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
-const { doOsuSkillsEmbed } = require("../../../views/osuSkillsView.js");
+const { analyzeSkillsBreakdown, saveUserSkills, getCountrySkillsLeaderboard } = require("../../../models/SkillsModel.js");
+const { doOsuSkillsEmbed, doOsuSkillsRankingEmbed } = require("../../../views/osuSkillsView.js");
+const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 
 async function run(messages, args) {
@@ -9,7 +10,7 @@ async function run(messages, args) {
     const locale = message?.locale || "es";
     const safeArgs = Array.isArray(args) ? args : [];
 
-    // Mapeo de alias de habilidades para filtrado en -top
+    // Mapeo de alias de habilidades para filtrado en -top y ranking nacional
     const SKILL_ALIASES = {
         aim: "aim",
         speed: "speed",
@@ -29,10 +30,200 @@ async function run(messages, args) {
         jack: "jack",
         jacks: "jack",
         tech: "tech",
-        ln: "tech"
+        ln: "tech",
+        pp: "pp"
     };
 
-    // ponytail: Si se incluye -top o un flag de habilidad (-reading, -aim, etc.), delegar al flujo de mejores jugadas desglosadas por habilidad
+    // Flags que activan el ranking nacional de habilidades
+    const NATIONAL_FLAGS = new Set([
+        "-nacional", "--nacional", "-nac", "--nac",
+        "-national", "--national",
+        "-lb", "--lb", "-leaderboard", "--leaderboard"
+    ]);
+
+    let isNational = false;
+    let countryArg = null;
+    let selectedSkill = null;
+    const countryCodesData = require("../../../src/country_codes.json");
+
+    for (let i = 0; i < safeArgs.length; i++) {
+        const arg = safeArgs[i];
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        const stripped = lower.replace(/^--?/, "");
+
+        if (NATIONAL_FLAGS.has(lower)) {
+            isNational = true;
+            continue;
+        }
+
+        if (lower === "-pais" || lower === "--pais" || lower === "-country" || lower === "--country") {
+            isNational = true;
+            if (i + 1 < safeArgs.length && !safeArgs[i + 1].startsWith("-")) {
+                countryArg = safeArgs[i + 1].trim().toUpperCase();
+                i++;
+            }
+            continue;
+        }
+
+        if (SKILL_ALIASES[stripped]) {
+            selectedSkill = SKILL_ALIASES[stripped];
+            continue;
+        }
+
+        // Si es código ISO de 2 letras y coincide con el catálogo de países
+        if (/^[a-zA-Z]{2}$/.test(arg)) {
+            const pot = arg.toUpperCase();
+            if (countryCodesData[pot]) {
+                countryArg = pot;
+            }
+        }
+    }
+
+    // Si se especificó un país directo con -top (ej: s.skills -top VE), interpretar como ranking nacional
+    if (countryArg && safeArgs.some(a => typeof a === "string" && (a.toLowerCase() === "-top" || a.toLowerCase() === "--top"))) {
+        isNational = true;
+    }
+
+    // 🏆 Flujo de Ranking Nacional de Habilidades (cero llamadas on-the-fly, consulta 100% DB)
+    if (isNational) {
+        let targetMode = "osu";
+        for (const arg of safeArgs) {
+            if (typeof arg !== "string") continue;
+            const lower = arg.toLowerCase();
+            if (["-t", "-taiko", "--taiko", "taiko"].includes(lower)) targetMode = "taiko";
+            else if (["-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits"].includes(lower)) targetMode = "fruits";
+            else if (["-mania", "--mania", "mania"].includes(lower) || lower === "-m") targetMode = "mania";
+            else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) targetMode = "osu";
+        }
+
+        let countryCode = countryArg;
+        if (!countryCode || countryCode === "SELF") {
+            try {
+                const userToken = await OsuUserModel.getOAuthTokenRecord(message.author?.id);
+                if (userToken && userToken.country_code) {
+                    countryCode = userToken.country_code.toUpperCase();
+                }
+            } catch (err) {
+                console.warn("[s.skills] Error al consultar país del autor en OAuth:", err.message);
+            }
+            if (!countryCode) countryCode = "VE";
+        }
+
+        const skillToQuery = selectedSkill || "aim";
+        const pageSize = 10;
+        let startIndex = 0;
+
+        if (logger) logger.process(`Consultando ranking nacional de habilidades (${skillToQuery}) para ${countryCode}`);
+
+        const initialData = await getCountrySkillsLeaderboard({
+            countryCode,
+            gamemode: targetMode,
+            skill: skillToQuery,
+            limit: pageSize,
+            offset: startIndex
+        });
+
+        const embed = doOsuSkillsRankingEmbed({
+            players: initialData.players,
+            totalCount: initialData.totalCount,
+            startIndex,
+            countryCode: initialData.countryCode,
+            gamemode: targetMode,
+            skill: skillToQuery,
+            message,
+            locale
+        });
+
+        const total = initialData.totalCount;
+        const hasButtons = total > pageSize;
+        const components = hasButtons
+            ? [buildPaginationRow({ prefix: "skills_lb", current: startIndex, total, pageSize })]
+            : [];
+
+        let sentMessage = null;
+        if (typeof message.channel?.send === "function") {
+            sentMessage = await message.channel.send({
+                embeds: [embed],
+                components
+            });
+        } else if (typeof message.reply === "function") {
+            sentMessage = await message.reply({
+                embeds: [embed],
+                components
+            });
+        }
+
+        if (!hasButtons || !sentMessage || typeof sentMessage.createMessageComponentCollector !== "function") {
+            return sentMessage || { embeds: [embed], components };
+        }
+
+        const btnFilter = btnInt => btnInt.user.id === message.author?.id;
+        const collector = sentMessage.createMessageComponentCollector({
+            filter: btnFilter,
+            idle: 60000
+        });
+
+        collector.on("collect", async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === "skills_lb_first") {
+                    startIndex = 0;
+                } else if (i.customId === "skills_lb_prev") {
+                    startIndex = Math.max(0, startIndex - pageSize);
+                } else if (i.customId === "skills_lb_next") {
+                    startIndex = startIndex + pageSize;
+                } else if (i.customId === "skills_lb_last") {
+                    startIndex = Math.floor((total - 1) / pageSize) * pageSize;
+                }
+
+                const pageData = await getCountrySkillsLeaderboard({
+                    countryCode,
+                    gamemode: targetMode,
+                    skill: skillToQuery,
+                    limit: pageSize,
+                    offset: startIndex
+                });
+
+                const updatedEmbed = doOsuSkillsRankingEmbed({
+                    players: pageData.players,
+                    totalCount: total,
+                    startIndex,
+                    countryCode: pageData.countryCode,
+                    gamemode: targetMode,
+                    skill: skillToQuery,
+                    message,
+                    locale
+                });
+
+                const updatedRow = buildPaginationRow({ prefix: "skills_lb", current: startIndex, total, pageSize });
+
+                if (typeof sentMessage.edit === "function") {
+                    await sentMessage.edit({
+                        embeds: [updatedEmbed],
+                        components: [updatedRow]
+                    });
+                }
+            } catch (collectErr) {
+                console.warn("[s.skills] Error en botón de paginación:", collectErr.message);
+            }
+        });
+
+        collector.on("end", async () => {
+            try {
+                if (sentMessage && typeof sentMessage.edit === "function") {
+                    await sentMessage.edit({ components: [] });
+                }
+            } catch {
+                // Mensaje ya editado o borrado
+            }
+        });
+
+        return sentMessage;
+    }
+
+    // ponytail: Si se incluye -top o un flag de habilidad (-reading, -aim, etc.) sin ser ranking nacional, delegar a mejores jugadas
     const hasSkillArg = safeArgs.some(arg => typeof arg === "string" && Boolean(SKILL_ALIASES[arg.toLowerCase().replace(/^--?/, "")]));
     const isTopMode = safeArgs.some(arg => typeof arg === "string" && (arg.toLowerCase() === "-top" || arg.toLowerCase() === "--top")) || hasSkillArg;
     if (isTopMode) {
@@ -100,9 +291,8 @@ async function run(messages, args) {
     const targetMode = detectedMode || osuUser?.playmode || "osu";
 
     if (!osuUser || !osuUser.id) {
-        // Buscar usuario vinculado del autor
         try {
-            const linked = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+            const linked = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
             if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
                 osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: "bancho" });
@@ -131,6 +321,16 @@ async function run(messages, args) {
         const skillsBreakdown = await analyzeSkillsBreakdown(topScores, targetMode);
         const embed = doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale);
 
+        // Auto-persistencia pasiva en Supabase en segundo plano
+        saveUserSkills({
+            osuUser,
+            skillsBreakdown,
+            gamemode: targetMode,
+            discordId: message?.author?.id
+        }).catch(err => {
+            console.warn("[s.skills] Error al persistir skills en background:", err.message);
+        });
+
         return { embeds: [embed] };
     } catch (error) {
         console.error("[s.skills] Error al procesar desglose de habilidades:", error);
@@ -149,3 +349,4 @@ module.exports = {
     run,
     description: run.description
 };
+
