@@ -3,6 +3,7 @@ const emoji_mods = require("../src/emoji_mods.json");
 const emoji_grades = require("../src/emoji_grades.json");
 const emoji_difficulties = require("../src/emoji_difficulties.json");
 const { colorear } = require("../commands/utils/admin.js");
+const { formatNumber } = require("../utils/i18n.js");
 
 function getEmbedColor(message) {
     const roleColor = message.member?.roles?.highest?.color || '#ffffff';
@@ -15,7 +16,7 @@ function getFormattedScore(score, scoreMode = 'classic') {
         : ((score.legacy_total_score && score.legacy_total_score > 0) ? score.legacy_total_score :
            (score.classic_total_score && score.classic_total_score > 0) ? score.classic_total_score :
            score.total_score || score.score || 0);
-    return raw_score.toLocaleString('es-ES');
+    return formatNumber(raw_score, 'es');
 }
 
 function getGradeEmoji(rank, passed) {
@@ -538,6 +539,7 @@ module.exports = {
     isLovedScore,
     getDisplayGamemode,
     getBeatmapStatsLine,
-    hasLazerCustomMods
+    hasLazerCustomMods,
+    formatNumber
 };
 

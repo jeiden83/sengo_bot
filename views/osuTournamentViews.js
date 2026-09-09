@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatNumber } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 // Emojis representativos de los modos de juego de osu!
@@ -43,7 +43,7 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
             activeFilters.push(`**${t(locale, 'torneos.mode')}**: \`${modeName}\``);
         }
         if (filters.rank !== null && filters.rank !== undefined) {
-            activeFilters.push(`**${t(locale, 'torneos.rank')}**: \`#${filters.rank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}\``);
+            activeFilters.push(`**${t(locale, 'torneos.rank')}**: \`#${formatNumber(filters.rank, locale)}\``);
         }
         if (filters.tag) {
             activeFilters.push(`**${t(locale, 'torneos.tag')}**: \`${filters.tag}\``);
@@ -77,8 +77,8 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
         
         let rankStr = t(locale, 'torneos.open_range');
         if (!tourney.is_open_range) {
-            const minStr = tourney.rank_min ? tourney.rank_min.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US') : "1";
-            const maxStr = tourney.rank_max ? tourney.rank_max.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US') : "∞";
+            const minStr = tourney.rank_min ? formatNumber(tourney.rank_min, locale) : "1";
+            const maxStr = tourney.rank_max ? formatNumber(tourney.rank_max, locale) : "∞";
             rankStr = `#${minStr} - #${maxStr}`;
         }
 
@@ -123,8 +123,8 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
 
     let rankStr = t(locale, 'torneos.open_range');
     if (!tournament.is_open_range) {
-        const minStr = tournament.rank_min ? tournament.rank_min.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US') : "1";
-        const maxStr = tournament.rank_max ? tournament.rank_max.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US') : "∞";
+        const minStr = tournament.rank_min ? formatNumber(tournament.rank_min, locale) : "1";
+        const maxStr = tournament.rank_max ? formatNumber(tournament.rank_max, locale) : "∞";
         rankStr = `#${minStr} - #${maxStr}`;
     }
 

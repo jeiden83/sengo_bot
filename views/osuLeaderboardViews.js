@@ -122,9 +122,7 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
         const mods_used = formatMods(score.mods, isLazer);
 
         const isLazerMode = parsed_args.lazerMode || parsed_args.isLazerMode;
-        const legacy_score = isLazerMode 
-            ? (score.total_score || score.score || 0).toLocaleString('es-ES')
-            : getFormattedScore(score);
+        const legacy_score = getFormattedScore(score, isLazerMode ? 'lazer' : 'classic');
         const accuracy = (score.accuracy * 100).toFixed(2);
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;

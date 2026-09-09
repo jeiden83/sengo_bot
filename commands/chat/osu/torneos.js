@@ -8,7 +8,7 @@ const {
     getTournamentSelectionRow,
     getTournamentBackRow
 } = require("../../../views/osuTournamentViews.js");
-const { t } = require("../../../utils/i18n.js");
+const { t, formatNumber } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
     const { message, reply, logger } = messages;
@@ -190,7 +190,7 @@ async function run(messages, args) {
             });
 
             if (matchingTournaments.length === 0) {
-                return `🔍 No encontré torneos activos recomendados para tu modo de juego (**${dbMode === 'osu' ? 'std' : dbMode}**) y tu rango global (**#${currentRank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}**) en este momento.`;
+                return `🔍 No encontré torneos activos recomendados para tu modo de juego (**${dbMode === 'osu' ? 'std' : dbMode}**) y tu rango global (**#${formatNumber(currentRank, locale)}**) en este momento.`;
             }
 
             // Seleccionar uno al azar
@@ -200,7 +200,7 @@ async function run(messages, args) {
             const embed = doTournamentDetailEmbed(recommended, message, locale);
 
             // Mensaje de recomendación
-            const recommendationIntro = `🎲 | **¡Torneo recomendado para ti, ${message.author.username}!** (Modo: \`${dbMode === 'osu' ? 'std' : dbMode}\` • Rango: \`#${currentRank.toLocaleString(locale === 'es' ? 'es-ES' : 'en-US')}\`)`;
+            const recommendationIntro = `🎲 | **¡Torneo recomendado para ti, ${message.author.username}!** (Modo: \`${dbMode === 'osu' ? 'std' : dbMode}\` • Rango: \`#${formatNumber(currentRank, locale)}\`)`;
 
             if (reply && typeof reply.reply === 'function') {
                 await reply.reply({ content: recommendationIntro, embeds: [embed] });

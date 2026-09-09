@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getEmbedColor } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatNumber } = require("./osuViewHelpers.js");
 const emoji_mods = require("../src/emoji_mods.json");
 const { t } = require("../utils/i18n.js");
 
@@ -28,7 +28,6 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
     const embedColor = getEmbedColor(message);
     const { minPP, maxPP, mods, showPlayed, hasSupporter, style, customUserTag } = params;
     const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
-    const numLocale = locale === 'es' ? 'es-ES' : 'en-US';
 
     let description = "";
 
@@ -82,7 +81,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             const seconds = adjustedLength % 60;
             const durationStr = `${minutes}:${seconds < 10 ? "0" : ""}${seconds}`;
             const displayBpm = c.bpm ? Math.round(c.bpm * speedMultiplier) : 0;
-            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${(c.popularity || 0).toLocaleString(numLocale)}\`\n`;
+            description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${formatNumber(c.popularity || 0, locale)}\`\n`;
             if (c.matchReasons && c.matchReasons.length > 0) {
                 const reasonsPrefix = locale === 'es' ? 'Razones' : 'Reasons';
                 description += `   ▸ *${reasonsPrefix}: ${c.matchReasons.join(" • ")}*\n`;
@@ -249,7 +248,7 @@ function doRecommendUserTagsEmbed(message, categories, categoryEmojis, locale = 
     for (const [cat, items] of Object.entries(categories)) {
         const displayName = categoryEmojis[cat] ? categoryEmojis[cat].toUpperCase() : cat.toUpperCase();
         items.sort((a, b) => b.count - a.count);
-        const itemsStr = items.map(item => `\`${item.full}\` (${item.count.toLocaleString()})`).join(" • ");
+        const itemsStr = items.map(item => `\`${item.full}\` (${formatNumber(item.count, locale)})`).join(" • ");
         const truncatedStr = itemsStr.length > 1020 ? itemsStr.substring(0, 1017) + "..." : itemsStr;
         embed.addFields({ name: displayName, value: truncatedStr || t(locale, 'recommend.usertags_none') });
     }

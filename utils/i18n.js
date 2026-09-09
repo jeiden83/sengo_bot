@@ -62,11 +62,30 @@ function t(locale, key, variables = {}) {
     return result;
 }
 
+/**
+ * Formatea un número con separadores de miles según el idioma.
+ * Fuerza el agrupamiento de miles incluso para números de 4 dígitos (1.000 a 9.999),
+ * corrigiendo el comportamiento por defecto de CLDR para es-ES (minimumGroupingDigits: 2).
+ * ponytail: usa Intl nativo con useGrouping: true para evitar regex frágiles.
+ * @param {number|string} num - Número a formatear
+ * @param {string} [locale='es'] - Código de idioma ('es' o 'en')
+ * @param {object} [options={}] - Opciones adicionales de Intl.NumberFormat
+ * @returns {string}
+ */
+function formatNumber(num, locale = 'es', options = {}) {
+    if (num === null || num === undefined) return '0';
+    const val = Number(num);
+    if (isNaN(val)) return String(num);
+    const tag = (locale && String(locale).toLowerCase().startsWith('en')) ? 'en-US' : 'es-ES';
+    return val.toLocaleString(tag, { useGrouping: true, ...options });
+}
+
 // Cargar las traducciones al importar el módulo
 loadTranslations();
 
 module.exports = {
     t,
+    formatNumber,
     loadTranslations,
     locales
 };

@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
-const { t } = require('../utils/i18n.js');
+const { t, formatNumber } = require('../utils/i18n.js');
 const CONFIG = require('../config.js');
 
 /**
@@ -99,7 +99,7 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
     if (locked.length > 0) {
         const parts = [];
         if (lockedWithProgress.length > 0) {
-            parts.push(lockedWithProgress.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()})`).join('\n'));
+            parts.push(lockedWithProgress.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${formatNumber(c.scrapedCount, locale)}/${formatNumber(c.totalRanked, locale)})`).join('\n'));
         }
         if (lockedZeroProgress.length > 0) {
             const zeroList = lockedZeroProgress.map(c => `**${c.code || c.countryCode}**`).join(', ');
@@ -128,11 +128,11 @@ function buildPopulateStatusEmbed(list, locale = 'es') {
             },
             {
                 name: t(locale, 'populate.cat_processing'),
-                value: safeVal(processing.length > 0 ? processing.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos: **${c.occupiedSlots}/${c.totalSlots}** (${c.freeSlots} libres)`).join('\n') : t(locale, 'populate.none_processing'))
+                value: safeVal(processing.length > 0 ? processing.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${formatNumber(c.scrapedCount, locale)}/${formatNumber(c.totalRanked, locale)}) | Puestos: **${c.occupiedSlots}/${c.totalSlots}** (${c.freeSlots} libres)`).join('\n') : t(locale, 'populate.none_processing'))
             },
             {
                 name: t(locale, 'populate.cat_available'),
-                value: safeVal(available.length > 0 ? available.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${c.scrapedCount.toLocaleString()}/${c.totalRanked.toLocaleString()}) | Puestos libres: **${c.freeSlots}/${c.totalSlots}**`).join('\n') : t(locale, 'populate.none_available'))
+                value: safeVal(available.length > 0 ? available.map(c => `• **${c.code || c.countryCode}** — Progreso: **${c.progressPercent}%** (${formatNumber(c.scrapedCount, locale)}/${formatNumber(c.totalRanked, locale)}) | Puestos libres: **${c.freeSlots}/${c.totalSlots}**`).join('\n') : t(locale, 'populate.none_available'))
             },
             {
                 name: t(locale, 'populate.cat_locked'),
@@ -252,8 +252,8 @@ function buildPopulateTopEmbed(topList, locale = 'es', page = 0, pageSize = 10) 
         const globalIndex = currentPage * pageSize + idx;
         const rankIcon = medals[globalIndex] || `\`#${globalIndex + 1}\``;
         const userMention = item.discord_id && !isNaN(item.discord_id) ? `<@${item.discord_id}>` : `**${item.username}**`;
-        const scores = Number(item.scores_submitted || 0).toLocaleString();
-        const batches = Number(item.batches_requested || 0).toLocaleString();
+        const scores = formatNumber(item.scores_submitted || 0, locale);
+        const batches = formatNumber(item.batches_requested || 0, locale);
         return `${rankIcon} ${userMention} — **${scores}** récords guardados (\`${batches}\` lotes)`;
     });
 
@@ -327,7 +327,7 @@ function buildPopulateKeysEmbed(workersList, locale = 'es') {
         const infoLines = [
             `🔑 \`${w.key}\``,
             `👤 ${userMention}`,
-            `💾 **${(w.scoresSubmitted || 0).toLocaleString()}** récords (\`${w.batchesRequested || 0}\` lotes)`,
+            `💾 **${formatNumber(w.scoresSubmitted || 0, locale)}** récords (\`${formatNumber(w.batchesRequested || 0, locale)}\` lotes)`,
             `⏱️ Última actividad: <t:${activeUnix}:R> (${inactiveMin} min inactivo)`
         ];
 

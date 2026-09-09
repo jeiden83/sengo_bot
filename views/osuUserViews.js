@@ -1,5 +1,5 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { getEmbedColor, getFlagEmoji } = require("./osuViewHelpers.js");
+const { getEmbedColor, getFlagEmoji, formatNumber } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 const country_codes = require("../src/country_codes.json");
 
@@ -125,21 +125,19 @@ function doOsuFriendsListEmbed(message, friends, chunk, page, maxPages, startInd
 function doOsuMapperEmbed(message, user, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const flag = getFlagEmoji(user.country_code);
-    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
-    
     // Kudosu, seguidores y suscriptores de mapeo
-    const followers = (user.follower_count || 0).toLocaleString(locTag);
-    const subscribers = (user.mapping_follower_count || 0).toLocaleString(locTag);
-    const kudosuTotal = user.kudosu?.total?.toLocaleString(locTag) || '0';
-    const kudosuAvailable = user.kudosu?.available?.toLocaleString(locTag) || '0';
+    const followers = formatNumber(user.follower_count || 0, locale);
+    const subscribers = formatNumber(user.mapping_follower_count || 0, locale);
+    const kudosuTotal = formatNumber(user.kudosu?.total || 0, locale);
+    const kudosuAvailable = formatNumber(user.kudosu?.available || 0, locale);
     
     // Conteo de sets de beatmaps
-    const rankedCount = user.ranked_and_approved_beatmapset_count?.toLocaleString(locTag) || '0';
-    const lovedCount = user.loved_beatmapset_count?.toLocaleString(locTag) || '0';
-    const pendingCount = user.pending_beatmapset_count?.toLocaleString(locTag) || '0';
-    const graveyardCount = user.graveyard_beatmapset_count?.toLocaleString(locTag) || '0';
-    const guestCount = user.guest_beatmapset_count?.toLocaleString(locTag) || '0';
-    const nominatedCount = user.nominated_beatmapset_count?.toLocaleString(locTag) || '0';
+    const rankedCount = formatNumber(user.ranked_and_approved_beatmapset_count || 0, locale);
+    const lovedCount = formatNumber(user.loved_beatmapset_count || 0, locale);
+    const pendingCount = formatNumber(user.pending_beatmapset_count || 0, locale);
+    const graveyardCount = formatNumber(user.graveyard_beatmapset_count || 0, locale);
+    const guestCount = formatNumber(user.guest_beatmapset_count || 0, locale);
+    const nominatedCount = formatNumber(user.nominated_beatmapset_count || 0, locale);
     
     const isSupporter = user.is_supporter ? " 💖" : "";
     
@@ -260,9 +258,8 @@ function formatBeatmapset(set, index, type, userId, locale = 'es') {
         starsStr = minS === maxS ? `${maxS}★` : `${minS}★ - ${maxS}★`;
     }
 
-    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
-    const playcount = (set.play_count || 0).toLocaleString(locTag);
-    const favorites = (set.favourite_count || 0).toLocaleString(locTag);
+    const playcount = formatNumber(set.play_count || 0, locale);
+    const favorites = formatNumber(set.favourite_count || 0, locale);
     const diffsCount = diffs.length;
     const diffsLabel = diffsCount === 1 ? t(locale, 'mapper.one_diff') : t(locale, 'mapper.diffs_count', { count: diffsCount });
 
@@ -747,24 +744,22 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const embedColor = getEmbedColor(message);
     const flagA = getFlagEmoji(userA.country_code);
     const flagB = getFlagEmoji(userB.country_code);
-    const locTag = locale === 'es' ? 'es-ES' : 'en-US';
-
-    const formatCompact = (num, locale) => {
+    const formatCompact = (num, loc) => {
         if (num >= 1e9) {
-            return (num / 1e9).toLocaleString(locale, { maximumFractionDigits: 2 }) + 'B';
+            return formatNumber(num / 1e9, loc, { maximumFractionDigits: 2 }) + 'B';
         }
         if (num >= 1e6) {
-            return (num / 1e6).toLocaleString(locale, { maximumFractionDigits: 2 }) + 'M';
+            return formatNumber(num / 1e6, loc, { maximumFractionDigits: 2 }) + 'M';
         }
-        return num.toLocaleString(locale);
+        return formatNumber(num, loc);
     };
 
     // PP
     const ppA = userA.statistics.pp || 0;
     const ppB = userB.statistics.pp || 0;
     const markersPP = getMarkers(ppA, ppB);
-    const ppAStr = ppA.toLocaleString(locTag) + ' pp';
-    const ppBStr = ppB.toLocaleString(locTag) + ' pp';
+    const ppAStr = formatNumber(ppA, locale) + ' pp';
+    const ppBStr = formatNumber(ppB, locale) + ' pp';
 
     // Rank
     const rankA = userA.statistics.global_rank;
@@ -781,15 +776,15 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
             markersRank = { a: '', a_end: '', b: '🏆 **', b_end: '**' };
         }
     }
-    const rankAStr = rankA ? '#' + rankA.toLocaleString(locTag) : 'N/A';
-    const rankBStr = rankB ? '#' + rankB.toLocaleString(locTag) : 'N/A';
+    const rankAStr = rankA ? '#' + formatNumber(rankA, locale) : 'N/A';
+    const rankBStr = rankB ? '#' + formatNumber(rankB, locale) : 'N/A';
 
     // Max Combo
     const mcA = userA.statistics.maximum_combo || 0;
     const mcB = userB.statistics.maximum_combo || 0;
     const markersMc = getMarkers(mcA, mcB);
-    const mcAStr = mcA.toLocaleString(locTag) + 'x';
-    const mcBStr = mcB.toLocaleString(locTag) + 'x';
+    const mcAStr = formatNumber(mcA, locale) + 'x';
+    const mcBStr = formatNumber(mcB, locale) + 'x';
 
     // Accuracy
     const accA = userA.statistics.hit_accuracy || 0;
@@ -802,22 +797,22 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const pcA = userA.statistics.play_count || 0;
     const pcB = userB.statistics.play_count || 0;
     const markersPc = getMarkers(pcA, pcB);
-    const pcAStr = pcA.toLocaleString(locTag);
-    const pcBStr = pcB.toLocaleString(locTag);
+    const pcAStr = formatNumber(pcA, locale);
+    const pcBStr = formatNumber(pcB, locale);
 
     // Play Time
     const ptA = userA.statistics.play_time || 0;
     const ptB = userB.statistics.play_time || 0;
     const markersPt = getMarkers(ptA, ptB);
-    const ptAStr = Math.floor(ptA / 3600).toLocaleString(locTag) + ' hrs';
-    const ptBStr = Math.floor(ptB / 3600).toLocaleString(locTag) + ' hrs';
+    const ptAStr = formatNumber(Math.floor(ptA / 3600), locale) + ' hrs';
+    const ptBStr = formatNumber(Math.floor(ptB / 3600), locale) + ' hrs';
 
     // Ranked Score
     const rsA = userA.statistics.ranked_score || 0;
     const rsB = userB.statistics.ranked_score || 0;
     const markersRs = getMarkers(rsA, rsB);
-    const rsAStr = formatCompact(rsA, locTag);
-    const rsBStr = formatCompact(rsB, locTag);
+    const rsAStr = formatCompact(rsA, locale);
+    const rsBStr = formatCompact(rsB, locale);
 
     // Top PP
     const markersTopPp = getMarkers(topPpA, topPpB);
@@ -837,8 +832,8 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     let markersNationalTops = { a: '', a_end: '', b: '', b_end: '' };
     if (nationalTopsA !== null && nationalTopsB !== null) {
         markersNationalTops = getMarkers(nationalTopsA, nationalTopsB);
-        nationalTopsAStr = nationalTopsA.toLocaleString(locTag);
-        nationalTopsBStr = nationalTopsB.toLocaleString(locTag);
+        nationalTopsAStr = formatNumber(nationalTopsA, locale);
+        nationalTopsBStr = formatNumber(nationalTopsB, locale);
     }
 
     function getMarkers(valA, valB) {

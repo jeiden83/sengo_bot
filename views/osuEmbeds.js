@@ -14,7 +14,8 @@ const {
     isLovedScore,
     getDisplayGamemode,
     getBeatmapStatsLine,
-    hasLazerCustomMods
+    hasLazerCustomMods,
+    formatNumber
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -1709,7 +1710,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;
 
     let top_ranking_str = ['gatari', 'mameosu'].includes(osu_userdata.server) ? "" : t(locale, 'profile.top_ranking', {
-        rank: peak_ranking,
+        rank: formatNumber(peak_ranking, locale),
         peak: discord_last_peak
     });
 
@@ -1718,8 +1719,8 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking && matchmaking.rank) {
             rankedPlayStr = t(locale, 'profile.ranked_play', {
-                rank: matchmaking.rank.toLocaleString(locTag),
-                rating: (matchmaking.rating || 0).toLocaleString(locTag)
+                rank: formatNumber(matchmaking.rank, locale),
+                rating: formatNumber(matchmaking.rating || 0, locale)
             });
         }
     }
@@ -1770,11 +1771,11 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             iconURL: icon_url
         })
         .setDescription(t(locale, 'profile.description', {
-            globalRank: global_ranking,
+            globalRank: formatNumber(global_ranking, locale),
             topRankingStr: top_ranking_str,
             countryCode: osu_userdata.country_code.toLowerCase(),
             supporterEmoji,
-            countryRank: country_rank,
+            countryRank: formatNumber(country_rank, locale),
             regionalRankStr,
             rankedPlayStr,
             teamStr,
@@ -1799,7 +1800,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             },
             {
                 name: "PP",
-                value: `\`${Math.round(osu_userdata.statistics.pp)}\``,
+                value: `\`${formatNumber(Math.round(osu_userdata.statistics.pp), locale)}\``,
                 inline: true
             },
             {
@@ -1809,7 +1810,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
             },
             {
                 name: t(locale, 'profile.play_count'),
-                value: `\`${osu_userdata.statistics.play_count}\``,
+                value: `\`${formatNumber(osu_userdata.statistics.play_count, locale)}\``,
                 inline: true
             }
         )
