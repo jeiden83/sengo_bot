@@ -334,6 +334,36 @@ function hasUnrankedPPMods(score) {
     return false;
 }
 
+const ZERO_PP_MODS = new Set([
+    'RX', 'RELAX',
+    'AP', 'AUTOPILOT',
+    'AT', 'AUTO',
+    'CN', 'CINEMA',
+    'TP', 'TARGETPRACTICE', 'TARGET PRACTICE'
+]);
+
+function hasZeroPPMods(score) {
+    if (!score) return false;
+
+    const rawMods = score.mods;
+    if (!rawMods) return false;
+
+    if (Array.isArray(rawMods)) {
+        for (const m of rawMods) {
+            const acronym = (typeof m === 'string' ? m : m.acronym || m.name || '').toUpperCase();
+            if (ZERO_PP_MODS.has(acronym)) {
+                return true;
+            }
+        }
+    } else if (typeof rawMods === 'string') {
+        const upper = rawMods.toUpperCase();
+        for (const zeroMod of ['RX', 'AP', 'AT', 'CN', 'TP']) {
+            if (upper.includes(zeroMod)) return true;
+        }
+    }
+    return false;
+}
+
 /**
  * Calcula el rendimiento (PP) y el PP teórico en caso de Full Combo.
  */
@@ -341,7 +371,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     normalizeScore(recent_scores);
     const { great = 0, ok = 0, meh = 0, miss = 0, perfect = 0, good = 0, small_tick_miss = 0 } = recent_scores.statistics;
 
-    const isUnrankedPP = hasUnrankedPPMods(recent_scores);
+    // ponytail: Solo mods puramente automatizados (Relax, Autopilot, Auto, Cinema) anulan el PP a 0.
+    // Mods de ajuste como DA (Difficulty Adjust) calculan su PP real con sengo-pp, pero siguen bloqueados en el tracker oficial.
+    const isZeroPP = hasZeroPPMods(recent_scores);
     const engine = ppEngine.getEngine(engineChoice || recent_scores?.ppEngine);
 
     let mode = recent_scores.mode;
@@ -448,7 +480,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
                 maxAttrs.difficulty.stars = effectiveStars;
             }
         }
-        if (isUnrankedPP) {
+        if (isZeroPP) {
             Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
         } else if (typeof maxAttrs.pp !== 'number' || isNaN(maxAttrs.pp)) {
             Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
@@ -481,7 +513,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         if (typeof targetDiffAttrs?.stars === 'number') {
             perfResult.stars = targetDiffAttrs.stars;
         }
-        if (isUnrankedPP) {
+        if (isZeroPP) {
             Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
         } else if (typeof perfResult.pp !== 'number' || isNaN(perfResult.pp)) {
             Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
@@ -493,7 +525,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     const difficulty = new engine.Difficulty(max_perfomance_constructor);
     const gradResult = difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
     if (gradResult) {
-        if (isUnrankedPP || typeof gradResult.pp !== 'number' || isNaN(gradResult.pp)) {
+        if (isZeroPP || typeof gradResult.pp !== 'number' || isNaN(gradResult.pp)) {
             Object.defineProperty(gradResult, 'pp', { value: 0, writable: true, configurable: true });
         }
     }
@@ -2546,6 +2578,7 @@ const OsuScoreModel = {
     calculateScoreRank,
     calculatePP,
     hasUnrankedPPMods,
+    hasZeroPPMods,
     benchmarkPP,
     getUnrankedBeatmapUserAllScores,
     getUserRecentScores,
