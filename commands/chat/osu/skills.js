@@ -321,12 +321,23 @@ async function run(messages, args) {
         const skillsBreakdown = await analyzeSkillsBreakdown(topScores, targetMode);
         const embed = doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale);
 
-        // Auto-persistencia pasiva en Supabase en segundo plano
+        // Determinar si el osuUser consultado pertenece al autor del mensaje
+        let authorDiscordId = null;
+        try {
+            const authorLinked = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
+            if (authorLinked && String(authorLinked.osu_id) === String(osuUser.id)) {
+                authorDiscordId = message.author?.id;
+            }
+        } catch {
+            // Silenciar
+        }
+
+        // Auto-persistencia pasiva en Supabase en segundo plano (para cualquier usuario consultado)
         saveUserSkills({
             osuUser,
             skillsBreakdown,
             gamemode: targetMode,
-            discordId: message?.author?.id
+            discordId: authorDiscordId
         }).catch(err => {
             console.warn("[s.skills] Error al persistir skills en background:", err.message);
         });
