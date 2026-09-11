@@ -1951,5 +1951,37 @@
     "title": "🔗 Invita a Sengo a tu servidor",
     "description": "¡Haz que las estadísticas de osu!, comparaciones de puntuaciones, leaderboards nacionales, snipes y utilidades de Sengo estén disponibles en tu servidor!\n\n🔗 **Enlace de Invitación Oficial:**\n[Haz clic aquí para añadir a Sengo]({url})",
     "button_label": "Invitar a Sengo"
+  },
+  "twins": {
+    "title_main": "Gemelo de Mods: {userA} ➔ {userB} ({pct}% afinidad)",
+    "affinity": "Afinidad de Mods",
+    "mod_breakdown": "Desglose Ponderado por PP (0.95^i * pp)",
+    "footer_main": "Página 1/3 • Gemelo {index} de {total} • Modo: {mode}",
+    "title_shared": "Tops Compartidos: {userA} & {userB}",
+    "shared_stats_header": "Estadísticas de Intersección",
+    "shared_maps": "Mapas en común",
+    "maps": "mapas",
+    "unique": "exclusivos",
+    "overlap": "Solapamiento de Tops",
+    "of_user_a": "del top de {user}",
+    "of_user_b": "del top de {user}",
+    "top_shared_plays": "Mejores Jugadas Compartidas",
+    "no_shared_title": "Sin mapas en común",
+    "no_shared_desc": "{userA} y {userB} no comparten beatmaps en sus mejores jugadas. ¡Tienen estilos de mods idénticos pero juegan mapas completamente distintos! Excelente oportunidad para recomendarse mapas.",
+    "footer_shared": "Página 2/3 • Tops en común con {userB}",
+    "title_top_plays": "Mejores Jugadas de {user}",
+    "err_no_scores_twin": "No se pudieron obtener las mejores jugadas de {user}.",
+    "footer_top_plays": "Página 3/3 • Top plays de {user}",
+    "btn_profile": "Perfil y Mods",
+    "btn_shared": "Tops Compartidos",
+    "btn_top": "Tops de {user}",
+    "err_no_user": "❌ Debes especificar un usuario de osu! o vincular tu cuenta con `s.link`.",
+    "err_user_not_found": "❌ No se pudo encontrar al usuario en osu!.",
+    "err_no_scores": "❌ El usuario {username} no tiene suficientes mejores jugadas registradas.",
+    "err_no_twins": "❌ No se encontraron gemelos de mods registrados para los filtros especificados.",
+    "err_generic": "❌ Error al buscar gemelo de mods: {error}",
+    "searching": "Buscando a tu gemelo de mods...",
+    "loading_twin_tops": "Cargando jugadas del gemelo..."
   }
 }
+

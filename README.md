@@ -190,6 +190,18 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
   * *Mejores Jugadas por Habilidad:*
     * `s.skills -top` o `s.skills -aim` / `-speed` / `-acc` / `-reading`: Muestra la lista interactiva de mejores jugadas del usuario ordenadas por los puntos de esa habilidad.
   * *Alias:* `s.skill`, `s.ts`.
+* **`s.twins [usuario]`**
+  Encuentra a tu gemelo de juego en osu! según la afinidad y ponderación matemática real de tus mods en tus mejores jugadas (decaimiento $0.95^i \times \text{pp}$).
+  * *Vistas interactivas (Botones):*
+    * **📊 Perfil y Mods:** Comparativa lado a lado en bloque ANSI del porcentaje ponderado de cada mod (DT, HD, HR, NM, FL, EZ), diferencia porcentual y barra visual de afinidad general. Navegación fluida entre los mejores candidatos.
+    * **🗺️ Tops Compartidos:** Análisis de intersección de beatmaps en el top 100/200 de ambos jugadores, porcentaje de solapamiento y lista detallada de jugadas en común con PP, mods y precisión de cada uno.
+    * **🏆 Tops del Gemelo:** Consulta rápida de las mejores jugadas registradas del gemelo para descubrir mapas recomendados que se adapten a tu estilo.
+  * *Flags:*
+    * `-pais <código>` / `-country <código>`: Filtra gemelos de un país específico (ej: `s.twins -pais CL` o `s.twins -pais VE`).
+    * `-rank` / `-close` / `-nivel`: Filtra únicamente jugadores con rango y nivel global similar al tuyo.
+    * `-std`, `-taiko`, `-fruits`, `-mania`: Cambia el modo de juego a comparar.
+  * *Slash Command:* `/twins [usuario] [modo] [pais] [rank]`
+  * *Alias:* `s.twin`, `s.gemelo`, `s.gemelos`, `s.similar`.
 
 ---
 

@@ -1947,5 +1947,37 @@
     "title": "🔗 Invite Sengo to your server",
     "description": "Bring osu! stats, score comparisons, national leaderboards, snipes, and Sengo utilities to your server!\n\n🔗 **Official Invitation Link:**\n[Click here to add Sengo]({url})",
     "button_label": "Invite Sengo"
+  },
+  "twins": {
+    "title_main": "Mod Twin: {userA} ➔ {userB} ({pct}% affinity)",
+    "affinity": "Mod Affinity",
+    "mod_breakdown": "PP-Weighted Breakdown (0.95^i * pp)",
+    "footer_main": "Page 1/3 • Twin {index} of {total} • Mode: {mode}",
+    "title_shared": "Shared Tops: {userA} & {userB}",
+    "shared_stats_header": "Intersection Statistics",
+    "shared_maps": "Shared maps",
+    "maps": "maps",
+    "unique": "unique",
+    "overlap": "Top Plays Overlap",
+    "of_user_a": "of {user}'s top",
+    "of_user_b": "of {user}'s top",
+    "top_shared_plays": "Top Shared Plays",
+    "no_shared_title": "No shared maps in tops",
+    "no_shared_desc": "{userA} and {userB} do not share beatmaps in their top plays. They have identical mod playstyles but play completely different maps! Great opportunity to share map recommendations.",
+    "footer_shared": "Page 2/3 • Shared tops with {userB}",
+    "title_top_plays": "{user}'s Top Plays",
+    "err_no_scores_twin": "Could not retrieve top plays for {user}.",
+    "footer_top_plays": "Page 3/3 • {user}'s top plays",
+    "btn_profile": "Profile & Mods",
+    "btn_shared": "Shared Tops",
+    "btn_top": "{user}'s Tops",
+    "err_no_user": "❌ You must specify an osu! user or link your account with `s.link`.",
+    "err_user_not_found": "❌ Could not find user on osu!.",
+    "err_no_scores": "❌ User {username} does not have enough top plays recorded.",
+    "err_no_twins": "❌ No mod twins found matching the specified filters.",
+    "err_generic": "❌ Error searching for mod twin: {error}",
+    "searching": "Searching for your mod twin...",
+    "loading_twin_tops": "Loading twin plays..."
   }
 }
+

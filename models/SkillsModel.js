@@ -265,7 +265,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
         return defaultStats;
     }
 
-    let dtCount = 0, hrCount = 0, hdCount = 0, flCount = 0, nmCount = 0, ezCount = 0;
+    let dtWeight = 0, hrWeight = 0, hdWeight = 0, flWeight = 0, nmWeight = 0, ezWeight = 0;
     const rawSums = {};
     skillKeys.forEach(k => { rawSums[k] = 0; });
     let totalWeight = 0;
@@ -288,14 +288,14 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
         const upperMods = modsList.map(m => m.toUpperCase());
         const modsSet = new Set(upperMods);
 
-        // ponytail: excluye mods de sistema (CL) y visuales (NM) para no distorsionar NoMod
+        // ponytail: ponderación exponencial con decaimiento de PP (0.95^i) para reflejar la maestría real en mods sin sesgo de jugadas de relleno del fondo
         const gameplayMods = upperMods.filter(m => m !== "CL" && m !== "NM");
-        if (gameplayMods.length === 0) nmCount++;
-        if (modsSet.has("DT") || modsSet.has("NC")) dtCount++;
-        if (modsSet.has("HR")) hrCount++;
-        if (modsSet.has("HD")) hdCount++;
-        if (modsSet.has("FL")) flCount++;
-        if (modsSet.has("EZ")) ezCount++;
+        if (gameplayMods.length === 0) nmWeight += weight;
+        if (modsSet.has("DT") || modsSet.has("NC")) dtWeight += weight;
+        if (modsSet.has("HR")) hrWeight += weight;
+        if (modsSet.has("HD")) hdWeight += weight;
+        if (modsSet.has("FL")) flWeight += weight;
+        if (modsSet.has("EZ")) ezWeight += weight;
 
         let playSkills = {};
         let scaledRaw = {};
@@ -313,7 +313,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             playSkills = res.skills;
             scaledRaw = res.scaledRaw;
             if (res.keymode) {
-                keyCounts[res.keymode] = (keyCounts[res.keymode] || 0) + 1;
+                keyCounts[res.keymode] = (keyCounts[res.keymode] || 0) + weight;
             }
         } else {
             // osu! Standard
@@ -492,17 +492,18 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
     const total = scores.length;
     const topPlayPP = Math.round(Number(scores[0]?.pp || 0));
 
+    const weightDivisor = totalWeight > 0 ? totalWeight : total;
     const result = {
         topPlayPP,
         mode: normMode,
         skillKeys,
         modStats: {
-            DT: Math.round((dtCount / total) * 100),
-            HD: Math.round((hdCount / total) * 100),
-            HR: Math.round((hrCount / total) * 100),
-            NM: Math.round((nmCount / total) * 100),
-            FL: Math.round((flCount / total) * 100),
-            EZ: Math.round((ezCount / total) * 100)
+            DT: Math.round((dtWeight / weightDivisor) * 100),
+            HD: Math.round((hdWeight / weightDivisor) * 100),
+            HR: Math.round((hrWeight / weightDivisor) * 100),
+            NM: Math.round((nmWeight / weightDivisor) * 100),
+            FL: Math.round((flWeight / weightDivisor) * 100),
+            EZ: Math.round((ezWeight / weightDivisor) * 100)
         }
     };
 
@@ -516,7 +517,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
         if (dominant) {
             result.keymodeInfo = {
                 mode: dominant[0],
-                pct: Math.round((dominant[1] / total) * 100)
+                pct: Math.round((dominant[1] / weightDivisor) * 100)
             };
         }
     }
