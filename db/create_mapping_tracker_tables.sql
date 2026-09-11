@@ -31,3 +31,27 @@ CREATE TABLE IF NOT EXISTS public.mapping_tracker_last_events (
     status_snapshot JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
+
+-- Habilitar Row Level Security (RLS)
+ALTER TABLE public.mapping_tracker_channels ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mapping_tracker_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.mapping_tracker_last_events ENABLE ROW LEVEL SECURITY;
+
+-- Políticas de acceso para mapping_tracker_channels
+CREATE POLICY "Allow service_role full access" ON public.mapping_tracker_channels
+    AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read access" ON public.mapping_tracker_channels
+    AS PERMISSIVE FOR SELECT TO public USING (true);
+
+-- Políticas de acceso para mapping_tracker_subscriptions
+CREATE POLICY "Allow service_role full access" ON public.mapping_tracker_subscriptions
+    AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read access" ON public.mapping_tracker_subscriptions
+    AS PERMISSIVE FOR SELECT TO public USING (true);
+
+-- Políticas de acceso para mapping_tracker_last_events
+CREATE POLICY "Allow service_role full access" ON public.mapping_tracker_last_events
+    AS PERMISSIVE FOR ALL TO service_role USING (true) WITH CHECK (true);
+CREATE POLICY "Allow public read access" ON public.mapping_tracker_last_events
+    AS PERMISSIVE FOR SELECT TO public USING (true);
+
