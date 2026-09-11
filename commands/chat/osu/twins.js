@@ -167,7 +167,7 @@ async function run(messages, args) {
         }
 
         if (!sentMessage || typeof sentMessage.createMessageComponentCollector !== "function") {
-            return initialPayload;
+            return sentMessage || initialPayload;
         }
 
         // 8. Collector interactivo de botones (duración 2 minutos)
@@ -207,7 +207,7 @@ async function run(messages, args) {
             }
         });
 
-        return initialPayload;
+        return sentMessage;
     } catch (error) {
         console.error("[.twins] Error general:", error);
         return t(locale, "twins.err_generic", { error: error.message });
