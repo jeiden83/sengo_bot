@@ -92,14 +92,17 @@ async function run(messages, args) {
         const userModStats = TwinModel.calculatePpWeightedModStats(userTopScores);
 
         // Guardar o actualizar en segundo plano en user_skills para enriquecer la base de datos
-        SkillsModel.analyzeSkillsBreakdown(userTopScores, targetMode).then(breakdown => {
+        try {
+            const breakdown = SkillsModel.analyzeSkills(userTopScores, false, targetMode);
             SkillsModel.saveUserSkills({
                 osuUser,
                 skillsBreakdown: breakdown,
                 gamemode: targetMode,
                 discordId: message.author?.id
             }).catch(() => {});
-        }).catch(() => {});
+        } catch {
+            // Silenciar error en segundo plano
+        }
 
         // 5. Encontrar a los gemelos más afines en la base de datos
         const candidates = await TwinModel.findTwins(osuUser, userModStats, {
