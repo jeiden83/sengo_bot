@@ -265,7 +265,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
         return defaultStats;
     }
 
-    let dtWeight = 0, hrWeight = 0, hdWeight = 0, flWeight = 0, nmWeight = 0, ezWeight = 0;
+    let dtWeight = 0, hrWeight = 0, hdWeight = 0, flWeight = 0, nmWeight = 0, ezWeight = 0, htWeight = 0;
     const rawSums = {};
     skillKeys.forEach(k => { rawSums[k] = 0; });
     let totalWeight = 0;
@@ -275,7 +275,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
     const AIM_NERF = 3.7;
     const SPEED_NERF = 2.5;
     const ACC_NERF = 1.1;
-    const READING_NERF = 3.2;
+    const READING_NERF = 2.4;
 
     for (let i = 0; i < scores.length; i++) {
         const s = scores[i];
@@ -289,9 +289,10 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
         const modsSet = new Set(upperMods);
 
         // ponytail: ponderación exponencial con decaimiento de PP (0.95^i) para reflejar la maestría real en mods sin sesgo de jugadas de relleno del fondo
-        const gameplayMods = upperMods.filter(m => m !== "CL" && m !== "NM");
+        const gameplayMods = upperMods.filter(m => m !== "CL" && m !== "NM" && m !== "NF" && m !== "SD" && m !== "PF");
         if (gameplayMods.length === 0) nmWeight += weight;
         if (modsSet.has("DT") || modsSet.has("NC")) dtWeight += weight;
+        if (modsSet.has("HT") || modsSet.has("DC")) htWeight += weight;
         if (modsSet.has("HR")) hrWeight += weight;
         if (modsSet.has("HD")) hdWeight += weight;
         if (modsSet.has("FL")) flWeight += weight;
@@ -440,23 +441,56 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const rawAimPP = strainPP * aimFraction;
             const rawSpeedPP = strainPP * speedFraction;
 
-            // 4. Reading PP
-            let effAR = ar;
-            if (isHR) effAR = Math.min(10, ar * 1.4);
-            if (isEZ) effAR = ar * 0.5;
-            if (isDT) effAR = ar <= 5 ? (5 + (ar * 0.75)) : (5 + (ar - 5) * 0.75 * (2 / 3) + 2.5);
+            // 4. Reading PP calibrado para todos los mods rankeables (HD, FL, EZ, HT, DT, HR, NM)
+            const clockRate = isDT ? 1.5 : (isHT ? 0.75 : 1.0);
+            let baseAR = ar;
+            if (isHR) baseAR = Math.min(10, ar * 1.4);
+            if (isEZ) baseAR = ar * 0.5;
 
-            let readingMultiplier = 1.0;
-            if (isHD) readingMultiplier *= 1.18;
-            if (isFL) readingMultiplier *= 1.75;
-            if (isEZ) readingMultiplier *= 1.65;
-            if (effAR < 9.0) readingMultiplier *= (1 + (9.0 - effAR) * 0.08);
-            else if (effAR > 10.3) readingMultiplier *= (1 + (effAR - 10.3) * 0.10);
+            // Approach time exacto en milisegundos según el estándar de osu!
+            const baseMs = baseAR <= 5 ? (1800 - 120 * baseAR) : (1200 - 150 * (baseAR - 5));
+            const effMs = baseMs / clockRate;
+            const effAR = effMs > 1200 ? ((1800 - effMs) / 120) : (5 + (1200 - effMs) / 150);
 
-            let rawReadingPP = (rawAimPP * 0.48 + rawSpeedPP * 0.48) * readingMultiplier;
-            if (isEZStreamHeavy) {
-                rawReadingPP = Math.max(rawReadingPP, strainPP * 0.62);
+            const nps = totalObj / effLen;
+
+            // Estrellas de lectura estimadas (readingStars):
+            let estimatedReadingStars = 0.5;
+            if (isEZ) {
+                // En EZ la densidad es masiva; AR baja (<5) genera superposición densa de notas
+                estimatedReadingStars = 3.2 + Math.max(0, 5.0 - effAR) * 0.18;
+                if (isHD) estimatedReadingStars += 0.40;
+                if (isHT) estimatedReadingStars += 0.35;
+            } else if (isHD) {
+                // Con Hidden las notas desaparecen mientras aparecen otras
+                const densityFactor = Math.min(1.0, nps / 6.0);
+                estimatedReadingStars = 1.6 + densityFactor * 0.9;
+                if (effAR < 9.0) estimatedReadingStars += (9.0 - effAR) * 0.20;
+                else if (effAR > 10.3) estimatedReadingStars = Math.max(0.7, estimatedReadingStars - (effAR - 10.3) * 0.45);
+            } else if (effAR < 8.0) {
+                // Baja AR sin EZ (ej: mapas clásicos viejos o AR baja con HT/NM)
+                estimatedReadingStars = 0.9 + (8.0 - effAR) * 0.35;
+                if (isHT) estimatedReadingStars += 0.30;
+            } else {
+                // Mapas normales NM/HR/DT (a mayor AR menor lectura de superposición)
+                estimatedReadingStars = Math.max(0.3, 1.1 - Math.max(0, effAR - 9.0) * 0.30);
             }
+
+            // Dificultad de Flashlight (FL): memorización y haz visual reducido
+            let estimatedFLStars = 0;
+            if (isFL) {
+                const combo = Number(s.max_combo || totalObj);
+                estimatedFLStars = 2.2 + Math.min(2.5, Math.log10(Math.max(10, combo)) * 1.2);
+                if (isHD) estimatedFLStars += 0.50;
+            }
+
+            const effectiveReadingStars = Math.max(estimatedReadingStars, estimatedFLStars * 0.95);
+
+            // Escalamiento exponencial a PP de lectura calibrado con sengo-pp:
+            const lengthReadingBonus = Math.min(1.35, Math.pow(totalObj / 600, 0.25));
+            const accMultiplier = Math.pow(Math.max(0.5, accPct / 100), 2.5);
+
+            const rawReadingPP = Math.pow(effectiveReadingStars, 3.75) * 1.35 * lengthReadingBonus * accMultiplier;
 
             playSkills = {
                 aim: mapToSkillCurve(rawAimPP / AIM_NERF),
@@ -501,7 +535,8 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             HR: Math.round((hrWeight / weightDivisor) * 100),
             NM: Math.round((nmWeight / weightDivisor) * 100),
             FL: Math.round((flWeight / weightDivisor) * 100),
-            EZ: Math.round((ezWeight / weightDivisor) * 100)
+            EZ: Math.round((ezWeight / weightDivisor) * 100),
+            HT: Math.round((htWeight / weightDivisor) * 100)
         }
     };
 
@@ -554,6 +589,7 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
     const AIM_NERF = 3.7;
     const SPEED_NERF = 2.5;
     const ACC_NERF = 1.1;
+    const READING_NERF = 2.4;
 
     // Recolectar candidatos: Top 10 por habilidad analítica + Top 20 jugadas por PP global
     const candidateScoreMap = new Map();
@@ -589,7 +625,7 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
                 stars: diffAttrs.stars
             };
 
-            // ponytail: Para osu! standard, calculamos exactamente el Aim, Speed y Acc PP reales con sengo-pp
+            // ponytail: Para osu! standard, calculamos exactamente el Aim, Speed, Acc y Reading PP reales con sengo-pp
             if (targetModeInt === 0) {
                 const perf = new engine.Performance({
                     mods: modsList,
@@ -605,6 +641,12 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
                 playData.speedPP = perf.ppSpeed;
                 playData.aimPP = perf.ppAim;
                 playData.accPP = perf.ppAcc;
+
+                // ponytail: Soporte nativo para Reading y Flashlight de sengo-pp en todos los mods rankeables (EZ, FL, HD, HT, DT, HR)
+                const sengoReadingPP = Math.max(perf.ppReading || 0, (perf.ppFlashlight || 0));
+                playData.reading = mapToSkillCurve(sengoReadingPP / READING_NERF);
+                playData.readingPP = sengoReadingPP;
+                playData.readingStars = diffAttrs.readingStars || diffAttrs.flashlightStars || 0;
             }
 
             calculatedData.set(bmId, playData);
@@ -624,7 +666,7 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
             aim: sengo?.aim ?? sc.skills?.aim ?? 0,
             speed: sengo?.speed ?? sc.skills?.speed ?? 0,
             acc: sengo?.acc ?? sc.skills?.acc ?? 0,
-            reading: sc.skills?.reading ?? 0,
+            reading: sengo?.reading ?? sc.skills?.reading ?? 0,
             stars: sengo?.stars ?? Number(sc.beatmap?.difficulty_rating || 0)
         };
         if (targetModeInt !== 0 && sc.skills) {

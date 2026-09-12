@@ -307,6 +307,7 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es",
     else if (modStats.HD >= 45) descriptor = isEs ? "Abusador de HD" : "HD abusing";
     else if (modStats.FL >= 5) descriptor = isEs ? "Ciego" : "Blindsighted";
     else if (modStats.EZ >= 10) descriptor = isEs ? "Paciente" : "Patient";
+    else if (modStats.HT >= 5) descriptor = isEs ? "Desacelerado" : "Decelerated";
     else if (modStats.NM <= 15) descriptor = isEs ? "Amante de Mods" : "Mod-Loving";
 
     let suffix = isEs ? "Todoterreno" : "All-Rounder";
