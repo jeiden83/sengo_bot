@@ -352,38 +352,37 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             // 3. Descomposición rítmica en Aim y Speed calibrada con sengo-pp
             // El strain de velocidad relevante en streams y ráfagas empieza a partir de 165-175 BPM
             const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 165) / 55));
+            const circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
 
-            // Densidad rítmica directa (para mapas cortos o con ritmo sostenido constante)
-            const shortRhythmDensity = Math.max(0, Math.min(1.0, (notesPerBeat - 1.35) / 0.55));
+            // Distinción física: saltos a 1/2 beat producen circlesPerBeat ~1.0-1.4.
+            // Streams a 1/4 beat producen circlesPerBeat >= 1.7-3.8.
+            const streamDensity = Math.max(0, Math.min(1.0, (circlesPerBeat - 1.25) / 0.75));
+            const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.65) / 0.20));
+            const streamConfidence = streamDensity * (0.40 + 0.60 * circleStreamBias);
 
-            // En maratones y mapas largos (Save Me, Lies in Reality, -ELIS-), descansos e intros lentas
-            // diluyen notesPerBeat, pero el gran volumen de círculos a BPM sostenido revela streams continuos
-            // si el mapa mantiene una densidad rítmica mínima de streams (notesPerBeat >= 1.45)
-            const isMarathon = effLen >= 180 || circles >= 500;
-            const marathonStreamFactor = (isMarathon && effBPM >= 178 && notesPerBeat >= 1.45)
-                ? Math.min(1.0, Math.max(0, (circles - 300) / 500) * bpmSpeedFactor)
+            // True marathon stream: solo si hay alta densidad continua de círculos y duración sustancial
+            const isTrueStreamMarathon = (effLen >= 190 || circles >= 1100) && circlesPerBeat >= 1.55 && circleRatio >= 0.76;
+            const marathonStreamFactor = isTrueStreamMarathon
+                ? Math.min(1.0, Math.max(0, (circles - 700) / 1000) * bpmSpeedFactor)
                 : 0;
 
-            const streamConfidence = Math.max(shortRhythmDensity, marathonStreamFactor);
-            const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.58) / 0.22));
+            const totalStreamConfidence = Math.max(streamConfidence, marathonStreamFactor * 0.80);
 
-            // A altas velocidades (218+ BPM), el strain de tapping se incrementa naturalmente
+            // A altas velocidades (220+ BPM), el strain de tapping y ráfagas cortas se incrementa
             let highBpmTappingBonus = 0;
-            if (isDT && !isEZ) {
-                highBpmTappingBonus = Math.max(0, Math.min(0.25, (effBPM - 235) / 80));
-            } else if (isDT && isEZ) {
-                highBpmTappingBonus = streamConfidence > 0.2 ? Math.max(0, Math.min(0.12, (effBPM - 240) / 80)) * streamConfidence : 0;
-            } else if (!isEZ) {
-                highBpmTappingBonus = Math.max(0, Math.min(0.20, (effBPM - 218) / 50));
+            if (isDT && !isEZ && effBPM >= 230) {
+                highBpmTappingBonus = Math.min(0.20, (effBPM - 230) / 70) * (0.35 + 0.65 * totalStreamConfidence);
+            } else if (!isEZ && effBPM >= 220) {
+                highBpmTappingBonus = Math.min(0.18, (effBPM - 220) / 55) * (0.35 + 0.65 * totalStreamConfidence);
             }
 
-            // Stamina en maratones largas de streams (requiere notesPerBeat >= 1.45)
-            const staminaBonus = (circles >= 700 && effBPM >= 180 && notesPerBeat >= 1.45 && !isEZ)
-                ? Math.min(0.35, (circles - 500) / 1400) * bpmSpeedFactor * streamConfidence
+            // Stamina en maratones largas de streams continuos
+            const staminaBonus = (circles >= 1000 && effBPM >= 180 && circlesPerBeat >= 1.60 && !isEZ)
+                ? Math.min(0.25, (circles - 700) / 1200) * bpmSpeedFactor * totalStreamConfidence
                 : 0;
 
             // Dominancia de velocidad:
-            let speedDominance = (Math.pow(streamConfidence, 0.70) * bpmSpeedFactor * (0.45 + 0.55 * circleStreamBias))
+            let speedDominance = (Math.pow(totalStreamConfidence, 0.75) * bpmSpeedFactor * 0.75)
                                + highBpmTappingBonus
                                + staminaBonus;
 
@@ -405,17 +404,17 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             speedDominance = Math.max(0, Math.min(1.0, speedDominance));
 
             // Fracción de Strain:
-            let baselineSpeed = 0.04;
+            let baselineSpeed = 0.05;
             if (isHR && (circles < 350 || effLen < 70)) baselineSpeed = 0.025;
             else if (isHR && effBPM < 205) baselineSpeed = 0.03;
             else if (isHR) baselineSpeed = 0.04;
             if (isHT) baselineSpeed = 0.03;
-            if (isDT && !isEZ) baselineSpeed = 0.06 + Math.max(0, (effBPM - 225) / 120) * 0.10;
+            if (isDT && !isEZ) baselineSpeed = 0.07 + Math.max(0, (effBPM - 225) / 120) * 0.08;
             else if (isDT && isEZ) baselineSpeed = 0.04 + Math.max(0, (effBPM - 230) / 100) * 0.04;
             if (isEZ && !isDT) baselineSpeed = 0.035;
 
-            // En maratones puras de streams sin HR (ej: Save Me, Lies in Reality), la fracción máxima de speed sube
-            const maxSpeedFraction = (!isHR && !isHT && circles >= 1000 && effBPM >= 185) ? 0.68 : 0.60;
+            // En osu! estándar la fracción máxima de speed respecto al strain rara vez excede el 50-52%
+            const maxSpeedFraction = (circles >= 1000 && effBPM >= 185 && circlesPerBeat >= 1.70) ? 0.52 : 0.45;
 
             // ponytail: en maratones continuas con EZ sin DT:
             // - Si es deathstream (>1800 círculos, CS 2, ej: Ice Angel, Crimsonic dimension): Aim ~11%, Speed ~21%
@@ -424,7 +423,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const isEZLongHybrid = isEZ && isHD && !isDT && effLen >= 200 && !isEZStreamHeavy;
 
             let speedFraction = baselineSpeed + (speedDominance * (maxSpeedFraction - baselineSpeed));
-            let aimFraction = Math.max(0.18, 1.0 - (speedFraction * 0.85));
+            let aimFraction = Math.max(0.25, 1.0 - (speedFraction * 0.75));
 
             if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
@@ -435,7 +434,6 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                 aimFraction = 0.22;
                 speedFraction = 0.10;
             } else if (isEZ) {
-                // ponytail: en EZ los círculos son 2x más grandes y ~35% del PP proviene de Reading, reduciendo el strain de Aim puro
                 aimFraction = Math.max(0.15, aimFraction * 0.72);
             }
 
@@ -553,21 +551,29 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
     const ppEngine = require('../utils/ppEngine.js');
     const engine = ppEngine.getEngine();
 
-    const uniqueMapIds = new Map();
+    const AIM_NERF = 3.7;
+    const SPEED_NERF = 2.5;
+    const ACC_NERF = 1.1;
+
+    // Recolectar candidatos: Top 10 por habilidad analítica + Top 20 jugadas por PP global
+    const candidateScoreMap = new Map();
     skillKeys.forEach(k => {
         const capKey = k.charAt(0).toUpperCase() + k.slice(1);
-        (base[`top${capKey}`] || []).forEach(item => {
+        (base[`top${capKey}`] || []).slice(0, 10).forEach(item => {
             if (item.score?.beatmap?.id) {
-                uniqueMapIds.set(item.score.beatmap.id, item.score);
+                candidateScoreMap.set(item.score.beatmap.id, item.score);
             }
         });
+    });
+    scores.slice(0, 20).forEach(s => {
+        if (s.beatmap?.id) candidateScoreMap.set(s.beatmap.id, s);
     });
 
     const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
     const targetModeInt = MODE_INT[base.mode] ?? 0;
 
-    const calculatedStars = new Map();
-    await Promise.all(Array.from(uniqueMapIds.entries()).map(async ([bmId, score]) => {
+    const calculatedData = new Map();
+    await Promise.all(Array.from(candidateScoreMap.entries()).map(async ([bmId, score]) => {
         try {
             const beatmap = await getBeatmap(bmId);
             const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
@@ -575,23 +581,57 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
                 map.convert(targetModeInt);
             }
             const modsList = Array.isArray(score.mods)
-                ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+                ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(m => m !== "CL" && Boolean(m))
                 : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
             const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true, mode: targetModeInt }).calculate(map);
-            calculatedStars.set(bmId, diffAttrs.stars);
+
+            const playData = {
+                stars: diffAttrs.stars
+            };
+
+            // ponytail: Para osu! standard, calculamos exactamente el Aim, Speed y Acc PP reales con sengo-pp
+            if (targetModeInt === 0) {
+                const perf = new engine.Performance({
+                    mods: modsList,
+                    lazer: true,
+                    mode: targetModeInt,
+                    combo: score.max_combo,
+                    accuracy: typeof score.accuracy === "number" && score.accuracy <= 1 ? score.accuracy * 100 : (score.accuracy || 100)
+                }).calculate(diffAttrs);
+
+                playData.aim = mapToSkillCurve(perf.ppAim / AIM_NERF);
+                playData.speed = mapToSkillCurve(perf.ppSpeed / SPEED_NERF);
+                playData.acc = mapToSkillCurve(perf.ppAcc / ACC_NERF);
+                playData.speedPP = perf.ppSpeed;
+                playData.aimPP = perf.ppAim;
+                playData.accPP = perf.ppAcc;
+            }
+
+            calculatedData.set(bmId, playData);
             map.free();
         } catch (err) {
-            calculatedStars.set(bmId, Number(score.beatmap?.difficulty_rating || 0));
+            calculatedData.set(bmId, {
+                stars: Number(score.beatmap?.difficulty_rating || 0)
+            });
         }
     }));
 
-    const attachStarsAndSort = (list, skillKey) => {
-        const withStars = (list || []).map(item => ({
-            ...item,
-            stars: calculatedStars.get(item.score.beatmap.id) ?? Number(item.score.beatmap?.difficulty_rating || 0)
-        }));
-        return withStars.sort((a, b) => (b[skillKey] || 0) - (a[skillKey] || 0)).slice(0, 3);
-    };
+    const allEvaluated = [];
+    candidateScoreMap.forEach((sc, bmId) => {
+        const sengo = calculatedData.get(bmId);
+        const item = {
+            score: sc,
+            aim: sengo?.aim ?? sc.skills?.aim ?? 0,
+            speed: sengo?.speed ?? sc.skills?.speed ?? 0,
+            acc: sengo?.acc ?? sc.skills?.acc ?? 0,
+            reading: sc.skills?.reading ?? 0,
+            stars: sengo?.stars ?? Number(sc.beatmap?.difficulty_rating || 0)
+        };
+        if (targetModeInt !== 0 && sc.skills) {
+            Object.assign(item, sc.skills);
+        }
+        allEvaluated.push(item);
+    });
 
     const avgStars = (list) => {
         if (!list || list.length === 0) return 0;
@@ -606,7 +646,10 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
 
     skillKeys.forEach(k => {
         const capKey = k.charAt(0).toUpperCase() + k.slice(1);
-        const sorted = attachStarsAndSort(base[`top${capKey}`], k);
+        const sorted = allEvaluated
+            .slice()
+            .sort((a, b) => (b[k] || 0) - (a[k] || 0))
+            .slice(0, 3);
         finalResult[`top${capKey}`] = sorted;
         finalResult.averageStars[k] = avgStars(sorted);
     });
