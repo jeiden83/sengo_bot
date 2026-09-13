@@ -46,6 +46,12 @@ const data = new SlashCommandBuilder()
     )
     .addBooleanOption(option =>
         option
+            .setName("mapper")
+            .setDescription("¿Generar la tarjeta visual de creador/mapper?")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option
             .setName("recargar")
             .setDescription("¿Forzar la recarga ignorando la caché de 1 hora?")
             .setRequired(false)
@@ -62,6 +68,7 @@ if (typeof data.setContexts === "function") {
 async function run(interaction, res, chat_commands) {
     const isEmbed = interaction.options.getBoolean("embed");
     const isUserpage = interaction.options.getBoolean("userpage");
+    const isMapper = interaction.options.getBoolean("mapper");
     const preset = interaction.options.getString("preset");
     const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
@@ -71,6 +78,7 @@ async function run(interaction, res, chat_commands) {
     if (targetUser) args.push(targetUser);
     if (modo) args.push(`-${modo}`);
     if (preset) args.push(`-${preset}`);
+    if (isMapper) args.push("-mapper");
     if (isEmbed) args.push("-embed");
     if (isUserpage) args.push("-userpage");
     if (isForce) args.push("-refresh");

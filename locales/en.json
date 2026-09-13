@@ -345,7 +345,7 @@
     "mapper": {
       "header": "osu! Mapper statistics and Mapping Tracker",
       "body": "Displays detailed mapper statistics in osu! (followers, Kudosu, ranked, loved, graveyard, guest diffs, and nominations), mappers top leaderboard, BNs, and Mapping Tracker for automatic notifications.",
-      "usage": "s.mapper / s.mappers : Displays your mapper statistics.\ns.mapper 'osu_user' : Displays specified user's mapper statistics.\ns.mapper 'osu_user' -rs / -r : Launches the mapper's most recent beatmapset.\n\ns.mapper -track -canal #channel : Sets the mapping notifications channel.\ns.mapper -track -canal : Disables tracking and purges associated subscriptions.\ns.mapper -track -usuario <ID/mention> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Adds a Sengo-linked user to tracking.\ns.mapper -track -usuario -server : Bulk adds all Sengo-linked mappers in the server (Admins Only).\ns.mapper -track -test : Sends a test notification preview in the server channel.\n\ns.mapper -top : Displays the country's mappers top leaderboard.\ns.mapper -bn : Displays the Beatmap Nominators (BN) list from Mappers' Guild."
+      "usage": "s.mapper / s.mappers : Displays your mapper statistics.\ns.mapper 'osu_user' : Displays specified user's mapper statistics.\ns.mapper 'osu_user' -card : Generates the aesthetic mapper profile card with Canvas.\ns.mapper 'osu_user' -rs / -r : Launches the mapper's most recent beatmapset.\n\ns.mapper -track -canal #channel : Sets the mapping notifications channel.\ns.mapper -track -canal : Disables tracking and purges associated subscriptions.\ns.mapper -track -usuario <ID/mention> [-ranked] [-qualified] [-loved] [-pending] [-graveyard] [-revive] [-nomination] [-todos] : Adds a Sengo-linked user to tracking.\ns.mapper -track -usuario -server : Bulk adds all Sengo-linked mappers in the server (Admins Only).\ns.mapper -track -test : Sends a test notification preview in the server channel.\n\ns.mapper -top : Displays the country's mappers top leaderboard.\ns.mapper -bn : Displays the Beatmap Nominators (BN) list from Mappers' Guild."
     },
     "subir": {
       "header": "Upload a score to Sengo's database.",
@@ -399,8 +399,8 @@
     },
     "card": {
       "header": "Generates a dynamic osu! profile card with Canvas.",
-      "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Supports design presets (-compact, -single, -allline, etc.) and -userpage to receive the BBCode via DM.",
-      "usage": "s.card [user] [-embed] [-userpage] [-compact|-single|-allline|-ultra|-mini] [-taiko|-catch|-mania]"
+      "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Supports aesthetic mapper card (-mapper), design presets (-compact, -single, -allline, etc.) and -userpage to receive the BBCode via DM.",
+      "usage": "s.card [user] [-mapper] [-embed] [-userpage] [-compact|-single|-allline|-ultra|-mini] [-taiko|-catch|-mania]"
     },
     "skills": {
       "header": "Breaks down osu! profile card skills (.card) with top plays.",
@@ -421,7 +421,8 @@
   "card": {
     "err_no_user": "❌ You don't have a linked osu! account. Use `s.link` to link your account or specify a user with `s.card [user]`.",
     "err_user_not_found": "❌ osu! user could not be found.",
-    "err_only_std": "❌ Profile cards (`.card`) are currently only available for **osu! (Standard)** mode."
+    "err_only_std": "❌ Profile cards (`.card`) are currently only available for **osu! (Standard)** mode.",
+    "err_mapper_render": "❌ Error generating mapper card: `{error}`"
   },
   "skills": {
     "embed_title": "Skills ({mode})",

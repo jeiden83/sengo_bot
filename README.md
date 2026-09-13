@@ -179,7 +179,10 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.card [usuario]`**
   Genera una tarjeta de perfil visual en Canvas con estadísticas, pilares de habilidades (Aim, Speed, Acc, Reading) y títulos dinámicos.
   * *Flags:*
+    * `-mapper` / `-mpr`: Genera la tarjeta estética de perfil para mappers/creadores (estilo glassmorphism, estadísticas de creador, stacks de habilidades, último mapa subido y ranking).
     * `-embed`: Envía la tarjeta dentro de un embed interactivo.
+    * `-userpage` / `-bbcode`: Envía por DM el snippet BBCode para colocar la tarjeta dinámica en el perfil de osu!.
+    * `-compact`, `-linea`, `-panoramica`, `-ultra`, `-mini`: Presets de dimensiones y diseño.
     * `-refresh`: Fuerza la recarga ignorando la caché de 1 hora.
 * **`s.skills [usuario]`**
   Desglosa las habilidades de la tarjeta de perfil con matemática cinética calibrada y factor de rendimiento real.
@@ -297,6 +300,7 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.mapper` o `s.mappers [usuario]`**
   Estadísticas detalladas de creador/mapper (seguidores, Kudosu, mapas rankeados, amados, graveyard, guest diffs y nominaciones), top de mappers y Beatmap Nominators.
   * *Flags:*
+    * `-card`: Genera la tarjeta estética de perfil para mappers con Canvas.
     * `-top`: Clasificación de mappers (filtros: `-pais [código]`, `-server`, `-mode <modo>`, `-kudosus`, `-ranked`, `-gd`, `-followers`, etc.).
     * `-bn`: Lista de Beatmap Nominators (BN) de Mappers' Guild.
     * **Mapping Tracker:**

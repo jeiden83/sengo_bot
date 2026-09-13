@@ -44,6 +44,17 @@ async function run(messages, args) {
         )
     );
 
+    const isMapper = safeArgs.some(arg => 
+        typeof arg === "string" && (
+            arg.toLowerCase() === "-mapper" ||
+            arg.toLowerCase() === "--mapper" ||
+            arg.toLowerCase() === "mapper" ||
+            arg.toLowerCase() === "-mpr" ||
+            arg.toLowerCase() === "--mpr" ||
+            arg.toLowerCase() === "mpr"
+        )
+    );
+
     // Detectar modo de juego explícito si fue pasado en los argumentos
     let explicitMode = null;
     for (const arg of safeArgs) {
@@ -77,6 +88,7 @@ async function run(messages, args) {
             "-embed", "--embed", "embed",
             "-userpage", "--userpage", "userpage", "-up", "--up", "-bbcode", "--bbcode", "bbcode",
             "-f", "-force", "--force", "-r", "-refresh", "--refresh",
+            "-mapper", "--mapper", "mapper", "-mpr", "--mpr", "mpr",
             "-t", "-taiko", "--taiko", "taiko",
             "-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
             "-mania", "--mania", "mania", "-m",
@@ -94,10 +106,17 @@ async function run(messages, args) {
     async function sendInitialProgress() {
         const totalElapsed = Date.now() - startTime;
         const progressEmbed = new EmbedBuilder()
-            .setTitle(locale === "es" ? "Generando Tarjeta de Perfil..." : "Generating Profile Card...")
-            .setDescription(locale === "es"
-                ? "⏳ **Consultando perfil de osu!, estadísticas y dibujando tarjeta con Canvas...**"
-                : "⏳ **Fetching osu! profile, statistics and rendering card with Canvas...**"
+            .setTitle(isMapper
+                ? (locale === "es" ? "Generando Tarjeta de Mapper..." : "Generating Mapper Card...")
+                : (locale === "es" ? "Generando Tarjeta de Perfil..." : "Generating Profile Card...")
+            )
+            .setDescription(isMapper
+                ? (locale === "es"
+                    ? "⏳ **Consultando estadísticas de creador, mapas subidos y dibujando tarjeta con Canvas...**"
+                    : "⏳ **Fetching creator stats, uploaded beatmaps and rendering card with Canvas...**")
+                : (locale === "es"
+                    ? "⏳ **Consultando perfil de osu!, estadísticas y dibujando tarjeta con Canvas...**"
+                    : "⏳ **Fetching osu! profile, statistics and rendering card with Canvas...**")
             )
             .setColor(getEmbedColor(message))
             .setFooter({
@@ -186,6 +205,44 @@ async function run(messages, args) {
         const notFoundErr = t(locale, "card.err_user_not_found") || `❌ No se pudo encontrar al usuario en osu!.`;
         await cleanupProgress();
         return isSlash ? { content: notFoundErr, embeds: [] } : notFoundErr;
+    }
+
+    if (isMapper) {
+        try {
+            if (logger) logger.process(`Obteniendo datos de mapper y renderizando tarjeta para ${osuUser.username}`);
+            const MapperCardModel = require("../../../models/MapperCardModel.js");
+            const { renderMapperCard } = require("../../../views/osuMapperCardViews.js");
+
+            const [mapperData] = await Promise.all([
+                MapperCardModel.getMapperCardData(osuUser, { guildId: message?.guild?.id }),
+                progressPromise
+            ]);
+
+            const canvasBuffer = await renderMapperCard(osuUser, mapperData, { forceRefresh: isForce, locale });
+            const attachment = new AttachmentBuilder(canvasBuffer, { name: "mapper_card.png" });
+
+            await cleanupProgress();
+
+            if (isEmbed) {
+                const embed = doOsuCardEmbed(message, "mapper_card.png");
+                return {
+                    embeds: [embed],
+                    files: [attachment]
+                };
+            }
+
+            return {
+                embeds: [],
+                files: [attachment]
+            };
+        } catch (error) {
+            console.error("[s.card -mapper] Error al renderizar tarjeta de mapper:", error);
+            await cleanupProgress();
+            return {
+                content: `❌ Error al generar la tarjeta de mapper: \`${error.message}\``,
+                embeds: []
+            };
+        }
     }
 
     if (isUserpage) {
@@ -325,6 +382,12 @@ run.alias = {
     },
     "idcard": {
         "args": ""
+    },
+    "mappercard": {
+        "args": "-mapper"
+    },
+    "cardmapper": {
+        "args": "-mapper"
     }
 };
 

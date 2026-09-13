@@ -976,6 +976,96 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
+        // --- ENDPOINTS PARA MAPPER CARD STUDIO (EDITOR WEB) ---
+        if (req.method === 'GET' && (pathname === '/mapper-card' || pathname === '/editor-mapper' || pathname === '/card/mapper')) {
+            const editorPath = path.join(process.cwd(), 'views/web/mapper_card_editor.html');
+            if (fs.existsSync(editorPath)) {
+                res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end(fs.readFileSync(editorPath));
+                return;
+            }
+        }
+
+        if (req.method === 'GET' && (pathname === '/api/mapper-card/user' || pathname === '/api/mapper-user')) {
+            const username = parsedUrl.query.username;
+            if (!username) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Username is required' }));
+                return;
+            }
+            try {
+                const osuUser = await getOsuUser({ username: [username], gamemode: 'osu', server: 'bancho' });
+                if (!osuUser || !osuUser.id || typeof osuUser === 'string') {
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: `Usuario ${username} no encontrado en osu!` }));
+                    return;
+                }
+                const MapperCardModel = require('../../models/MapperCardModel.js');
+                const data = await MapperCardModel.getMapperCardData(osuUser, { guildId: parsedUrl.query.guild_id || null });
+                res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify(data));
+            } catch (error) {
+                console.error('[MAPPER-CARD-API] Error:', error);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+            return;
+        }
+
+        if (req.method === 'GET' && (pathname === '/api/mapper-card/render' || pathname === '/api/mapper-card.png')) {
+            const username = parsedUrl.query.u || parsedUrl.query.user || parsedUrl.query.username;
+            if (!username) {
+                res.writeHead(400, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Username is required' }));
+                return;
+            }
+            try {
+                const osuUser = await getOsuUser({ username: [username], gamemode: 'osu', server: 'bancho' });
+                if (!osuUser || !osuUser.id || typeof osuUser === 'string') {
+                    res.writeHead(404, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                    res.end(JSON.stringify({ error: `Usuario ${username} no encontrado en osu!` }));
+                    return;
+                }
+                const { renderMapperCard } = require('../../views/osuMapperCardViews.js');
+                const buffer = await renderMapperCard(osuUser, null, {
+                    title: parsedUrl.query.title || null,
+                    guildId: parsedUrl.query.guild_id || null,
+                    forceRefresh: Boolean(parsedUrl.query.force || parsedUrl.query.f)
+                });
+                res.writeHead(200, {
+                    'Content-Type': 'image/png',
+                    'Access-Control-Allow-Origin': '*',
+                    'Cache-Control': 'public, max-age=180'
+                });
+                res.end(buffer);
+            } catch (error) {
+                console.error('[MAPPER-CARD-RENDER-API] Error:', error);
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: error.message }));
+            }
+            return;
+        }
+
+        // Servir archivos de scratch de forma segura para desarrollo de tarjetas
+        if (req.method === 'GET' && pathname.startsWith('/scratch/')) {
+            const scratchPath = path.join(process.cwd(), pathname);
+            if (fs.existsSync(scratchPath)) {
+                const ext = path.extname(scratchPath).toLowerCase();
+                const mimeTypes = {
+                    '.png': 'image/png',
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.svg': 'image/svg+xml'
+                };
+                res.writeHead(200, {
+                    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+                    'Access-Control-Allow-Origin': '*'
+                });
+                res.end(fs.readFileSync(scratchPath));
+                return;
+            }
+        }
+
         // Servir assets estáticos (ej: /assets/YO.png)
         if (req.method === 'GET' && pathname.startsWith('/assets/')) {
             const assetPath = path.join(process.cwd(), pathname);

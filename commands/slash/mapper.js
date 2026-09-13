@@ -60,6 +60,12 @@ const data = new SlashCommandBuilder()
             .addBooleanOption(opt => opt.setName("activo").setDescription("Mostrar solo BNs con solicitudes abiertas").setRequired(false))
             .addBooleanOption(opt => opt.setName("refresh").setDescription("Fuerza la actualización de datos").setRequired(false))
     )
+    // Subcomando: card
+    .addSubcommand(sub =>
+        sub.setName("card")
+            .setDescription("Genera una tarjeta estética para mappers con Canvas")
+            .addStringOption(opt => opt.setName("usuario").setDescription("Nombre de usuario de osu!, mención o ID de Discord").setRequired(false))
+    )
     // Subgrupo de comandos: track
     .addSubcommandGroup(group =>
         group.setName("track")
@@ -185,6 +191,10 @@ async function run(interaction, res) {
         if (modo) { args.push('-m'); args.push(modo); }
         if (activo) args.push('-activo');
         if (refresh) args.push('-force');
+    } else if (sub === 'card') {
+        args.push('-card');
+        const user = interaction.options.getString('usuario');
+        if (user) args.push(user);
     }
 
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");

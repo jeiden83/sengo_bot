@@ -1,0 +1,1489 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sengo Mapper Card Studio - Suite de Diseño</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #09060f;
+            --panel-bg: #130c1d;
+            --panel-border: #26163b;
+            --card-bg: rgba(255, 255, 255, 0.04);
+            --accent: #a855f7;
+            --accent-hover: #c084fc;
+            --accent-glow: rgba(168, 85, 247, 0.4);
+            --cyan-glow: #00d2ff;
+            --yellow-glow: #ffe600;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --success: #22c55e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* Sidebar con Tabs */
+        .sidebar {
+            width: 440px;
+            background: var(--panel-bg);
+            border-right: 1px solid var(--panel-border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+            flex-shrink: 0;
+        }
+
+        .sidebar-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .sidebar-header h1 {
+            font-size: 1.15rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #c084fc, #ec4899, #00d2ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge-version {
+            font-size: 0.68rem;
+            padding: 2px 8px;
+            border-radius: 12px;
+            background: rgba(168, 85, 247, 0.15);
+            border: 1px solid rgba(168, 85, 247, 0.35);
+            color: #d8b4fe;
+            font-weight: 600;
+        }
+
+        /* Buscador en vivo de osu! mappers */
+        .search-container {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.25);
+            border-bottom: 1px solid var(--panel-border);
+            display: flex;
+            gap: 8px;
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--panel-border);
+            padding: 8px 12px;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 0.85rem;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .search-input:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 10px var(--accent-glow);
+        }
+
+        .btn-search {
+            background: var(--accent);
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .btn-search:hover {
+            background: var(--accent-hover);
+        }
+
+        /* Navegación por Pestañas */
+        .tabs-nav {
+            display: flex;
+            background: rgba(0, 0, 0, 0.35);
+            border-bottom: 1px solid var(--panel-border);
+            overflow-x: auto;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 11px 6px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            font-size: 0.76rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .tab-btn:hover {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.02);
+        }
+
+        .tab-btn.active {
+            color: var(--accent-hover);
+            border-bottom-color: var(--accent);
+            background: rgba(168, 85, 247, 0.08);
+        }
+
+        /* Contenido de Pestañas */
+        .tab-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .panel-section {
+            background: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .section-title {
+            font-size: 0.82rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            color: #d8b4fe;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .field-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .field-label {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        .field-input, .field-select {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid var(--panel-border);
+            padding: 6px 10px;
+            border-radius: 6px;
+            color: var(--text-main);
+            font-size: 0.82rem;
+            outline: none;
+            width: 150px;
+            text-align: right;
+            transition: all 0.2s;
+        }
+
+        .field-input:focus, .field-select:focus {
+            border-color: var(--accent);
+        }
+
+        .field-input.wide {
+            width: 100%;
+            text-align: left;
+        }
+
+        .slider-row {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.78rem;
+        }
+
+        .slider-val {
+            color: var(--accent-hover);
+            font-weight: 600;
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 5px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 3px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent);
+            cursor: pointer;
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        /* Área de visualización de la tarjeta (Canvas) */
+        .preview-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: radial-gradient(circle at 60% 40%, #170d24 0%, #08040d 100%);
+            position: relative;
+            align-items: center;
+            justify-content: center;
+            overflow: auto;
+            padding: 24px;
+        }
+
+        .canvas-toolbar {
+            position: absolute;
+            top: 16px;
+            display: flex;
+            gap: 12px;
+            background: rgba(18, 11, 28, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid var(--panel-border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+            z-index: 5;
+        }
+
+        .tool-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 0.78rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            color: #fff;
+            background: rgba(255, 255, 255, 0.06);
+        }
+
+        .tool-btn.active {
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.12);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.75), 0 0 35px rgba(168, 85, 247, 0.2);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        #cardCanvas {
+            display: block;
+            width: 1024px;
+            height: 567px;
+            max-width: 100%;
+            object-fit: contain;
+        }
+
+        /* Overlay comparativo con diseño original */
+        #compareOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.25s;
+            background-size: 100% 100%;
+            background-repeat: no-repeat;
+        }
+
+        /* Footer de acciones */
+        .sidebar-footer {
+            padding: 14px 20px;
+            border-top: 1px solid var(--panel-border);
+            display: flex;
+            gap: 10px;
+            background: rgba(0, 0, 0, 0.35);
+        }
+
+        .btn-action {
+            flex: 1;
+            padding: 10px;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 700;
+            cursor: pointer;
+            border: none;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #a855f7, #6366f1);
+            color: white;
+            box-shadow: 0 4px 15px var(--accent-glow);
+        }
+
+        .btn-primary:hover {
+            filter: brightness(1.1);
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text-main);
+            border: 1px solid var(--panel-border);
+        }
+
+        .btn-secondary:hover {
+            background: rgba(255, 255, 255, 0.12);
+        }
+    </style>
+</head>
+<body>
+    <!-- SIDEBAR DE CONTROLES -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h1>🎨 Mapper Card Studio</h1>
+            <span class="badge-version">v1.0 Fiel Dans</span>
+        </div>
+
+        <!-- Buscador de mappers -->
+        <div class="search-container">
+            <input type="text" id="mapperSearchInput" class="search-input" placeholder="Buscar mapper (ej: Mithia)..." value="Mithia">
+            <button id="btnFetchMapper" class="btn-search">Buscar</button>
+        </div>
+
+        <!-- Pestañas -->
+        <div class="tabs-nav">
+            <button class="tab-btn active" data-tab="tabMapper">👤 Mapper</button>
+            <button class="tab-btn" data-tab="tabBeatmaps">🎵 Beatmaps</button>
+            <button class="tab-btn" data-tab="tabMetrics">📊 Métricas</button>
+            <button class="tab-btn" data-tab="tabGlass">✨ Glass & Glow</button>
+        </div>
+
+        <!-- Contenedores de pestañas -->
+        <div class="tab-content">
+            <!-- TAB 1: MAPPER Y ESTADÍSTICAS -->
+            <div id="tabMapper" class="tab-panel">
+                <div class="panel-section">
+                    <div class="section-title">Perfil del Mapper</div>
+                    <div class="field-row">
+                        <span class="field-label">Título Superior:</span>
+                        <input type="text" id="cfgTitle" class="field-input" value="Novato Ranked">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Username:</span>
+                        <input type="text" id="cfgUsername" class="field-input" value="Mithia">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Código País:</span>
+                        <input type="text" id="cfgCountry" class="field-input" value="VE">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Avatar URL:</span>
+                        <input type="text" id="cfgAvatarUrl" class="field-input wide" value="/scratch/mapper_assets/avatar.jpg">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Cover Fondo URL:</span>
+                        <input type="text" id="cfgCoverUrl" class="field-input wide" value="/scratch/mapper_assets/cover.jpg">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Rangos de Mapper</div>
+                    <div class="field-row">
+                        <span class="field-label">Rango País:</span>
+                        <input type="text" id="cfgCountryRank" class="field-input" value="#30">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Rango Servidor:</span>
+                        <input type="text" id="cfgServerRank" class="field-input" value="#1">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Estadísticas Generales</div>
+                    <div class="field-row">
+                        <span class="field-label">Seguidores:</span>
+                        <input type="text" id="cfgFollowers" class="field-input" value="1.1k">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Suscriptores:</span>
+                        <input type="text" id="cfgSubscribers" class="field-input" value="2">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Kudosus:</span>
+                        <input type="text" id="cfgKudosu" class="field-input" value="1.9k">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Tasa de Éxitos:</span>
+                        <input type="text" id="cfgSuccessRate" class="field-input" value="2%">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Rankeds:</span>
+                        <input type="text" id="cfgRankeds" class="field-input" value="3">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Loveds:</span>
+                        <input type="text" id="cfgLoveds" class="field-input" value="0">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Pendings:</span>
+                        <input type="text" id="cfgPendings" class="field-input" value="10">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Graveyards:</span>
+                        <input type="text" id="cfgGraveyards" class="field-input" value="12">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: BEATMAPS -->
+            <div id="tabBeatmaps" class="tab-panel" style="display: none;">
+                <div class="panel-section">
+                    <div class="section-title">Último Mapa Actualizado</div>
+                    <div class="field-row">
+                        <span class="field-label">Título:</span>
+                        <input type="text" id="cfgLatestTitle" class="field-input" value="Take this all away">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Artista:</span>
+                        <input type="text" id="cfgLatestArtist" class="field-input" value="OkameP">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Estado Badge:</span>
+                        <input type="text" id="cfgLatestStatus" class="field-input" value="RANKED">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Reproducciones:</span>
+                        <input type="text" id="cfgLatestPlays" class="field-input" value="180k">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Favoritos:</span>
+                        <input type="text" id="cfgLatestFavs" class="field-input" value="2.230k">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Cover Beatmap URL:</span>
+                        <input type="text" id="cfgLatestCover" class="field-input wide" value="/scratch/mapper_assets/take_this.jpg">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Mapa Previo Subido</div>
+                    <div class="field-row">
+                        <span class="field-label">Etiqueta:</span>
+                        <input type="text" id="cfgPrevTitle" class="field-input" value="Mapa Previo subido">
+                    </div>
+                    <div class="field-row">
+                        <span class="field-label">Cover Previo URL:</span>
+                        <input type="text" id="cfgPrevCover" class="field-input wide" value="/scratch/mapper_assets/fall_in_love.jpg">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: MÉTRICAS / PILAS -->
+            <div id="tabMetrics" class="tab-panel" style="display: none;">
+                <div class="panel-section">
+                    <div class="section-title">Amplitud de Rango</div>
+                    <div class="field-row">
+                        <span class="field-label">Texto Valor:</span>
+                        <input type="text" id="cfgAmpVal" class="field-input" value="5.5*">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Barras Llenas:</span>
+                            <span id="cfgAmpBarsVal" class="slider-val">3 / 6</span>
+                        </div>
+                        <input type="range" id="cfgAmpBars" min="0" max="6" value="3">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Ritmo</div>
+                    <div class="field-row">
+                        <span class="field-label">Texto Valor:</span>
+                        <input type="text" id="cfgRhythmVal" class="field-input" value="23.5%">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Barras Llenas:</span>
+                            <span id="cfgRhythmBarsVal" class="slider-val">1 / 6</span>
+                        </div>
+                        <input type="range" id="cfgRhythmBars" min="0" max="6" value="1">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Alcance</div>
+                    <div class="field-row">
+                        <span class="field-label">Texto Valor:</span>
+                        <input type="text" id="cfgReachVal" class="field-input" value="52.8%">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Barras Llenas:</span>
+                            <span id="cfgReachBarsVal" class="slider-val">3 / 6</span>
+                        </div>
+                        <input type="range" id="cfgReachBars" min="0" max="6" value="3">
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: GLASS & GLOW STYLES -->
+            <div id="tabGlass" class="tab-panel" style="display: none;">
+                <div class="panel-section">
+                    <div class="section-title">Efectos de Vidrio (Glass)</div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Opacidad de Cristal:</span>
+                            <span id="cfgGlassOpacityVal" class="slider-val">0.25</span>
+                        </div>
+                        <input type="range" id="cfgGlassOpacity" min="0.05" max="0.6" step="0.01" value="0.25">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Desenfoque Fondo (Blur):</span>
+                            <span id="cfgBlurVal" class="slider-val">18px</span>
+                        </div>
+                        <input type="range" id="cfgBlur" min="0" max="40" value="18">
+                    </div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Glow de Bordes:</span>
+                            <span id="cfgGlowVal" class="slider-val">18px</span>
+                        </div>
+                        <input type="range" id="cfgGlow" min="0" max="35" value="18">
+                    </div>
+                </div>
+
+                <div class="panel-section">
+                    <div class="section-title">Comparativa con Original (Dans)</div>
+                    <div class="slider-row">
+                        <div class="slider-header">
+                            <span>Superposición Original:</span>
+                            <span id="cfgCompareVal" class="slider-val">0%</span>
+                        </div>
+                        <input type="range" id="cfgCompare" min="0" max="1" step="0.05" value="0">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <button id="btnDownloadPNG" class="btn-action btn-primary">💾 Descargar PNG</button>
+            <button id="btnCopyJSON" class="btn-action btn-secondary">📋 Copiar Config</button>
+        </div>
+    </div>
+
+    <!-- ÁREA CENTRAL DE CANVAS PREVIEW -->
+    <div class="preview-area">
+        <div class="canvas-toolbar">
+            <button id="btnToggleOriginal" class="tool-btn">👁️ Ver Original Dans</button>
+            <button id="btnToggleOverlay" class="tool-btn">🔀 Superponer (50%)</button>
+            <button id="btnRefreshRender" class="tool-btn">🔄 Re-renderizar</button>
+        </div>
+
+        <div class="canvas-wrapper">
+            <canvas id="cardCanvas" width="1024" height="567"></canvas>
+            <div id="compareOverlay"></div>
+        </div>
+    </div>
+
+    <script>
+        // Imagen original de Dans para comparativa instantánea
+        const DANS_ORIGINAL_URL = '/scratch/comparison_mapper_card.png';
+        const overlayDiv = document.getElementById('compareOverlay');
+        overlayDiv.style.backgroundImage = `url('${DANS_ORIGINAL_URL}')`;
+
+        // Elementos de pestañas
+        const tabBtns = document.querySelectorAll('.tab-btn');
+        const tabPanels = document.querySelectorAll('.tab-panel');
+
+        tabBtns.forEach(btn => {
+            btn.addEventListener('click', () => {
+                tabBtns.forEach(b => b.classList.remove('active'));
+                tabPanels.forEach(p => p.style.display = 'none');
+                btn.classList.add('active');
+                const target = document.getElementById(btn.dataset.tab);
+                if (target) target.style.display = 'flex';
+            });
+        });
+
+        // Configuración viva
+        const config = {
+            title: "Novato Ranked",
+            username: "Mithia",
+            country: "VE",
+            countryRank: "#30",
+            serverRank: "#1",
+            avatarUrl: "/scratch/mapper_assets/avatar.jpg",
+            coverUrl: "/scratch/mapper_assets/cover.jpg",
+            latest: {
+                title: "Take this all away",
+                artist: "OkameP",
+                status: "RANKED",
+                plays: "180k",
+                favs: "2.230k",
+                cover: "/scratch/mapper_assets/take_this.jpg"
+            },
+            prev: {
+                title: "Mapa Previo subido",
+                cover: "/scratch/mapper_assets/fall_in_love.jpg"
+            },
+            metrics: {
+                ampVal: "5.5*",
+                ampBars: 3,
+                rhythmVal: "23.5%",
+                rhythmBars: 1,
+                reachVal: "52.8%",
+                reachBars: 3
+            },
+            stats: {
+                followers: "1.1k",
+                subscribers: "2",
+                kudosu: "1.9k",
+                successRate: "2%",
+                rankeds: "3",
+                loveds: "0",
+                pendings: "10",
+                graveyards: "12"
+            },
+            styles: {
+                glassOpacity: 0.25,
+                blur: 18,
+                glow: 18
+            }
+        };
+
+        // Cache de imágenes
+        const imgCache = {};
+        function loadImg(src) {
+            if (imgCache[src]) return Promise.resolve(imgCache[src]);
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = "anonymous";
+                img.onload = () => { imgCache[src] = img; resolve(img); };
+                img.onerror = () => resolve(null);
+                img.src = src;
+            });
+        }
+
+        // Trazado de rectángulos redondeados con curvas cuadráticas
+        function roundRect(ctx, x, y, w, h, r) {
+            if (w < 2 * r) r = w / 2;
+            if (h < 2 * r) r = h / 2;
+            ctx.beginPath();
+            ctx.moveTo(x + r, y);
+            ctx.lineTo(x + w - r, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+            ctx.lineTo(x + w, y + h - r);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+            ctx.lineTo(x + r, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+            ctx.lineTo(x, y + r);
+            ctx.quadraticCurveTo(x, y, x + r, y);
+            ctx.closePath();
+        }
+
+        function drawGlassCard(ctx, x, y, w, h, r, options = {}) {
+            const {
+                fillGradient = null,
+                fillColor = "rgba(255, 255, 255, 0.22)",
+                borderColor = "rgba(255, 255, 255, 0.55)",
+                borderWidth = 1.5,
+                shadowColor = "rgba(255, 255, 255, 0.20)",
+                shadowBlur = 18,
+                innerHighlight = true
+            } = options;
+
+            ctx.save();
+            if (shadowBlur > 0 && shadowColor) {
+                ctx.shadowColor = shadowColor;
+                ctx.shadowBlur = shadowBlur;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2;
+            }
+
+            roundRect(ctx, x, y, w, h, r);
+            ctx.fillStyle = fillGradient || fillColor;
+            ctx.fill();
+
+            ctx.shadowColor = "transparent";
+            ctx.shadowBlur = 0;
+
+            if (borderWidth > 0 && borderColor) {
+                ctx.lineWidth = borderWidth;
+                ctx.strokeStyle = borderColor;
+                ctx.stroke();
+            }
+
+            if (innerHighlight) {
+                ctx.save();
+                roundRect(ctx, x, y, w, h, r);
+                ctx.clip();
+                const topGlow = ctx.createLinearGradient(x, y, x, y + Math.min(35, h * 0.35));
+                topGlow.addColorStop(0, "rgba(255, 255, 255, 0.28)");
+                topGlow.addColorStop(1, "rgba(255, 255, 255, 0.0)");
+                ctx.fillStyle = topGlow;
+                ctx.fillRect(x, y, w, Math.min(35, h * 0.35));
+                ctx.restore();
+            }
+            ctx.restore();
+        }
+
+        function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5, alignX = 0.5, zoom = 1.0) {
+            if (!img) return;
+            const imgRatio = img.width / img.height;
+            const targetRatio = w / h;
+            let sw, sh, sx, sy;
+
+            if (imgRatio > targetRatio) {
+                sh = img.height / zoom;
+                sw = (img.height * targetRatio) / zoom;
+                sx = (img.width - sw) * alignX;
+                sy = (img.height - sh) * alignY;
+            } else {
+                sw = img.width / zoom;
+                sh = (img.width / targetRatio) / zoom;
+                sx = (img.width - sw) * alignX;
+                sy = (img.height - sh) * alignY;
+            }
+            ctx.drawImage(img, sx, sy, sw, sh, x, y, w, h);
+        }
+
+        async function render() {
+            const canvas = document.getElementById('cardCanvas');
+            const ctx = canvas.getContext('2d');
+            const W = 1024;
+            const H = 567;
+
+            // Precargar imágenes
+            const flagUrl = `https://flagcdn.com/w160/${config.country.toLowerCase()}.png`;
+            const [avatarImg, coverImg, latestImg, prevImg, flagImg] = await Promise.all([
+                loadImg(config.avatarUrl),
+                loadImg(config.coverUrl),
+                loadImg(config.latest.cover),
+                loadImg(config.prev.cover),
+                loadImg(flagUrl)
+            ]);
+
+            // 1. FONDO
+            const bgBase = ctx.createLinearGradient(0, 0, W, H);
+            bgBase.addColorStop(0, "#382a46");
+            bgBase.addColorStop(0.35, "#5d3c58");
+            bgBase.addColorStop(0.70, "#c46d78");
+            bgBase.addColorStop(1, "#f5ad97");
+            ctx.fillStyle = bgBase;
+            ctx.fillRect(0, 0, W, H);
+
+            if (coverImg) {
+                ctx.save();
+                ctx.globalAlpha = 0.60;
+                ctx.filter = `blur(${config.styles.blur}px)`;
+                ctx.drawImage(coverImg, 0, 0, W, H);
+                ctx.restore();
+            }
+
+            // Glow ambiental
+            ctx.save();
+            const glowGrad = ctx.createRadialGradient(W * 0.9, H * 0.9, 30, W * 0.9, H * 0.9, 500);
+            glowGrad.addColorStop(0, "rgba(255, 180, 150, 0.40)");
+            glowGrad.addColorStop(1, "rgba(255, 180, 150, 0)");
+            ctx.fillStyle = glowGrad;
+            ctx.fillRect(0, 0, W, H);
+            ctx.restore();
+
+            // Viñeta superior
+            const topVignette = ctx.createLinearGradient(0, 0, 0, 140);
+            topVignette.addColorStop(0, "rgba(25, 18, 35, 0.65)");
+            topVignette.addColorStop(0.6, "rgba(25, 18, 35, 0.20)");
+            topVignette.addColorStop(1, "rgba(25, 18, 35, 0)");
+            ctx.fillStyle = topVignette;
+            ctx.fillRect(0, 0, W, 140);
+
+            // 2. TÍTULO SUPERIOR FIXED
+            ctx.save();
+            ctx.font = 'bold 28px "Poppins", sans-serif';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.45)";
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetY = 2;
+            ctx.fillText(config.title, W / 2, 44);
+            ctx.restore();
+
+            // 3. CÁPSULA IZQUIERDA
+            const pillX = 38, pillY = 76, pillW = 168, pillH = 318, pillR = 84;
+            const pillGrad = ctx.createLinearGradient(pillX, pillY, pillX + pillW, pillY + pillH);
+            pillGrad.addColorStop(0, `rgba(255, 255, 255, ${config.styles.glassOpacity + 0.1})`);
+            pillGrad.addColorStop(0.5, `rgba(255, 255, 255, ${config.styles.glassOpacity - 0.05})`);
+            pillGrad.addColorStop(1, "rgba(255, 255, 255, 0.12)");
+
+            drawGlassCard(ctx, pillX, pillY, pillW, pillH, pillR, {
+                fillGradient: pillGrad,
+                borderColor: "rgba(255, 255, 255, 0.68)",
+                borderWidth: 1.5,
+                shadowColor: "rgba(255, 255, 255, 0.22)",
+                shadowBlur: config.styles.glow
+            });
+
+            const avatarCenterX = pillX + pillW / 2;
+            const avatarCenterY = pillY + 82;
+            const avatarInnerR = 64;
+            const avatarRingR = 71;
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(avatarCenterX, avatarCenterY, avatarRingR, 0, Math.PI * 2);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.85)";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.5)";
+            ctx.shadowBlur = 8;
+            ctx.stroke();
+            ctx.restore();
+
+            if (avatarImg) {
+                ctx.save();
+                ctx.beginPath();
+                ctx.arc(avatarCenterX, avatarCenterY, avatarInnerR, 0, Math.PI * 2);
+                ctx.closePath();
+                ctx.clip();
+                drawImageCover(ctx, avatarImg, avatarCenterX - avatarInnerR, avatarCenterY - avatarInnerR, avatarInnerR * 2, avatarInnerR * 2);
+                ctx.restore();
+            }
+
+            ctx.save();
+            ctx.font = '600 21px "Poppins", sans-serif';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#2f243d";
+            ctx.fillText(config.username, avatarCenterX, pillY + 188);
+            ctx.restore();
+
+            // Anillos concéntricos inferiores
+            const targetCenterY = pillY + 258;
+            ctx.save();
+            ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(avatarCenterX, targetCenterY, 30, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 5.5;
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.arc(avatarCenterX, targetCenterY, 19, 0, Math.PI * 2);
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 5.5;
+            ctx.stroke();
+            ctx.restore();
+
+            // 4. TARJETA SUPERIOR CENTRAL (BANDERA Y RANGOS)
+            const rankCardX = 219, rankCardY = 92, rankCardW = 284, rankCardH = 150, rankCardR = 24;
+            const rankGrad = ctx.createLinearGradient(rankCardX, rankCardY, rankCardX, rankCardY + rankCardH);
+            rankGrad.addColorStop(0, "rgba(255, 255, 255, 0.30)");
+            rankGrad.addColorStop(0.35, "rgba(255, 255, 255, 0.16)");
+            rankGrad.addColorStop(1, "rgba(85, 55, 88, 0.45)");
+
+            drawGlassCard(ctx, rankCardX, rankCardY, rankCardW, rankCardH, rankCardR, {
+                fillGradient: rankGrad,
+                borderColor: "rgba(255, 255, 255, 0.60)",
+                borderWidth: 1.5,
+                shadowColor: "rgba(255, 255, 255, 0.18)",
+                shadowBlur: 16
+            });
+
+            // Bandera
+            const flagW = 66, flagH = 44, flagX = rankCardX + (rankCardW - flagW) / 2, flagY = rankCardY + 14, flagR = 10;
+            if (flagImg) {
+                ctx.save();
+                roundRect(ctx, flagX, flagY, flagW, flagH, flagR);
+                ctx.clip();
+                drawImageCover(ctx, flagImg, flagX, flagY, flagW, flagH);
+                ctx.restore();
+            }
+            ctx.save();
+            roundRect(ctx, flagX, flagY, flagW, flagH, flagR);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.75)";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            ctx.restore();
+
+            // Divisor
+            const dividerX = rankCardX + rankCardW / 2;
+            ctx.save();
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.40)";
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(dividerX, rankCardY + 74);
+            ctx.lineTo(dividerX, rankCardY + 134);
+            ctx.stroke();
+            ctx.restore();
+
+            // Rango País
+            const countryColX = rankCardX + rankCardW * 0.25;
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.font = 'bold 25px "Poppins", sans-serif';
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
+            ctx.shadowBlur = 4;
+            ctx.fillText(config.countryRank, countryColX, rankCardY + 95);
+            ctx.font = 'bold 12.5px "Poppins", sans-serif';
+            ctx.fillStyle = "#221829";
+            ctx.shadowColor = "transparent";
+            ctx.fillText("Rango", countryColX, rankCardY + 116);
+            ctx.fillText("Pais", countryColX, rankCardY + 130);
+            ctx.restore();
+
+            // Rango Servidor
+            const serverColX = rankCardX + rankCardW * 0.75;
+            ctx.save();
+            ctx.textAlign = "center";
+            ctx.font = 'bold 28px "Poppins", sans-serif';
+            ctx.fillStyle = "#ffe600";
+            ctx.shadowColor = "rgba(255, 230, 0, 0.95)";
+            ctx.shadowBlur = 14;
+            ctx.fillText(config.serverRank, serverColX, rankCardY + 95);
+            ctx.font = 'bold 12.5px "Poppins", sans-serif';
+            ctx.fillStyle = "#221829";
+            ctx.shadowColor = "transparent";
+            ctx.fillText("Rango", serverColX, rankCardY + 116);
+            ctx.fillText("Servidor", serverColX, rankCardY + 130);
+            ctx.restore();
+
+            // 5. TARJETA CENTRAL-MEDIA (BARRAS DE ATRIBUTOS DEL MAPPER)
+            const barsCardX = 220, barsCardY = 264, barsCardW = 516, barsCardH = 175, barsCardR = 24;
+            const barsGrad = ctx.createLinearGradient(barsCardX, barsCardY, barsCardX + barsCardW, barsCardY + barsCardH);
+            barsGrad.addColorStop(0, "rgba(255, 255, 255, 0.32)");
+            barsGrad.addColorStop(1, "rgba(255, 255, 255, 0.15)");
+
+            drawGlassCard(ctx, barsCardX, barsCardY, barsCardW, barsCardH, barsCardR, {
+                fillGradient: barsGrad,
+                borderColor: "rgba(255, 255, 255, 0.60)",
+                borderWidth: 1.5,
+                shadowColor: "rgba(255, 255, 255, 0.20)",
+                shadowBlur: 16
+            });
+
+            function drawPillStack(centerX, topText, filledCount, labelLines, wobbleOffsets = [0, 0, 0, 0, 0, 0]) {
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.font = 'bold 13px "Poppins", sans-serif';
+                ctx.fillStyle = "#221829";
+                ctx.fillText(topText, centerX, barsCardY + 23);
+                ctx.restore();
+
+                const pillBarW = 68, pillBarH = 11.5, pillBarR = 6, gap = 3.5;
+                const startY = barsCardY + 138;
+
+                for (let i = 0; i < 6; i++) {
+                    const py = startY - i * (pillBarH + gap);
+                    const wobble = wobbleOffsets[i] || 0;
+                    const px = centerX - pillBarW / 2 + wobble;
+                    const isFilled = i < filledCount;
+
+                    ctx.save();
+                    roundRect(ctx, px, py, pillBarW, pillBarH, pillBarR);
+
+                    if (isFilled) {
+                        ctx.fillStyle = "#ffffff";
+                        ctx.shadowColor = "rgba(255, 255, 255, 0.70)";
+                        ctx.shadowBlur = 6;
+                        ctx.fill();
+                    } else {
+                        ctx.fillStyle = "rgba(255, 255, 255, 0.16)";
+                        ctx.fill();
+                        ctx.strokeStyle = "rgba(255, 255, 255, 0.60)";
+                        ctx.lineWidth = 1.4;
+                        ctx.stroke();
+                    }
+                    ctx.restore();
+                }
+
+                ctx.save();
+                ctx.textAlign = "center";
+                ctx.font = 'bold 12px "Poppins", sans-serif';
+                ctx.fillStyle = "#221829";
+                if (labelLines.length === 1) {
+                    ctx.fillText(labelLines[0], centerX, barsCardY + 160);
+                } else {
+                    ctx.fillText(labelLines[0], centerX, barsCardY + 154);
+                    ctx.fillText(labelLines[1], centerX, barsCardY + 167);
+                }
+                ctx.restore();
+            }
+
+            drawPillStack(barsCardX + barsCardW * 0.22, config.metrics.ampVal, config.metrics.ampBars, ["Amplitud de", "rango"], [1, -1.5, 0.5, 2, -1, 0]);
+            drawPillStack(barsCardX + barsCardW * 0.50, config.metrics.rhythmVal, config.metrics.rhythmBars, ["Ritmo"], [-1, 1.5, -0.5, 1, -1.5, 0]);
+            drawPillStack(barsCardX + barsCardW * 0.78, config.metrics.reachVal, config.metrics.reachBars, ["Alcance"], [1.5, -1, 1, 2, -1, 0]);
+
+            // 6. TARJETA SUPERIOR DERECHA (ÚLTIMO MAPA SUBIDO)
+            const mapCardX = 525, mapCardY = 74, mapCardW = 468, mapCardH = 181, mapCardR = 24;
+            ctx.save();
+            roundRect(ctx, mapCardX, mapCardY, mapCardW, mapCardH, mapCardR);
+            ctx.clip();
+
+            if (latestImg) {
+                drawImageCover(ctx, latestImg, mapCardX, mapCardY, mapCardW, mapCardH, 0.45, 0.65, 1.15);
+            } else {
+                ctx.fillStyle = "#1e1428";
+                ctx.fillRect(mapCardX, mapCardY, mapCardW, mapCardH);
+            }
+
+            const mapTopOverlay = ctx.createLinearGradient(mapCardX, mapCardY, mapCardX, mapCardY + 95);
+            mapTopOverlay.addColorStop(0, "rgba(0, 0, 0, 0.72)");
+            mapTopOverlay.addColorStop(0.65, "rgba(0, 0, 0, 0.25)");
+            mapTopOverlay.addColorStop(1, "rgba(0, 0, 0, 0)");
+            ctx.fillStyle = mapTopOverlay;
+            ctx.fillRect(mapCardX, mapCardY, mapCardW, 95);
+
+            const mapBotOverlay = ctx.createLinearGradient(mapCardX, mapCardY + mapCardH - 55, mapCardX, mapCardY + mapCardH);
+            mapBotOverlay.addColorStop(0, "rgba(0, 0, 0, 0)");
+            mapBotOverlay.addColorStop(0.5, "rgba(0, 0, 0, 0.45)");
+            mapBotOverlay.addColorStop(1, "rgba(0, 0, 0, 0.85)");
+            ctx.fillStyle = mapBotOverlay;
+            ctx.fillRect(mapCardX, mapCardY + mapCardH - 55, mapCardW, 55);
+
+            ctx.font = 'bold 24px "Poppins", sans-serif';
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
+            ctx.shadowBlur = 6;
+            ctx.fillText(config.latest.title, mapCardX + 22, mapCardY + 36);
+
+            ctx.font = '600 17px "Poppins", sans-serif';
+            ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
+            ctx.fillText(config.latest.artist, mapCardX + 22, mapCardY + 62);
+
+            // Badge y buscador
+            const badgeW = 74, badgeH = 25, badgeX = mapCardX + mapCardW - badgeW - 20, badgeY = mapCardY + 18, badgeR = 12.5;
+            const searchX = badgeX - 22, searchY = badgeY + badgeH / 2;
+            ctx.save();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2.2;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.arc(searchX, searchY - 1, 6, 0, Math.PI * 2);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(searchX + 4.5, searchY + 3.5);
+            ctx.lineTo(searchX + 9, searchY + 8);
+            ctx.stroke();
+            ctx.restore();
+
+            ctx.save();
+            roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
+            ctx.fillStyle = "#00c3ff";
+            ctx.shadowColor = "rgba(0, 195, 255, 0.95)";
+            ctx.shadowBlur = 14;
+            ctx.fill();
+
+            ctx.font = 'bold 11.5px "Poppins", sans-serif';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "transparent";
+            ctx.fillText(config.latest.status, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+            ctx.restore();
+
+            // Plays y Favs
+            const botStatsY = mapCardY + mapCardH - 18;
+            let statCurX = mapCardX + 24;
+
+            ctx.save();
+            ctx.strokeStyle = "#ffffff";
+            ctx.lineWidth = 2;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.8)";
+            ctx.shadowBlur = 6;
+            ctx.beginPath();
+            ctx.moveTo(statCurX, botStatsY - 12);
+            ctx.lineTo(statCurX + 11, botStatsY - 6);
+            ctx.lineTo(statCurX, botStatsY);
+            ctx.closePath();
+            ctx.stroke();
+
+            statCurX += 17;
+            ctx.font = 'bold 14.5px "Poppins", sans-serif';
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.fillText(config.latest.plays, statCurX, botStatsY - 6);
+
+            statCurX += 50;
+            ctx.beginPath();
+            const hx = statCurX, hy = botStatsY - 10;
+            ctx.moveTo(hx, hy + 3);
+            ctx.bezierCurveTo(hx, hy, hx - 5, hy - 4, hx - 8, hy - 4);
+            ctx.bezierCurveTo(hx - 13, hy - 4, hx - 13, hy + 2, hx - 13, hy + 2);
+            ctx.bezierCurveTo(hx - 13, hy + 7, hx - 6, hy + 11, hx, hy + 15);
+            ctx.bezierCurveTo(hx + 6, hy + 11, hx + 13, hy + 7, hx + 13, hy + 2);
+            ctx.bezierCurveTo(hx + 13, hy + 2, hx + 13, hy - 4, hx + 8, hy - 4);
+            ctx.bezierCurveTo(hx + 5, hy - 4, hx, hy, hx, hy + 3);
+            ctx.stroke();
+
+            statCurX += 20;
+            ctx.fillText(config.latest.favs, statCurX, botStatsY - 6);
+            ctx.restore();
+
+            ctx.restore(); // Clip end
+
+            ctx.save();
+            roundRect(ctx, mapCardX, mapCardY, mapCardW, mapCardH, mapCardR);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.70)";
+            ctx.lineWidth = 1.8;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.25)";
+            ctx.shadowBlur = 10;
+            ctx.stroke();
+            ctx.restore();
+
+            // 7. TARJETA INFERIOR DERECHA ("Mapa Previo subido")
+            const prevCardX = 748, prevCardY = 266, prevCardW = 242, prevCardH = 64, prevCardR = 18;
+            ctx.save();
+            roundRect(ctx, prevCardX, prevCardY, prevCardW, prevCardH, prevCardR);
+            ctx.clip();
+
+            if (prevImg) {
+                drawImageCover(ctx, prevImg, prevCardX, prevCardY, prevCardW, prevCardH, 0.5, 0.5);
+            } else {
+                ctx.fillStyle = "#150e20";
+                ctx.fillRect(prevCardX, prevCardY, prevCardW, prevCardH);
+            }
+
+            ctx.fillStyle = "rgba(15, 10, 22, 0.72)";
+            ctx.fillRect(prevCardX, prevCardY, prevCardW, prevCardH);
+
+            ctx.font = 'bold 14px "Poppins", sans-serif';
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillStyle = "#ffffff";
+            ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+            ctx.shadowBlur = 8;
+            ctx.fillText(config.prev.title, prevCardX + prevCardW / 2, prevCardY + prevCardH / 2);
+            ctx.restore();
+
+            ctx.save();
+            roundRect(ctx, prevCardX, prevCardY, prevCardW, prevCardH, prevCardR);
+            ctx.strokeStyle = "rgba(255, 255, 255, 0.60)";
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+            ctx.restore();
+
+            // 8. TARJETA INFERIOR (ESTADÍSTICAS GENERALES DEL MAPPER)
+            const statCardX = 225, statCardY = 448, statCardW = 615, statCardH = 101, statCardR = 26;
+            const statGrad = ctx.createLinearGradient(statCardX, statCardY, statCardX, statCardY + statCardH);
+            statGrad.addColorStop(0, "rgba(110, 85, 120, 0.60)");
+            statGrad.addColorStop(1, "rgba(38, 22, 45, 0.85)");
+
+            drawGlassCard(ctx, statCardX, statCardY, statCardW, statCardH, statCardR, {
+                fillGradient: statGrad,
+                borderColor: "rgba(255, 255, 255, 0.45)",
+                borderWidth: 1.5,
+                shadowColor: "rgba(0, 0, 0, 0.35)",
+                shadowBlur: 18
+            });
+
+            const lineY = statCardY + 50;
+            ctx.save();
+            const lineGrad = ctx.createLinearGradient(statCardX + 20, lineY, statCardX + statCardW - 20, lineY);
+            lineGrad.addColorStop(0, "rgba(255, 255, 255, 0.1)");
+            lineGrad.addColorStop(0.5, "rgba(255, 255, 255, 0.65)");
+            lineGrad.addColorStop(1, "rgba(255, 255, 255, 0.1)");
+            ctx.strokeStyle = lineGrad;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(statCardX + 24, lineY);
+            ctx.lineTo(statCardX + statCardW - 24, lineY);
+            ctx.stroke();
+            ctx.restore();
+
+            const colStep = statCardW / 4;
+            const cols = [
+                { val1: config.stats.followers, lbl1: "Seguidores", val2: config.stats.rankeds, lbl2: "Rankeds" },
+                { val1: config.stats.subscribers, lbl1: "Suscriptores", val2: config.stats.loveds, lbl2: "Loveds" },
+                { val1: config.stats.kudosu, lbl1: "Kudosus", val2: config.stats.pendings, lbl2: "Pendings" },
+                { val1: config.stats.successRate, lbl1: "tasa de éxitos", val2: config.stats.graveyards, lbl2: "Graveyards" }
+            ];
+
+            ctx.save();
+            ctx.textAlign = "center";
+            cols.forEach((col, idx) => {
+                const cx = statCardX + colStep * idx + colStep / 2;
+                ctx.font = 'bold 17px "Poppins", sans-serif';
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(col.val1, cx, statCardY + 23);
+
+                ctx.font = '500 11px "Poppins", sans-serif';
+                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.fillText(col.lbl1, cx, statCardY + 39);
+
+                ctx.font = 'bold 17px "Poppins", sans-serif';
+                ctx.fillStyle = "#ffffff";
+                ctx.fillText(col.val2, cx, statCardY + 73);
+
+                ctx.font = '500 11px "Poppins", sans-serif';
+                ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+                ctx.fillText(col.lbl2, cx, statCardY + 89);
+            });
+            ctx.restore();
+        }
+
+        // Vincular entradas y controles
+        function bindInputs() {
+            const inputs = [
+                ['cfgTitle', v => config.title = v],
+                ['cfgUsername', v => config.username = v],
+                ['cfgCountry', v => config.country = v],
+                ['cfgCountryRank', v => config.countryRank = v],
+                ['cfgServerRank', v => config.serverRank = v],
+                ['cfgAvatarUrl', v => config.avatarUrl = v],
+                ['cfgCoverUrl', v => config.coverUrl = v],
+                ['cfgLatestTitle', v => config.latest.title = v],
+                ['cfgLatestArtist', v => config.latest.artist = v],
+                ['cfgLatestStatus', v => config.latest.status = v],
+                ['cfgLatestPlays', v => config.latest.plays = v],
+                ['cfgLatestFavs', v => config.latest.favs = v],
+                ['cfgLatestCover', v => config.latest.cover = v],
+                ['cfgPrevTitle', v => config.prev.title = v],
+                ['cfgPrevCover', v => config.prev.cover = v],
+                ['cfgAmpVal', v => config.metrics.ampVal = v],
+                ['cfgRhythmVal', v => config.metrics.rhythmVal = v],
+                ['cfgReachVal', v => config.metrics.reachVal = v],
+                ['cfgFollowers', v => config.stats.followers = v],
+                ['cfgSubscribers', v => config.stats.subscribers = v],
+                ['cfgKudosu', v => config.stats.kudosu = v],
+                ['cfgSuccessRate', v => config.stats.successRate = v],
+                ['cfgRankeds', v => config.stats.rankeds = v],
+                ['cfgLoveds', v => config.stats.loveds = v],
+                ['cfgPendings', v => config.stats.pendings = v],
+                ['cfgGraveyards', v => config.stats.graveyards = v]
+            ];
+
+            inputs.forEach(([id, setter]) => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('input', (e) => {
+                        setter(e.target.value);
+                        render();
+                    });
+                }
+            });
+
+            // Sliders
+            const sliders = [
+                ['cfgAmpBars', 'cfgAmpBarsVal', (v) => { config.metrics.ampBars = parseInt(v); return `${v} / 6`; }],
+                ['cfgRhythmBars', 'cfgRhythmBarsVal', (v) => { config.metrics.rhythmBars = parseInt(v); return `${v} / 6`; }],
+                ['cfgReachBars', 'cfgReachBarsVal', (v) => { config.metrics.reachBars = parseInt(v); return `${v} / 6`; }],
+                ['cfgGlassOpacity', 'cfgGlassOpacityVal', (v) => { config.styles.glassOpacity = parseFloat(v); return v; }],
+                ['cfgBlur', 'cfgBlurVal', (v) => { config.styles.blur = parseInt(v); return `${v}px`; }],
+                ['cfgGlow', 'cfgGlowVal', (v) => { config.styles.glow = parseInt(v); return `${v}px`; }],
+                ['cfgCompare', 'cfgCompareVal', (v) => { 
+                    const op = parseFloat(v); 
+                    overlayDiv.style.opacity = op; 
+                    return `${Math.round(op * 100)}%`; 
+                }]
+            ];
+
+            sliders.forEach(([id, labelId, handler]) => {
+                const el = document.getElementById(id);
+                const lbl = document.getElementById(labelId);
+                if (el && lbl) {
+                    el.addEventListener('input', (e) => {
+                        lbl.textContent = handler(e.target.value);
+                        render();
+                    });
+                }
+            });
+
+            // Botones de toolbar
+            const btnToggleOriginal = document.getElementById('btnToggleOriginal');
+            let origActive = false;
+            btnToggleOriginal.addEventListener('click', () => {
+                origActive = !origActive;
+                overlayDiv.style.opacity = origActive ? '1' : '0';
+                btnToggleOriginal.classList.toggle('active', origActive);
+            });
+
+            const btnToggleOverlay = document.getElementById('btnToggleOverlay');
+            let halfActive = false;
+            btnToggleOverlay.addEventListener('click', () => {
+                halfActive = !halfActive;
+                overlayDiv.style.opacity = halfActive ? '0.5' : '0';
+                btnToggleOverlay.classList.toggle('active', halfActive);
+            });
+
+            document.getElementById('btnRefreshRender').addEventListener('click', () => render());
+
+            // Descargar PNG
+            document.getElementById('btnDownloadPNG').addEventListener('click', () => {
+                const canvas = document.getElementById('cardCanvas');
+                const link = document.createElement('a');
+                link.download = `mapper_card_${config.username.toLowerCase()}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+
+            // Copiar JSON
+            document.getElementById('btnCopyJSON').addEventListener('click', () => {
+                navigator.clipboard.writeText(JSON.stringify(config, null, 2)).then(() => {
+                    alert('Configuración copiada al portapapeles.');
+                });
+            });
+
+            // Buscar mapper vía API
+            document.getElementById('btnFetchMapper').addEventListener('click', async () => {
+                const query = document.getElementById('mapperSearchInput').value.trim();
+                if (!query) return;
+
+                const btn = document.getElementById('btnFetchMapper');
+                btn.textContent = 'Buscando...';
+                btn.disabled = true;
+
+                try {
+                    const res = await fetch(`/api/mapper-card/user?username=${encodeURIComponent(query)}`);
+                    if (!res.ok) throw new Error('Error al buscar usuario');
+                    const data = await res.json();
+
+                    if (data.user) {
+                        config.username = data.user.username;
+                        config.country = data.user.countryCode;
+                        config.countryRank = data.ranks?.countryRank || '#-';
+                        config.serverRank = data.ranks?.serverRank || '#-';
+                        config.avatarUrl = `/api/card/proxy?url=${encodeURIComponent(data.user.avatarUrl)}`;
+                        if (data.user.coverUrl) {
+                            config.coverUrl = `/api/card/proxy?url=${encodeURIComponent(data.user.coverUrl)}`;
+                        }
+                        config.stats.followers = data.user.followers;
+                        config.stats.subscribers = data.user.subscribers;
+                        config.stats.kudosu = data.user.kudosu;
+                        config.stats.successRate = data.stats.successRate;
+                        config.stats.rankeds = data.stats.rankedCount;
+                        config.stats.loveds = data.stats.lovedCount;
+                        config.stats.pendings = data.stats.pendingCount;
+                        config.stats.graveyards = data.stats.graveyardCount;
+
+                        if (data.latestMap) {
+                            config.latest.title = data.latestMap.title;
+                            config.latest.artist = data.latestMap.artist;
+                            config.latest.status = data.latestMap.status;
+                            config.latest.plays = data.latestMap.playCount;
+                            config.latest.favs = data.latestMap.favCount;
+                            if (data.latestMap.coverUrl) {
+                                config.latest.cover = `/api/card/proxy?url=${encodeURIComponent(data.latestMap.coverUrl)}`;
+                            }
+                        }
+
+                        if (data.prevMap && data.prevMap.coverUrl) {
+                            config.prev.cover = `/api/card/proxy?url=${encodeURIComponent(data.prevMap.coverUrl)}`;
+                        }
+
+                        config.metrics.ampVal = data.metrics?.amplitudeSR || '5.5*';
+                        config.metrics.ampBars = data.metrics?.amplitudeBars || 3;
+                        config.metrics.rhythmVal = data.metrics?.rhythmPct || '23.5%';
+                        config.metrics.rhythmBars = data.metrics?.rhythmBars || 1;
+                        config.metrics.reachVal = data.metrics?.reachPct || '52.8%';
+                        config.metrics.reachBars = data.metrics?.reachBars || 3;
+
+                        // Actualizar UI
+                        document.getElementById('cfgUsername').value = config.username;
+                        document.getElementById('cfgCountry').value = config.country;
+                        document.getElementById('cfgCountryRank').value = config.countryRank;
+                        document.getElementById('cfgServerRank').value = config.serverRank;
+                        document.getElementById('cfgAvatarUrl').value = config.avatarUrl;
+                        document.getElementById('cfgCoverUrl').value = config.coverUrl;
+                        document.getElementById('cfgFollowers').value = config.stats.followers;
+                        document.getElementById('cfgSubscribers').value = config.stats.subscribers;
+                        document.getElementById('cfgKudosu').value = config.stats.kudosu;
+                        document.getElementById('cfgSuccessRate').value = config.stats.successRate;
+                        document.getElementById('cfgRankeds').value = config.stats.rankeds;
+                        document.getElementById('cfgLoveds').value = config.stats.loveds;
+                        document.getElementById('cfgPendings').value = config.stats.pendings;
+                        document.getElementById('cfgGraveyards').value = config.stats.graveyards;
+
+                        document.getElementById('cfgLatestTitle').value = config.latest.title;
+                        document.getElementById('cfgLatestArtist').value = config.latest.artist;
+                        document.getElementById('cfgLatestStatus').value = config.latest.status;
+                        document.getElementById('cfgLatestPlays').value = config.latest.plays;
+                        document.getElementById('cfgLatestFavs').value = config.latest.favs;
+                        document.getElementById('cfgLatestCover').value = config.latest.cover;
+
+                        document.getElementById('cfgAmpVal').value = config.metrics.ampVal;
+                        document.getElementById('cfgRhythmVal').value = config.metrics.rhythmVal;
+                        document.getElementById('cfgReachVal').value = config.metrics.reachVal;
+                        document.getElementById('cfgAmpBars').value = config.metrics.ampBars;
+                        document.getElementById('cfgRhythmBars').value = config.metrics.rhythmBars;
+                        document.getElementById('cfgReachBars').value = config.metrics.reachBars;
+                        document.getElementById('cfgAmpBarsVal').textContent = `${config.metrics.ampBars} / 6`;
+                        document.getElementById('cfgRhythmBarsVal').textContent = `${config.metrics.rhythmBars} / 6`;
+                        document.getElementById('cfgReachBarsVal').textContent = `${config.metrics.reachBars} / 6`;
+
+                        render();
+                    }
+                } catch (err) {
+                    alert('Error cargando mapper: ' + err.message);
+                } finally {
+                    btn.textContent = 'Buscar';
+                    btn.disabled = false;
+                }
+            });
+        }
+
+        bindInputs();
+        // Cargar tipografía antes de renderizar
+        document.fonts.ready.then(() => {
+            render();
+        });
+    </script>
+</body>
+</html>

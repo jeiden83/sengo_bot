@@ -13,6 +13,15 @@ async function run(messages, args) {
     const { message, res, logger } = messages;
     const locale = message.locale || 'es';
 
+    // Detectar si se solicitó la tarjeta gráfica de mapper (-card)
+    const isCardMode = args.some(arg => ['-card', '--card', '-tarjeta', '--tarjeta'].includes(arg.toLowerCase()));
+    if (isCardMode) {
+        const cardChatCommand = require("./card.js");
+        const forwardedArgs = args.filter(a => !['-card', '--card', '-tarjeta', '--tarjeta'].includes(a.toLowerCase()));
+        forwardedArgs.push("-mapper");
+        return await cardChatCommand.run(messages, forwardedArgs);
+    }
+
     // Detectar si estamos en modo Track (Mapping Tracker)
     const isTrackMode = args.some(arg => arg.toLowerCase() === '-track');
     if (isTrackMode) {
