@@ -1172,67 +1172,6 @@ function doOsuMapSkillsEmbed({
             starBreakdown += `  •  🔦 **FL:** \`${formatDecimal(skillsData.flashlightStars, locale, 2)}★\``;
         }
         descLines.push(starBreakdown);
-
-        const hasFL = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => (s.flPP || 0) > 0.5);
-        const hasReading = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => (s.readingPP || 0) > 0.5);
-
-        let header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc`;
-        if (hasReading) header += `   Reading`;
-        if (hasFL) header += `        FL`;
-        header += `\u001b[0m`;
-
-        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
-            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
-            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const aimStr = `\u001b[1;33m${(formatDecimal(s.aimPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const speedStr = `\u001b[1;36m${(formatDecimal(s.speedPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const accPpStr = `\u001b[1;35m${(formatDecimal(s.accPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-
-            let line = `${accStr}   ${totalStr} ${aimStr} ${speedStr} ${accPpStr}`;
-            if (hasReading) {
-                const readStr = `\u001b[1;34m${(formatDecimal(s.readingPP || 0, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-                line += ` ${readStr}`;
-            }
-            if (hasFL) {
-                const flStr = `\u001b[1;31m${(formatDecimal(s.flPP || 0, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-                line += ` ${flStr}`;
-            }
-            return line;
-        });
-
-        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
-        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
-    } else if (activeMode === 'taiko') {
-        const header = `\u001b[1;30mAcc       Total      Diff       Acc\u001b[0m`;
-        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
-            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
-            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const diffStr = `\u001b[1;33m${(formatDecimal(s.diffPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const accPpStr = `\u001b[1;35m${(formatDecimal(s.accPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            return `${accStr}   ${totalStr} ${diffStr} ${accPpStr}`;
-        });
-        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
-        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
-    } else if (activeMode === 'mania') {
-        const header = `\u001b[1;30mAcc       Total      Diff\u001b[0m`;
-        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
-            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
-            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            const diffStr = `\u001b[1;33m${(formatDecimal(s.diffPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            return `${accStr}   ${totalStr} ${diffStr}`;
-        });
-        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
-        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
-    } else {
-        // Fruits / Catch
-        const header = `\u001b[1;30mAcc       Total\u001b[0m`;
-        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
-            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
-            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-            return `${accStr}   ${totalStr}`;
-        });
-        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
-        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
     }
 
     const embed = new EmbedBuilder()

@@ -391,16 +391,14 @@ async function run(messages, args) {
             const { doOsuStrainEmbed } = require("../../../views/osuEmbeds.js");
             strainEmbed = doOsuStrainEmbed({ embedColor });
 
-            const activeEmbed = currentView === 'skills' ? skillsEmbed : overviewEmbed;
-            const files = currentView === 'skills'
-                ? [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' }), strainsAttachment]
-                : [strainsAttachment];
-
-            await sentMessage.edit({
-                embeds: [activeEmbed, strainEmbed],
-                components: buildMapButtonsRows({ beatmap, locale, activeView: currentView }),
-                files
-            });
+            // Solo actualizar el mensaje si el usuario ya se encuentra en la vista de skills
+            if (currentView === 'skills') {
+                await sentMessage.edit({
+                    embeds: [skillsEmbed, strainEmbed],
+                    components: buildMapButtonsRows({ beatmap, locale, activeView: 'skills' }),
+                    files: [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' }), strainsAttachment]
+                });
+            }
         } catch (err) {
             console.error("Error al generar/enviar el gráfico de strain:", err);
         }
@@ -438,15 +436,18 @@ async function run(messages, args) {
                     return;
                 }
 
-                const activeEmbed = currentView === 'skills' ? skillsEmbed : overviewEmbed;
-                const embeds = strainEmbed ? [activeEmbed, strainEmbed] : [activeEmbed];
-                const rows = buildMapButtonsRows({ beatmap, locale, activeView: currentView });
-
-                const files = currentView === 'skills'
-                    ? (strainsAttachment
+                let embeds;
+                let files;
+                if (currentView === 'overview') {
+                    embeds = [overviewEmbed];
+                    files = [];
+                } else {
+                    embeds = strainEmbed ? [skillsEmbed, strainEmbed] : [skillsEmbed];
+                    files = strainsAttachment
                         ? [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' }), strainsAttachment]
-                        : [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' })])
-                    : (strainsAttachment ? [strainsAttachment] : []);
+                        : [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' })];
+                }
+                const rows = buildMapButtonsRows({ beatmap, locale, activeView: currentView });
 
                 await i.update({
                     embeds,
