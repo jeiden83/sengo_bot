@@ -201,7 +201,7 @@ function doOsuSkillsRankingEmbed({
             .setTimestamp();
 
         if (serverName) {
-            const icon = serverIcon || (message?.guild?.iconURL ? message.guild.iconURL({ extension: "png", size: 128 }) : null);
+            const icon = serverIcon || (serverName === message?.guild?.name ? message?.guild?.iconURL({ extension: "png", size: 128 }) : null);
             if (icon) emptyEmbed.setThumbnail(icon);
         }
         return emptyEmbed;
@@ -253,7 +253,7 @@ function doOsuSkillsRankingEmbed({
         .setTimestamp();
 
     if (serverName) {
-        const icon = serverIcon || (message?.guild?.iconURL ? message.guild.iconURL({ extension: "png", size: 128 }) : null);
+        const icon = serverIcon || (serverName === message?.guild?.name ? message?.guild?.iconURL({ extension: "png", size: 128 }) : null);
         if (icon) embed.setThumbnail(icon);
     }
 

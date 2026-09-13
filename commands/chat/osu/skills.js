@@ -134,15 +134,45 @@ async function run(messages, args) {
     // 🏠 Flujo de Ranking de Servidor de Habilidades (jugadores vinculados en el Discord actual o especificado)
     if (isServer) {
         let targetGuild = null;
+        let serverName = null;
+        let serverIconUrl = null;
+
         if (targetGuildId) {
             targetGuild = message.client?.guilds?.cache?.get(targetGuildId);
             if (!targetGuild && typeof message.client?.guilds?.fetch === "function") {
                 targetGuild = await message.client.guilds.fetch(targetGuildId).catch(() => null);
             }
-            if (!targetGuild) {
-                const err = t(locale, "skills.server_not_found", { guildId: targetGuildId }) || `❌ No se encontró el servidor con ID \`${targetGuildId}\` o Sengo no es miembro de él.`;
-                if (typeof message.reply === "function") return await message.reply(err);
-                return message.channel?.send ? await message.channel.send(err) : err;
+
+            if (targetGuild) {
+                serverName = targetGuild.name;
+                serverIconUrl = targetGuild.iconURL ? targetGuild.iconURL({ extension: "png", size: 128 }) : null;
+            } else {
+                // Si el bot no está en el servidor (ej: dev sengo consultando un servidor donde solo está sengo de render)
+                serverName = `Servidor (${targetGuildId})`;
+                try {
+                    const { getSupabaseClient } = require("../../../db/database.js");
+                    const supabase = getSupabaseClient();
+                    if (supabase) {
+                        const { data: wh } = await supabase
+                            .from('webhook_channels')
+                            .select('guild_name')
+                            .eq('guild_id', targetGuildId)
+                            .maybeSingle();
+                        if (wh && wh.guild_name) {
+                            serverName = wh.guild_name;
+                        }
+                    }
+                } catch {}
+
+                if (serverName === `Servidor (${targetGuildId})`) {
+                    try {
+                        const widgetRes = await fetch(`https://discord.com/api/guilds/${targetGuildId}/widget.json`, { signal: AbortSignal.timeout(1500) });
+                        if (widgetRes.ok) {
+                            const widgetData = await widgetRes.json();
+                            if (widgetData?.name) serverName = widgetData.name;
+                        }
+                    } catch {}
+                }
             }
         } else {
             targetGuild = message.guild;
@@ -151,6 +181,8 @@ async function run(messages, args) {
                 if (typeof message.reply === "function") return await message.reply(err);
                 return message.channel?.send ? await message.channel.send(err) : err;
             }
+            serverName = targetGuild.name;
+            serverIconUrl = targetGuild.iconURL ? targetGuild.iconURL({ extension: "png", size: 128 }) : null;
         }
 
         let targetMode = "osu";
@@ -163,47 +195,57 @@ async function run(messages, args) {
             else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) targetMode = "osu";
         }
 
-        if (logger) logger.process(`Consultando miembros vinculados en ${targetGuild.name}...`);
+        if (logger) logger.process(`Consultando miembros vinculados en ${serverName}...`);
 
-        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: targetGuild.id, guild: targetGuild });
+        const effectiveGuildId = targetGuild ? targetGuild.id : targetGuildId;
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: effectiveGuildId, guild: targetGuild });
         let osuIds = (linkedUsers || []).map(u => String(u.osu_id)).filter(Boolean);
 
-        // También incluir miembros en caché de Discord que tengan mapeo de usuario
-        let membersCache = targetGuild.members?.cache;
-        if (typeof targetGuild.members?.fetch === "function") {
-            try {
-                membersCache = await targetGuild.members.fetch();
-            } catch {
-                membersCache = targetGuild.members?.cache;
+        // Si el bot está en el servidor, enriquecer con miembros en caché de Discord
+        if (targetGuild) {
+            let membersCache = targetGuild.members?.cache;
+            if (typeof targetGuild.members?.fetch === "function") {
+                try {
+                    membersCache = await targetGuild.members.fetch();
+                } catch {
+                    membersCache = targetGuild.members?.cache;
+                }
             }
-        }
 
-        if (membersCache) {
-            const linkedMap = await OsuUserModel.getLinkedUsersMap();
-            for (const [osuId, info] of linkedMap.entries()) {
-                if (info.discord_id && membersCache.has(info.discord_id)) {
-                    if (!osuIds.includes(osuId)) {
-                        osuIds.push(osuId);
+            if (membersCache) {
+                const linkedMap = await OsuUserModel.getLinkedUsersMap();
+                for (const [osuId, info] of linkedMap.entries()) {
+                    if (info.discord_id && membersCache.has(info.discord_id)) {
+                        if (!osuIds.includes(osuId)) {
+                            osuIds.push(osuId);
+                        }
                     }
                 }
             }
+
+            // Si el autor del comando está en este servidor y vinculado, asegurarse de que esté incluido
+            try {
+                if (membersCache && message.author?.id && membersCache.has(message.author.id)) {
+                    const authorToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+                    if (authorToken && authorToken.osu_id && !osuIds.includes(String(authorToken.osu_id))) {
+                        osuIds.push(String(authorToken.osu_id));
+                    }
+                }
+            } catch {}
         }
 
-        // Si el autor del comando está en este servidor y vinculado, asegurarse de que esté incluido
-        try {
-            if (membersCache && message.author?.id && membersCache.has(message.author.id)) {
-                const authorToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
-                if (authorToken && authorToken.osu_id && !osuIds.includes(String(authorToken.osu_id))) {
-                    osuIds.push(String(authorToken.osu_id));
-                }
-            }
-        } catch {}
+        // Si el bot no está en el servidor y no hay ningún usuario registrado para esa guild en Supabase
+        if (!targetGuild && osuIds.length === 0) {
+            const err = t(locale, "skills.server_not_found", { guildId: targetGuildId }) || `❌ No se encontró el servidor con ID \`${targetGuildId}\` o no tiene miembros vinculados en la base de datos.`;
+            if (typeof message.reply === "function") return await message.reply(err);
+            return message.channel?.send ? await message.channel.send(err) : err;
+        }
 
         const skillToQuery = selectedSkill || "aim";
         const pageSize = 10;
         let startIndex = 0;
 
-        if (logger) logger.process(`Consultando ranking de servidor (${skillToQuery}) para ${targetGuild.name} (${osuIds.length} miembros vinculados)`);
+        if (logger) logger.process(`Consultando ranking de servidor (${skillToQuery}) para ${serverName} (${osuIds.length} miembros vinculados)`);
 
         const initialData = await getServerSkillsLeaderboard({
             osuIds,
@@ -213,13 +255,11 @@ async function run(messages, args) {
             offset: startIndex
         });
 
-        const serverIconUrl = targetGuild.iconURL ? targetGuild.iconURL({ extension: "png", size: 128 }) : null;
-
         const embed = doOsuSkillsRankingEmbed({
             players: initialData.players,
             totalCount: initialData.totalCount,
             startIndex,
-            serverName: targetGuild.name,
+            serverName: serverName,
             serverIcon: serverIconUrl,
             gamemode: targetMode,
             skill: skillToQuery,
@@ -282,7 +322,7 @@ async function run(messages, args) {
                     players: pageData.players,
                     totalCount: pageData.totalCount,
                     startIndex,
-                    serverName: targetGuild.name,
+                    serverName: serverName,
                     serverIcon: serverIconUrl,
                     gamemode: targetMode,
                     skill: skillToQuery,
