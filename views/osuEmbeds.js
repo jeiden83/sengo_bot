@@ -1070,31 +1070,7 @@ function doOsuMapEmbed({
         })
         .setTimestamp();
 
-    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
-    const osuDirectPCUrl = `${redirectBase}/osu/${beatmap.beatmapset_id}`;
-
-    // Construir la fila de botones de descarga
-    const row = new ActionRowBuilder()
-        .addComponents(
-            new ButtonBuilder()
-                .setLabel(t(locale, 'map.btn_launch'))
-                .setStyle(ButtonStyle.Link)
-                .setURL(osuDirectPCUrl),
-            new ButtonBuilder()
-                .setLabel('osu.direct (Web)')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
-            new ButtonBuilder()
-                .setLabel('Nerinyan')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}?novideo=1`),
-            new ButtonBuilder()
-                .setLabel('Sayobot')
-                .setStyle(ButtonStyle.Link)
-                .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
-        );
-
-    return { embed, components: [row] };
+    return { embed, components: buildMapButtonsRows({ beatmap, locale, activeView: 'overview' }) };
 }
 
 /**
@@ -1104,6 +1080,180 @@ function doOsuStrainEmbed({ embedColor }) {
     const embed = new EmbedBuilder()
         .setImage('attachment://strains.png')
         .setColor(embedColor);
+    return embed;
+}
+
+/**
+ * Construye las dos filas de componentes para el comando .m:
+ * Fila 1: Botones para alternar entre la vista de Información y la de Skills (PP).
+ * Fila 2: Enlaces de descarga directos (Launch, osu.direct, Nerinyan, Sayobot).
+ */
+function buildMapButtonsRows({ beatmap, locale = 'es', activeView = 'overview', disabled = false }) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+
+    const rowViews = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setCustomId('map_view_overview')
+            .setLabel(t(locale, 'map.btn_overview') || '🗺️ Información')
+            .setStyle(activeView === 'overview' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled),
+        new ButtonBuilder()
+            .setCustomId('map_view_skills')
+            .setLabel(t(locale, 'map.btn_skills') || '⚡ Skills (PP)')
+            .setStyle(activeView === 'skills' ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(disabled)
+    );
+
+    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const osuDirectPCUrl = `${redirectBase}/osu/${beatmap.beatmapset_id}`;
+
+    const rowDownloads = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+            .setLabel(t(locale, 'map.btn_launch'))
+            .setStyle(ButtonStyle.Link)
+            .setURL(osuDirectPCUrl),
+        new ButtonBuilder()
+            .setLabel('osu.direct (Web)')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`https://osu.direct/d/${beatmap.beatmapset_id}`),
+        new ButtonBuilder()
+            .setLabel('Nerinyan')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`https://api.nerinyan.moe/d/${beatmap.beatmapset_id}?novideo=1`),
+        new ButtonBuilder()
+            .setLabel('Sayobot')
+            .setStyle(ButtonStyle.Link)
+            .setURL(`https://txy1.sayobot.cn/beatmaps/download/novideo/${beatmap.beatmapset_id}`)
+    );
+
+    return [rowViews, rowDownloads];
+}
+
+/**
+ * Renderiza el embed para la vista de desglose de skills por PP del beatmap.
+ */
+function doOsuMapSkillsEmbed({
+    beatmap,
+    activeMode,
+    isConverted,
+    stars,
+    baseStars,
+    statusName,
+    embedColor,
+    attributes,
+    skillsData,
+    locale = 'es'
+}) {
+    let modsStr = attributes.modsStr || "";
+    const mods_emoji_str = modsStr ? modsStr.match(/.{1,2}/g).reduce((acc, mod) => {
+        return `${acc}<:${mod}:${emoji_mods[mod] || '123'}>`;
+    }, ' +') : '';
+
+    const mode_names = {
+        'osu': 'osu!std',
+        'taiko': 'osu!taiko',
+        'fruits': 'osu!catch',
+        'mania': 'osu!mania'
+    };
+
+    const descLines = [
+        `▸ **${t(locale, 'map.status')}:** \`${statusName}\`  •  **${t(locale, 'map.mode')}:** \`${mode_names[activeMode] || activeMode}\`${isConverted ? t(locale, 'map.converted') : ''}  •  **${t(locale, 'map.difficulty')}:** \`${formatDecimal(stars, locale, 2)}★\`${Math.abs(stars - baseStars) > 0.01 ? ` *(${formatDecimal(baseStars, locale, 2)}★)*` : ''}`,
+        `▸ **BPM:** \`${attributes.bpm}\`  •  **AR:** \`${formatDecimal(attributes.ar, locale, 1)}\`  •  **OD:** \`${formatDecimal(attributes.od, locale, 1)}\`  •  **${attributes.csLabel || 'CS'}:** \`${formatDecimal(attributes.cs, locale, 1)}\`  •  **Max Combo:** \`x${attributes.maxCombo}\``
+    ];
+
+    if (activeMode === 'osu') {
+        const aimStarsStr = formatDecimal(skillsData.aimStars || 0, locale, 2);
+        const speedStarsStr = formatDecimal(skillsData.speedStars || 0, locale, 2);
+        let starBreakdown = `▸ 🎯 **Aim:** \`${aimStarsStr}★\`  •  ⚡ **Speed:** \`${speedStarsStr}★\``;
+        if (skillsData.readingStars && skillsData.readingStars > 0.1) {
+            starBreakdown += `  •  📖 **Reading:** \`${formatDecimal(skillsData.readingStars, locale, 2)}★\``;
+        } else if (skillsData.flashlightStars && skillsData.flashlightStars > 0.1) {
+            starBreakdown += `  •  🔦 **FL:** \`${formatDecimal(skillsData.flashlightStars, locale, 2)}★\``;
+        }
+        descLines.push(starBreakdown);
+
+        const hasFL = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => s.flPP > 1);
+        const hasReading = !hasFL && skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => s.readingPP > 1);
+
+        let header;
+        if (hasFL) {
+            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc        FL\u001b[0m`;
+        } else if (hasReading) {
+            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc   Reading\u001b[0m`;
+        } else {
+            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc\u001b[0m`;
+        }
+
+        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
+            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
+            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const aimStr = `\u001b[1;33m${(formatDecimal(s.aimPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const speedStr = `\u001b[1;36m${(formatDecimal(s.speedPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const accPpStr = `\u001b[1;35m${(formatDecimal(s.accPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+
+            let line = `${accStr}   ${totalStr} ${aimStr} ${speedStr} ${accPpStr}`;
+            if (hasFL) {
+                const flStr = `\u001b[1;31m${(formatDecimal(s.flPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+                line += ` ${flStr}`;
+            } else if (hasReading) {
+                const readStr = `\u001b[1;34m${(formatDecimal(s.readingPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+                line += ` ${readStr}`;
+            }
+            return line;
+        });
+
+        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
+        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
+    } else if (activeMode === 'taiko') {
+        const header = `\u001b[1;30mAcc       Total      Diff       Acc\u001b[0m`;
+        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
+            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
+            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const diffStr = `\u001b[1;33m${(formatDecimal(s.diffPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const accPpStr = `\u001b[1;35m${(formatDecimal(s.accPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            return `${accStr}   ${totalStr} ${diffStr} ${accPpStr}`;
+        });
+        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
+        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
+    } else if (activeMode === 'mania') {
+        const header = `\u001b[1;30mAcc       Total      Diff\u001b[0m`;
+        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
+            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
+            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            const diffStr = `\u001b[1;33m${(formatDecimal(s.diffPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            return `${accStr}   ${totalStr} ${diffStr}`;
+        });
+        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
+        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
+    } else {
+        // Fruits / Catch
+        const header = `\u001b[1;30mAcc       Total\u001b[0m`;
+        const ansiRows = (skillsData.skillsByAcc || []).map(s => {
+            const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
+            const totalStr = `\u001b[1;37m${(formatDecimal(s.pp, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            return `${accStr}   ${totalStr}`;
+        });
+        const titleText = t(locale, 'map.skills_breakdown_title') || 'Desglose de Skills por PP';
+        descLines.push(`\n**${titleText}:**\n\`\`\`ansi\n${header}\n${ansiRows.join('\n')}\n\`\`\``);
+    }
+
+    const embed = new EmbedBuilder()
+        .setAuthor({
+            name: t(locale, 'map.author_created_by', { creator: beatmap.beatmapset.creator }),
+            iconURL: `https://a.ppy.sh/${beatmap.beatmapset.user_id}`,
+            url: `https://osu.ppy.sh/users/${beatmap.beatmapset.user_id}`
+        })
+        .setTitle(`${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]${mods_emoji_str}`)
+        .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
+        .setDescription(descLines.join('\n'))
+        .setThumbnail(beatmap.beatmapset.covers["list@2x"] || beatmap.beatmapset.covers.cover)
+        .setColor(embedColor)
+        .setFooter({
+            text: `${t(locale, 'map.footer_map', { id: beatmap.id })} • Skills & PP`,
+            iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd",
+        })
+        .setTimestamp();
+
     return embed;
 }
 
@@ -2552,6 +2702,8 @@ module.exports = {
     getOsuCompareContent,
     doOsuSubirEmbed,
     doOsuMapEmbed,
+    doOsuMapSkillsEmbed,
+    buildMapButtonsRows,
     doOsuStrainEmbed,
     doOsuMapsetEmbed,
     doOsuSnipesEmbed,

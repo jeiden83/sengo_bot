@@ -161,11 +161,38 @@ async function run(messages, args) {
     const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
     const hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
 
-    // 6. Calcular PP para diferentes precisiones sobre los atributos de dificultad pre-calculados
-    const ppSS = new engine.Performance({ mods: activeModsStr }).calculate(diffAttrs).pp.toFixed(2);
-    const pp99 = new engine.Performance({ mods: activeModsStr, accuracy: 99 }).calculate(diffAttrs).pp.toFixed(2);
-    const pp98 = new engine.Performance({ mods: activeModsStr, accuracy: 98 }).calculate(diffAttrs).pp.toFixed(2);
-    const pp95 = new engine.Performance({ mods: activeModsStr, accuracy: 95 }).calculate(diffAttrs).pp.toFixed(2);
+    // 6. Calcular PP y desglose de skills para diferentes precisiones
+    const skillsByAcc = [100, 99, 98, 95].map(acc => {
+        const perf = new engine.Performance({ mods: activeModsStr, accuracy: acc }).calculate(diffAttrs);
+        return {
+            accuracy: acc,
+            pp: Number(perf.pp || 0),
+            aimPP: Number(perf.ppAim || 0),
+            speedPP: Number(perf.ppSpeed || 0),
+            accPP: Number(perf.ppAcc || 0),
+            flPP: Number(perf.ppFlashlight || 0),
+            readingPP: Number(perf.ppReading || 0),
+            diffPP: Number(perf.ppDifficulty || 0)
+        };
+    });
+
+    const ppSS = skillsByAcc[0].pp.toFixed(2);
+    const pp99 = skillsByAcc[1].pp.toFixed(2);
+    const pp98 = skillsByAcc[2].pp.toFixed(2);
+    const pp95 = skillsByAcc[3].pp.toFixed(2);
+
+    const skillsData = {
+        activeMode,
+        stars,
+        baseStars,
+        aimStars: diffAttrs.aimStars || diffAttrs.aim || 0,
+        speedStars: diffAttrs.speedStars || diffAttrs.speed || 0,
+        flashlightStars: diffAttrs.flashlightStars || 0,
+        readingStars: diffAttrs.readingStars || 0,
+        stamina: diffAttrs.stamina || 0,
+        rhythm: diffAttrs.rhythm || 0,
+        skillsByAcc
+    };
 
     // Estilo de estados de mapa con traducciones
     const status_names = {
@@ -232,8 +259,8 @@ async function run(messages, args) {
         }
     }
 
-    const { doOsuMapEmbed } = require("../../../views/osuEmbeds.js");
-    const { embed, components } = doOsuMapEmbed({
+    const { doOsuMapEmbed, doOsuMapSkillsEmbed, buildMapButtonsRows } = require("../../../views/osuEmbeds.js");
+    const { embed: overviewEmbed, components } = doOsuMapEmbed({
         beatmap,
         activeMode,
         isConverted,
@@ -265,13 +292,42 @@ async function run(messages, args) {
         locale
     });
 
+    const skillsEmbed = doOsuMapSkillsEmbed({
+        beatmap,
+        activeMode,
+        isConverted,
+        stars,
+        baseStars,
+        statusName,
+        embedColor,
+        attributes: {
+            bpm,
+            speedMultiplier,
+            totalLength,
+            hitLength,
+            maxCombo,
+            cs,
+            ar,
+            od,
+            hp,
+            csLabel,
+            modsStr
+        },
+        skillsData,
+        locale
+    });
+
+    let currentView = 'overview';
+    let strainEmbed = null;
+    let strainsAttachment = null;
+
     let sentMessage;
     if (reply && typeof reply.reply === 'function') {
-        sentMessage = await reply.reply({ embeds: [embed], components });
+        sentMessage = await reply.reply({ embeds: [overviewEmbed], components });
     } else if (message.channel && typeof message.channel.send === 'function') {
-        sentMessage = await message.channel.send({ embeds: [embed], components });
+        sentMessage = await message.channel.send({ embeds: [overviewEmbed], components });
     } else {
-        return { embeds: [embed], components };
+        return { embeds: [overviewEmbed], components };
     }
 
     if (!sentMessage) return;
@@ -320,20 +376,75 @@ async function run(messages, args) {
             }
 
             const { AttachmentBuilder } = require("discord.js");
-            const strainsAttachment = new AttachmentBuilder(graphBuffer, { name: 'strains.png' });
+            strainsAttachment = new AttachmentBuilder(graphBuffer, { name: 'strains.png' });
 
             const { doOsuStrainEmbed } = require("../../../views/osuEmbeds.js");
-            const strainEmbed = doOsuStrainEmbed({ embedColor });
+            strainEmbed = doOsuStrainEmbed({ embedColor });
 
+            const activeEmbed = currentView === 'skills' ? skillsEmbed : overviewEmbed;
             await sentMessage.edit({
-                embeds: [embed, strainEmbed],
-                components: components,
+                embeds: [activeEmbed, strainEmbed],
+                components: buildMapButtonsRows({ beatmap, locale, activeView: currentView }),
                 files: [strainsAttachment]
             });
         } catch (err) {
             console.error("Error al generar/enviar el gráfico de strain:", err);
         }
     })();
+
+    // Collector para alternar entre las vistas de .m
+    if (typeof sentMessage.createMessageComponentCollector === 'function') {
+        const collector = sentMessage.createMessageComponentCollector({
+            idle: 90000 // 90 segundos de inactividad
+        });
+
+        collector.on('collect', async i => {
+            try {
+                if (i.user.id !== message.author.id) {
+                    await i.reply({
+                        content: t(locale, 'about.only_author') || '❌ Solo quien ejecutó el comando puede alternar las vistas.',
+                        ephemeral: true
+                    });
+                    return;
+                }
+
+                if (i.customId === 'map_view_overview') {
+                    if (currentView === 'overview') {
+                        await i.deferUpdate();
+                        return;
+                    }
+                    currentView = 'overview';
+                } else if (i.customId === 'map_view_skills') {
+                    if (currentView === 'skills') {
+                        await i.deferUpdate();
+                        return;
+                    }
+                    currentView = 'skills';
+                } else {
+                    return;
+                }
+
+                const activeEmbed = currentView === 'skills' ? skillsEmbed : overviewEmbed;
+                const embeds = strainEmbed ? [activeEmbed, strainEmbed] : [activeEmbed];
+                const rows = buildMapButtonsRows({ beatmap, locale, activeView: currentView });
+
+                await i.update({
+                    embeds,
+                    components: rows
+                });
+            } catch (err) {
+                console.error("Error al alternar vista en m.js:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                // Deshabilitar botones de vista pero mantener los links de descarga intactos
+                const disabledRows = buildMapButtonsRows({ beatmap, locale, activeView: currentView, disabled: true });
+                await sentMessage.edit({ components: disabledRows });
+            } catch {}
+        });
+    }
 
     return;
 }
