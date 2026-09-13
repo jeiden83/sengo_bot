@@ -337,28 +337,86 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillText(mapperData.user.username || "Mapper", avatarCenterX, pillY + 188);
     ctx.restore();
 
-    // Círculo relleno inferior para modo STD (hitcircle con approach circle)
+    // Círculo inferior para modo de juego (STD hitcircle por defecto, o diseño según modo)
     const targetCenterY = pillY + 258;
     const outerTargetR = 32;
     const innerTargetR = 21;
+    const gamemode = (mapperData.mode || options.gamemode || "osu").toLowerCase();
 
     ctx.save();
-    // Círculo central relleno sólido para modo STD
-    ctx.beginPath();
-    ctx.arc(avatarCenterX, targetCenterY, innerTargetR, 0, Math.PI * 2);
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
-    ctx.shadowBlur = 12;
-    ctx.fill();
+    if (gamemode === "taiko") {
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = 8;
+        ctx.stroke();
 
-    // Anillo exterior circundante (approach circle)
-    ctx.beginPath();
-    ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 4.8;
-    ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
-    ctx.shadowBlur = 8;
-    ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, innerTargetR, 0, Math.PI * 2);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.25)";
+        ctx.fill();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, 11, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+    } else if (gamemode === "fruits" || gamemode === "catch") {
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY + 3, 14, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(avatarCenterX + 4, targetCenterY - 10, 4, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.fill();
+    } else if (gamemode === "mania") {
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+
+        const kw = 5, kh = 22, kg = 2;
+        const startKx = avatarCenterX - (4 * kw + 3 * kg) / 2;
+        for (let k = 0; k < 4; k++) {
+            roundRect(ctx, startKx + k * (kw + kg), targetCenterY - kh / 2, kw, kh, 2);
+            ctx.fillStyle = "#ffffff";
+            ctx.fill();
+        }
+    } else {
+        // Círculo central relleno sólido para modo STD (hitcircle con approach circle)
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, innerTargetR, 0, Math.PI * 2);
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
+        ctx.shadowBlur = 12;
+        ctx.fill();
+
+        // Anillo exterior circundante (approach circle)
+        ctx.beginPath();
+        ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 4.8;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+        ctx.shadowBlur = 8;
+        ctx.stroke();
+    }
     ctx.restore();
 
     // 4. TARJETA SUPERIOR CENTRAL (BANDERA Y RANGOS)
