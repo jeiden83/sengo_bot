@@ -32,7 +32,7 @@ function estimateAccPP(od, accPct, totalHits, isHR, isEZ, isDT, isHT) {
     const effOD = Math.max(0, Math.min(11.1, (80 - hitWindow300) / 6));
     const nObjects = Math.max(1, totalHits || 1000);
     const lengthBonus = Math.min(1.15, Math.pow(nObjects / 1500, 0.3));
-    return Math.pow(1.52163, effOD) * Math.pow((acc - 0.8) / 0.2, 2.4) * lengthBonus * 2.83;
+    return Math.pow(1.52163, effOD) * Math.pow((acc - 0.8) / 0.2, 2.4) * lengthBonus * 2.2;
 }
 
 // ponytail: Fórmulas analíticas de descomposición de habilidades para Taiko, Catch y Mania
@@ -385,7 +385,8 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                 highBpmMultiplier += Math.pow((effBPM - 220) / 75, 1.25) * 0.70;
             }
 
-            const staminaBonus = (circles >= 750 && effBPM >= 170 && circlesPerBeat >= 1.20)
+            // ponytail: staminaBonus solo aplica a stream/speed maps de DT/NM a alto BPM, no a maratones HR de aim/consistencia
+            const staminaBonus = (!isHR && circles >= 750 && effBPM >= 170 && circlesPerBeat >= 1.20)
                 ? Math.min(0.20, (circles - 600) / 1400) * bpmFactor
                 : 0;
 
@@ -399,7 +400,11 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
 
             // Mapas cortos de jump farm puros (<60s o <300 círculos)
             if (circles < 300 && effLen < 60 && circlesPerBeat < 1.15) {
-                speedFraction = Math.min(0.08, speedFraction * 0.35);
+                if (isDT) {
+                    speedFraction = Math.max(0.12, Math.min(0.20, speedFraction * 0.65));
+                } else {
+                    speedFraction = Math.min(0.10, speedFraction * 0.45);
+                }
             }
             if (isHR && circlesPerBeat < 1.10) {
                 speedFraction = Math.min(0.10, speedFraction * 0.60);
@@ -415,7 +420,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             speedFraction = Math.max(0.04, Math.min(maxAllowed, speedFraction));
 
             let aimFraction = Math.max(0.25, 1.0 - (speedFraction * 0.72));
-            if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.05);
+            if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
             if (isEZStreamHeavy) {
                 aimFraction = 0.11;
@@ -423,7 +428,15 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                 aimFraction = Math.max(0.15, aimFraction * 0.72);
             }
 
-            const rawAimPP = strainPP * aimFraction;
+            // ponytail: Escalado de consistencia y longitud en Aim calibrado con sengo-pp (escala con totalObj)
+            let aimConsistency = 1.0;
+            if (totalObj >= 800) {
+                aimConsistency = Math.min(1.25, 1.0 + Math.pow((totalObj - 800) / 1400, 0.75) * 0.22);
+            } else if (totalObj < 400) {
+                aimConsistency = Math.max(0.80, 0.80 + (totalObj / 400) * 0.20);
+            }
+
+            const rawAimPP = strainPP * aimFraction * aimConsistency;
             const rawSpeedPP = strainPP * speedFraction;
 
             // 4. Reading PP calibrado para todos los mods rankeables (HD, FL, EZ, HT, DT, HR, NM)
@@ -654,6 +667,14 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
             reading: sengo?.reading ?? sc.skills?.reading ?? 0,
             stars: sengo?.stars ?? Number(sc.beatmap?.difficulty_rating || 0)
         };
+        // ponytail: Asignar valores exactos de sengo-pp al score para paridad 1:1 con .skills -top
+        if (sengo) {
+            if (!sc.skills) sc.skills = {};
+            if (sengo.aim != null) sc.skills.aim = sengo.aim;
+            if (sengo.speed != null) sc.skills.speed = sengo.speed;
+            if (sengo.acc != null) sc.skills.acc = sengo.acc;
+            if (sengo.reading != null) sc.skills.reading = sengo.reading;
+        }
         if (targetModeInt !== 0 && sc.skills) {
             Object.assign(item, sc.skills);
         }

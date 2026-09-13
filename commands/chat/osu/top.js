@@ -58,11 +58,11 @@ async function run(messages, args, options = {}) {
     let originalScores = parser_res.fn_response;
     let sentMessage = null;
 
-    // ponytail: Soporte de desglose de skills para s.skills -top o s.top -skill en todos los modos de juego
+    // ponytail: Soporte de desglose de skills para s.skills -top o s.top -skill con paridad 1:1 sengo-pp
     if (options.isSkillTop || parser_res.parsed_args.skillFilter) {
         const mode = parser_res.parsed_args.gamemode || "osu";
-        const { analyzeSkills } = require("../../../views/osuCardViews.js");
-        const skillsData = analyzeSkills(originalScores, true, mode);
+        const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
+        const skillsData = await analyzeSkillsBreakdown(originalScores, mode);
 
         let selectedSkill = options.requestedSkill || parser_res.parsed_args.skillFilter;
         if (!selectedSkill) {
