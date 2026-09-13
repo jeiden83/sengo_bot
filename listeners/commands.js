@@ -2,6 +2,7 @@ const { chatCommand, slashCommand, loadCommands, loadSlashCommands } = require("
 const { PermissionsBitField } = require('discord.js');
 const { reportErrorToWebhook } = require("../services/errorNotifier.js");
 const { getGuildLanguage } = require("../models/GuildConfigModel.js");
+const { getUserLanguage } = require("../models/UserConfigModel.js");
 const { t } = require("../utils/i18n.js");
 
 const Logger = require("../utils/logger.js");
@@ -184,11 +185,11 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
         }
 
-        let resolvedLocale = 'es';
-        if (message.guild) {
+        let resolvedLocale = await getUserLanguage(message.author.id);
+        if (!resolvedLocale && message.guild) {
             resolvedLocale = await getGuildLanguage(message.guild.id);
         }
-        message.locale = resolvedLocale;
+        message.locale = resolvedLocale || 'es';
         const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
         const message_command = message_args.shift().toLowerCase();
 
@@ -412,12 +413,16 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             });
         }
 
-        let resolvedLocale = interaction.locale;
-        if (resolvedLocale) {
-            resolvedLocale = resolvedLocale.split('-')[0].toLowerCase();
-        }
-        if (resolvedLocale !== 'es' && resolvedLocale !== 'en') {
-            resolvedLocale = null;
+        let userLang = await getUserLanguage(interaction.user.id);
+        let resolvedLocale = userLang;
+        if (!resolvedLocale) {
+            let discordLocale = interaction.locale;
+            if (discordLocale) {
+                discordLocale = discordLocale.split('-')[0].toLowerCase();
+            }
+            if (discordLocale === 'es' || discordLocale === 'en') {
+                resolvedLocale = discordLocale;
+            }
         }
         if (!resolvedLocale && interaction.guild) {
             resolvedLocale = await getGuildLanguage(interaction.guild.id);

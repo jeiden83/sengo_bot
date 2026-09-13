@@ -52,11 +52,18 @@
   },
   "language": {
     "changed": "El idioma para este servidor ha sido configurado en **Español**.",
-    "changed_title": "🌐 Idioma Cambiado",
+    "changed_title": "🌐 Idioma del Servidor Cambiado",
+    "user_changed": "Tu idioma preferido ha sido configurado en **Español**.",
+    "user_changed_title": "🌐 Idioma Personal Actualizado",
+    "user_reset": "Tu preferencia de idioma personal ha sido restablecida. Ahora usarás el idioma del servidor.",
     "help_title": "🌐 Configuración de Idioma",
-    "help_description": "Uso correcto del comando:\n`{prefix}language [es|en]` o `{prefix}idioma [es|en]`\nOr use the slash commands `/language` o `/idioma`.\n\nPara ver los idiomas disponibles, usa `{prefix}language list` o `{prefix}language -list`.",
+    "help_description": "Uso correcto del comando:\n• `{prefix}language [es|en]` : Cambia tu **idioma personal**.\n• `{prefix}language server [es|en]` : Cambia el idioma del **servidor** (Requiere Administrador).\n• `{prefix}language reset` : Restablece tu idioma para seguir el del servidor.\n• `{prefix}language list` : Ver idiomas disponibles y estado actual.",
     "list_title": "🌐 Idiomas Disponibles",
-    "list_description": "Actualmente Sengo soporta los siguientes idiomas:\n\n• 🇻🇪 **Español (`es`)** {currentES}\n• 🇺🇸 **Inglés (`en`)** {currentEN}\n\nPara cambiar el idioma de este servidor, un administrador debe ejecutar:\n`{prefix}language [es|en]`",
+    "list_description": "Actualmente Sengo soporta los siguientes idiomas:\n\n• 🇻🇪 **Español (`es`)** {currentES}\n• 🇺🇸 **Inglés (`en`)** {currentEN}\n\n**Uso:**\n• `{prefix}language [es|en]` : Cambia tu idioma personal.\n• `{prefix}language server [es|en]` : Cambia el idioma del servidor (Admin).",
+    "status_title": "⚙️ Tu Configuración",
+    "status_personal": "Personal",
+    "status_server": "Servidor",
+    "status_default": "Heredado del servidor",
     "only_guild": "Este comando solo se puede usar en un servidor.",
     "no_admin": "No tienes permisos de Administrador para cambiar el idioma del servidor.",
     "db_error": "Hubo un error al intentar actualizar el idioma en la base de datos.",
@@ -156,8 +163,8 @@
     },
     "language": {
       "header": "Configurar idioma",
-      "body": "Permite configurar el idioma del bot para el servidor actual (español o inglés).",
-      "usage": "s.language    : Muestra el idioma actual y cómo cambiarlo\ns.language es : Cambia el idioma a español\ns.language en : Cambia el idioma a inglés"
+      "body": "Permite configurar tu idioma personal o el idioma del servidor (español o inglés).",
+      "usage": "s.language              : Muestra el idioma actual y cómo cambiarlo\ns.language [es|en]     : Cambia tu idioma personal\ns.language server [es|en] : Cambia el idioma del servidor (Admin)\ns.language reset        : Restablece tu idioma al del servidor"
     },
     "acerca": {
       "header": "Acerca de Sengo",

@@ -52,11 +52,18 @@
   },
   "language": {
     "changed": "The language for this server has been set to **English**.",
-    "changed_title": "🌐 Language Changed",
+    "changed_title": "🌐 Server Language Changed",
+    "user_changed": "Your preferred language has been set to **English**.",
+    "user_changed_title": "🌐 Personal Language Updated",
+    "user_reset": "Your personal language preference has been reset. You will now use the server's language.",
     "help_title": "🌐 Language Configuration",
-    "help_description": "Correct usage of the command:\n`{prefix}language [es|en]` or `{prefix}idioma [es|en]`\nOr use the slash commands `/language` or `/idioma`.\n\nTo see available languages, use `{prefix}language list` or `{prefix}language -list`.",
+    "help_description": "Correct usage of the command:\n• `{prefix}language [es|en]` : Changes your **personal language**.\n• `{prefix}language server [es|en]` : Changes the **server** language (Requires Administrator).\n• `{prefix}language reset` : Resets your language to follow the server.\n• `{prefix}language list` : View available languages and current status.",
     "list_title": "🌐 Available Languages",
-    "list_description": "Sengo currently supports the following languages:\n\n• 🇻🇪 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\nTo change the language of this server, an administrator must run:\n`{prefix}language [es|en]`",
+    "list_description": "Sengo currently supports the following languages:\n\n• 🇻🇪 **Spanish (`es`)** {currentES}\n• 🇺🇸 **English (`en`)** {currentEN}\n\n**Usage:**\n• `{prefix}language [es|en]` : Changes your personal language.\n• `{prefix}language server [es|en]` : Changes the server language (Admin).",
+    "status_title": "⚙️ Your Configuration",
+    "status_personal": "Personal",
+    "status_server": "Server",
+    "status_default": "Inherited from server",
     "only_guild": "This command can only be used in a server.",
     "no_admin": "You do not have Administrator permissions to change the server language.",
     "db_error": "There was an error trying to update the language in the database.",
@@ -156,8 +163,8 @@
     },
     "language": {
       "header": "Set language",
-      "body": "Allows configuring the bot's language for the current server (Spanish or English).",
-      "usage": "s.language    : Shows the current language and how to change it\ns.language es : Changes language to Spanish\ns.language en : Changes language to English"
+      "body": "Allows configuring your personal language or the server's language (Spanish or English).",
+      "usage": "s.language              : Shows the current language and how to change it\ns.language [es|en]     : Changes your personal language\ns.language server [es|en] : Changes the server language (Admin)\ns.language reset        : Resets your language to follow the server"
     },
     "acerca": {
       "header": "About Sengo",

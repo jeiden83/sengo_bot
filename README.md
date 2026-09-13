@@ -358,7 +358,12 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 ### 🛠️ Utilidades y Sistema
 
 * **`s.language [es|en]` o `s.idioma`**
-  Configura el idioma de Sengo para el servidor (`es` para Español, `en` para Inglés). Requiere permisos de Administrador. Usa `s.language list` para ver los idiomas disponibles.
+  Configura tu idioma personal o el del servidor (`es` para Español, `en` para Inglés).
+  * `s.language [es|en]`: Cambia tu **idioma personal** (disponible para cualquier usuario, también en DMs).
+  * `s.language server [es|en]`: Cambia el idioma del **servidor** (Requiere Administrador).
+  * `s.language reset`: Restablece tu preferencia personal para seguir el idioma del servidor.
+  * `s.language list`: Muestra los idiomas disponibles y tu estado actual.
+  * También disponible mediante el comando slash `/language`.
 * **`s.bug <texto>`**
   Envía un reporte de bug directamente a los desarrolladores. Soporta adjuntos de imágenes y responder a mensajes con errores.
 * **`s.sugerencia <texto>`**
