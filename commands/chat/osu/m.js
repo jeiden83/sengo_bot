@@ -187,8 +187,8 @@ async function run(messages, args) {
         baseStars,
         aimStars: diffAttrs.aimStars || diffAttrs.aim || 0,
         speedStars: diffAttrs.speedStars || diffAttrs.speed || 0,
-        flashlightStars: diffAttrs.flashlightStars || 0,
-        readingStars: diffAttrs.readingStars || 0,
+        flashlightStars: diffAttrs.flashlightStars || diffAttrs.flashlight || 0,
+        readingStars: diffAttrs.readingStars || diffAttrs.reading || 0,
         stamina: diffAttrs.stamina || 0,
         rhythm: diffAttrs.rhythm || 0,
         skillsByAcc
@@ -317,6 +317,17 @@ async function run(messages, args) {
         locale
     });
 
+    const { AttachmentBuilder } = require("discord.js");
+    const { generateSkillsBarChart } = require("../../../utils/skillsGraph.js");
+    const skillsBuffer = generateSkillsBarChart({
+        beatmapTitle: `${beatmap.beatmapset.artist} - ${beatmap.beatmapset.title} [${beatmap.version}]`,
+        modsStr: activeModsStr,
+        activeMode,
+        stars,
+        skillsData,
+        locale
+    });
+
     let currentView = 'overview';
     let strainEmbed = null;
     let strainsAttachment = null;
@@ -375,17 +386,20 @@ async function run(messages, args) {
                 }
             }
 
-            const { AttachmentBuilder } = require("discord.js");
             strainsAttachment = new AttachmentBuilder(graphBuffer, { name: 'strains.png' });
 
             const { doOsuStrainEmbed } = require("../../../views/osuEmbeds.js");
             strainEmbed = doOsuStrainEmbed({ embedColor });
 
             const activeEmbed = currentView === 'skills' ? skillsEmbed : overviewEmbed;
+            const files = currentView === 'skills'
+                ? [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' }), strainsAttachment]
+                : [strainsAttachment];
+
             await sentMessage.edit({
                 embeds: [activeEmbed, strainEmbed],
                 components: buildMapButtonsRows({ beatmap, locale, activeView: currentView }),
-                files: [strainsAttachment]
+                files
             });
         } catch (err) {
             console.error("Error al generar/enviar el gráfico de strain:", err);
@@ -428,8 +442,15 @@ async function run(messages, args) {
                 const embeds = strainEmbed ? [activeEmbed, strainEmbed] : [activeEmbed];
                 const rows = buildMapButtonsRows({ beatmap, locale, activeView: currentView });
 
+                const files = currentView === 'skills'
+                    ? (strainsAttachment
+                        ? [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' }), strainsAttachment]
+                        : [new AttachmentBuilder(skillsBuffer, { name: 'skills.png' })])
+                    : (strainsAttachment ? [strainsAttachment] : []);
+
                 await i.update({
                     embeds,
+                    files,
                     components: rows
                 });
             } catch (err) {

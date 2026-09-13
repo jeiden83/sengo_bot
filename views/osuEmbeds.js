@@ -1165,24 +1165,21 @@ function doOsuMapSkillsEmbed({
         const aimStarsStr = formatDecimal(skillsData.aimStars || 0, locale, 2);
         const speedStarsStr = formatDecimal(skillsData.speedStars || 0, locale, 2);
         let starBreakdown = `▸ 🎯 **Aim:** \`${aimStarsStr}★\`  •  ⚡ **Speed:** \`${speedStarsStr}★\``;
-        if (skillsData.readingStars && skillsData.readingStars > 0.1) {
+        if (skillsData.readingStars && skillsData.readingStars > 0.05) {
             starBreakdown += `  •  📖 **Reading:** \`${formatDecimal(skillsData.readingStars, locale, 2)}★\``;
-        } else if (skillsData.flashlightStars && skillsData.flashlightStars > 0.1) {
+        }
+        if (skillsData.flashlightStars && skillsData.flashlightStars > 0.05) {
             starBreakdown += `  •  🔦 **FL:** \`${formatDecimal(skillsData.flashlightStars, locale, 2)}★\``;
         }
         descLines.push(starBreakdown);
 
-        const hasFL = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => s.flPP > 1);
-        const hasReading = !hasFL && skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => s.readingPP > 1);
+        const hasFL = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => (s.flPP || 0) > 0.5);
+        const hasReading = skillsData.skillsByAcc && skillsData.skillsByAcc.some(s => (s.readingPP || 0) > 0.5);
 
-        let header;
-        if (hasFL) {
-            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc        FL\u001b[0m`;
-        } else if (hasReading) {
-            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc   Reading\u001b[0m`;
-        } else {
-            header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc\u001b[0m`;
-        }
+        let header = `\u001b[1;30mAcc       Total       Aim     Speed       Acc`;
+        if (hasReading) header += `   Reading`;
+        if (hasFL) header += `        FL`;
+        header += `\u001b[0m`;
 
         const ansiRows = (skillsData.skillsByAcc || []).map(s => {
             const accStr = `\u001b[1;32m${String(s.accuracy + '%').padStart(4)}\u001b[0m`;
@@ -1192,12 +1189,13 @@ function doOsuMapSkillsEmbed({
             const accPpStr = `\u001b[1;35m${(formatDecimal(s.accPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
 
             let line = `${accStr}   ${totalStr} ${aimStr} ${speedStr} ${accPpStr}`;
-            if (hasFL) {
-                const flStr = `\u001b[1;31m${(formatDecimal(s.flPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
-                line += ` ${flStr}`;
-            } else if (hasReading) {
-                const readStr = `\u001b[1;34m${(formatDecimal(s.readingPP, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+            if (hasReading) {
+                const readStr = `\u001b[1;34m${(formatDecimal(s.readingPP || 0, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
                 line += ` ${readStr}`;
+            }
+            if (hasFL) {
+                const flStr = `\u001b[1;31m${(formatDecimal(s.flPP || 0, locale, 1) + 'pp').padStart(9)}\u001b[0m`;
+                line += ` ${flStr}`;
             }
             return line;
         });
@@ -1247,6 +1245,7 @@ function doOsuMapSkillsEmbed({
         .setURL(`https://osu.ppy.sh/b/${beatmap.id}`)
         .setDescription(descLines.join('\n'))
         .setThumbnail(beatmap.beatmapset.covers["list@2x"] || beatmap.beatmapset.covers.cover)
+        .setImage('attachment://skills.png')
         .setColor(embedColor)
         .setFooter({
             text: `${t(locale, 'map.footer_map', { id: beatmap.id })} • Skills & PP`,
