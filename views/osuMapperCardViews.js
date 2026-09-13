@@ -433,13 +433,23 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
         ctx.restore();
     }
 
-    // Nombre del mapper
+    // Nombre del mapper con auto-fit según el ancho de la cápsula
+    const mapperName = mapperData.user.username || "Mapper";
+    const maxUsernameW = pillW - 24;
+    let uFontSize = 21;
+    const minFontSize = 12;
+
     ctx.save();
-    ctx.font = '600 21px "Montserrat", "Poppins", sans-serif';
+    ctx.font = `600 ${uFontSize}px "Montserrat", "Poppins", sans-serif`;
+    while (ctx.measureText(mapperName).width > maxUsernameW && uFontSize > minFontSize) {
+        uFontSize -= 1;
+        ctx.font = `600 ${uFontSize}px "Montserrat", "Poppins", sans-serif`;
+    }
+
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#2f243d";
-    ctx.fillText(mapperData.user.username || "Mapper", avatarCenterX, pillY + 188);
+    ctx.fillText(mapperName, avatarCenterX, pillY + 188, maxUsernameW);
     ctx.restore();
 
     // Círculo inferior para modo de juego (STD hitcircle por defecto, o diseño según modo)
