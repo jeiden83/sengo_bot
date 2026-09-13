@@ -192,12 +192,14 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
   * *Alias:* `s.skill`, `s.ts`.
 * **`s.twins [usuario]`**
   Encuentra a tu gemelo de juego en osu! según la afinidad y ponderación matemática real de tus mods en tus mejores jugadas (decaimiento $0.95^i \times \text{pp}$), cercanía de PP o similitud de habilidades.
+  * *Búsqueda para otro usuario:* Puedes especificar un jugador directamente por parámetro (ej: `s.twins milin`, `s.twins heidy_ls173`), mediante `-u <usuario>` o mencionando al usuario de Discord. Si se omite, buscará gemelos para tu cuenta vinculada.
   * *Vistas interactivas (Botones):*
     * **📊 Perfil y Mods / Skills:** Comparativa lado a lado en bloque ANSI del porcentaje ponderado de cada mod (o desglose de habilidades si se usa `-skills`), diferencia porcentual y barra visual de afinidad general. Navegación fluida entre los mejores candidatos.
     * **🗺️ Tops Compartidos:** Análisis de intersección de beatmaps en el top 100/200 de ambos jugadores, porcentaje de solapamiento y lista detallada de jugadas en común con PP, mods y precisión de cada uno.
     * **🏆 Tops del Gemelo:** Consulta rápida de las mejores jugadas registradas del gemelo para descubrir mapas recomendados que se adapten a tu estilo.
     * **📜 Vista de Lista Compacta:** Permite alternar entre la vista detallada y la lista paginada de a 5 gemelos.
   * *Flags y Filtros Avanzados:*
+    * `[usuario]` o `-u <usuario>`: Busca gemelos para ese jugador específico en lugar del tuyo.
     * `-mods <mods>` / `+<mods>`: Evalúa la afinidad considerando únicamente la combinación de mods indicada (ej: `s.twins -mods EZ` o `s.twins -mods HDDT`).
     * `-pp`: Ordena los gemelos por cercanía en PP respecto a tu perfil (del más cercano al más lejano).
     * `-skills [ACC|AIM|SPEED|READING|STAMINA]`: Busca gemelos por cercanía en habilidades cinéticas específicas o generales en lugar de mods.
@@ -231,13 +233,14 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.nacional [código/nombre]`**
   Muestra la tabla de clasificación por PP, por tops (#1s), o las mejores jugadas individuales por PP de un país específico.
   * *Flags:*
-    * `-skills` / `-aim` / `-speed` / `-acc` / `-reading`: Muestra el ranking nacional de habilidades de los jugadores registrados del país (ej: `s.nacional -skills` o `s.nacional -speed CL`).
+    * `-skills [habilidad]` / `-aim` / `-speed` / `-acc` / `-reading` / `-stamina`: Muestra el ranking nacional de habilidades de los jugadores registrados del país (ej: `s.nacional -skills`, `s.nacional -skills speed CL`, `s.nacional -skills acc ES`).
     * `-pp`: Muestra el ranking de mejores jugadas por PP a nivel nacional (admite `-pais <código>`, `-m <mods>`, `-mx <mods>`, `-sr>X`, `-g <pp>`, `-? "<texto>"`, `-r`, `-c`, `-acc`, `-i <n>`).
     * `-tops`: Muestra el ranking nacional ordenado por cantidad de #1s y snipes del país (admite `-pais <código>` ej: `s.nacional -tops -pais MX`).
     * `-acc`: Ordena por precisión (Acc).
     * `-score` / `-totalscore`: Ordena por Ranked Score o Score Total.
     * `-regional [región]`: Muestra la clasificación regional (osu!World).
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
+  * *Slash Command:* `/nacional [pais] [skills] [pagina] [pp] [tops] [mods] [buscar] [sr] [minpp] [index] [acc] [score] [totalscore] [regional]`
 
 * **`s.regional [región]`**
   Consulta clasificaciones regionales de [osu!World](https://osuworld.octo.moe/).

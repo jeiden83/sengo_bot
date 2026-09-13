@@ -30,6 +30,7 @@ async function run(messages, args) {
     let requestedMods = null;
     let isListView = false;
     let initialIndex = 0;
+    let explicitUsername = null;
 
     for (let i = 0; i < safeArgs.length; i++) {
         const arg = safeArgs[i];
@@ -37,10 +38,16 @@ async function run(messages, args) {
         const lower = arg.toLowerCase();
 
         // Modos de juego
-        if (["-t", "-taiko", "--taiko", "taiko"].includes(lower)) explicitMode = "taiko";
-        else if (["-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits"].includes(lower)) explicitMode = "fruits";
-        else if (["-mania", "--mania", "mania"].includes(lower) || lower === "-m") explicitMode = "mania";
-        else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) explicitMode = "osu";
+        if (["-t", "-taiko", "--taiko"].includes(lower)) explicitMode = "taiko";
+        else if (["-catch", "--catch", "-ctb", "--ctb", "-fruits", "--fruits"].includes(lower)) explicitMode = "fruits";
+        else if (["-mania", "--mania", "-m"].includes(lower)) explicitMode = "mania";
+        else if (["-std", "--std", "-osu", "--osu"].includes(lower)) explicitMode = "osu";
+
+        // Filtro por usuario explícito (-u, -user, -usuario)
+        else if (["-u", "--u", "-user", "--user", "-usuario", "--usuario"].includes(lower) && safeArgs[i + 1] && !safeArgs[i + 1].startsWith("-")) {
+            explicitUsername = safeArgs[i + 1];
+            i++;
+        }
 
         // Filtro por rango / nivel
         else if (["-rank", "--rank", "-close", "--close", "-nivel", "--nivel"].includes(lower)) closeRank = true;
@@ -68,7 +75,7 @@ async function run(messages, args) {
         }
 
         // País: -pais [CL] o -pais (priorizar país del que ejecuta)
-        else if (["-pais", "--pais", "-country", "--country", "-p"].includes(lower)) {
+        else if (["-pais", "--pais", "-country", "--country"].includes(lower)) {
             const nextArg = safeArgs[i + 1];
             if (nextArg && /^[a-zA-Z]{2}$/.test(nextArg) && !nextArg.startsWith("-")) {
                 country = nextArg.toUpperCase();
@@ -96,31 +103,80 @@ async function run(messages, args) {
     let osuUser = null;
     let detectedMode = explicitMode;
 
-    if (cleanArgs.length > 0) {
-        const parser_res = await argsParser(cleanArgs, {
-            command_function: getOsuUser,
-            fn: getOsuUser,
-            message: message,
-            res: res || {},
-            command: "twins",
-            gamemode: explicitMode,
-            ignoreBeatmap: true
-        });
-
-        if (parser_res && parser_res.fn_response && parser_res.fn_response.id) {
-            osuUser = parser_res.fn_response;
-        } else if (parser_res && parser_res.user) {
-            osuUser = parser_res.user;
-        } else if (parser_res && parser_res.username && parser_res.username.length > 0) {
-            try {
-                osuUser = await getOsuUser({ username: [parser_res.username[0]], gamemode: explicitMode || "osu", server: "bancho" });
-            } catch {
-                // Silenciar
+    // Caso A: Si se pasó flag explícita de usuario (-u / -user)
+    if (explicitUsername) {
+        try {
+            const mentionMatch = explicitUsername.match(/<@!?(\d+)>/);
+            const discordId = mentionMatch ? mentionMatch[1] : (/^\d{17,20}$/.test(explicitUsername) ? explicitUsername : null);
+            if (discordId) {
+                const linked = await OsuUserModel.getLinkedUser(res?.User, discordId);
+                if (linked && (linked.osu_id || linked.username)) {
+                    const queryUser = String(linked.osu_id || linked.username);
+                    osuUser = await getOsuUser({ username: [queryUser], gamemode: explicitMode || linked.main_gamemode || "osu", server: "bancho" });
+                    if (!detectedMode && linked.main_gamemode) detectedMode = linked.main_gamemode;
+                }
             }
+            if (!osuUser || !osuUser.id) {
+                osuUser = await getOsuUser({ username: [explicitUsername], gamemode: explicitMode || "osu", server: "bancho" });
+            }
+        } catch (err) {
+            console.warn("[.twins] Error al resolver usuario explícito (-u):", err.message);
         }
     }
 
-    // Fallback: usuario vinculado en Discord
+    // Caso B: Si se pasó un nombre o mención posicional en los argumentos limpios (ej: s.twins milin)
+    if ((!osuUser || !osuUser.id) && cleanArgs.length > 0) {
+        const candidateName = cleanArgs.map(x => x.replace(/^["']|["']$/g, "")).join(" ").trim();
+        
+        // 1. Probar si es mención de Discord o Discord ID
+        const mentionMatch = candidateName.match(/<@!?(\d+)>/);
+        const discordId = mentionMatch ? mentionMatch[1] : (/^\d{17,20}$/.test(candidateName) ? candidateName : null);
+        if (discordId) {
+            try {
+                const linked = await OsuUserModel.getLinkedUser(res?.User, discordId);
+                if (linked && (linked.osu_id || linked.username)) {
+                    const queryUser = String(linked.osu_id || linked.username);
+                    osuUser = await getOsuUser({ username: [queryUser], gamemode: explicitMode || linked.main_gamemode || "osu", server: "bancho" });
+                    if (!detectedMode && linked.main_gamemode) detectedMode = linked.main_gamemode;
+                }
+            } catch {}
+        }
+
+        // 2. Probar con getOsuUser directo para el nombre de usuario
+        if (!osuUser || !osuUser.id) {
+            try {
+                const directUser = await getOsuUser({ username: [candidateName], gamemode: explicitMode || "osu", server: "bancho" });
+                if (directUser && directUser.id) {
+                    osuUser = directUser;
+                }
+            } catch {}
+        }
+
+        // 3. Fallback con argsParser estándar
+        if (!osuUser || !osuUser.id) {
+            try {
+                const parser_res = await argsParser(cleanArgs, {
+                    command_function: getOsuUser,
+                    fn: getOsuUser,
+                    message: message,
+                    res: res || {},
+                    command: "twins",
+                    gamemode: explicitMode,
+                    ignoreBeatmap: true
+                });
+
+                if (parser_res && parser_res.fn_response && parser_res.fn_response.id) {
+                    osuUser = parser_res.fn_response;
+                } else if (parser_res && parser_res.user && parser_res.user.id) {
+                    osuUser = parser_res.user;
+                } else if (parser_res && parser_res.username && parser_res.username.length > 0 && parser_res.username[0] !== "") {
+                    osuUser = await getOsuUser({ username: [parser_res.username[0]], gamemode: explicitMode || "osu", server: "bancho" });
+                }
+            } catch {}
+        }
+    }
+
+    // Caso C: Fallback al usuario vinculado en Discord del que ejecuta el comando
     if (!osuUser || !osuUser.id) {
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
@@ -171,11 +227,19 @@ async function run(messages, args) {
         let userSkillsBreakdown = {};
         try {
             userSkillsBreakdown = SkillsModel.analyzeSkills(userTopScores, false, targetMode);
+            let authorDiscordId = null;
+            try {
+                const authorLinked = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
+                if (authorLinked && String(authorLinked.osu_id) === String(osuUser.id)) {
+                    authorDiscordId = message.author?.id;
+                }
+            } catch {}
+
             SkillsModel.saveUserSkills({
                 osuUser,
                 skillsBreakdown: userSkillsBreakdown,
                 gamemode: targetMode,
-                discordId: message.author?.id
+                discordId: authorDiscordId
             }).catch(() => {});
         } catch {
             // Silenciar error en segundo plano
@@ -364,7 +428,11 @@ run.alias = {
     similar: true
 };
 
-run.description = "Encuentra a tu gemelo de juego en osu! según afinidad de mods, PP o habilidades";
+run.description = {
+    header: t("es", "commands.twins.header"),
+    body: t("es", "commands.twins.body"),
+    usage: t("es", "commands.twins.usage")
+};
 
 module.exports = {
     run,

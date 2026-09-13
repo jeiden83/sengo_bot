@@ -365,7 +365,11 @@ run.alias = {
     ts: true
 };
 
-run.description = "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas";
+run.description = {
+    header: t("es", "commands.skills.header"),
+    body: t("es", "commands.skills.body"),
+    usage: t("es", "commands.skills.usage")
+};
 
 module.exports = {
     run,
