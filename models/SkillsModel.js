@@ -351,89 +351,59 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
             // 3. Descomposición rítmica en Aim y Speed calibrada con sengo-pp
-            // El strain de velocidad relevante en streams y ráfagas empieza a partir de 165-175 BPM
-            const bpmSpeedFactor = Math.max(0, Math.min(1.0, (effBPM - 165) / 55));
+            // ponytail: formulación física continua basada en el intervalo dt entre notas (BPM efectivo y densidad rítmica).
+            // Evita colapsos a 0 en mapas rápidos con descansos y permite hasta 66% de speed en streams extremos (>300 BPM).
             const circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
+            const bpmFactor = Math.max(0, (effBPM - 148) / 105);
+            const rhythmDensity = Math.max(0.40, Math.min(1.4, (circlesPerBeat + circleRatio) / 1.7));
 
-            // Distinción física: saltos a 1/2 beat producen circlesPerBeat ~1.0-1.4.
-            // Streams a 1/4 beat producen circlesPerBeat >= 1.7-3.8.
-            const streamDensity = Math.max(0, Math.min(1.0, (circlesPerBeat - 1.25) / 0.75));
-            const circleStreamBias = Math.max(0, Math.min(1.0, (circleRatio - 0.65) / 0.20));
-            const streamConfidence = streamDensity * (0.40 + 0.60 * circleStreamBias);
+            // Aceleración de tapping a velocidades altas (>220 BPM)
+            let highBpmMultiplier = 1.0;
+            if (effBPM > 220) {
+                highBpmMultiplier += Math.pow((effBPM - 220) / 75, 1.25) * 0.70;
+            }
 
-            // True marathon stream: solo si hay alta densidad continua de círculos y duración sustancial
-            const isTrueStreamMarathon = (effLen >= 190 || circles >= 1100) && circlesPerBeat >= 1.55 && circleRatio >= 0.76;
-            const marathonStreamFactor = isTrueStreamMarathon
-                ? Math.min(1.0, Math.max(0, (circles - 700) / 1000) * bpmSpeedFactor)
+            // Stamina en maratones de streams continuos
+            const staminaBonus = (circles >= 750 && effBPM >= 170)
+                ? Math.min(0.20, (circles - 600) / 1400) * bpmFactor
                 : 0;
 
-            const totalStreamConfidence = Math.max(streamConfidence, marathonStreamFactor * 0.80);
+            // Fracción base según el BPM efectivo
+            let baselineFraction = 0.04 + Math.max(0, (effBPM - 155) / 145) * 0.22;
+            if (isHR) baselineFraction *= 0.82;
+            if (isEZ && !isDT) baselineFraction *= 0.70;
+            if (isHT) baselineFraction *= 0.40;
 
-            // A altas velocidades (220+ BPM), el strain de tapping y ráfagas cortas se incrementa
-            let highBpmTappingBonus = 0;
-            if (isDT && !isEZ && effBPM >= 230) {
-                highBpmTappingBonus = Math.min(0.20, (effBPM - 230) / 70) * (0.35 + 0.65 * totalStreamConfidence);
-            } else if (!isEZ && effBPM >= 220) {
-                highBpmTappingBonus = Math.min(0.18, (effBPM - 220) / 55) * (0.35 + 0.65 * totalStreamConfidence);
+            let speedFraction = baselineFraction + (bpmFactor * 0.18 * rhythmDensity * highBpmMultiplier) + staminaBonus;
+
+            // Deathstreams en maratones EZ (ej: Ice Angel, Crimsonic dimension)
+            const isEZStreamHeavy = isEZ && !isDT && circles >= 1500 && circleRatio >= 0.80 && effBPM >= 145;
+            if (isEZStreamHeavy) {
+                speedFraction = Math.max(speedFraction, 0.22);
             }
 
-            // Stamina en maratones largas de streams continuos
-            const staminaBonus = (circles >= 1000 && effBPM >= 180 && circlesPerBeat >= 1.60 && !isEZ)
-                ? Math.min(0.25, (circles - 700) / 1200) * bpmSpeedFactor * totalStreamConfidence
-                : 0;
-
-            // Dominancia de velocidad:
-            let speedDominance = (Math.pow(totalStreamConfidence, 0.75) * bpmSpeedFactor * 0.75)
-                               + highBpmTappingBonus
-                               + staminaBonus;
-
-            // Mapas cortos de saltos puros (<70s o <350 círculos): 100% Aim
-            if ((isHR || isEZ) && (circles < 350 || effLen < 70)) {
-                speedDominance = 0;
+            // Mapas cortos de jump farm puros (<60s y pocos círculos)
+            if (circles < 300 && effLen < 60 && circlesPerBeat < 1.15) {
+                speedFraction = Math.min(0.12, speedFraction * 0.45);
+            }
+            if (isHR && circlesPerBeat < 1.15) {
+                speedFraction = Math.min(0.14, speedFraction * 0.70);
             }
 
-            // En HR con BPM moderado (<205 BPM, ej. Quaver), el CS reducido multiplica la dificultad de Aim sobre Speed
-            if (isHR && effBPM < 205) {
-                speedDominance *= 0.35;
-            } else if (isHR) {
-                speedDominance *= 0.65;
+            // Mapas de slider jumps largos con baja proporción de círculos
+            if (sliders >= 350 && circleRatio < 0.65) {
+                speedFraction *= 0.75;
             }
 
-            if (isHT) speedDominance *= 0.25; // Castigo de velocidad por reducción drástica de BPM
-            if (isEZ) speedDominance *= 0.35; // EZ reduce el speed strain debido al OD relajado y la gran proporción de Reading/Aim
+            // Techo dinámico de speed strain (hasta 66% en mapas extremos de 330 BPM)
+            const maxAllowed = Math.min(0.66, 0.35 + Math.max(0, (effBPM - 190) / 180) * 0.31);
+            speedFraction = Math.max(0.04, Math.min(maxAllowed, speedFraction));
 
-            speedDominance = Math.max(0, Math.min(1.0, speedDominance));
-
-            // Fracción de Strain:
-            let baselineSpeed = 0.05;
-            if (isHR && (circles < 350 || effLen < 70)) baselineSpeed = 0.025;
-            else if (isHR && effBPM < 205) baselineSpeed = 0.03;
-            else if (isHR) baselineSpeed = 0.04;
-            if (isHT) baselineSpeed = 0.03;
-            if (isDT && !isEZ) baselineSpeed = 0.07 + Math.max(0, (effBPM - 225) / 120) * 0.08;
-            else if (isDT && isEZ) baselineSpeed = 0.04 + Math.max(0, (effBPM - 230) / 100) * 0.04;
-            if (isEZ && !isDT) baselineSpeed = 0.035;
-
-            // En osu! estándar la fracción máxima de speed respecto al strain rara vez excede el 50-52%
-            const maxSpeedFraction = (circles >= 1000 && effBPM >= 185 && circlesPerBeat >= 1.70) ? 0.52 : 0.45;
-
-            // ponytail: en maratones continuas con EZ sin DT:
-            // - Si es deathstream (>1800 círculos, CS 2, ej: Ice Angel, Crimsonic dimension): Aim ~11%, Speed ~21%
-            // - Si es híbrido maratón con sliders/ritmo (>200s, ej: Mynarco Addiction): Aim ~22%, Speed ~10%
-            const isEZStreamHeavy = isEZ && !isDT && circles >= 1800 && circleRatio >= 0.85 && effLen >= 200 && effBPM >= 145;
-            const isEZLongHybrid = isEZ && isHD && !isDT && effLen >= 200 && !isEZStreamHeavy;
-
-            let speedFraction = baselineSpeed + (speedDominance * (maxSpeedFraction - baselineSpeed));
-            let aimFraction = Math.max(0.25, 1.0 - (speedFraction * 0.75));
-
-            if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.06);
+            let aimFraction = Math.max(0.25, 1.0 - (speedFraction * 0.72));
+            if (isHR) aimFraction = Math.min(1.0, aimFraction + 0.05);
             if (isHD) aimFraction = Math.min(1.0, aimFraction + 0.02);
             if (isEZStreamHeavy) {
                 aimFraction = 0.11;
-                speedFraction = 0.21;
-            } else if (isEZLongHybrid) {
-                aimFraction = 0.22;
-                speedFraction = 0.10;
             } else if (isEZ) {
                 aimFraction = Math.max(0.15, aimFraction * 0.72);
             }
