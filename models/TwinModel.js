@@ -92,18 +92,35 @@ async function loadSkillsUniverse(forceRefresh = false) {
     if (!supabase) return cachedUsers || [];
 
     try {
-        const { data, error } = await supabase
-            .from('user_skills')
-            .select('osu_id, username, country_code, gamemode, pp, global_rank, country_rank, top_play_pp, skills_data');
+        let allUsers = [];
+        let from = 0;
+        const CHUNK_SIZE = 1000;
+        const MAX_UNIVERSE = 10000;
 
-        if (error) {
-            console.error('[TwinModel] Error al cargar universo de skills:', error.message);
-            return cachedUsers || [];
+        while (allUsers.length < MAX_UNIVERSE) {
+            const { data, error } = await supabase
+                .from('user_skills')
+                .select('osu_id, username, country_code, gamemode, pp, global_rank, country_rank, top_play_pp, skills_data, aim, speed, acc, reading, stamina')
+                .range(from, from + CHUNK_SIZE - 1);
+
+            if (error) {
+                console.error('[TwinModel] Error al cargar universo de skills:', error.message);
+                break;
+            }
+
+            if (!data || data.length === 0) break;
+            const valid = data.filter(u => u.skills_data && u.skills_data.modStats);
+            allUsers.push(...valid);
+
+            if (data.length < CHUNK_SIZE) break;
+            from += CHUNK_SIZE;
         }
 
-        cachedUsers = (data || []).filter(u => u.skills_data && u.skills_data.modStats);
-        lastCacheTime = now;
-        return cachedUsers;
+        if (allUsers.length > 0) {
+            cachedUsers = allUsers;
+            lastCacheTime = now;
+        }
+        return cachedUsers || [];
     } catch (err) {
         console.error('[TwinModel] Excepción al cargar skills universe:', err.message);
         return cachedUsers || [];
@@ -124,24 +141,100 @@ function updateCachedUser(userRecord) {
 }
 
 /**
- * Encuentra a los jugadores más afines en mods para un usuario dado
+ * Parsea un string de mods a un array limpio de acrónimos válidos
+ * @param {string} rawInput Texto con mods (ej: "EZ", "HDDT", "HD DT", "+EZ")
+ * @returns {Array<string>|null}
+ */
+function parseModFilter(rawInput) {
+    if (!rawInput || typeof rawInput !== 'string') return null;
+    const upper = rawInput.toUpperCase().replace(/[+, ]+/g, ' ').trim();
+    const tokens = upper.split(' ').filter(Boolean);
+    const result = [];
+    const valid = new Set(['DT', 'HD', 'HR', 'NM', 'FL', 'EZ', 'HT', 'NC']);
+
+    for (const token of tokens) {
+        if (valid.has(token)) {
+            result.push(token === 'NC' ? 'DT' : token);
+        } else {
+            const matches = token.match(/.{1,2}/g) || [];
+            for (const m of matches) {
+                if (valid.has(m)) result.push(m === 'NC' ? 'DT' : m);
+            }
+        }
+    }
+    return result.length > 0 ? [...new Set(result)] : null;
+}
+
+/**
+ * Encuentra a los jugadores más afines para un usuario dado
+ * Soporta filtros por mods (-mods), cercanía en PP (-pp), cercanía en skills (-skills), y país (-pais).
  * @param {Object} targetUser Perfil del usuario objetivo (con id, username, etc.)
- * @param {Object} targetMods Estadísticas de mods (preferiblemente calculadas con calculatePpWeightedModStats)
- * @param {Object} options Opciones de filtrado (gamemode, country, closeRank, limit)
+ * @param {Object} targetMods Estadísticas de mods (calculadas con calculatePpWeightedModStats)
+ * @param {Object} options Opciones avanzadas de filtrado y ordenamiento
  */
 async function findTwins(targetUser, targetMods, options = {}) {
     const gamemode = options.gamemode || 'osu';
     const country = options.country ? options.country.toUpperCase() : null;
+    const prioritizeCountry = !!options.prioritizeCountry;
+    const runnerCountry = options.runnerCountry ? options.runnerCountry.toUpperCase() : null;
     const closeRank = options.closeRank || false;
-    const limit = options.limit || 5;
+    const limit = options.limit || 25;
+    const requestedMods = options.requestedMods || null;
+    const sortByPP = !!options.sortByPP;
+    const targetPP = Number(options.targetPP != null ? options.targetPP : (targetUser.statistics?.pp || targetUser.pp || 0));
+    const skillFilter = options.skillFilter || null;
+    const targetSkills = options.targetSkills || {};
 
-    const allPlayers = await loadSkillsUniverse();
+    const supabase = getSupabaseClient();
+    let candidatesPool = [];
+
+    // Si se especifica un país estricto (-pais CL), consultar directamente en Supabase para obtener el universo completo del país
+    if (country && supabase) {
+        try {
+            const { data } = await supabase
+                .from('user_skills')
+                .select('osu_id, username, country_code, gamemode, pp, global_rank, country_rank, top_play_pp, skills_data, aim, speed, acc, reading, stamina')
+                .eq('gamemode', gamemode)
+                .eq('country_code', country)
+                .limit(1000);
+            candidatesPool = (data || []).filter(u => u.skills_data?.modStats);
+        } catch {
+            candidatesPool = [];
+        }
+    }
+
+    if (candidatesPool.length === 0) {
+        const universe = await loadSkillsUniverse();
+        candidatesPool = universe.filter(u => u.gamemode === gamemode);
+    }
+
+    // Si se prioriza el país del ejecutor (-pais sin parámetros), asegurar que candidatos de ese país estén presentes
+    if (prioritizeCountry && runnerCountry && !country && supabase) {
+        try {
+            const { data: countryUsers } = await supabase
+                .from('user_skills')
+                .select('osu_id, username, country_code, gamemode, pp, global_rank, country_rank, top_play_pp, skills_data, aim, speed, acc, reading, stamina')
+                .eq('gamemode', gamemode)
+                .eq('country_code', runnerCountry)
+                .limit(1000);
+
+            if (countryUsers && countryUsers.length > 0) {
+                const map = new Map();
+                candidatesPool.forEach(u => map.set(String(u.osu_id), u));
+                countryUsers.forEach(u => {
+                    if (u.skills_data?.modStats) map.set(String(u.osu_id), u);
+                });
+                candidatesPool = Array.from(map.values());
+            }
+        } catch {}
+    }
+
     const targetOsuId = String(targetUser.id || targetUser.osu_id);
     const targetRank = Number(targetUser.statistics?.global_rank || targetUser.global_rank || 0);
 
     const candidates = [];
 
-    for (const candidate of allPlayers) {
+    for (const candidate of candidatesPool) {
         if (String(candidate.osu_id) === targetOsuId) continue;
         if (candidate.gamemode !== gamemode) continue;
 
@@ -151,7 +244,6 @@ async function findTwins(targetUser, targetMods, options = {}) {
 
         const candidateRank = Number(candidate.global_rank || 0);
         if (closeRank && targetRank > 0 && candidateRank > 0) {
-            // Filtrar a jugadores dentro de un factor razonable de rango (entre 0.35x y 2.8x)
             const minRank = Math.max(1, Math.floor(targetRank * 0.35));
             const maxRank = Math.floor(targetRank * 2.8);
             if (candidateRank < minRank || candidateRank > maxRank) {
@@ -162,23 +254,122 @@ async function findTwins(targetUser, targetMods, options = {}) {
         const candidateMods = candidate.skills_data?.modStats;
         if (!candidateMods) continue;
 
-        const similarity = calculateModSimilarity(targetMods, candidateMods);
+        // 1. Cálculo de afinidad de mods
+        let similarity = 0;
+        let modDiff = 0;
+        let affinityPct = 0;
+
+        if (requestedMods && requestedMods.length > 0) {
+            let userModSum = 0;
+            let candModSum = 0;
+            let sumDiff = 0;
+
+            for (const m of requestedMods) {
+                const vA = Number(targetMods[m] || 0);
+                const vB = Number(candidateMods[m] || 0);
+                userModSum += vA;
+                candModSum += vB;
+                sumDiff += Math.abs(vA - vB);
+            }
+
+            // Omitir si el candidato no juega ninguno de los mods solicitados
+            if (candModSum <= 0) continue;
+
+            if (userModSum > 0) {
+                modDiff = sumDiff / requestedMods.length;
+                affinityPct = Math.max(0, Math.min(100, Number((100 - modDiff).toFixed(1))));
+            } else {
+                // El usuario objetivo no juega estos mods, priorizar candidatos que más los jueguen
+                const avgCand = candModSum / requestedMods.length;
+                modDiff = 100 - avgCand;
+                affinityPct = Math.max(0, Math.min(100, Number(avgCand.toFixed(1))));
+            }
+            similarity = affinityPct / 100;
+        } else {
+            similarity = calculateModSimilarity(targetMods, candidateMods);
+            affinityPct = Number((similarity * 100).toFixed(1));
+            modDiff = 100 - affinityPct;
+        }
+
+        // 2. Métrica de cercanía en PP
+        const candPP = Number(candidate.pp || 0);
+        const diffPP = Math.abs(candPP - targetPP);
+        const ppDiffSigned = candPP - targetPP;
+
+        // 3. Métrica de cercanía en Skills
+        let skillDiff = 0;
+        let skillAffinityPct = 0;
+        if (skillFilter) {
+            const normSkill = String(skillFilter).toUpperCase();
+            if (normSkill === 'ALL' || normSkill === 'SKILLS') {
+                const keys = ['aim', 'speed', 'acc', 'reading'];
+                let sumS = 0;
+                let countS = 0;
+                for (const k of keys) {
+                    const sA = Number(targetSkills[k] || 0);
+                    const sB = Number(candidate[k] || 0);
+                    if (sA > 0 || sB > 0) {
+                        sumS += Math.abs(sA - sB);
+                        countS++;
+                    }
+                }
+                skillDiff = countS > 0 ? (sumS / countS) : 100;
+                skillAffinityPct = Math.max(0, Math.min(100, Number((100 - skillDiff).toFixed(1))));
+            } else {
+                const keyMap = { ACC: 'acc', ACCURACY: 'acc', AIM: 'aim', SPEED: 'speed', READING: 'reading', STAMINA: 'stamina' };
+                const field = keyMap[normSkill] || 'aim';
+                const sA = Number(targetSkills[field] || 0);
+                const sB = Number(candidate[field] || 0);
+                skillDiff = Math.abs(sA - sB);
+                skillAffinityPct = Math.max(0, Math.min(100, Number((100 - skillDiff).toFixed(1))));
+            }
+        }
+
         candidates.push({
             osu_id: candidate.osu_id,
             username: candidate.username,
             country_code: candidate.country_code,
             global_rank: candidate.global_rank,
             country_rank: candidate.country_rank,
-            pp: candidate.pp,
+            pp: candPP,
+            diffPP,
+            ppDiffSigned,
             top_play_pp: candidate.top_play_pp,
             modStats: candidateMods,
+            aim: candidate.aim,
+            speed: candidate.speed,
+            acc: candidate.acc,
+            reading: candidate.reading,
+            stamina: candidate.stamina,
             similarity,
-            affinityPct: Number((similarity * 100).toFixed(1))
+            affinityPct,
+            modDiff,
+            skillDiff,
+            skillAffinityPct
         });
     }
 
-    // Ordenar de mayor a menor afinidad
-    candidates.sort((a, b) => b.similarity - a.similarity);
+    // ponytail: Ordenamiento jerárquico según país y métricas activas
+    const pCountry = (prioritizeCountry && runnerCountry && !country) ? runnerCountry : null;
+
+    candidates.sort((a, b) => {
+        if (pCountry) {
+            const aIsCountry = a.country_code?.toUpperCase() === pCountry ? 1 : 0;
+            const bIsCountry = b.country_code?.toUpperCase() === pCountry ? 1 : 0;
+            if (aIsCountry !== bIsCountry) return bIsCountry - aIsCountry;
+        }
+
+        if (sortByPP) {
+            return a.diffPP - b.diffPP;
+        }
+        if (skillFilter) {
+            return a.skillDiff - b.skillDiff;
+        }
+        if (requestedMods && requestedMods.length > 0) {
+            return a.modDiff - b.modDiff;
+        }
+        return b.similarity - a.similarity;
+    });
 
     return candidates.slice(0, limit);
 }
@@ -254,6 +445,7 @@ function compareSharedTopScores(scoresA = [], scoresB = []) {
 module.exports = {
     calculatePpWeightedModStats,
     calculateModSimilarity,
+    parseModFilter,
     loadSkillsUniverse,
     updateCachedUser,
     findTwins,

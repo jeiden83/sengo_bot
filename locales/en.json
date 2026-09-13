@@ -1977,7 +1977,19 @@
     "err_no_twins": "❌ No mod twins found matching the specified filters.",
     "err_generic": "❌ Error searching for mod twin: {error}",
     "searching": "Searching for your mod twin...",
-    "loading_twin_tops": "Loading twin plays..."
+    "loading_twin_tops": "Loading twin plays...",
+    "list_title": "{username}'s Twins List",
+    "list_footer": "Page {page}/{totalPages} • Showing {from}-{to} of {total} twins • Mode: {mode}",
+    "badge_pp": "Order: PP Proximity",
+    "badge_skill": "Skill: {skill}",
+    "badge_prio_country": "Priority: {country}",
+    "btn_list": "List",
+    "btn_details": "View Twin",
+    "btn_prev_page": "Previous",
+    "btn_next_page": "Next",
+    "btn_prev_twin": "Previous Twin",
+    "btn_next_twin": "Next Twin",
+    "skills_breakdown": "Skill Comparison Breakdown"
   }
 }
 

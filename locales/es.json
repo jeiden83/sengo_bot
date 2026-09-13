@@ -1981,7 +1981,19 @@
     "err_no_twins": "❌ No se encontraron gemelos de mods registrados para los filtros especificados.",
     "err_generic": "❌ Error al buscar gemelo de mods: {error}",
     "searching": "Buscando a tu gemelo de mods...",
-    "loading_twin_tops": "Cargando jugadas del gemelo..."
+    "loading_twin_tops": "Cargando jugadas del gemelo...",
+    "list_title": "Lista de Gemelos de {username}",
+    "list_footer": "Página {page}/{totalPages} • Mostrando {from}-{to} de {total} gemelos • Modo: {mode}",
+    "badge_pp": "Orden: Cercanía PP",
+    "badge_skill": "Skill: {skill}",
+    "badge_prio_country": "Prioridad: {country}",
+    "btn_list": "Lista",
+    "btn_details": "Ver Gemelo",
+    "btn_prev_page": "Anterior",
+    "btn_next_page": "Siguiente",
+    "btn_prev_twin": "Gemelo Anterior",
+    "btn_next_twin": "Gemelo Siguiente",
+    "skills_breakdown": "Comparativa de Habilidades (Skills)"
   }
 }
 

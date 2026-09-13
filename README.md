@@ -191,16 +191,22 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `s.skills -top` o `s.skills -aim` / `-speed` / `-acc` / `-reading`: Muestra la lista interactiva de mejores jugadas del usuario ordenadas por los puntos de esa habilidad.
   * *Alias:* `s.skill`, `s.ts`.
 * **`s.twins [usuario]`**
-  Encuentra a tu gemelo de juego en osu! según la afinidad y ponderación matemática real de tus mods en tus mejores jugadas (decaimiento $0.95^i \times \text{pp}$).
+  Encuentra a tu gemelo de juego en osu! según la afinidad y ponderación matemática real de tus mods en tus mejores jugadas (decaimiento $0.95^i \times \text{pp}$), cercanía de PP o similitud de habilidades.
   * *Vistas interactivas (Botones):*
-    * **📊 Perfil y Mods:** Comparativa lado a lado en bloque ANSI del porcentaje ponderado de cada mod (DT, HD, HR, NM, FL, EZ), diferencia porcentual y barra visual de afinidad general. Navegación fluida entre los mejores candidatos.
+    * **📊 Perfil y Mods / Skills:** Comparativa lado a lado en bloque ANSI del porcentaje ponderado de cada mod (o desglose de habilidades si se usa `-skills`), diferencia porcentual y barra visual de afinidad general. Navegación fluida entre los mejores candidatos.
     * **🗺️ Tops Compartidos:** Análisis de intersección de beatmaps en el top 100/200 de ambos jugadores, porcentaje de solapamiento y lista detallada de jugadas en común con PP, mods y precisión de cada uno.
     * **🏆 Tops del Gemelo:** Consulta rápida de las mejores jugadas registradas del gemelo para descubrir mapas recomendados que se adapten a tu estilo.
-  * *Flags:*
-    * `-pais <código>` / `-country <código>`: Filtra gemelos de un país específico (ej: `s.twins -pais CL` o `s.twins -pais VE`).
-    * `-rank` / `-close` / `-nivel`: Filtra únicamente jugadores con rango y nivel global similar al tuyo.
+    * **📜 Vista de Lista Compacta:** Permite alternar entre la vista detallada y la lista paginada de a 5 gemelos.
+  * *Flags y Filtros Avanzados:*
+    * `-mods <mods>` / `+<mods>`: Evalúa la afinidad considerando únicamente la combinación de mods indicada (ej: `s.twins -mods EZ` o `s.twins -mods HDDT`).
+    * `-pp`: Ordena los gemelos por cercanía en PP respecto a tu perfil (del más cercano al más lejano).
+    * `-skills [ACC|AIM|SPEED|READING|STAMINA]`: Busca gemelos por cercanía en habilidades cinéticas específicas o generales en lugar de mods.
+    * `-pais [código]`: Si se especifica un país (ej: `s.twins -pais CL`), filtra exclusivamente gemelos de ese país. Si se usa sin parámetro (`s.twins -pais`), prioriza y muestra primero a los gemelos de tu país.
+    * `-l` / `--list`: Muestra los resultados en una lista compacta de a 5 jugadores por página con navegación interactiva.
+    * `-i <número>`: Salta directamente al índice o página del gemelo seleccionado (ej: `s.twins -i 4`).
+    * `-rank` / `-close` / `-nivel`: Filtra únicamente jugadores con rango global similar al tuyo.
     * `-std`, `-taiko`, `-fruits`, `-mania`: Cambia el modo de juego a comparar.
-  * *Slash Command:* `/twins [usuario] [modo] [pais] [rank]`
+  * *Slash Command:* `/twins [usuario] [modo] [mods] [pp] [skills] [pais] [priorizar_pais] [lista] [indice] [rank]`
   * *Alias:* `s.twin`, `s.gemelo`, `s.gemelos`, `s.similar`.
 
 ---
