@@ -61,10 +61,10 @@ async function run(messages, args, options = {}) {
     // ponytail: Soporte de desglose de skills para s.skills -top o s.top -skill con paridad 1:1 sengo-pp
     if (options.isSkillTop || parser_res.parsed_args.skillFilter) {
         const mode = parser_res.parsed_args.gamemode || "osu";
-        const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
-        const skillsData = await analyzeSkillsBreakdown(originalScores, mode);
-
         let selectedSkill = options.requestedSkill || parser_res.parsed_args.skillFilter;
+        const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
+        const skillsData = await analyzeSkillsBreakdown(originalScores, mode, selectedSkill);
+
         if (!selectedSkill) {
             const keys = skillsData.skillKeys || ['aim', 'speed', 'acc', 'reading'];
             const candidates = keys.map(k => ({ key: k, val: skillsData[k] || 0 }));
