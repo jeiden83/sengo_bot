@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const sharp = require("sharp");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 const { renderQueue } = require("../utils/RenderQueue.js");
 
@@ -63,6 +64,36 @@ function setWithLimit(map, key, value, limit) {
     map.set(key, value);
 }
 
+// Patrón de granulado / film grain analógico cacheado para el fondo
+let cachedGrainCanvas = null;
+
+function getGrainCanvas(size = 256, maxAlpha = 18) {
+    if (cachedGrainCanvas) return cachedGrainCanvas;
+    const grainCanvas = createCanvas(size, size);
+    const gctx = grainCanvas.getContext("2d");
+    const imgData = gctx.createImageData(size, size);
+    const data = imgData.data;
+
+    for (let i = 0; i < data.length; i += 4) {
+        const rand = Math.random();
+        if (rand > 0.5) {
+            data[i] = 255;
+            data[i + 1] = 255;
+            data[i + 2] = 255;
+            data[i + 3] = Math.floor((rand - 0.5) * 2 * maxAlpha);
+        } else {
+            data[i] = 0;
+            data[i + 1] = 0;
+            data[i + 2] = 0;
+            data[i + 3] = Math.floor((0.5 - rand) * 2 * maxAlpha);
+        }
+    }
+
+    gctx.putImageData(imgData, 0, 0);
+    cachedGrainCanvas = grainCanvas;
+    return cachedGrainCanvas;
+}
+
 /**
  * Descarga una imagen remota de forma segura y devuelve un Image object de canvas.
  */
@@ -96,6 +127,47 @@ async function fetchImageSafe(url) {
         return img;
     } catch {
         return null;
+    }
+}
+
+/**
+ * Descarga y desenfoca una imagen de portada usando el filtro Gaussiano nativo de sharp (libvips).
+ * Garantiza un desenfoque tipo filtro analógico continuo sin pixelar ni deformar la imagen.
+ */
+async function fetchBlurredCoverSafe(url, w = 1024, h = 567, sigma = 3.5) {
+    if (!url || typeof url !== "string") return null;
+
+    const cacheKey = `blurred_cover:${url}:${w}x${h}:${sigma}`;
+    const now = Date.now();
+    const cached = imageMemoryCache.get(cacheKey);
+    if (cached && (now - cached.timestamp) < IMAGE_CACHE_TTL_MS) {
+        return cached.img;
+    }
+
+    try {
+        let rawBuffer = null;
+        if (fs.existsSync(url)) {
+            rawBuffer = fs.readFileSync(url);
+        } else {
+            const res = await axios.get(url, {
+                responseType: "arraybuffer",
+                timeout: 6000,
+                headers: { "User-Agent": "Sengo/MapperCardGenerator" }
+            });
+            rawBuffer = Buffer.from(res.data);
+        }
+
+        const blurredBuffer = await sharp(rawBuffer)
+            .resize(w, h, { fit: "cover" })
+            .blur(sigma)
+            .toBuffer();
+
+        const img = await loadImage(blurredBuffer);
+        setWithLimit(imageMemoryCache, cacheKey, { img, timestamp: now }, MAX_IMAGE_CACHE_SIZE);
+        return img;
+    } catch {
+        // Fallback a imagen normal si sharp o el filtro fallan
+        return await fetchImageSafe(url);
     }
 }
 
@@ -194,26 +266,6 @@ function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5, alignX = 0.5, zoom =
 }
 
 /**
- * Dibuja una imagen con desenfoque sutil y suave sin deformar ni pixelar.
- */
-function drawBlurredImageCover(ctx, img, x, y, w, h, scale = 3) {
-    if (!img) return;
-    const sw = Math.round(w / scale);
-    const sh = Math.round(h / scale);
-    const thumb = createCanvas(sw, sh);
-    const tctx = thumb.getContext("2d");
-    tctx.imageSmoothingEnabled = true;
-    tctx.imageSmoothingQuality = "high";
-    drawImageCover(tctx, img, 0, 0, sw, sh);
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(thumb, x - 8, y - 8, w + 16, h + 16);
-    ctx.restore();
-}
-
-/**
  * Renderiza la tarjeta de Mapper (.card -mapper) utilizando Node Canvas
  * @param {Object} user - Objeto del usuario
  * @param {Object} mapperData - Paquete de datos obtenido desde MapperCardModel
@@ -263,7 +315,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     // Descarga paralela de imágenes requeridas
     const [avatarImg, coverImg, takeThisImg, prevMapImg, flagImg] = await Promise.all([
         fetchImageSafe(mapperData.user.avatarUrl),
-        fetchImageSafe(mapperData.user.coverUrl),
+        fetchBlurredCoverSafe(mapperData.user.coverUrl, W, H, 3.5),
         fetchImageSafe(mapperData.latestMap?.coverUrl),
         fetchImageSafe(mapperData.prevMap?.coverUrl),
         fetchImageSafe(flagUrl)
@@ -281,7 +333,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     if (coverImg) {
         ctx.save();
         ctx.globalAlpha = 0.52;
-        drawImageCover(ctx, coverImg, 0, 0, W, H);
+        ctx.drawImage(coverImg, 0, 0, W, H);
         ctx.restore();
     }
 
@@ -297,6 +349,16 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
+
+    // Capa de granulado / film grain analógico sobre el fondo
+    const grainCanvas = getGrainCanvas();
+    const grainPattern = ctx.createPattern(grainCanvas, "repeat");
+    if (grainPattern) {
+        ctx.save();
+        ctx.fillStyle = grainPattern;
+        ctx.fillRect(0, 0, W, H);
+        ctx.restore();
+    }
 
     // Viñeta superior para contraste del título
     const topVignette = ctx.createLinearGradient(0, 0, 0, 140);
