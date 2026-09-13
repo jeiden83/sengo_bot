@@ -1,6 +1,6 @@
 const { t } = require("../../../utils/i18n.js");
 const { getOsuUser, getUserTopScores, argsParser } = require("../../utils/osu.js");
-const { analyzeSkillsBreakdown, saveUserSkills, getCountrySkillsLeaderboard } = require("../../../models/SkillsModel.js");
+const { analyzeSkillsBreakdown, saveUserSkills, getCountrySkillsLeaderboard, getServerSkillsLeaderboard } = require("../../../models/SkillsModel.js");
 const { doOsuSkillsEmbed, doOsuSkillsRankingEmbed } = require("../../../views/osuSkillsView.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
@@ -10,7 +10,7 @@ async function run(messages, args) {
     const locale = message?.locale || "es";
     const safeArgs = Array.isArray(args) ? args : [];
 
-    // Mapeo de alias de habilidades para filtrado en -top y ranking nacional
+    // Mapeo de alias de habilidades para filtrado en -top y ranking nacional/servidor
     const SKILL_ALIASES = {
         aim: "aim",
         speed: "speed",
@@ -41,7 +41,17 @@ async function run(messages, args) {
         "-lb", "--lb", "-leaderboard", "--leaderboard"
     ]);
 
+    // Flags que activan el ranking de habilidades del servidor (miembros vinculados)
+    const SERVER_FLAGS = new Set([
+        "-server", "--server",
+        "-servidor", "--servidor",
+        "-guild", "--guild",
+        "-srv", "--srv"
+    ]);
+
     let isNational = false;
+    let isServer = false;
+    let targetGuildId = null;
     let countryArg = null;
     let selectedSkill = null;
     const countryCodesData = require("../../../src/country_codes.json");
@@ -49,8 +59,33 @@ async function run(messages, args) {
     for (let i = 0; i < safeArgs.length; i++) {
         const arg = safeArgs[i];
         if (typeof arg !== "string") continue;
-        const lower = arg.toLowerCase();
+        const lower = arg.toLowerCase().trim();
         const stripped = lower.replace(/^--?/, "");
+
+        // 1. Caso flag con prefijo y separador : o = (ej: -server:123456, --server=123456, -srv:123456)
+        const inlineMatch = lower.match(/^--(server|servidor|guild|srv)[:=](.+)$/) || lower.match(/^-(server|servidor|guild|srv)[:=](.+)$/);
+        if (inlineMatch) {
+            isServer = true;
+            const possibleId = inlineMatch[2].trim();
+            if (/^\d{6,22}$/.test(possibleId)) {
+                targetGuildId = possibleId;
+            }
+            continue;
+        }
+
+        if (SERVER_FLAGS.has(lower)) {
+            isServer = true;
+            if (i + 1 < safeArgs.length) {
+                const nextCandidate = String(safeArgs[i + 1]).trim();
+                const nextStripped = nextCandidate.toLowerCase().replace(/^--?/, "");
+                // Si no es un alias de skill ni flag y es numérico (ID de servidor)
+                if (!SKILL_ALIASES[nextStripped] && !nextCandidate.startsWith("-") && /^\d{6,22}$/.test(nextCandidate)) {
+                    targetGuildId = nextCandidate;
+                    i++;
+                }
+            }
+            continue;
+        }
 
         if (NATIONAL_FLAGS.has(lower)) {
             isNational = true;
@@ -94,6 +129,190 @@ async function run(messages, args) {
     // Si se especificó un país directo con -top (ej: s.skills -top VE), interpretar como ranking nacional
     if (countryArg && safeArgs.some(a => typeof a === "string" && (a.toLowerCase() === "-top" || a.toLowerCase() === "--top"))) {
         isNational = true;
+    }
+
+    // 🏠 Flujo de Ranking de Servidor de Habilidades (jugadores vinculados en el Discord actual o especificado)
+    if (isServer) {
+        let targetGuild = null;
+        if (targetGuildId) {
+            targetGuild = message.client?.guilds?.cache?.get(targetGuildId);
+            if (!targetGuild && typeof message.client?.guilds?.fetch === "function") {
+                targetGuild = await message.client.guilds.fetch(targetGuildId).catch(() => null);
+            }
+            if (!targetGuild) {
+                const err = t(locale, "skills.server_not_found", { guildId: targetGuildId }) || `❌ No se encontró el servidor con ID \`${targetGuildId}\` o Sengo no es miembro de él.`;
+                if (typeof message.reply === "function") return await message.reply(err);
+                return message.channel?.send ? await message.channel.send(err) : err;
+            }
+        } else {
+            targetGuild = message.guild;
+            if (!targetGuild) {
+                const err = t(locale, "skills.server_dm_error") || "❌ Este comando con `-server` solo puede utilizarse dentro de un servidor de Discord o indicando la ID del servidor.";
+                if (typeof message.reply === "function") return await message.reply(err);
+                return message.channel?.send ? await message.channel.send(err) : err;
+            }
+        }
+
+        let targetMode = "osu";
+        for (const arg of safeArgs) {
+            if (typeof arg !== "string") continue;
+            const lower = arg.toLowerCase();
+            if (["-t", "-taiko", "--taiko", "taiko"].includes(lower)) targetMode = "taiko";
+            else if (["-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits"].includes(lower)) targetMode = "fruits";
+            else if (["-mania", "--mania", "mania"].includes(lower) || lower === "-m") targetMode = "mania";
+            else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) targetMode = "osu";
+        }
+
+        if (logger) logger.process(`Consultando miembros vinculados en ${targetGuild.name}...`);
+
+        const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: targetGuild.id, guild: targetGuild });
+        let osuIds = (linkedUsers || []).map(u => String(u.osu_id)).filter(Boolean);
+
+        // También incluir miembros en caché de Discord que tengan mapeo de usuario
+        let membersCache = targetGuild.members?.cache;
+        if (typeof targetGuild.members?.fetch === "function") {
+            try {
+                membersCache = await targetGuild.members.fetch();
+            } catch {
+                membersCache = targetGuild.members?.cache;
+            }
+        }
+
+        if (membersCache) {
+            const linkedMap = await OsuUserModel.getLinkedUsersMap();
+            for (const [osuId, info] of linkedMap.entries()) {
+                if (info.discord_id && membersCache.has(info.discord_id)) {
+                    if (!osuIds.includes(osuId)) {
+                        osuIds.push(osuId);
+                    }
+                }
+            }
+        }
+
+        // Si el autor del comando está en este servidor y vinculado, asegurarse de que esté incluido
+        try {
+            if (membersCache && message.author?.id && membersCache.has(message.author.id)) {
+                const authorToken = await OsuUserModel.getOAuthTokenRecord(message.author.id);
+                if (authorToken && authorToken.osu_id && !osuIds.includes(String(authorToken.osu_id))) {
+                    osuIds.push(String(authorToken.osu_id));
+                }
+            }
+        } catch {}
+
+        const skillToQuery = selectedSkill || "aim";
+        const pageSize = 10;
+        let startIndex = 0;
+
+        if (logger) logger.process(`Consultando ranking de servidor (${skillToQuery}) para ${targetGuild.name} (${osuIds.length} miembros vinculados)`);
+
+        const initialData = await getServerSkillsLeaderboard({
+            osuIds,
+            gamemode: targetMode,
+            skill: skillToQuery,
+            limit: pageSize,
+            offset: startIndex
+        });
+
+        const serverIconUrl = targetGuild.iconURL ? targetGuild.iconURL({ extension: "png", size: 128 }) : null;
+
+        const embed = doOsuSkillsRankingEmbed({
+            players: initialData.players,
+            totalCount: initialData.totalCount,
+            startIndex,
+            serverName: targetGuild.name,
+            serverIcon: serverIconUrl,
+            gamemode: targetMode,
+            skill: skillToQuery,
+            message,
+            locale
+        });
+
+        const total = initialData.totalCount;
+        const hasButtons = total > pageSize;
+        const components = hasButtons
+            ? [buildPaginationRow({ prefix: "skills_srv_lb", current: startIndex, total, pageSize })]
+            : [];
+
+        let sentMessage = null;
+        if (typeof message.channel?.send === "function") {
+            sentMessage = await message.channel.send({
+                embeds: [embed],
+                components
+            });
+        } else if (typeof message.reply === "function") {
+            sentMessage = await message.reply({
+                embeds: [embed],
+                components
+            });
+        }
+
+        if (!hasButtons || !sentMessage || typeof sentMessage.createMessageComponentCollector !== "function") {
+            return sentMessage || { embeds: [embed], components };
+        }
+
+        const btnFilter = btnInt => btnInt.user.id === message.author?.id;
+        const collector = sentMessage.createMessageComponentCollector({
+            filter: btnFilter,
+            idle: 60000
+        });
+
+        collector.on("collect", async i => {
+            try {
+                await i.deferUpdate();
+
+                if (i.customId === "skills_srv_lb_first") {
+                    startIndex = 0;
+                } else if (i.customId === "skills_srv_lb_prev") {
+                    startIndex = Math.max(0, startIndex - pageSize);
+                } else if (i.customId === "skills_srv_lb_next") {
+                    startIndex = startIndex + pageSize;
+                } else if (i.customId === "skills_srv_lb_last") {
+                    startIndex = Math.floor((total - 1) / pageSize) * pageSize;
+                }
+
+                const pageData = await getServerSkillsLeaderboard({
+                    osuIds,
+                    gamemode: targetMode,
+                    skill: skillToQuery,
+                    limit: pageSize,
+                    offset: startIndex
+                });
+
+                const updatedEmbed = doOsuSkillsRankingEmbed({
+                    players: pageData.players,
+                    totalCount: pageData.totalCount,
+                    startIndex,
+                    serverName: targetGuild.name,
+                    serverIcon: serverIconUrl,
+                    gamemode: targetMode,
+                    skill: skillToQuery,
+                    message,
+                    locale
+                });
+
+                const updatedComponents = [
+                    buildPaginationRow({ prefix: "skills_srv_lb", current: startIndex, total, pageSize })
+                ];
+
+                await i.editReply({
+                    embeds: [updatedEmbed],
+                    components: updatedComponents
+                });
+            } catch (err) {
+                console.error("[s.skills -server] Error al paginar leaderboard de servidor:", err.message);
+            }
+        });
+
+        collector.on("end", async () => {
+            try {
+                const disabledComponents = [
+                    buildPaginationRow({ prefix: "skills_srv_lb", current: startIndex, total, pageSize, disabled: true })
+                ];
+                await sentMessage.edit({ components: disabledComponents });
+            } catch {}
+        });
+
+        return sentMessage;
     }
 
     // 🏆 Flujo de Ranking Nacional de Habilidades (cero llamadas on-the-fly, consulta 100% DB)

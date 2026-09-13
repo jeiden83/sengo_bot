@@ -404,8 +404,8 @@
     },
     "skills": {
       "header": "Breaks down osu! profile card skills (.card) with top plays.",
-      "body": "Shows the breakdown of Aim, Speed, Accuracy, and Reading with averages and Top 3 plays for each skill. Supports national leaderboard with -national / -country.",
-      "usage": "s.skills [user] [-top] [-aim|-speed|-acc|-reading] [-national] [-country CO]"
+      "body": "Shows the breakdown of Aim, Speed, Accuracy, and Reading with averages and Top 3 plays for each skill. Supports national leaderboard with -national / -country and server leaderboard with -server [id].",
+      "usage": "s.skills [user] [-top] [-aim|-speed|-acc|-reading] [-national] [-country CO] [-server [id]]"
     },
     "yo": {
       "header": "Sends the YO picture or generates a dynamic profile card with Canvas.",
@@ -427,7 +427,11 @@
     "embed_title": "Skills ({mode})",
     "embed_footer": "Skills breakdown (.skills)",
     "ranking_title": "National Skills Leaderboard ({skill}) - {country} ({mode})",
+    "ranking_server_title": "Skills Leaderboard in {server} ({skill}) - {mode}",
     "ranking_no_players": "No players registered in the skills leaderboard for **{country}**.",
+    "ranking_no_players_server": "No linked players with recorded skills found in **{server}**.\n\n*Use `s.skills` to analyze your profile and appear in this leaderboard!*",
+    "server_dm_error": "❌ This command with `-server` can only be used inside a Discord server or by specifying a server ID.",
+    "server_not_found": "❌ Could not find server with ID `{guildId}` or Sengo is not a member of it.",
     "ranking_footer_empty": "Skills Leaderboard • No data",
     "ranking_page_info": "Page {page}/{totalPages} • {totalPlayers} registered players",
     "avg_aim": "Average aim",

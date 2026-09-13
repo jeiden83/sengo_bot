@@ -59,6 +59,14 @@ const data = new SlashCommandBuilder()
     .addStringOption(option =>
         option.setName("pais")
             .setDescription("Código de país de 2 letras (ej: VE, CL, MX, CO, AR)")
+    )
+    .addBooleanOption(option =>
+        option.setName("servidor")
+            .setDescription("Mostrar tabla de clasificación de habilidades del servidor actual")
+    )
+    .addStringOption(option =>
+        option.setName("servidor_id")
+            .setDescription("ID de Discord de un servidor específico (opcional)")
     );
 
 // Permitir instalación de usuario y servidores externos
@@ -79,9 +87,16 @@ async function run(interaction, res, chat_commands) {
     const index = interaction.options.getInteger("index");
     const isNacional = interaction.options.getBoolean("nacional");
     const pais = interaction.options.getString("pais");
+    const isServidor = interaction.options.getBoolean("servidor");
+    const servidorId = interaction.options.getString("servidor_id");
 
     const args = [];
-    if (isNacional || pais) {
+    if (isServidor || servidorId) {
+        args.push("-server");
+        if (servidorId) args.push(servidorId);
+        if (skill) args.push(`-${skill}`);
+        if (modo) args.push(`-${modo}`);
+    } else if (isNacional || pais) {
         args.push("-nacional");
         if (pais) args.push("-pais", pais);
         if (skill) args.push(`-${skill}`);

@@ -1006,6 +1006,59 @@ async function getCountrySkillsLeaderboard({ countryCode = "VE", gamemode = "osu
 }
 
 /**
+ * Consulta la tabla de clasificación de habilidades para los jugadores de un servidor.
+ * @param {object} params Filtros de IDs de osu!, modo, habilidad y paginación
+ * @returns {Promise<object>} Lista de jugadores y conteo total
+ */
+async function getServerSkillsLeaderboard({ osuIds = [], gamemode = "osu", skill = "aim", limit = 10, offset = 0 } = {}) {
+    try {
+        const { getSupabaseClient } = require("../db/database.js");
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            return { players: [], totalCount: 0, error: "Supabase client not available" };
+        }
+
+        const cleanOsuIds = Array.from(new Set((osuIds || []).map(id => String(id)).filter(Boolean)));
+        const validSkills = ["aim", "speed", "acc", "reading", "stamina", "pp"];
+        const normalizedSkill = validSkills.includes(skill?.toLowerCase()) ? skill.toLowerCase() : "aim";
+        const normalizedMode = String(gamemode || "osu").trim().toLowerCase();
+
+        if (cleanOsuIds.length === 0) {
+            return {
+                players: [],
+                totalCount: 0,
+                gamemode: normalizedMode,
+                skill: normalizedSkill
+            };
+        }
+
+        const { data, count, error } = await supabase
+            .from("user_skills")
+            .select("*", { count: "exact" })
+            .in("osu_id", cleanOsuIds)
+            .eq("gamemode", normalizedMode)
+            .gt("pp", 0)
+            .order(normalizedSkill, { ascending: false })
+            .range(offset, offset + limit - 1);
+
+        if (error) {
+            console.error("[SkillsModel.getServerSkillsLeaderboard] Error al consultar leaderboard:", error.message);
+            return { players: [], totalCount: 0, error: error.message };
+        }
+
+        return {
+            players: data || [],
+            totalCount: count || 0,
+            gamemode: normalizedMode,
+            skill: normalizedSkill
+        };
+    } catch (err) {
+        console.error("[SkillsModel.getServerSkillsLeaderboard] Error inesperado:", err.message);
+        return { players: [], totalCount: 0, error: err.message };
+    }
+}
+
+/**
  * Consulta las habilidades almacenadas para un usuario específico.
  */
 async function getUserSkills({ osuId, gamemode = "osu" }) {
@@ -1041,6 +1094,8 @@ module.exports = {
     estimateMapSkills,
     saveUserSkills,
     getCountrySkillsLeaderboard,
+    getServerSkillsLeaderboard,
     getUserSkills
 };
+
 

@@ -404,8 +404,8 @@
     },
     "skills": {
       "header": "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas.",
-      "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad. Admite ranking nacional con -nacional / -pais.",
-      "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO]"
+      "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad. Admite ranking nacional con -nacional / -pais y ranking de servidor con -server [id].",
+      "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO] [-server [id]]"
     },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
@@ -427,7 +427,11 @@
     "embed_title": "Skills ({mode})",
     "embed_footer": "Desglose de habilidades (.skills)",
     "ranking_title": "Ranking Nacional de Habilidades ({skill}) - {country} ({mode})",
+    "ranking_server_title": "Ranking de Habilidades en {server} ({skill}) - {mode}",
     "ranking_no_players": "No hay jugadores registrados en el ranking de habilidades para **{country}**.",
+    "ranking_no_players_server": "No hay jugadores vinculados registrados con habilidades en **{server}**.\n\n*¡Usa `s.skills` para analizar tu perfil y aparecer en este ranking!*",
+    "server_dm_error": "❌ Este comando con `-server` solo puede utilizarse dentro de un servidor de Discord o indicando la ID del servidor.",
+    "server_not_found": "❌ No se encontró el servidor con ID `{guildId}` o Sengo no es miembro de él.",
     "ranking_footer_empty": "Ranking de Habilidades • Sin datos",
     "ranking_page_info": "Pág. {page}/{totalPages} • {totalPlayers} jugadores registrados",
     "avg_aim": "Promedio aim",

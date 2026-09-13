@@ -184,6 +184,10 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.skills [usuario]`**
   Desglosa las habilidades de la tarjeta de perfil con matemática cinética calibrada y factor de rendimiento real.
   * Muestra los promedios en puntos de Aim, Speed, Accuracy y Reading junto con el Top 3 de jugadas demostradas por cada habilidad.
+  * *Ranking de Servidor de Habilidades:*
+    * `s.skills -server` (o `-servidor`, `-guild`, `-srv`): Tabla de clasificación de habilidades de los miembros vinculados en el servidor local.
+    * `s.skills -server <id>`: Consulta el ranking de habilidades para un servidor de Discord específico por su ID.
+    * `s.skills -server [id] [habilidad] [-modo]`: Permite filtrar por habilidad específica (`aim`, `speed`, `acc`, `reading`, etc.) y modo de juego (`-taiko`, `-fruits`, `-mania`).
   * *Ranking Nacional de Habilidades:*
     * `s.skills -top -nacional` (o `s.skills -nacional`): Tabla de clasificación nacional de habilidades de los jugadores vinculados en Sengo (con respuesta instantánea y paginada en base de datos).
     * `s.skills -aim -nacional` / `s.skills -speed -pais CL` / `s.skills -reading -pais MX`: Clasificación nacional filtrada por habilidad específica y país (admite `-pais <código>` ej: `VE`, `CL`, `MX`, `AR`, `CO`, etc.).

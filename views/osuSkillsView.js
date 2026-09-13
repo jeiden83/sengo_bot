@@ -149,17 +149,14 @@ function doOsuSkillsRankingEmbed({
     totalCount = 0,
     startIndex = 0,
     countryCode = "VE",
+    serverName = null,
+    serverIcon = null,
     gamemode = "osu",
     skill = "aim",
     message,
     locale = "es"
 }) {
     const embedColor = getEmbedColor(message);
-    const countryCodesData = require("../src/country_codes.json");
-    const countryInfo = countryCodesData[countryCode.toUpperCase()];
-    const countryName = countryInfo ? countryInfo.country : countryCode.toUpperCase();
-    const flag = getCountryFlag(countryCode);
-
     const MODE_NAMES = {
         osu: "osu!",
         taiko: "osu!taiko",
@@ -167,24 +164,47 @@ function doOsuSkillsRankingEmbed({
         mania: "osu!mania"
     };
     const modeDisplayName = MODE_NAMES[gamemode] || "osu!";
-
     const skillUpper = (skill || "aim").toUpperCase();
-    const title = `${flag} ${t(locale, "skills.ranking_title", {
-        country: countryName,
-        skill: skillUpper,
-        mode: modeDisplayName
-    })}`;
+
+    let title;
+    let noPlayersMsg;
+
+    if (serverName) {
+        title = `🏠 ${t(locale, "skills.ranking_server_title", {
+            server: serverName,
+            skill: skillUpper,
+            mode: modeDisplayName
+        })}`;
+        noPlayersMsg = t(locale, "skills.ranking_no_players_server", { server: serverName });
+    } else {
+        const countryCodesData = require("../src/country_codes.json");
+        const countryInfo = countryCodesData[countryCode.toUpperCase()];
+        const countryName = countryInfo ? countryInfo.country : countryCode.toUpperCase();
+        const flag = getCountryFlag(countryCode);
+        title = `${flag} ${t(locale, "skills.ranking_title", {
+            country: countryName,
+            skill: skillUpper,
+            mode: modeDisplayName
+        })}`;
+        noPlayersMsg = `*${t(locale, "skills.ranking_no_players", { country: countryName })}*`;
+    }
 
     if (!players || players.length === 0) {
-        return new EmbedBuilder()
+        const emptyEmbed = new EmbedBuilder()
             .setColor(embedColor)
             .setTitle(title)
-            .setDescription(`*${t(locale, "skills.ranking_no_players", { country: countryName })}*`)
+            .setDescription(noPlayersMsg)
             .setFooter({
                 text: `Sengo • ${t(locale, "skills.ranking_footer_empty")}`,
                 iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
             })
             .setTimestamp();
+
+        if (serverName) {
+            const icon = serverIcon || (message?.guild?.iconURL ? message.guild.iconURL({ extension: "png", size: 128 }) : null);
+            if (icon) emptyEmbed.setThumbnail(icon);
+        }
+        return emptyEmbed;
     }
 
     const lines = players.map((p, index) => {
@@ -222,7 +242,7 @@ function doOsuSkillsRankingEmbed({
     const currentPage = Math.floor(startIndex / 10) + 1;
     const totalPages = Math.max(1, Math.ceil(totalCount / 10));
 
-    return new EmbedBuilder()
+    const embed = new EmbedBuilder()
         .setColor(embedColor)
         .setTitle(title)
         .setDescription(lines.join("\n\n"))
@@ -231,6 +251,13 @@ function doOsuSkillsRankingEmbed({
             iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd"
         })
         .setTimestamp();
+
+    if (serverName) {
+        const icon = serverIcon || (message?.guild?.iconURL ? message.guild.iconURL({ extension: "png", size: 128 }) : null);
+        if (icon) embed.setThumbnail(icon);
+    }
+
+    return embed;
 }
 
 module.exports = {
