@@ -27,7 +27,14 @@ async function run(interaction, res) {
         }
     }
 
-    await classicChatCommand.run(messages, args);
+    const result = await classicChatCommand.run(messages, args);
+    if (result) {
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
+    }
     return true;
 }
 

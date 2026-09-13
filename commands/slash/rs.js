@@ -60,7 +60,14 @@ async function run(interaction, res) {
         return wrapSlashMessage(msg, interaction, false);
     };
 
-    await rsChatCommand.run(messages, args);
+    const result = await rsChatCommand.run(messages, args);
+    if (result) {
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
+    }
     return true;
 }
 

@@ -9,7 +9,14 @@ async function run(interaction, res) {
     const { createSlashMessagesContext } = require("../utils/slashUtils.js");
     const messages = createSlashMessagesContext(interaction, res);
 
-    await acercaChatCommand.run(messages, []);
+    const result = await acercaChatCommand.run(messages, []);
+    if (result) {
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
+    }
 
     return true;
 }

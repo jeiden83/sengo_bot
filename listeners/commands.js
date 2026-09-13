@@ -521,6 +521,15 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
             const slash_result = await slashCommand(chat_commands, slash_commands, interaction, res);
 
             if (slash_result === true || (slash_result && slash_result.id)) {
+                if (slash_result === true && !commandSentResponse && !interaction.replied) {
+                    try {
+                        if (interaction.deferred) {
+                            await interaction.editReply("El comando finalizó pero no generó ninguna respuesta.");
+                        }
+                    } catch (e) {
+                        console.error("[SLASH-SAFETY] Error al responder interacción huérfana:", e);
+                    }
+                }
                 logger.success(`/${message_command} completado con éxito.`);
                 return;
             }

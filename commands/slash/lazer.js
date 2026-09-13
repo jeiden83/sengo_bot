@@ -27,7 +27,14 @@ async function run(interaction, res) {
         }
     }
 
-    await lazerChatCommand.run(messages, args);
+    const result = await lazerChatCommand.run(messages, args);
+    if (result) {
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
+    }
     return true;
 }
 

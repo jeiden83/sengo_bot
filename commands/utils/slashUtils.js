@@ -89,6 +89,20 @@ function wrapSlashMessage(msg, interaction, isFollowUp = false) {
                     }
                 };
             }
+            if (prop === 'createMessageComponentCollector') {
+                if (typeof target.createMessageComponentCollector === 'function') {
+                    return target.createMessageComponentCollector.bind(target);
+                }
+                return (options) => {
+                    if (interaction.channel && typeof interaction.channel.createMessageComponentCollector === 'function') {
+                        return interaction.channel.createMessageComponentCollector({
+                            ...options,
+                            message: target
+                        });
+                    }
+                    return { on: () => {}, stop: () => {} };
+                };
+            }
             const val = Reflect.get(target, prop);
             return typeof val === 'function' ? val.bind(target) : val;
         }
@@ -153,7 +167,11 @@ function createSlashMessagesContext(interaction, res) {
             id: interaction.channelId,
             isTextBased: () => true,
             messages: interaction.channel?.messages || {
-                fetch: async () => new Map()
+                fetch: async () => {
+                    const m = new Map();
+                    m.find = (fn) => Array.from(m.values()).find(fn);
+                    return m;
+                }
             },
             guild: interaction.guild
         }
