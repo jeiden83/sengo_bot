@@ -1251,11 +1251,12 @@ function argsParserNoCommand(args, options = {}) {
             skillFilter = SKILL_NORMALIZE[potentialSkill] || potentialSkill;
             continue;
         }
-        if (arg === "-skill" || arg === "--skill") {
+        if (arg === "-skill" || arg === "--skill" || arg === "-skills" || arg === "--skills") {
+            skillFilter = "ALL";
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
-                    const norm = next_arg.toLowerCase();
+                const norm = next_arg.toLowerCase().replace(/^--?/, "");
+                if (SKILL_FLAGS.has(norm)) {
                     const SKILL_NORMALIZE = {
                         accuracy: 'acc',
                         precision: 'acc',

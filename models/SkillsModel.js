@@ -943,6 +943,15 @@ async function saveUserSkills({ osuUser, skillsBreakdown, gamemode, discordId = 
             return { success: false, error: error.message };
         }
 
+        try {
+            const { updateCachedUser } = require("./TwinModel.js");
+            if (data && typeof updateCachedUser === "function") {
+                updateCachedUser(data);
+            }
+        } catch {
+            // Silenciar si TwinModel no está disponible
+        }
+
         return { success: true, data };
     } catch (err) {
         console.error("[SkillsModel.saveUserSkills] Error inesperado:", err.message);

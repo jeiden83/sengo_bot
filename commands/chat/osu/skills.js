@@ -66,6 +66,17 @@ async function run(messages, args) {
             continue;
         }
 
+        if (["skills", "skill", "s"].includes(stripped)) {
+            if (i + 1 < safeArgs.length) {
+                const nextStripped = safeArgs[i + 1].toLowerCase().replace(/^--?/, "");
+                if (SKILL_ALIASES[nextStripped]) {
+                    selectedSkill = SKILL_ALIASES[nextStripped];
+                    i++;
+                }
+            }
+            continue;
+        }
+
         if (SKILL_ALIASES[stripped]) {
             selectedSkill = SKILL_ALIASES[stripped];
             continue;

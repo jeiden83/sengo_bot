@@ -77,10 +77,23 @@ async function run(messages, args) {
     let countryFilter = parsed_args.country;
 
     // Si no se usó el flag -pais, pero hay palabras no consumidas, tomamos la primera palabra de 2 caracteres como el país
-    if (!countryFilter && parsed_args.username && parsed_args.username[0]) {
-        const potential = parsed_args.username[0].trim().toUpperCase();
-        if (potential.length === 2) {
-            countryFilter = potential;
+    const countryCodesData = require("../../../src/country_codes.json");
+    if (!countryFilter) {
+        if (parsed_args.username && parsed_args.username[0]) {
+            const potential = parsed_args.username[0].trim().toUpperCase();
+            if (potential.length === 2 && countryCodesData[potential]) {
+                countryFilter = potential;
+            }
+        }
+        if (!countryFilter && Array.isArray(args)) {
+            for (const a of args) {
+                if (typeof a !== "string") continue;
+                const pot = a.trim().toUpperCase();
+                if (/^[a-zA-Z]{2}$/.test(pot) && countryCodesData[pot] && !a.startsWith("-")) {
+                    countryFilter = pot;
+                    break;
+                }
+            }
         }
     }
 

@@ -72,6 +72,18 @@ const data = new SlashCommandBuilder()
         option.setName("regional")
             .setDescription("Nombre o código de la región para mostrar, o 'lista' para ver las opciones")
             .setRequired(false)
+    )
+    .addStringOption(option =>
+        option.setName("skills")
+            .setDescription("Muestra el ranking nacional por habilidad (aim, speed, acc, reading, stamina)")
+            .setRequired(false)
+            .addChoices(
+                { name: "Aim", value: "aim" },
+                { name: "Speed", value: "speed" },
+                { name: "Accuracy", value: "acc" },
+                { name: "Reading", value: "reading" },
+                { name: "Stamina", value: "stamina" }
+            )
     );
 
 async function run(interaction, res) {
@@ -90,9 +102,13 @@ async function run(interaction, res) {
     const score = interaction.options.getBoolean("score");
     const totalscore = interaction.options.getBoolean("totalscore");
     const regional = interaction.options.getString("regional");
+    const skills = interaction.options.getString("skills");
 
     if (pais !== null && pais !== undefined) {
         args.push("-pais", pais);
+    }
+    if (skills) {
+        args.push("-skills", skills);
     }
     if (pagina) {
         args.push(`-p${pagina}`);
