@@ -735,11 +735,36 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillText(mapArtist, mapCardX + 22, mapCardY + 62);
 
     // Badge y buscador
-    const badgeW = 74;
+    const statusText = (mapperData.latestMap?.status || "RANKED").toUpperCase();
+    const statusKey = statusText.toLowerCase();
+
+    ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
+    const textWidth = ctx.measureText(statusText).width;
+    const badgeW = Math.max(76, Math.round(textWidth + 18));
     const badgeH = 25;
     const badgeX = mapCardX + mapCardW - badgeW - 20;
     const badgeY = mapCardY + 18;
     const badgeR = 12.5;
+
+    let badgeBg = "#00c3ff";
+    let badgeGlow = "rgba(0, 195, 255, 0.95)";
+
+    if (statusKey === "pending" || statusKey === "wip") {
+        badgeBg = "#ffd000"; // Amarillo
+        badgeGlow = "rgba(255, 208, 0, 0.95)";
+    } else if (statusKey === "loved") {
+        badgeBg = "#ff4088"; // Rosa
+        badgeGlow = "rgba(255, 64, 136, 0.95)";
+    } else if (statusKey === "graveyard") {
+        badgeBg = "#6c757d"; // Gris
+        badgeGlow = "rgba(108, 117, 125, 0.8)";
+    } else if (statusKey === "ranked" || statusKey === "approved") {
+        badgeBg = "#38d948"; // Verde lima
+        badgeGlow = "rgba(56, 217, 72, 0.95)";
+    } else if (statusKey === "qualified") {
+        badgeBg = "#00c3ff"; // Azul
+        badgeGlow = "rgba(0, 195, 255, 0.95)";
+    }
 
     const searchX = badgeX - 22;
     const searchY = badgeY + badgeH / 2;
@@ -759,17 +784,17 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
 
     ctx.save();
     roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fillStyle = "#00c3ff";
-    ctx.shadowColor = "rgba(0, 195, 255, 0.95)";
+    ctx.fillStyle = badgeBg;
+    ctx.shadowColor = badgeGlow;
     ctx.shadowBlur = 14;
     ctx.fill();
 
-    const statusText = mapperData.latestMap?.status || "RANKED";
     ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "transparent";
+    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+    ctx.shadowBlur = 3;
     ctx.fillText(statusText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
     ctx.restore();
 

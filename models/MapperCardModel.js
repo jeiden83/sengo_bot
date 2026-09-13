@@ -99,18 +99,19 @@ class MapperCardModel {
                     graveyard_count: graveyardCount,
                     guest_count: fullUser.guest_beatmapset_count || 0,
                     kudosu_total: fullUser.kudosu?.total || 0,
-                    followers: fullUser.follower_count || fullUser.mapping_follower_count || 0,
+                    followers: fullUser.follower_count || 0,
+                    subscribers: fullUser.mapping_follower_count || 0,
                     playmode: gamemode
                 }, { onConflict: 'osu_id' });
             }
             ranksInfo = await MappingTrackerModel.getMapperRankings(userId, countryCode, guildId, false, gamemode);
         } catch {}
 
-        // 5. Métricas de seguimiento y suscriptores locales en Sengo
-        let subscribersCount = 0;
+        // 5. Métricas de seguimiento locales en Sengo
+        let localSubscribersCount = 0;
         try {
             const subs = await MappingTrackerModel.getSubscriptionsForOsuId(userId);
-            subscribersCount = Array.isArray(subs) ? subs.length : 0;
+            localSubscribersCount = Array.isArray(subs) ? subs.length : 0;
         } catch {}
 
         // 6. Métricas de habilidades y atributos del mapper:
@@ -213,9 +214,11 @@ class MapperCardModel {
                 countryCode: countryCode,
                 avatarUrl: fullUser.avatar_url || `https://a.ppy.sh/${fullUser.id}`,
                 coverUrl: fullUser.cover_url || fullUser.cover?.url || fullUser.cover?.custom_url || null,
-                followers: formatCompact(fullUser.follower_count || fullUser.mapping_follower_count || 0),
+                followers: formatCompact(fullUser.follower_count || 0),
                 rawFollowers: fullUser.follower_count || 0,
-                subscribers: String(subscribersCount),
+                subscribers: formatCompact(fullUser.mapping_follower_count || 0),
+                rawSubscribers: fullUser.mapping_follower_count || 0,
+                localSubscribers: localSubscribersCount,
                 kudosu: formatCompact(fullUser.kudosu?.total || 0),
                 rawKudosu: fullUser.kudosu?.total || 0
             },
