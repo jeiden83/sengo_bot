@@ -31,6 +31,21 @@ if (fs.existsSync(path.join(fontDir, "Poppins-Bold.ttf"))) {
     registerFont(path.join(fontDir, "Poppins-Bold.ttf"), { family: "Poppins", weight: "bold", style: "normal" });
 }
 
+// Registrar fuentes del sistema para tipografía y footer idéntico a osuCardViews
+const winFonts = "C:/Windows/Fonts";
+if (fs.existsSync(path.join(winFonts, "segoeui.ttf"))) {
+    registerFont(path.join(winFonts, "segoeui.ttf"), { family: "SegoeCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuib.ttf"), { family: "SegoeCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "segoeuii.ttf"), { family: "SegoeCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "segoeuiz.ttf"), { family: "SegoeCustom", weight: "bold", style: "italic" });
+}
+if (fs.existsSync(path.join(winFonts, "arial.ttf"))) {
+    registerFont(path.join(winFonts, "arial.ttf"), { family: "ArialCustom", weight: "normal", style: "normal" });
+    registerFont(path.join(winFonts, "arialbd.ttf"), { family: "ArialCustom", weight: "bold", style: "normal" });
+    registerFont(path.join(winFonts, "ariali.ttf"), { family: "ArialCustom", weight: "normal", style: "italic" });
+    registerFont(path.join(winFonts, "arialbi.ttf"), { family: "ArialCustom", weight: "bold", style: "italic" });
+}
+
 // Caché en memoria para imágenes y buffers de tarjetas generadas
 const imageMemoryCache = new Map();
 const MAX_IMAGE_CACHE_SIZE = 150;
@@ -266,7 +281,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     if (coverImg) {
         ctx.save();
         ctx.globalAlpha = 0.52;
-        drawBlurredImageCover(ctx, coverImg, 0, 0, W, H, 3);
+        drawImageCover(ctx, coverImg, 0, 0, W, H);
         ctx.restore();
     }
 
@@ -850,6 +865,61 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
         ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
         ctx.fillText(col.lbl2, cx, statCardY + 89);
     });
+    ctx.restore();
+
+    // 9. FOOTER DEL CARD (ESQUINA INFERIOR IZQUIERDA: BRANDING & FECHA IDÉNTICO AL CARD DE JUGADOR)
+    const today = new Date().toISOString().split("T")[0];
+    const MODE_NAMES = {
+        osu: "osu!",
+        taiko: "osu!taiko",
+        fruits: "osu!catch",
+        mania: "osu!mania"
+    };
+    const footerTitle = gamemode !== "osu" ? `Sengo • ${MODE_NAMES[gamemode] || gamemode}` : "Sengo";
+    const footerX = 38;
+    const footerY = 538;
+
+    ctx.save();
+    // footerBrand (Sengo) con glow rojizo #fe4d4d idéntico al card de jugador
+    ctx.save();
+    ctx.shadowColor = "rgba(254, 77, 77, 0.70)";
+    ctx.shadowBlur = 20;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+    ctx.fillStyle = "#ffffff";
+    ctx.font = 'italic bold 21px "Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", sans-serif';
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+
+    const brandWidth = ctx.measureText(footerTitle).width;
+    ctx.font = 'italic 15px "Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", sans-serif';
+    const dateWidth = ctx.measureText(today).width;
+    const isSingleLine = (brandWidth + 10 + dateWidth) <= 175;
+
+    ctx.font = 'italic bold 21px "Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", sans-serif';
+    if (isSingleLine) {
+        ctx.fillText(footerTitle, footerX, footerY);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = 'italic 15px "Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", sans-serif';
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(today, footerX + brandWidth + 10, footerY);
+        ctx.restore();
+    } else {
+        ctx.fillText(footerTitle, footerX, footerY - 10);
+        ctx.restore();
+
+        ctx.save();
+        ctx.fillStyle = "#cbd5e1";
+        ctx.font = 'italic 14px "Outfit", "SegoeCustom", "ArialCustom", "Segoe UI", sans-serif';
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(today, footerX, footerY + 11);
+        ctx.restore();
+    }
     ctx.restore();
 
     const buffer = canvas.toBuffer("image/png");
