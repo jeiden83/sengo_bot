@@ -336,12 +336,21 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const sliders = Number(s.beatmap?.count_sliders || 0);
             const totalObj = Math.max(1, circles + sliders);
 
-            const effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
+            let effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
             const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
 
-            const beats = (effLen / 60) * effBPM;
-            const notesPerBeat = beats > 0 ? (totalObj / beats) : 1.5;
+            let beats = (effLen / 60) * effBPM;
+            let circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
             const circleRatio = circles / totalObj;
+
+            // ponytail: Corrección de Half-BPM para mapas sincronizados a tempo lento (ej: Time Freeze, Orpheus a 105 BPM)
+            if (effBPM < 140 && circlesPerBeat >= 1.45) {
+                effBPM *= 2.0;
+                beats = (effLen / 60) * effBPM;
+                circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
+            }
+
+            const notesPerBeat = beats > 0 ? (totalObj / beats) : 1.5;
 
             // 1. Acc PP estimado
             let rawAccPP = estimateAccPP(od, accPct, totalObj, isHR, isEZ, isDT, isHT);
@@ -352,29 +361,35 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
 
             // 3. Descomposición rítmica en Aim y Speed calibrada con sengo-pp
             // ponytail: formulación física continua basada en el intervalo dt entre notas (BPM efectivo y densidad rítmica).
-            // Evita colapsos a 0 en mapas rápidos con descansos y permite hasta 66% de speed en streams extremos (>300 BPM).
-            const circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
-            const bpmFactor = Math.max(0, (effBPM - 148) / 105);
-            const rhythmDensity = Math.max(0.40, Math.min(1.4, (circlesPerBeat + circleRatio) / 1.7));
+            const bpmFactor = Math.max(0, (effBPM - 140) / 105);
 
-            // Aceleración de tapping a velocidades altas (>220 BPM)
+            // Supresión en jump maps puros (cpb < 1.05): el strain de tapping decae cuadráticamente sin streams
+            let jumpSuppression = 1.0;
+            if (circlesPerBeat < 1.05) {
+                jumpSuppression = Math.max(0.20, Math.pow(circlesPerBeat / 1.05, 1.4));
+            }
+
+            let baseSpeedPct = 0.05 + Math.max(0, (effBPM - 145) / 120) * 0.22;
+            if (effLen >= 90 && totalObj >= 380 && circlesPerBeat >= 0.95 && !isHR) {
+                baseSpeedPct = Math.max(baseSpeedPct, 0.22);
+            }
+
+            if (isHR) baseSpeedPct *= 0.80;
+            if (isEZ && !isDT) baseSpeedPct *= 0.70;
+            if (isHT) baseSpeedPct *= 0.40;
+
+            const rhythmDensity = Math.max(0.20, Math.min(1.4, (circlesPerBeat - 0.40) / 0.85 + circleRatio * 0.35));
+
             let highBpmMultiplier = 1.0;
             if (effBPM > 220) {
                 highBpmMultiplier += Math.pow((effBPM - 220) / 75, 1.25) * 0.70;
             }
 
-            // Stamina en maratones de streams continuos
-            const staminaBonus = (circles >= 750 && effBPM >= 170)
+            const staminaBonus = (circles >= 750 && effBPM >= 170 && circlesPerBeat >= 1.20)
                 ? Math.min(0.20, (circles - 600) / 1400) * bpmFactor
                 : 0;
 
-            // Fracción base según el BPM efectivo
-            let baselineFraction = 0.04 + Math.max(0, (effBPM - 155) / 145) * 0.22;
-            if (isHR) baselineFraction *= 0.82;
-            if (isEZ && !isDT) baselineFraction *= 0.70;
-            if (isHT) baselineFraction *= 0.40;
-
-            let speedFraction = baselineFraction + (bpmFactor * 0.18 * rhythmDensity * highBpmMultiplier) + staminaBonus;
+            let speedFraction = (baseSpeedPct + (bpmFactor * 0.18 * rhythmDensity * highBpmMultiplier)) * jumpSuppression + staminaBonus;
 
             // Deathstreams en maratones EZ (ej: Ice Angel, Crimsonic dimension)
             const isEZStreamHeavy = isEZ && !isDT && circles >= 1500 && circleRatio >= 0.80 && effBPM >= 145;
@@ -382,12 +397,12 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                 speedFraction = Math.max(speedFraction, 0.22);
             }
 
-            // Mapas cortos de jump farm puros (<60s y pocos círculos)
+            // Mapas cortos de jump farm puros (<60s o <300 círculos)
             if (circles < 300 && effLen < 60 && circlesPerBeat < 1.15) {
-                speedFraction = Math.min(0.12, speedFraction * 0.45);
+                speedFraction = Math.min(0.08, speedFraction * 0.35);
             }
-            if (isHR && circlesPerBeat < 1.15) {
-                speedFraction = Math.min(0.14, speedFraction * 0.70);
+            if (isHR && circlesPerBeat < 1.10) {
+                speedFraction = Math.min(0.10, speedFraction * 0.60);
             }
 
             // Mapas de slider jumps largos con baja proporción de círculos
