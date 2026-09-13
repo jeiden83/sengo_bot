@@ -821,26 +821,30 @@
 
             // 1. FONDO
             const bgBase = ctx.createLinearGradient(0, 0, W, H);
-            bgBase.addColorStop(0, "#382a46");
-            bgBase.addColorStop(0.35, "#5d3c58");
-            bgBase.addColorStop(0.70, "#c46d78");
-            bgBase.addColorStop(1, "#f5ad97");
+            bgBase.addColorStop(0, "#2c1e38");
+            bgBase.addColorStop(0.35, "#4d2e48");
+            bgBase.addColorStop(0.70, "#a45564");
+            bgBase.addColorStop(1, "#ce8674");
             ctx.fillStyle = bgBase;
             ctx.fillRect(0, 0, W, H);
 
             if (coverImg) {
                 ctx.save();
-                ctx.globalAlpha = 0.60;
-                ctx.filter = `blur(${config.styles.blur}px)`;
-                ctx.drawImage(coverImg, 0, 0, W, H);
+                ctx.globalAlpha = 0.45;
+                ctx.filter = `blur(${config.styles.blur || 28}px)`;
+                ctx.drawImage(coverImg, -25, -25, W + 50, H + 50);
                 ctx.restore();
             }
+
+            // Capa de atenuación para reducir el brillo del fondo y aumentar el contraste del glass
+            ctx.fillStyle = "rgba(16, 10, 24, 0.25)";
+            ctx.fillRect(0, 0, W, H);
 
             // Glow ambiental
             ctx.save();
             const glowGrad = ctx.createRadialGradient(W * 0.9, H * 0.9, 30, W * 0.9, H * 0.9, 500);
-            glowGrad.addColorStop(0, "rgba(255, 180, 150, 0.40)");
-            glowGrad.addColorStop(1, "rgba(255, 180, 150, 0)");
+            glowGrad.addColorStop(0, "rgba(255, 175, 145, 0.24)");
+            glowGrad.addColorStop(1, "rgba(255, 175, 145, 0)");
             ctx.fillStyle = glowGrad;
             ctx.fillRect(0, 0, W, H);
             ctx.restore();

@@ -179,6 +179,39 @@ function drawImageCover(ctx, img, x, y, w, h, alignY = 0.5, alignX = 0.5, zoom =
 }
 
 /**
+ * Dibuja una imagen desenfocada de forma progresiva nativa (bokeh / gaussian-like) en node-canvas.
+ */
+function drawBlurredImageCover(ctx, img, x, y, w, h, blurPower = 36) {
+    if (!img) return;
+    const p1W = Math.max(32, Math.round(w / 4));
+    const p1H = Math.max(18, Math.round(h / 4));
+    const c1 = createCanvas(p1W, p1H);
+    const ctx1 = c1.getContext("2d");
+    ctx1.imageSmoothingEnabled = true;
+    drawImageCover(ctx1, img, 0, 0, p1W, p1H);
+
+    const p2W = Math.max(16, Math.round(w / blurPower));
+    const p2H = Math.max(10, Math.round(h / blurPower));
+    const c2 = createCanvas(p2W, p2H);
+    const ctx2 = c2.getContext("2d");
+    ctx2.imageSmoothingEnabled = true;
+    ctx2.drawImage(c1, 0, 0, p2W, p2H);
+
+    const p3W = Math.max(28, Math.round(w / 8));
+    const p3H = Math.max(16, Math.round(h / 8));
+    const c3 = createCanvas(p3W, p3H);
+    const ctx3 = c3.getContext("2d");
+    ctx3.imageSmoothingEnabled = true;
+    ctx3.drawImage(c2, 0, 0, p3W, p3H);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
+    ctx.drawImage(c3, x - 25, y - 25, w + 50, h + 50);
+    ctx.restore();
+}
+
+/**
  * Renderiza la tarjeta de Mapper (.card -mapper) utilizando Node Canvas
  * @param {Object} user - Objeto del usuario
  * @param {Object} mapperData - Paquete de datos obtenido desde MapperCardModel
@@ -236,26 +269,29 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
 
     // 1. FONDO PRINCIPAL
     const bgBase = ctx.createLinearGradient(0, 0, W, H);
-    bgBase.addColorStop(0, "#382a46");
-    bgBase.addColorStop(0.35, "#5d3c58");
-    bgBase.addColorStop(0.70, "#c46d78");
-    bgBase.addColorStop(1, "#f5ad97");
+    bgBase.addColorStop(0, "#2c1e38");
+    bgBase.addColorStop(0.35, "#4d2e48");
+    bgBase.addColorStop(0.70, "#a45564");
+    bgBase.addColorStop(1, "#ce8674");
     ctx.fillStyle = bgBase;
     ctx.fillRect(0, 0, W, H);
 
     if (coverImg) {
         ctx.save();
-        ctx.globalAlpha = 0.60;
-        ctx.filter = "blur(18px)";
-        ctx.drawImage(coverImg, 0, 0, W, H);
+        ctx.globalAlpha = 0.45;
+        drawBlurredImageCover(ctx, coverImg, 0, 0, W, H, 38);
         ctx.restore();
     }
 
-    // Glow ambiental cálido
+    // Capa de atenuación para reducir el brillo del fondo y aumentar el contraste del glass
+    ctx.fillStyle = "rgba(16, 10, 24, 0.25)";
+    ctx.fillRect(0, 0, W, H);
+
+    // Glow ambiental cálido sutil
     ctx.save();
     const glowGrad = ctx.createRadialGradient(W * 0.9, H * 0.9, 30, W * 0.9, H * 0.9, 500);
-    glowGrad.addColorStop(0, "rgba(255, 180, 150, 0.40)");
-    glowGrad.addColorStop(1, "rgba(255, 180, 150, 0)");
+    glowGrad.addColorStop(0, "rgba(255, 175, 145, 0.24)");
+    glowGrad.addColorStop(1, "rgba(255, 175, 145, 0)");
     ctx.fillStyle = glowGrad;
     ctx.fillRect(0, 0, W, H);
     ctx.restore();
