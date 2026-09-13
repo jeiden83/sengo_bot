@@ -4,8 +4,23 @@ const axios = require("axios");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 const { renderQueue } = require("../utils/RenderQueue.js");
 
-// 1. Registrar tipografías Poppins
+// 1. Registrar tipografías Montserrat (con fallback a Poppins)
 const fontDir = path.join(__dirname, "../assets/fonts");
+if (fs.existsSync(path.join(fontDir, "Montserrat-Regular.ttf"))) {
+    registerFont(path.join(fontDir, "Montserrat-Regular.ttf"), { family: "Montserrat", weight: "normal", style: "normal" });
+}
+if (fs.existsSync(path.join(fontDir, "Montserrat-Medium.ttf"))) {
+    registerFont(path.join(fontDir, "Montserrat-Medium.ttf"), { family: "Montserrat", weight: "500", style: "normal" });
+}
+if (fs.existsSync(path.join(fontDir, "Montserrat-SemiBold.ttf"))) {
+    registerFont(path.join(fontDir, "Montserrat-SemiBold.ttf"), { family: "Montserrat", weight: "600", style: "normal" });
+}
+if (fs.existsSync(path.join(fontDir, "Montserrat-Bold.ttf"))) {
+    registerFont(path.join(fontDir, "Montserrat-Bold.ttf"), { family: "Montserrat", weight: "bold", style: "normal" });
+}
+if (fs.existsSync(path.join(fontDir, "Montserrat-ExtraBold.ttf"))) {
+    registerFont(path.join(fontDir, "Montserrat-ExtraBold.ttf"), { family: "Montserrat", weight: "800", style: "normal" });
+}
 if (fs.existsSync(path.join(fontDir, "Poppins-Regular.ttf"))) {
     registerFont(path.join(fontDir, "Poppins-Regular.ttf"), { family: "Poppins", weight: "normal", style: "normal" });
 }
@@ -38,6 +53,14 @@ function setWithLimit(map, key, value, limit) {
  */
 async function fetchImageSafe(url) {
     if (!url || typeof url !== "string") return null;
+
+    if (fs.existsSync(url)) {
+        try {
+            return await loadImage(url);
+        } catch {
+            return null;
+        }
+    }
 
     const now = Date.now();
     const isStaticFlag = url.includes("flagcdn.com");
@@ -248,7 +271,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     // 2. TÍTULO SUPERIOR FIXED ("Novato Ranked" o personalizado)
     const cardTitle = options.title || mapperData.title || "Novato Ranked";
     ctx.save();
-    ctx.font = 'bold 28px "Poppins", sans-serif';
+    ctx.font = 'bold 28px "Montserrat", "Poppins", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
@@ -307,32 +330,34 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
 
     // Nombre del mapper
     ctx.save();
-    ctx.font = '600 21px "Poppins", sans-serif';
+    ctx.font = '600 21px "Montserrat", "Poppins", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#2f243d";
     ctx.fillText(mapperData.user.username || "Mapper", avatarCenterX, pillY + 188);
     ctx.restore();
 
-    // Anillos concéntricos inferiores
+    // Círculo relleno inferior para modo STD (hitcircle con approach circle)
     const targetCenterY = pillY + 258;
-    const outerTargetR = 30;
-    const innerTargetR = 19;
+    const outerTargetR = 32;
+    const innerTargetR = 21;
 
     ctx.save();
+    // Círculo central relleno sólido para modo STD
+    ctx.beginPath();
+    ctx.arc(avatarCenterX, targetCenterY, innerTargetR, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
-    ctx.shadowBlur = 10;
+    ctx.shadowBlur = 12;
+    ctx.fill();
 
+    // Anillo exterior circundante (approach circle)
     ctx.beginPath();
     ctx.arc(avatarCenterX, targetCenterY, outerTargetR, 0, Math.PI * 2);
     ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 5.5;
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.arc(avatarCenterX, targetCenterY, innerTargetR, 0, Math.PI * 2);
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 5.5;
+    ctx.lineWidth = 4.8;
+    ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+    ctx.shadowBlur = 8;
     ctx.stroke();
     ctx.restore();
 
@@ -393,13 +418,13 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     const countryColX = rankCardX + rankCardW * 0.25;
     ctx.save();
     ctx.textAlign = "center";
-    ctx.font = 'bold 25px "Poppins", sans-serif';
+    ctx.font = 'bold 25px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
     ctx.shadowBlur = 4;
     ctx.fillText(mapperData.ranks?.countryRank || "#-", countryColX, rankCardY + 95);
 
-    ctx.font = 'bold 12.5px "Poppins", sans-serif';
+    ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#221829";
     ctx.shadowColor = "transparent";
     ctx.fillText("Rango", countryColX, rankCardY + 116);
@@ -410,13 +435,13 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     const serverColX = rankCardX + rankCardW * 0.75;
     ctx.save();
     ctx.textAlign = "center";
-    ctx.font = 'bold 28px "Poppins", sans-serif';
+    ctx.font = 'bold 28px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#ffe600";
     ctx.shadowColor = "rgba(255, 230, 0, 0.95)";
     ctx.shadowBlur = 14;
     ctx.fillText(mapperData.ranks?.serverRank || "#-", serverColX, rankCardY + 95);
 
-    ctx.font = 'bold 12.5px "Poppins", sans-serif';
+    ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#221829";
     ctx.shadowColor = "transparent";
     ctx.fillText("Rango", serverColX, rankCardY + 116);
@@ -445,16 +470,16 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     function drawPillStack(centerX, topText, filledCount, labelLines, wobbleOffsets = [0, 0, 0, 0, 0, 0]) {
         ctx.save();
         ctx.textAlign = "center";
-        ctx.font = 'bold 13px "Poppins", sans-serif';
+        ctx.font = 'bold 13px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "#221829";
-        ctx.fillText(topText, centerX, barsCardY + 23);
+        ctx.fillText(topText, centerX, barsCardY + 22);
         ctx.restore();
 
         const pillBarW = 68;
-        const pillBarH = 11.5;
+        const pillBarH = 10.5;
         const pillBarR = 6;
-        const gap = 3.5;
-        const startY = barsCardY + 138;
+        const gap = 4;
+        const startY = barsCardY + 106;
 
         for (let i = 0; i < 6; i++) {
             const py = startY - i * (pillBarH + gap);
@@ -482,13 +507,13 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
 
         ctx.save();
         ctx.textAlign = "center";
-        ctx.font = 'bold 12px "Poppins", sans-serif';
+        ctx.font = '700 11.5px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "#221829";
         if (labelLines.length === 1) {
-            ctx.fillText(labelLines[0], centerX, barsCardY + 160);
+            ctx.fillText(labelLines[0], centerX, barsCardY + 145);
         } else {
-            ctx.fillText(labelLines[0], centerX, barsCardY + 154);
-            ctx.fillText(labelLines[1], centerX, barsCardY + 167);
+            ctx.fillText(labelLines[0], centerX, barsCardY + 138);
+            ctx.fillText(labelLines[1], centerX, barsCardY + 152);
         }
         ctx.restore();
     }
@@ -536,13 +561,13 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     const mapTitle = mapperData.latestMap?.title || "No Beatmaps Found";
     const mapArtist = mapperData.latestMap?.artist || "";
 
-    ctx.font = 'bold 24px "Poppins", sans-serif';
+    ctx.font = 'bold 24px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
     ctx.shadowBlur = 6;
     ctx.fillText(mapTitle, mapCardX + 22, mapCardY + 36);
 
-    ctx.font = '600 17px "Poppins", sans-serif';
+    ctx.font = '600 17px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
     ctx.fillText(mapArtist, mapCardX + 22, mapCardY + 62);
 
@@ -577,7 +602,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fill();
 
     const statusText = mapperData.latestMap?.status || "RANKED";
-    ctx.font = 'bold 11.5px "Poppins", sans-serif';
+    ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
@@ -602,12 +627,15 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.stroke();
 
     statCurX += 17;
-    ctx.font = 'bold 14.5px "Poppins", sans-serif';
+    ctx.font = 'bold 14.5px "Montserrat", "Poppins", sans-serif';
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
-    ctx.fillText(mapperData.latestMap?.playCount || "0", statCurX, botStatsY - 6);
+    const playText = mapperData.latestMap?.playCount || "0";
+    ctx.fillText(playText, statCurX, botStatsY - 6);
+    const playWidth = ctx.measureText(playText).width;
 
-    statCurX += 50;
+    // Espacio amplio y generoso entre plays y favs
+    statCurX += playWidth + 32;
 
     ctx.beginPath();
     const hx = statCurX;
@@ -657,7 +685,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = "rgba(15, 10, 22, 0.72)";
     ctx.fillRect(prevCardX, prevCardY, prevCardW, prevCardH);
 
-    ctx.font = 'bold 14px "Poppins", sans-serif';
+    ctx.font = 'bold 14px "Montserrat", "Poppins", sans-serif';
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";
@@ -720,19 +748,19 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     cols.forEach((col, idx) => {
         const cx = statCardX + colStep * idx + colStep / 2;
 
-        ctx.font = 'bold 17px "Poppins", sans-serif';
+        ctx.font = 'bold 17px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "#ffffff";
         ctx.fillText(col.val1, cx, statCardY + 23);
 
-        ctx.font = '500 11px "Poppins", sans-serif';
+        ctx.font = '600 11px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
         ctx.fillText(col.lbl1, cx, statCardY + 39);
 
-        ctx.font = 'bold 17px "Poppins", sans-serif';
+        ctx.font = 'bold 17px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "#ffffff";
         ctx.fillText(col.val2, cx, statCardY + 73);
 
-        ctx.font = '500 11px "Poppins", sans-serif';
+        ctx.font = '600 11px "Montserrat", "Poppins", sans-serif';
         ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
         ctx.fillText(col.lbl2, cx, statCardY + 89);
     });

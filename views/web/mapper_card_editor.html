@@ -6,7 +6,7 @@
     <title>Sengo Mapper Card Studio - Suite de Diseño</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Montserrat:wght@400;500;600;700;800&family=Poppins:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400;1,600&display=swap" rel="stylesheet">
     <style>
         :root {
             --bg-dark: #09060f;
@@ -848,14 +848,12 @@
             // Viñeta superior
             const topVignette = ctx.createLinearGradient(0, 0, 0, 140);
             topVignette.addColorStop(0, "rgba(25, 18, 35, 0.65)");
-            topVignette.addColorStop(0.6, "rgba(25, 18, 35, 0.20)");
-            topVignette.addColorStop(1, "rgba(25, 18, 35, 0)");
             ctx.fillStyle = topVignette;
             ctx.fillRect(0, 0, W, 140);
 
             // 2. TÍTULO SUPERIOR FIXED
             ctx.save();
-            ctx.font = 'bold 28px "Poppins", sans-serif';
+            ctx.font = 'bold 28px "Montserrat", "Poppins", sans-serif';
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
@@ -906,27 +904,29 @@
             }
 
             ctx.save();
-            ctx.font = '600 21px "Poppins", sans-serif';
+            ctx.font = '600 21px "Montserrat", "Poppins", sans-serif';
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#2f243d";
             ctx.fillText(config.username, avatarCenterX, pillY + 188);
             ctx.restore();
 
-            // Anillos concéntricos inferiores
+            // Círculo relleno inferior para modo STD (hitcircle con approach circle)
             const targetCenterY = pillY + 258;
             ctx.save();
+            ctx.beginPath();
+            ctx.arc(avatarCenterX, targetCenterY, 21, 0, Math.PI * 2);
+            ctx.fillStyle = "#ffffff";
             ctx.shadowColor = "rgba(255, 255, 255, 0.95)";
-            ctx.shadowBlur = 10;
+            ctx.shadowBlur = 12;
+            ctx.fill();
+
             ctx.beginPath();
-            ctx.arc(avatarCenterX, targetCenterY, 30, 0, Math.PI * 2);
+            ctx.arc(avatarCenterX, targetCenterY, 32, 0, Math.PI * 2);
             ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 5.5;
-            ctx.stroke();
-            ctx.beginPath();
-            ctx.arc(avatarCenterX, targetCenterY, 19, 0, Math.PI * 2);
-            ctx.strokeStyle = "#ffffff";
-            ctx.lineWidth = 5.5;
+            ctx.lineWidth = 4.8;
+            ctx.shadowColor = "rgba(255, 255, 255, 0.85)";
+            ctx.shadowBlur = 8;
             ctx.stroke();
             ctx.restore();
 
@@ -961,7 +961,7 @@
             ctx.stroke();
             ctx.restore();
 
-            // Divisor
+            // Divisor vertical
             const dividerX = rankCardX + rankCardW / 2;
             ctx.save();
             ctx.strokeStyle = "rgba(255, 255, 255, 0.40)";
@@ -976,12 +976,12 @@
             const countryColX = rankCardX + rankCardW * 0.25;
             ctx.save();
             ctx.textAlign = "center";
-            ctx.font = 'bold 25px "Poppins", sans-serif';
+            ctx.font = 'bold 25px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "#ffffff";
             ctx.shadowColor = "rgba(0, 0, 0, 0.2)";
             ctx.shadowBlur = 4;
             ctx.fillText(config.countryRank, countryColX, rankCardY + 95);
-            ctx.font = 'bold 12.5px "Poppins", sans-serif';
+            ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "#221829";
             ctx.shadowColor = "transparent";
             ctx.fillText("Rango", countryColX, rankCardY + 116);
@@ -992,12 +992,12 @@
             const serverColX = rankCardX + rankCardW * 0.75;
             ctx.save();
             ctx.textAlign = "center";
-            ctx.font = 'bold 28px "Poppins", sans-serif';
+            ctx.font = 'bold 28px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "#ffe600";
             ctx.shadowColor = "rgba(255, 230, 0, 0.95)";
             ctx.shadowBlur = 14;
             ctx.fillText(config.serverRank, serverColX, rankCardY + 95);
-            ctx.font = 'bold 12.5px "Poppins", sans-serif';
+            ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "#221829";
             ctx.shadowColor = "transparent";
             ctx.fillText("Rango", serverColX, rankCardY + 116);
@@ -1021,13 +1021,13 @@
             function drawPillStack(centerX, topText, filledCount, labelLines, wobbleOffsets = [0, 0, 0, 0, 0, 0]) {
                 ctx.save();
                 ctx.textAlign = "center";
-                ctx.font = 'bold 13px "Poppins", sans-serif';
+                ctx.font = 'bold 13px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "#221829";
-                ctx.fillText(topText, centerX, barsCardY + 23);
+                ctx.fillText(topText, centerX, barsCardY + 22);
                 ctx.restore();
 
-                const pillBarW = 68, pillBarH = 11.5, pillBarR = 6, gap = 3.5;
-                const startY = barsCardY + 138;
+                const pillBarW = 68, pillBarH = 10.5, pillBarR = 6, gap = 4;
+                const startY = barsCardY + 106;
 
                 for (let i = 0; i < 6; i++) {
                     const py = startY - i * (pillBarH + gap);
@@ -1055,13 +1055,13 @@
 
                 ctx.save();
                 ctx.textAlign = "center";
-                ctx.font = 'bold 12px "Poppins", sans-serif';
+                ctx.font = '700 11.5px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "#221829";
                 if (labelLines.length === 1) {
-                    ctx.fillText(labelLines[0], centerX, barsCardY + 160);
+                    ctx.fillText(labelLines[0], centerX, barsCardY + 145);
                 } else {
-                    ctx.fillText(labelLines[0], centerX, barsCardY + 154);
-                    ctx.fillText(labelLines[1], centerX, barsCardY + 167);
+                    ctx.fillText(labelLines[0], centerX, barsCardY + 138);
+                    ctx.fillText(labelLines[1], centerX, barsCardY + 152);
                 }
                 ctx.restore();
             }
@@ -1097,13 +1097,13 @@
             ctx.fillStyle = mapBotOverlay;
             ctx.fillRect(mapCardX, mapCardY + mapCardH - 55, mapCardW, 55);
 
-            ctx.font = 'bold 24px "Poppins", sans-serif';
+            ctx.font = 'bold 24px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "#ffffff";
             ctx.shadowColor = "rgba(0, 0, 0, 0.7)";
             ctx.shadowBlur = 6;
             ctx.fillText(config.latest.title, mapCardX + 22, mapCardY + 36);
 
-            ctx.font = '600 17px "Poppins", sans-serif';
+            ctx.font = '600 17px "Montserrat", "Poppins", sans-serif';
             ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
             ctx.fillText(config.latest.artist, mapCardX + 22, mapCardY + 62);
 
@@ -1131,7 +1131,7 @@
             ctx.shadowBlur = 14;
             ctx.fill();
 
-            ctx.font = 'bold 11.5px "Poppins", sans-serif';
+            ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
@@ -1139,7 +1139,7 @@
             ctx.fillText(config.latest.status, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
             ctx.restore();
 
-            // Plays y Favs
+            // Plays y Favs con espaciado amplio
             const botStatsY = mapCardY + mapCardH - 18;
             let statCurX = mapCardX + 24;
 
@@ -1156,12 +1156,16 @@
             ctx.stroke();
 
             statCurX += 17;
-            ctx.font = 'bold 14.5px "Poppins", sans-serif';
+            ctx.font = 'bold 14.5px "Montserrat", "Poppins", sans-serif';
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
-            ctx.fillText(config.latest.plays, statCurX, botStatsY - 6);
+            const playText = config.latest.plays;
+            ctx.fillText(playText, statCurX, botStatsY - 6);
+            const playWidth = ctx.measureText(playText).width;
 
-            statCurX += 50;
+            // Espacio amplio entre plays y favs
+            statCurX += playWidth + 32;
+
             ctx.beginPath();
             const hx = statCurX, hy = botStatsY - 10;
             ctx.moveTo(hx, hy + 3);
@@ -1204,7 +1208,7 @@
             ctx.fillStyle = "rgba(15, 10, 22, 0.72)";
             ctx.fillRect(prevCardX, prevCardY, prevCardW, prevCardH);
 
-            ctx.font = 'bold 14px "Poppins", sans-serif';
+            ctx.font = 'bold 14px "Montserrat", "Poppins", sans-serif';
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillStyle = "#ffffff";
@@ -1260,19 +1264,19 @@
             ctx.textAlign = "center";
             cols.forEach((col, idx) => {
                 const cx = statCardX + colStep * idx + colStep / 2;
-                ctx.font = 'bold 17px "Poppins", sans-serif';
+                ctx.font = 'bold 17px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "#ffffff";
                 ctx.fillText(col.val1, cx, statCardY + 23);
 
-                ctx.font = '500 11px "Poppins", sans-serif';
+                ctx.font = '600 11px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
                 ctx.fillText(col.lbl1, cx, statCardY + 39);
 
-                ctx.font = 'bold 17px "Poppins", sans-serif';
+                ctx.font = 'bold 17px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "#ffffff";
                 ctx.fillText(col.val2, cx, statCardY + 73);
 
-                ctx.font = '500 11px "Poppins", sans-serif';
+                ctx.font = '600 11px "Montserrat", "Poppins", sans-serif';
                 ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
                 ctx.fillText(col.lbl2, cx, statCardY + 89);
             });
