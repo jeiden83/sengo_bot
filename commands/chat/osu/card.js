@@ -55,6 +55,17 @@ async function run(messages, args) {
         )
     );
 
+    const isPlayer = safeArgs.some(arg => 
+        typeof arg === "string" && (
+            arg.toLowerCase() === "-player" ||
+            arg.toLowerCase() === "--player" ||
+            arg.toLowerCase() === "player" ||
+            arg.toLowerCase() === "-jugador" ||
+            arg.toLowerCase() === "--jugador" ||
+            arg.toLowerCase() === "jugador"
+        )
+    );
+
     // Detectar modo de juego explícito si fue pasado en los argumentos
     let explicitMode = null;
     for (const arg of safeArgs) {
@@ -89,6 +100,7 @@ async function run(messages, args) {
             "-userpage", "--userpage", "userpage", "-up", "--up", "-bbcode", "--bbcode", "bbcode",
             "-f", "-force", "--force", "-r", "-refresh", "--refresh",
             "-mapper", "--mapper", "mapper", "-mpr", "--mpr", "mpr",
+            "-player", "--player", "player", "-jugador", "--jugador", "jugador",
             "-t", "-taiko", "--taiko", "taiko",
             "-c", "-catch", "--catch", "catch", "-ctb", "--ctb", "ctb", "-fruits", "--fruits", "fruits",
             "-mania", "--mania", "mania", "-m",
@@ -207,16 +219,51 @@ async function run(messages, args) {
         return isSlash ? { content: notFoundErr, embeds: [] } : notFoundErr;
     }
 
-    if (isMapper) {
+    let shouldRenderMapper = isMapper;
+    let preloadedMapperData = null;
+
+    // Si no se forzó el card de jugador (-jugador / -player) ni un preset de jugador,
+    // y tampoco se especificó -mapper explícito ni -userpage:
+    // verificar si el usuario está trackeado como mapper en Sengo y cumple algún título
+    if (!isPlayer && !isMapper && !isUserpage && !explicitPreset) {
+        try {
+            const MappingTrackerModel = require("../../../models/MappingTrackerModel.js");
+            const subs = await MappingTrackerModel.getSubscriptionsForOsuId(osuUser.id);
+            if (Array.isArray(subs) && subs.length > 0) {
+                const MapperCardModel = require("../../../models/MapperCardModel.js");
+                const mapperData = await MapperCardModel.getMapperCardData(osuUser, {
+                    guildId: message?.guild?.id,
+                    gamemode: explicitMode
+                });
+
+                if (Array.isArray(mapperData?.allTitles) && mapperData.allTitles.length > 0) {
+                    shouldRenderMapper = true;
+                    preloadedMapperData = mapperData;
+                }
+            }
+        } catch (autoMapperErr) {
+            console.warn("[s.card] Error al verificar auto-card de mapper:", autoMapperErr?.message || autoMapperErr);
+        }
+    }
+
+    if (shouldRenderMapper) {
         try {
             if (logger) logger.process(`Obteniendo datos de mapper y renderizando tarjeta para ${osuUser.username}`);
             const MapperCardModel = require("../../../models/MapperCardModel.js");
             const { renderMapperCard } = require("../../../views/osuMapperCardViews.js");
 
-            const [mapperData] = await Promise.all([
-                MapperCardModel.getMapperCardData(osuUser, { guildId: message?.guild?.id }),
-                progressPromise
-            ]);
+            let mapperData = preloadedMapperData;
+            if (!mapperData) {
+                [mapperData] = await Promise.all([
+                    MapperCardModel.getMapperCardData(osuUser, {
+                        guildId: message?.guild?.id,
+                        gamemode: explicitMode
+                    }),
+                    progressPromise
+                ]);
+            } else {
+                await progressPromise;
+            }
 
             const canvasBuffer = await renderMapperCard(osuUser, mapperData, { forceRefresh: isForce, locale });
             const attachment = new AttachmentBuilder(canvasBuffer, { name: "mapper_card.png" });

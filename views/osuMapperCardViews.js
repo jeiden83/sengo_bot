@@ -291,10 +291,15 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = topVignette;
     ctx.fillRect(0, 0, W, 140);
 
-    // 2. TÍTULO SUPERIOR FIXED ("Novato Ranked" o personalizado)
+    // 2. TÍTULO SUPERIOR DINÁMICO
     const cardTitle = options.title || mapperData.title || "Novato Ranked";
     ctx.save();
-    ctx.font = 'bold 28px "Montserrat", "Poppins", sans-serif';
+    let titleFontSize = 28;
+    ctx.font = `bold ${titleFontSize}px "Montserrat", "Poppins", sans-serif`;
+    while (ctx.measureText(cardTitle).width > 460 && titleFontSize > 18) {
+        titleFontSize -= 1;
+        ctx.font = `bold ${titleFontSize}px "Montserrat", "Poppins", sans-serif`;
+    }
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillStyle = "#ffffff";

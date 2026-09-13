@@ -52,6 +52,12 @@ const data = new SlashCommandBuilder()
     )
     .addBooleanOption(option =>
         option
+            .setName("jugador")
+            .setDescription("¿Forzar la tarjeta clásica de jugador (ignora si es mapper)?")
+            .setRequired(false)
+    )
+    .addBooleanOption(option =>
+        option
             .setName("recargar")
             .setDescription("¿Forzar la recarga ignorando la caché de 1 hora?")
             .setRequired(false)
@@ -69,6 +75,7 @@ async function run(interaction, res, chat_commands) {
     const isEmbed = interaction.options.getBoolean("embed");
     const isUserpage = interaction.options.getBoolean("userpage");
     const isMapper = interaction.options.getBoolean("mapper");
+    const isPlayer = interaction.options.getBoolean("jugador");
     const preset = interaction.options.getString("preset");
     const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
@@ -79,6 +86,7 @@ async function run(interaction, res, chat_commands) {
     if (modo) args.push(`-${modo}`);
     if (preset) args.push(`-${preset}`);
     if (isMapper) args.push("-mapper");
+    if (isPlayer) args.push("-jugador");
     if (isEmbed) args.push("-embed");
     if (isUserpage) args.push("-userpage");
     if (isForce) args.push("-refresh");
