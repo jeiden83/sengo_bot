@@ -982,6 +982,8 @@ async function getCountrySkillsLeaderboard({ countryCode = "VE", gamemode = "osu
             .select("*", { count: "exact" })
             .eq("country_code", normalizedCountry)
             .eq("gamemode", normalizedMode)
+            .gt("pp", 0)
+            .gt("country_rank", 0)
             .order(normalizedSkill, { ascending: false })
             .range(offset, offset + limit - 1);
 
