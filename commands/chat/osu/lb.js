@@ -1,4 +1,4 @@
-const { findBeatmapInChannel, getBeatmap, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
+const { findBeatmapInChannel, getBeatmap, getBeatmapModeAttributes, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
 
@@ -137,6 +137,12 @@ async function run(messages, args) {
     }
 
     const targetGamemode = parsed_args.gamemode || detected_gamemode || beatmap_metadata.mode;
+    const modeAttrs = await getBeatmapModeAttributes(beatmap_metadata, targetGamemode, parsed_args.ppEngine);
+    beatmap_metadata.difficulty_rating = modeAttrs.stars;
+    if (modeAttrs.maxCombo) {
+        beatmap_metadata.max_combo = modeAttrs.maxCombo;
+    }
+    beatmap_metadata.mode = modeAttrs.mode;
 
     // APLICAR FILTROS DE MODS
     const modsStr = parsed_args.modFilter || "";

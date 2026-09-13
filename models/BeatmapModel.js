@@ -811,6 +811,125 @@ async function saveBeatmapToDB(beatmap, supabase = null) {
     }
 }
 
+const modeAttrCache = new Map();
+
+/**
+ * Obtiene los atributos de dificultad (estrellas, maxCombo, modo) para un modo de juego objetivo.
+ * Si el modo coincide con el nativo del beatmap, devuelve los atributos nativos de inmediato.
+ * Si el beatmap es convertido, calcula los atributos de dificultad convertidos con el motor de PP.
+ */
+async function getBeatmapModeAttributes(beatmap_metadata, targetMode, engineChoice = null) {
+    if (!beatmap_metadata) {
+        return { stars: 0, maxCombo: 0, mode: targetMode || 'osu' };
+    }
+
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    let normTargetMode = targetMode;
+    if (typeof normTargetMode === 'number') {
+        normTargetMode = rulesetMap[normTargetMode] || 'osu';
+    }
+    normTargetMode = (normTargetMode || beatmap_metadata.mode || 'osu').toLowerCase();
+
+    let normNativeMode = beatmap_metadata.mode;
+    if (typeof normNativeMode === 'number') {
+        normNativeMode = rulesetMap[normNativeMode] || 'osu';
+    }
+    normNativeMode = (normNativeMode || 'osu').toLowerCase();
+
+    const nativeStars = typeof beatmap_metadata.difficulty_rating === 'number'
+        ? beatmap_metadata.difficulty_rating
+        : parseFloat(beatmap_metadata.difficulty_rating || 0);
+
+    // Si coincide con el modo nativo, no requiere conversión
+    if (normTargetMode === normNativeMode) {
+        return {
+            stars: nativeStars,
+            maxCombo: beatmap_metadata.max_combo || 0,
+            mode: normNativeMode
+        };
+    }
+
+    // Caché en memoria para evitar recalcular múltiples veces en paginaciones
+    const cacheKey = `${beatmap_metadata.id}:${normTargetMode}:${engineChoice || 'default'}`;
+    const cached = modeAttrCache.get(cacheKey);
+    if (cached && (Date.now() - cached.timestamp < 3600000)) {
+        return cached.data;
+    }
+
+    try {
+        const engine = ppEngine.getEngine(engineChoice);
+        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata, engineChoice);
+
+        const gameModeMap = {
+            'osu': engine.GameMode.Osu,
+            'taiko': engine.GameMode.Taiko,
+            'fruits': engine.GameMode.Catch,
+            'mania': engine.GameMode.Mania,
+            0: engine.GameMode.Osu,
+            1: engine.GameMode.Taiko,
+            2: engine.GameMode.Catch,
+            3: engine.GameMode.Mania
+        };
+
+        const activeMode = gameModeMap[normTargetMode] !== undefined ? gameModeMap[normTargetMode] : engine.GameMode.Osu;
+        if (map.mode !== activeMode) {
+            map.convert(activeMode);
+        }
+
+        const baseAttrs = new engine.Difficulty({ mods: [] }).calculate(map);
+        const stars = (baseAttrs && typeof baseAttrs.stars === 'number') ? baseAttrs.stars : nativeStars;
+        const maxCombo = (baseAttrs && typeof baseAttrs.maxCombo === 'number') ? baseAttrs.maxCombo : (beatmap_metadata.max_combo || 0);
+        map.free();
+
+        const result = { stars, maxCombo, mode: normTargetMode };
+        setWithLimit(modeAttrCache, cacheKey, { data: result, timestamp: Date.now() });
+        return result;
+    } catch (err) {
+        console.error(`[BeatmapModel] Error al calcular estrellas para modo ${normTargetMode}:`, err.message);
+
+        // Fallback a API de atributos oficial si hay token disponible
+        try {
+            const fs = require('fs');
+            let globalToken = null;
+            try {
+                const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+                globalToken = tokenData.access_token;
+            } catch {}
+
+            if (globalToken) {
+                const apiRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/attributes`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${globalToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ ruleset: normTargetMode })
+                });
+                if (apiRes.ok) {
+                    const json = await apiRes.json();
+                    if (json && json.attributes && typeof json.attributes.star_rating === 'number') {
+                        const result = {
+                            stars: json.attributes.star_rating,
+                            maxCombo: json.attributes.max_combo || beatmap_metadata.max_combo || 0,
+                            mode: normTargetMode
+                        };
+                        setWithLimit(modeAttrCache, cacheKey, { data: result, timestamp: Date.now() });
+                        return result;
+                    }
+                }
+            }
+        } catch (apiErr) {
+            console.error(`[BeatmapModel] Fallback API de atributos falló:`, apiErr.message);
+        }
+
+        return {
+            stars: nativeStars,
+            maxCombo: beatmap_metadata.max_combo || 0,
+            mode: normTargetMode
+        };
+    }
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
@@ -824,7 +943,8 @@ const BeatmapModel = {
     getTagsForBeatmap,
     updateBeatmapsetTagsInDB,
     isScraperBlocked,
-    saveBeatmapToDB
+    saveBeatmapToDB,
+    getBeatmapModeAttributes
 };
 
 module.exports = BeatmapModel;

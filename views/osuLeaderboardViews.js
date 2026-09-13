@@ -36,9 +36,10 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
  
-        const statistics = `\`${getPlainStatsString(score.statistics, beatmap_metadata.mode)}\``;
+        const activeGamemode = beatmap_metadata.mode || 'osu';
+        const statistics = `\`${getPlainStatsString(score.statistics, activeGamemode)}\``;
         let ratio_str = "";
-        if (beatmap_metadata.mode === 'mania') {
+        if (activeGamemode === 'mania') {
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
@@ -88,7 +89,8 @@ function doOsuGapContent(beatmap_metadata, user_scores, sorted_user_scores, page
 
     const isUnranked = beatmap_metadata.status === 'pending' || beatmap_metadata.status === 'graveyard';
     const unrankedLabel = isUnranked ? t(locale, 'gap.unranked_map') : '';
-    const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})${unrankedLabel}`;
+    const starsFormatted = formatDecimal(difficulty_rating || 0, locale, 2);
+    const mapa = `[${title} [${version}] - ${starsFormatted + '★'} ](${url})${unrankedLabel}`;
     let content = t(locale, 'gap.content_title', { totalUsers: user_scores.length, scoreUsers: sorted_user_scores.length, mapa });
 
     if (sorted_user_scores.length > 5) {
@@ -128,9 +130,10 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
         const max_combo = score.max_combo;
         const beatmap_max_combo = beatmap_metadata.max_combo;
 
-        const stats_str = getPlainStatsString(score.statistics, beatmap_metadata.mode);
+        const activeGamemode = parsed_args.gamemode || beatmap_metadata.mode || 'osu';
+        const stats_str = getPlainStatsString(score.statistics, activeGamemode);
         let ratio_str = "";
-        if (beatmap_metadata.mode === 'mania') {
+        if (activeGamemode === 'mania') {
             const stats = score.statistics || {};
             const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
@@ -198,7 +201,8 @@ function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, fr
     const displayMode = getDisplayGamemode(targetGamemode);
     const suffix = isLazerMode ? " (lazer)" : " (stable)";
 
-    const mapa = `[${title} [${version}] - ${difficulty_rating + '★'} ](${url})`;
+    const starsFormatted = formatDecimal(difficulty_rating || 0, locale, 2);
+    const mapa = `[${title} [${version}] - ${starsFormatted + '★'} ](${url})`;
     let titleText = "";
     if (serverName) {
         titleText = t(locale, 'leaderboard.content_server', {

@@ -965,6 +965,23 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             );
             if (mapObj) {
                 const engine = ppEngine.getEngine();
+                const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+                const playMode = pinnedPlay.mode || (pinnedPlay.ruleset_id !== undefined ? rulesetMap[pinnedPlay.ruleset_id] : null) || user.playmode || 'osu';
+                const gameModeMap = {
+                    'osu': engine.GameMode.Osu,
+                    'taiko': engine.GameMode.Taiko,
+                    'fruits': engine.GameMode.Catch,
+                    'mania': engine.GameMode.Mania,
+                    0: engine.GameMode.Osu,
+                    1: engine.GameMode.Taiko,
+                    2: engine.GameMode.Catch,
+                    3: engine.GameMode.Mania
+                };
+                const activeMode = gameModeMap[playMode] !== undefined ? gameModeMap[playMode] : engine.GameMode.Osu;
+                if (mapObj.mode !== activeMode) {
+                    mapObj.convert(activeMode);
+                }
+
                 const rawMods = Array.isArray(pinnedPlay.mods)
                     ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
                     : (typeof pinnedPlay.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : []);
@@ -972,6 +989,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                 const srMods = rawMods.filter(m => !["FL", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
                 const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
                 const stars = diffAttrs?.stars;
+                mapObj.free();
                 if (typeof stars === "number" && !isNaN(stars) && stars > 0) {
                     return stars;
                 }

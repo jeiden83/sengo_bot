@@ -1,4 +1,4 @@
-const { findBeatmapInChannel, getBeatmap, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
+const { findBeatmapInChannel, getBeatmap, getBeatmapModeAttributes, getNewBeatmapUserScores, getUnrankedUserScores, argsParserNoCommand } = require("../../utils/osu.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { doOsuGapEmbed, doOsuGapContent } = require("../../../views/osuLeaderboardViews.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
@@ -70,11 +70,13 @@ async function run(messages, args){
     // Para revisar el modo de juego y estado del beatmap
     const beatmap_metadata = await getBeatmap(beatmap_url);
 
-    const forcedMode = parsed_args.gamemode || null;
-
-    if (forcedMode && beatmap_metadata.mode === 'osu') {
-        beatmap_metadata.mode = forcedMode;
+    const targetGamemode = parsed_args.gamemode || beatmap_metadata.mode;
+    const modeAttrs = await getBeatmapModeAttributes(beatmap_metadata, targetGamemode, parsed_args.ppEngine);
+    beatmap_metadata.difficulty_rating = modeAttrs.stars;
+    if (modeAttrs.maxCombo) {
+        beatmap_metadata.max_combo = modeAttrs.maxCombo;
     }
+    beatmap_metadata.mode = modeAttrs.mode;
 
     const targetGuildId = parsed_args.targetGuildId;
     if (targetGuildId) {

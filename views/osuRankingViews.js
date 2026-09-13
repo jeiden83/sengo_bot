@@ -295,7 +295,9 @@ async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFi
         const ppStr = score.pp ? `${formatDecimal(score.pp, locale, 2)}pp` : `${formatDecimal(0, locale, 2)}pp`;
         const accStr = formatDecimal(score.accuracy * 100, locale, 2);
         const comboStr = score.max_combo !== null && score.max_combo !== undefined ? `x${score.max_combo}` : 'x?';
-        const statsStr = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        const scoreMode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
+        const statsStr = `\`${getPlainStatsString(score.statistics, scoreMode)}\``;
         
         let starsVal = starsMap[score.beatmap.id] || score.beatmap.difficulty_rating || 0;
         const starsStr = starsVal ? `[${formatDecimal(starsVal, locale, 2)}★]` : "";

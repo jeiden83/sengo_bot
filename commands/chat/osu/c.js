@@ -361,37 +361,15 @@ async function run(messages, args) {
 
     let startIndex = (page - 1) * 10;
 
-    let targetStars = beatmap_metadata.difficulty_rating;
-    try {
-        const { getBeatmap_osu } = require("../../utils/osu.js");
-        const ppEngine = require("../../../utils/ppEngine.js");
-        const engine = ppEngine.getEngine(parsed_args.ppEngine);
-        const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata, parsed_args.ppEngine);
-        
-        const activeGamemode = parsed_args.gamemode || targetGamemode || beatmap_metadata.mode;
-        const gameModeMap = {
-            'osu': engine.GameMode.Osu,
-            'taiko': engine.GameMode.Taiko,
-            'fruits': engine.GameMode.Catch,
-            'mania': engine.GameMode.Mania,
-            0: engine.GameMode.Osu,
-            1: engine.GameMode.Taiko,
-            2: engine.GameMode.Catch,
-            3: engine.GameMode.Mania
-        };
-        const activeMode = gameModeMap[activeGamemode] !== undefined ? gameModeMap[activeGamemode] : engine.GameMode.Osu;
-        if (map.mode !== activeMode) {
-            map.convert(activeMode);
-        }
-        
-        const baseAttrs = new engine.Difficulty().calculate(map);
-        if (baseAttrs && typeof baseAttrs.stars === 'number') {
-            targetStars = baseAttrs.stars;
-        }
-        map.free();
-    } catch (err) {
-        console.error("Error calculating target stars for compare:", err);
+    const { getBeatmapModeAttributes } = require("../../utils/osu.js");
+    const activeGamemode = parsed_args.gamemode || targetGamemode || beatmap_metadata.mode;
+    const modeAttrs = await getBeatmapModeAttributes(beatmap_metadata, activeGamemode, parsed_args.ppEngine);
+    const targetStars = modeAttrs.stars;
+    beatmap_metadata.difficulty_rating = modeAttrs.stars;
+    if (modeAttrs.maxCombo) {
+        beatmap_metadata.max_combo = modeAttrs.maxCombo;
     }
+    beatmap_metadata.mode = modeAttrs.mode;
 
     const OsuUserModel = require("../../../models/OsuUserModel.js");
     const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);

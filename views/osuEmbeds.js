@@ -64,9 +64,11 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const mods_used = formatMods(recent_scores.mods, isLazer);
     const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
-    const stats_str = getStatsString(stats, recent_scores.beatmap.mode);
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    const activeGamemode = recent_scores.mode || (recent_scores.ruleset_id !== undefined ? rulesetMap[recent_scores.ruleset_id] : null) || recent_scores.beatmap?.mode || 'osu';
+    const stats_str = getStatsString(stats, activeGamemode);
     let ratio_str = "";
-    if (recent_scores.beatmap.mode === 'mania') {
+    if (activeGamemode === 'mania') {
         const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
@@ -219,7 +221,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         }
     }
 
-    let authorName = t(locale, 'recent.embed_author', { username, mode: recent_scores.beatmap.mode });
+    let authorName = t(locale, 'recent.embed_author', { username, mode: activeGamemode });
     let footerText = t(locale, 'recent.embed_footer_default');
 
     const isLazerCustomRework = pre_calculated.isRework && hasLazerCustomMods(recent_scores.mods);
@@ -233,7 +235,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         if (isLazerCustomRework) {
             footerText += ` • ⚠️ ${t(locale, 'rework.lazer_custom_mods_footer_tag')}`;
         }
-    } else if (recent_scores.beatmap.mode === 'mania') {
+    } else if (activeGamemode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null) {
             if (ratioVal < 1) {
@@ -249,7 +251,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${score}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}`;
-    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu', locale);
+    const line3 = getBeatmapStatsLine(map, recent_scores.mods, activeGamemode, locale);
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
     const reworkDisclaimer = isLazerCustomRework ? `\n${t(locale, 'rework.lazer_custom_mods_warning')}` : '';
 
@@ -316,8 +318,9 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
             }
         }
 
-        const stats_str = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
-        const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        const gamemode = parsed_args.gamemode || score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
+        const stats_str = `\`${getPlainStatsString(score.statistics, gamemode)}\``;
         let ratio_str = "";
         if (gamemode === 'mania') {
             const stats = score.statistics || {};
@@ -407,10 +410,12 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const map_completion = score.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = score.statistics || {};
-    const stats_str = getStatsString(stats, score.beatmap.mode);
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    const activeGamemode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || parsed_args.gamemode || score.beatmap?.mode || 'osu';
+    const stats_str = getStatsString(stats, activeGamemode);
 
     let ratio_str = "";
-    if (score.beatmap.mode === 'mania') {
+    if (activeGamemode === 'mania') {
         const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
@@ -474,7 +479,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         ? `⭐ **Skill (${score.selectedSkill.toUpperCase()}):** \`${formatDecimal(score.skillPoints, locale, 2)} pts\`\n`
         : "";
     const line2 = `${prefix_desc}${skillLine}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || 'osu', locale);
+    const line3 = getBeatmapStatsLine(map, score.mods, activeGamemode, locale);
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     let authorName = parsed_args.nochoke
@@ -567,8 +572,9 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const combo_val_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
         const maxComboStr = max_combo !== null && max_combo !== undefined ? max_combo : '?';
 
-        const stats_str = `\`${getPlainStatsString(score.statistics, score.beatmap.mode)}\``;
-        const gamemode = score.beatmap.mode || parsed_args.gamemode || 'osu';
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        const gamemode = parsed_args.gamemode || score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
+        const stats_str = `\`${getPlainStatsString(score.statistics, gamemode)}\``;
         let ratio_str = "";
         if (gamemode === 'mania') {
             const stats = score.statistics || {};
@@ -678,10 +684,12 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const map_completion = score.passed ? `` : `(${formatDecimal(compVal, locale, 2)}%)`;
 
     const stats = score.statistics || {};
-    const stats_str = getStatsString(stats, beatmap_metadata.mode);
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    const activeGamemode = parsed_args.gamemode || score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || beatmap_metadata?.mode || 'osu';
+    const stats_str = getStatsString(stats, activeGamemode);
 
     let ratio_str = "";
-    if (beatmap_metadata.mode === 'mania') {
+    if (activeGamemode === 'mania') {
         const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
@@ -745,7 +753,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `${disclaimer}${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, score.mods, map.mode || parsed_args.gamemode || 'osu', locale);
+    const line3 = getBeatmapStatsLine(map, score.mods, activeGamemode, locale);
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     const embed = new EmbedBuilder()
@@ -802,8 +810,9 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
             map_completion = `*(${formatDecimal(compVal, locale, 1)}% pass)*`;
         }
 
-        const stats_str = `\`${getPlainStatsString(score.statistics, beatmap_metadata.mode)}\``;
-        const gamemode = beatmap_metadata.mode || parsed_args.gamemode || 'osu';
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        const gamemode = parsed_args.gamemode || score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || beatmap_metadata?.mode || 'osu';
+        const stats_str = `\`${getPlainStatsString(score.statistics, gamemode)}\``;
         let ratio_str = "";
         if (gamemode === 'mania') {
             const stats = score.statistics || {};
@@ -883,8 +892,10 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = recent_scores.statistics || {};
-    let stats_str = getStatsString(stats, recent_scores.beatmap.mode);
-    if (recent_scores.beatmap.mode === 'fruits') {
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    const activeGamemode = recent_scores.mode || (recent_scores.ruleset_id !== undefined ? rulesetMap[recent_scores.ruleset_id] : null) || recent_scores.beatmap?.mode || 'osu';
+    let stats_str = getStatsString(stats, activeGamemode);
+    if (activeGamemode === 'fruits') {
         const { small_tick_miss = 0 } = stats;
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
         const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
@@ -899,7 +910,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
 
     let ratio_str = "";
-    if (recent_scores.beatmap.mode === 'mania') {
+    if (activeGamemode === 'mania') {
         const ratio = great > 0 ? formatDecimal(perfect / great, locale, 2) : perfect;
         ratio_str = ` ▸ ${ratio}:1`;
     }
@@ -909,7 +920,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${formatted_score_val}** **▸** **\`${recent_scores.max_combo || 0}x\`**/*\`${pre_calculated.beatmap_max_combo ? pre_calculated.beatmap_max_combo + 'x' : '?'}\`*`;
-    const line3 = getBeatmapStatsLine(map, recent_scores.mods, map.mode || 'osu', locale);
+    const line3 = getBeatmapStatsLine(map, recent_scores.mods, activeGamemode, locale);
     const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
 
     let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
@@ -1994,7 +2005,7 @@ function getOsuCompareContent(parsed_args, username, beatmap_metadata, locale = 
     const { difficulty_rating, version, url } = beatmap_metadata;
 
     const starsVal = customStars !== null ? customStars : difficulty_rating;
-    let mapa = `[${title} [${version}] - ${starsVal.toFixed(2) + '★'} ](${url})`;
+    let mapa = `[${title} [${version}] - ${formatDecimal(starsVal || 0, locale, 2) + '★'} ](${url})`;
     const displayMode = getDisplayGamemode(parsed_args.gamemode);
     return t(locale, 'compare.list_embed_content', { username, mode: displayMode, mapa });
 }

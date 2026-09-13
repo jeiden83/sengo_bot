@@ -551,7 +551,9 @@ async function run(messages, args, options = {}) {
 
     async function getListStars(chunk) {
         return Promise.all(chunk.map(async (score) => {
-            if (score.mods.length === 0) {
+            const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+            const targetMode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || parser_res.parsed_args.gamemode || score.beatmap.mode || 'osu';
+            if (score.mods.length === 0 && score.beatmap.mode === targetMode) {
                 return score.beatmap.difficulty_rating;
             }
             try {

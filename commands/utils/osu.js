@@ -45,5 +45,6 @@ module.exports = {
     getBeatmapsetTags: BeatmapModel.getBeatmapsetTags,
     fetchRankingPage: OsuUserModel.fetchRankingPage,
     fetchRankingAcc: OsuUserModel.fetchRankingAcc,
-    ensureNoChokeScores: OsuScoreModel.ensureNoChokeScores
+    ensureNoChokeScores: OsuScoreModel.ensureNoChokeScores,
+    getBeatmapModeAttributes: BeatmapModel.getBeatmapModeAttributes
 }
