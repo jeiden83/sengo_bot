@@ -567,7 +567,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
  * Realiza el desglose completo de habilidades para el comando .skills,
  * calculando las estrellas exactas con mods para el Top 3 de cada habilidad.
  */
-async function analyzeSkillsBreakdown(scores, mode = "osu", targetSkill = null) {
+async function analyzeSkillsBreakdown(scores, mode = "osu") {
     const base = analyzeSkills(scores, true, mode);
     const skillKeys = base.skillKeys || ["aim", "speed", "acc", "reading"];
     if (!scores || scores.length === 0) {
@@ -589,11 +589,10 @@ async function analyzeSkillsBreakdown(scores, mode = "osu", targetSkill = null) 
     const ACC_NERF = 1.1;
     const READING_NERF = 2.4;
 
-    // Recolectar candidatos: Top 10 por habilidad analítica + Top jugadas por PP global
-    // ponytail: Si se solicita una habilidad específica (targetSkill), limitamos los candidatos para reducir descargas I/O en frío
-    const activeKeys = targetSkill && skillKeys.includes(targetSkill) ? [targetSkill] : skillKeys;
+    // Recolectar candidatos: Top 10 por habilidad analítica + Top 20 jugadas por PP global
+    // ponytail: Pool unificado de candidatos para paridad 1:1 total entre .skills y .skills -top
     const candidateScoreMap = new Map();
-    activeKeys.forEach(k => {
+    skillKeys.forEach(k => {
         const capKey = k.charAt(0).toUpperCase() + k.slice(1);
         (base[`top${capKey}`] || []).slice(0, 10).forEach(item => {
             if (item.score?.beatmap?.id) {
@@ -601,7 +600,7 @@ async function analyzeSkillsBreakdown(scores, mode = "osu", targetSkill = null) 
             }
         });
     });
-    scores.slice(0, targetSkill ? 10 : 20).forEach(s => {
+    scores.slice(0, 20).forEach(s => {
         if (s.beatmap?.id) candidateScoreMap.set(s.beatmap.id, s);
     });
 

@@ -63,7 +63,7 @@ async function run(messages, args, options = {}) {
         const mode = parser_res.parsed_args.gamemode || "osu";
         let selectedSkill = options.requestedSkill || parser_res.parsed_args.skillFilter;
         const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
-        const skillsData = await analyzeSkillsBreakdown(originalScores, mode, selectedSkill);
+        const skillsData = await analyzeSkillsBreakdown(originalScores, mode);
 
         if (!selectedSkill) {
             const keys = skillsData.skillKeys || ['aim', 'speed', 'acc', 'reading'];
