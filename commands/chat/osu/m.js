@@ -191,6 +191,7 @@ async function run(messages, args) {
         readingStars: diffAttrs.readingStars || diffAttrs.reading || 0,
         stamina: diffAttrs.stamina || 0,
         rhythm: diffAttrs.rhythm || 0,
+        od: od != null ? od : (diffAttrs.od || 0),
         skillsByAcc
     };
 

@@ -23,8 +23,10 @@ function generateSkillsBarChart({
 }) {
     const width = 750;
     const height = 290;
-    const canvas = createCanvas(width, height);
+    const scale = 2; // Renderizado 2x para máxima nitidez (Retina / HiDPI)
+    const canvas = createCanvas(width * scale, height * scale);
     const ctx = canvas.getContext('2d');
+    ctx.scale(scale, scale);
 
     const mode = activeMode || 'osu';
     const skillsByAcc = skillsData.skillsByAcc || [
@@ -35,6 +37,9 @@ function generateSkillsBarChart({
     const speedStars = Number(skillsData.speedStars || 0);
     const readingStars = Number(skillsData.readingStars || 0);
     const flashlightStars = Number(skillsData.flashlightStars || 0);
+    const odVal = skillsData.od != null ? Number(skillsData.od) : null;
+    const accStars = skillsData.accStars != null && skillsData.accStars > 0 ? Number(skillsData.accStars) : null;
+    const accBadge = accStars ? `${accStars.toFixed(2)}★` : (odVal != null && odVal > 0 ? `OD ${odVal.toFixed(1)}` : null);
 
     // 1. Fondo principal estilizado
     ctx.fillStyle = '#141215';
@@ -102,7 +107,7 @@ function generateSkillsBarChart({
         pills.push({
             label: 'ACCURACY',
             value: `${Number(topRow.accPP || 0).toFixed(1)} pp`,
-            stars: null,
+            stars: accBadge,
             color: '#4ade80',
             bg: 'rgba(74, 222, 128, 0.12)'
         });
@@ -134,7 +139,7 @@ function generateSkillsBarChart({
         pills.push({
             label: 'ACCURACY',
             value: `${Number(topRow.accPP || 0).toFixed(1)} pp`,
-            stars: null,
+            stars: accBadge,
             color: '#4ade80',
             bg: 'rgba(74, 222, 128, 0.12)'
         });
