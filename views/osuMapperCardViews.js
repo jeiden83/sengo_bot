@@ -4,6 +4,7 @@ const axios = require("axios");
 const sharp = require("sharp");
 const { createCanvas, loadImage, registerFont } = require("canvas");
 const { renderQueue } = require("../utils/RenderQueue.js");
+const { t } = require("../utils/i18n.js");
 
 // 1. Registrar tipografías Montserrat (con fallback a Poppins)
 const fontDir = path.join(__dirname, "../assets/fonts");
@@ -295,10 +296,11 @@ async function renderMapperCard(user, mapperData = null, options = {}) {
 }
 
 async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
+    const locale = options?.locale || mapperData?.locale || "es";
     // Si mapperData no fue provisto, obtenerlo mediante el modelo
     if (!mapperData) {
         const MapperCardModel = require("../models/MapperCardModel.js");
-        mapperData = await MapperCardModel.getMapperCardData(user, options);
+        mapperData = await MapperCardModel.getMapperCardData(user, { ...options, locale });
     }
 
     const W = 1024;
@@ -369,7 +371,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillRect(0, 0, W, 140);
 
     // 2. TÍTULO SUPERIOR DINÁMICO
-    const cardTitle = options.title || mapperData.title || "Novato Ranked";
+    const cardTitle = options.title || mapperData.title || t(locale, "mapper_card.titles.mapper_apprentice");
     ctx.save();
     let titleFontSize = 28;
     ctx.font = `bold ${titleFontSize}px "Montserrat", "Poppins", sans-serif`;
@@ -587,7 +589,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.stroke();
     ctx.restore();
 
-    // Rango País
+    // Rango Nacional
     const countryColX = rankCardX + rankCardW * 0.25;
     ctx.save();
     ctx.textAlign = "center";
@@ -600,8 +602,8 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#221829";
     ctx.shadowColor = "transparent";
-    ctx.fillText("Rango", countryColX, rankCardY + 116);
-    ctx.fillText("Pais", countryColX, rankCardY + 130);
+    ctx.fillText(t(locale, "mapper_card.rank_national_line1"), countryColX, rankCardY + 116);
+    ctx.fillText(t(locale, "mapper_card.rank_national_line2"), countryColX, rankCardY + 130);
     ctx.restore();
 
     // Rango Servidor (en dorado vibrante)
@@ -617,8 +619,8 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.font = 'bold 12.5px "Montserrat", "Poppins", sans-serif';
     ctx.fillStyle = "#221829";
     ctx.shadowColor = "transparent";
-    ctx.fillText("Rango", serverColX, rankCardY + 116);
-    ctx.fillText("Servidor", serverColX, rankCardY + 130);
+    ctx.fillText(t(locale, "mapper_card.rank_server_line1"), serverColX, rankCardY + 116);
+    ctx.fillText(t(locale, "mapper_card.rank_server_line2"), serverColX, rankCardY + 130);
     ctx.restore();
 
     // 5. TARJETA CENTRAL-MEDIA (BARRAS DE ATRIBUTOS DEL MAPPER)
@@ -695,9 +697,10 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     const rhythmBars = mapperData.metrics?.rhythmBars ?? 1;
     const reachBars = mapperData.metrics?.reachBars ?? 3;
 
-    drawPillStack(barsCardX + barsCardW * 0.22, mapperData.metrics?.amplitudeSR || "5.5*", ampBars, ["Amplitud de", "rango"], [1, -1.5, 0.5, 2, -1, 0]);
-    drawPillStack(barsCardX + barsCardW * 0.50, mapperData.metrics?.rhythmPct || "23.5%", rhythmBars, ["Ritmo"], [-1, 1.5, -0.5, 1, -1.5, 0]);
-    drawPillStack(barsCardX + barsCardW * 0.78, mapperData.metrics?.reachPct || "52.8%", reachBars, ["Alcance"], [1.5, -1, 1, 2, -1, 0]);
+    const ampLines = [t(locale, "mapper_card.metric_amplitude_line1"), t(locale, "mapper_card.metric_amplitude_line2")];
+    drawPillStack(barsCardX + barsCardW * 0.22, mapperData.metrics?.amplitudeSR || "5.5*", ampBars, ampLines, [1, -1.5, 0.5, 2, -1, 0]);
+    drawPillStack(barsCardX + barsCardW * 0.50, mapperData.metrics?.rhythmPct || "23.5%", rhythmBars, [t(locale, "mapper_card.metric_rhythm_line1")], [-1, 1.5, -0.5, 1, -1.5, 0]);
+    drawPillStack(barsCardX + barsCardW * 0.78, mapperData.metrics?.reachPct || "52.8%", reachBars, [t(locale, "mapper_card.metric_reach_line1")], [1.5, -1, 1, 2, -1, 0]);
 
     // 6. TARJETA SUPERIOR DERECHA (ÚLTIMO MAPA SUBIDO)
     const mapCardX = 525;
@@ -731,7 +734,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = mapBotOverlay;
     ctx.fillRect(mapCardX, mapCardY + mapCardH - 55, mapCardW, 55);
 
-    const mapTitle = mapperData.latestMap?.title || "No Beatmaps Found";
+    const mapTitle = mapperData.latestMap?.title || t(locale, "mapper_card.no_maps_found");
     const mapArtist = mapperData.latestMap?.artist || "";
 
     ctx.font = 'bold 24px "Montserrat", "Poppins", sans-serif';
@@ -889,7 +892,8 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = "#ffffff";
     ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
     ctx.shadowBlur = 8;
-    ctx.fillText("Mapa Previo subido", prevCardX + prevCardW / 2, prevCardY + prevCardH / 2);
+    const prevTitle = mapperData.prevMap?.title && mapperData.prevMap.title !== "Mapa Previo subido" ? mapperData.prevMap.title : t(locale, "mapper_card.prev_map_label");
+    ctx.fillText(prevTitle, prevCardX + prevCardW / 2, prevCardY + prevCardH / 2);
     ctx.restore();
 
     ctx.save();
@@ -934,10 +938,10 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
 
     const colStep = statCardW / 4;
     const cols = [
-        { val1: mapperData.user?.followers || "0", lbl1: "Seguidores", val2: mapperData.stats?.rankedCount || "0", lbl2: "Rankeds" },
-        { val1: mapperData.user?.subscribers || "0", lbl1: "Suscriptores", val2: mapperData.stats?.lovedCount || "0", lbl2: "Loveds" },
-        { val1: mapperData.user?.kudosu || "0", lbl1: "Kudosus", val2: mapperData.stats?.pendingCount || "0", lbl2: "Pendings" },
-        { val1: mapperData.stats?.successRate || "0%", lbl1: "tasa de éxitos", val2: mapperData.stats?.graveyardCount || "0", lbl2: "Graveyards" }
+        { val1: mapperData.user?.followers || "0", lbl1: t(locale, "mapper_card.stat_followers"), val2: mapperData.stats?.rankedCount || "0", lbl2: t(locale, "mapper_card.stat_rankeds") },
+        { val1: mapperData.user?.subscribers || "0", lbl1: t(locale, "mapper_card.stat_subscribers"), val2: mapperData.stats?.lovedCount || "0", lbl2: t(locale, "mapper_card.stat_loveds") },
+        { val1: mapperData.user?.kudosu || "0", lbl1: t(locale, "mapper_card.stat_kudosu"), val2: mapperData.stats?.pendingCount || "0", lbl2: t(locale, "mapper_card.stat_pendings") },
+        { val1: mapperData.stats?.successRate || "0%", lbl1: t(locale, "mapper_card.stat_success_rate"), val2: mapperData.stats?.graveyardCount || "0", lbl2: t(locale, "mapper_card.stat_graveyards") }
     ];
 
     ctx.save();

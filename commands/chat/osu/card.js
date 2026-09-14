@@ -233,7 +233,8 @@ async function run(messages, args) {
                 const MapperCardModel = require("../../../models/MapperCardModel.js");
                 const mapperData = await MapperCardModel.getMapperCardData(osuUser, {
                     guildId: message?.guild?.id,
-                    gamemode: explicitMode
+                    gamemode: explicitMode,
+                    locale
                 });
 
                 if (Array.isArray(mapperData?.allTitles) && mapperData.allTitles.length > 0) {
@@ -257,7 +258,8 @@ async function run(messages, args) {
                 [mapperData] = await Promise.all([
                     MapperCardModel.getMapperCardData(osuUser, {
                         guildId: message?.guild?.id,
-                        gamemode: explicitMode
+                        gamemode: explicitMode,
+                        locale
                     }),
                     progressPromise
                 ]);

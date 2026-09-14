@@ -1,6 +1,7 @@
 const { Client } = require("osu-web.js");
 const OsuUserModel = require("./OsuUserModel.js");
 const MappingTrackerModel = require("./MappingTrackerModel.js");
+const { t } = require("../utils/i18n.js");
 
 /**
  * Modelo para recopilar y estructurar todos los datos necesarios para la Mapper Card (.card -mapper).
@@ -26,6 +27,7 @@ class MapperCardModel {
 
         const userId = Number(osuUser.id);
         const guildId = options.guildId || null;
+        const locale = options.locale || "es";
         const countryCode = (osuUser.country_code || osuUser.country?.code || "VE").toUpperCase();
 
         const osuClient = await this.getOsuClient();
@@ -203,10 +205,12 @@ class MapperCardModel {
             pendingSets,
             graveyardSets,
             guestSets,
-            uniqueSets
+            uniqueSets,
+            locale
         );
 
         return {
+            locale,
             mode: gamemode,
             user: {
                 id: fullUser.id,
@@ -267,24 +271,30 @@ class MapperCardModel {
      * Calcula todos los títulos de mapper disponibles según estadísticas y mapsets.
      * Prioriza la rama Ranked si cumple los requisitos; de lo contrario, toma el título de mayor tier.
      */
-    static calculateMapperTitles(fullUser, rankedSets = [], lovedSets = [], pendingSets = [], graveyardSets = [], guestSets = [], uniqueSets = []) {
+    static calculateMapperTitles(fullUser, rankedSets = [], lovedSets = [], pendingSets = [], graveyardSets = [], guestSets = [], uniqueSets = [], locale = 'es') {
         const rankedCount = fullUser.ranked_and_approved_beatmapset_count ?? rankedSets.length;
         const lovedCount = fullUser.loved_beatmapset_count ?? lovedSets.length;
         const pendingCount = fullUser.pending_beatmapset_count ?? pendingSets.length;
         const graveyardCount = fullUser.graveyard_beatmapset_count ?? graveyardSets.length;
         const totalUploaded = rankedCount + lovedCount + pendingCount + graveyardCount;
 
+        const getTitle = (id, fallback) => {
+            const key = `mapper_card.titles.${id}`;
+            const val = t(locale, key);
+            return val !== key ? val : fallback;
+        };
+
         const titles = [];
 
         // 1. Rama Ranked (Prioridad principal)
         if (rankedCount >= 75) {
-            titles.push({ id: 'ranked_master', name: 'Maestro Ranked', category: 'ranked', tier: 3 });
+            titles.push({ id: 'ranked_master', name: getTitle('ranked_master', 'Maestro Ranked'), category: 'ranked', tier: 3 });
         } else if (rankedCount >= 25) {
-            titles.push({ id: 'ranked_inter', name: 'Intermedio Ranked', category: 'ranked', tier: 2 });
+            titles.push({ id: 'ranked_inter', name: getTitle('ranked_inter', 'Intermedio Ranked'), category: 'ranked', tier: 2 });
         } else if (rankedCount >= 5) {
-            titles.push({ id: 'ranked_novice', name: 'Novato Ranked', category: 'ranked', tier: 1 });
+            titles.push({ id: 'ranked_novice', name: getTitle('ranked_novice', 'Novato Ranked'), category: 'ranked', tier: 1 });
         } else if (rankedCount >= 1) {
-            titles.push({ id: 'ranked_aspirant', name: 'Aspirante Ranked', category: 'ranked', tier: 0 });
+            titles.push({ id: 'ranked_aspirant', name: getTitle('ranked_aspirant', 'Aspirante Ranked'), category: 'ranked', tier: 0 });
         }
 
         // 2. Rama SR (Top diff de cada mapset del mapper)
@@ -302,11 +312,11 @@ class MapperCardModel {
         }
 
         if (count8Plus >= 3) {
-            titles.push({ id: 'sr_demon', name: 'Demonio del SR', category: 'sr', tier: 3 });
+            titles.push({ id: 'sr_demon', name: getTitle('sr_demon', 'Demonio del SR'), category: 'sr', tier: 3 });
         } else if (count7Plus >= 5) {
-            titles.push({ id: 'sr_harasser', name: 'Hostigador de SR', category: 'sr', tier: 2 });
+            titles.push({ id: 'sr_harasser', name: getTitle('sr_harasser', 'Hostigador de SR'), category: 'sr', tier: 2 });
         } else if (count6Plus >= 6) {
-            titles.push({ id: 'sr_challenger', name: 'Desafiador de SR', category: 'sr', tier: 1 });
+            titles.push({ id: 'sr_challenger', name: getTitle('sr_challenger', 'Desafiador de SR'), category: 'sr', tier: 1 });
         }
 
         // 3. Rama Alta Tasa de Éxito (Mapas 'resueltos' sin contar pendientes)
@@ -314,17 +324,17 @@ class MapperCardModel {
         if (resolvedCount >= 10) {
             const graveyardRatio = graveyardCount / resolvedCount;
             if (graveyardRatio <= 0.20) {
-                titles.push({ id: 'high_success_rate', name: 'Alta Tasa de Éxito', category: 'success_rate', tier: 2 });
+                titles.push({ id: 'high_success_rate', name: getTitle('high_success_rate', 'Alta Tasa de Éxito'), category: 'success_rate', tier: 2 });
             }
         }
 
         // 4. Rama Loved
         if (lovedCount >= 25) {
-            titles.push({ id: 'loved_master', name: 'Maestro Loved', category: 'loved', tier: 3 });
+            titles.push({ id: 'loved_master', name: getTitle('loved_master', 'Maestro Loved'), category: 'loved', tier: 3 });
         } else if (lovedCount >= 10) {
-            titles.push({ id: 'loved_inter', name: 'Intermedio Loved', category: 'loved', tier: 2 });
+            titles.push({ id: 'loved_inter', name: getTitle('loved_inter', 'Intermedio Loved'), category: 'loved', tier: 2 });
         } else if (lovedCount >= 5) {
-            titles.push({ id: 'loved_novice', name: 'Novato Lover', category: 'loved', tier: 1 });
+            titles.push({ id: 'loved_novice', name: getTitle('loved_novice', 'Novato Loved'), category: 'loved', tier: 1 });
         }
 
         // 5. Rama Guest Diffs (mapsets con GDs en estado ranked o loved)
@@ -333,25 +343,25 @@ class MapperCardModel {
         ).length;
 
         if (rankedOrLovedGds >= 30) {
-            titles.push({ id: 'gd_master', name: 'Maestro de Guest Diff', category: 'guest_diff', tier: 3 });
+            titles.push({ id: 'gd_master', name: getTitle('gd_master', 'Maestro de Guest Diff'), category: 'guest_diff', tier: 3 });
         } else if (rankedOrLovedGds >= 15) {
-            titles.push({ id: 'gd_inter', name: 'Intermedio de Guest Diff', category: 'guest_diff', tier: 2 });
+            titles.push({ id: 'gd_inter', name: getTitle('gd_inter', 'Intermedio de Guest Diff'), category: 'guest_diff', tier: 2 });
         } else if (rankedOrLovedGds >= 3) {
-            titles.push({ id: 'gd_novice', name: 'Novato de Guest Diff', category: 'guest_diff', tier: 1 });
+            titles.push({ id: 'gd_novice', name: getTitle('gd_novice', 'Novato de Guest Diff'), category: 'guest_diff', tier: 1 });
         }
 
         // 6. Rama Mapper Prolífico (Volumen total subido)
         if (totalUploaded >= 250) {
-            titles.push({ id: 'prolific_master', name: 'Maestro Prolífico', category: 'prolific', tier: 3 });
+            titles.push({ id: 'prolific_master', name: getTitle('prolific_master', 'Maestro Prolífico'), category: 'prolific', tier: 3 });
         } else if (totalUploaded >= 100) {
-            titles.push({ id: 'prolific_inter', name: 'Intermedio Prolífico', category: 'prolific', tier: 2 });
+            titles.push({ id: 'prolific_inter', name: getTitle('prolific_inter', 'Intermedio Prolífico'), category: 'prolific', tier: 2 });
         } else if (totalUploaded >= 50) {
-            titles.push({ id: 'prolific_novice', name: 'Novato Prolífico', category: 'prolific', tier: 1 });
+            titles.push({ id: 'prolific_novice', name: getTitle('prolific_novice', 'Novato Prolífico'), category: 'prolific', tier: 1 });
         }
 
         // Selección de título principal:
         // Prioridad: Rama Ranked si cumple requisitos; de lo contrario, el de mayor tier
-        let primaryTitle = 'Mapper Aprendiz';
+        let primaryTitle = getTitle('mapper_apprentice', 'Mapper Aprendiz');
 
         const rankedTitle = titles.find(t => t.category === 'ranked');
         if (rankedTitle) {
