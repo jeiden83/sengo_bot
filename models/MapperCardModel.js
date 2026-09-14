@@ -117,22 +117,26 @@ class MapperCardModel {
         } catch {}
 
         // 6. Métricas de habilidades y atributos del mapper:
-        // A) Amplitud de Rango: diferencia entre el mapa rankeado más bajo y más alto (minSR y maxSR)
-        const targetForSR = rankedOrLoved.length > 0 ? rankedOrLoved : allSets;
-        let allSRs = [];
+        // A) Amplitud de Rango: promedio de las top diffs de sus beatmapsets rankeados (o loved / allSets como fallback)
+        const targetForSR = (rankedSets && rankedSets.length > 0)
+            ? rankedSets
+            : (rankedOrLoved.length > 0 ? rankedOrLoved : allSets);
+        const topDiffSRs = [];
         for (const s of targetForSR) {
-            if (Array.isArray(s.beatmaps)) {
+            if (Array.isArray(s.beatmaps) && s.beatmaps.length > 0) {
+                let setMaxSR = 0;
                 for (const b of s.beatmaps) {
                     const sr = Number(b.difficulty_rating || 0);
-                    if (sr > 0) allSRs.push(sr);
+                    if (sr > setMaxSR) setMaxSR = sr;
                 }
+                if (setMaxSR > 0) topDiffSRs.push(setMaxSR);
             }
         }
-        const minSR = allSRs.length > 0 ? Math.min(...allSRs) : 0;
-        const maxSR = allSRs.length > 0 ? Math.max(...allSRs) : 0;
-        const srAmplitude = parseFloat(Math.max(0, maxSR - minSR).toFixed(1));
-        // ponytail: escala de barras 1 a 6 basada en amplitud típica de SR hasta ~10*
-        const amplitudeBars = Math.min(6, Math.max(1, Math.round((srAmplitude / 10) * 6)));
+        const srAmplitude = topDiffSRs.length > 0
+            ? (topDiffSRs.reduce((acc, sr) => acc + sr, 0) / topDiffSRs.length).toFixed(1)
+            : "0.0";
+        // ponytail: escala de barras 1 a 6 basada en dificultad típica de top diffs hasta ~10*
+        const amplitudeBars = Math.min(6, Math.max(1, Math.round((Number(srAmplitude) / 10) * 6)));
 
         // B) Ritmo: frecuencia con la que produce contenido ranked/loved (últimos 12 meses y periodicidad)
         const now = Date.now();
