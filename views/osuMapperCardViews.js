@@ -537,10 +537,11 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.restore();
 
     // 4. TARJETA SUPERIOR CENTRAL (BANDERA Y RANGOS)
-    const rankCardX = 219;
-    const rankCardY = 92;
-    const rankCardW = 284;
-    const rankCardH = 150;
+    const CONTENT_X = 220;
+    const rankCardX = CONTENT_X;
+    const rankCardY = 90;
+    const rankCardW = 288;
+    const rankCardH = 160;
     const rankCardR = 24;
 
     const rankGrad = ctx.createLinearGradient(rankCardX, rankCardY, rankCardX, rankCardY + rankCardH);
@@ -624,10 +625,10 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.restore();
 
     // 5. TARJETA CENTRAL-MEDIA (BARRAS DE ATRIBUTOS DEL MAPPER)
-    const barsCardX = 220;
+    const barsCardX = CONTENT_X;
     const barsCardY = 264;
-    const barsCardW = 516;
-    const barsCardH = 175;
+    const barsCardW = 515;
+    const barsCardH = 170;
     const barsCardR = 24;
 
     const barsGrad = ctx.createLinearGradient(barsCardX, barsCardY, barsCardX + barsCardW, barsCardY + barsCardH);
@@ -703,10 +704,10 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     drawPillStack(barsCardX + barsCardW * 0.78, mapperData.metrics?.reachPct || "52.8%", reachBars, [t(locale, "mapper_card.metric_reach_line1")], [1.5, -1, 1, 2, -1, 0]);
 
     // 6. TARJETA SUPERIOR DERECHA (ÚLTIMO MAPA SUBIDO)
-    const mapCardX = 525;
+    const mapCardX = 524;
     const mapCardY = 74;
-    const mapCardW = 468;
-    const mapCardH = 181;
+    const mapCardW = 469;
+    const mapCardH = 176;
     const mapCardR = 24;
 
     ctx.save();
@@ -747,69 +748,71 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.fillStyle = "rgba(255, 255, 255, 0.95)";
     ctx.fillText(mapArtist, mapCardX + 22, mapCardY + 62);
 
-    // Badge y buscador
-    const statusText = (mapperData.latestMap?.status || "RANKED").toUpperCase();
-    const statusKey = statusText.toLowerCase();
+    // Badge y buscador solo si existe un mapa
+    if (mapperData.latestMap) {
+        const statusText = (mapperData.latestMap.status || "PENDING").toUpperCase();
+        const statusKey = statusText.toLowerCase();
 
-    ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
-    const textWidth = ctx.measureText(statusText).width;
-    const badgeW = Math.max(76, Math.round(textWidth + 18));
-    const badgeH = 25;
-    const badgeX = mapCardX + mapCardW - badgeW - 20;
-    const badgeY = mapCardY + 18;
-    const badgeR = 12.5;
+        ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
+        const textWidth = ctx.measureText(statusText).width;
+        const badgeW = Math.max(76, Math.round(textWidth + 18));
+        const badgeH = 25;
+        const badgeX = mapCardX + mapCardW - badgeW - 20;
+        const badgeY = mapCardY + 18;
+        const badgeR = 12.5;
 
-    let badgeBg = "#00c3ff";
-    let badgeGlow = "rgba(0, 195, 255, 0.95)";
+        let badgeBg = "#00c3ff";
+        let badgeGlow = "rgba(0, 195, 255, 0.95)";
 
-    if (statusKey === "pending" || statusKey === "wip") {
-        badgeBg = "#ffd000"; // Amarillo
-        badgeGlow = "rgba(255, 208, 0, 0.95)";
-    } else if (statusKey === "loved") {
-        badgeBg = "#ff4088"; // Rosa
-        badgeGlow = "rgba(255, 64, 136, 0.95)";
-    } else if (statusKey === "graveyard") {
-        badgeBg = "#6c757d"; // Gris
-        badgeGlow = "rgba(108, 117, 125, 0.8)";
-    } else if (statusKey === "ranked" || statusKey === "approved") {
-        badgeBg = "#38d948"; // Verde lima
-        badgeGlow = "rgba(56, 217, 72, 0.95)";
-    } else if (statusKey === "qualified") {
-        badgeBg = "#00c3ff"; // Azul
-        badgeGlow = "rgba(0, 195, 255, 0.95)";
+        if (statusKey === "pending" || statusKey === "wip") {
+            badgeBg = "#ffd000"; // Amarillo
+            badgeGlow = "rgba(255, 208, 0, 0.95)";
+        } else if (statusKey === "loved") {
+            badgeBg = "#ff4088"; // Rosa
+            badgeGlow = "rgba(255, 64, 136, 0.95)";
+        } else if (statusKey === "graveyard") {
+            badgeBg = "#6c757d"; // Gris
+            badgeGlow = "rgba(108, 117, 125, 0.8)";
+        } else if (statusKey === "ranked" || statusKey === "approved") {
+            badgeBg = "#38d948"; // Verde lima
+            badgeGlow = "rgba(56, 217, 72, 0.95)";
+        } else if (statusKey === "qualified") {
+            badgeBg = "#00c3ff"; // Azul
+            badgeGlow = "rgba(0, 195, 255, 0.95)";
+        }
+
+        const searchX = badgeX - 22;
+        const searchY = badgeY + badgeH / 2;
+        ctx.save();
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2.2;
+        ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
+        ctx.shadowBlur = 6;
+        ctx.beginPath();
+        ctx.arc(searchX, searchY - 1, 6, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(searchX + 4.5, searchY + 3.5);
+        ctx.lineTo(searchX + 9, searchY + 8);
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
+        ctx.fillStyle = badgeBg;
+        ctx.shadowColor = badgeGlow;
+        ctx.shadowBlur = 14;
+        ctx.fill();
+
+        ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillStyle = "#ffffff";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
+        ctx.shadowBlur = 3;
+        ctx.fillText(statusText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+        ctx.restore();
     }
-
-    const searchX = badgeX - 22;
-    const searchY = badgeY + badgeH / 2;
-    ctx.save();
-    ctx.strokeStyle = "#ffffff";
-    ctx.lineWidth = 2.2;
-    ctx.shadowColor = "rgba(255, 255, 255, 0.6)";
-    ctx.shadowBlur = 6;
-    ctx.beginPath();
-    ctx.arc(searchX, searchY - 1, 6, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(searchX + 4.5, searchY + 3.5);
-    ctx.lineTo(searchX + 9, searchY + 8);
-    ctx.stroke();
-    ctx.restore();
-
-    ctx.save();
-    roundRect(ctx, badgeX, badgeY, badgeW, badgeH, badgeR);
-    ctx.fillStyle = badgeBg;
-    ctx.shadowColor = badgeGlow;
-    ctx.shadowBlur = 14;
-    ctx.fill();
-
-    ctx.font = 'bold 11.5px "Montserrat", "Poppins", sans-serif';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = "#ffffff";
-    ctx.shadowColor = "rgba(0, 0, 0, 0.5)";
-    ctx.shadowBlur = 3;
-    ctx.fillText(statusText, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
-    ctx.restore();
 
     // Métricas de plays y favorites (íconos huecos con glow)
     const botStatsY = mapCardY + mapCardH - 18;
@@ -866,8 +869,8 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.restore();
 
     // 7. TARJETA INFERIOR DERECHA ("Mapa Previo subido")
-    const prevCardX = 748;
-    const prevCardY = 266;
+    const prevCardX = 751;
+    const prevCardY = 264;
     const prevCardW = 242;
     const prevCardH = 64;
     const prevCardR = 18;
@@ -904,7 +907,7 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.restore();
 
     // 8. TARJETA INFERIOR (ESTADÍSTICAS GENERALES DEL MAPPER)
-    const statCardX = 225;
+    const statCardX = CONTENT_X;
     const statCardY = 448;
     const statCardW = 615;
     const statCardH = 101;
@@ -936,11 +939,23 @@ async function _renderMapperCardCanvas(user, mapperData, options, cacheKey) {
     ctx.stroke();
     ctx.restore();
 
-    const colStep = statCardW / 4;
+    // Determinar si el usuario es BN (o tiene nominaciones históricas)
+    const isBN = (Array.isArray(mapperData.user?.groups) && mapperData.user.groups.some(g => 
+        ['bng', 'bng_limited', 'nat'].includes(g.identifier) || 
+        ['BN', 'NAT'].includes(g.short_name?.toUpperCase()) ||
+        (g.name && g.name.toLowerCase().includes('beatmap nominator'))
+    )) || (Number(mapperData.stats?.nominatedCount || 0) > 0);
+
+    const nominatedVal = isBN 
+        ? (mapperData.stats?.nominatedCount || "0")
+        : (Number(mapperData.stats?.nominatedCount || 0) > 0 ? mapperData.stats.nominatedCount : "-");
+
+    const colStep = statCardW / 5;
     const cols = [
         { val1: mapperData.user?.followers || "0", lbl1: t(locale, "mapper_card.stat_followers"), val2: mapperData.stats?.rankedCount || "0", lbl2: t(locale, "mapper_card.stat_rankeds") },
-        { val1: mapperData.user?.subscribers || "0", lbl1: t(locale, "mapper_card.stat_subscribers"), val2: mapperData.stats?.lovedCount || "0", lbl2: t(locale, "mapper_card.stat_loveds") },
-        { val1: mapperData.user?.kudosu || "0", lbl1: t(locale, "mapper_card.stat_kudosu"), val2: mapperData.stats?.pendingCount || "0", lbl2: t(locale, "mapper_card.stat_pendings") },
+        { val1: mapperData.user?.subscribers || "0", lbl1: t(locale, "mapper_card.stat_subscribers"), val2: mapperData.stats?.guestCount || "0", lbl2: t(locale, "mapper_card.stat_guest_diff") },
+        { val1: mapperData.user?.kudosu || "0", lbl1: t(locale, "mapper_card.stat_kudosu"), val2: mapperData.stats?.lovedCount || "0", lbl2: t(locale, "mapper_card.stat_loveds") },
+        { val1: nominatedVal, lbl1: t(locale, "mapper_card.stat_nominations"), val2: mapperData.stats?.pendingCount || "0", lbl2: t(locale, "mapper_card.stat_pendings") },
         { val1: mapperData.stats?.successRate || "0%", lbl1: t(locale, "mapper_card.stat_success_rate"), val2: mapperData.stats?.graveyardCount || "0", lbl2: t(locale, "mapper_card.stat_graveyards") }
     ];
 

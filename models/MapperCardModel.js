@@ -78,6 +78,8 @@ class MapperCardModel {
         const lovedCount = fullUser.loved_beatmapset_count ?? lovedSets.length;
         const pendingCount = fullUser.pending_beatmapset_count ?? pendingSets.length;
         const graveyardCount = fullUser.graveyard_beatmapset_count ?? graveyardSets.length;
+        const guestCount = fullUser.guest_beatmapset_count ?? guestSets.length;
+        const nominatedCount = fullUser.nominated_beatmapset_count ?? 0;
         const totalUploaded = rankedCount + lovedCount + pendingCount + graveyardCount;
 
         // Tasa de éxito (porcentaje de ranked sobre el total subido)
@@ -228,7 +230,8 @@ class MapperCardModel {
                 rawSubscribers: fullUser.mapping_follower_count || 0,
                 localSubscribers: localSubscribersCount,
                 kudosu: formatCompact(fullUser.kudosu?.total || 0),
-                rawKudosu: fullUser.kudosu?.total || 0
+                rawKudosu: fullUser.kudosu?.total || 0,
+                groups: fullUser.groups || []
             },
             ranks: {
                 countryRank: ranksInfo?.nationalRank ? `#${ranksInfo.nationalRank}` : (ranksInfo?.oldNationalRank ? `#${ranksInfo.oldNationalRank}` : "-"),
@@ -237,9 +240,11 @@ class MapperCardModel {
             },
             stats: {
                 rankedCount: String(rankedCount),
+                guestCount: String(guestCount),
                 lovedCount: String(lovedCount),
                 pendingCount: String(pendingCount),
                 graveyardCount: String(graveyardCount),
+                nominatedCount: String(nominatedCount),
                 successRate: `${successRate}%`
             },
             metrics: {
@@ -266,7 +271,7 @@ class MapperCardModel {
                 status: (prevSet.status || "GRAVEYARD").toUpperCase(),
                 coverUrl: prevSet.covers?.["cover@2x"] || prevSet.covers?.cover || prevSet.covers?.card || null
             } : null,
-            title: options.customTitle || titleInfo.primaryTitle || "Mapper Aprendiz",
+            title: options.customTitle || titleInfo.primaryTitle || "Aspirante a Mapper",
             allTitles: titleInfo.allTitles
         };
     }
@@ -365,7 +370,7 @@ class MapperCardModel {
 
         // Selección de título principal:
         // Prioridad: Rama Ranked si cumple requisitos; de lo contrario, el de mayor tier
-        let primaryTitle = getTitle('mapper_apprentice', 'Mapper Aprendiz');
+        let primaryTitle = getTitle('mapper_apprentice', 'Aspirante a Mapper');
 
         const rankedTitle = titles.find(t => t.category === 'ranked');
         if (rankedTitle) {
