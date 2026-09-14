@@ -212,7 +212,8 @@ class MapperCardModel {
             graveyardSets,
             guestSets,
             uniqueSets,
-            locale
+            locale,
+            gamemode
         );
 
         return {
@@ -280,7 +281,7 @@ class MapperCardModel {
      * Calcula todos los títulos de mapper disponibles según estadísticas y mapsets.
      * Prioriza la rama Ranked si cumple los requisitos; de lo contrario, toma el título de mayor tier.
      */
-    static calculateMapperTitles(fullUser, rankedSets = [], lovedSets = [], pendingSets = [], graveyardSets = [], guestSets = [], uniqueSets = [], locale = 'es') {
+    static calculateMapperTitles(fullUser, rankedSets = [], lovedSets = [], pendingSets = [], graveyardSets = [], guestSets = [], uniqueSets = [], locale = 'es', gamemode = 'osu') {
         const rankedCount = fullUser.ranked_and_approved_beatmapset_count ?? rankedSets.length;
         const lovedCount = fullUser.loved_beatmapset_count ?? lovedSets.length;
         const pendingCount = fullUser.pending_beatmapset_count ?? pendingSets.length;
@@ -306,17 +307,22 @@ class MapperCardModel {
             titles.push({ id: 'ranked_aspirant', name: getTitle('ranked_aspirant', 'Aspirante Ranked'), category: 'ranked', tier: 0 });
         }
 
-        // 2. Rama SR (Top diff de cada mapset del mapper)
+        // 2. Rama SR (Top diff de cada mapset oficial del mapper: ranked y loved)
         let count6Plus = 0;
         let count7Plus = 0;
         let count8Plus = 0;
-        for (const s of (uniqueSets || [])) {
+        const targetSetsSR = [...(rankedSets || []), ...(lovedSets || [])];
+        for (const s of targetSetsSR) {
             if (Array.isArray(s.beatmaps) && s.beatmaps.length > 0) {
-                const diffsSR = s.beatmaps.map(b => Number(b.difficulty_rating || 0));
-                const topSR = Math.max(...diffsSR);
-                if (topSR >= 8.0) count8Plus++;
-                if (topSR >= 7.0) count7Plus++;
-                if (topSR >= 6.0) count6Plus++;
+                const diffsSR = s.beatmaps
+                    .filter(b => !gamemode || (b.mode || 'osu') === gamemode)
+                    .map(b => Number(b.difficulty_rating || 0));
+                if (diffsSR.length > 0) {
+                    const topSR = Math.max(...diffsSR);
+                    if (topSR >= 8.0) count8Plus++;
+                    if (topSR >= 7.0) count7Plus++;
+                    if (topSR >= 6.0) count6Plus++;
+                }
             }
         }
 
