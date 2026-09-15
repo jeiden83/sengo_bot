@@ -29,11 +29,42 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
     if (mode === 'osu') {
         if (strains.aim) lines.push({ label: 'Aim', data: strains.aim, color: '#ff66aa', fill: 'rgba(255, 102, 170, 0.12)', width: 1.5 });
         if (strains.speed) lines.push({ label: 'Speed', data: strains.speed, color: '#44aaff', fill: 'rgba(68, 170, 255, 0.12)', width: 1.5 });
+
+        let readingData = strains.reading;
+        if ((!readingData || readingData.length === 0) && strains.aim && strains.aim.length > 0) {
+            try {
+                const attrs = diff.calculate(map);
+                const readingStars = attrs.readingStars || attrs.reading || 0;
+                const aimStars = attrs.aimStars || attrs.aim || 0;
+                const speedStars = attrs.speedStars || attrs.speed || 0;
+                if (readingStars > 0.05 && strains.aim.length === strains.speed?.length) {
+                    const rawCombined = [];
+                    let maxCombined = 0;
+                    for (let i = 0; i < strains.aim.length; i++) {
+                        const comb = (strains.aim[i] || 0) * 0.5 + (strains.speed[i] || 0) * 0.5;
+                        rawCombined.push(comb);
+                        if (comb > maxCombined) maxCombined = comb;
+                    }
+                    if (maxCombined > 0) {
+                        const refStars = Math.max(aimStars, speedStars, 1.0);
+                        const scale = (readingStars / refStars);
+                        readingData = rawCombined.map(v => v * scale);
+                    }
+                }
+            } catch (_) {}
+        }
+
+        if (readingData && (Array.isArray(readingData) || ArrayBuffer.isView(readingData)) && readingData.length > 0) {
+            lines.push({ label: 'Reading', data: readingData, color: '#a855f7', fill: 'rgba(168, 85, 247, 0.12)', width: 1.5 });
+        }
+
         if (strains.aim && strains.speed && strains.aim.length === strains.speed.length) {
             const totalData = [];
             let maxTotal = 0;
+            const hasReading = readingData && readingData.length === strains.aim.length;
             for (let i = 0; i < strains.aim.length; i++) {
-                const val = strains.aim[i] + strains.speed[i];
+                const readingVal = hasReading ? (readingData[i] || 0) : 0;
+                const val = strains.aim[i] + strains.speed[i] + readingVal;
                 totalData.push(val);
                 if (val > maxTotal) {
                     maxTotal = val;
@@ -48,6 +79,9 @@ function generateStrainGraph(map, modsStr, activeMode, totalLength, failPercent,
         if (strains.stamina) lines.push({ label: 'Stamina', data: strains.stamina, color: '#ff5555', fill: 'rgba(255, 85, 85, 0.12)', width: 2.0 });
         if (strains.color) lines.push({ label: 'Color', data: strains.color, color: '#5599ff', fill: 'rgba(85, 153, 255, 0.12)', width: 2.0 });
         if (strains.rhythm) lines.push({ label: 'Rhythm', data: strains.rhythm, color: '#ffcc55', fill: 'rgba(255, 204, 85, 0.12)', width: 2.0 });
+        if (strains.reading && strains.reading.length > 0) {
+            lines.push({ label: 'Reading', data: strains.reading, color: '#a855f7', fill: 'rgba(168, 85, 247, 0.12)', width: 2.0 });
+        }
     } else if (mode === 'fruits') {
         if (strains.movement) lines.push({ label: 'Movement', data: strains.movement, color: '#ff8833', fill: 'rgba(255, 136, 51, 0.12)', width: 2.0 });
     } else if (mode === 'mania') {
