@@ -110,9 +110,26 @@ async function run(messages, args) {
         } else if (cachedType === 'stable') {
             isStableMode = true;
         } else {
-            isStableMode = true; // default fallback
+            const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
+            if (linkedUser && linkedUser.preferred_score_mode) {
+                if (linkedUser.preferred_score_mode === 'lazer') {
+                    isLazerMode = true;
+                } else {
+                    isStableMode = true;
+                }
+            } else {
+                const channelFallback = getChannelRecentPlayType(message.channel.id);
+                if (channelFallback === 'lazer') {
+                    isLazerMode = true;
+                } else {
+                    isStableMode = true; // default fallback
+                }
+            }
         }
     }
+
+    const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+    setChannelRecentPlayType(message.channel.id, beatmap_metadata.id, !!isLazerMode);
 
     const legacyOnlyVal = isStableMode ? 1 : 0;
     parsed_args.isLazerMode = isLazerMode;

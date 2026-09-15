@@ -1,20 +1,24 @@
 const channelPlayTypeCache = new Map();
 
 function setChannelRecentPlayType(channelId, beatmapId, isLazer) {
-    if (!channelId || !beatmapId) return;
+    if (!channelId) return;
     channelPlayTypeCache.set(channelId, {
-        beatmapId: beatmapId.toString(),
+        beatmapId: beatmapId ? beatmapId.toString() : null,
         isLazer: !!isLazer
     });
 }
 
 function getChannelRecentPlayType(channelId, beatmapId) {
-    if (!channelId || !beatmapId) return null;
+    if (!channelId) return null;
     const cached = channelPlayTypeCache.get(channelId);
-    if (cached && cached.beatmapId === beatmapId.toString()) {
-        return cached.isLazer ? 'lazer' : 'stable';
+    if (!cached) return null;
+    if (beatmapId) {
+        if (cached.beatmapId === beatmapId.toString()) {
+            return cached.isLazer ? 'lazer' : 'stable';
+        }
+        return null;
     }
-    return null;
+    return cached.isLazer ? 'lazer' : 'stable';
 }
 
 module.exports = {

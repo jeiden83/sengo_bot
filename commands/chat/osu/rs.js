@@ -22,6 +22,14 @@ async function run(messages, args) {
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
     
+    if (parser_res.parsed_args.lazerMode) {
+        currentScoreMode = 'lazer';
+        OsuUserModel.setPreferredScoreMode(message.author.id, 'lazer').catch(() => {});
+    } else if (parser_res.parsed_args.stableMode) {
+        currentScoreMode = 'classic';
+        OsuUserModel.setPreferredScoreMode(message.author.id, 'classic').catch(() => {});
+    }
+    
     const filterPass = parser_res.parsed_args.filterPass;
     if (filterPass && Array.isArray(parser_res.fn_response)) {
         parser_res.fn_response = parser_res.fn_response.filter(score => score.passed);
@@ -238,7 +246,7 @@ async function run(messages, args) {
             const targetScore = parser_res.fn_response[0];
             if (targetScore && targetScore.beatmap) {
                 const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
-                const isLazer = targetScore.build_id !== null && targetScore.build_id !== undefined;
+                const isLazer = currentScoreMode === 'lazer';
                 setChannelRecentPlayType(message.channel.id, targetScore.beatmap.id, isLazer);
                 triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
 
@@ -276,7 +284,7 @@ async function run(messages, args) {
     // Función auxiliar para procesar y construir el embed de un score determinado
     async function processScore(scoreIndex) {
         const recent_scores = parser_res.fn_response[scoreIndex - 1];
-        const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+        const isLazer = currentScoreMode === 'lazer';
         const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
         setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
 
@@ -684,6 +692,11 @@ async function run(messages, args) {
             if (i.customId.startsWith('rs_toggle_score_')) {
                 currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
                 await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+                const currentMapId = parser_res.fn_response[index - 1]?.beatmap?.id;
+                if (currentMapId) {
+                    const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+                    setChannelRecentPlayType(message.channel.id, currentMapId, currentScoreMode === 'lazer');
+                }
             } else if (i.customId === 'rs_oldest') {
                 index = total_plays;
             } else if (i.customId === 'rs_older') {

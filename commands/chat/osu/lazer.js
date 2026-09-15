@@ -137,6 +137,7 @@ async function run(messages, args, forcedMode = 'lazer') {
     if (index < 1) index = 1;
 
     let currentScoreMode = forcedMode;
+    await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode).catch(() => {});
 
     // Helper to process a score at index
     async function processScore(scoreIndex) {
@@ -171,6 +172,10 @@ async function run(messages, args, forcedMode = 'lazer') {
 
         const beatmapsetId = score.beatmap?.beatmapset_id || beatmap?.beatmapset_id || beatmap?.beatmapset?.id;
         const targetBeatmapId = score.beatmap?.id || beatmap?.id || beatmapId;
+        if (targetBeatmapId) {
+            const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+            setChannelRecentPlayType(message.channel.id, targetBeatmapId, currentScoreMode === 'lazer');
+        }
         const map = await getBeatmap_osu(beatmapsetId, targetBeatmapId, beatmap);
         const maxAttrs = calculatePP(score, map, "maximo_pp");
 

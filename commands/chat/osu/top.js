@@ -355,9 +355,21 @@ async function run(messages, args, options = {}) {
         const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
         let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
 
+        if (parser_res.parsed_args.lazerMode) {
+            currentScoreMode = 'lazer';
+            OsuUserModel.setPreferredScoreMode(message.author.id, 'lazer').catch(() => {});
+        } else if (parser_res.parsed_args.stableMode) {
+            currentScoreMode = 'classic';
+            OsuUserModel.setPreferredScoreMode(message.author.id, 'classic').catch(() => {});
+        }
+
         // Función auxiliar para procesar y construir el embed de un score determinado
         async function processScore(scoreIndex) {
             const score = filtered_scores[scoreIndex - 1];
+            if (score && score.beatmap) {
+                const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+                setChannelRecentPlayType(message.channel.id, score.beatmap.id, currentScoreMode === 'lazer');
+            }
             const stats = score.statistics || {};
             const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
             const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
@@ -507,6 +519,11 @@ async function run(messages, args, options = {}) {
                 if (i.customId.startsWith('top_toggle_score_')) {
                     currentScoreMode = currentScoreMode === 'classic' ? 'lazer' : 'classic';
                     await OsuUserModel.setPreferredScoreMode(message.author.id, currentScoreMode);
+                    const currentMapId = filtered_scores[index - 1]?.beatmap?.id;
+                    if (currentMapId) {
+                        const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
+                        setChannelRecentPlayType(message.channel.id, currentMapId, currentScoreMode === 'lazer');
+                    }
                 } else if (i.customId === 'top_first') {
                     index = 1;
                 } else if (i.customId === 'top_prev') {
