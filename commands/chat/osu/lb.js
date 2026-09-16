@@ -34,7 +34,7 @@ const { doOsuLbEmbed, doOsuLbContent } = require("../../../views/osuLeaderboardV
 const { t } = require("../../../utils/i18n.js");
 
 async function run(messages, args) {
-    const { message, reply, logger } = messages;
+    const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
