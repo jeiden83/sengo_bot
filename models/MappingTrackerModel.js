@@ -376,7 +376,10 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
             let natQuery = supabase
                 .from('mapper_statistics')
                 .select('osu_id, ranked_count, guest_count, loved_count, playmode')
-                .ilike('country_code', resolvedCountryCode);
+                .ilike('country_code', resolvedCountryCode)
+                .order('ranked_count', { ascending: false })
+                .order('guest_count', { ascending: false })
+                .order('loved_count', { ascending: false });
 
             if (resolvedGamemode) {
                 natQuery = natQuery.eq('playmode', resolvedGamemode);
@@ -391,26 +394,30 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
                     (b.loved_count || 0) - (a.loved_count || 0)
                 );
 
-                const idx = natMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
-                if (idx !== -1) {
-                    nationalRank = idx + 1;
+                const targetM = natMappers.find(m => Number(m.osu_id) === targetOsuId);
+                const hasActiveMaps = targetM && ((targetM.ranked_count || 0) + (targetM.guest_count || 0) + (targetM.loved_count || 0) > 0);
+                if (hasActiveMaps) {
+                    const idx = natMappers.findIndex(m => Number(m.osu_id) === targetOsuId);
+                    if (idx !== -1) {
+                        nationalRank = idx + 1;
 
-                    // Si es evento ranked/loved, calcular su puesto previo restando 1 al mapa rankeado
-                    if (isRankedEvent) {
-                        const oldList = natMappers.map(m => {
-                            if (Number(m.osu_id) === targetOsuId) {
-                                return { ...m, ranked_count: Math.max(0, (m.ranked_count || 0) - 1) };
+                        // Si es evento ranked/loved, calcular su puesto previo restando 1 al mapa rankeado
+                        if (isRankedEvent) {
+                            const oldList = natMappers.map(m => {
+                                if (Number(m.osu_id) === targetOsuId) {
+                                    return { ...m, ranked_count: Math.max(0, (m.ranked_count || 0) - 1) };
+                                }
+                                return m;
+                            });
+                            oldList.sort((a, b) => 
+                                (b.ranked_count || 0) - (a.ranked_count || 0) ||
+                                (b.guest_count || 0) - (a.guest_count || 0) ||
+                                (b.loved_count || 0) - (a.loved_count || 0)
+                            );
+                            const oldIdx = oldList.findIndex(m => Number(m.osu_id) === targetOsuId);
+                            if (oldIdx !== -1) {
+                                oldNationalRank = oldIdx + 1;
                             }
-                            return m;
-                        });
-                        oldList.sort((a, b) => 
-                            (b.ranked_count || 0) - (a.ranked_count || 0) ||
-                            (b.guest_count || 0) - (a.guest_count || 0) ||
-                            (b.loved_count || 0) - (a.loved_count || 0)
-                        );
-                        const oldIdx = oldList.findIndex(m => Number(m.osu_id) === targetOsuId);
-                        if (oldIdx !== -1) {
-                            oldNationalRank = oldIdx + 1;
                         }
                     }
                 }
@@ -429,7 +436,10 @@ async function getMapperRankings(osuId, countryCode = null, guildId = null, isRa
                 let sQuery = supabase
                     .from('mapper_statistics')
                     .select('osu_id, ranked_count, guest_count, loved_count, playmode')
-                    .in('osu_id', sOsuIds);
+                    .in('osu_id', sOsuIds)
+                    .order('ranked_count', { ascending: false })
+                    .order('guest_count', { ascending: false })
+                    .order('loved_count', { ascending: false });
 
                 if (resolvedGamemode) {
                     sQuery = sQuery.eq('playmode', resolvedGamemode);
