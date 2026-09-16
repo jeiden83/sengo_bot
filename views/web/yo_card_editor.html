@@ -2938,8 +2938,8 @@
 
                 // Separar Dificultad y SR play
                 const rawDiff = player.play.diff || 'Nostalgia';
-                const cleanDiff = rawDiff.replace(/\s*\d+\.?\d*★?\s*$/, "").trim() || rawDiff;
-                const srVal = parseFloat(player.play.sr != null ? player.play.sr : (String(rawDiff).match(/(\d+(?:\.\d+)?)/) || [0, 5.97])[1]) || 5.97;
+                const parsedSR = parseFloat(player.play.sr != null ? player.play.sr : (String(rawDiff).match(/(\d+(?:\.\d+)?)/) || [0, 5.97])[1]);
+                const srVal = !isNaN(parsedSR) ? parsedSR : 5.97;
                 const srText = `${srVal.toFixed(2)}★`;
 
                 // Medir ancho de SR

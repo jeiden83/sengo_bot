@@ -990,7 +990,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                 const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
                 const stars = diffAttrs?.stars;
                 mapObj.free();
-                if (typeof stars === "number" && !isNaN(stars) && stars > 0) {
+                if (typeof stars === "number" && !isNaN(stars) && stars >= 0) {
                     return stars;
                 }
             }
@@ -1267,15 +1267,17 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         const mapTitle = pinnedPlay?.beatmapset?.title || "Ange du Blanc Pur";
         const mapArtist = pinnedPlay?.beatmapset?.artist || "ke-ji feat. Nanahira";
         const rawDiff = pinnedPlay?.beatmap?.version || "BMD's Absolution";
-        const effectiveSRNumber = (calculatedPlaySR && !isNaN(calculatedPlaySR) && calculatedPlaySR > 0)
+        const effectiveSRNumber = (calculatedPlaySR != null && !isNaN(calculatedPlaySR) && calculatedPlaySR >= 0)
             ? calculatedPlaySR
-            : (pinnedPlay?.beatmap?.difficulty_rating ? Number(pinnedPlay.beatmap.difficulty_rating) : 7.68);
+            : (pinnedPlay?.beatmap?.difficulty_rating != null && !isNaN(Number(pinnedPlay.beatmap.difficulty_rating))
+                ? Number(pinnedPlay.beatmap.difficulty_rating)
+                : (pinnedPlay ? 0 : 7.68));
         const mapSR = Number(effectiveSRNumber).toFixed(2);
         const cleanDiff = rawDiff.replace(/\s*\d+\.?\d*★?\s*$/, "").trim() || rawDiff;
         const srText = `${mapSR}★`;
         const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString(numLocale) : "32.219.611";
-        const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy || 0.96) * 100).toFixed(2) : "96.12";
-        const scoreCombo = pinnedPlay?.max_combo ? `${pinnedPlay.max_combo}x` : "262x";
+        const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy != null ? pinnedPlay.accuracy : 0.96) * 100).toFixed(2) : "96.12";
+        const scoreCombo = pinnedPlay ? `${pinnedPlay.max_combo ?? 0}x` : "262x";
         const scoreGrade = pinnedPlay?.rank || "S";
 
         drawCustomText(ctx, fonts.playTitle, `${mapTitle} by ${mapArtist}`.slice(0, 48), pb.x + 16, pb.y + 34, "left", fontFamily);
