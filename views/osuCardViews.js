@@ -399,11 +399,34 @@ async function fetchPinnedScore(userId, topScores, mode = "osu") {
 
 /**
  * Color de la letra de rango
+ * - Rango X/SS: Dorado (#facc15). Solo es plateado (#e2e8f0) si se juega con HD o FL (XH).
+ * - Rango S: Dorado (#facc15). Solo es plateado (#e2e8f0) si se juega con HD o FL (SH).
  */
-function getGradeColor(grade) {
+function getGradeColor(grade, mods = []) {
     const g = (grade || "A").toUpperCase();
-    if (g === "SS" || g === "X" || g === "XH") return "#e2e8f0";
-    if (g === "S" || g === "SH") return "#facc15";
+    const hasSilverMod = Array.isArray(mods)
+        ? mods.some(m => {
+            const acronym = (typeof m === "string" ? m : m?.acronym || "").toUpperCase();
+            return acronym === "HD" || acronym === "FL";
+        })
+        : (typeof mods === "string" ? (mods.includes("HD") || mods.includes("FL")) : false);
+
+    // Rango SS / X
+    if (g === "XH" || g === "SSH" || ((g === "SS" || g === "X") && hasSilverMod)) {
+        return "#e2e8f0"; // Plateado (con HD o FL)
+    }
+    if (g === "SS" || g === "X") {
+        return "#facc15"; // Dorado (sin HD ni FL)
+    }
+
+    // Rango S
+    if (g === "SH" || (g === "S" && hasSilverMod)) {
+        return "#e2e8f0"; // Plateado (con HD o FL)
+    }
+    if (g === "S") {
+        return "#facc15"; // Dorado (sin HD ni FL)
+    }
+
     if (g === "A") return "#22c55e";
     if (g === "B") return "#3b82f6";
     if (g === "C") return "#a855f7";
@@ -1323,14 +1346,15 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
         drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
-        // Grade S/A
-        const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade) };
-        drawCustomText(ctx, gradeFont, scoreGrade, pb.x + 80, pb.y + 175, "center", fontFamily);
-
         // Badges de mods estilo lazer
         const mods = Array.isArray(pinnedPlay?.mods)
             ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
-            : ["HD", "DT"];
+            : (typeof pinnedPlay?.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : ["HD", "DT"]);
+
+        // Grade S/A
+        const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade, mods) };
+        const displayGrade = (scoreGrade === "XH" || scoreGrade === "SSH") ? "X" : (scoreGrade === "SH" ? "S" : scoreGrade);
+        drawCustomText(ctx, gradeFont, displayGrade, pb.x + 80, pb.y + 175, "center", fontFamily);
 
         let modX = pb.x + 20;
         const modW = 54;

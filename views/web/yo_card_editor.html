@@ -2982,9 +2982,15 @@
                 drawCustomText('playScore', player.play.score, pb.x + pb.w - 16, pb.y + 76, 'right');
 
                 // Grade S/A
-                const gradeColor = player.play.grade === 'S' ? '#facc15' : '#22c55e';
+                const hasSilver = (player.play.mods || []).some(m => m === 'HD' || m === 'FL');
+                const pGrade = (player.play.grade || 'S').toUpperCase();
+                const isSilver = pGrade === 'XH' || pGrade === 'SSH' || pGrade === 'SH' || ((pGrade === 'X' || pGrade === 'SS' || pGrade === 'S') && hasSilver);
+                const gradeColor = (pGrade === 'S' || pGrade === 'SH' || pGrade === 'X' || pGrade === 'SS' || pGrade === 'XH')
+                    ? (isSilver ? '#e2e8f0' : '#facc15')
+                    : (pGrade === 'A' ? '#22c55e' : pGrade === 'B' ? '#3b82f6' : pGrade === 'C' ? '#a855f7' : '#ef4444');
                 state.fonts.playGrade.color = gradeColor;
-                drawCustomText('playGrade', player.play.grade, pb.x + 80, pb.y + 175, 'center');
+                const displayGrade = (pGrade === 'XH' || pGrade === 'SSH') ? 'X' : (pGrade === 'SH' ? 'S' : pGrade);
+                drawCustomText('playGrade', displayGrade, pb.x + 80, pb.y + 175, 'center');
 
                 let modX = pb.x + 20;
                 const modW = 54;
