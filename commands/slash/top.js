@@ -1,6 +1,6 @@
-const { SlashCommandBuilder, Collection } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const topChatCommand = require("../chat/osu/top.js");
-const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs } = require("../utils/slashUtils.js");
+const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs, wrapSlashMessage } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("top")
@@ -89,16 +89,23 @@ async function run(interaction, res) {
         args.push("-sr", dificultad);
     }
 
-    // Redirigimos el canal de envío virtual a la interacción deferida
+    messages.interaction = interaction;
+
+    // Redirigimos el canal de envío virtual a la interacción deferida asegurando el proxy envoltorio
     messages.message.channel.send = async (options) => {
-        return await interaction.editReply(options);
+        const msg = await interaction.editReply(options);
+        return wrapSlashMessage(msg, interaction, false);
     };
 
     const result = await topChatCommand.run(messages, args);
 
     if (result) {
         // Si el comando devolvió una respuesta simple
-        await interaction.editReply(result);
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
     }
 
     return true; // Auto-gestionado

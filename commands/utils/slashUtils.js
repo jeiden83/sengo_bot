@@ -52,13 +52,16 @@ function wrapSlashMessage(msg, interaction, isFollowUp = false) {
                 return async (options) => {
                     try {
                         if (!isFollowUp) {
-                            return await interaction.editReply(options);
+                            const res = await interaction.editReply(options);
+                            return wrapSlashMessage(res, interaction, false);
                         } else {
-                            return await interaction.webhook.editMessage(target.id, options);
+                            const res = await interaction.webhook.editMessage(target.id, options);
+                            return wrapSlashMessage(res, interaction, true);
                         }
                     } catch (err) {
                         try {
-                            return await target.edit(options);
+                            const res = await target.edit(options);
+                            return wrapSlashMessage(res, interaction, isFollowUp);
                         } catch (secondErr) {
                             throw err;
                         }
@@ -67,7 +70,8 @@ function wrapSlashMessage(msg, interaction, isFollowUp = false) {
             }
             if (prop === 'editReply') {
                 return async (options) => {
-                    return await interaction.editReply(options);
+                    const res = await interaction.editReply(options);
+                    return wrapSlashMessage(res, interaction, false);
                 };
             }
             if (prop === 'delete') {
@@ -90,15 +94,19 @@ function wrapSlashMessage(msg, interaction, isFollowUp = false) {
                 };
             }
             if (prop === 'createMessageComponentCollector') {
-                if (typeof target.createMessageComponentCollector === 'function') {
-                    return target.createMessageComponentCollector.bind(target);
-                }
                 return (options) => {
+                    try {
+                        if (typeof target.createMessageComponentCollector === 'function') {
+                            return target.createMessageComponentCollector(options);
+                        }
+                    } catch {}
                     if (interaction.channel && typeof interaction.channel.createMessageComponentCollector === 'function') {
-                        return interaction.channel.createMessageComponentCollector({
-                            ...options,
-                            message: target
-                        });
+                        try {
+                            return interaction.channel.createMessageComponentCollector({
+                                ...options,
+                                message: target
+                            });
+                        } catch {}
                     }
                     return { on: () => {}, stop: () => {} };
                 };

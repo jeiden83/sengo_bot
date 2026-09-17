@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const lbChatCommand = require("../chat/osu/lb.js");
-const { addModoOption, parseOsuSlashArgs } = require("../utils/slashUtils.js");
+const { addModoOption, parseOsuSlashArgs, wrapSlashMessage } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("lb")
@@ -76,16 +76,23 @@ async function run(interaction, res) {
         args.push("-lazer");
     }
 
-    // Redirigimos el canal de envío virtual a la interacción deferida
+    messages.interaction = interaction;
+
+    // Redirigimos el canal de envío virtual a la interacción deferida asegurando el proxy envoltorio
     messages.message.channel.send = async (options) => {
-        return await interaction.editReply(options);
+        const msg = await interaction.editReply(options);
+        return wrapSlashMessage(msg, interaction, false);
     };
 
     const result = await lbChatCommand.run(messages, args);
 
     if (result) {
         // Si el comando devolvió una respuesta simple (como un string con error)
-        await interaction.editReply(result);
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
     }
 
     return true; // Auto-gestionado

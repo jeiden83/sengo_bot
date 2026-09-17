@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const recommendChatCommand = require("../chat/osu/recommend.js");
-const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs } = require("../utils/slashUtils.js");
+const { addUsuarioOption, addModoOption, addServidorOption, parseOsuSlashArgs, wrapSlashMessage } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("recommend")
@@ -68,15 +68,21 @@ async function run(interaction, res) {
         args.push("-usertag");
     }
 
-    // Redirigimos el canal de envío virtual a la interacción deferida
-    messages.message.channel.send = async (options) => {
-        return await interaction.editReply(options);
-    };
     messages.interaction = interaction;
+
+    // Redirigimos el canal de envío virtual a la interacción deferida asegurando el proxy envoltorio
+    messages.message.channel.send = async (options) => {
+        const msg = await interaction.editReply(options);
+        return wrapSlashMessage(msg, interaction, false);
+    };
     const result = await recommendChatCommand.run(messages, args);
 
     if (result) {
-        await interaction.editReply(result);
+        if (typeof result === "string") {
+            await interaction.editReply({ content: result });
+        } else {
+            await interaction.editReply(result);
+        }
     }
 
     return true; // Auto-gestionado

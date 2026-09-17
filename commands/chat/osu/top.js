@@ -149,7 +149,7 @@ async function run(messages, args, options = {}) {
                 } else if (typeof sentMessage.edit === 'function') {
                     await sentMessage.edit({ embeds: [progressEmbed] });
                 }
-            } catch (e) {
+            } catch {
                 // Silencioso
             }
         };
@@ -326,8 +326,12 @@ async function run(messages, args, options = {}) {
                 : `\n- Difficulty: \`${filterStrings.join(' and ')}\``;
         }
         if (sentMessage && typeof sentMessage.edit === 'function') {
-            await sentMessage.edit({ content: errorMsg, embeds: [] });
-            return;
+            try {
+                await sentMessage.edit({ content: errorMsg, embeds: [] });
+                return;
+            } catch {
+                return errorMsg;
+            }
         }
         return errorMsg;
     }
@@ -425,11 +429,19 @@ async function run(messages, args, options = {}) {
 
         let sent_message;
         if (sentMessage && typeof sentMessage.edit === 'function') {
-            sent_message = await sentMessage.edit({
-                content: content_msg,
-                embeds: [initialEmbed],
-                components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
-            });
+            try {
+                sent_message = await sentMessage.edit({
+                    content: content_msg,
+                    embeds: [initialEmbed],
+                    components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
+                });
+            } catch {
+                sent_message = await message.channel.send({
+                    content: content_msg,
+                    embeds: [initialEmbed],
+                    components: getSingleButtonsRow(index, total_plays, filtered_scores[index - 1])
+                });
+            }
         } else {
             sent_message = await message.channel.send({
                 content: content_msg,
@@ -580,7 +592,7 @@ async function run(messages, args, options = {}) {
                 const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : score.beatmap.difficulty_rating);
                 map.free();
                 return stars;
-            } catch (e) {
+            } catch {
                 return score.beatmap.difficulty_rating;
             }
         }));
@@ -596,11 +608,18 @@ async function run(messages, args, options = {}) {
 
     let sent_message;
     if (sentMessage && typeof sentMessage.edit === 'function') {
-        sent_message = await sentMessage.edit({
-            content: null,
-            embeds: [initialListEmbed],
-            components: [getListButtonsRow(startIndex, total_plays)]
-        });
+        try {
+            sent_message = await sentMessage.edit({
+                content: null,
+                embeds: [initialListEmbed],
+                components: [getListButtonsRow(startIndex, total_plays)]
+            });
+        } catch {
+            sent_message = await message.channel.send({
+                embeds: [initialListEmbed],
+                components: [getListButtonsRow(startIndex, total_plays)]
+            });
+        }
     } else {
         sent_message = await message.channel.send({
             embeds: [initialListEmbed],
