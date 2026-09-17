@@ -29,11 +29,27 @@ async function handleOAuthFailure(author, logger) {
 }
 
 // Analiza un fallo o error en la ejecución de un comando de chat para sugerir alternativas inteligentes
-async function smartErrorSuggester(command, args, message, res, errorTextOrResult, isOsuCommand = false) {
+// ponytail: smartErrorSuggester se enfoca exclusivamente en comandos de osu! y atajos de ayuda explícita
+async function smartErrorSuggester(command, args, message, res, errorTextOrResult, isOsuCommand = false, foundCommand = null) {
     if (!args || args.length === 0) return null;
 
-    const commandLower = command.toLowerCase();
-    if (['bug', 'sugerencia', 'say', 'sayembed', 'help', 'about', 'acerca', 'language', 'idioma', 'ping', 'queue', 'skin', 'daily', 'blacklist', 'emojis', 'bcv', 'link', 'unlink'].includes(commandLower)) {
+    const commandLower = (command || '').toLowerCase();
+    const canonicalName = ((foundCommand && (foundCommand.commandName || foundCommand.name)) || commandLower).toLowerCase();
+
+    // Comandos de texto libre, utilidades y administración exentos de sugerencias inteligentes
+    const exemptCommands = [
+        'bug', 'sugerencia', 'feat', 'say', 'decir', 'impersonar', 'sayembed',
+        'help', 'about', 'acerca', 'invite', 'invitar', 'language', 'idioma',
+        'ping', 'queue', 'skin', 'daily', 'blacklist', 'emojis', 'bcv', 'binance',
+        'roll', 'link', 'unlink', 'syncguilds', 'prueba', 'yo', 'github'
+    ];
+
+    if (exemptCommands.includes(commandLower) || exemptCommands.includes(canonicalName)) {
+        return null;
+    }
+
+    // smartErrorSuggester está diseñado exclusivamente para comandos de osu!
+    if (foundCommand && foundCommand.type && foundCommand.type !== 'osu') {
         return null;
     }
 
@@ -50,12 +66,19 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
         }
     }
     // Caso 0.1: El usuario busca ayuda del comando
-    const hasHelpWord = args.some(arg => {
+    // Se activa solo si el comando fue invocado explícitamente para pedir ayuda:
+    // 1) El único argumento es una palabra de ayuda ('help', 'ayuda', '?', '-h', '--help', '-help')
+    // 2) O contiene un flag de ayuda explícito tipo CLI ('--help' o '-h')
+    const isSingleHelpArg = args.length === 1 && typeof args[0] === 'string' && (
+        ['help', 'ayuda', '?', '-h', '--help', '-help'].includes(args[0].toLowerCase().trim())
+    );
+    const hasExplicitHelpFlag = args.some(arg => {
         if (typeof arg !== 'string') return false;
-        const lowerArg = arg.toLowerCase().trim();
-        return lowerArg === 'ayuda' || lowerArg === 'help' || lowerArg === '?';
+        const trimmed = arg.toLowerCase().trim();
+        return trimmed === '--help' || trimmed === '-h';
     });
-    if (hasHelpWord) {
+
+    if (isSingleHelpArg || hasExplicitHelpFlag) {
         return `❌ ¿Habrás querido ver la ayuda de este comando? Usa **s.help ${command}** para ver todos los parámetros y opciones disponibles.`;
     }
 
@@ -450,7 +473,7 @@ async function chatCommand(intialized_data, command_data) {
             reply.reply = decorateSend(originalReplyReply, message);
         }
 
-        const preSmartSuggestion = await smartErrorSuggester(command, args, message, res, null, found_command && found_command.type === 'osu');
+        const preSmartSuggestion = await smartErrorSuggester(command, args, message, res, null, found_command && found_command.type === 'osu', found_command);
         if (preSmartSuggestion) {
             if (logger) logger.failed(`Sugerencia inteligente activa: ${preSmartSuggestion.replace(/❌\s*/g, '').slice(0, 100)}`);
             return preSmartSuggestion;
@@ -464,7 +487,7 @@ async function chatCommand(intialized_data, command_data) {
             );
 
             if (typeof result === 'string') {
-                const smartSuggestion = await smartErrorSuggester(command, args, message, res, result, found_command && found_command.type === 'osu');
+                const smartSuggestion = await smartErrorSuggester(command, args, message, res, result, found_command && found_command.type === 'osu', found_command);
                 if (smartSuggestion) {
                     result = smartSuggestion;
                 }
@@ -495,7 +518,7 @@ async function chatCommand(intialized_data, command_data) {
             return result;
         } catch (error) {
             if (logger) logger.failed(error.message);
-            const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message, found_command && found_command.type === 'osu');
+            const smartSuggestion = await smartErrorSuggester(command, args, message, res, error.message, found_command && found_command.type === 'osu', found_command);
             if (smartSuggestion) {
                 return smartSuggestion;
             }
@@ -944,6 +967,7 @@ async function loadCommands() {
 
 				try {
                     commandModule.type = parentFolder || "default";
+                    commandModule.commandName = commandName;
 
                     // Agregar el comando principal
                     chat_commands_set.add(commandName);
