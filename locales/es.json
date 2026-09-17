@@ -393,9 +393,9 @@
       "usage": "s.populate <PAÍS> [-movil | -bash]\ns.populate -lista\ns.populate -top"
     },
     "torneos": {
-      "header": "Busca y lista torneos activos o pasados de osu!",
-      "body": "Filtra torneos por modo, rango, etiquetas/región y estado.",
-      "usage": "s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]"
+      "header": "Busca torneos de osu! o configura el feed automático.",
+      "body": "Permite buscar torneos activos y pasados en el foro oficial de osu!, filtrando por modo, rango, etiquetas/región y estado. Incluye recomendador según tu perfil y feed automático para anunciar nuevos torneos en el servidor (-track).\n\n**Opciones y Flags:**\n• `s.torneos` : Muestra los torneos con paginación interactiva.\n• `s.torneos -modo <std|mania|taiko|catch>` *(o `-m`)* : Filtra por modo de juego.\n• `s.torneos -rango <número>` *(o `-r`)* : Filtra torneos accesibles para tu rango global.\n• `s.torneos -tag <texto>` *(o `-t`)* : Filtra por etiquetas (ej. latam, 1v1, draft, bws).\n• `s.torneos -estado <open|in_progress|completed|all>` *(o `-e`)* : Filtra por estado.\n• `s.torneos -pasados` *(o `-p`)* : Muestra torneos completados.\n• `s.torneos -rec` *(o `-recomendar`)* : Te recomienda un torneo activo según tu rango y modo.\n• `s.torneos -track <#canal>` *(o `-canal`)* : Configura el canal de feed automático en el servidor (Admin).\n• `s.torneos -track -borrar` *(o `-canal -borrar`)* : Desactiva el feed de torneos en el servidor (Admin).",
+      "usage": "s.torneos : Muestra la lista interactiva de torneos activos y pasados.\ns.torneos -modo <std|mania|taiko|catch> : Filtra por modo de juego.\ns.torneos -rango <número> : Filtra torneos accesibles para tu rango global.\ns.torneos -tag <texto> : Filtra por etiqueta o palabra clave (ej. latam, 1v1, draft).\ns.torneos -estado <open|in_progress|completed|all> : Filtra por estado de inscripciones.\ns.torneos -pasados : Muestra únicamente torneos completados.\ns.torneos -rec : Te recomienda un torneo según tu perfil de osu!.\ns.torneos -track <#canal> : Configura el canal de feed automático de torneos (Admin).\ns.torneos -track -borrar : Desactiva el feed de torneos en este servidor (Admin)."
     },
     "card": {
       "header": "Genera una tarjeta de perfil dinámica de osu! con Canvas.",

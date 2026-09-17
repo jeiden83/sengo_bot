@@ -45,7 +45,7 @@ async function run(messages, args) {
         }
     }
 
-    const canalIdx = cleanArgs.findIndex(a => a === '-canal');
+    const canalIdx = cleanArgs.findIndex(a => a === '-track' || a === '-canal' || a === '-feed');
     if (canalIdx !== -1) {
         const guild = message.guild;
         if (!guild) {
@@ -66,7 +66,8 @@ async function run(messages, args) {
             return { embeds: [helpEmbed] };
         }
 
-        if (subParam.toLowerCase() === '-borrar') {
+        const subParamLower = subParam.toLowerCase();
+        if (['-borrar', 'borrar', '-quitar', 'quitar', '-desactivar', 'desactivar', '-disable', 'disable', 'none'].includes(subParamLower)) {
             if (!isOwner && !isAdmin) {
                 return "❌ Necesitas permisos de Administrador para desactivar el canal de torneos.";
             }
@@ -77,7 +78,7 @@ async function run(messages, args) {
             return "✅ El feed de torneos ha sido desactivado en este servidor.";
         }
 
-        if (subParam.toLowerCase() === '-test') {
+        if (subParamLower === '-test') {
             if (!isOwner) {
                 return;
             }
@@ -87,7 +88,7 @@ async function run(messages, args) {
             const targetChannelId = guildConfig.tournament_feed_channel_id;
 
             if (!targetChannelId) {
-                return "❌ No hay un canal configurado para el feed de torneos en este servidor. Usa `s.torneos -canal #canal` primero.";
+                return "❌ No hay un canal configurado para el feed de torneos en este servidor. Usa `s.torneos -track #canal` primero.";
             }
 
             const channel = guild.channels.cache.get(targetChannelId) || await guild.channels.fetch(targetChannelId).catch(() => null);

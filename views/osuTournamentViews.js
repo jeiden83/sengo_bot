@@ -220,15 +220,23 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
  * @returns {EmbedBuilder}
  */
 function doTournamentFeedHelpEmbed(prefix, locale = 'es') {
+    const isEn = locale === 'en';
+    const title = isEn ? "📢 Tournament Feed Configuration" : "📢 Configuración del Feed de Torneos";
+    const description = isEn
+        ? `Configure a channel where new osu! tournaments from the official forum will be automatically announced.\n\n` +
+          `**Available Commands:**\n` +
+          `• \`${prefix}torneos -track <#channel or ID>\` *(or \`-canal\`)* - Sets the announcement channel.\n` +
+          `• \`${prefix}torneos -track -borrar\` - Disables the tournament feed in this server.\n\n` +
+          `*Note: Requires Administrator permissions.*`
+        : `Permite configurar un canal donde se anunciarán automáticamente los nuevos torneos de osu! obtenidos del foro.\n\n` +
+          `**Comandos disponibles:**\n` +
+          `• \`${prefix}torneos -track <#canal o ID>\` *(o \`-canal\`)* - Configura el canal de anuncios.\n` +
+          `• \`${prefix}torneos -track -borrar\` - Desactiva el feed de torneos en el servidor.\n\n` +
+          `*Nota: Requiere permisos de Administrador.*`;
+
     const helpEmbed = new EmbedBuilder()
-        .setTitle("📢 Configuración del Feed de Torneos")
-        .setDescription(
-            `Permite configurar un canal donde se anunciarán automáticamente los nuevos torneos de osu! obtenidos del foro.\n\n` +
-            `**Comandos disponibles:**\n` +
-            `• \`${prefix}torneos -canal <#canal o ID>\` - Configura el canal de anuncios.\n` +
-            `• \`${prefix}torneos -canal -borrar\` - Desactiva el feed de torneos en el servidor.\n\n` +
-            `*Nota: Requiere permisos de Administrador.*`
-        )
+        .setTitle(title)
+        .setDescription(description)
         .setColor(0x3498db)
         .setFooter({ text: "Sengo", iconURL: "https://jeiden.s-ul.eu/3ssHl9Gd" })
         .setTimestamp();

@@ -1,4 +1,4 @@
-const { SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder, ChannelType } = require("discord.js");
 const torneosChatCommand = require("../chat/osu/torneos.js");
 const { createSlashMessagesContext } = require("../utils/slashUtils.js");
 
@@ -42,6 +42,17 @@ const data = new SlashCommandBuilder()
         option.setName("recomendar")
             .setDescription("Te recomienda un torneo según tu rango y modo de juego")
             .setRequired(false)
+    )
+    .addChannelOption(option =>
+        option.setName("track")
+            .setDescription("Canal para el feed automático de torneos en este servidor (Admin)")
+            .setRequired(false)
+            .addChannelTypes(ChannelType.GuildText)
+    )
+    .addBooleanOption(option =>
+        option.setName("desactivar_feed")
+            .setDescription("Desactiva el feed de torneos en este servidor (Admin)")
+            .setRequired(false)
     );
 
 async function run(interaction, res, chat_commands) {
@@ -50,8 +61,15 @@ async function run(interaction, res, chat_commands) {
     const tag = interaction.options.getString("tag");
     const estado = interaction.options.getString("estado");
     const recomendar = interaction.options.getBoolean("recomendar");
+    const trackChannel = interaction.options.getChannel("track");
+    const desactivarFeed = interaction.options.getBoolean("desactivar_feed");
 
     const args = [];
+    if (desactivarFeed) {
+        args.push("-track", "-borrar");
+    } else if (trackChannel) {
+        args.push("-track", trackChannel.id);
+    }
     if (recomendar) {
         args.push("-rec");
     }

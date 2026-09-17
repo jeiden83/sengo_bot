@@ -321,11 +321,12 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `s.queue -server`: Muestra los mappers con queue abierta en el servidor actual.
     * `s.queue -borrar`: Elimina tu queue.
 * **`s.torneos`**
-  Búsqueda, desglose interactivo por IA y feed de torneos de osu!.
+  Búsqueda, recomendaciones inteligentes por perfil y feed automático de torneos de osu!.
   * *Flags:*
-    * `s.torneos [-modo <modo>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]`: Búsqueda interactiva con filtros.
-    * `s.torneos -canal #canal`: Configura el canal para recibir el feed automático de nuevos torneos (Admin).
-    * `s.torneos -canal -borrar`: Desactiva el feed de torneos en el servidor.
+    * `s.torneos [-modo <std|mania|taiko|catch>] [-rango <rango>] [-tag <tag>] [-pasados] [-estado <estado>]`: Búsqueda interactiva con filtros.
+    * `s.torneos -rec` *(o `-recomendar`)*: Te recomienda un torneo activo según tu rango y modo de juego.
+    * `s.torneos -track <#canal>` *(o `-canal`)*: Configura el canal para recibir el feed automático de nuevos torneos (Admin).
+    * `s.torneos -track -borrar` *(o `-canal -borrar`)*: Desactiva el feed de torneos en el servidor (Admin).
 * **`s.track`**
   Sistema de tracking de Top Plays en vivo para servidores de Discord con filtros jerárquicos de límite.
   * *Subcomandos (Requiere Administrador):*
