@@ -530,6 +530,16 @@ async function run(messages, args) {
         else if (["-std", "--std", "std", "-osu", "--osu", "osu"].includes(lower)) explicitMode = "osu";
     }
 
+    // Detectar servidor explícito si fue pasado en los argumentos (-droid, droid, -gatari, etc.)
+    let explicitServer = null;
+    for (const arg of safeArgs) {
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        if (["-droid", "--droid", "droid", "-osudroid", "--osudroid", "osudroid", "-od", "-odroid"].includes(lower)) explicitServer = "droid";
+        else if (["-gatari", "--gatari", "gatari"].includes(lower)) explicitServer = "gatari";
+        else if (["-bancho", "--bancho", "bancho"].includes(lower)) explicitServer = "bancho";
+    }
+
     let osuUser = null;
     let detectedMode = explicitMode;
 
@@ -541,6 +551,7 @@ async function run(messages, args) {
             res: res || {},
             command_function: getOsuUser,
             gamemode: explicitMode,
+            server: explicitServer,
             ignore_main_gamemode: Boolean(explicitMode),
             resolveUserByIndex: true,
             ignoreBeatmap: true
@@ -563,9 +574,16 @@ async function run(messages, args) {
     if (!osuUser || !osuUser.id) {
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
-            if (linked && (linked.osu_id || linked.username)) {
+            const isDroid = explicitServer === "droid" || safeArgs.some(a => typeof a === "string" && ["-droid", "--droid", "-osudroid", "--osudroid", "droid", "osudroid"].includes(a.toLowerCase()));
+            if (isDroid) {
+                if (linked && linked.droid_uid) {
+                    osuUser = await getOsuUser({ username: [String(linked.droid_uid)], gamemode: "osu", server: "droid" });
+                } else {
+                    return `⚠️ No tienes una cuenta de \`osu!droid\` vinculada. Usa \`s.droid link <nombre_o_uid>\` o especifica un usuario con \`s.skills -droid <usuario>\`.`;
+                }
+            } else if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: "bancho" });
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: explicitServer || "bancho" });
             }
         } catch (err) {
             console.warn("[s.skills] Error al obtener usuario vinculado:", err.message);
@@ -581,8 +599,9 @@ async function run(messages, args) {
     }
 
     try {
-        if (logger) logger.process(`Obteniendo Top 100 puntuaciones en ${targetMode} y analizando habilidades`);
-        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: "bancho" }).catch(() => []);
+        const targetServer = osuUser.server || explicitServer || "bancho";
+        if (logger) logger.process(`Obteniendo Top 100 puntuaciones en ${targetMode} (${targetServer}) y analizando habilidades`);
+        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: targetServer }).catch(() => []);
 
         if (!topScores || topScores.length === 0) {
             return t(locale, "skills.err_no_scores", { username: osuUser.username });

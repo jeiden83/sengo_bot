@@ -216,7 +216,7 @@ async function run(messages, args) {
         if (logger) logger.process(`Buscando gemelos para ${osuUser.username} en modo ${targetMode}`);
 
         // 3. Obtener las mejores jugadas del usuario (hasta 100)
-        const userTopScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: "bancho" }).catch(() => []);
+        const userTopScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: osuUser.server || "bancho" }).catch(() => []);
 
         if (!userTopScores || userTopScores.length === 0) {
             return t(locale, "twins.err_no_scores", { username: osuUser.username });

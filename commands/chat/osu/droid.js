@@ -62,6 +62,9 @@ async function run(messages, args) {
     } else if (['card', 'tarjeta'].includes(firstArg)) {
         subCommand = 'card';
         cleanArgs.shift();
+    } else if (['skills', 'skill', 'habilidad', 'habilidades'].includes(firstArg)) {
+        subCommand = 'skills';
+        cleanArgs.shift();
     } else if (['profile', 'perfil', 'p'].includes(firstArg)) {
         subCommand = 'profile';
         cleanArgs.shift();
@@ -71,6 +74,12 @@ async function run(messages, args) {
     if (subCommand === 'card') {
         const cardCmd = require("./card.js");
         return cardCmd.run(messages, [...cleanArgs, '-droid']);
+    }
+
+    // 2.6. Subcomando: Desglose de habilidades (Skills)
+    if (subCommand === 'skills') {
+        const skillsCmd = require("./skills.js");
+        return skillsCmd.run(messages, [...cleanArgs, '-droid']);
     }
 
     // 3. Subcomando: Leaderboard de Mapa en osu!droid

@@ -47,7 +47,9 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
 
     const flag = getCountryFlag(osuUser.country_code);
     const username = osuUser.username || "Jugador";
-    const userUrl = `https://osu.ppy.sh/users/${osuUser.id}`;
+    const userUrl = osuUser.server === 'droid'
+        ? `https://osudroid.moe/profile.php?uid=${osuUser.id}`
+        : `https://osu.ppy.sh/users/${osuUser.id}`;
     const avatarUrl = osuUser.avatar_url || "https://osu.ppy.sh/images/layout/avatar-guest.png";
 
     const stats = osuUser.statistics || {};
