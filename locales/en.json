@@ -3,7 +3,11 @@
     "loading": "Querying database and osu! API...",
     "error_unexpected": "An unexpected error occurred while processing the command.",
     "err_separated_flag": "⚠️ Did you mean `-{flag}`? Please write the modifier without spaces (example: `{prefix}{command} -{flag}`).",
-    "err_redundant_mods": "⚠️ You don't need to write `-{flag}` if you are already using `+{mods}` (example: `{prefix}{command} +{mods}`)."
+    "err_redundant_mods": "⚠️ You don't need to write `-{flag}` if you are already using `+{mods}` (example: `{prefix}{command} +{mods}`).",
+    "and": " and ",
+    "elapsed_time": "Sengo • Elapsed time: {elapsed}s",
+    "err_not_linked_user": "❌ No `osu!` user was found linked to your Discord account (`{username}`).\n- **Link** your account securely using the chat command `{prefix}link` or slash `/link`.",
+    "err_discord_user_not_linked": "That Discord user was not found linked to the bot."
   },
   "bug": {
     "err_owner_only": "❌ Only the creator of Sengo can use this option of the command.",
@@ -42,6 +46,8 @@
     "mode_redundant": "💡 *Tip: Since your default game mode is standard, you don't need to add `-osu` or `-std` to the command.*"
   },
   "osu": {
+    "gatari_not_found": "User was not found on Gatari!",
+    "gatari_not_found_tip": "User was not found on Gatari!\n💡 **Tip:** If you are using your linked account, Bancho and Gatari IDs are different. Try searching with your username: `/osu usuario:YourName servidor:Gatari`",
     "profile": {
       "title": "{username}'s osu! profile",
       "global_rank": "Global Rank",
@@ -315,7 +321,7 @@
     "top": {
       "header": "Get your top 200 PP plays",
       "body": "Shows a paginated list of a player's best plays (top) in osu! with advanced filtering.",
-      "usage": "s.top : Shows your best plays.\ns.top -nc : Shows simulated top recalculated as Full Combo and previous vs simulated PP count.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy."
+      "usage": "s.top : Shows your best plays.\ns.top -nc : Shows simulated top recalculated as Full Combo and previous vs simulated PP count.\ns.top -m HD : Filters by plays made exactly with HD.\ns.top -mx HR : Filters by plays containing HR.\ns.top -? \"last goodbye\" : Filters maps by title/artist/difficulty.\ns.top -g 300 : Counts and shows plays with 300 pp or more.\ns.top -c : Sorts by highest combo.\ns.top -acc : Sorts by highest accuracy.\ns.top -bpm : Sorts by highest BPM.\ns.top -cs : Sorts by highest Circle Size (CS).\ns.top -ar : Sorts by highest Approach Rate (AR).\ns.top -od : Sorts by highest Overall Difficulty (OD).\ns.top -hp : Sorts by highest HP Drain."
     },
     "lb": {
       "header": "Global and national leaderboard",
@@ -995,8 +1001,15 @@
     "err_no_national_players": "❌ No players found in the national ranking of **{country}** (Mode: `{mode}`).",
     "err_no_tops_players": "❌ No players with national tops found in **{country}**.",
     "err_no_pp_plays": "❌ No plays with PP found in the national ranking of **{country}**.",
+    "err_no_filtered_mods": "❌ No plays found with mods **{mods}** in the national ranking of **{country}**.",
+    "err_no_filtered_sr": "❌ No plays found matching difficulty `{sr}` in the national ranking of **{country}**.",
+    "err_no_filtered_pp": "❌ No plays found with **{pp}pp** or more in the national ranking of **{country}**.",
+    "suffix_total_score": "total score",
+    "suffix_score": "score",
     "embed_title_national": "National Ranking",
     "embed_title_regional": "Regional Ranking",
+    "embed_title_regional_score": "Regional Ranking by Score",
+    "embed_title_regional_totalscore": "Regional Ranking by Total Score",
     "embed_title_acc": "National Ranking by Accuracy (Acc)",
     "embed_title_score": "National Ranking by Ranked Score",
     "embed_title_totalscore": "National Ranking by Total Score",
@@ -1085,6 +1098,14 @@
     "filter_contain_mods": "\n ▸ Contains mods: `{val}`",
     "filter_search": "\n ▸ Search: `{val}`",
     "filter_pp": "\n ▸ PP >= `{val}`",
+    "filter_difficulty": "\n ▸ Difficulty: `{val}`",
+    "filter_sniped_from_short": "sniped from: {val}",
+    "sniped_from_prefix": "Sniped from **{user}** • ",
+    "nochoke_loading_title": "Calculating No-Choke (s.top)...",
+    "step_fetch_scores": "Fetching top plays from osu! API...",
+    "step_calc_nochoke": "Calculating No-Choke and processing maps...",
+    "plays_unit": "plays",
+    "maps_unit": "beatmaps",
     "warn_max_index": "⚠️ Only **{total}** top plays were found with the active filters. Showing the last one (#{total}):",
     "warn_invalid_index": "⚠️ Invalid index. Showing the best one (#1):",
     "showing_score_index": "Showing top play **#{index}** of **{total}** from PP Top:",
@@ -1095,6 +1116,11 @@
     "filter_recent_sort_short": "order: most recent ⏱️",
     "filter_combo_sort_short": "order: combo 📏",
     "filter_acc_sort_short": "order: accuracy 🎯",
+    "filter_bpm_sort_short": "order: BPM ⚡",
+    "filter_cs_sort_short": "order: CS 🔘",
+    "filter_ar_sort_short": "order: AR 👁️",
+    "filter_od_sort_short": "order: OD ⚖️",
+    "filter_hp_sort_short": "order: HP 🩸",
     "filter_nochoke_short": "no-choke: active 🛡️",
     "single_embed_author_nc": "Score #{index} [{originalRank}] in the PP Top (No Choke) of {username}",
     "single_embed_author": "Score #{rank} in the PP Top of {username}",
@@ -1169,6 +1195,9 @@
     "badges_embed_title": "Badges of {username} ({count})",
     "badges_footer": "Page {page} of {maxPages} • Total: {total}",
     "badges_back": "Back to Profile",
+    "unranked": "Unranked",
+    "more_badges": "\n*... and {count} more badges*",
+    "no_badges": "*No badges recorded*",
     "medals": "Medals",
     "play_time": "Play time",
     "level": "Level",
@@ -1276,7 +1305,18 @@
     "nemesis_recent_made": "🔥 Latest Sniped Tops",
     "nemesis_recent_received": "💔 Latest Lost Tops",
     "nemesis_none": "*None*",
-    "nemesis_err_no_history": "The user `{username}` has no activity recorded in the snipes history (has not sniped or been sniped yet)."
+    "nemesis_err_no_history": "The user `{username}` has no activity recorded in the snipes history (has not sniped or been sniped yet).",
+    "step_fetch_history": "Fetching snipes history...",
+    "step_fetch_national": "Fetching national tops...",
+    "step_process_stats": "Processing detailed statistics...",
+    "step_generate_chart": "Generating distribution chart...",
+    "stats_progress_title": "Processing Snipe Statistics...",
+    "scores_loaded": "loaded",
+    "err_no_tops_victim": "No national tops found for **{username}** sniped from **{victim}**.",
+    "err_no_tops_history": "No national tops found for **{username}** in snipes history.",
+    "err_no_tops_sr": "No national tops found for **{username}** matching difficulty filter: `{sr}`.",
+    "recalc_running": "⚠️ *This user's plays are being recalculated in the background due to the rework.*",
+    "recalc_queued": "⏳ *This user's plays are in queue to be recalculated due to the rework.*"
   },
   "mapper": {
     "err_sengo_only": "❌ *The flag `-sengo` is exclusive to the bot administrator.*",
@@ -1388,7 +1428,8 @@
     "bn_list_total": "Total registered",
     "bn_list_empty": "No BNs found matching the filters.",
     "err_bn_fetch": "❌ Error fetching data from Mappers' Guild.",
-    "err_bn_not_found": "❌ No BN found with the name `{username}`."
+    "err_bn_not_found": "❌ No BN found with the name `{username}`.",
+    "bn_probation": "Probation"
   },
   "subir": {
     "embed_author": "Manual score saved for {username}",
@@ -1412,6 +1453,7 @@
     "calc_status_no_scores": "💡 *Note: This map has no scores in this rework (or was recently updated/submitted and has not been processed yet). Estimated values equal to Live are shown. Try again later.*",
     "calc_status_exact": "✅ *Exact mods match in rework plays. (Ratio: {ratio}%)*",
     "calc_status_estimate": "⚠️ *No plays with this mods combination in the rework. Estimation based on map average. (Ratio: {ratio}%)*",
+    "calc_status_exact_calc": "✨ **Exact mathematical calculation** from the Reworks calculator.",
     "user_author": "Rework PP Details for {username}!",
     "user_rework": "Rework",
     "user_accuracy": "Average Accuracy",
@@ -1540,7 +1582,14 @@
     "usertags_desc": "Here are all the `user_tags` registered in Sengo. You can recommend them using `s.rec -usertag \"tag_name\"`:\n​",
     "usertags_err_empty": "No user tags were found in the database.",
     "usertags_err_failed": "An error occurred while loading the user tags list.",
-    "usertags_none": "None"
+    "usertags_none": "None",
+    "affinity_format": "{score}% Affinity",
+    "rand_alt_mod": "Alt Mod",
+    "rand_alt_affinity": "Alt Affinity",
+    "rand_alt_tag": "Alt Tag",
+    "rand_expanded_pp": "Expanded PP Range",
+    "reasons_prefix": "Reasons",
+    "cat_other": "📁 others"
   },
   "fumo": {
     "err_owner_only": "❌ Only the creator of Sengo can use this command.",
@@ -2122,6 +2171,10 @@
     "link_success": "✅ osu!droid account **{username}** (UID: `{uid}`) successfully linked to your Discord.",
     "unlink_success": "✅ Your osu!droid account has been unlinked.",
     "not_linked": "⚠️ You do not have a linked osu!droid account. Use `s.droid link <user_or_uid>` or provide a username.",
+    "not_linked_full": "⚠️ You do not have an `osu!droid` account linked to your Discord account.\n- Link your account using `{prefix}droid link <username_or_uid>` or specify a user with `-droid <user>`.",
+    "uid_not_found": "User with UID {uid} was not found on osu!droid!",
+    "err_api": "❌ Connection error while querying the osu!droid API. Please try again in a few moments.",
+    "err_rate_limited": "⚠️ The osu!droid API is temporarily rate limited. Please wait a moment before trying again.",
     "link_usage": "💡 Usage: `s.droid link <username_or_uid>`",
     "searching": "Querying osu!droid API..."
   }

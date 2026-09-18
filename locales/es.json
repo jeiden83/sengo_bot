@@ -3,7 +3,11 @@
     "loading": "Consultando base de datos y API de osu!...",
     "error_unexpected": "Ocurrió un error inesperado al procesar el comando.",
     "err_separated_flag": "⚠️ ¿Quisiste decir `-{flag}`? Por favor, escribe el modificador sin espacios (ejemplo: `{prefix}{command} -{flag}`).",
-    "err_redundant_mods": "⚠️ No hace falta que escribas el `-{flag}` si ya luego haces el `+{mods}` (ejemplo: `{prefix}{command} +{mods}`)."
+    "err_redundant_mods": "⚠️ No hace falta que escribas el `-{flag}` si ya luego haces el `+{mods}` (ejemplo: `{prefix}{command} +{mods}`).",
+    "and": " y ",
+    "elapsed_time": "Sengo • Tiempo transcurrido: {elapsed}s",
+    "err_not_linked_user": "❌ No se encontró ningún usuario de `osu!` vinculado a tu cuenta de Discord (`{username}`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat `{prefix}link` o slash `/link`.",
+    "err_discord_user_not_linked": "No se encontró ese usuario de discord linkeado al bot."
   },
   "bug": {
     "err_owner_only": "❌ Solo el creador de Sengo puede usar esta opción del comando.",
@@ -42,6 +46,8 @@
     "mode_redundant": "💡 *Tip: Como tu modo de juego por defecto es standard, no necesitas agregar `-osu` o `-std` al comando.*"
   },
   "osu": {
+    "gatari_not_found": "El usuario no se encuentra en Gatari!",
+    "gatari_not_found_tip": "El usuario no se encuentra en Gatari!\n💡 **Consejo:** Si estás usando tu cuenta enlazada, recuerda que las IDs de Bancho y Gatari son diferentes. Prueba buscando con tu nombre de usuario: `/osu usuario:TuNombre servidor:Gatari`",
     "profile": {
       "title": "Perfil de osu! de {username}",
       "global_rank": "Ranking global",
@@ -315,7 +321,7 @@
     "top": {
       "header": "Obtén el top 200 de jugadas de PP",
       "body": "Muestra una lista paginada de las mejores jugadas (top) de un jugador de osu! con filtrado avanzado.",
-      "usage": "s.top : Muestra tus mejores jugadas.\ns.top -nc : Muestra el top simulado recalculado como Full Combo y el conteo de PP anterior y simulado.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta."
+      "usage": "s.top : Muestra tus mejores jugadas.\ns.top -nc : Muestra el top simulado recalculado como Full Combo y el conteo de PP anterior y simulado.\ns.top -m HD : Filtra por jugadas hechas exactamente con HD.\ns.top -mx HR : Filtra por jugadas que contengan HR.\ns.top -? \"last goodbye\" : Filtra mapas por título/artista/dificultad.\ns.top -g 300 : Cuenta y muestra jugadas con 300 pp o más.\ns.top -c : Ordena por el combo más alto.\ns.top -acc : Ordena por la precisión más alta.\ns.top -bpm : Ordena por BPM más alto.\ns.top -cs : Ordena por Circle Size (CS) más alto.\ns.top -ar : Ordena por Approach Rate (AR) más alto.\ns.top -od : Ordena por Overall Difficulty (OD) más alto.\ns.top -hp : Ordena por HP Drain más alto."
     },
     "lb": {
       "header": "Tabla de clasificación global y nacional",
@@ -995,8 +1001,15 @@
     "err_no_national_players": "❌ No se encontraron jugadores en el ranking nacional de **{country}** (Modo: `{mode}`).",
     "err_no_tops_players": "❌ No se encontraron jugadores con tops nacionales en **{country}**.",
     "err_no_pp_plays": "❌ No se encontraron jugadas registradas con PP en **{country}**.",
+    "err_no_filtered_mods": "❌ No se encontraron jugadas registradas con los mods **{mods}** en el ranking de **{country}**.",
+    "err_no_filtered_sr": "❌ No se encontraron jugadas con dificultad `{sr}` en el ranking de **{country}**.",
+    "err_no_filtered_pp": "❌ No se encontraron jugadas con **{pp}pp** o más en el ranking de **{country}**.",
+    "suffix_total_score": "score total",
+    "suffix_score": "score",
     "embed_title_national": "Ranking Nacional",
     "embed_title_regional": "Ranking Regional",
+    "embed_title_regional_score": "Ranking Regional por Score",
+    "embed_title_regional_totalscore": "Ranking Regional por Score Total",
     "embed_title_acc": "Ranking Nacional por Precisión (Acc)",
     "embed_title_score": "Ranking Nacional por Score",
     "embed_title_totalscore": "Ranking Nacional por Score Total",
@@ -1085,6 +1098,14 @@
     "filter_contain_mods": "\n ▸ Contiene mods: `{val}`",
     "filter_search": "\n ▸ Búsqueda: `{val}`",
     "filter_pp": "\n ▸ PP >= `{val}`",
+    "filter_difficulty": "\n ▸ Dificultad: `{val}`",
+    "filter_sniped_from_short": "robado a: {val}",
+    "sniped_from_prefix": "Robado a **{user}** • ",
+    "nochoke_loading_title": "Calculando No-Choke (s.top)...",
+    "step_fetch_scores": "Obteniendo mejores jugadas de osu! API...",
+    "step_calc_nochoke": "Calculando No-Choke y procesando mapas...",
+    "plays_unit": "jugadas",
+    "maps_unit": "mapas",
     "warn_max_index": "⚠️ Solo se encontraron **{total}** mejores jugadas con los filtros activos. Mostrando la última (#{total}):",
     "warn_invalid_index": "⚠️ Índice inválido. Mostrando la mejor (#1):",
     "showing_score_index": "Mostrando la mejor jugada **#{index}** de **{total}** del Top de PP:",
@@ -1095,6 +1116,11 @@
     "filter_recent_sort_short": "orden: más recientes ⏱️",
     "filter_combo_sort_short": "orden: combo 📏",
     "filter_acc_sort_short": "orden: precisión 🎯",
+    "filter_bpm_sort_short": "orden: BPM ⚡",
+    "filter_cs_sort_short": "orden: CS 🔘",
+    "filter_ar_sort_short": "orden: AR 👁️",
+    "filter_od_sort_short": "orden: OD ⚖️",
+    "filter_hp_sort_short": "orden: HP 🩸",
     "filter_nochoke_short": "no-choke: activo 🛡️",
     "single_embed_author_nc": "Puntuación #{index} [{originalRank}] en el Top de PP (No Choke) de {username}",
     "single_embed_author": "Puntuación #{rank} en el Top de PP de {username}",
@@ -1169,6 +1195,9 @@
     "badges_embed_title": "Insignias de {username} ({count})",
     "badges_footer": "Página {page} de {maxPages} • Total: {total}",
     "badges_back": "Volver al Perfil",
+    "unranked": "Sin clasificar",
+    "more_badges": "\n*... y {count} insignias más*",
+    "no_badges": "*No hay insignias registradas*",
     "medals": "Medallas",
     "play_time": "Tiempo de juego",
     "level": "Nivel",
@@ -1276,7 +1305,18 @@
     "nemesis_recent_made": "🔥 Últimos Tops Arrebatados",
     "nemesis_recent_received": "💔 Últimos Tops Perdidos",
     "nemesis_none": "*Ninguno*",
-    "nemesis_err_no_history": "El usuario `{username}` no registra actividad en el historial de snipes (aún no ha quitado ni le han quitado ningún top nacional)."
+    "nemesis_err_no_history": "El usuario `{username}` no registra actividad en el historial de snipes (aún no ha quitado ni le han quitado ningún top nacional).",
+    "step_fetch_history": "Obteniendo historial de snipes...",
+    "step_fetch_national": "Obteniendo tops nacionales...",
+    "step_process_stats": "Procesando estadísticas detalladas...",
+    "step_generate_chart": "Generando gráfico de distribución...",
+    "stats_progress_title": "Procesando Estadísticas de Snipes...",
+    "scores_loaded": "cargados",
+    "err_no_tops_victim": "No se encontraron tops nacionales para **{username}** robados a **{victim}**.",
+    "err_no_tops_history": "No se encontraron tops nacionales para **{username}** registrados en el historial de snipes.",
+    "err_no_tops_sr": "No se encontraron tops nacionales para **{username}** con el filtro de dificultad: `{sr}`.",
+    "recalc_running": "⚠️ *Se están recalculando las jugadas de este usuario en segundo plano debido al rework.*",
+    "recalc_queued": "⏳ *Las jugadas de este usuario están en cola para ser recalculadas debido al rework.*"
   },
   "mapper": {
     "err_sengo_only": "❌ *El flag `-sengo` es exclusivo para el administrador del bot.*",
@@ -1388,7 +1428,8 @@
     "bn_list_total": "Total registrados",
     "bn_list_empty": "No se encontraron BNs que coincidan con los filtros.",
     "err_bn_fetch": "❌ Error al obtener los datos de Mappers' Guild.",
-    "err_bn_not_found": "❌ No se encontró ningún BN con el nombre `{username}`."
+    "err_bn_not_found": "❌ No se encontró ningún BN con el nombre `{username}`.",
+    "bn_probation": "Prueba"
   },
   "subir": {
     "embed_author": "Score manual guardada para {username}",
@@ -1412,6 +1453,7 @@
     "calc_status_no_scores": "💡 *Nota: Este mapa no tiene puntuaciones en este rework (o fue actualizado/enviado recientemente y no ha sido procesado aún). Se muestran valores estimativos iguales a Live. Inténtalo de nuevo más tarde.*",
     "calc_status_exact": "✅ *Coincidencia exacta de mods en las jugadas del rework. (Ratio: {ratio}%)*",
     "calc_status_estimate": "⚠️ *No hay jugadas con esta combinación de mods en el rework. Estimación basada en el promedio del mapa. (Ratio: {ratio}%)*",
+    "calc_status_exact_calc": "✨ **Cálculo matemático exacto** de la calculadora de Reworks.",
     "user_author": "Detalles de PP en Rework para {username}!",
     "user_rework": "Rework",
     "user_accuracy": "Precisión Promedio",
@@ -1540,7 +1582,14 @@
     "usertags_desc": "Aquí tienes todos los `user_tags` registrados en Sengo. Puedes recomendarlos usando `s.rec -usertag \"nombre_tag\"`:\n​",
     "usertags_err_empty": "No se encontraron user tags en la base de datos.",
     "usertags_err_failed": "Ocurrió un error al cargar la lista de user tags.",
-    "usertags_none": "Ninguno"
+    "usertags_none": "Ninguno",
+    "affinity_format": "{score}% de Afinidad",
+    "rand_alt_mod": "Mod alternativo",
+    "rand_alt_affinity": "Afinidad variable",
+    "rand_alt_tag": "Tag aleatorio",
+    "rand_expanded_pp": "Rango PP ampliado",
+    "reasons_prefix": "Razones",
+    "cat_other": "📁 otros"
   },
   "fumo": {
     "err_owner_only": "❌ Solo el creador de Sengo puede usar este comando.",
@@ -2126,6 +2175,10 @@
     "link_success": "✅ Cuenta de osu!droid **{username}** (UID: `{uid}`) vinculada exitosamente a tu Discord.",
     "unlink_success": "✅ Se ha desvinculado tu cuenta de osu!droid.",
     "not_linked": "⚠️ No tienes una cuenta de osu!droid vinculada. Usa `s.droid link <usuario_o_uid>` o especifica un usuario.",
+    "not_linked_full": "⚠️ No tienes una cuenta de `osu!droid` vinculada a tu cuenta de Discord.\n- Vincula tu cuenta usando `{prefix}droid link <nombre_o_uid>` o especifica un usuario con `-droid <usuario>`.",
+    "uid_not_found": "El usuario con UID {uid} no se encuentra en osu!droid!",
+    "err_api": "❌ Hubo un error de conexión al consultar la API de osu!droid. Inténtalo de nuevo en unos momentos.",
+    "err_rate_limited": "⚠️ La API de osu!droid está temporalmente saturada (límite de peticiones alcanzado). Por favor, espera un momento antes de volver a consultar.",
     "link_usage": "💡 Uso: `s.droid link <nombre_o_uid>`",
     "searching": "Consultando API de osu!droid..."
   }

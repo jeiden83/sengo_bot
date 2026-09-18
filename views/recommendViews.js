@@ -57,13 +57,13 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             }
             description += `**${index + 1}.** ${map_link}\n`;
             
-            const affinityStr = locale === 'es' ? `${c.matchScore}% de Afinidad` : `${c.matchScore}% Affinity`;
+            const affinityStr = t(locale, 'recommend.affinity_format', { score: c.matchScore });
             
             const randFlags = [];
-            if (c.isRandomMod) randFlags.push(locale === 'es' ? 'Mod alternativo' : 'Alt Mod');
-            if (c.isRandomAffinity) randFlags.push(locale === 'es' ? 'Afinidad variable' : 'Alt Affinity');
-            if (c.isRandomTag) randFlags.push(locale === 'es' ? 'Tag aleatorio' : 'Alt Tag');
-            if (c.isPPExpanded) randFlags.push(locale === 'es' ? 'Rango PP ampliado' : 'Expanded PP Range');
+            if (c.isRandomMod) randFlags.push(t(locale, 'recommend.rand_alt_mod'));
+            if (c.isRandomAffinity) randFlags.push(t(locale, 'recommend.rand_alt_affinity'));
+            if (c.isRandomTag) randFlags.push(t(locale, 'recommend.rand_alt_tag'));
+            if (c.isPPExpanded) randFlags.push(t(locale, 'recommend.rand_expanded_pp'));
             
             const randStr = randFlags.length > 0 ? ` 🎲 *(${randFlags.join(", ")})*` : "";
             
@@ -83,7 +83,7 @@ function doOsuRecommendEmbed(message, profile, recommendations, params, locale =
             const displayBpm = c.bpm ? Math.round(c.bpm * speedMultiplier) : 0;
             description += `   ▸ Stats: \`${durationStr}\` | AR: \`${c.ar}\` | OD: \`${c.od}\` | BPM: \`${displayBpm}\` | Pop: \`${formatNumber(c.popularity || 0, locale)}\`\n`;
             if (c.matchReasons && c.matchReasons.length > 0) {
-                const reasonsPrefix = locale === 'es' ? 'Razones' : 'Reasons';
+                const reasonsPrefix = t(locale, 'recommend.reasons_prefix');
                 description += `   ▸ *${reasonsPrefix}: ${c.matchReasons.join(" • ")}*\n`;
             }
             description += `\n`;

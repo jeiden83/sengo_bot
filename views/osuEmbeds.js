@@ -16,7 +16,9 @@ const {
     getBeatmapStatsLine,
     hasLazerCustomMods,
     formatNumber,
-    formatDecimal
+    formatDecimal,
+    getActiveSortFilter,
+    getSortAttributeBadge
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -439,10 +441,9 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
     if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
     if (parsed_args.searchFilter !== null && parsed_args.searchFilter !== undefined) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
-    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
-    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
-    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
-    if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
+    const sortFilter = getActiveSortFilter(parsed_args, locale);
+    if (sortFilter) active_filters.push(sortFilter);
+    if (parsed_args.targetVictimFilter) active_filters.push(t(locale, 'top.filter_sniped_from_short', { val: parsed_args.targetVictimFilter }));
     if (parsed_args.skillInfo) {
         const skillName = parsed_args.skillInfo.key.toUpperCase();
         active_filters.push(`Skill: ${skillName} (${formatDecimal(parsed_args.skillInfo.avgPoints, locale, 2)} pts)`);
@@ -474,7 +475,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const playDate = score.ended_at || score.created_at || new Date();
     const time_relative_val = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const snipedPrefixSingle = score.sniped_name
-        ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
+        ? t(locale, 'top.sniped_from_prefix', { user: score.sniped_name })
         : '';
     const time_relative = `${snipedPrefixSingle}${time_relative_val}`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
@@ -537,11 +538,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     if (parsed_args.modFilter !== null) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
     if (parsed_args.modContainFilter !== null) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
     if (parsed_args.searchFilter !== null) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
-    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
-    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
-    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
+    const sortFilter = getActiveSortFilter(parsed_args, locale);
+    if (sortFilter) active_filters.push(sortFilter);
     if (parsed_args.nochoke) active_filters.push(t(locale, 'top.filter_nochoke_short'));
-    if (parsed_args.targetVictimFilter) active_filters.push(locale === 'es' ? `Robado a: ${parsed_args.targetVictimFilter}` : `Sniped from: ${parsed_args.targetVictimFilter}`);
+    if (parsed_args.targetVictimFilter) active_filters.push(t(locale, 'top.filter_sniped_from_short', { val: parsed_args.targetVictimFilter }));
     if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
         const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
         active_filters.push(...srTexts);
@@ -591,9 +591,13 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const isLoved = isLovedScore(score) || (!score.pp || score.pp === 0);
         let pp = isLoved ? "💖" : `${score.pp ? formatDecimal(score.pp, locale, 2) + "pp" : formatDecimal(0, locale, 2) + "pp"}`;
         let starsVal = calculated_stars[i];
-        const stars = starsVal ? `${formatDecimal(starsVal, locale, 2)}★` : "";
+        let stars = starsVal ? `${formatDecimal(starsVal, locale, 2)}★` : "";
+        const sortBadge = getSortAttributeBadge(score, parsed_args, gamemode, locale);
+        if (sortBadge) {
+            stars = stars ? `${stars} • ${sortBadge}` : sortBadge;
+        }
         const snipedPrefixList = score.sniped_name
-            ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
+            ? t(locale, 'top.sniped_from_prefix', { user: score.sniped_name })
             : '';
         let time_set = `${snipedPrefixList}<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
         const map_title = `${score.beatmapset?.title || score.beatmap?.title || 'Beatmap'} [${score.beatmap?.version || 'Normal'}]`;
@@ -1696,13 +1700,11 @@ function doOsuTopProgressEmbed(message, activeSteps, totalElapsed, locale = 'es'
 
     const elapsedSeconds = (totalElapsed / 1000).toFixed(2);
     return new EmbedBuilder()
-        .setTitle(locale === 'es' ? "Calculando No-Choke (s.top)..." : "Calculating No-Choke (s.top)...")
+        .setTitle(t(locale, 'top.nochoke_loading_title'))
         .setDescription(descriptionLines.join('\n'))
         .setColor(embedColor)
         .setFooter({
-            text: locale === 'es'
-                ? `Sengo • Tiempo transcurrido: ${elapsedSeconds}s`
-                : `Sengo • Elapsed time: ${elapsedSeconds}s`
+            text: t(locale, 'general.elapsed_time', { elapsed: elapsedSeconds })
         });
 }
 
@@ -2003,7 +2005,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         if (matchmaking) {
             matchmakingSection = t(locale, 'profile.matchmaking_detailed_title') + "\n" +
                 t(locale, 'profile.matchmaking_season', { season: matchmaking.pool?.name || 'N/A' }) + "\n" +
-                t(locale, 'profile.matchmaking_rank', { rank: matchmaking.rank ? matchmaking.rank.toLocaleString(locTag) : (locale === 'es' ? 'Sin clasificar' : 'Unranked') }) + "\n" +
+                t(locale, 'profile.matchmaking_rank', { rank: matchmaking.rank ? matchmaking.rank.toLocaleString(locTag) : t(locale, 'profile.unranked') }) + "\n" +
                 t(locale, 'profile.matchmaking_rating', { rating: matchmaking.rating ? matchmaking.rating.toLocaleString(locTag) : 0 }) + "\n" +
                 t(locale, 'profile.matchmaking_wins', { wins: matchmaking.first_placements || 0 }) + "\n" +
                 t(locale, 'profile.matchmaking_plays', { plays: matchmaking.plays || 0 }) + "\n" +
@@ -2079,7 +2081,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         }).join('\n');
 
         if (totalBadges > maxDisplay) {
-            badgesText += `\n*... y ${totalBadges - maxDisplay} ${locale === 'es' ? 'insignias más' : 'more badges'}*`;
+            badgesText += t(locale, 'profile.more_badges', { count: totalBadges - maxDisplay });
         }
 
         embed2.addFields({
@@ -2141,9 +2143,7 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
     }
     let statusText = "";
     if (reworkResult.isExactCalculation) {
-        statusText = locale === 'es'
-            ? `✨ **Cálculo matemático exacto** de la calculadora de Reworks.`
-            : `✨ **Exact mathematical calculation** from the Reworks calculator.`;
+        statusText = t(locale, 'rework.calc_status_exact_calc');
     } else if (!reworkResult.hasScores) {
         statusText = t(locale, 'rework.calc_status_no_scores');
     } else if (reworkResult.hasExactMatch) {
@@ -2613,7 +2613,7 @@ function doOsuUserBadgesEmbed(message, osu_userdata, page = 1, locale = 'es') {
             url: getUserUrl(osu_userdata),
             iconURL: osu_userdata.avatar_url
         })
-        .setDescription(desc || (locale === 'es' ? '*No hay insignias registradas*' : '*No badges recorded*'))
+        .setDescription(desc || t(locale, 'profile.no_badges'))
         .setColor(embedColor)
         .setThumbnail(chunk[0]?.['image@2x_url'] || chunk[0]?.image_url || osu_userdata.avatar_url)
         .setFooter({
@@ -2632,7 +2632,7 @@ function doOsuUserBadgesEmbed(message, osu_userdata, page = 1, locale = 'es') {
         );
     }
     row.addComponents(
-        new ButtonBuilder().setCustomId('badges_back').setLabel(t(locale, 'profile.badges_back') || (locale === 'es' ? 'Volver al Perfil' : 'Back to Profile')).setEmoji('⬅️').setStyle(ButtonStyle.Primary)
+        new ButtonBuilder().setCustomId('badges_back').setLabel(t(locale, 'profile.badges_back')).setEmoji('⬅️').setStyle(ButtonStyle.Primary)
     );
 
     return {

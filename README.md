@@ -151,6 +151,11 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `-r`: Ordena por fecha (más recientes primero).
     * `-c`: Ordena por combo máximo.
     * `-acc`: Ordena por precisión.
+    * `-bpm`: Ordena por BPM más alto (ajustado por mods DT/HT).
+    * `-cs`: Ordena por Circle Size (CS) más alto (ajustado por mods HR/EZ/DA).
+    * `-ar`: Ordena por Approach Rate (AR) más alto (ajustado por mods HR/EZ/DT/HT/DA).
+    * `-od`: Ordena por Overall Difficulty (OD) más alto (ajustado por mods HR/EZ/DT/HT/DA).
+    * `-hp`: Ordena por HP Drain más alto (ajustado por mods HR/EZ/DA).
     * `-p <página>`: Navega a una página específica.
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
 * **`s.c` o `s.compare [usuario]`**
@@ -256,13 +261,13 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `s.snipes -d`: Perfil detallado de habilidad (estrellas, mappers más jugados, stats técnicos e hitos).
     * `s.snipes -nemesis`: Análisis de rivales (a quién has snipeado y quién te ha snipeado).
     * `s.snipes -top`: Lista paginada interactiva de tus #1s nacionales.
-      * *Filtros en `-top`:* `-sr>5 -sr<8` (rango de estrellas), `+<mods>`, `-? "<texto>"`, `-g <pp>`, `-r`, `-c`, `-acc`, `-i <n>`.
+      * *Filtros en `-top`:* `-sr>5 -sr<8` (rango de estrellas), `+<mods>`, `-? "<texto>"`, `-g <pp>`, `-r`, `-c`, `-acc`, `-bpm`, `-cs`, `-ar`, `-od`, `-hp`, `-i <n>`.
     * `s.snipes -top -nacional`: Tabla de clasificación de tops nacionales (#1s) y snipes de tu país (admite `-pais <código>` ej: `-pais MX`).
 * **`s.nacional [código/nombre]`**
   Muestra la tabla de clasificación por PP, por tops (#1s), o las mejores jugadas individuales por PP de un país específico.
   * *Flags:*
     * `-skills [habilidad]` / `-aim` / `-speed` / `-acc` / `-reading` / `-stamina`: Muestra el ranking nacional de habilidades de los jugadores registrados del país (ej: `s.nacional -skills`, `s.nacional -skills speed CL`, `s.nacional -skills acc ES`).
-    * `-pp`: Muestra el ranking de mejores jugadas por PP a nivel nacional (admite `-pais <código>`, `-m <mods>`, `-mx <mods>`, `-sr>X`, `-g <pp>`, `-? "<texto>"`, `-r`, `-c`, `-acc`, `-i <n>`).
+    * `-pp`: Muestra el ranking de mejores jugadas por PP a nivel nacional (admite `-pais <código>`, `-m <mods>`, `-mx <mods>`, `-sr>X`, `-g <pp>`, `-? "<texto>"`, `-r`, `-c`, `-acc`, `-bpm`, `-cs`, `-ar`, `-od`, `-hp`, `-i <n>`).
     * `-tops`: Muestra el ranking nacional ordenado por cantidad de #1s y snipes del país (admite `-pais <código>` ej: `s.nacional -tops -pais MX`).
     * `-acc`: Ordena por precisión (Acc).
     * `-score` / `-totalscore`: Ordena por Ranked Score o Score Total.

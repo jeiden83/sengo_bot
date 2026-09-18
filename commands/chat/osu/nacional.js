@@ -809,32 +809,21 @@ async function handleNationalPPPlays(messages, args, parsed_args, countryFilter,
         });
     }
 
-    // 6. Ordenamientos alternativos si se especifican (-r, -c, -acc)
-    if (parsed_args.recentSort) {
-        filtered_scores.sort((a, b) => new Date(b.ended_at).getTime() - new Date(a.ended_at).getTime());
-    } else if (parsed_args.comboSort) {
-        filtered_scores.sort((a, b) => (b.max_combo || 0) - (a.max_combo || 0));
-    } else if (parsed_args.accSort) {
-        filtered_scores.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
-    }
+    // 6. Ordenamientos alternativos si se especifican (-r, -c, -acc, -bpm, -cs, -ar, -od, -hp)
+    const { sortScores } = require("../../../models/OsuScoreModel.js");
+    sortScores(filtered_scores, parsed_args, mode);
 
     const total_plays = filtered_scores.length;
     if (total_plays === 0) {
         if (parsed_args.modFilter) {
-            return locale === 'es'
-                ? `❌ No se encontraron jugadas registradas con los mods **${parsed_args.modFilter}** en el ranking de **${countryFilter}**.`
-                : `❌ No plays found with mods **${parsed_args.modFilter}** in the national ranking of **${countryFilter}**.`;
+            return t(locale, 'nacional.err_no_filtered_mods', { mods: parsed_args.modFilter, country: countryFilter });
         }
         if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
             const filterStrings = parsed_args.srFilters.map(f => `${f.op}${f.valStr}`);
-            return locale === 'es'
-                ? `❌ No se encontraron jugadas con dificultad \`${filterStrings.join(' y ')}\` en el ranking de **${countryFilter}**.`
-                : `❌ No plays found matching difficulty \`${filterStrings.join(' and ')}\` in the national ranking of **${countryFilter}**.`;
+            return t(locale, 'nacional.err_no_filtered_sr', { sr: filterStrings.join(t(locale, 'general.and')), country: countryFilter });
         }
         if (parsed_args.ppThreshold !== null && parsed_args.ppThreshold !== undefined) {
-            return locale === 'es'
-                ? `❌ No se encontraron jugadas con **${parsed_args.ppThreshold}pp** o más en el ranking de **${countryFilter}**.`
-                : `❌ No plays found with **${parsed_args.ppThreshold}pp** or more in the national ranking of **${countryFilter}**.`;
+            return t(locale, 'nacional.err_no_filtered_pp', { pp: parsed_args.ppThreshold, country: countryFilter });
         }
         return t(locale, 'nacional.err_no_pp_plays', { country: countryFilter });
     }

@@ -589,7 +589,7 @@ function doOsuBnProfileEmbed(message, bnUser, locale = 'es') {
     const modesDetails = [];
     if (bnUser.modesInfo && bnUser.modesInfo.length > 0) {
         bnUser.modesInfo.forEach(m => {
-            const levelLabel = m.level === 'probation' ? ` (${locale === 'es' ? 'Prueba' : 'Probation'})` : '';
+            const levelLabel = m.level === 'probation' ? ` (${t(locale, 'mapper.bn_probation')})` : '';
             const modeName = m.mode === 'osu' ? 'std' : (m.mode === 'fruits' ? 'catch' : m.mode);
             modesDetails.push(`• **osu!${modeName}**${levelLabel}`);
         });

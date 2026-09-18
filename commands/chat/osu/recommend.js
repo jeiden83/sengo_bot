@@ -406,7 +406,7 @@ async function run(messages, args) {
                 'context': '🌐 context',
                 'gimmick': '🧠 gimmick',
                 'expression': '💬 expression',
-                'otros': locale === 'es' ? '📁 otros' : '📁 others'
+                'otros': t(locale, 'recommend.cat_other')
             };
 
             const embed = doRecommendUserTagsEmbed(message, categories, categoryEmojis, locale);

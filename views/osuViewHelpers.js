@@ -434,79 +434,8 @@ function hasLazerCustomMods(mods) {
  * Ej: `CS 5.2▲ | AR 10▲ | OD 10▲ | HP 7▲ | BPM 180`
  */
 function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu', locale = 'es') {
-    const ppEngine = require('../utils/ppEngine.js');
-    let baseCs = beatmap.cs !== undefined ? beatmap.cs : 0;
-    let baseAr = beatmap.ar !== undefined ? beatmap.ar : (beatmap.accuracy !== undefined ? beatmap.accuracy : 0);
-    let baseOd = beatmap.accuracy !== undefined ? beatmap.accuracy : (beatmap.od !== undefined ? beatmap.od : (beatmap.ar !== undefined ? beatmap.ar : 0));
-    let baseHp = beatmap.drain !== undefined ? beatmap.drain : (beatmap.hp !== undefined ? beatmap.hp : 0);
-    const baseBpm = Math.round(beatmap.bpm || 0);
-
-    const originalBaseCs = baseCs;
-    const originalBaseAr = baseAr;
-    const originalBaseOd = baseOd;
-    const originalBaseHp = baseHp;
-
-    // Si hay mod DA (Difficulty Adjust), extraer las sobreescrituras de atributos
-    if (Array.isArray(mods)) {
-        const daMod = mods.find(m => (typeof m === 'object' && m !== null && (m.acronym === 'DA' || m.acronym === 'da')));
-        if (daMod && daMod.settings) {
-            if (daMod.settings.circle_size !== undefined && daMod.settings.circle_size !== null) {
-                baseCs = Number(daMod.settings.circle_size);
-            }
-            if (daMod.settings.approach_rate !== undefined && daMod.settings.approach_rate !== null) {
-                baseAr = Number(daMod.settings.approach_rate);
-            }
-            if (daMod.settings.overall_difficulty !== undefined && daMod.settings.overall_difficulty !== null) {
-                baseOd = Number(daMod.settings.overall_difficulty);
-            }
-            if (daMod.settings.drain_rate !== undefined && daMod.settings.drain_rate !== null) {
-                baseHp = Number(daMod.settings.drain_rate);
-            }
-        }
-    }
-
-    const gameModeMap = {
-        'osu': ppEngine.GameMode.Osu,
-        'taiko': ppEngine.GameMode.Taiko,
-        'fruits': ppEngine.GameMode.Catch,
-        'catch': ppEngine.GameMode.Catch,
-        'ctb': ppEngine.GameMode.Catch,
-        'mania': ppEngine.GameMode.Mania,
-        0: ppEngine.GameMode.Osu,
-        1: ppEngine.GameMode.Taiko,
-        2: ppEngine.GameMode.Catch,
-        3: ppEngine.GameMode.Mania
-    };
-    const activeMode = gameModeMap[mode] !== undefined ? gameModeMap[mode] : ppEngine.GameMode.Osu;
-
-    let modCs = baseCs;
-    let modAr = baseAr;
-    let modOd = baseOd;
-    let modHp = baseHp;
-    let clockRate = 1.0;
-
-    try {
-        const builder = new ppEngine.BeatmapAttributesBuilder({
-            cs: baseCs,
-            ar: baseAr,
-            od: baseOd,
-            hp: baseHp,
-            mode: activeMode,
-            mods: mods || []
-        });
-        const attrs = builder.build();
-        if (attrs) {
-            modCs = attrs.cs !== undefined ? attrs.cs : baseCs;
-            modAr = attrs.ar !== undefined ? attrs.ar : baseAr;
-            modOd = attrs.od !== undefined ? attrs.od : baseOd;
-            modHp = attrs.hp !== undefined ? attrs.hp : baseHp;
-            clockRate = attrs.clockRate || 1.0;
-        }
-    } catch (err) {
-        // En caso de error, se mantienen las estadísticas base
-    }
-
-    const modBpm = Math.round(baseBpm * clockRate);
+    const BeatmapModel = require('../models/BeatmapModel.js');
+    const stats = BeatmapModel.getBeatmapAdjustedStats(beatmap, mods, mode);
 
     const formatStat = (label, originalBaseVal, modVal, decimals = 1) => {
         const diff = modVal - originalBaseVal;
@@ -520,13 +449,58 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu', locale = 'es
     };
 
     const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
-    const csStr = formatStat('CS', originalBaseCs, modCs, csDecimals);
-    const arStr = formatStat('AR', originalBaseAr, modAr, 1);
-    const odStr = formatStat('OD', originalBaseOd, modOd, 1);
-    const hpStr = formatStat('HP', originalBaseHp, modHp, 1);
-    const bpmStr = formatStat('BPM', baseBpm, modBpm, 0);
+    const csStr = formatStat('CS', stats.baseCs, stats.cs, csDecimals);
+    const arStr = formatStat('AR', stats.baseAr, stats.ar, 1);
+    const odStr = formatStat('OD', stats.baseOd, stats.od, 1);
+    const hpStr = formatStat('HP', stats.baseHp, stats.hp, 1);
+    const bpmStr = formatStat('BPM', stats.baseBpm, stats.bpm, 0);
 
     return `\`${csStr} | ${arStr} | ${odStr} | ${hpStr} | ${bpmStr}\``;
+}
+
+/**
+ * Retorna el texto del filtro de ordenamiento activo para colocar en la lista de active_filters del embed.
+ * @param {Object} parsed_args 
+ * @param {string} locale 
+ * @returns {string|null}
+ */
+function getActiveSortFilter(parsed_args = {}, locale = 'es') {
+    const { t } = require('../utils/i18n.js');
+    if (parsed_args.recentSort) return t(locale, 'top.filter_recent_sort_short');
+    if (parsed_args.comboSort) return t(locale, 'top.filter_combo_sort_short');
+    if (parsed_args.accSort) return t(locale, 'top.filter_acc_sort_short');
+    if (parsed_args.bpmSort) return t(locale, 'top.filter_bpm_sort_short');
+    if (parsed_args.csSort) return t(locale, 'top.filter_cs_sort_short');
+    if (parsed_args.arSort) return t(locale, 'top.filter_ar_sort_short');
+    if (parsed_args.odSort) return t(locale, 'top.filter_od_sort_short');
+    if (parsed_args.hpSort) return t(locale, 'top.filter_hp_sort_short');
+    return null;
+}
+
+/**
+ * Retorna la etiqueta formateada del atributo por el cual se ordenó la jugada (ej: "270 BPM", "CS 6,5").
+ * Retorna null si no se ordenó por ningún atributo de dificultad (BPM, CS, AR, OD, HP).
+ * @param {Object} score 
+ * @param {Object} parsed_args 
+ * @param {string|number} mode 
+ * @param {string} locale 
+ * @returns {string|null}
+ */
+function getSortAttributeBadge(score, parsed_args = {}, mode = 'osu', locale = 'es') {
+    if (!score || (!parsed_args.bpmSort && !parsed_args.csSort && !parsed_args.arSort && !parsed_args.odSort && !parsed_args.hpSort)) {
+        return null;
+    }
+    const BeatmapModel = require('../models/BeatmapModel.js');
+    const attrStats = score._adjustedStats || (score._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(score.beatmap, score.mods, mode));
+    if (parsed_args.bpmSort) return `${attrStats.bpm} BPM`;
+    if (parsed_args.csSort) {
+        const csDecimals = (mode === 'mania' || mode === 3) ? 0 : 1;
+        return `CS ${formatDecimal(attrStats.cs, locale, csDecimals)}`;
+    }
+    if (parsed_args.arSort) return `AR ${formatDecimal(attrStats.ar, locale, 1)}`;
+    if (parsed_args.odSort) return `OD ${formatDecimal(attrStats.od, locale, 1)}`;
+    if (parsed_args.hpSort) return `HP ${formatDecimal(attrStats.hp, locale, 1)}`;
+    return null;
 }
 
 module.exports = {
@@ -549,6 +523,8 @@ module.exports = {
     getBeatmapStatsLine,
     hasLazerCustomMods,
     formatNumber,
-    formatDecimal
+    formatDecimal,
+    getActiveSortFilter,
+    getSortAttributeBadge
 };
 

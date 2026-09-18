@@ -1,4 +1,5 @@
 const { getBeatmap_osu, getUserTopScores, getOsuUser, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
+const { sortScores, hasCustomSort } = require("../../../models/OsuScoreModel.js");
 
 const { doOsuTopSingleEmbed, doOsuTopListEmbed, doOsuTopProgressEmbed } = require("../../../views/osuEmbeds.js");
 const { buildPaginationRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
@@ -78,7 +79,7 @@ async function run(messages, args, options = {}) {
             s.selectedSkill = selectedSkill;
         });
 
-        if (!parser_res.parsed_args.recentSort && !parser_res.parsed_args.comboSort && !parser_res.parsed_args.accSort) {
+        if (!hasCustomSort(parser_res.parsed_args)) {
             originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));
             originalScores.forEach((score, idx) => {
                 score.skillRank = idx + 1;
@@ -102,12 +103,9 @@ async function run(messages, args, options = {}) {
         const processStartTime = Date.now();
         let stepStartTime = Date.now();
 
-        const stepTemplates = locale === 'es' ? [
-            "Obteniendo mejores jugadas de osu! API...",
-            "Calculando No-Choke y procesando mapas..."
-        ] : [
-            "Fetching top plays from osu! API...",
-            "Calculating No-Choke and processing maps..."
+        const stepTemplates = [
+            t(locale, 'top.step_fetch_scores'),
+            t(locale, 'top.step_calc_nochoke')
         ];
 
         const activeSteps = [
@@ -115,13 +113,13 @@ async function run(messages, args, options = {}) {
                 text: stepTemplates[0],
                 status: 'success',
                 duration: null,
-                extra: `(\`${originalScores.length}\` plays)`
+                extra: `(\`${originalScores.length}\` ${t(locale, 'top.plays_unit')})`
             },
             {
                 text: stepTemplates[1],
                 status: 'loading',
                 duration: null,
-                extra: `(\`0/${originalScores.length}\` mapas)`
+                extra: `(\`0/${originalScores.length}\` ${t(locale, 'top.maps_unit')})`
             }
         ];
 
@@ -208,7 +206,7 @@ async function run(messages, args, options = {}) {
             diffPP: diffPP
         };
 
-        if (options.isSkillTop && !parser_res.parsed_args.recentSort && !parser_res.parsed_args.comboSort && !parser_res.parsed_args.accSort) {
+        if (options.isSkillTop && !hasCustomSort(parser_res.parsed_args)) {
             originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));
             originalScores.forEach((score, idx) => {
                 score.skillRank = idx + 1;
@@ -297,20 +295,8 @@ async function run(messages, args, options = {}) {
         });
     }
 
-    // 5. Ordenar por fecha/reciente (-r) si se solicita
-    if (parser_res.parsed_args.recentSort) {
-        filtered_scores.sort((a, b) => new Date(b.ended_at || b.created_at) - new Date(a.ended_at || a.created_at));
-    }
-
-    // 6. Ordenar por combo (-c) si se solicita
-    if (parser_res.parsed_args.comboSort) {
-        filtered_scores.sort((a, b) => (b.max_combo || 0) - (a.max_combo || 0));
-    }
-
-    // 7. Ordenar por precisión (-acc) si se solicita
-    if (parser_res.parsed_args.accSort) {
-        filtered_scores.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
-    }
+    // 5. Ordenar según criterios especificados (-r, -c, -acc, -bpm, -cs, -ar, -od, -hp)
+    sortScores(filtered_scores, parser_res.parsed_args, parser_res.parsed_args.gamemode || 'osu');
 
     // Si no quedan jugadas tras aplicar los filtros
     if (filtered_scores.length === 0) {
@@ -322,9 +308,7 @@ async function run(messages, args, options = {}) {
         if (parser_res.parsed_args.ppThreshold !== null) errorMsg += t(locale, 'top.filter_pp', { val: parser_res.parsed_args.ppThreshold });
         if (srFilters && srFilters.length > 0) {
             const filterStrings = srFilters.map(f => `${f.op}${f.valStr}`);
-            errorMsg += locale === 'es'
-                ? `\n- Dificultad: \`${filterStrings.join(' e ')}\``
-                : `\n- Difficulty: \`${filterStrings.join(' and ')}\``;
+            errorMsg += t(locale, 'top.filter_difficulty', { val: filterStrings.join(t(locale, 'general.and')) });
         }
         if (sentMessage && typeof sentMessage.edit === 'function') {
             try {

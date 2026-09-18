@@ -40,20 +40,34 @@ async function fetchDroidApi(endpoint) {
     if (cached !== null) return cached;
 
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6500);
+    const timeout = setTimeout(() => controller.abort(), 10000);
+
+    const url = `${DROID_API_BASE}${endpoint}`;
+    const headers = {
+        'User-Agent': 'SengoBot/2.9 (+https://github.com/jeiden83/sengo_bot)',
+        'Accept': 'application/json'
+    };
 
     try {
-        const url = `${DROID_API_BASE}${endpoint}`;
-        const res = await fetch(url, { signal: controller.signal });
+        const res = await fetch(url, { signal: controller.signal, headers });
         clearTimeout(timeout);
 
         if (res.status === 404) {
             return null;
         }
 
+        if (res.status === 429) {
+            console.warn(`[osuDroidModel] Rate limit 429 en ${url}`);
+            const rateErr = new Error('DROID_RATE_LIMITED');
+            rateErr.status = 429;
+            throw rateErr;
+        }
+
         if (!res.ok) {
             console.warn(`[osuDroidModel] Petición fallida (${res.status}): ${url}`);
-            return null;
+            const apiErr = new Error(`DROID_API_ERROR_${res.status}`);
+            apiErr.status = res.status;
+            throw apiErr;
         }
 
         const data = await res.json();
@@ -61,8 +75,19 @@ async function fetchDroidApi(endpoint) {
         return data;
     } catch (err) {
         clearTimeout(timeout);
+        if (err.status === 429 || (err.message && err.message.startsWith('DROID_API_ERROR_'))) {
+            throw err;
+        }
+        if (err.name === 'AbortError') {
+            console.error(`[osuDroidModel] Timeout en ${endpoint}`);
+            const timeoutErr = new Error('DROID_TIMEOUT');
+            timeoutErr.status = 504;
+            throw timeoutErr;
+        }
         console.error(`[osuDroidModel] Error de red en ${endpoint}:`, err.message || err);
-        return null;
+        const netErr = new Error('DROID_NETWORK_ERROR');
+        netErr.status = 503;
+        throw netErr;
     }
 }
 
@@ -94,8 +119,12 @@ async function resolveDroidUser(identifier) {
 
     // Si es puramente numérico, intentar buscar primero por UID
     if (/^\d+$/.test(cleanId)) {
-        const byUid = await fetchProfileByUid(cleanId);
-        if (byUid) return byUid;
+        try {
+            const byUid = await fetchProfileByUid(cleanId);
+            if (byUid) return byUid;
+        } catch (err) {
+            if (err.status === 429 || err.message === 'DROID_TIMEOUT') throw err;
+        }
     }
 
     // Buscar por nombre de usuario

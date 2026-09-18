@@ -124,23 +124,16 @@ async function run(messages, args){
     const activeSteps = [];
  
     const stepTemplates = (isNemesis && !isTop)
-        ? (locale === 'es' ? ["Obteniendo historial de snipes..."] : ["Fetching snipes history..."])
+        ? [t(locale, 'snipes.step_fetch_history')]
         : (isTop
-            ? (locale === 'es' ? ["Obteniendo tops nacionales..."] : ["Fetching national tops..."])
+            ? [t(locale, 'snipes.step_fetch_national')]
             : (isDetailed
-                ? (locale === 'es' 
-                    ? [
-                        "Obteniendo tops nacionales...",
-                        "Procesando estadísticas detalladas...",
-                        "Generando gráfico de distribución..."
-                      ] 
-                    : [
-                        "Fetching national tops...",
-                        "Processing detailed statistics...",
-                        "Generating distribution chart..."
-                      ]
-                  )
-                : (locale === 'es' ? ["Obteniendo tops nacionales..."] : ["Fetching national tops..."])
+                ? [
+                    t(locale, 'snipes.step_fetch_national'),
+                    t(locale, 'snipes.step_process_stats'),
+                    t(locale, 'snipes.step_generate_chart')
+                  ]
+                : [t(locale, 'snipes.step_fetch_national')]
               )
           );
 
@@ -190,13 +183,11 @@ async function run(messages, args){
 
         const totalElapsed = Date.now() - processStartTime;
         const progressEmbed = new EmbedBuilder()
-            .setTitle(locale === 'es' ? "Procesando Estadísticas de Snipes..." : "Processing Snipe Statistics...")
+            .setTitle(t(locale, 'snipes.stats_progress_title'))
             .setDescription(descriptionLines.join('\n'))
             .setColor(embedColor)
             .setFooter({
-                text: locale === 'es'
-                    ? `Sengo • Tiempo transcurrido: ${(totalElapsed / 1000).toFixed(2)}s`
-                    : `Sengo • Elapsed time: ${(totalElapsed / 1000).toFixed(2)}s`
+                text: t(locale, 'general.elapsed_time', { elapsed: (totalElapsed / 1000).toFixed(2) })
             });
 
         try {
@@ -288,18 +279,20 @@ async function run(messages, args){
         if (!userScores || userScores.length === 0) {
             let errorMsg = t(locale, 'snipes.err_no_tops', { username: osu_userdata.fn_response.username });
             if (targetVictimFilter) {
-                errorMsg = locale === 'es'
-                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** robados a **${targetVictimFilter}**.`
-                    : `No national tops found for **${osu_userdata.fn_response.username}** sniped from **${targetVictimFilter}**.`;
+                errorMsg = t(locale, 'snipes.err_no_tops_victim', {
+                    username: osu_userdata.fn_response.username,
+                    victim: targetVictimFilter
+                });
             } else if (isNemesis) {
-                errorMsg = locale === 'es'
-                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** registrados en el historial de snipes.`
-                    : `No national tops found for **${osu_userdata.fn_response.username}** in snipes history.`;
+                errorMsg = t(locale, 'snipes.err_no_tops_history', {
+                    username: osu_userdata.fn_response.username
+                });
             } else if (srFilters && srFilters.length > 0) {
                 const filterStrings = srFilters.map(f => `${f.op}${f.valStr}`);
-                errorMsg = locale === 'es'
-                    ? `No se encontraron tops nacionales para **${osu_userdata.fn_response.username}** con el filtro de dificultad: \`${filterStrings.join(' e ')}\`.`
-                    : `No national tops found for **${osu_userdata.fn_response.username}** matching difficulty filter: \`${filterStrings.join(' and ')}\`.`;
+                errorMsg = t(locale, 'snipes.err_no_tops_sr', {
+                    username: osu_userdata.fn_response.username,
+                    sr: filterStrings.join(t(locale, 'general.and'))
+                });
             }
 
             if (sentMessage && typeof sentMessage.edit === 'function') {
@@ -309,7 +302,7 @@ async function run(messages, args){
             return { content: errorMsg };
         }
 
-        await updateProgress(0, 'success', `(${userScores.length} cargados)`);
+        await updateProgress(0, 'success', `(${userScores.length} ${t(locale, 'snipes.scores_loaded')})`);
     } catch (errUserScores) {
         console.error("Error al obtener puntuaciones del usuario en snipes.js:", errUserScores);
         await updateProgress(0, 'error', `(${t(locale, 'snipes.err_db_scores')})`);
@@ -326,13 +319,9 @@ async function run(messages, args){
             shouldEnqueue = true;
             const qStatus = ReworkRecalcQueue.getQueueStatus(id, look_gamemode);
             if (qStatus === 'running') {
-                recalcNotice = locale === 'es'
-                    ? "⚠️ *Se están recalculando las jugadas de este usuario en segundo plano debido al rework.*"
-                    : "⚠️ *This user's plays are being recalculated in the background due to the rework.*";
+                recalcNotice = t(locale, 'snipes.recalc_running');
             } else {
-                recalcNotice = locale === 'es'
-                    ? "⏳ *Las jugadas de este usuario están en cola para ser recalculadas debido al rework.*"
-                    : "⏳ *This user's plays are in queue to be recalculated due to the rework.*";
+                recalcNotice = t(locale, 'snipes.recalc_queued');
             }
         }
 
@@ -530,20 +519,9 @@ async function run(messages, args){
             ppThresholdCount = filtered_scores.length;
         }
 
-        // 5. Ordenar por fecha/reciente (-r)
-        if (osu_userdata.parsed_args.recentSort) {
-            filtered_scores.sort((a, b) => new Date(b.ended_at || b.created_at) - new Date(a.ended_at || a.created_at));
-        }
-
-        // 6. Ordenar por combo (-c)
-        if (osu_userdata.parsed_args.comboSort) {
-            filtered_scores.sort((a, b) => (b.max_combo || 0) - (a.max_combo || 0));
-        }
-
-        // 7. Ordenar por precisión (-acc)
-        if (osu_userdata.parsed_args.accSort) {
-            filtered_scores.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
-        }
+        // 5. Ordenar según criterios especificados (-r, -c, -acc, -bpm, -cs, -ar, -od, -hp)
+        const { sortScores } = require("../../../models/OsuScoreModel.js");
+        sortScores(filtered_scores, osu_userdata.parsed_args, osu_userdata.parsed_args.gamemode || 'osu');
 
         if (filtered_scores.length === 0) {
             const username = osu_userdata.fn_response.username;

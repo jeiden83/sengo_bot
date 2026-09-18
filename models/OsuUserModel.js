@@ -7,6 +7,7 @@ const CONFIG = require('../config.js');
 const fs = require('fs/promises');
 const path = require('path');
 const axios = require('axios');
+const { t } = require('../utils/i18n.js');
 
 // Cachés locales en memoria
 const userProfileCache = new Map();
@@ -325,17 +326,19 @@ async function _getOsuUser(parsed_args) {
             }
             throw new Error("User not found in Gatari");
         } catch (e) {
+            const locale = parsed_args.locale || 'es';
             if (/^\d+$/.test(parsed_args.username[0])) {
-                return `El usuario no se encuentra en Gatari!\n💡 **Consejo:** Si estás usando tu cuenta enlazada, recuerda que las IDs de Bancho y Gatari son diferentes. Prueba buscando con tu nombre de usuario: \`/osu usuario:TuNombre servidor:Gatari\``;
+                return t(locale, 'osu.gatari_not_found_tip');
             }
-            return `El usuario no se encuentra en Gatari!`;
+            return t(locale, 'osu.gatari_not_found');
         }
     }
 
     if (server === 'droid') {
+        const targetUsername = parsed_args.username[0];
+        const locale = parsed_args.locale || 'es';
         try {
             const osuDroidModel = require("./osuDroidModel.js");
-            const targetUsername = parsed_args.username[0];
             const droidUser = await osuDroidModel.resolveDroidUser(targetUsername);
 
             if (droidUser) {
@@ -366,12 +369,22 @@ async function _getOsuUser(parsed_args) {
                     _droid_raw: droidUser
                 });
             }
-            throw new Error("User not found in osu!droid");
-        } catch (e) {
-            if (/^\d+$/.test(parsed_args.username[0])) {
-                return `El usuario con UID ${parsed_args.username[0]} no se encuentra en osu!droid!`;
+            if (/^\d+$/.test(targetUsername)) {
+                return t(locale, 'droid.uid_not_found', { uid: targetUsername });
             }
-            return `El usuario **${parsed_args.username[0]}** no se encuentra en osu!droid!`;
+            return t(locale, 'droid.user_not_found', { user: targetUsername });
+        } catch (e) {
+            if (e.status === 429 || e.message === 'DROID_RATE_LIMITED') {
+                return t(locale, 'droid.err_rate_limited');
+            }
+            if (e.message === 'DROID_TIMEOUT' || e.message === 'DROID_NETWORK_ERROR' || e.name === 'AbortError') {
+                return t(locale, 'droid.err_api');
+            }
+            console.error("Error en getOsuUser (droid):", e);
+            if (/^\d+$/.test(targetUsername)) {
+                return t(locale, 'droid.uid_not_found', { uid: targetUsername });
+            }
+            return t(locale, 'droid.user_not_found', { user: targetUsername });
         }
     }
 
@@ -386,7 +399,8 @@ async function _getOsuUser(parsed_args) {
         // Si no lo es (p. ej., error de conexión 5xx, timeout, Cloudflare 403/522), propagamos el error.
         const status = error.status || error.statusCode || error.response?.status || error.response?.statusCode || (error.message && error.message.includes("404") ? 404 : null);
         if (status === 404 || (error.message && error.message.includes("404"))) {
-            res = `El usuario no se encuentra en osu!`;
+            const locale = parsed_args.locale || 'es';
+            res = t(locale, 'osu.profile.not_found', { username: parsed_args.username[0] });
         } else {
             console.error("Error en getOsuUser (no-404):", error);
             throw error;

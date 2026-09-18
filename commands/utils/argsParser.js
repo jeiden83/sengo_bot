@@ -11,6 +11,7 @@ function parseSrCondition(condStr) {
 }
 
 const OsuUserModel = require("../../models/OsuUserModel.js");
+const { t } = require("../../utils/i18n.js");
 
 const getGamemodeFromMessage = (msg) => {
     if (!msg) return null;
@@ -349,6 +350,8 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
 
     const config = require("../../config.js");
     const prefix = config.BOT_PREFIX || "s.";
+    const locale = message?.locale || 'es';
+    parsed_args.locale = locale;
 
     // Si no hay args
     const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
@@ -357,23 +360,23 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
         if (parsed_args.server === 'droid') {
             if (!user_found || !user_found.droid_uid) {
                 return {
-                    'fn_response': `⚠️ No tienes una cuenta de \`osu!droid\` vinculada a tu cuenta de Discord.\n- Vincula tu cuenta usando \`${prefix}droid link <nombre_o_uid>\` o especifica un usuario con \`-droid <usuario>\`.`,
+                    'fn_response': t(locale, 'droid.not_linked_full', { prefix }),
                     'user_found': user_found,
                     'reparsed_args': parsed_args
                 };
             }
             parsed_args.username[0] = user_found.droid_uid;
-            const fn_response = await command_function({ 'username': [user_found.droid_uid], 'beatmap_url': beatmap_url, 'gamemode': 'osu', 'server': 'droid' });
+            const fn_response = await command_function({ 'username': [user_found.droid_uid], 'beatmap_url': beatmap_url, 'gamemode': 'osu', 'server': 'droid', 'locale': locale });
             return { 'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args };
         }
 
         // si no hay uno linkeado al bot
-        if (!user_found || !user_found.osu_id) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link\` o slash \`/link\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+        if (!user_found || !user_found.osu_id) return { 'fn_response': t(locale, 'general.err_not_linked_user', { username: message.author.username, prefix }), 'user_found': user_found, 'reparsed_args': parsed_args };
 
         // Aplicamos el comando con el linkeado al bot
         const defaultMode = (command_parameters.ignore_main_gamemode && gamemode) ? gamemode : user_found.main_gamemode;
         parsed_args.gamemode = defaultMode;
-        const fn_response = await command_function({ 'username': [user_found.osu_id], 'beatmap_url': beatmap_url, 'gamemode': defaultMode });
+        const fn_response = await command_function({ 'username': [user_found.osu_id], 'beatmap_url': beatmap_url, 'gamemode': defaultMode, 'locale': locale });
         return { 'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args };
         // Si hay args
     } else {
@@ -400,7 +403,7 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
             if (isDiscordId) {
                 user_found = await OsuUserModel.getLinkedUser(res.User, arg_user);
 
-                if (!user_found || !user_found.osu_id) return { 'fn_response': `No se encontro ese usuario de discord linkeado al bot.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+                if (!user_found || !user_found.osu_id) return { 'fn_response': t(locale, 'general.err_discord_user_not_linked'), 'user_found': user_found, 'reparsed_args': parsed_args };
                 parsed_args.username[0] = user_found.osu_id;
 
                 // Se busca el nombre de osu 
@@ -420,14 +423,14 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
             if (parsed_args.server === 'droid') {
                 if (!user_found || !user_found.droid_uid) {
                     return {
-                        'fn_response': `⚠️ No tienes una cuenta de \`osu!droid\` vinculada a tu cuenta de Discord.\n- Vincula tu cuenta usando \`${prefix}droid link <nombre_o_uid>\` o especifica un usuario con \`-droid <usuario>\`.`,
+                        'fn_response': t(locale, 'droid.not_linked_full', { prefix }),
                         'user_found': user_found,
                         'reparsed_args': parsed_args
                     };
                 }
                 parsed_args.username[0] = user_found.droid_uid;
             } else {
-                if (!user_found || !user_found.osu_id) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link\` o slash \`/link\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+                if (!user_found || !user_found.osu_id) return { 'fn_response': t(locale, 'general.err_not_linked_user', { username: message.author.username, prefix }), 'user_found': user_found, 'reparsed_args': parsed_args };
                 parsed_args.username[0] = user_found.osu_id;
             }
         }
@@ -469,6 +472,11 @@ function argsParserNoCommand(args, options = {}) {
     let recentSort = false;
     let comboSort = false;
     let accSort = false;
+    let bpmSort = false;
+    let csSort = false;
+    let arSort = false;
+    let odSort = false;
+    let hpSort = false;
     let scoreSort = false;
     let totalScoreSort = false;
     let bestSort = false;
@@ -531,7 +539,7 @@ function argsParserNoCommand(args, options = {}) {
     };
     const server_set = {
         'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu',
-        'droid': 'droid', 'osudroid': 'droid', 'odroid': 'droid', 'od': 'droid'
+        'droid': 'droid', 'osudroid': 'droid', 'odroid': 'droid'
     };
 
     const args_commands = [
@@ -860,6 +868,36 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-acc"
         if (arg === "-acc") {
             accSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-bpm" o "--bpm"
+        if (arg === "-bpm" || arg === "--bpm") {
+            bpmSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-cs" o "--cs"
+        if (arg === "-cs" || arg === "--cs") {
+            csSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-ar" o "--ar"
+        if (arg === "-ar" || arg === "--ar") {
+            arSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-od" o "--od"
+        if (arg === "-od" || arg === "--od") {
+            odSort = true;
+            continue;
+        }
+
+        // Si es exactamente "-hp" o "--hp"
+        if (arg === "-hp" || arg === "--hp") {
+            hpSort = true;
             continue;
         }
 
@@ -1404,6 +1442,11 @@ function argsParserNoCommand(args, options = {}) {
         'recentSort': recentSort,
         'comboSort': comboSort,
         'accSort': accSort,
+        'bpmSort': bpmSort,
+        'csSort': csSort,
+        'arSort': arSort,
+        'odSort': odSort,
+        'hpSort': hpSort,
         'scoreSort': scoreSort,
         'totalScoreSort': totalScoreSort,
         'bestSort': bestSort,

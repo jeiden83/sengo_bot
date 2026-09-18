@@ -41,6 +41,21 @@ const data = new SlashCommandBuilder()
             .setDescription("¿Ordenar el top por jugadas más recientes en lugar de por PP?")
             .setRequired(false)
     )
+    .addStringOption(option =>
+        option.setName("ordenar")
+            .setDescription("Criterio de ordenamiento alternativo para las jugadas")
+            .setRequired(false)
+            .addChoices(
+                { name: "Más recientes (-r)", value: "reciente" },
+                { name: "Mayor Combo (-c)", value: "combo" },
+                { name: "Mayor Precisión (-acc)", value: "acc" },
+                { name: "Mayor BPM (-bpm)", value: "bpm" },
+                { name: "Mayor Circle Size / CS (-cs)", value: "cs" },
+                { name: "Mayor Approach Rate / AR (-ar)", value: "ar" },
+                { name: "Mayor Overall Difficulty / OD (-od)", value: "od" },
+                { name: "Mayor HP Drain (-hp)", value: "hp" }
+            )
+    )
     .addBooleanOption(option =>
         option.setName("nochoke")
             .setDescription("¿Mostrar el top de PP recalculado como si todas las jugadas fueran Full Combo?")
@@ -61,6 +76,7 @@ async function run(interaction, res) {
     const modsContiene = interaction.options.getString("mods_contiene");
     const umbralPp = interaction.options.getInteger("umbral_pp");
     const ordenarReciente = interaction.options.getBoolean("ordenar_reciente");
+    const ordenar = interaction.options.getString("ordenar");
     const nochoke = interaction.options.getBoolean("nochoke");
     const dificultad = interaction.options.getString("dificultad");
 
@@ -79,8 +95,22 @@ async function run(interaction, res) {
     if (umbralPp !== null && umbralPp !== undefined) {
         args.push("-g", umbralPp.toString());
     }
-    if (ordenarReciente) {
+    if (ordenar === "reciente" || ordenarReciente) {
         args.push("-r");
+    } else if (ordenar === "combo") {
+        args.push("-c");
+    } else if (ordenar === "acc") {
+        args.push("-acc");
+    } else if (ordenar === "bpm") {
+        args.push("-bpm");
+    } else if (ordenar === "cs") {
+        args.push("-cs");
+    } else if (ordenar === "ar") {
+        args.push("-ar");
+    } else if (ordenar === "od") {
+        args.push("-od");
+    } else if (ordenar === "hp") {
+        args.push("-hp");
     }
     if (nochoke) {
         args.push("-nc");

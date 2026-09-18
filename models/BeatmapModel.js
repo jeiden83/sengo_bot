@@ -1038,6 +1038,104 @@ async function getBeatmapModeAttributes(beatmap_metadata, targetMode, engineChoi
     }
 }
 
+/**
+ * Calcula las estadísticas modificadas de un beatmap aplicando mods (DT, HT, HR, EZ, DA, etc.)
+ * utilizando BeatmapAttributesBuilder de sengo-pp.
+ * 
+ * @param {Object} beatmap - Objeto con atributos del mapa (cs, ar, od/accuracy, hp/drain, bpm).
+ * @param {Array|string} mods - Mods de la jugada (array de objetos { acronym } o strings, o mod string).
+ * @param {string|number} mode - Modo de juego ('osu', 'taiko', 'fruits', 'mania' o 0, 1, 2, 3).
+ * @returns {Object} Estadísticas ajustadas { cs, ar, od, hp, bpm, clockRate, baseCs, baseAr, baseOd, baseHp, baseBpm }
+ */
+function getBeatmapAdjustedStats(beatmap = {}, mods = [], mode = 'osu') {
+    let baseCs = beatmap.cs !== undefined ? Number(beatmap.cs) : 0;
+    let baseAr = beatmap.ar !== undefined ? Number(beatmap.ar) : (beatmap.accuracy !== undefined ? Number(beatmap.accuracy) : 0);
+    let baseOd = beatmap.accuracy !== undefined ? Number(beatmap.accuracy) : (beatmap.od !== undefined ? Number(beatmap.od) : (beatmap.ar !== undefined ? Number(beatmap.ar) : 0));
+    let baseHp = beatmap.drain !== undefined ? Number(beatmap.drain) : (beatmap.hp !== undefined ? Number(beatmap.hp) : 0);
+    const baseBpm = Math.round(beatmap.bpm || 0);
+
+    const originalBaseCs = baseCs;
+    const originalBaseAr = baseAr;
+    const originalBaseOd = baseOd;
+    const originalBaseHp = baseHp;
+
+    // Si hay mod DA (Difficulty Adjust), extraer las sobreescrituras de atributos
+    if (Array.isArray(mods)) {
+        const daMod = mods.find(m => (typeof m === 'object' && m !== null && (m.acronym === 'DA' || m.acronym === 'da')));
+        if (daMod && daMod.settings) {
+            if (daMod.settings.circle_size !== undefined && daMod.settings.circle_size !== null) {
+                baseCs = Number(daMod.settings.circle_size);
+            }
+            if (daMod.settings.approach_rate !== undefined && daMod.settings.approach_rate !== null) {
+                baseAr = Number(daMod.settings.approach_rate);
+            }
+            if (daMod.settings.overall_difficulty !== undefined && daMod.settings.overall_difficulty !== null) {
+                baseOd = Number(daMod.settings.overall_difficulty);
+            }
+            if (daMod.settings.drain_rate !== undefined && daMod.settings.drain_rate !== null) {
+                baseHp = Number(daMod.settings.drain_rate);
+            }
+        }
+    }
+
+    const gameModeMap = {
+        'osu': ppEngine.GameMode.Osu,
+        'taiko': ppEngine.GameMode.Taiko,
+        'fruits': ppEngine.GameMode.Catch,
+        'catch': ppEngine.GameMode.Catch,
+        'ctb': ppEngine.GameMode.Catch,
+        'mania': ppEngine.GameMode.Mania,
+        0: ppEngine.GameMode.Osu,
+        1: ppEngine.GameMode.Taiko,
+        2: ppEngine.GameMode.Catch,
+        3: ppEngine.GameMode.Mania
+    };
+    const activeMode = gameModeMap[mode] !== undefined ? gameModeMap[mode] : ppEngine.GameMode.Osu;
+
+    let modCs = baseCs;
+    let modAr = baseAr;
+    let modOd = baseOd;
+    let modHp = baseHp;
+    let clockRate = 1.0;
+
+    try {
+        const builder = new ppEngine.BeatmapAttributesBuilder({
+            cs: baseCs,
+            ar: baseAr,
+            od: baseOd,
+            hp: baseHp,
+            mode: activeMode,
+            mods: mods || []
+        });
+        const attrs = builder.build();
+        if (attrs) {
+            modCs = attrs.cs !== undefined ? attrs.cs : baseCs;
+            modAr = attrs.ar !== undefined ? attrs.ar : baseAr;
+            modOd = attrs.od !== undefined ? attrs.od : baseOd;
+            modHp = attrs.hp !== undefined ? attrs.hp : baseHp;
+            clockRate = attrs.clockRate || 1.0;
+        }
+    } catch {
+        // En caso de error, se mantienen las estadísticas base
+    }
+
+    const modBpm = Math.round(baseBpm * clockRate);
+
+    return {
+        cs: modCs,
+        ar: modAr,
+        od: modOd,
+        hp: modHp,
+        bpm: modBpm,
+        clockRate,
+        baseCs: originalBaseCs,
+        baseAr: originalBaseAr,
+        baseOd: originalBaseOd,
+        baseHp: originalBaseHp,
+        baseBpm
+    };
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
@@ -1053,7 +1151,8 @@ const BeatmapModel = {
     updateBeatmapsetTagsInDB,
     isScraperBlocked,
     saveBeatmapToDB,
-    getBeatmapModeAttributes
+    getBeatmapModeAttributes,
+    getBeatmapAdjustedStats
 };
 
 module.exports = BeatmapModel;

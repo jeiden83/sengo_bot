@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
-const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString, formatNumber, formatDecimal } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString, formatNumber, formatDecimal, getActiveSortFilter, getSortAttributeBadge } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 /**
@@ -31,7 +31,7 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
             secondLine = `  ↳ ${t(locale, 'nacional.snipes_label')}: **${snipesCount}**`;
         } else if (isScoreSort || isTotalScoreSort) {
             const scoreVal = isTotalScoreSort ? (item.total_score || 0) : (item.ranked_score || 0);
-            const scoreSuffix = isTotalScoreSort ? (locale === 'es' ? 'score total' : 'total score') : 'score';
+            const scoreSuffix = isTotalScoreSort ? t(locale, 'nacional.suffix_total_score') : t(locale, 'nacional.suffix_score');
             const scoreStr = `**${formatNumber(scoreVal, locale)} ${scoreSuffix}**`;
             const ppStr = `${formatNumber(Math.round(item.pp), locale)} pp`;
             
@@ -82,9 +82,9 @@ function doOsuRankingEmbed({ chunk, total, startIndex, countryFilter, gamemodeNa
     } else if (isRegional) {
         titlePrefix = t(locale, 'nacional.embed_title_regional');
         if (isScoreSort) {
-            titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score' : 'by Score'}`;
+            titlePrefix = t(locale, 'nacional.embed_title_regional_score');
         } else if (isTotalScoreSort) {
-            titlePrefix = `${t(locale, 'nacional.embed_title_regional')} ${locale === 'es' ? 'por Score Total' : 'by Total Score'}`;
+            titlePrefix = t(locale, 'nacional.embed_title_regional_totalscore');
         }
     } else if (isAccSort) {
         titlePrefix = t(locale, 'nacional.embed_title_acc');
@@ -271,9 +271,8 @@ async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFi
     if (parsed_args.modFilter !== null && parsed_args.modFilter !== undefined) active_filters.push(t(locale, 'top.filter_exact_mods_short', { val: parsed_args.modFilter }));
     if (parsed_args.modContainFilter !== null && parsed_args.modContainFilter !== undefined) active_filters.push(t(locale, 'top.filter_contain_mods_short', { val: parsed_args.modContainFilter }));
     if (parsed_args.searchFilter !== null && parsed_args.searchFilter !== undefined) active_filters.push(t(locale, 'top.filter_search_short', { val: parsed_args.searchFilter }));
-    if (parsed_args.recentSort) active_filters.push(t(locale, 'top.filter_recent_sort_short'));
-    if (parsed_args.comboSort) active_filters.push(t(locale, 'top.filter_combo_sort_short'));
-    if (parsed_args.accSort) active_filters.push(t(locale, 'top.filter_acc_sort_short'));
+    const sortFilter = getActiveSortFilter(parsed_args, locale);
+    if (sortFilter) active_filters.push(sortFilter);
     if (parsed_args.ppThreshold !== null && parsed_args.ppThreshold !== undefined) active_filters.push(`PP >= ${parsed_args.ppThreshold}`);
     if (parsed_args.srFilters && parsed_args.srFilters.length > 0) {
         const srTexts = parsed_args.srFilters.map(f => `SR${f.op}${f.valStr}`);
@@ -300,7 +299,12 @@ async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFi
         const statsStr = `\`${getPlainStatsString(score.statistics, scoreMode)}\``;
         
         let starsVal = starsMap[score.beatmap.id] || score.beatmap.difficulty_rating || 0;
-        const starsStr = starsVal ? `[${formatDecimal(starsVal, locale, 2)}★]` : "";
+        let starsInner = starsVal ? `${formatDecimal(starsVal, locale, 2)}★` : "";
+        const sortBadge = getSortAttributeBadge(score, parsed_args, scoreMode, locale);
+        if (sortBadge) {
+            starsInner = starsInner ? `${starsInner} • ${sortBadge}` : sortBadge;
+        }
+        const starsStr = starsInner ? `[${starsInner}]` : "";
         const timeSet = `<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
 
         return `${rankPrefix} ${userLink} ▸ ${mapLink} +${modsUsed} ${starsStr}\n` +

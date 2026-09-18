@@ -2862,6 +2862,62 @@ function benchmarkPP(score, mapInstance) {
     return ppEngine.benchmarkEngines(score, mapInstance, calculatePP);
 }
 
+/**
+ * Ordena un array de scores según los flags de parsed_args (-r, -c, -acc, -bpm, -cs, -ar, -od, -hp).
+ * Si no se especifica ningún ordenamiento alternativo, mantiene el orden existente (por defecto PP).
+ * 
+ * @param {Array} scores - Array de scores a ordenar.
+ * @param {Object} parsed_args - Argumentos parseados con flags de ordenamiento.
+ * @param {string|number} mode - Modo de juego para ajustar atributos con mods.
+ * @returns {Array} El array de scores ordenado.
+ */
+function sortScores(scores, parsed_args = {}, mode = 'osu') {
+    if (!Array.isArray(scores) || scores.length <= 1) return scores;
+
+    if (parsed_args.recentSort) {
+        scores.sort((a, b) => new Date(b.ended_at || b.created_at).getTime() - new Date(a.ended_at || a.created_at).getTime());
+    } else if (parsed_args.comboSort) {
+        scores.sort((a, b) => (b.max_combo || 0) - (a.max_combo || 0));
+    } else if (parsed_args.accSort) {
+        scores.sort((a, b) => (b.accuracy || 0) - (a.accuracy || 0));
+    } else if (parsed_args.bpmSort) {
+        const getBpm = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).bpm;
+        scores.sort((a, b) => getBpm(b) - getBpm(a) || (b.pp || 0) - (a.pp || 0));
+    } else if (parsed_args.csSort) {
+        const getCs = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).cs;
+        scores.sort((a, b) => getCs(b) - getCs(a) || (b.pp || 0) - (a.pp || 0));
+    } else if (parsed_args.arSort) {
+        const getAr = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).ar;
+        scores.sort((a, b) => getAr(b) - getAr(a) || (b.pp || 0) - (a.pp || 0));
+    } else if (parsed_args.odSort) {
+        const getOd = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).od;
+        scores.sort((a, b) => getOd(b) - getOd(a) || (b.pp || 0) - (a.pp || 0));
+    } else if (parsed_args.hpSort) {
+        const getHp = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).hp;
+        scores.sort((a, b) => getHp(b) - getHp(a) || (b.pp || 0) - (a.pp || 0));
+    }
+
+    return scores;
+}
+
+/**
+ * Retorna true si hay algún ordenamiento personalizado activo en parsed_args.
+ * @param {Object} parsed_args 
+ * @returns {boolean}
+ */
+function hasCustomSort(parsed_args = {}) {
+    return Boolean(
+        parsed_args.recentSort ||
+        parsed_args.comboSort ||
+        parsed_args.accSort ||
+        parsed_args.bpmSort ||
+        parsed_args.csSort ||
+        parsed_args.arSort ||
+        parsed_args.odSort ||
+        parsed_args.hpSort
+    );
+}
+
 const OsuScoreModel = {
     normalizeScore,
     normalizeStatistics,
@@ -2895,7 +2951,9 @@ const OsuScoreModel = {
     getCountryTopPlays,
     checkAndRecordRealtimeSnipe,
     refreshTokenPool,
-    initTokenPoolScheduler
+    initTokenPoolScheduler,
+    sortScores,
+    hasCustomSort
 };
 
 async function getCountryTopPlays(countryCode = 'VE', mode = 0, limit = 1000) {
