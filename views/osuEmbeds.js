@@ -26,6 +26,7 @@ function getUserUrl(user, fallbackId) {
     const id = user.id || fallbackId || (user.username ? encodeURIComponent(user.username) : '');
     if (user.server === 'gatari') return `https://osu.gatari.pw/u/${id}`;
     if (user.server === 'mameosu') return `https://web.mamesosu.net/u/${id}`;
+    if (user.server === 'droid') return `https://osudroid.moe/profile.php?uid=${id}`;
     return `https://osu.ppy.sh/users/${id}`;
 }
 
@@ -1836,13 +1837,13 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const join_date = `<t:${Math.floor(new Date(osu_userdata.join_date).getTime() / 1000)}:R>`;
 
-    let top_ranking_str = ['gatari', 'mameosu'].includes(osu_userdata.server) ? "" : t(locale, 'profile.top_ranking', {
+    let top_ranking_str = ['gatari', 'mameosu', 'droid'].includes(osu_userdata.server) ? "" : t(locale, 'profile.top_ranking', {
         rank: formatNumber(peak_ranking, locale),
         peak: discord_last_peak
     });
 
     let rankedPlayStr = "";
-    if (!['gatari', 'mameosu'].includes(osu_userdata.server)) {
+    if (!['gatari', 'mameosu', 'droid'].includes(osu_userdata.server)) {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking && matchmaking.rank) {
             rankedPlayStr = t(locale, 'profile.ranked_play', {
@@ -1986,7 +1987,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
     const hits_per_min = osu_userdata.statistics.play_time > 0 ? Math.round(osu_userdata.statistics.total_hits / (osu_userdata.statistics.play_time / 60)) : 0;
 
     let matchmakingSection = "";
-    if (!['gatari', 'mameosu'].includes(osu_userdata.server)) {
+    if (!['gatari', 'mameosu', 'droid'].includes(osu_userdata.server)) {
         const matchmaking = osu_userdata.matchmaking_stats?.find(m => m.pool && m.pool.type === 'ranked_play') || osu_userdata.matchmaking_stats?.[0];
         if (matchmaking) {
             matchmakingSection = t(locale, 'profile.matchmaking_detailed_title') + "\n" +

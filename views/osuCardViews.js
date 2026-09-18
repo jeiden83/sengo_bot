@@ -372,7 +372,11 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es",
 /**
  * Obtiene los pinned scores del usuario de osu! o fallback a su jugada top #1
  */
-async function fetchPinnedScore(userId, topScores, mode = "osu") {
+async function fetchPinnedScore(userId, topScores, mode = "osu", server = "bancho") {
+    if (server === 'droid' || server === 'gatari' || server === 'mameosu') {
+        return topScores && topScores.length > 0 ? topScores[0] : null;
+    }
+
     try {
         const OsuUserModel = require("../models/OsuUserModel.js");
         const tokenData = await OsuUserModel.loadToken().catch(() => null);
@@ -954,7 +958,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
     const [sengoData, pinnedPlayRaw] = await Promise.all([
         fetchSengoData(user.id, countryCode),
-        options?.pinnedPlay ? Promise.resolve(options.pinnedPlay) : fetchPinnedScore(user.id, topScores, mode)
+        options?.pinnedPlay ? Promise.resolve(options.pinnedPlay) : fetchPinnedScore(user.id, topScores, mode, user.server || "bancho")
     ]);
     const pinnedPlay = options?.pinnedPlay || pinnedPlayRaw;
     const skillData = analyzeSkills(topScores, false, mode);
@@ -1199,21 +1203,35 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             ctx.fillStyle = "#ffffff";
             roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
 
-            // Medallas
+            // Medallas / Servidor alternativo
             const medalsTextY = lvlBarY + 58;
-            const medalsLabel = isEs ? "Medallas" : "Medals";
-            drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
+            if (user.server === 'droid') {
+                drawCustomText(ctx, fonts.medalsText, `osu!droid • UID #${user.id}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
+                const medalBarY = medalsTextY + 12;
+                ctx.fillStyle = "#2e253c";
+                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
 
-            const medalBarY = medalsTextY + 12;
-            ctx.fillStyle = "#2e253c";
-            roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+                const droidGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+                droidGrad.addColorStop(0, "#22c55e");
+                droidGrad.addColorStop(0.5, "#06b6d4");
+                droidGrad.addColorStop(1, "#3b82f6");
+                ctx.fillStyle = droidGrad;
+                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+            } else {
+                const medalsLabel = isEs ? "Medallas" : "Medals";
+                drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
 
-            const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
-            medalGrad.addColorStop(0, "#60a5fa");
-            medalGrad.addColorStop(0.5, "#ec4899");
-            medalGrad.addColorStop(1, "#a855f7");
-            ctx.fillStyle = medalGrad;
-            roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * medalsPct) / 100), 8, 4, true);
+                const medalBarY = medalsTextY + 12;
+                ctx.fillStyle = "#2e253c";
+                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+
+                const medalGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
+                medalGrad.addColorStop(0, "#60a5fa");
+                medalGrad.addColorStop(0.5, "#ec4899");
+                medalGrad.addColorStop(1, "#a855f7");
+                ctx.fillStyle = medalGrad;
+                roundRect(ctx, lvlBarX, medalBarY, Math.max(8, (lvlBarW * medalsPct) / 100), 8, 4, true);
+            }
         }
     }
 
@@ -1503,7 +1521,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             fruits: "osu!catch",
             mania: "osu!mania"
         };
-        const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : "Sengo";
+        const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : (user.server === 'droid' ? "Sengo • osu!droid" : (user.server === 'gatari' ? "Sengo • Gatari" : "Sengo"));
         const footerY = height - 22;
         const footerCenterX = Math.round(width / 2);
         drawCustomText(ctx, fonts.footerBrand, footerTitle, footerCenterX - 35, footerY, "right", fontFamily);

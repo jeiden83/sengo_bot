@@ -47,6 +47,11 @@ async function run(messages, args, options = {}) {
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
+    if (parser_res.parsed_args?.server === 'droid') {
+        const droidCmd = require('./droid.js');
+        const userArg = parser_res.parsed_args.username?.[0] ? [String(parser_res.parsed_args.username[0])] : [];
+        return droidCmd.run(messages, ['top', ...userArg]);
+    }
     if (!Array.isArray(parser_res.fn_response) || parser_res.fn_response.length === 0) {
         return t(locale, 'top.err_no_scores');
     }

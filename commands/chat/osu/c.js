@@ -8,6 +8,11 @@ async function run(messages, args) {
     const locale = message.locale || 'es';
 
     const initial_parsed = argsParserNoCommand(args);
+    if (initial_parsed.server === 'droid') {
+        const droidCmd = require('./droid.js');
+        const userArg = initial_parsed.username?.[0] ? [String(initial_parsed.username[0])] : [];
+        return droidCmd.run(messages, ['compare', ...userArg]);
+    }
     let beatmap_url = initial_parsed.beatmap_url;
     let detected_gamemode = null;
 

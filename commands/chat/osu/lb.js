@@ -38,6 +38,11 @@ async function run(messages, args) {
     const locale = message.locale || 'es';
 
     const parsed_args = argsParserNoCommand(args);
+    if (parsed_args.server === 'droid') {
+        const droidCmd = require('./droid.js');
+        const cleanArgs = (Array.isArray(args) ? args : []).filter(a => typeof a === 'string' && !['-droid', '--droid', 'droid', '-osudroid', '--osudroid'].includes(a.toLowerCase()));
+        return droidCmd.run(messages, ['lb', ...cleanArgs]);
+    }
     let beatmap_url = parsed_args.beatmap_url;
     let countryFilter = parsed_args.country;
     let friendsFilter = parsed_args.friendsFilter;

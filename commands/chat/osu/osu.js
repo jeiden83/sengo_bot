@@ -41,6 +41,12 @@ async function run(messages, args) {
         return osu_userdata.fn_response;
     }
 
+    if (osu_userdata.parsed_args?.server === 'droid' || osu_userdata.fn_response?.server === 'droid') {
+        const droidCmd = require('./droid.js');
+        const userArg = osu_userdata.parsed_args?.username?.[0] ? [String(osu_userdata.parsed_args.username[0])] : [];
+        return droidCmd.run(messages, ['profile', ...userArg]);
+    }
+
     // Preload de recomendaciones de farm en segundo plano
     if (osu_userdata.fn_response && osu_userdata.fn_response.id) {
         const recommendCommand = require("./recommend.js");

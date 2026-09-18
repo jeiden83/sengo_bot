@@ -91,6 +91,19 @@ async function run(messages, args) {
         else if (["-standard", "--standard", "standard", "-full", "--full"].includes(lower)) explicitPreset = "standard";
     }
 
+    // Detectar servidor explícito si fue pasado en los argumentos (-droid, droid, -gatari, etc.)
+    let explicitServer = null;
+    for (const arg of safeArgs) {
+        if (typeof arg !== "string") continue;
+        const lower = arg.toLowerCase();
+        if (["-droid", "--droid", "droid", "-osudroid", "--osudroid", "osudroid", "-od", "-odroid"].includes(lower)) explicitServer = "droid";
+        else if (["-gatari", "--gatari", "gatari"].includes(lower)) explicitServer = "gatari";
+        else if (["-mameosu", "--mameosu", "mameosu", "-mosu"].includes(lower)) explicitServer = "mameosu";
+        else if (["-bancho", "--bancho", "bancho"].includes(lower)) explicitServer = "bancho";
+    }
+
+    const isDroid = explicitServer === "droid";
+
     // Filtrar flags para obtener argumentos de usuario limpios
     const cleanArgs = safeArgs.filter(arg => {
         if (typeof arg !== "string") return false;
@@ -111,25 +124,37 @@ async function run(messages, args) {
             "-panoramica", "--panoramica", "-allline", "--allline", "-lineatodo", "--lineatodo",
             "-ultra", "--ultra", "ultra",
             "-mini", "--mini", "mini", "-movil", "--movil",
-            "-standard", "--standard", "standard", "-full", "--full"
+            "-standard", "--standard", "standard", "-full", "--full",
+            "-droid", "--droid", "droid", "-osudroid", "--osudroid", "osudroid", "-od", "-odroid",
+            "-gatari", "--gatari", "gatari",
+            "-mameosu", "--mameosu", "mameosu", "-mosu",
+            "-bancho", "--bancho", "bancho"
         ].includes(lower);
     });
 
     async function sendInitialProgress() {
         const totalElapsed = Date.now() - startTime;
-        const progressEmbed = new EmbedBuilder()
-            .setTitle(isMapper
-                ? (locale === "es" ? "Generando Tarjeta de Mapper..." : "Generating Mapper Card...")
-                : (locale === "es" ? "Generando Tarjeta de Perfil..." : "Generating Profile Card...")
-            )
-            .setDescription(isMapper
+        const cardTitle = isMapper
+            ? (locale === "es" ? "Generando Tarjeta de Mapper..." : "Generating Mapper Card...")
+            : (isDroid
+                ? (locale === "es" ? "Generando Tarjeta de osu!droid..." : "Generating osu!droid Card...")
+                : (locale === "es" ? "Generando Tarjeta de Perfil..." : "Generating Profile Card..."));
+
+        const cardDesc = isMapper
+            ? (locale === "es"
+                ? "⏳ **Consultando estadísticas de creador, mapas subidos y dibujando tarjeta con Canvas...**"
+                : "⏳ **Fetching creator stats, uploaded beatmaps and rendering card with Canvas...**")
+            : (isDroid
                 ? (locale === "es"
-                    ? "⏳ **Consultando estadísticas de creador, mapas subidos y dibujando tarjeta con Canvas...**"
-                    : "⏳ **Fetching creator stats, uploaded beatmaps and rendering card with Canvas...**")
+                    ? "⏳ **Consultando perfil de osu!droid, jugadas móviles y dibujando tarjeta con Canvas...**"
+                    : "⏳ **Fetching osu!droid mobile profile, touch scores and rendering card with Canvas...**")
                 : (locale === "es"
                     ? "⏳ **Consultando perfil de osu!, estadísticas y dibujando tarjeta con Canvas...**"
-                    : "⏳ **Fetching osu! profile, statistics and rendering card with Canvas...**")
-            )
+                    : "⏳ **Fetching osu! profile, statistics and rendering card with Canvas...**"));
+
+        const progressEmbed = new EmbedBuilder()
+            .setTitle(cardTitle)
+            .setDescription(cardDesc)
             .setColor(getEmbedColor(message))
             .setFooter({
                 text: locale === "es"
@@ -170,6 +195,7 @@ async function run(messages, args) {
             res,
             command_function: getOsuUser,
             gamemode: explicitMode,
+            server: explicitServer,
             ignore_main_gamemode: Boolean(explicitMode),
             resolveUserByIndex: true,
             ignoreBeatmap: true
@@ -195,9 +221,18 @@ async function run(messages, args) {
         // Buscar usuario vinculado del autor
         try {
             const linked = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
-            if (linked && (linked.osu_id || linked.username)) {
+            if (isDroid) {
+                if (linked && linked.droid_uid) {
+                    osuUser = await getOsuUser({ username: [String(linked.droid_uid)], gamemode: "osu", server: "droid" });
+                } else {
+                    await progressPromise;
+                    const noDroidErr = `⚠️ No tienes una cuenta de \`osu!droid\` vinculada. Usa \`s.droid link <nombre_o_uid>\` o especifica un usuario con \`s.card -droid <usuario>\`.`;
+                    await cleanupProgress();
+                    return isSlash ? { content: noDroidErr, embeds: [] } : noDroidErr;
+                }
+            } else if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: "bancho" });
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: explicitServer || "bancho" });
             }
         } catch (err) {
             console.warn("[s.card] Error al obtener usuario vinculado:", err.message);
@@ -385,7 +420,7 @@ async function run(messages, args) {
 
     try {
         if (logger) logger.process(`Obteniendo mejores puntuaciones en ${targetMode} y renderizando tarjeta`);
-        const topScoresPromise = getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: "bancho" }).catch(() => []);
+        const topScoresPromise = getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: osuUser.server || "bancho" }).catch(() => []);
 
         const [topScores] = await Promise.all([
             topScoresPromise,

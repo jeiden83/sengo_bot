@@ -354,6 +354,19 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
     const no_args = Object.values(parsed_args).flat().filter(el => el !== '').length == 0;
     if (no_args || parsed_args.override === 'rm' && parsed_args.username[0] == '') {
 
+        if (parsed_args.server === 'droid') {
+            if (!user_found || !user_found.droid_uid) {
+                return {
+                    'fn_response': `⚠️ No tienes una cuenta de \`osu!droid\` vinculada a tu cuenta de Discord.\n- Vincula tu cuenta usando \`${prefix}droid link <nombre_o_uid>\` o especifica un usuario con \`-droid <usuario>\`.`,
+                    'user_found': user_found,
+                    'reparsed_args': parsed_args
+                };
+            }
+            parsed_args.username[0] = user_found.droid_uid;
+            const fn_response = await command_function({ 'username': [user_found.droid_uid], 'beatmap_url': beatmap_url, 'gamemode': 'osu', 'server': 'droid' });
+            return { 'fn_response': fn_response, 'user_found': user_found, 'reparsed_args': parsed_args };
+        }
+
         // si no hay uno linkeado al bot
         if (!user_found || !user_found.osu_id) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link\` o slash \`/link\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
 
@@ -403,10 +416,20 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
 
             // Si no hubo un username entre los args
         } else {
-
             // Se usa el linkeado al bot
-            if (!user_found || !user_found.osu_id) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link\` o slash \`/link\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
-            parsed_args.username[0] = user_found.osu_id;
+            if (parsed_args.server === 'droid') {
+                if (!user_found || !user_found.droid_uid) {
+                    return {
+                        'fn_response': `⚠️ No tienes una cuenta de \`osu!droid\` vinculada a tu cuenta de Discord.\n- Vincula tu cuenta usando \`${prefix}droid link <nombre_o_uid>\` o especifica un usuario con \`-droid <usuario>\`.`,
+                        'user_found': user_found,
+                        'reparsed_args': parsed_args
+                    };
+                }
+                parsed_args.username[0] = user_found.droid_uid;
+            } else {
+                if (!user_found || !user_found.osu_id) return { 'fn_response': `❌ No se encontró ningún usuario de \`osu!\` vinculado a tu cuenta de Discord (\`${message.author.username}\`).\n- **Vincula** tu cuenta de forma segura usando el comando de chat \`${prefix}link\` o slash \`/link\`.`, 'user_found': user_found, 'reparsed_args': parsed_args };
+                parsed_args.username[0] = user_found.osu_id;
+            }
         }
 
         // Se hace la peticion con los args
@@ -432,8 +455,8 @@ async function parsingCommandFunction(parsed_args, command_parameters) {
 function argsParserNoCommand(args, options = {}) {
     const ignoreBeatmap = options.ignoreBeatmap || false;
     let username = [];
-    let gamemode = args.gamemode || "";
-    let server = args.server || "bancho";
+    let gamemode = options.gamemode || args.gamemode || "";
+    let server = options.server || args.server || "bancho";
     let index = 1;
     let explicitIndex = false;
     let page = 1;
@@ -507,19 +530,25 @@ function argsParserNoCommand(args, options = {}) {
         'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits', 'catch': 'fruits'
     };
     const server_set = {
-        'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu', 'droid': 'droid', 'osudroid': 'droid'
+        'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu',
+        'droid': 'droid', 'osudroid': 'droid', 'odroid': 'droid', 'od': 'droid'
     };
 
     const args_commands = [
 
-        // Si empieza con un guion
+        // Si empieza con un guion o selector de servidor/modo
         function (args) {
-            if (gamemode_set[args.slice(1)]) {
-                gamemode = gamemode_set[args.slice(1)];
+            const cleanArg = args.replace(/^--?/, '').toLowerCase();
+            if (gamemode_set[cleanArg]) {
+                gamemode = gamemode_set[cleanArg];
                 return true;
             }
-            if (server_set[args.slice(1)]) {
-                server = server_set[args.slice(1)];
+            if (server_set[cleanArg]) {
+                server = server_set[cleanArg];
+                return true;
+            }
+            if (['droid', 'osudroid'].includes(cleanArg)) {
+                server = 'droid';
                 return true;
             }
             return false;
@@ -924,26 +953,46 @@ function argsParserNoCommand(args, options = {}) {
         }
 
         // Si es exactamente "-server" o "-srv"
-        if (arg === "-server" || arg === "-srv") {
+        if (arg === "-server" || arg === "-srv" || arg === "--server" || arg === "--srv") {
             if (i + 1 < args_list.length) {
                 let next_arg = args_list[i + 1].trim();
-                if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
+                const nextClean = next_arg.toLowerCase().replace(/^--?/, '');
+                if (server_set[nextClean]) {
+                    server = server_set[nextClean];
+                    skip_next = true;
+                    continue;
+                } else if (!next_arg.startsWith("-") && !next_arg.startsWith("+")) {
                     targetGuildId = next_arg;
                     skip_next = true;
                     continue;
                 }
             }
         }
+        if (arg.startsWith("-server=") || arg.startsWith("--server=") || arg.startsWith("-srv=") || arg.startsWith("--srv=")) {
+            let next = arg.split("=")[1]?.toLowerCase().trim().replace(/^--?/, '');
+            if (server_set[next]) {
+                server = server_set[next];
+                continue;
+            }
+        }
         if (arg.startsWith("-server")) {
             let next = arg.slice(7).trim();
-            if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
+            const nextClean = next.toLowerCase().replace(/^--?/, '');
+            if (server_set[nextClean]) {
+                server = server_set[nextClean];
+                continue;
+            } else if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
                 targetGuildId = next;
                 continue;
             }
         }
         if (arg.startsWith("-srv")) {
             let next = arg.slice(4).trim();
-            if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
+            const nextClean = next.toLowerCase().replace(/^--?/, '');
+            if (server_set[nextClean]) {
+                server = server_set[nextClean];
+                continue;
+            } else if (next.length > 0 && !next.startsWith("-") && !next.startsWith("+")) {
                 targetGuildId = next;
                 continue;
             }

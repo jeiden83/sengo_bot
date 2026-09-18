@@ -59,9 +59,18 @@ async function run(messages, args) {
     } else if (['c', 'compare', 'comparar'].includes(firstArg)) {
         subCommand = 'compare';
         cleanArgs.shift();
+    } else if (['card', 'tarjeta'].includes(firstArg)) {
+        subCommand = 'card';
+        cleanArgs.shift();
     } else if (['profile', 'perfil', 'p'].includes(firstArg)) {
         subCommand = 'profile';
         cleanArgs.shift();
+    }
+
+    // 2.5. Subcomando: Tarjeta Canvas de perfil
+    if (subCommand === 'card') {
+        const cardCmd = require("./card.js");
+        return cardCmd.run(messages, [...cleanArgs, '-droid']);
     }
 
     // 3. Subcomando: Leaderboard de Mapa en osu!droid
@@ -304,7 +313,7 @@ async function handleInteractiveDroidMessage({ message, reply, initialPayload, a
 run.description = {
     header: "Consulta perfiles, jugadas y leaderboards de osu!droid (cliente móvil)",
     body: "Permite explorar el rendimiento oficial en osu!droid, ver la última jugada con estadísticas táctiles (sliders, hits, PP), navegar por el Top 50, consultar el leaderboard de un mapa y vincular tu cuenta.",
-    usage: "s.droid [usuario_o_uid]\ns.droid recent [usuario]\ns.droid top [usuario]\ns.droid lb\ns.droid compare\ns.droid link <nombre_o_uid>\ns.droid unlink"
+    usage: "s.droid [usuario_o_uid]\ns.droid card [usuario]\ns.droid recent [usuario]\ns.droid top [usuario]\ns.droid lb\ns.droid compare\ns.droid link <nombre_o_uid>\ns.droid unlink"
 };
 
 run.alias = ["osudroid", "odroid"];

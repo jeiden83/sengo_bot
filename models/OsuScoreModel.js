@@ -697,6 +697,102 @@ async function getUserRecentScores(parsed_args) {
         } catch (e) {
             console.error("Error fetching gatari recent scores:", e);
         }
+    } else if (server === 'droid') {
+        try {
+            const osuDroidModel = require("./osuDroidModel.js");
+            const targetUsername = parsed_args.username[0];
+            const droidUser = await osuDroidModel.resolveDroidUser(targetUsername);
+
+            if (droidUser && droidUser.Last50Scores && droidUser.Last50Scores.length > 0) {
+                const u = {
+                    username: droidUser.Username,
+                    id: droidUser.UserId,
+                    country_code: (droidUser.Region || "XX").toUpperCase(),
+                    avatar_url: osuDroidModel.getAvatarUrl(droidUser.UserId),
+                    server: 'droid'
+                };
+
+                let recentBeatmap = null;
+                if (droidUser.Last50Scores[0]?.MapHash) {
+                    try {
+                        const BeatmapModel = require("./BeatmapModel.js");
+                        recentBeatmap = await BeatmapModel.lookupBeatmapByMD5(droidUser.Last50Scores[0].MapHash);
+                    } catch (_) {}
+                }
+
+                result = droidUser.Last50Scores.map((s, idx) => {
+                    const passed = s.MapRank !== "F";
+                    const modsFormatted = Array.isArray(s.Mods) ? s.Mods.map(m => m.acronym).filter(Boolean) : [];
+                    const bInfo = idx === 0 && recentBeatmap ? recentBeatmap : null;
+                    const coverUrl = bInfo?.beatmapset?.covers?.['cover@2x'] || bInfo?.beatmapset?.covers?.cover || u.avatar_url;
+                    const bId = bInfo?.id || null;
+                    const bSetId = bInfo?.beatmapset_id || null;
+
+                    const rawFilename = s.Filename || '';
+                    const diffMatch = rawFilename.match(/\[(.*?)\](?:\.osu)?$/i);
+                    const parsedVersion = diffMatch ? diffMatch[1] : 'Normal';
+                    const baseName = rawFilename.replace(/\[.*?\](?:\.osu)?$/i, '').trim();
+                    let parsedArtist = '';
+                    let parsedTitle = baseName;
+                    if (baseName.includes(' - ')) {
+                        const splitParts = baseName.split(/\s+-\s+/);
+                        parsedArtist = splitParts[0].trim();
+                        parsedTitle = splitParts.slice(1).join(' - ').trim();
+                    }
+
+                    const bTitle = bInfo?.beatmapset?.title || parsedTitle || 'Beatmap';
+                    const bArtist = bInfo?.beatmapset?.artist || parsedArtist || '';
+                    const bVersion = bInfo?.version || parsedVersion || 'Normal';
+                    const bDiffRating = bInfo?.difficulty_rating != null ? Number(bInfo.difficulty_rating) : null;
+
+                    return {
+                        id: s.ScoreId,
+                        accuracy: s.MapAccuracy || 0,
+                        passed: passed,
+                        rank: s.MapRank || 'A',
+                        mods: modsFormatted,
+                        droid_mods: s.Mods,
+                        max_combo: s.MapCombo || 0,
+                        statistics: {
+                            perfect: s.MapGeki || 0,
+                            great: s.MapPerfect || 0,
+                            good: s.MapKatu || 0,
+                            ok: s.MapGood || 0,
+                            meh: s.MapBad || 0,
+                            miss: s.MapMiss || 0,
+                            count_geki: s.MapGeki || 0,
+                            count_300: s.MapPerfect || 0,
+                            count_katu: s.MapKatu || 0,
+                            count_100: s.MapGood || 0,
+                            count_50: s.MapBad || 0,
+                            count_miss: s.MapMiss || 0
+                        },
+                        pp: s.MapPP || 0,
+                        total_score: s.MapScore || 0,
+                        legacy_total_score: s.MapScore || 0,
+                        ended_at: s.PlayedDate || new Date().toISOString(),
+                        beatmap: {
+                            id: bId,
+                            version: bVersion,
+                            checksum: s.MapHash,
+                            mode: 'osu',
+                            beatmapset_id: bSetId,
+                            difficulty_rating: bDiffRating
+                        },
+                        beatmapset: {
+                            id: bSetId,
+                            title: bTitle,
+                            artist: bArtist,
+                            covers: { "cover@2x": coverUrl, "cover": coverUrl }
+                        },
+                        user: u,
+                        _droid_raw_score: s
+                    };
+                });
+            }
+        } catch (e) {
+            console.error("Error fetching osu!droid recent scores:", e);
+        }
     } else {
         await OsuUserModel.NewloadToken();
         try {
@@ -928,6 +1024,103 @@ async function _getUserTopScores(parsed_args) {
                 };
             }));
         } catch (e) {
+            return [];
+        }
+    } else if (server === 'droid') {
+        try {
+            const osuDroidModel = require("./osuDroidModel.js");
+            const targetUsername = parsed_args.username[0];
+            const droidUser = await osuDroidModel.resolveDroidUser(targetUsername);
+
+            if (!droidUser || !droidUser.Top50Plays || droidUser.Top50Plays.length === 0) return [];
+
+            const u = {
+                username: droidUser.Username,
+                id: droidUser.UserId,
+                country_code: (droidUser.Region || "XX").toUpperCase(),
+                avatar_url: osuDroidModel.getAvatarUrl(droidUser.UserId),
+                server: 'droid'
+            };
+
+            let top1Beatmap = null;
+            if (droidUser.Top50Plays[0]?.MapHash) {
+                try {
+                    const BeatmapModel = require("./BeatmapModel.js");
+                    top1Beatmap = await BeatmapModel.lookupBeatmapByMD5(droidUser.Top50Plays[0].MapHash);
+                } catch (_) {}
+            }
+
+            return returnAndCache(droidUser.Top50Plays.map((s, idx) => {
+                const passed = s.MapRank !== "F";
+                const modsFormatted = Array.isArray(s.Mods) ? s.Mods.map(m => m.acronym).filter(Boolean) : [];
+                const bInfo = idx === 0 && top1Beatmap ? top1Beatmap : null;
+                const coverUrl = bInfo?.beatmapset?.covers?.['cover@2x'] || bInfo?.beatmapset?.covers?.cover || u.avatar_url;
+                const bId = bInfo?.id || null;
+                const bSetId = bInfo?.beatmapset_id || null;
+
+                const rawFilename = s.Filename || '';
+                const diffMatch = rawFilename.match(/\[(.*?)\](?:\.osu)?$/i);
+                const parsedVersion = diffMatch ? diffMatch[1] : 'Normal';
+                const baseName = rawFilename.replace(/\[.*?\](?:\.osu)?$/i, '').trim();
+                let parsedArtist = '';
+                let parsedTitle = baseName;
+                if (baseName.includes(' - ')) {
+                    const splitParts = baseName.split(/\s+-\s+/);
+                    parsedArtist = splitParts[0].trim();
+                    parsedTitle = splitParts.slice(1).join(' - ').trim();
+                }
+
+                const bTitle = bInfo?.beatmapset?.title || parsedTitle || 'Beatmap';
+                const bArtist = bInfo?.beatmapset?.artist || parsedArtist || '';
+                const bVersion = bInfo?.version || parsedVersion || 'Normal';
+                const bDiffRating = bInfo?.difficulty_rating != null ? Number(bInfo.difficulty_rating) : null;
+
+                return {
+                    id: s.ScoreId,
+                    accuracy: s.MapAccuracy || 0,
+                    passed: passed,
+                    rank: s.MapRank || 'A',
+                    mods: modsFormatted,
+                    droid_mods: s.Mods,
+                    max_combo: s.MapCombo || 0,
+                    statistics: {
+                        perfect: s.MapGeki || 0,
+                        great: s.MapPerfect || 0,
+                        good: s.MapKatu || 0,
+                        ok: s.MapGood || 0,
+                        meh: s.MapBad || 0,
+                        miss: s.MapMiss || 0,
+                        count_geki: s.MapGeki || 0,
+                        count_300: s.MapPerfect || 0,
+                        count_katu: s.MapKatu || 0,
+                        count_100: s.MapGood || 0,
+                        count_50: s.MapBad || 0,
+                        count_miss: s.MapMiss || 0
+                    },
+                    pp: s.MapPP || 0,
+                    total_score: s.MapScore || 0,
+                    legacy_total_score: s.MapScore || 0,
+                    ended_at: s.PlayedDate || new Date().toISOString(),
+                    beatmap: {
+                        id: bId,
+                        version: bVersion,
+                        checksum: s.MapHash,
+                        mode: 'osu',
+                        beatmapset_id: bSetId,
+                        difficulty_rating: bDiffRating
+                    },
+                    beatmapset: {
+                        id: bSetId,
+                        title: bTitle,
+                        artist: bArtist,
+                        covers: { "cover@2x": coverUrl, "cover": coverUrl }
+                    },
+                    user: u,
+                    _droid_raw_score: s
+                };
+            }));
+        } catch (e) {
+            console.error("Error fetching osu!droid top scores:", e);
             return [];
         }
     }

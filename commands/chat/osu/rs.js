@@ -21,6 +21,11 @@ async function run(messages, args) {
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
+    if (parser_res.parsed_args?.server === 'droid') {
+        const droidCmd = require('./droid.js');
+        const userArg = parser_res.parsed_args.username?.[0] ? [String(parser_res.parsed_args.username[0])] : [];
+        return droidCmd.run(messages, ['recent', ...userArg]);
+    }
     
     if (parser_res.parsed_args.lazerMode) {
         currentScoreMode = 'lazer';

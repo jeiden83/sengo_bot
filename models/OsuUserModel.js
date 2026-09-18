@@ -332,6 +332,48 @@ async function _getOsuUser(parsed_args) {
         }
     }
 
+    if (server === 'droid') {
+        try {
+            const osuDroidModel = require("./osuDroidModel.js");
+            const targetUsername = parsed_args.username[0];
+            const droidUser = await osuDroidModel.resolveDroidUser(targetUsername);
+
+            if (droidUser) {
+                const countryCode = (droidUser.Region || "XX").toUpperCase();
+                return returnAndCache({
+                    id: droidUser.UserId,
+                    username: droidUser.Username,
+                    country_code: countryCode,
+                    country: { code: countryCode, name: droidUser.Region },
+                    avatar_url: osuDroidModel.getAvatarUrl(droidUser.UserId),
+                    cover_url: osuDroidModel.getBannerUrl(droidUser.UserId) || osuDroidModel.getAvatarUrl(droidUser.UserId),
+                    join_date: droidUser.Registered || new Date().toISOString(),
+                    rank_highest: null,
+                    user_achievements: [],
+                    statistics: {
+                        global_rank: droidUser.GlobalRank,
+                        pp: droidUser.OverallPP,
+                        hit_accuracy: (droidUser.OverallAccuracy || 0) * 100,
+                        play_count: droidUser.OverallPlaycount,
+                        play_time: 0,
+                        total_score: droidUser.OverallScore,
+                        level: { current: 100, progress: 0 },
+                        rank: { country: droidUser.CountryRank }
+                    },
+                    server: 'droid',
+                    is_supporter: !!droidUser.Supporter,
+                    _droid_raw: droidUser
+                });
+            }
+            throw new Error("User not found in osu!droid");
+        } catch (e) {
+            if (/^\d+$/.test(parsed_args.username[0])) {
+                return `El usuario con UID ${parsed_args.username[0]} no se encuentra en osu!droid!`;
+            }
+            return `El usuario **${parsed_args.username[0]}** no se encuentra en osu!droid!`;
+        }
+    }
+
     const osu_token = await loadToken();
     let res;
 
