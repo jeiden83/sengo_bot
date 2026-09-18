@@ -225,6 +225,22 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 
 ---
 
+#### 📱 osu!droid (Cliente Móvil)
+* **`s.droid` o `s.osudroid [subcomando] [argumentos]`**
+  Integración completa con la infraestructura oficial de osu!droid (`new.osudroid.moe/api2/`).
+  * *Subcomandos disponibles:*
+    * `s.droid [usuario_o_uid]`: Muestra el perfil oficial de osu!droid con PP total, Ranking Global, Ranking Nacional, precisión promedio, partidas jugadas, top 5 jugadas destacadas, última jugada, avatar y banner.
+    * `s.droid recent [usuario]` (o `s.droid rs`): Muestra la jugada más reciente con desglose táctil completo (aciertos, fallos, hits en slider head/tick/repeat/end, mods como PR, CS, RV6, PP oficial del servidor) y botón interactivo para descarga directa del replay `.odr`.
+    * `s.droid top [usuario]` (o `s.droid best`): Navegación paginada del Top 50 de jugadas de osu!droid con cálculo matemático de PP ponderado ($0.95^n$).
+    * `s.droid lb [mapa]` (o `s.droid leaderboard`): Leaderboard oficial de osu!droid para el beatmap activo o especificado por hash MD5.
+    * `s.droid compare [usuario]` (o `s.droid c`): Busca el récord personal del usuario en el beatmap consultado en el canal.
+    * `s.droid link <nombre_o_uid>`: Vincula tu cuenta de Discord a tu perfil de osu!droid en la base de datos de Sengo.
+    * `s.droid unlink`: Desvincula tu cuenta de osu!droid.
+  * *Alias:* `s.osudroid`, `s.odroid`.
+  * *Slash Command:* `/droid <perfil|reciente|top|leaderboard|comparar|vincular|desvincular>`
+
+---
+
 #### 🏆 Competitivo, Rankings y Estadísticas
 * **`s.lb` o `s.leaderboard`**
   Muestra la tabla de clasificación global o nacional del último mapa consultado.

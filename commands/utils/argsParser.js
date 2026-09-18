@@ -507,7 +507,7 @@ function argsParserNoCommand(args, options = {}) {
         'mania': 'mania', 'osu': 'osu', 'std': 'osu', 'taiko': 'taiko', 'ctb': 'fruits', 'fruits': 'fruits', 'catch': 'fruits'
     };
     const server_set = {
-        'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu'
+        'gatari': 'gatari', 'bancho': 'bancho', 'mameosu': 'mameosu', 'mamesosu': 'mameosu', 'mosu': 'mameosu', 'droid': 'droid', 'osudroid': 'droid'
     };
 
     const args_commands = [

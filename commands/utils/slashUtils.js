@@ -25,12 +25,13 @@ function addModoOption(option) {
 function addServidorOption(option) {
     return option
         .setName("servidor")
-        .setDescription("Servidor de osu! (Bancho, Gatari o Mamesosu)")
+        .setDescription("Servidor de osu! (Bancho, Gatari, Mamesosu u osu!droid)")
         .setRequired(false)
         .addChoices(
             { name: "Bancho", value: "bancho" },
             { name: "Gatari", value: "gatari" },
-            { name: "Mamesosu", value: "mameosu" }
+            { name: "Mamesosu", value: "mameosu" },
+            { name: "osu!droid", value: "droid" }
         );
 }
 
