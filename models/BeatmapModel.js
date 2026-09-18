@@ -518,13 +518,28 @@ async function batchGetBeatmaps(beatmapIds) {
     return results;
 }
 
+const md5LookupCache = new Map();
+const MAX_MD5_CACHE = 1000;
+
 /**
- * Busca los detalles de dificultad de un beatmap dado su hash MD5.
+ * Busca los detalles de dificultad de un beatmap dado su hash MD5 con caché en memoria.
  */
 async function lookupBeatmapByMD5(md5) {
+    if (!md5) return null;
+    const cleanMd5 = String(md5).trim().toLowerCase();
+    if (md5LookupCache.has(cleanMd5)) {
+        return md5LookupCache.get(cleanMd5);
+    }
     await OsuUserModel.NewloadToken();
     try {
-        const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: md5 });
+        const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: cleanMd5 });
+        if (result && result.id) {
+            if (md5LookupCache.size >= MAX_MD5_CACHE) {
+                const firstKey = md5LookupCache.keys().next().value;
+                md5LookupCache.delete(firstKey);
+            }
+            md5LookupCache.set(cleanMd5, result);
+        }
         return result;
     } catch (e) {
         return null;

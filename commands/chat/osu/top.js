@@ -407,8 +407,8 @@ async function run(messages, args, options = {}) {
                 } catch (_) {}
             }
 
-            const user_pp = score.pp ? score.pp : (map && maxAttrs ? calculatePP(score, map, null, maxAttrs, parser_res.parsed_args.ppEngine).pp : 0);
-            const beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (score.max_combo || 0));
+            let user_pp = score.pp ? score.pp : (map && maxAttrs ? calculatePP(score, map, null, maxAttrs, parser_res.parsed_args.ppEngine).pp : 0);
+            let beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (score.max_combo || 0));
 
             let pp_fc = null;
             const isFC = score.perfect || (miss === 0 && score.max_combo >= beatmap_max_combo - 2);
@@ -427,6 +427,37 @@ async function run(messages, args, options = {}) {
                     pp_fc = calculatePP(fc_score, map, null, maxAttrs, parser_res.parsed_args.ppEngine).pp;
                 } catch (err) {
                     console.error("Error calculating pp_fc:", err);
+                }
+            }
+
+            // ponytail: Motor nativo oficial de dificultad y PP táctil para osu!droid (@rian8337)
+            if (score.user?.server === 'droid') {
+                try {
+                    const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                    const BeatmapModel = require("../../../models/BeatmapModel.js");
+                    const fs = require("fs");
+                    let bInfo = score.beatmap;
+                    if (!bInfo?.id && bInfo?.checksum) {
+                        bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                    }
+                    if (bInfo?.beatmapset_id && bInfo?.id) {
+                        const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
+                        if (filePath && fs.existsSync(filePath)) {
+                            const osuContent = fs.readFileSync(filePath, 'utf8');
+                            const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
+                            if (droidAttrs) {
+                                maxAttrs = droidAttrs.maxAttrs;
+                                user_pp = score.pp || droidAttrs.user_pp;
+                                pp_fc = droidAttrs.pp_fc;
+                                beatmap_max_combo = droidAttrs.beatmap_max_combo;
+                                if (score.beatmap) {
+                                    score.beatmap.difficulty_rating = droidAttrs.stars;
+                                }
+                            }
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[top] Error calculando PP nativo de osu!droid:", err.message);
                 }
             }
 
@@ -624,6 +655,45 @@ async function run(messages, args, options = {}) {
                         }
                     } catch {}
                 }
+                if (score.user?.server === 'droid') {
+                    try {
+                        const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                        const BeatmapModel = require("../../../models/BeatmapModel.js");
+                        const fs = require("fs");
+                        let bInfo = score.beatmap;
+                        if (!bInfo?.id && bInfo?.checksum) {
+                            bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                        }
+                        if (bInfo?.beatmapset_id && bInfo?.id) {
+                            const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
+                            if (filePath && fs.existsSync(filePath)) {
+                                const osuContent = fs.readFileSync(filePath, 'utf8');
+                                const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
+                                if (droidAttrs) return droidAttrs.stars;
+                            }
+                        }
+                    } catch (_) {}
+                }
+                return score.beatmap?.difficulty_rating || 0;
+            }
+            if (score.user?.server === 'droid') {
+                try {
+                    const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                    const BeatmapModel = require("../../../models/BeatmapModel.js");
+                    const fs = require("fs");
+                    let bInfo = score.beatmap;
+                    if (!bInfo?.id && bInfo?.checksum) {
+                        bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                    }
+                    if (bInfo?.beatmapset_id && bInfo?.id) {
+                        const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
+                        if (filePath && fs.existsSync(filePath)) {
+                            const osuContent = fs.readFileSync(filePath, 'utf8');
+                            const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
+                            if (droidAttrs) return droidAttrs.stars;
+                        }
+                    }
+                } catch (_) {}
                 return score.beatmap?.difficulty_rating || 0;
             }
             try {

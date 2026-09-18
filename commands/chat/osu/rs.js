@@ -332,7 +332,7 @@ async function run(messages, args) {
 
         let user_pp = recent_scores.pp ? recent_scores.pp : (map && maxAttrs ? calculatePP(recent_scores, map, null, maxAttrs).pp : 0);
 
-        const beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (recent_scores.max_combo || 0));
+        let beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (recent_scores.max_combo || 0));
         let pp_fc = null;
         const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
 
@@ -351,6 +351,37 @@ async function run(messages, args) {
                 pp_fc = calculatePP(fc_score, map, null, maxAttrs).pp;
             } catch (err) {
                 console.error("Error calculating pp_fc:", err);
+            }
+        }
+
+        // ponytail: Motor nativo oficial de dificultad y PP táctil para osu!droid (@rian8337)
+        if (recent_scores.user?.server === 'droid') {
+            try {
+                const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                const BeatmapModel = require("../../../models/BeatmapModel.js");
+                const fs = require("fs");
+                let bInfo = recent_scores.beatmap;
+                if (!bInfo?.id && bInfo?.checksum) {
+                    bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                }
+                if (bInfo?.beatmapset_id && bInfo?.id) {
+                    const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
+                    if (filePath && fs.existsSync(filePath)) {
+                        const osuContent = fs.readFileSync(filePath, 'utf8');
+                        const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, recent_scores, String(bInfo.id));
+                        if (droidAttrs) {
+                            maxAttrs = droidAttrs.maxAttrs;
+                            user_pp = recent_scores.pp || droidAttrs.user_pp;
+                            pp_fc = droidAttrs.pp_fc;
+                            beatmap_max_combo = droidAttrs.beatmap_max_combo;
+                            if (recent_scores.beatmap) {
+                                recent_scores.beatmap.difficulty_rating = droidAttrs.stars;
+                            }
+                        }
+                    }
+                }
+            } catch (err) {
+                console.warn("[rs] Error calculando PP nativo de osu!droid:", err.message);
             }
         }
 

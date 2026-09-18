@@ -334,7 +334,9 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
             const od = Number(s.beatmap?.accuracy || 8.0);
             const circles = Number(s.beatmap?.count_circles || 0);
             const sliders = Number(s.beatmap?.count_sliders || 0);
-            const totalObj = Math.max(1, circles + sliders);
+            const stats = s.statistics || {};
+            const totalHits = (stats.count_300 || 0) + (stats.count_100 || 0) + (stats.count_50 || 0) + (stats.count_miss || 0);
+            const totalObj = Math.max(1, (circles + sliders) > 0 ? (circles + sliders) : totalHits);
 
             let effBPM = bpm * (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
             const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / (isDT ? 1.5 : (isHT ? 0.75 : 1.0));
@@ -591,75 +593,142 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
 
     // Recolectar candidatos: Top 10 por habilidad analítica + Top 20 jugadas por PP global
     // ponytail: Pool unificado de candidatos para paridad 1:1 total entre .skills y .skills -top
+    const isDroid = (scores[0]?.user?.server === 'droid') || (base.mode === 'osu' && scores[0]?.droid_mods != null);
     const candidateScoreMap = new Map();
     skillKeys.forEach(k => {
         const capKey = k.charAt(0).toUpperCase() + k.slice(1);
         (base[`top${capKey}`] || []).slice(0, 10).forEach(item => {
-            if (item.score?.beatmap?.id) {
-                candidateScoreMap.set(item.score.beatmap.id, item.score);
+            const sc = item.score;
+            const key = isDroid ? (sc?.beatmap?.checksum || sc?.beatmap?.id || sc?.id) : sc?.beatmap?.id;
+            if (key && sc) {
+                candidateScoreMap.set(key, sc);
             }
         });
     });
     scores.slice(0, 20).forEach(s => {
-        if (s.beatmap?.id) candidateScoreMap.set(s.beatmap.id, s);
+        const key = isDroid ? (s.beatmap?.checksum || s.beatmap?.id || s.id) : s.beatmap?.id;
+        if (key && s) candidateScoreMap.set(key, s);
     });
 
     const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
     const targetModeInt = MODE_INT[base.mode] ?? 0;
 
     const calculatedData = new Map();
-    await Promise.all(Array.from(candidateScoreMap.entries()).map(async ([bmId, score]) => {
-        try {
-            const beatmap = await getBeatmap(bmId);
-            const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
-            if (targetModeInt !== 0 && typeof map.convert === "function") {
-                map.convert(targetModeInt);
+
+    if (isDroid) {
+        // ponytail: Motor nativo oficial de dificultad y PP táctil para osu!droid (@rian8337)
+        const DROID_AIM_NERF = 4.0;
+        const DROID_SPEED_NERF = 2.8;
+        const DROID_ACC_NERF = 1.2;
+        const DROID_READING_NERF = 2.6;
+        const droidEngine = require('../utils/droidDifficultyEngine.js');
+        const BeatmapModel = require('../models/BeatmapModel.js');
+        const fs = require('fs');
+
+        await Promise.all(Array.from(candidateScoreMap.entries()).map(async ([key, score]) => {
+            try {
+                let bInfo = score.beatmap?.id ? score.beatmap : null;
+                if (!bInfo?.id && score.beatmap?.checksum) {
+                    bInfo = await BeatmapModel.lookupBeatmapByMD5(score.beatmap.checksum);
+                    if (bInfo) {
+                        score.beatmap.id = bInfo.id;
+                        score.beatmap.beatmapset_id = bInfo.beatmapset_id;
+                        score.beatmap.difficulty_rating = bInfo.difficulty_rating;
+                        score.beatmap.bpm = bInfo.bpm;
+                        score.beatmap.ar = bInfo.ar;
+                        score.beatmap.accuracy = bInfo.accuracy;
+                        score.beatmap.cs = bInfo.cs;
+                        score.beatmap.count_circles = bInfo.count_circles;
+                        score.beatmap.count_sliders = bInfo.count_sliders;
+                    }
+                }
+
+                if (score.beatmap?.beatmapset_id && score.beatmap?.id) {
+                    const filePath = await BeatmapModel.downloadBeatmapOsuFile(score.beatmap.beatmapset_id, score.beatmap.id, bInfo);
+                    if (filePath && fs.existsSync(filePath)) {
+                        const osuContent = fs.readFileSync(filePath, 'utf8');
+                        const droidSkills = droidEngine.calculateDroidScoreSkills(osuContent, score, String(score.beatmap.id));
+
+                        calculatedData.set(key, {
+                            stars: droidSkills.stars,
+                            aim: mapToSkillCurve(droidSkills.aimPP / DROID_AIM_NERF),
+                            speed: mapToSkillCurve(droidSkills.speedPP / DROID_SPEED_NERF),
+                            acc: mapToSkillCurve(droidSkills.accPP / DROID_ACC_NERF),
+                            reading: mapToSkillCurve(droidSkills.readingPP / DROID_READING_NERF),
+                            aimPP: droidSkills.aimPP,
+                            speedPP: droidSkills.speedPP,
+                            accPP: droidSkills.accPP,
+                            readingPP: droidSkills.readingPP
+                        });
+                        return;
+                    }
+                }
+            } catch (err) {
+                // Fallback analítico manejado abajo
             }
-            const modsList = Array.isArray(score.mods)
-                ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(m => m !== "CL" && Boolean(m))
-                : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
-            const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true, mode: targetModeInt }).calculate(map);
 
-            const playData = {
-                stars: diffAttrs.stars
-            };
-
-            // ponytail: Para osu! standard, calculamos exactamente el Aim, Speed, Acc y Reading PP reales con sengo-pp
-            if (targetModeInt === 0) {
-                const perf = new engine.Performance({
-                    mods: modsList,
-                    lazer: true,
-                    mode: targetModeInt,
-                    combo: score.max_combo,
-                    accuracy: typeof score.accuracy === "number" && score.accuracy <= 1 ? score.accuracy * 100 : (score.accuracy || 100)
-                }).calculate(diffAttrs);
-
-                playData.aim = mapToSkillCurve(perf.ppAim / AIM_NERF);
-                playData.speed = mapToSkillCurve(perf.ppSpeed / SPEED_NERF);
-                playData.acc = mapToSkillCurve(perf.ppAcc / ACC_NERF);
-                playData.speedPP = perf.ppSpeed;
-                playData.aimPP = perf.ppAim;
-                playData.accPP = perf.ppAcc;
-
-                // ponytail: Soporte nativo para Reading y Flashlight de sengo-pp en todos los mods rankeables (EZ, FL, HD, HT, DT, HR)
-                const sengoReadingPP = Math.max(perf.ppReading || 0, (perf.ppFlashlight || 0));
-                playData.reading = mapToSkillCurve(sengoReadingPP / READING_NERF);
-                playData.readingPP = sengoReadingPP;
-                playData.readingStars = diffAttrs.readingStars || diffAttrs.flashlightStars || 0;
-            }
-
-            calculatedData.set(bmId, playData);
-            map.free();
-        } catch (err) {
-            calculatedData.set(bmId, {
-                stars: Number(score.beatmap?.difficulty_rating || 0)
+            calculatedData.set(key, {
+                stars: Number(score.beatmap?.difficulty_rating || 0),
+                aim: score.skills?.aim || 0,
+                speed: score.skills?.speed || 0,
+                acc: score.skills?.acc || 0,
+                reading: score.skills?.reading || 0
             });
-        }
-    }));
+        }));
+    } else {
+        await Promise.all(Array.from(candidateScoreMap.entries()).map(async ([bmId, score]) => {
+            try {
+                const beatmap = await getBeatmap(bmId);
+                const map = await getBeatmap_osu(score.beatmap.beatmapset_id, bmId, beatmap);
+                if (targetModeInt !== 0 && typeof map.convert === "function") {
+                    map.convert(targetModeInt);
+                }
+                const modsList = Array.isArray(score.mods)
+                    ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(m => m !== "CL" && Boolean(m))
+                    : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
+                const diffAttrs = new engine.Difficulty({ mods: modsList, lazer: true, mode: targetModeInt }).calculate(map);
+
+                const playData = {
+                    stars: diffAttrs.stars
+                };
+
+                // ponytail: Para osu! standard, calculamos exactamente el Aim, Speed, Acc y Reading PP reales con sengo-pp
+                if (targetModeInt === 0) {
+                    const perf = new engine.Performance({
+                        mods: modsList,
+                        lazer: true,
+                        mode: targetModeInt,
+                        combo: score.max_combo,
+                        accuracy: typeof score.accuracy === "number" && score.accuracy <= 1 ? score.accuracy * 100 : (score.accuracy || 100)
+                    }).calculate(diffAttrs);
+
+                    playData.aim = mapToSkillCurve(perf.ppAim / AIM_NERF);
+                    playData.speed = mapToSkillCurve(perf.ppSpeed / SPEED_NERF);
+                    playData.acc = mapToSkillCurve(perf.ppAcc / ACC_NERF);
+                    playData.speedPP = perf.ppSpeed;
+                    playData.aimPP = perf.ppAim;
+                    playData.accPP = perf.ppAcc;
+
+                    // ponytail: Soporte nativo para Reading y Flashlight de sengo-pp en todos los mods rankeables (EZ, FL, HD, HT, DT, HR)
+                    const sengoReadingPP = Math.max(perf.ppReading || 0, (perf.ppFlashlight || 0));
+                    playData.reading = mapToSkillCurve(sengoReadingPP / READING_NERF);
+                    playData.readingPP = sengoReadingPP;
+                    playData.readingStars = diffAttrs.readingStars || diffAttrs.flashlightStars || 0;
+                }
+
+                calculatedData.set(bmId, playData);
+                map.free();
+            } catch (err) {
+                calculatedData.set(bmId, {
+                    stars: Number(score.beatmap?.difficulty_rating || 0)
+                });
+            }
+        }));
+    }
 
     const allEvaluated = [];
-    candidateScoreMap.forEach((sc, bmId) => {
-        const sengo = calculatedData.get(bmId);
+    candidateScoreMap.forEach((sc, key) => {
+        const sengo = calculatedData.get(key);
         const item = {
             score: sc,
             aim: sengo?.aim ?? sc.skills?.aim ?? 0,
@@ -668,15 +737,19 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
             reading: sengo?.reading ?? sc.skills?.reading ?? 0,
             stars: sengo?.stars ?? Number(sc.beatmap?.difficulty_rating || 0)
         };
-        // ponytail: Asignar valores exactos de sengo-pp al score para paridad 1:1 con .skills -top
+        // ponytail: Asignar valores exactos de motor al score para paridad 1:1 con .skills -top
         if (sengo) {
             if (!sc.skills) sc.skills = {};
             if (sengo.aim != null) sc.skills.aim = sengo.aim;
             if (sengo.speed != null) sc.skills.speed = sengo.speed;
             if (sengo.acc != null) sc.skills.acc = sengo.acc;
             if (sengo.reading != null) sc.skills.reading = sengo.reading;
+            if (sengo.aimPP != null) sc.skills.aimPP = sengo.aimPP;
+            if (sengo.speedPP != null) sc.skills.speedPP = sengo.speedPP;
+            if (sengo.accPP != null) sc.skills.accPP = sengo.accPP;
+            if (sengo.readingPP != null) sc.skills.readingPP = sengo.readingPP;
         }
-        if (targetModeInt !== 0 && sc.skills) {
+        if (targetModeInt !== 0 && !isDroid && sc.skills) {
             Object.assign(item, sc.skills);
         }
         allEvaluated.push(item);
@@ -913,7 +986,7 @@ async function saveUserSkills({ osuUser, skillsBreakdown, gamemode, discordId = 
             return { success: false, error: "Supabase client not available" };
         }
 
-        const osuId = String(osuUser.id || osuUser.osu_id);
+        const osuId = osuUser.server === 'droid' ? `droid_${osuUser.id}` : String(osuUser.id || osuUser.osu_id);
         const username = osuUser.username || "Desconocido";
         const rawCountry = osuUser.country_code || osuUser.country?.code || "XX";
         const countryCode = String(rawCountry).toUpperCase();

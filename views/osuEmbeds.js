@@ -253,7 +253,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${score}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*${leaderboard_pos ? ` **▸** 🌐 \`#${leaderboard_pos}\`` : ''}${user_top_pos ? ` **▸** 🏆 \`#${user_top_pos}\`` : ''}`;
     const line3 = getBeatmapStatsLine(map, recent_scores.mods, activeGamemode, locale);
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
+    const maxPpVal = pre_calculated.maxAttrs ? pre_calculated.maxAttrs.pp : null;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, maxPpVal, pre_calculated.pp_fc, locale);
     const reworkDisclaimer = isLazerCustomRework ? `\n${t(locale, 'rework.lazer_custom_mods_warning')}` : '';
 
     const embed = new EmbedBuilder()
@@ -763,7 +764,8 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `${disclaimer}${prefix_desc}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
     const line3 = getBeatmapStatsLine(map, score.mods, activeGamemode, locale);
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
+    const maxPpVal = pre_calculated.maxAttrs ? pre_calculated.maxAttrs.pp : null;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, maxPpVal, pre_calculated.pp_fc, locale);
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -930,7 +932,8 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0**${accuracy}%**${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
     const line2 = `**${formatted_score_val}** **▸** **\`${recent_scores.max_combo || 0}x\`**/*\`${pre_calculated.beatmap_max_combo ? pre_calculated.beatmap_max_combo + 'x' : '?'}\`*`;
     const line3 = getBeatmapStatsLine(map, recent_scores.mods, activeGamemode, locale);
-    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
+    const maxPpVal = pre_calculated.maxAttrs ? pre_calculated.maxAttrs.pp : null;
+    const ansiBlock = buildAnsiBlock(stats_str, pre_calculated.pp, maxPpVal, pre_calculated.pp_fc, locale);
 
     let authorName = t(locale, 'subir.embed_author', { username: parsedData.player_name });
     let authorUrl = `https://osu.ppy.sh/users/${user_id}`;

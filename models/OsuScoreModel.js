@@ -748,6 +748,12 @@ async function getUserRecentScores(parsed_args) {
                     const bVersion = bInfo?.version || parsedVersion || 'Normal';
                     const bDiffRating = bInfo?.difficulty_rating != null ? Number(bInfo.difficulty_rating) : null;
 
+                    const n300 = s.MapPerfect || 0;
+                    const n100 = s.MapGood || 0;
+                    const n50 = s.MapBad || 0;
+                    const nMiss = s.MapMiss || 0;
+                    const totalHits = n300 + n100 + n50 + nMiss;
+
                     return {
                         id: s.ScoreId,
                         accuracy: s.MapAccuracy || 0,
@@ -758,17 +764,17 @@ async function getUserRecentScores(parsed_args) {
                         max_combo: s.MapCombo || 0,
                         statistics: {
                             perfect: s.MapGeki || 0,
-                            great: s.MapPerfect || 0,
+                            great: n300,
                             good: s.MapKatu || 0,
-                            ok: s.MapGood || 0,
-                            meh: s.MapBad || 0,
-                            miss: s.MapMiss || 0,
+                            ok: n100,
+                            meh: n50,
+                            miss: nMiss,
                             count_geki: s.MapGeki || 0,
-                            count_300: s.MapPerfect || 0,
+                            count_300: n300,
                             count_katu: s.MapKatu || 0,
-                            count_100: s.MapGood || 0,
-                            count_50: s.MapBad || 0,
-                            count_miss: s.MapMiss || 0
+                            count_100: n100,
+                            count_50: n50,
+                            count_miss: nMiss
                         },
                         pp: s.MapPP || 0,
                         total_score: s.MapScore || 0,
@@ -780,7 +786,14 @@ async function getUserRecentScores(parsed_args) {
                             checksum: s.MapHash,
                             mode: 'osu',
                             beatmapset_id: bSetId,
-                            difficulty_rating: bDiffRating
+                            difficulty_rating: bDiffRating,
+                            count_circles: bInfo?.count_circles || Math.round(totalHits * 0.75),
+                            count_sliders: bInfo?.count_sliders || Math.round(totalHits * 0.25),
+                            bpm: bInfo?.bpm,
+                            ar: bInfo?.ar,
+                            accuracy: bInfo?.accuracy,
+                            cs: bInfo?.cs,
+                            hit_length: bInfo?.hit_length
                         },
                         beatmapset: {
                             id: bSetId,
@@ -1078,6 +1091,12 @@ async function _getUserTopScores(parsed_args) {
                 const bVersion = bInfo?.version || parsedVersion || 'Normal';
                 const bDiffRating = bInfo?.difficulty_rating != null ? Number(bInfo.difficulty_rating) : null;
 
+                const n300 = s.MapPerfect || 0;
+                const n100 = s.MapGood || 0;
+                const n50 = s.MapBad || 0;
+                const nMiss = s.MapMiss || 0;
+                const totalHits = n300 + n100 + n50 + nMiss;
+
                 return {
                     id: s.ScoreId,
                     accuracy: s.MapAccuracy || 0,
@@ -1088,17 +1107,17 @@ async function _getUserTopScores(parsed_args) {
                     max_combo: s.MapCombo || 0,
                     statistics: {
                         perfect: s.MapGeki || 0,
-                        great: s.MapPerfect || 0,
+                        great: n300,
                         good: s.MapKatu || 0,
-                        ok: s.MapGood || 0,
-                        meh: s.MapBad || 0,
-                        miss: s.MapMiss || 0,
+                        ok: n100,
+                        meh: n50,
+                        miss: nMiss,
                         count_geki: s.MapGeki || 0,
-                        count_300: s.MapPerfect || 0,
+                        count_300: n300,
                         count_katu: s.MapKatu || 0,
-                        count_100: s.MapGood || 0,
-                        count_50: s.MapBad || 0,
-                        count_miss: s.MapMiss || 0
+                        count_100: n100,
+                        count_50: n50,
+                        count_miss: nMiss
                     },
                     pp: s.MapPP || 0,
                     total_score: s.MapScore || 0,
@@ -1110,7 +1129,14 @@ async function _getUserTopScores(parsed_args) {
                         checksum: s.MapHash,
                         mode: 'osu',
                         beatmapset_id: bSetId,
-                        difficulty_rating: bDiffRating
+                        difficulty_rating: bDiffRating,
+                        count_circles: bInfo?.count_circles || Math.round(totalHits * 0.75),
+                        count_sliders: bInfo?.count_sliders || Math.round(totalHits * 0.25),
+                        bpm: bInfo?.bpm,
+                        ar: bInfo?.ar,
+                        accuracy: bInfo?.accuracy,
+                        cs: bInfo?.cs,
+                        hit_length: bInfo?.hit_length
                     },
                     beatmapset: {
                         id: bSetId,

@@ -98,7 +98,9 @@ function doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale = "es") {
             const grade = getGradeEmoji(sc.rank, sc.passed !== false);
             const songTitle = sc.beatmapset?.title || sc.beatmap?.title || "Beatmap";
             const diffName = sc.beatmap?.version || "Normal";
-            const mapUrl = `https://osu.ppy.sh/b/${sc.beatmap?.id}`;
+            const mapUrl = sc.beatmap?.id
+                ? `https://osu.ppy.sh/b/${sc.beatmap.id}`
+                : (sc.user?.server === 'droid' ? 'https://osudroid.moe' : 'https://osu.ppy.sh');
             const mods = formatModsCleanText(sc.mods);
 
             return `\`${points} pts\` ${grade} [${songTitle} [${diffName}]](${mapUrl})${mods}`;
