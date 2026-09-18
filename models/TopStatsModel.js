@@ -255,9 +255,9 @@ function calculateTop100Statistics(scores, mode = 'osu', limit = 200) {
 
 /**
  * Calcula las métricas avanzadas y promedios propios de Sengo para la Página 2:
- * - Promedios de snipes / #1s nacionales (SR promedio, PP promedio, Acc promedio, mod dominante, mejores snipes)
- * - Desglose y promedio de habilidades cinéticas (SkillsModel)
- * - Rendimiento nacional y concentración de PP (Top 10 vs Total, tasa de FC)
+ * - Promedios de snipes / #1s nacionales (SR, PP y Acc con min, avg, max)
+ * - Desglose y promedios de habilidades cinéticas (SkillsModel con min, avg, max)
+ * - Rendimiento y concentración de PP (Top 10 vs Total con min, avg, max)
  * - Ponderación real de mods (TwinModel) y gemelo más afín
  * 
  * @param {Object} params
@@ -273,106 +273,73 @@ function calculateSengoInsights({ user, mode = 'osu', topScores = [], nationalTo
     const SkillsModel = require('./SkillsModel.js');
     const TwinModel = require('./TwinModel.js');
 
-    // 1. Desglose y promedios de Skills
-    const resolvedSkills = skills || SkillsModel.analyzeSkills(topScores, false, mode);
+    // 1. Desglose y promedios de Skills con cálculo min, avg, max
+    const resolvedSkills = skills || SkillsModel.analyzeSkills(topScores, true, mode);
     const skillKeys = resolvedSkills?.skillKeys || ['aim', 'speed', 'acc', 'reading'];
 
-    let skillSum = 0;
-    let highestSkillKey = skillKeys[0];
-    let highestSkillVal = -1;
-    const skillsValues = {};
-
+    const skillMetrics = {};
     for (const k of skillKeys) {
-        const val = Number(resolvedSkills?.[k] || 0);
-        skillsValues[k] = val;
-        skillSum += val;
-        if (val > highestSkillVal) {
-            highestSkillVal = val;
-            highestSkillKey = k;
-        }
+        const vals = topScores.map(p => Number(p.skills?.[k] != null ? p.skills[k] : 0)).filter(Number.isFinite);
+        const min = vals.length > 0 ? Math.min(...vals).toFixed(2) : "0.00";
+        const avg = Number(resolvedSkills?.[k] || 0).toFixed(2);
+        const max = vals.length > 0 ? Math.max(...vals).toFixed(2) : "0.00";
+        skillMetrics[k] = { min, avg, max };
     }
-    const avgSkill = skillKeys.length > 0 ? (skillSum / skillKeys.length) : 0;
 
-    // 2. Snipes y #1s Nacionales
+    // 2. Snipes y #1s Nacionales con cálculo min, avg, max
     const snipesCount = Array.isArray(nationalTops) ? nationalTops.length : 0;
-    let snipesStats = { count: 0 };
+    let snipesSummary = null;
+    let dominantMod = 'NM';
     if (snipesCount > 0) {
-        let starSum = 0, ppSum = 0, accSum = 0;
-        let maxPPScore = null;
-        let maxStarsScore = null;
+        const starVals = nationalTops.map(s => parseFloat(s.ranked_beatmaps?.stars) || 0).filter(Number.isFinite);
+        const ppVals = nationalTops.map(s => parseFloat(s.pp) || 0).filter(Number.isFinite);
+        const accVals = nationalTops.map(s => {
+            const raw = parseFloat(s.accuracy) || 0;
+            return raw <= 1 ? raw * 100 : raw;
+        }).filter(Number.isFinite);
+
         const modCounts = {};
-
         for (const s of nationalTops) {
-            const stars = parseFloat(s.ranked_beatmaps?.stars) || 0;
-            const pp = parseFloat(s.pp) || 0;
-            const rawAcc = parseFloat(s.accuracy) || 0;
-            const acc = rawAcc <= 1 ? rawAcc * 100 : rawAcc;
-
-            starSum += stars;
-            ppSum += pp;
-            accSum += acc;
-
-            if (!maxPPScore || pp > (parseFloat(maxPPScore.pp) || 0)) {
-                maxPPScore = s;
-            }
-            if (!maxStarsScore || stars > (parseFloat(maxStarsScore.ranked_beatmaps?.stars) || 0)) {
-                maxStarsScore = s;
-            }
-
             const m = (typeof s.mods === 'string' ? s.mods : (Array.isArray(s.mods) ? s.mods.join('') : 'NM')) || 'NM';
             modCounts[m] = (modCounts[m] || 0) + 1;
         }
-
         const dominantModEntry = Object.entries(modCounts).sort((a, b) => b[1] - a[1])[0];
-        const dominantMod = dominantModEntry ? `${dominantModEntry[0]} (${Math.round((dominantModEntry[1] / snipesCount) * 100)}%)` : 'NM';
+        dominantMod = dominantModEntry ? `${dominantModEntry[0]} (${Math.round((dominantModEntry[1] / snipesCount) * 100)}%)` : 'NM';
 
-        snipesStats = {
-            count: snipesCount,
-            avgStars: (starSum / snipesCount).toFixed(2),
-            avgPP: (ppSum / snipesCount).toFixed(1),
-            avgAcc: (accSum / snipesCount).toFixed(2),
-            dominantMod,
-            maxPPScore: maxPPScore ? {
-                pp: (parseFloat(maxPPScore.pp) || 0).toFixed(1),
-                title: maxPPScore.ranked_beatmaps?.title || 'Beatmap',
-                version: maxPPScore.ranked_beatmaps?.version || '',
-                mods: maxPPScore.mods || 'NM',
-                beatmapId: maxPPScore.beatmap_id
-            } : null,
-            maxStarsScore: maxStarsScore ? {
-                stars: (parseFloat(maxStarsScore.ranked_beatmaps?.stars) || 0).toFixed(2),
-                title: maxStarsScore.ranked_beatmaps?.title || 'Beatmap',
-                version: maxStarsScore.ranked_beatmaps?.version || '',
-                mods: maxStarsScore.mods || 'NM',
-                beatmapId: maxStarsScore.beatmap_id
-            } : null
+        snipesSummary = {
+            stars: {
+                min: starVals.length > 0 ? Math.min(...starVals).toFixed(2) : "0.00",
+                avg: starVals.length > 0 ? (starVals.reduce((a, b) => a + b, 0) / snipesCount).toFixed(2) : "0.00",
+                max: starVals.length > 0 ? Math.max(...starVals).toFixed(2) : "0.00"
+            },
+            pp: {
+                min: ppVals.length > 0 ? Math.min(...ppVals).toFixed(1) : "0.0",
+                avg: ppVals.length > 0 ? (ppVals.reduce((a, b) => a + b, 0) / snipesCount).toFixed(1) : "0.0",
+                max: ppVals.length > 0 ? Math.max(...ppVals).toFixed(1) : "0.0"
+            },
+            acc: {
+                min: accVals.length > 0 ? Math.min(...accVals).toFixed(2) : "0.00",
+                avg: accVals.length > 0 ? (accVals.reduce((a, b) => a + b, 0) / snipesCount).toFixed(2) : "0.00",
+                max: accVals.length > 0 ? Math.max(...accVals).toFixed(2) : "0.00"
+            }
         };
     }
 
-    // 3. Tops, Concentración y Rendimiento Nacional
-    const topsCount = topScores.length;
-    let top10PP = 0;
-    let fullPP = 0;
-    let fcCount = 0;
-
-    for (let i = 0; i < topsCount; i++) {
-        const s = topScores[i];
-        const p = parseFloat(s.pp) || 0;
-        fullPP += p;
-        if (i < 10) top10PP += p;
-
-        const isFC = Boolean(
-            s.legacy_perfect ||
-            s.perfect ||
-            (s.statistics && (s.statistics.count_miss === 0 || s.statistics.miss === 0))
-        );
-        if (isFC) fcCount++;
-    }
-
-    const avgTop10PP = topsCount >= 10 ? (top10PP / 10).toFixed(1) : (topsCount > 0 ? (top10PP / topsCount).toFixed(1) : '0.0');
-    const avgFullPP = topsCount > 0 ? (fullPP / topsCount).toFixed(1) : '0.0';
-    const ppDrop = (parseFloat(avgTop10PP) - parseFloat(avgFullPP)).toFixed(1);
-    const fcRate = topsCount > 0 ? ((fcCount / topsCount) * 100).toFixed(1) : '0.0';
+    // 3. Tops PP (Top 10 vs Total) con min, avg, max
+    const allPPVals = topScores.map(s => parseFloat(s.pp) || 0).filter(Number.isFinite);
+    const top10PPVals = allPPVals.slice(0, 10);
+    const topsSummary = {
+        top10: top10PPVals.length > 0 ? {
+            min: Math.min(...top10PPVals).toFixed(1),
+            avg: (top10PPVals.reduce((a, b) => a + b, 0) / top10PPVals.length).toFixed(1),
+            max: Math.max(...top10PPVals).toFixed(1)
+        } : null,
+        full: allPPVals.length > 0 ? {
+            min: Math.min(...allPPVals).toFixed(1),
+            avg: (allPPVals.reduce((a, b) => a + b, 0) / allPPVals.length).toFixed(1),
+            max: Math.max(...allPPVals).toFixed(1)
+        } : null
+    };
 
     // 4. Afinidad de Mods y Gemelo (Twins)
     let weightedMods = { DT: 0, HD: 0, HR: 0, NM: 100, FL: 0, EZ: 0 };
@@ -389,37 +356,29 @@ function calculateSengoInsights({ user, mode = 'osu', topScores = [], nationalTo
         };
     }
 
-    let playstyle = 'Equilibrado / All-Rounder';
-    if (weightedMods.DT >= 40) playstyle = '⚡ Velocidad / High BPM (DT)';
-    else if (weightedMods.HR >= 40) playstyle = '🎯 Precisión / High CS (HR)';
-    else if (weightedMods.HD >= 45 && weightedMods.DT < 25) playstyle = '👁️ Lectura Oculta (HD)';
-    else if (weightedMods.NM >= 50) playstyle = '🛡️ Consistencia Clásica (NoMod)';
-    else if (weightedMods.FL >= 15) playstyle = '🔦 Memorización Extrema (FL)';
-    else if (weightedMods.EZ >= 15) playstyle = '🌀 Lectura / Baja Densidad (EZ)';
-
     return {
         skills: {
             keys: skillKeys,
-            values: skillsValues,
-            average: avgSkill.toFixed(2),
-            dominantKey: highestSkillKey,
+            metrics: skillMetrics,
             keymodeInfo: resolvedSkills?.keymodeInfo || null
         },
-        snipes: snipesStats,
+        snipes: {
+            count: snipesCount,
+            dominantMod,
+            summary: snipesSummary,
+            avgStars: snipesSummary ? snipesSummary.stars.avg : "0.00",
+            avgPP: snipesSummary ? snipesSummary.pp.avg : "0.0",
+            avgAcc: snipesSummary ? snipesSummary.acc.avg : "0.00"
+        },
+        tops: topsSummary,
         national: {
             country: (user?.country_code || user?.country?.code || 'VE').toUpperCase(),
             countryRank: user?.statistics?.country_rank || user?.country_rank || null,
             globalRank: user?.statistics?.global_rank || user?.global_rank || null,
-            avgTop10PP,
-            avgFullPP,
-            ppDrop,
-            fcRate,
-            fcCount,
-            topsCount
+            topsCount: topScores.length
         },
         affinity: {
             mods: weightedMods,
-            playstyle,
             topTwin
         }
     };

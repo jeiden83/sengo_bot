@@ -54,16 +54,13 @@ function renderAsciiTable(rows, headers = ["", "Min", "Avg", "Max"]) {
  * Construye la barra de navegación interactiva de 2 páginas para -promedio.
  * 
  * @param {number} currentPage Página activa (1 o 2)
- * @param {boolean} isMeow Si fue activado con el flag secreto -meow
  * @param {string} locale Idioma ('es' o 'en')
  * @param {boolean} disabled Si los botones deben estar deshabilitados
  * @returns {ActionRowBuilder}
  */
-function buildPromedioButtons(currentPage = 1, isMeow = false, locale = 'es', disabled = false) {
+function buildPromedioButtons(currentPage = 1, locale = 'es', disabled = false) {
     const page1Label = t(locale, 'topstats.btn_top_stats') || 'Top 200 Stats';
-    const page2Label = isMeow
-        ? (t(locale, 'topstats.btn_meow_insights') || 'Meow Insights')
-        : (t(locale, 'topstats.btn_sengo_insights') || 'Métricas Sengo');
+    const page2Label = t(locale, 'topstats.btn_sengo_insights') || 'Sengo Insights';
 
     const row = new ActionRowBuilder().addComponents(
         new ButtonBuilder()
@@ -75,7 +72,7 @@ function buildPromedioButtons(currentPage = 1, isMeow = false, locale = 'es', di
         new ButtonBuilder()
             .setCustomId('promedio_page_2')
             .setLabel(page2Label)
-            .setEmoji(isMeow ? '🐾' : '🌌')
+            .setEmoji('🌌')
             .setStyle(currentPage === 2 ? ButtonStyle.Primary : ButtonStyle.Secondary)
             .setDisabled(disabled || currentPage === 2)
     );
@@ -90,10 +87,9 @@ function buildPromedioButtons(currentPage = 1, isMeow = false, locale = 'es', di
  * @param {Object} stats Resultado de calculateTop100Statistics
  * @param {string} mode Modo de juego ('osu', 'taiko', 'fruits', 'mania')
  * @param {string} locale Idioma ('es' o 'en')
- * @param {boolean} isMeow Flag secreto activado
  * @returns {{ embeds: EmbedBuilder[] }}
  */
-function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es', isMeow = false) {
+function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es') {
     const embedColor = getEmbedColor(message);
     const flag = getCountryFlag(osuUser.country_code || osuUser.country?.code);
 
@@ -154,10 +150,6 @@ function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es'
 
     const description = `${descriptionTitle}\n\`\`\`text\n${asciiTable}\n\`\`\``;
 
-    const footerText = isMeow
-        ? (t(locale, 'topstats.footer_meow_1') || '🐾 Página 1/2 • Meow Top Stats')
-        : (t(locale, 'topstats.footer_page_1') || 'Página 1/2 • Estadísticas del Top');
-
     const embed = new EmbedBuilder()
         .setAuthor({
             name: authorTitle,
@@ -167,7 +159,7 @@ function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es'
         .setDescription(description)
         .setThumbnail(osuUser.avatar_url)
         .setColor(embedColor)
-        .setFooter({ text: footerText });
+        .setFooter({ text: t(locale, 'topstats.footer_page_1') || 'Página 1/2 • Estadísticas del Top' });
 
     return { embeds: [embed] };
 }
@@ -179,19 +171,15 @@ function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es'
  * @param {Object} osuUser Objeto de usuario de osu!
  * @param {string} mode Modo de juego
  * @param {string} locale Idioma ('es' o 'en')
- * @param {boolean} isMeow Flag secreto
  * @param {Object} details Detalles de carga
  * @returns {{ embeds: EmbedBuilder[] }}
  */
-function doOsuSengoLoadingEmbed(message, osuUser, mode = 'osu', locale = 'es', isMeow = false, details = {}) {
+function doOsuSengoLoadingEmbed(message, osuUser, mode = 'osu', locale = 'es', details = {}) {
     const embedColor = getEmbedColor(message);
     const flag = getCountryFlag(osuUser.country_code || osuUser.country?.code);
-    const authorTitle = `${flag} ${osuUser.username} — ${isMeow ? (t(locale, 'topstats.page2_meow_title') || 'Meow Insights') : (t(locale, 'topstats.page2_title') || 'Métricas Sengo')}`;
+    const authorTitle = `${flag} ${osuUser.username} — ${t(locale, 'topstats.page2_title') || 'Sengo Insights'}`;
 
-    const loadingTitle = isMeow
-        ? (t(locale, 'topstats.loading_meow_title') || '🐾 Calculando promedios Meow...')
-        : (t(locale, 'topstats.loading_title') || '⏳ Calculando promedios y métricas de Sengo...');
-
+    const loadingTitle = t(locale, 'topstats.loading_title') || '⏳ Calculando Sengo Insights...';
     const loadingDesc = t(locale, 'topstats.loading_desc', {
         username: osuUser.username,
         mode: mode.toUpperCase()
@@ -220,23 +208,22 @@ function doOsuSengoLoadingEmbed(message, osuUser, mode = 'osu', locale = 'es', i
         )
         .setThumbnail(osuUser.avatar_url)
         .setColor(embedColor)
-        .setFooter({ text: isMeow ? '🐾 Sengo Bot • Meow Engine' : '🌌 Sengo Bot • Sengo Engine' });
+        .setFooter({ text: t(locale, 'topstats.footer_page_2') || 'Página 2/2 • Sengo Insights' });
 
     return { embeds: [embed] };
 }
 
 /**
- * Renderiza el embed de la Página 2 (Métricas & Promedios propios de Sengo)
+ * Renderiza el embed de la Página 2 (Sengo Insights con tabla ASCII en el mismo formato que la Página 1)
  * 
  * @param {import('discord.js').Message} message 
  * @param {Object} osuUser Objeto de usuario de osu!
  * @param {Object} insights Resultado de calculateSengoInsights
  * @param {string} mode Modo de juego ('osu', 'taiko', 'fruits', 'mania')
  * @param {string} locale Idioma ('es' o 'en')
- * @param {boolean} isMeow Flag secreto
  * @returns {{ embeds: EmbedBuilder[] }}
  */
-function doOsuSengoInsightsEmbed(message, osuUser, insights, mode = 'osu', locale = 'es', isMeow = false) {
+function doOsuSengoInsightsEmbed(message, osuUser, insights, mode = 'osu', locale = 'es') {
     const embedColor = getEmbedColor(message);
     const flag = getCountryFlag(osuUser.country_code || osuUser.country?.code);
 
@@ -248,7 +235,82 @@ function doOsuSengoInsightsEmbed(message, osuUser, insights, mode = 'osu', local
     const countryRankVal = Number(osuUser.statistics?.rank?.country ?? osuUser.statistics?.country_rank ?? 0).toLocaleString('en-US');
     const countryCodeStr = (osuUser.country_code || osuUser.country?.code || '').toUpperCase();
 
-    const authorTitle = `${flag} ${osuUser.username}: ${ppVal}pp (#${globalRankVal} ${countryCodeStr}${countryRankVal})`;
+    // Variación en el ranking últimos 90 días
+    let rankDelta = "";
+    if (osuUser.rank_history && Array.isArray(osuUser.rank_history.data) && osuUser.rank_history.data.length > 0) {
+        const pastRank = osuUser.rank_history.data[0];
+        const currentRank = osuUser.statistics?.global_rank;
+        if (pastRank && currentRank) {
+            const diff = currentRank - pastRank;
+            if (diff > 0) {
+                rankDelta = ` ↓${diff.toLocaleString('en-US')}`;
+            } else if (diff < 0) {
+                rankDelta = ` ↑${Math.abs(diff).toLocaleString('en-US')}`;
+            }
+        }
+    }
+
+    const authorTitle = `${flag} ${osuUser.username}: ${ppVal}pp (#${globalRankVal}${rankDelta} ${countryCodeStr}${countryRankVal})`;
+
+    const headers = [
+        "",
+        t(locale, 'topstats.col_min') || "Min",
+        t(locale, 'topstats.col_avg') || "Avg",
+        t(locale, 'topstats.col_max') || "Max"
+    ];
+
+    const rows = [];
+    const skillKeys = insights.skills?.keys || ['aim', 'speed', 'acc', 'reading'];
+    for (const k of skillKeys) {
+        const m = insights.skills?.metrics?.[k] || { min: '0.00', avg: '0.00', max: '0.00' };
+        let label = k.charAt(0).toUpperCase() + k.slice(1, 8);
+        if (k === 'precision') label = 'Precis.';
+        rows.push([label, m.min, m.avg, m.max]);
+    }
+
+    if (insights.snipes?.summary) {
+        rows.push(['Snipe SR', insights.snipes.summary.stars.min, insights.snipes.summary.stars.avg, insights.snipes.summary.stars.max]);
+        rows.push(['Snipe PP', insights.snipes.summary.pp.min, insights.snipes.summary.pp.avg, insights.snipes.summary.pp.max]);
+        rows.push(['SnipeAcc', insights.snipes.summary.acc.min, insights.snipes.summary.acc.avg, insights.snipes.summary.acc.max]);
+    } else {
+        rows.push(['Snipe SR', '-', '-', '-']);
+        rows.push(['Snipe PP', '-', '-', '-']);
+        rows.push(['SnipeAcc', '-', '-', '-']);
+    }
+
+    if (insights.tops?.top10) {
+        rows.push(['Top10 PP', insights.tops.top10.min, insights.tops.top10.avg, insights.tops.top10.max]);
+    }
+    if (insights.tops?.full) {
+        rows.push(['Top PP', insights.tops.full.min, insights.tops.full.avg, insights.tops.full.max]);
+    }
+
+    const asciiTable = renderAsciiTable(rows, headers);
+
+    const descriptionTitle = t(locale, 'topstats.insights_for', {
+        username: osuUser.username,
+        url: `https://osu.ppy.sh/users/${osuUser.id}`
+    }) || `🔘 **Sengo Insights for [@${osuUser.username}](https://osu.ppy.sh/users/${osuUser.id}):**`;
+
+    const summaryLines = [];
+    const snipes = insights.snipes;
+    if (snipes && snipes.count > 0) {
+        summaryLines.push(`🏆 **Snipes:** ${snipes.count} #1s (${insights.national?.country || 'VE'}) • Mod: ${snipes.dominantMod || 'NM'}`);
+    } else {
+        summaryLines.push(`🏆 **Snipes:** 0 #1s registrados (${insights.national?.country || 'VE'})`);
+    }
+
+    const aff = insights.affinity || {};
+    const mods = aff.mods || {};
+    summaryLines.push(`👥 **Afinidad:** NM ${mods.NM || 0}% • DT ${mods.DT || 0}% • HD ${mods.HD || 0}% • HR ${mods.HR || 0}%`);
+
+    if (aff.topTwin) {
+        summaryLines.push(`🧬 **Gemelo:** **${aff.topTwin.username}** (${aff.topTwin.similarity}% afinidad)`);
+    } else {
+        summaryLines.push(`🧬 **Gemelo:** Sin gemelo registrado aún`);
+    }
+
+    const description = `${descriptionTitle}\n\`\`\`text\n${asciiTable}\n\`\`\`\n${summaryLines.join('\n')}`;
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -256,115 +318,10 @@ function doOsuSengoInsightsEmbed(message, osuUser, insights, mode = 'osu', local
             url: `https://osu.ppy.sh/users/${osuUser.id}`,
             iconURL: osuUser.avatar_url
         })
-        .setTitle(isMeow ? (t(locale, 'topstats.page2_meow_title') || '🐱 Métricas & Promedios Meow') : (t(locale, 'topstats.page2_title') || '🌌 Métricas & Promedios Sengo'))
+        .setDescription(description)
         .setThumbnail(osuUser.avatar_url)
         .setColor(embedColor)
-        .setFooter({
-            text: isMeow
-                ? (t(locale, 'topstats.footer_meow_2') || '🐾 Página 2/2 • Meow Insights • Nya!')
-                : (t(locale, 'topstats.footer_page_2') || 'Página 2/2 • Sengo Insights')
-        });
-
-    // 1. Campo Snipes
-    const snipes = insights.snipes || {};
-    let snipesValue = '';
-    if (snipes.count > 0) {
-        const lines = [
-            `• ${t(locale, 'topstats.snipes_count') || 'Cantidad'}: **${snipes.count}** primeros lugares`,
-            `• ${t(locale, 'topstats.snipes_avg_sr') || 'Promedio Stars'}: **${snipes.avgStars}★**`,
-            `• ${t(locale, 'topstats.snipes_avg_pp') || 'Promedio PP'}: **${snipes.avgPP} pp**`,
-            `• ${t(locale, 'topstats.snipes_avg_acc') || 'Promedio Precisión'}: **${snipes.avgAcc}%**`,
-            `• ${t(locale, 'topstats.snipes_dominant_mod') || 'Mod Dominante'}: **${snipes.dominantMod}**`
-        ];
-        if (snipes.maxPPScore) {
-            lines.push(`• ${t(locale, 'topstats.snipes_best_pp') || 'Mejor #1 (PP)'}: [${snipes.maxPPScore.title}](https://osu.ppy.sh/b/${snipes.maxPPScore.beatmapId || ''}) +${snipes.maxPPScore.mods} (**${snipes.maxPPScore.pp}pp**)`);
-        }
-        snipesValue = lines.join('\n');
-    } else {
-        snipesValue = `• ${t(locale, 'topstats.snipes_none') || 'Sin primeros lugares registrados en la base de datos nacional.'}`;
-    }
-    embed.addFields({
-        name: t(locale, 'topstats.sec_snipes') || '🏆 Snipes & #1s Nacionales',
-        value: snipesValue,
-        inline: false
-    });
-
-    // 2. Campo Skills
-    const skills = insights.skills || {};
-    const skillVals = skills.values || {};
-    let skillsValue = '';
-    if (mode === 'osu') {
-        const aimStr = Number(skillVals.aim || 0).toFixed(2);
-        const speedStr = Number(skillVals.speed || 0).toFixed(2);
-        const accStr = Number(skillVals.acc || 0).toFixed(2);
-        const readStr = Number(skillVals.reading || 0).toFixed(2);
-
-        const DOMINANT_NAMES = {
-            aim: '🎯 Aim Specialist',
-            speed: '⚡ Speed Demon',
-            acc: '🎯 Precision (Acc)',
-            reading: '👁️ Reading Master'
-        };
-        const dominantName = DOMINANT_NAMES[skills.dominantKey] || skills.dominantKey?.toUpperCase() || 'Balanced';
-
-        skillsValue = [
-            `• Aim: **${aimStr}** pts | Speed: **${speedStr}** pts`,
-            `• Acc: **${accStr}** pts | Reading: **${readStr}** pts`,
-            `• ${t(locale, 'topstats.skills_avg_overall') || 'Promedio General'}: **${skills.average || '0.00'}** pts`,
-            `• ${t(locale, 'topstats.skills_dominant') || 'Perfil Dominante'}: **${dominantName}**`
-        ].join('\n');
-    } else {
-        const skillEntries = (skills.keys || Object.keys(skillVals)).map(k => {
-            const val = Number(skillVals[k] || 0).toFixed(2);
-            const cap = k.charAt(0).toUpperCase() + k.slice(1);
-            return `• ${cap}: **${val}** pts`;
-        });
-        skillEntries.push(`• ${t(locale, 'topstats.skills_avg_overall') || 'Promedio General'}: **${skills.average || '0.00'}** pts`);
-        if (skills.keymodeInfo) {
-            skillEntries.push(`• Keymode Dominante: **${skills.keymodeInfo.mode} (${skills.keymodeInfo.pct}%)**`);
-        }
-        skillsValue = skillEntries.join('\n');
-    }
-    embed.addFields({
-        name: t(locale, 'topstats.sec_skills') || '🎯 Habilidades Cinéticas (Skills)',
-        value: skillsValue,
-        inline: false
-    });
-
-    // 3. Campo Rendimiento Nacional
-    const nat = insights.national || {};
-    const rankGlobalStr = Number(nat.globalRank || 0).toLocaleString('en-US');
-    const countryRankText = nat.countryRank ? `#${nat.country} ${nat.countryRank}` : `#${nat.country} -`;
-    const ppDropSign = parseFloat(nat.ppDrop) >= 0 ? `-${nat.ppDrop}` : `+${Math.abs(parseFloat(nat.ppDrop))}`;
-
-    const natLines = [
-        `• ${t(locale, 'topstats.nat_country_rank') || 'Posición País'}: **${countryRankText}** (#${rankGlobalStr} Global)`,
-        `• ${t(locale, 'topstats.nat_avg_top10') || 'Promedio Top 10'}: **${nat.avgTop10PP} pp**`,
-        `• ${(t(locale, 'topstats.nat_avg_top_all') || 'Promedio Top {count}').replace('{count}', nat.topsCount || 200)}: **${nat.avgFullPP} pp** (Spread: **${ppDropSign} pp**)`,
-        `• ${t(locale, 'topstats.nat_fc_rate') || 'Tasa de FCs'}: **${nat.fcRate}%** (${nat.fcCount}/${nat.topsCount} FCs en top)`
-    ];
-    embed.addFields({
-        name: t(locale, 'topstats.sec_national') || '📊 Rendimiento Nacional & Tops',
-        value: natLines.join('\n'),
-        inline: false
-    });
-
-    // 4. Campo Afinidad & Gemelo (Twins)
-    const aff = insights.affinity || {};
-    const mods = aff.mods || {};
-    const twin = aff.topTwin;
-    const twinText = twin ? `**${twin.username}** (${twin.similarity}% afinidad)` : (t(locale, 'topstats.affinity_no_twin') || 'Sin gemelo registrado aún');
-
-    const affLines = [
-        `• ${t(locale, 'topstats.affinity_weights') || 'Ponderación'}: **NM ${mods.NM || 0}%** • **DT ${mods.DT || 0}%** • **HD ${mods.HD || 0}%** • **HR ${mods.HR || 0}%**`,
-        `• ${t(locale, 'topstats.affinity_playstyle') || 'Estilo de Juego'}: **${aff.playstyle || 'All-Rounder'}**`,
-        `• ${t(locale, 'topstats.affinity_twin') || 'Gemelo Sengo'}: ${twinText}`
-    ];
-    embed.addFields({
-        name: t(locale, 'topstats.sec_affinity') || '👥 Afinidad de Mods & Gemelo',
-        value: affLines.join('\n'),
-        inline: false
-    });
+        .setFooter({ text: t(locale, 'topstats.footer_page_2') || 'Página 2/2 • Sengo Insights' });
 
     return { embeds: [embed] };
 }

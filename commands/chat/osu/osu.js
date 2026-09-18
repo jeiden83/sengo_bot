@@ -105,8 +105,8 @@ async function run(messages, args) {
             return t(locale, 'topstats.no_scores', { username: osu_userdata.fn_response.username }) || `**${osu_userdata.fn_response.username}** no tiene puntuaciones registradas en su top.`;
         }
 
-        const page1Embed = doOsuTopStatsEmbed(message, osu_userdata.fn_response, stats, targetMode, locale, isMeow);
-        const buttonsRow = buildPromedioButtons(1, isMeow, locale, false);
+        const page1Embed = doOsuTopStatsEmbed(message, osu_userdata.fn_response, stats, targetMode, locale);
+        const buttonsRow = buildPromedioButtons(1, locale, false);
         const initialPayload = { embeds: page1Embed.embeds, components: [buttonsRow] };
 
         let sentMessage = null;
@@ -144,7 +144,7 @@ async function run(messages, args) {
 
                 let skills = null;
                 try {
-                    skills = SkillsModel.analyzeSkills(topScores, false, targetMode);
+                    skills = SkillsModel.analyzeSkills(topScores, true, targetMode);
                     loadingDetails.skills = `✅ Evaluado (${skills.skillKeys?.length || 4} skills)`;
                 } catch {
                     loadingDetails.skills = '⚠️ No disponible';
@@ -206,30 +206,30 @@ async function run(messages, args) {
                     currentPage = 1;
                     await i.update({
                         embeds: page1Embed.embeds,
-                        components: [buildPromedioButtons(1, isMeow, locale, false)]
+                        components: [buildPromedioButtons(1, locale, false)]
                     });
                 } else if (i.customId === 'promedio_page_2') {
                     currentPage = 2;
                     if (sengoInsights) {
-                        const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, sengoInsights, targetMode, locale, isMeow);
+                        const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, sengoInsights, targetMode, locale);
                         await i.update({
                             embeds: page2Embed.embeds,
-                            components: [buildPromedioButtons(2, isMeow, locale, false)]
+                            components: [buildPromedioButtons(2, locale, false)]
                         });
                     } else {
                         // Mostrar estado de carga interactivo mientras espera
-                        const loadingEmbed = doOsuSengoLoadingEmbed(message, osu_userdata.fn_response, targetMode, locale, isMeow, loadingDetails);
+                        const loadingEmbed = doOsuSengoLoadingEmbed(message, osu_userdata.fn_response, targetMode, locale, loadingDetails);
                         await i.update({
                             embeds: loadingEmbed.embeds,
-                            components: [buildPromedioButtons(2, isMeow, locale, true)]
+                            components: [buildPromedioButtons(2, locale, true)]
                         });
 
                         const insights = await fetchSengoData();
                         if (currentPage === 2) {
-                            const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, insights, targetMode, locale, isMeow);
+                            const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, insights, targetMode, locale);
                             await sentMessage.edit({
                                 embeds: page2Embed.embeds,
-                                components: [buildPromedioButtons(2, isMeow, locale, false)]
+                                components: [buildPromedioButtons(2, locale, false)]
                             });
                         }
                     }
@@ -242,7 +242,7 @@ async function run(messages, args) {
         collector.on('end', async () => {
             try {
                 await sentMessage.edit({
-                    components: [buildPromedioButtons(currentPage, isMeow, locale, true)]
+                    components: [buildPromedioButtons(currentPage, locale, true)]
                 });
             } catch {}
         });
