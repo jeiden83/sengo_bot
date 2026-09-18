@@ -43,13 +43,12 @@ async function run(messages, args) {
     // Detectar flag de -rework / -rew en s.rs
     const isRework = parser_res.parsed_args.reworkMode || parser_res.parsed_args.reworkQuery !== null || args.some(arg => typeof arg === 'string' && (arg.toLowerCase().startsWith('-rework') || arg.toLowerCase().startsWith('-rew')));
 
-    // ponytail: check for snipes in the background for Venezuelan players
+    // ponytail: comprobar snipes en segundo plano para jugadores de países soportados
     try {
         const OsuScoreModel = require("../../../models/OsuScoreModel.js");
         const playsToCheck = parser_res.fn_response.slice(0, 5);
         for (const play of playsToCheck) {
-            const country = play.user?.country_code || play.user?.country?.code;
-            if ((country === 'VE' || !country) && play.user?.server !== 'droid' && play.beatmap?.id) {
+            if (play.user?.server !== 'droid' && play.beatmap?.id) {
                 const sniperUsername = play.user?.username || parser_res.parsed_args.username?.[0] || 'Desconocido';
                 OsuScoreModel.checkAndRecordRealtimeSnipe(play, sniperUsername).catch(err => {
                     console.error("[RS-BACKGROUND-SNIPE] Error al comprobar snipe en segundo plano:", err);

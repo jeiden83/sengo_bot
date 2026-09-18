@@ -3018,7 +3018,11 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             }
         }
     }
-    if (countryCode !== 'VE') return;
+    if (!countryCode) return;
+    countryCode = countryCode.toUpperCase();
+    const OsuUserModel = require("./OsuUserModel.js");
+    const isScraped = await OsuUserModel.isCountryScraped(countryCode);
+    if (!isScraped) return;
 
     const beatmapId = score.beatmap.id.toString();
 
@@ -3085,9 +3089,9 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             let apiVerified = false;
 
             try {
-                // Obtener token supporter de VE usando el helper estandarizado
+                // Obtener token supporter del país usando el helper estandarizado
                 const OsuUserModel = require("./OsuUserModel.js");
-                const supporterRes = await OsuUserModel.getSupporterTokenForCountry('VE');
+                const supporterRes = await OsuUserModel.getSupporterTokenForCountry(countryCode);
 
                 if (supporterRes && supporterRes.token) {
                     const isLazerMode = score.legacy_only === 0 || score.legacy_only === false || Boolean(score.build_id);
