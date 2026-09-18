@@ -168,9 +168,9 @@ async function run(messages, args) {
     }
 
     // ----------------------------------------------------
-    // Modo 1: Single Play Display (-i <index>)
+    // Modo 1: Single Play Display (-i <index> o única jugada)
     // ----------------------------------------------------
-    if (parsed_args.explicitIndex) {
+    if (parsed_args.explicitIndex || (filtered_scores.length === 1 && (!parsed_args.page || parsed_args.page === 1))) {
         const OsuUserModel = require("../../../models/OsuUserModel.js");
         const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author.id);
         let currentScoreMode = (linkedUser && linkedUser.preferred_score_mode) ? linkedUser.preferred_score_mode : 'classic';
@@ -186,14 +186,16 @@ async function run(messages, args) {
         let index = parsed_args.index || 1;
         let content_msg = '';
 
-        if (index > filtered_scores.length) {
-            content_msg = t(locale, 'compare.warn_max_index', { count: filtered_scores.length });
-            index = filtered_scores.length;
-        } else if (index < 1) {
-            content_msg = t(locale, 'compare.warn_invalid_index');
-            index = 1;
-        } else {
-            content_msg = t(locale, 'compare.showing_score_index', { index, total: filtered_scores.length });
+        if (parsed_args.explicitIndex) {
+            if (index > filtered_scores.length) {
+                content_msg = t(locale, 'compare.warn_max_index', { count: filtered_scores.length });
+                index = filtered_scores.length;
+            } else if (index < 1) {
+                content_msg = t(locale, 'compare.warn_invalid_index');
+                index = 1;
+            } else {
+                content_msg = t(locale, 'compare.showing_score_index', { index, total: filtered_scores.length });
+            }
         }
 
         async function processScore(scoreIndex) {
@@ -428,7 +430,48 @@ async function run(messages, args) {
     const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
     setChannelRecentPlayType(message.channel.id, beatmap_metadata.id, currentScoreMode === 'lazer');
 
-    const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, filtered_scores.slice(startIndex, startIndex + 10), startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode);
+    async function getCompareListStars(chunk) {
+        return Promise.all(chunk.map(async (score) => {
+            const isDroid = score.user?.server === 'droid' || parsed_args.server === 'droid';
+            if (isDroid) {
+                try {
+                    const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                    const BeatmapModel = require("../../../models/BeatmapModel.js");
+                    const fs = require("fs");
+                    let bInfo = score.beatmap || beatmap_metadata;
+                    if (!bInfo?.id && bInfo?.checksum) {
+                        bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                    }
+                    const bId = bInfo?.id || beatmap_metadata.id;
+                    const bSetId = bInfo?.beatmapset_id || beatmap_metadata.beatmapset_id;
+                    if (bSetId && bId) {
+                        const filePath = await BeatmapModel.downloadBeatmapOsuFile(bSetId, bId, bInfo || beatmap_metadata);
+                        if (filePath && fs.existsSync(filePath)) {
+                            const osuContent = fs.readFileSync(filePath, 'utf8');
+                            const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bId));
+                            if (droidAttrs) return droidAttrs.stars;
+                        }
+                    }
+                } catch (_) {}
+                return score.beatmap?.difficulty_rating || beatmap_metadata.difficulty_rating || 0;
+            }
+
+            try {
+                const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+                const map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata, parsed_args.ppEngine);
+                const maxAttrs = calculatePP(score, map, "maximo_pp", null, parsed_args.ppEngine);
+                const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : beatmap_metadata.difficulty_rating);
+                map.free();
+                return stars;
+            } catch {
+                return beatmap_metadata.difficulty_rating || 0;
+            }
+        }));
+    }
+
+    const currentChunk = filtered_scores.slice(startIndex, startIndex + 10);
+    const calculated_stars = await getCompareListStars(currentChunk);
+    const initialListEmbed = await doOsuCompareListEmbed(message, parsed_args, currentChunk, startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode, calculated_stars);
     const username = resolvedUsername;
     const content = getOsuCompareContent(parsed_args, username, beatmap_metadata, locale, targetStars);
 
@@ -479,7 +522,8 @@ async function run(messages, args) {
             }
 
             const chunk = filtered_scores.slice(startIndex, startIndex + 10);
-            const embed = await doOsuCompareListEmbed(message, parsed_args, chunk, startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode);
+            const starsChunk = await getCompareListStars(chunk);
+            const embed = await doOsuCompareListEmbed(message, parsed_args, chunk, startIndex, filtered_scores.length, beatmap_metadata, currentScoreMode, starsChunk);
 
             await i.editReply({
                 embeds: [embed],

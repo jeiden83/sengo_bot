@@ -153,38 +153,67 @@ async function run(messages, args) {
                 let starsVal = score.beatmap.difficulty_rating;
                 let passPercent = 0;
 
-                try {
-                    const beatmap = await getBeatmap(score.beatmap.id);
-                    const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
-                    const maxAttrs = calculatePP(score, map, "maximo_pp");
-                    
-                    if (!ppVal) {
-                        ppVal = calculatePP(score, map, null, maxAttrs).pp;
+                const isDroid = score.user?.server === 'droid' || parser_res.parsed_args.server === 'droid';
+                if (isDroid) {
+                    try {
+                        const droidEngine = require("../../../utils/droidDifficultyEngine.js");
+                        const BeatmapModel = require("../../../models/BeatmapModel.js");
+                        const fs = require("fs");
+                        let bInfo = score.beatmap;
+                        if (!bInfo?.id && bInfo?.checksum) {
+                            bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                        }
+                        if (bInfo?.beatmapset_id && bInfo?.id) {
+                            const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
+                            if (filePath && fs.existsSync(filePath)) {
+                                const osuContent = fs.readFileSync(filePath, 'utf8');
+                                const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
+                                if (droidAttrs) {
+                                    ppVal = score.pp || droidAttrs.user_pp;
+                                    starsVal = droidAttrs.stars;
+                                    if (score.beatmap) {
+                                        score.beatmap.difficulty_rating = droidAttrs.stars;
+                                    }
+                                }
+                            }
+                        }
+                    } catch (err) {
+                        console.warn(`[rs-list] Error calculando dificultad nativa de osu!droid para #${globalIndex}:`, err.message);
                     }
+                } else {
+                    try {
+                        const beatmap = await getBeatmap(score.beatmap.id);
+                        const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap);
+                        const maxAttrs = calculatePP(score, map, "maximo_pp");
+                        
+                        if (!ppVal) {
+                            ppVal = calculatePP(score, map, null, maxAttrs).pp;
+                        }
 
-                    if (map.nObjects > 0) {
-                        passPercent = (total_hits / map.nObjects * 100);
-                    }
+                        if (map.nObjects > 0) {
+                            passPercent = (total_hits / map.nObjects * 100);
+                        }
 
-                    if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
-                        starsVal = maxAttrs.difficulty.stars;
+                        if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
+                            starsVal = maxAttrs.difficulty.stars;
+                        }
+                        
+                        if (globalIndex === 1) {
+                            const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+                            const pre_calculated = {
+                                "map": map,
+                                "map_completion": score.passed ? 100 : total_hits / map.nObjects,
+                                "maxAttrs": maxAttrs,
+                                "pp": ppVal,
+                                "beatmap_max_combo": beatmap_max_combo
+                            };
+                            saveUserscore(score, pre_calculated, true).catch(err => console.error("❌ [List-Save] Error al guardar score en segundo plano:", err));
+                        }
+                        
+                        map.free();
+                    } catch (err) {
+                        console.error(`Error al procesar PP de #${globalIndex}:`, err);
                     }
-                    
-                    if (globalIndex === 1) {
-                        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
-                        const pre_calculated = {
-                            "map": map,
-                            "map_completion": score.passed ? 100 : total_hits / map.nObjects,
-                            "maxAttrs": maxAttrs,
-                            "pp": ppVal,
-                            "beatmap_max_combo": beatmap_max_combo
-                        };
-                        saveUserscore(score, pre_calculated, true).catch(err => console.error("❌ [List-Save] Error al guardar score en segundo plano:", err));
-                    }
-                    
-                    map.free();
-                } catch (err) {
-                    console.error(`Error al procesar PP de #${globalIndex}:`, err);
                 }
 
                 score.calculatedPP = ppVal || 0;
@@ -354,7 +383,7 @@ async function run(messages, args) {
         }
 
         // ponytail: Motor nativo oficial de dificultad y PP táctil para osu!droid (@rian8337)
-        if (recent_scores.user?.server === 'droid') {
+        if (recent_scores.user?.server === 'droid' || parser_res.parsed_args.server === 'droid') {
             try {
                 const droidEngine = require("../../../utils/droidDifficultyEngine.js");
                 const BeatmapModel = require("../../../models/BeatmapModel.js");

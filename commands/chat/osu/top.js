@@ -620,47 +620,13 @@ async function run(messages, args, options = {}) {
         return Promise.all(chunk.map(async (score) => {
             const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
             const targetMode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || parser_res.parsed_args.gamemode || score.beatmap?.mode || 'osu';
-            if (score.mods.length === 0 && score.beatmap?.mode === targetMode && score.beatmap?.difficulty_rating) {
+            const isDroid = score.user?.server === 'droid' || parser_res.parsed_args.server === 'droid';
+
+            if (!isDroid && score.mods.length === 0 && score.beatmap?.mode === targetMode && score.beatmap?.difficulty_rating) {
                 return score.beatmap.difficulty_rating;
             }
-            if (!score.beatmap?.id) {
-                if (score.beatmap?.checksum) {
-                    try {
-                        const BeatmapModel = require("../../../models/BeatmapModel.js");
-                        const bInfo = await BeatmapModel.lookupBeatmapByMD5(score.beatmap.checksum);
-                        if (bInfo) {
-                            score.beatmap.id = bInfo.id;
-                            score.beatmap.beatmapset_id = bInfo.beatmapset_id;
-                            if (bInfo.beatmapset?.title) score.beatmapset.title = bInfo.beatmapset.title;
-                            if (bInfo.beatmapset?.artist) score.beatmapset.artist = bInfo.beatmapset.artist;
-                            if (bInfo.version) score.beatmap.version = bInfo.version;
-                            if (bInfo.difficulty_rating) score.beatmap.difficulty_rating = Number(bInfo.difficulty_rating);
-                            if (bInfo.beatmapset?.covers) score.beatmapset.covers = bInfo.beatmapset.covers;
-                        }
-                    } catch {}
-                }
-                if (score.user?.server === 'droid') {
-                    try {
-                        const droidEngine = require("../../../utils/droidDifficultyEngine.js");
-                        const BeatmapModel = require("../../../models/BeatmapModel.js");
-                        const fs = require("fs");
-                        let bInfo = score.beatmap;
-                        if (!bInfo?.id && bInfo?.checksum) {
-                            bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
-                        }
-                        if (bInfo?.beatmapset_id && bInfo?.id) {
-                            const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
-                            if (filePath && fs.existsSync(filePath)) {
-                                const osuContent = fs.readFileSync(filePath, 'utf8');
-                                const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
-                                if (droidAttrs) return droidAttrs.stars;
-                            }
-                        }
-                    } catch (_) {}
-                }
-                return score.beatmap?.difficulty_rating || 0;
-            }
-            if (score.user?.server === 'droid') {
+
+            if (isDroid) {
                 try {
                     const droidEngine = require("../../../utils/droidDifficultyEngine.js");
                     const BeatmapModel = require("../../../models/BeatmapModel.js");
@@ -678,6 +644,25 @@ async function run(messages, args, options = {}) {
                         }
                     }
                 } catch (_) {}
+                return score.beatmap?.difficulty_rating || 0;
+            }
+
+            if (!score.beatmap?.id) {
+                if (score.beatmap?.checksum) {
+                    try {
+                        const BeatmapModel = require("../../../models/BeatmapModel.js");
+                        const bInfo = await BeatmapModel.lookupBeatmapByMD5(score.beatmap.checksum);
+                        if (bInfo) {
+                            score.beatmap.id = bInfo.id;
+                            score.beatmap.beatmapset_id = bInfo.beatmapset_id;
+                            if (bInfo.beatmapset?.title) score.beatmapset.title = bInfo.beatmapset.title;
+                            if (bInfo.beatmapset?.artist) score.beatmapset.artist = bInfo.beatmapset.artist;
+                            if (bInfo.version) score.beatmap.version = bInfo.version;
+                            if (bInfo.difficulty_rating) score.beatmap.difficulty_rating = Number(bInfo.difficulty_rating);
+                            if (bInfo.beatmapset?.covers) score.beatmapset.covers = bInfo.beatmapset.covers;
+                        }
+                    } catch {}
+                }
                 return score.beatmap?.difficulty_rating || 0;
             }
             try {

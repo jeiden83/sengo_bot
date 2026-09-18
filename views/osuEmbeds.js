@@ -794,7 +794,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
 /**
  * Renderiza el embed para la lista de puntuaciones comparadas (c.js)
  */
-async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, startIndex, total_plays, beatmap_metadata, scoreMode = 'classic') {
+async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, startIndex, total_plays, beatmap_metadata, scoreMode = 'classic', calculated_stars = []) {
     const locale = message.locale || 'es';
     let embed_description = '';
 
@@ -865,7 +865,10 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const combo_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
         const formatted_combo = isFirst ? `**${combo_str}**` : combo_str;
 
-        const score_line = `${rank_pos} ▸ ${playerTag}${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
+        const starsVal = (calculated_stars && calculated_stars[i] !== undefined) ? calculated_stars[i] : (score.calculatedStars || score.beatmap?.difficulty_rating);
+        const starsStr = starsVal ? ` [${formatDecimal(starsVal, locale, 2)}★]` : "";
+
+        const score_line = `${rank_pos} ▸ ${playerTag}${grade_emoji} ▸ ${formatted_score} ▸ ${formatted_accuracy}${ratio_str} ▸ ${formatted_pp} ▸ ${formatted_combo} ▸ +${mods_used}${starsStr} ${map_completion}\n ▸ ${time_set} ▸ ${stats_str}\n\n`;
 
         embed_description = embed_description.concat(score_line);
     }
