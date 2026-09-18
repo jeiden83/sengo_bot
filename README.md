@@ -125,11 +125,13 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.osu` o `s.o [usuario]`**
   Muestra el perfil general de un jugador en osu!, con estadísticas de Ranked Play, PP, precisión, medallas, nivel y tiempo de juego.
   * *Flags:*
-    * `-promedio` (o `-stats`, `-t100`, `-t200`, `-average`): Muestra la tabla compacta de estadísticas mínimas, promedio y máximas calculadas sobre las 200 mejores jugadas (Top 200) del usuario (Accuracy, Combo, Misses, PP, Stars con mods, BPM, HP, AR, CS, OD y Length).
+    * `-promedio` (o `-stats`, `-t100`, `-t200`, `-average`, o flag secreto `-meow`): Muestra el panel interactivo de 2 páginas:
+      * **Página 1 (Top 200 Stats):** Tabla compacta anti-wrap de estadísticas mínimas, promedio y máximas calculadas sobre el Top 200 (Accuracy, Combo, Misses, PP, Stars con mods, BPM, HP, AR, CS, OD y Length).
+      * **Página 2 (Métricas Sengo):** Promedios y análisis propios del ecosistema Sengo cargados de forma asíncrona (promedio de SR y PP en snipes / primeros lugares nacionales, maestría cinética en Aim/Speed/Acc/Reading con `SkillsModel`, concentración de PP en Top 10 vs Total, tasa de FCs y afinidad de mods / gemelo más afín con `TwinModel`).
     * `-d` o `-detail`: Muestra el perfil completo con grados y estadísticas avanzadas.
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
     * `-bancho` / `-gatari`: Cambia el servidor consultado.
-  * *Alias dedicados:* `s.promedio`, `s.topstats`, `s.t100`, `s.scores`.
+  * *Alias dedicados:* `s.promedio`, `s.topstats`, `s.t100`, `s.t200`, `s.meow`, `s.scores`.
   * *Slash Command:* `/osu [usuario] [modo] [servidor] [promedio]`
 * **`s.rs [usuario]` (Recent Score)**
   Muestra la jugada más reciente del usuario.

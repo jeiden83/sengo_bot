@@ -30,7 +30,7 @@ async function getOsuWorldUser(userId, mode) {
 }
 
 async function run(messages, args) {
-    const { message, res, logger } = messages;
+    const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
     if (logger) logger.process("Consultando base de datos y API de osu!");
@@ -73,10 +73,22 @@ async function run(messages, args) {
         if (logger) logger.process("Consultando las 100 mejores puntuaciones...");
         const { getUserTopScores } = require("../../utils/osu.js");
         const TopStatsModel = require("../../../models/TopStatsModel.js");
-        const { doOsuTopStatsEmbed } = require("../../../views/osuTopStatsView.js");
+        const {
+            doOsuTopStatsEmbed,
+            doOsuSengoLoadingEmbed,
+            doOsuSengoInsightsEmbed,
+            buildPromedioButtons
+        } = require("../../../views/osuTopStatsView.js");
+        const SkillsModel = require("../../../models/SkillsModel.js");
+        const TwinModel = require("../../../models/TwinModel.js");
+        const OsuScoreModel = require("../../../models/OsuScoreModel.js");
 
         const targetMode = osu_userdata.parsed_args.gamemode || osu_userdata.fn_response.playmode || "osu";
         const targetServer = osu_userdata.parsed_args.server || "bancho";
+        const isMeow = Boolean(
+            osu_userdata.parsed_args.isMeow ||
+            (Array.isArray(args) && args.some(a => typeof a === "string" && (a.toLowerCase() === "-meow" || a.toLowerCase() === "--meow")))
+        );
 
         const topScores = await getUserTopScores({
             username: [String(osu_userdata.fn_response.id)],
@@ -93,7 +105,149 @@ async function run(messages, args) {
             return t(locale, 'topstats.no_scores', { username: osu_userdata.fn_response.username }) || `**${osu_userdata.fn_response.username}** no tiene puntuaciones registradas en su top.`;
         }
 
-        return doOsuTopStatsEmbed(message, osu_userdata.fn_response, stats, targetMode, locale);
+        const page1Embed = doOsuTopStatsEmbed(message, osu_userdata.fn_response, stats, targetMode, locale, isMeow);
+        const buttonsRow = buildPromedioButtons(1, isMeow, locale, false);
+        const initialPayload = { embeds: page1Embed.embeds, components: [buttonsRow] };
+
+        let sentMessage = null;
+        if (typeof reply?.reply === "function") {
+            sentMessage = await reply.reply(initialPayload);
+        } else if (typeof message?.reply === "function") {
+            sentMessage = await message.reply(initialPayload);
+        } else if (message?.channel && typeof message.channel.send === "function") {
+            sentMessage = await message.channel.send(initialPayload);
+        }
+
+        if (!sentMessage || typeof sentMessage.createMessageComponentCollector !== "function") {
+            return sentMessage || initialPayload;
+        }
+
+        // Estado de paginación y carga asíncrona de la Página 2 (Sengo Insights)
+        let currentPage = 1;
+        let sengoInsights = null;
+        let sengoLoadingPromise = null;
+        const loadingDetails = {
+            snipes: t(locale, 'topstats.loading_snipes') || '🔄 Consultando base de datos nacional...',
+            skills: t(locale, 'topstats.loading_skills') || '🔄 Analizando cinemática...',
+            twins: t(locale, 'topstats.loading_twins') || '🔄 Buscando perfiles afines...'
+        };
+
+        const fetchSengoData = async () => {
+            if (sengoInsights) return sengoInsights;
+            if (sengoLoadingPromise) return sengoLoadingPromise;
+
+            sengoLoadingPromise = (async () => {
+                const userId = osu_userdata.fn_response.id;
+                const countryCode = (osu_userdata.fn_response.country_code || osu_userdata.fn_response.country?.code || "VE").toUpperCase();
+                const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
+                const modeInt = MODE_INT[targetMode] ?? 0;
+
+                let skills = null;
+                try {
+                    skills = SkillsModel.analyzeSkills(topScores, false, targetMode);
+                    loadingDetails.skills = `✅ Evaluado (${skills.skillKeys?.length || 4} skills)`;
+                } catch {
+                    loadingDetails.skills = '⚠️ No disponible';
+                }
+
+                const [nationalTops, twins] = await Promise.all([
+                    OsuScoreModel.getUserNationalTops(userId, modeInt, countryCode, false, count => {
+                        loadingDetails.snipes = `🔄 (${count} cargados...)`;
+                    }).then(res => {
+                        loadingDetails.snipes = `✅ (${res ? res.length : 0} #1s)`;
+                        return res || [];
+                    }).catch(() => {
+                        loadingDetails.snipes = '⚠️ Sin conexión a DB';
+                        return [];
+                    }),
+                    (async () => {
+                        try {
+                            const modStats = TwinModel.calculatePpWeightedModStats(topScores);
+                            const found = await TwinModel.findTwins(osu_userdata.fn_response, modStats, {
+                                gamemode: targetMode,
+                                country: countryCode,
+                                limit: 1,
+                                targetSkills: skills
+                            });
+                            loadingDetails.twins = found && found.length > 0 ? `✅ @${found[0].username}` : '✅ Completado';
+                            return found || [];
+                        } catch {
+                            loadingDetails.twins = '⚠️ No disponible';
+                            return [];
+                        }
+                    })()
+                ]);
+
+                sengoInsights = TopStatsModel.calculateSengoInsights({
+                    user: osu_userdata.fn_response,
+                    mode: targetMode,
+                    topScores,
+                    nationalTops,
+                    twins,
+                    skills
+                });
+                return sengoInsights;
+            })();
+
+            return sengoLoadingPromise;
+        };
+
+        // Iniciar prefetch asíncrono en segundo plano
+        fetchSengoData().catch(() => {});
+
+        const collector = sentMessage.createMessageComponentCollector({
+            filter: i => i.user.id === message.author?.id,
+            time: 120000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                if (i.customId === 'promedio_page_1') {
+                    currentPage = 1;
+                    await i.update({
+                        embeds: page1Embed.embeds,
+                        components: [buildPromedioButtons(1, isMeow, locale, false)]
+                    });
+                } else if (i.customId === 'promedio_page_2') {
+                    currentPage = 2;
+                    if (sengoInsights) {
+                        const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, sengoInsights, targetMode, locale, isMeow);
+                        await i.update({
+                            embeds: page2Embed.embeds,
+                            components: [buildPromedioButtons(2, isMeow, locale, false)]
+                        });
+                    } else {
+                        // Mostrar estado de carga interactivo mientras espera
+                        const loadingEmbed = doOsuSengoLoadingEmbed(message, osu_userdata.fn_response, targetMode, locale, isMeow, loadingDetails);
+                        await i.update({
+                            embeds: loadingEmbed.embeds,
+                            components: [buildPromedioButtons(2, isMeow, locale, true)]
+                        });
+
+                        const insights = await fetchSengoData();
+                        if (currentPage === 2) {
+                            const page2Embed = doOsuSengoInsightsEmbed(message, osu_userdata.fn_response, insights, targetMode, locale, isMeow);
+                            await sentMessage.edit({
+                                embeds: page2Embed.embeds,
+                                components: [buildPromedioButtons(2, isMeow, locale, false)]
+                            });
+                        }
+                    }
+                }
+            } catch (collectErr) {
+                console.error('[PROMEDIO-COLLECTOR] Error en botón:', collectErr);
+            }
+        });
+
+        collector.on('end', async () => {
+            try {
+                await sentMessage.edit({
+                    components: [buildPromedioButtons(currentPage, isMeow, locale, true)]
+                });
+            } catch {}
+        });
+
+        return null;
     }
 
     const is_detailed = osu_userdata.parsed_args.detailed || false;
@@ -210,6 +364,9 @@ run.alias = {
     },
     "t200": {
         "args": "-promedio"
+    },
+    "meow": {
+        "args": "-meow"
     },
 }
 

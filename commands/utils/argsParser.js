@@ -451,6 +451,7 @@ function argsParserNoCommand(args, options = {}) {
     let bestSort = false;
     let detailed = false;
     let promedio = false;
+    let isMeow = false;
     let filterPass = false;
     let targetGuildId = null;
     let country = null;
@@ -869,9 +870,12 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es "-promedio", "--promedio", "-stats", "--stats", etc.
-        if (arg === "-promedio" || arg === "--promedio" || arg === "-stats" || arg === "--stats" || arg === "-average" || arg === "--average" || arg === "-t100" || arg === "-t200") {
+        // Si es "-promedio", "--promedio", "-stats", "--stats", etc., o flag secreto "-meow"
+        if (arg === "-promedio" || arg === "--promedio" || arg === "-stats" || arg === "--stats" || arg === "-average" || arg === "--average" || arg === "-t100" || arg === "-t200" || arg === "-meow" || arg === "--meow") {
             promedio = true;
+            if (arg === "-meow" || arg === "--meow") {
+                isMeow = true;
+            }
             continue;
         }
 
@@ -1356,6 +1360,7 @@ function argsParserNoCommand(args, options = {}) {
         'bestSort': bestSort,
         'detailed': detailed,
         'promedio': promedio,
+        'isMeow': isMeow,
         'filterPass': filterPass,
         'targetGuildId': targetGuildId,
         'country': country,
