@@ -476,12 +476,13 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
                 estimatedReadingStars = Math.max(0.3, 1.1 - Math.max(0, effAR - 9.0) * 0.30);
             }
 
-            // Dificultad de Flashlight (FL): memorización y haz visual reducido
+            // Dificultad de Flashlight (FL): memorización y haz visual reducido calibrado con sengo-pp / osu!droid
             let estimatedFLStars = 0;
             if (isFL) {
+                const baseDiff = Number(s.beatmap?.difficulty_rating || 5.0);
                 const combo = Number(s.max_combo || totalObj);
-                estimatedFLStars = 2.2 + Math.min(2.5, Math.log10(Math.max(10, combo)) * 1.2);
-                if (isHD) estimatedFLStars += 0.50;
+                const comboFactor = Math.min(1.0, Math.log10(Math.max(10, combo)) / 3.0);
+                estimatedFLStars = Math.min(2.5, 0.4 + (baseDiff * 0.18) * comboFactor + (isHD ? 0.30 : 0));
             }
 
             const effectiveReadingStars = Math.max(estimatedReadingStars, estimatedFLStars * 0.95);
@@ -558,7 +559,7 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
     if (returnBreakdown) {
         skillKeys.forEach(k => {
             const capKey = k.charAt(0).toUpperCase() + k.slice(1);
-            result[`top${capKey}`] = scoredPlays.slice().sort((a, b) => (b[k] || 0) - (a[k] || 0)).slice(0, 6);
+            result[`top${capKey}`] = scoredPlays.slice().sort((a, b) => (b[k] || 0) - (a[k] || 0)).slice(0, 15);
         });
     }
 
@@ -591,24 +592,33 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
     const ACC_NERF = 1.1;
     const READING_NERF = 2.4;
 
-    // Recolectar candidatos: Top 10 por habilidad analítica + Top 20 jugadas por PP global
+    // Recolectar candidatos: Top 15 por habilidad analítica + Top 25 jugadas por PP global
     // ponytail: Pool unificado de candidatos para paridad 1:1 total entre .skills y .skills -top
     const isDroid = (scores[0]?.user?.server === 'droid') || (base.mode === 'osu' && scores[0]?.droid_mods != null);
     const candidateScoreMap = new Map();
-    skillKeys.forEach(k => {
-        const capKey = k.charAt(0).toUpperCase() + k.slice(1);
-        (base[`top${capKey}`] || []).slice(0, 10).forEach(item => {
-            const sc = item.score;
-            const key = isDroid ? (sc?.beatmap?.checksum || sc?.beatmap?.id || sc?.id) : sc?.beatmap?.id;
-            if (key && sc) {
-                candidateScoreMap.set(key, sc);
-            }
+
+    if (isDroid) {
+        // Para osu!droid (donde el top es de 50 jugadas), evaluar todas para paridad absoluta
+        scores.forEach(s => {
+            const key = s.beatmap?.checksum || s.beatmap?.id || s.id;
+            if (key && s) candidateScoreMap.set(key, s);
         });
-    });
-    scores.slice(0, 20).forEach(s => {
-        const key = isDroid ? (s.beatmap?.checksum || s.beatmap?.id || s.id) : s.beatmap?.id;
-        if (key && s) candidateScoreMap.set(key, s);
-    });
+    } else {
+        skillKeys.forEach(k => {
+            const capKey = k.charAt(0).toUpperCase() + k.slice(1);
+            (base[`top${capKey}`] || []).slice(0, 15).forEach(item => {
+                const sc = item.score;
+                const key = sc?.beatmap?.id;
+                if (key && sc) {
+                    candidateScoreMap.set(key, sc);
+                }
+            });
+        });
+        scores.slice(0, 25).forEach(s => {
+            const key = s.beatmap?.id;
+            if (key && s) candidateScoreMap.set(key, s);
+        });
+    }
 
     const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
     const targetModeInt = MODE_INT[base.mode] ?? 0;
