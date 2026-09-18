@@ -82,184 +82,33 @@ async function run(messages, args) {
         return skillsCmd.run(messages, [...cleanArgs, '-droid']);
     }
 
-    // 3. Subcomando: Leaderboard de Mapa en osu!droid
-    if (subCommand === 'leaderboard') {
-        if (logger) logger.process(t(locale, 'droid.searching') || 'Consultando API de osu!droid...');
-
-        let hash = null;
-        let beatmapInfo = null;
-
-        // Verificar si se pasó un hash MD5 explícito
-        const potentialHash = cleanArgs.find(a => /^[a-f0-9]{32}$/i.test(a));
-        if (potentialHash) {
-            hash = potentialHash;
-            beatmapInfo = await lookupBeatmapByMD5(hash).catch(() => null);
-        } else {
-            // Buscar mapa referenciado en el canal
-            const found = await findBeatmapInChannel(message, !!message.reference?.messageId);
-            if (found && found.beatmap_url) {
-                const BeatmapModel = require("../../../models/BeatmapModel.js");
-                const bId = found.beatmap_url.replace('set/', '');
-                const bData = await BeatmapModel.getBeatmap(bId).catch(() => null);
-                if (bData && bData.checksum) {
-                    hash = bData.checksum;
-                    beatmapInfo = bData;
-                }
-            }
-        }
-
-        if (!hash) {
-            return t(locale, 'droid.no_map_found') || '❌ No se encontró ningún beatmap de osu! en este canal o no se especificó un hash válido.';
-        }
-
-        const lbData = await osuDroidModel.fetchLeaderboardByHash(hash, 1);
-        if (!lbData || !lbData.Top50Plays || lbData.Top50Plays.length === 0) {
-            return t(locale, 'droid.lb_empty') || '❌ No se encontraron jugadas en osu!droid para este mapa.';
-        }
-
-        const lbPayload = osuDroidEmbeds.doDroidLeaderboardEmbed(message, hash, lbData, beatmapInfo, 1, locale);
-        let sentMessage;
-        if (typeof reply === 'function') {
-            sentMessage = await reply(lbPayload);
-        } else if (message?.channel && typeof message.channel.send === 'function') {
-            sentMessage = await message.channel.send(lbPayload);
-        }
-
-        if (!sentMessage || typeof sentMessage.createMessageComponentCollector !== 'function') {
-            return sentMessage || lbPayload;
-        }
-
-        const collector = sentMessage.createMessageComponentCollector({
-            filter: i => i.user.id === authorId,
-            time: 120000
-        });
-
-        collector.on('collect', async i => {
-            try {
-                const parts = i.customId.split('_');
-                if (parts[0] === 'droid' && parts[1] === 'lb') {
-                    const targetHash = parts[2];
-                    const targetPage = parseInt(parts[3], 10) || 1;
-                    const newLbData = await osuDroidModel.fetchLeaderboardByHash(targetHash, 1);
-                    const updatedPayload = osuDroidEmbeds.doDroidLeaderboardEmbed(message, targetHash, newLbData, beatmapInfo, targetPage, locale);
-                    await i.update(updatedPayload);
-                }
-            } catch (err) {
-                console.error('[droid.js] Error en colector de leaderboard:', err);
-            }
-        });
-
-        return sentMessage;
-    }
-
-    // Resolver el jugador objetivo para subcomandos: profile, recent, top, compare
-    let targetUser = cleanArgs.join(' ').trim();
-    if (!targetUser) {
-        // Verificar si el autor tiene cuenta vinculada
-        const linkedUid = await osuDroidModel.getLinkedDroidUid(authorId);
-        if (linkedUid) {
-            targetUser = linkedUid;
-        }
-    }
-
-    if (!targetUser) {
-        return t(locale, 'droid.not_linked') ||
-            '⚠️ No tienes una cuenta de osu!droid vinculada. Usa `s.droid link <usuario_o_uid>` o especifica un usuario.';
-    }
-
-    if (logger) logger.process(t(locale, 'droid.searching') || 'Consultando API de osu!droid...');
-    const profile = await osuDroidModel.resolveDroidUser(targetUser);
-
-    if (!profile) {
-        return t(locale, 'droid.user_not_found', { user: targetUser }) ||
-            `❌ No se encontró al jugador **${targetUser}** en osu!droid.`;
-    }
-
-    // 4. Subcomando: Compare (Buscar score en el mapa actual)
-    if (subCommand === 'compare') {
-        const found = await findBeatmapInChannel(message, !!message.reference?.messageId);
-        let hash = null;
-        let beatmapInfo = null;
-
-        if (found && found.beatmap_url) {
-            const BeatmapModel = require("../../../models/BeatmapModel.js");
-            const bId = found.beatmap_url.replace('set/', '');
-            const bData = await BeatmapModel.getBeatmap(bId).catch(() => null);
-            if (bData && bData.checksum) {
-                hash = bData.checksum;
-                beatmapInfo = bData;
-            }
-        }
-
-        if (!hash) {
-            return t(locale, 'droid.no_map_found') || '❌ No se encontró ningún beatmap de osu! en este canal.';
-        }
-
-        const scores = await osuDroidModel.searchScore(profile.UserId, hash);
-        if (!scores || !Array.isArray(scores) || scores.length === 0) {
-            return `❌ El jugador **${profile.Username}** no tiene puntuaciones registradas en este mapa en osu!droid.`;
-        }
-
-        const targetScore = scores[0];
-        // Adaptar campos para la vista de recent
-        const adaptedScore = {
-            ScoreId: targetScore.id,
-            Filename: targetScore.filename,
-            MapHash: targetScore.hash,
-            Mods: targetScore.mods,
-            MapScore: targetScore.score,
-            MapCombo: targetScore.combo,
-            MapRank: targetScore.mark,
-            MapPerfect: targetScore.perfect,
-            MapGood: targetScore.good,
-            MapBad: targetScore.bad,
-            MapMiss: targetScore.miss,
-            MapAccuracy: targetScore.accuracy,
-            MapPP: targetScore.pp,
-            PlayedDate: targetScore.date ? new Date(targetScore.date * 1000).toISOString() : null,
-            SliderHeadHit: targetScore.sliderHeadHit,
-            SliderTickHit: targetScore.sliderTickHit,
-            SliderRepeatHit: targetScore.sliderRepeatHit,
-            SliderEndHit: targetScore.sliderEndHit
-        };
-
-        const comparePayload = osuDroidEmbeds.doDroidRecentEmbed(message, profile, adaptedScore, beatmapInfo, locale);
-        if (typeof reply === 'function') return reply(comparePayload);
-        if (message?.channel?.send) return message.channel.send(comparePayload);
-        return comparePayload;
-    }
-
-    // 5. Subcomando: Recent Score
-    if (subCommand === 'recent') {
-        if (!profile.Last50Scores || profile.Last50Scores.length === 0) {
-            return t(locale, 'droid.no_recent', { user: profile.Username }) ||
-                `❌ El jugador **${profile.Username}** no tiene jugadas recientes en osu!droid.`;
-        }
-
-        const recentScore = profile.Last50Scores[0];
-        let beatmapInfo = null;
-        if (recentScore.MapHash) {
-            beatmapInfo = await lookupBeatmapByMD5(recentScore.MapHash).catch(() => null);
-        }
-
-        const recentPayload = osuDroidEmbeds.doDroidRecentEmbed(message, profile, recentScore, beatmapInfo, locale);
-        return handleInteractiveDroidMessage({ message, reply, initialPayload: recentPayload, authorId, profile, locale });
-    }
-
-    // 6. Subcomando: Top Plays
+    // 2.7. Subcomando: Top Plays
     if (subCommand === 'top') {
-        if (!profile.Top50Plays || profile.Top50Plays.length === 0) {
-            return t(locale, 'droid.no_top', { user: profile.Username }) ||
-                `❌ El jugador **${profile.Username}** no tiene jugadas en su Top de osu!droid.`;
-        }
-
-        const topPayload = osuDroidEmbeds.doDroidTopEmbed(message, profile, 0, 5, locale);
-        return handleInteractiveDroidMessage({ message, reply, initialPayload: topPayload, authorId, profile, locale });
+        const topCmd = require("./top.js");
+        return topCmd.run(messages, [...cleanArgs, '-droid']);
     }
 
-    // 7. Subcomando por defecto: Profile
-    const profilePayload = osuDroidEmbeds.doDroidProfileEmbed(message, profile, locale);
-    return handleInteractiveDroidMessage({ message, reply, initialPayload: profilePayload, authorId, profile, locale });
+    // 2.8. Subcomando: Recent Score
+    if (subCommand === 'recent') {
+        const rsCmd = require("./rs.js");
+        return rsCmd.run(messages, [...cleanArgs, '-droid']);
+    }
+
+    // 2.9. Subcomando: Leaderboard de Mapa en osu!droid
+    if (subCommand === 'leaderboard') {
+        const lbCmd = require("./lb.js");
+        return lbCmd.run(messages, [...cleanArgs, '-droid']);
+    }
+
+    // 2.10. Subcomando: Compare (Buscar score en el mapa actual)
+    if (subCommand === 'compare') {
+        const cCmd = require("./c.js");
+        return cCmd.run(messages, [...cleanArgs, '-droid']);
+    }
+
+    // 2.11. Subcomando por defecto: Profile
+    const osuCmd = require("./osu.js");
+    return osuCmd.run(messages, [...cleanArgs, '-droid']);
 }
 
 /**

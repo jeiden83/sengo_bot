@@ -8,11 +8,6 @@ async function run(messages, args) {
     const locale = message.locale || 'es';
 
     const initial_parsed = argsParserNoCommand(args);
-    if (initial_parsed.server === 'droid') {
-        const droidCmd = require('./droid.js');
-        const userArg = initial_parsed.username?.[0] ? [String(initial_parsed.username[0])] : [];
-        return droidCmd.run(messages, ['compare', ...userArg]);
-    }
     let beatmap_url = initial_parsed.beatmap_url;
     let detected_gamemode = null;
 
@@ -91,7 +86,7 @@ async function run(messages, args) {
         const hasExplicitCL = filterStr.includes("CL");
 
         filtered_scores = filtered_scores.filter(score => {
-            const scoreAcronyms = score.mods.map(m => m.acronym);
+            const scoreAcronyms = score.mods.map(m => (typeof m === 'string' ? m : m?.acronym) || '');
             const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
 
             if (filterStr === "NM" || filterStr === "NONE") {
@@ -122,7 +117,7 @@ async function run(messages, args) {
         }
 
         filtered_scores = filtered_scores.filter(score => {
-            const scoreAcronyms = score.mods.map(m => m.acronym);
+            const scoreAcronyms = score.mods.map(m => (typeof m === 'string' ? m : m?.acronym) || '');
             const filteredScoreAcronyms = hasExplicitCL ? scoreAcronyms : scoreAcronyms.filter(mod => mod !== 'CL');
 
             if (filterStr === "NM" || filterStr === "NONE") {

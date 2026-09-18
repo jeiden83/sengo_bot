@@ -536,6 +536,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
  * Obtiene puntuaciones locales (unranked) guardadas en la base de datos de Supabase.
  */
 async function getUnrankedBeatmapUserAllScores(parsed_args) {
+    if (parsed_args.server === 'droid') {
+        return getBeatmapUserAllScores(parsed_args);
+    }
     const beatmapId = parsed_args.beatmap_url;
     const userId = parsed_args.username[0].toString();
     const supabase = getSupabaseClient();
@@ -1264,12 +1267,81 @@ async function getBeatmapUserAllScores(parsed_args) {
     const userId = parsed_args.username[0];
     const beatmapId = parsed_args.beatmap_url;
     const mode = parsed_args.gamemode || 'osu';
-    const cacheKey = `${userId}:${beatmapId}:${mode}`;
+    const cacheKey = `${userId}:${beatmapId}:${mode}:${parsed_args.server || 'bancho'}`;
 
     const cached = userScoresCache.get(cacheKey);
     const now = Date.now();
     if (cached && (now - cached.timestamp) < 30000) {
         return cached.scores;
+    }
+
+    if (parsed_args.server === 'droid') {
+        const osuDroidModel = require("./osuDroidModel.js");
+        const BeatmapModel = require("./BeatmapModel.js");
+        let hash = parsed_args.hash;
+        let bData = null;
+        if (!hash && beatmapId) {
+            bData = await BeatmapModel.getBeatmap(beatmapId).catch(() => null);
+            hash = bData?.checksum;
+        }
+        if (!hash) return [];
+
+        let targetUid = userId;
+        if (!/^\d+$/.test(targetUid)) {
+            const resolved = await osuDroidModel.resolveDroidUser(targetUid).catch(() => null);
+            if (resolved) targetUid = resolved.UserId;
+        }
+
+        const droidScores = await osuDroidModel.searchScore(targetUid, hash).catch(() => []);
+        if (!Array.isArray(droidScores) || droidScores.length === 0) return [];
+
+        const normalizedScores = droidScores.map(targetScore => {
+            const modsFormatted = Array.isArray(targetScore.mods) ? targetScore.mods.map(m => m.acronym).filter(Boolean) : [];
+            const coverUrl = bData?.beatmapset?.covers?.['cover@2x'] || bData?.beatmapset?.covers?.cover || null;
+            return {
+                id: targetScore.id,
+                accuracy: targetScore.accuracy || 0,
+                passed: targetScore.mark !== 'F',
+                rank: targetScore.mark || 'A',
+                mods: modsFormatted,
+                droid_mods: targetScore.mods,
+                max_combo: targetScore.combo || 0,
+                statistics: {
+                    perfect: targetScore.perfect || 0,
+                    great: targetScore.perfect || 0,
+                    good: targetScore.good || 0,
+                    ok: targetScore.good || 0,
+                    meh: targetScore.bad || 0,
+                    miss: targetScore.miss || 0,
+                    count_300: targetScore.perfect || 0,
+                    count_100: targetScore.good || 0,
+                    count_50: targetScore.bad || 0,
+                    count_miss: targetScore.miss || 0
+                },
+                pp: targetScore.pp || 0,
+                total_score: targetScore.score || 0,
+                legacy_total_score: targetScore.score || 0,
+                ended_at: targetScore.date ? new Date(targetScore.date * 1000).toISOString() : new Date().toISOString(),
+                beatmap: {
+                    id: bData?.id || beatmapId,
+                    version: bData?.version || 'Normal',
+                    checksum: hash,
+                    mode: 'osu',
+                    beatmapset_id: bData?.beatmapset_id,
+                    difficulty_rating: bData?.difficulty_rating != null ? Number(bData.difficulty_rating) : null
+                },
+                beatmapset: {
+                    id: bData?.beatmapset_id,
+                    title: bData?.beatmapset?.title || 'Beatmap',
+                    artist: bData?.beatmapset?.artist || '',
+                    covers: { "cover@2x": coverUrl, "cover": coverUrl }
+                },
+                _droid_raw_score: targetScore
+            };
+        });
+
+        userScoresCache.set(cacheKey, { scores: normalizedScores, timestamp: now });
+        return normalizedScores;
     }
 
     await OsuUserModel.NewloadToken();

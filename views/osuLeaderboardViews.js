@@ -118,7 +118,9 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
         const flag = getFlagEmoji(countryCode);
         const username = score.user?.username || score.username || 'Usuario';
         const userId = score.user?.id || score.user_id;
-        const userUrl = `https://osu.ppy.sh/users/${userId}`;
+        const userUrl = score.user?.server === 'droid'
+            ? `https://osudroid.moe/profile.php?uid=${userId}`
+            : (score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${userId}` : `https://osu.ppy.sh/users/${userId}`);
         const userLink = `[${username}](${userUrl})`;
 
         const isLazer = score.build_id !== null && score.build_id !== undefined;

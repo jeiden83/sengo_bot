@@ -42,10 +42,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const user_url = getUserUrl(recent_scores.user);
     const avatar_url = recent_scores.user.avatar_url;
 
-    const song_title = recent_scores.beatmapset.title;
-    const beatmap_difficulty = recent_scores.beatmap.version;
-    const beatmap_url = `https://osu.ppy.sh/b/${recent_scores.beatmap.id}`;
-    const beatmap_cover = recent_scores.beatmapset.covers["cover@2x"];
+    const song_title = recent_scores.beatmapset?.title || recent_scores.beatmap?.title || 'Beatmap';
+    const beatmap_difficulty = recent_scores.beatmap?.version || 'Normal';
+    const beatmap_url = recent_scores.beatmap?.id ? `https://osu.ppy.sh/b/${recent_scores.beatmap.id}` : getUserUrl(recent_scores.user);
+    const beatmap_cover = recent_scores.beatmapset?.covers?.["cover@2x"] || recent_scores.beatmapset?.covers?.cover || avatar_url;
 
     const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
     const score = getFormattedScore(recent_scores, scoreMode, locale);
@@ -53,7 +53,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
-    const difficultyStars = pre_calculated.reworkStars || pre_calculated.maxAttrs.stars || (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0);
+    const difficultyStars = pre_calculated.reworkStars || pre_calculated.maxAttrs?.stars || (pre_calculated.maxAttrs?.difficulty ? pre_calculated.maxAttrs.difficulty.stars : (recent_scores.beatmap?.difficulty_rating || 0));
     const difficulty = formatDecimal(difficultyStars || 0, locale, 2);
     const embedColor = getEmbedColor(message);
 
@@ -392,10 +392,10 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const user_url = getUserUrl(score.user);
     const avatar_url = score.user.avatar_url;
 
-    const song_title = score.beatmapset.title;
-    const beatmap_difficulty = score.beatmap.version;
-    const beatmap_url = `https://osu.ppy.sh/b/${score.beatmap.id}`;
-    const beatmap_cover = score.beatmapset.covers["cover@2x"];
+    const song_title = score.beatmapset?.title || score.beatmap?.title || 'Beatmap';
+    const beatmap_difficulty = score.beatmap?.version || 'Normal';
+    const beatmap_url = score.beatmap?.id ? `https://osu.ppy.sh/b/${score.beatmap.id}` : getUserUrl(score.user);
+    const beatmap_cover = score.beatmapset?.covers?.["cover@2x"] || score.beatmapset?.covers?.cover || avatar_url;
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
     const score_val = getFormattedScore(score, scoreMode, locale);
@@ -403,7 +403,8 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
-    const difficulty = formatDecimal(((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
+    const difficultyStars = pre_calculated.maxAttrs ? (pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) : (score.beatmap?.difficulty_rating || 0);
+    const difficulty = formatDecimal(difficultyStars || 0, locale, 2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
@@ -481,7 +482,8 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
         : "";
     const line2 = `${prefix_desc}${skillLine}**${score_val}** **▸** **\`${user_max_combo || 0}x\`**/*\`${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}\`*`;
     const line3 = getBeatmapStatsLine(map, score.mods, activeGamemode, locale);
-    const ansiBlock = buildAnsiBlock(stats_str, user_pp, pre_calculated.maxAttrs.pp, pre_calculated.pp_fc, locale);
+    const maxPpVal = pre_calculated.maxAttrs ? pre_calculated.maxAttrs.pp : null;
+    const ansiBlock = buildAnsiBlock(stats_str, user_pp, maxPpVal, pre_calculated.pp_fc, locale);
 
     let authorName = parsed_args.nochoke
         ? t(locale, 'top.single_embed_author_nc', { index, originalRank: score.originalRank, username })
@@ -593,7 +595,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
             ? (locale === 'es' ? `Robado a **${score.sniped_name}** • ` : `Sniped from **${score.sniped_name}** • `)
             : '';
         let time_set = `${snipedPrefixList}<t:${Math.floor((new Date(score.ended_at || score.created_at)).getTime() / 1000)}:R>`;
-        const map_link = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
+        const map_title = `${score.beatmapset?.title || score.beatmap?.title || 'Beatmap'} [${score.beatmap?.version || 'Normal'}]`;
+        const map_link = score.beatmap?.id
+            ? `[${map_title}](https://osu.ppy.sh/b/${score.beatmap.id})`
+            : `**${map_title}**`;
 
         const rankPrefix = score.skillRank
             ? `**#${score.skillRank} [PP #${score.originalRank || globalIndex}]**`
@@ -662,10 +667,10 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const user_url = getUserUrl(score.user, score.user_id);
     const avatar_url = score.user?.avatar_url || `https://a.ppy.sh/${score.user_id || score.user?.id}`;
 
-    const song_title = beatmap_metadata.beatmapset.title;
+    const song_title = beatmap_metadata.beatmapset?.title || beatmap_metadata.title || 'Beatmap';
     const beatmap_difficulty = beatmap_metadata.version;
-    const beatmap_url = `https://osu.ppy.sh/b/${beatmap_metadata.id}`;
-    const beatmap_cover = beatmap_metadata.beatmapset.covers["cover@2x"];
+    const beatmap_url = beatmap_metadata.id ? `https://osu.ppy.sh/b/${beatmap_metadata.id}` : null;
+    const beatmap_cover = beatmap_metadata.beatmapset?.covers?.["cover@2x"] || beatmap_metadata.beatmapset?.covers?.cover || "";
 
     const isLazer = score.build_id !== null && score.build_id !== undefined;
     const score_val = getFormattedScore(score, scoreMode, locale);
@@ -674,7 +679,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
 
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
     const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
-    const difficulty = formatDecimal(((pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
+    const difficulty = formatDecimal(((pre_calculated.maxAttrs?.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs?.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
@@ -703,17 +708,20 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     let resolvedOsuId = null;
     let uploaderName = '';
     let isDifferentUser = false;
+    const isDroid = score.user?.server === 'droid' || parsed_args?.server === 'droid';
 
-    // Primero verificamos si el jugador de la score existe online
-    const playerOsuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
-    if (!playerOsuUser || typeof playerOsuUser === 'string') {
-        isOffline = true;
-        isDifferentUser = true;
-    } else {
-        resolvedOsuId = playerOsuUser.id;
-        const scoreUserId = String(score.user_id || score.user?.id || '');
-        if (scoreUserId && String(resolvedOsuId) !== scoreUserId) {
+    if (!isDroid) {
+        // Primero verificamos si el jugador de la score existe online
+        const playerOsuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
+        if (!playerOsuUser || typeof playerOsuUser === 'string') {
+            isOffline = true;
             isDifferentUser = true;
+        } else {
+            resolvedOsuId = playerOsuUser.id;
+            const scoreUserId = String(score.user_id || score.user?.id || '');
+            if (scoreUserId && String(resolvedOsuId) !== scoreUserId) {
+                isDifferentUser = true;
+            }
         }
     }
 
@@ -1963,7 +1971,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
         return `<:${data[0]}:${data[1]}>`;
     };
 
-    const grades = osu_userdata.statistics.grade_counts;
+    const grades = osu_userdata.statistics?.grade_counts || { ssh: 0, ss: 0, sh: 0, s: 0, a: 0 };
     const grades_str =
         `${getGradeEmoji("XH")} \`${(grades.ssh || 0).toLocaleString(locTag)}\`   ` +
         `${getGradeEmoji("X")} \`${(grades.ss || 0).toLocaleString(locTag)}\`   ` +

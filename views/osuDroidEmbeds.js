@@ -134,164 +134,109 @@ function buildDroidLeaderboardButtons(hash, page, maxPages, locale = 'es') {
 }
 
 /**
- * Construye el embed principal del perfil de osu!droid
- * @param {object} message 
- * @param {object} profile 
- * @param {string} locale 
- * @returns {{ embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
+ * Construye el embed principal del perfil de osu!droid (idéntico a Bancho)
  */
 function doDroidProfileEmbed(message, profile, locale = 'es') {
-    const flag = getCountryFlag(profile.Region);
-    const avatarUrl = osuDroidModel.getAvatarUrl(profile.UserId);
-    const bannerUrl = osuDroidModel.getBannerUrl(profile.UserId);
-    const embedColor = getEmbedColor(message) || '#00c2ff';
-
-    const globalRank = profile.GlobalRank ? `#${formatNumber(profile.GlobalRank, locale)}` : '-';
-    const countryRank = profile.CountryRank ? `#${formatNumber(profile.CountryRank, locale)}` : '-';
-    const pp = formatDecimal(profile.OverallPP || 0, locale, 2);
-    const accuracy = formatDecimal((profile.OverallAccuracy || 0) * 100, locale, 2);
-    const playcount = formatNumber(profile.OverallPlaycount || 0, locale);
-    const score = formatNumber(profile.OverallScore || 0, locale);
-
-    const registeredTimestamp = profile.Registered ? Math.floor(new Date(profile.Registered).getTime() / 1000) : null;
-    const lastLoginTimestamp = profile.LastLogin ? Math.floor(new Date(profile.LastLogin).getTime() / 1000) : null;
-
-    const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setAuthor({
-            name: t(locale, 'droid.profile_title', { username: profile.Username }) || `osu!droid • Perfil de ${profile.Username}`,
-            iconURL: avatarUrl,
-            url: `https://osudroid.moe/profile.php?uid=${profile.UserId}`
-        })
-        .setTitle(`${flag} ${profile.Username}`)
-        .setURL(`https://osudroid.moe/profile.php?uid=${profile.UserId}`)
-        .setThumbnail(avatarUrl);
-
-    // Si tiene banner verificado, agregarlo
-    if (bannerUrl) {
-        embed.setImage(bannerUrl);
-    }
-
-    let statsDescription = [
-        `**${t(locale, 'droid.pp_total') || 'Rendimiento (PP)'}:** \`${pp} pp\``,
-        `**${t(locale, 'droid.global_rank') || 'Ranking Global'}:** \`${globalRank}\` • **${t(locale, 'droid.country_rank') || 'Nacional'}:** \`${countryRank}\` ${flag}`,
-        `**${t(locale, 'droid.accuracy') || 'Precisión Promedio'}:** \`${accuracy}%\``,
-        `**${t(locale, 'droid.play_count') || 'Partidas Jugadas'}:** \`${playcount}\` • **${t(locale, 'droid.total_score') || 'Puntuación'}:** \`${score}\``
-    ];
-
-    if (registeredTimestamp) {
-        statsDescription.push(`**Registro:** <t:${registeredTimestamp}:R>${lastLoginTimestamp ? ` • **Última conexión:** <t:${lastLoginTimestamp}:R>` : ''}`);
-    }
-
-    embed.setDescription(statsDescription.join('\n'));
-
-    // Resumen Top 5 Plays
-    if (profile.Top50Plays && profile.Top50Plays.length > 0) {
-        const top5 = profile.Top50Plays.slice(0, 5);
-        const topLines = top5.map((p, idx) => {
-            const mods = osuDroidModel.formatDroidMods(p.Mods);
-            const playPp = formatDecimal(p.MapPP || 0, locale, 1);
-            const playAcc = formatDecimal((p.MapAccuracy || 0) * 100, locale, 2);
-            return `\`#${idx + 1}\` **${p.Filename || 'Beatmap'}**\n└ ${p.MapRank || 'SH'} \`${mods}\` • **${playPp}pp** (${playAcc}%, ${p.MapCombo || 0}x)`;
-        });
-
-        embed.addFields({
-            name: t(locale, 'droid.top_plays_title') || '🏆 Mejores Jugadas (Top 5)',
-            value: topLines.join('\n\n'),
-            inline: false
-        });
-    }
-
-    // Resumen Última Jugada
-    if (profile.Last50Scores && profile.Last50Scores.length > 0) {
-        const recent = profile.Last50Scores[0];
-        const recentMods = osuDroidModel.formatDroidMods(recent.Mods);
-        const recentPp = formatDecimal(recent.MapPP || 0, locale, 1);
-        const recentAcc = formatDecimal((recent.MapAccuracy || 0) * 100, locale, 2);
-        const recentTime = recent.PlayedDate ? `<t:${Math.floor(new Date(recent.PlayedDate).getTime() / 1000)}:R>` : '';
-
-        embed.addFields({
-            name: t(locale, 'droid.recent_play_title') || '⚡ Última Jugada',
-            value: `**${recent.Filename || 'Beatmap'}**\n└ ${recent.MapRank || 'A'} \`${recentMods}\` • **${recentPp}pp** (${recentAcc}%, ${recent.MapCombo || 0}x) ${recentTime}`,
-            inline: false
-        });
-    }
-
-    embed.setFooter({
-        text: `osu!droid UID: ${profile.UserId} • Sengo Droid Engine`,
-        iconURL: avatarUrl
-    }).setTimestamp();
-
+    const { doOsuProfileEmbed } = require("./osuEmbeds.js");
+    const countryCode = (profile.Region || "XX").toUpperCase();
+    const osu_userdata = {
+        id: profile.UserId,
+        username: profile.Username,
+        country_code: countryCode,
+        country: { code: countryCode, name: profile.Region },
+        avatar_url: osuDroidModel.getAvatarUrl(profile.UserId),
+        cover_url: osuDroidModel.getBannerUrl(profile.UserId) || osuDroidModel.getAvatarUrl(profile.UserId),
+        join_date: profile.Registered || new Date().toISOString(),
+        rank_highest: null,
+        user_achievements: [],
+        statistics: {
+            global_rank: profile.GlobalRank,
+            pp: profile.OverallPP,
+            hit_accuracy: (profile.OverallAccuracy || 0) * 100,
+            play_count: profile.OverallPlaycount,
+            play_time: 0,
+            total_score: profile.OverallScore,
+            level: { current: 100, progress: 0 },
+            rank: { country: profile.CountryRank },
+            grade_counts: { ssh: 0, ss: 0, sh: 0, s: 0, a: 0 }
+        },
+        server: 'droid',
+        is_supporter: !!profile.Supporter,
+        _droid_raw: profile
+    };
+    const res = doOsuProfileEmbed(message, osu_userdata, 'osu', false, null, locale);
     return {
-        embeds: [embed],
+        embeds: res.embeds,
         components: [buildDroidProfileButtons(profile.UserId, locale)]
     };
 }
 
 /**
- * Construye el embed de la jugada reciente de osu!droid
- * @param {object} message 
- * @param {object} profile 
- * @param {object} score 
- * @param {object|null} beatmapInfo Metadatos de Bancho resueltos por MD5
- * @param {string} locale 
- * @returns {{ embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
+ * Construye el embed de la jugada reciente de osu!droid (idéntico a Bancho)
  */
-function doDroidRecentEmbed(message, profile, score, beatmapInfo = null, locale = 'es') {
-    const avatarUrl = osuDroidModel.getAvatarUrl(profile.UserId);
-    const embedColor = getEmbedColor(message) || '#00c2ff';
-    const modsStr = osuDroidModel.formatDroidMods(score.Mods);
-    const gradeEmoji = getGradeEmoji(score.MapRank || 'A', score.MapRank !== 'F');
+async function doDroidRecentEmbed(message, profile, score, beatmapInfo = null, locale = 'es') {
+    const { doOsuEmbed } = require("./osuEmbeds.js");
+    const modsFormatted = Array.isArray(score.Mods) ? score.Mods.map(m => m.acronym).filter(Boolean) : [];
+    const bId = beatmapInfo?.id || null;
+    const bSetId = beatmapInfo?.beatmapset_id || null;
+    const coverUrl = beatmapInfo?.beatmapset?.covers?.['cover@2x'] || beatmapInfo?.beatmapset?.covers?.cover || osuDroidModel.getAvatarUrl(profile.UserId);
 
-    const title = beatmapInfo
-        ? `${beatmapInfo.beatmapset.title} [${beatmapInfo.version}]`
-        : (score.Filename || 'Beatmap de osu!droid');
+    const recent_scores = {
+        id: score.ScoreId,
+        accuracy: score.MapAccuracy || 0,
+        passed: score.MapRank !== 'F',
+        rank: score.MapRank || 'A',
+        mods: modsFormatted,
+        droid_mods: score.Mods,
+        max_combo: score.MapCombo || 0,
+        statistics: {
+            perfect: score.MapPerfect || 0,
+            great: score.MapPerfect || 0,
+            good: score.MapGood || 0,
+            ok: score.MapGood || 0,
+            meh: score.MapBad || 0,
+            miss: score.MapMiss || 0,
+            count_300: score.MapPerfect || 0,
+            count_100: score.MapGood || 0,
+            count_50: score.MapBad || 0,
+            count_miss: score.MapMiss || 0
+        },
+        pp: score.MapPP || 0,
+        total_score: score.MapScore || 0,
+        legacy_total_score: score.MapScore || 0,
+        ended_at: score.PlayedDate || new Date().toISOString(),
+        beatmap: {
+            id: bId,
+            version: beatmapInfo?.version || (score.Filename || '').match(/\[(.*?)\](?:\.osu)?$/i)?.[1] || 'Normal',
+            checksum: score.MapHash,
+            mode: 'osu',
+            beatmapset_id: bSetId,
+            difficulty_rating: beatmapInfo?.difficulty_rating != null ? Number(beatmapInfo.difficulty_rating) : 0
+        },
+        beatmapset: {
+            id: bSetId,
+            title: beatmapInfo?.beatmapset?.title || (score.Filename || '').replace(/\[.*?\](?:\.osu)?$/i, '').trim(),
+            artist: beatmapInfo?.beatmapset?.artist || '',
+            covers: { "cover@2x": coverUrl, "cover": coverUrl }
+        },
+        user: {
+            id: profile.UserId,
+            username: profile.Username,
+            avatar_url: osuDroidModel.getAvatarUrl(profile.UserId),
+            server: 'droid'
+        }
+    };
 
-    const mapUrl = beatmapInfo
-        ? `https://osu.ppy.sh/b/${beatmapInfo.id}`
-        : `https://osudroid.moe/profile.php?uid=${profile.UserId}`;
+    const pre_calculated = {
+        map: null,
+        map_completion: recent_scores.passed ? 100 : 100,
+        maxAttrs: { stars: recent_scores.beatmap.difficulty_rating || 0, pp: recent_scores.pp || 0 },
+        pp: recent_scores.pp || 0,
+        beatmap_max_combo: beatmapInfo?.max_combo || recent_scores.max_combo || 0,
+        pp_fc: null
+    };
 
-    const coverUrl = beatmapInfo?.beatmapset?.covers?.['list@2x']
-        || beatmapInfo?.beatmapset?.covers?.cover
-        || avatarUrl;
-
-    const pp = formatDecimal(score.MapPP || 0, locale, 2);
-    const accuracy = formatDecimal((score.MapAccuracy || 0) * 100, locale, 2);
-    const mapScore = formatNumber(score.MapScore || 0, locale);
-    const playedTimestamp = score.PlayedDate ? Math.floor(new Date(score.PlayedDate).getTime() / 1000) : null;
-
-    const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setAuthor({
-            name: t(locale, 'droid.recent_title', { username: profile.Username }) || `${profile.Username} • Jugada Reciente en osu!droid`,
-            iconURL: avatarUrl,
-            url: `https://osudroid.moe/profile.php?uid=${profile.UserId}`
-        })
-        .setTitle(title)
-        .setURL(mapUrl)
-        .setThumbnail(coverUrl);
-
-    const lines = [
-        `${gradeEmoji} **\`${modsStr}\`** • **${pp}pp** • **${accuracy}%** • **${score.MapCombo || 0}x**`,
-        `🎯 **${t(locale, 'droid.score') || 'Puntuación'}:** \`${mapScore}\``,
-        `🔢 **${t(locale, 'droid.hits') || 'Hits'}:** \`300:\` **${score.MapPerfect || 0}** | \`100:\` **${score.MapGood || 0}** | \`50:\` **${score.MapBad || 0}** | \`Miss:\` **${score.MapMiss || 0}** ❌`
-    ];
-
-    // Sliders de osu!droid
-    if (score.SliderHeadHit !== null && score.SliderHeadHit !== undefined) {
-        lines.push(`🌀 **${t(locale, 'droid.sliders') || 'Sliders'}:** Head: **${score.SliderHeadHit}** | Tick: **${score.SliderTickHit || 0}** | Repeat: **${score.SliderRepeatHit || 0}** | End: **${score.SliderEndHit || 0}**`);
-    }
-
-    if (playedTimestamp) {
-        lines.push(`📅 **${t(locale, 'droid.played_at') || 'Jugado'}:** <t:${playedTimestamp}:R> (<t:${playedTimestamp}:d>)`);
-    }
-
-    embed.setDescription(lines.join('\n'));
-    embed.setFooter({
-        text: `Score ID: ${score.ScoreId} • osu!droid UID: ${profile.UserId}`,
-        iconURL: avatarUrl
-    }).setTimestamp();
-
+    const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale, 'classic');
     return {
         embeds: [embed],
         components: [buildDroidRecentButtons(score.ScoreId, profile.UserId, locale)]
@@ -299,85 +244,76 @@ function doDroidRecentEmbed(message, profile, score, beatmapInfo = null, locale 
 }
 
 /**
- * Construye el embed paginado de las mejores jugadas (Top 50 Plays)
- * @param {object} message 
- * @param {object} profile 
- * @param {number} page 0-indexed
- * @param {number} pageSize Por defecto 5
- * @param {string} locale 
- * @returns {{ embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
+ * Construye el embed paginado de las mejores jugadas de osu!droid (idéntico a Bancho)
  */
-function doDroidTopEmbed(message, profile, page = 0, pageSize = 5, locale = 'es') {
-    const avatarUrl = osuDroidModel.getAvatarUrl(profile.UserId);
-    const embedColor = getEmbedColor(message) || '#00c2ff';
+async function doDroidTopEmbed(message, profile, page = 0, pageSize = 5, locale = 'es') {
+    const { doOsuTopListEmbed } = require("./osuEmbeds.js");
     const topPlays = profile.Top50Plays || [];
+    const total_plays = topPlays.length;
+    const startIndex = page * pageSize;
+    const chunk = topPlays.slice(startIndex, startIndex + pageSize);
 
-    const totalPlays = topPlays.length;
-    const maxPages = Math.max(1, Math.ceil(totalPlays / pageSize));
-    const safePage = Math.max(0, Math.min(page, maxPages - 1));
-
-    const startIndex = safePage * pageSize;
-    const currentPlays = topPlays.slice(startIndex, startIndex + pageSize);
-
-    // Calcular suma ponderada acumulada del top 50 (0.95^n)
-    let totalWeightedPP = 0;
-    topPlays.forEach((p, idx) => {
-        const rawPp = p.MapPP || 0;
-        totalWeightedPP += rawPp * Math.pow(0.95, idx);
+    const normalizedChunk = chunk.map((s, idx) => {
+        const modsFormatted = Array.isArray(s.Mods) ? s.Mods.map(m => m.acronym).filter(Boolean) : [];
+        return {
+            id: s.ScoreId,
+            accuracy: s.MapAccuracy || 0,
+            passed: s.MapRank !== "F",
+            rank: s.MapRank || 'A',
+            mods: modsFormatted,
+            droid_mods: s.Mods,
+            max_combo: s.MapCombo || 0,
+            originalRank: startIndex + idx + 1,
+            statistics: {
+                perfect: s.MapGeki || 0,
+                great: s.MapPerfect || 0,
+                good: s.MapKatu || 0,
+                ok: s.MapGood || 0,
+                meh: s.MapBad || 0,
+                miss: s.MapMiss || 0,
+                count_300: s.MapPerfect || 0,
+                count_100: s.MapGood || 0,
+                count_50: s.MapBad || 0,
+                count_miss: s.MapMiss || 0
+            },
+            pp: s.MapPP || 0,
+            total_score: s.MapScore || 0,
+            legacy_total_score: s.MapScore || 0,
+            ended_at: s.PlayedDate || new Date().toISOString(),
+            beatmap: {
+                id: null,
+                version: (s.Filename || '').match(/\[(.*?)\](?:\.osu)?$/i)?.[1] || 'Normal',
+                checksum: s.MapHash,
+                mode: 'osu',
+                difficulty_rating: 0
+            },
+            beatmapset: {
+                id: null,
+                title: (s.Filename || '').replace(/\[.*?\](?:\.osu)?$/i, '').trim(),
+                artist: '',
+                covers: {}
+            },
+            user: {
+                id: profile.UserId,
+                username: profile.Username,
+                avatar_url: osuDroidModel.getAvatarUrl(profile.UserId),
+                server: 'droid'
+            }
+        };
     });
 
-    const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setAuthor({
-            name: t(locale, 'droid.top_title', { username: profile.Username, page: safePage + 1, maxPages }) || `🏆 Mejores Jugadas de ${profile.Username} (${safePage + 1}/${maxPages})`,
-            iconURL: avatarUrl,
-            url: `https://osudroid.moe/profile.php?uid=${profile.UserId}`
-        })
-        .setThumbnail(avatarUrl);
-
-    if (currentPlays.length === 0) {
-        embed.setDescription(t(locale, 'droid.no_top', { user: profile.Username }) || '❌ No hay jugadas registradas en el Top de osu!droid.');
-    } else {
-        const playEntries = currentPlays.map((p, idx) => {
-            const absoluteIndex = startIndex + idx + 1;
-            const mods = osuDroidModel.formatDroidMods(p.Mods);
-            const pp = formatDecimal(p.MapPP || 0, locale, 2);
-            const weightMultiplier = Math.pow(0.95, absoluteIndex - 1);
-            const weightedPp = formatDecimal((p.MapPP || 0) * weightMultiplier, locale, 1);
-            const acc = formatDecimal((p.MapAccuracy || 0) * 100, locale, 2);
-            const playedTime = p.PlayedDate ? `<t:${Math.floor(new Date(p.PlayedDate).getTime() / 1000)}:R>` : '';
-
-            return `**\`#${absoluteIndex}\`** [**${p.Filename || 'Beatmap'}**](https://osudroid.moe/profile.php?uid=${profile.UserId})\n` +
-                `└ ${p.MapRank || 'SH'} \`${mods}\` • **${pp}pp** (pond: \`${weightedPp}pp\`) • **${acc}%** • **${p.MapCombo || 0}x** • misses: **${p.MapMiss || 0}** ${playedTime}`;
-        });
-
-        const weightedSummary = t(locale, 'droid.top_weighted', { weighted: formatDecimal(totalWeightedPP, locale, 2) }) || `PP Ponderado Total: **${formatDecimal(totalWeightedPP, locale, 2)}pp**`;
-        embed.setDescription(`**${weightedSummary}**\n\n` + playEntries.join('\n\n'));
-    }
-
-    embed.setFooter({
-        text: `osu!droid UID: ${profile.UserId} • Página ${safePage + 1} de ${maxPages}`,
-        iconURL: avatarUrl
-    }).setTimestamp();
-
+    const embed = await doOsuTopListEmbed(message, { gamemode: 'osu' }, normalizedChunk, startIndex, total_plays, 0, [], locale);
     return {
         embeds: [embed],
-        components: [buildDroidTopButtons(profile.UserId, safePage, maxPages, locale)]
+        components: [buildDroidTopButtons(profile.UserId, page, Math.max(1, Math.ceil(total_plays / pageSize)), locale)]
     };
 }
 
 /**
- * Construye el embed del Leaderboard de un Beatmap en osu!droid
- * @param {object} message 
- * @param {string} hash 
- * @param {object} lbData Respuesta de la API de leaderboard
- * @param {object|null} beatmapInfo Metadatos de Bancho
- * @param {number} page 1-indexed
- * @param {string} locale 
- * @returns {{ embeds: EmbedBuilder[], components: ActionRowBuilder[] }}
+ * Construye el embed del Leaderboard de un Beatmap en osu!droid (idéntico a Bancho)
  */
 function doDroidLeaderboardEmbed(message, hash, lbData, beatmapInfo = null, page = 1, locale = 'es') {
-    const embedColor = getEmbedColor(message) || '#00c2ff';
+    const { doOsuLbEmbed, doOsuLbContent } = require("./osuLeaderboardViews.js");
     const plays = lbData?.Top50Plays || [];
     const pageSize = 5;
     const maxPages = Math.max(1, Math.ceil(plays.length / pageSize));
@@ -385,49 +321,55 @@ function doDroidLeaderboardEmbed(message, hash, lbData, beatmapInfo = null, page
     const startIndex = (safePage - 1) * pageSize;
     const currentPlays = plays.slice(startIndex, startIndex + pageSize);
 
-    const title = beatmapInfo
-        ? `${beatmapInfo.beatmapset.title} [${beatmapInfo.version}]`
-        : `Beatmap MD5: \`${hash.substring(0, 10)}...\``;
+    const normalizedScores = currentPlays.map((p, idx) => {
+        const mods = Array.isArray(p.Mods) ? p.Mods.map(m => m.acronym).filter(Boolean) : [];
+        return {
+            id: p.ScoreId,
+            total_score: p.MapTotalScore || 0,
+            legacy_total_score: p.MapTotalScore || 0,
+            accuracy: p.MapAccuracy || 0,
+            max_combo: p.MapCombo || 0,
+            rank: p.MapRank || 'A',
+            passed: p.MapRank !== 'F',
+            pp: p.MapPP || 0,
+            mods: mods,
+            droid_mods: p.Mods,
+            statistics: {
+                count_300: p.MapPerfect || 0,
+                count_100: p.MapGood || 0,
+                count_50: p.MapBad || 0,
+                count_miss: p.MapMiss || 0
+            },
+            ended_at: p.PlayedDate || new Date().toISOString(),
+            leaderboardRank: p.Rank || (startIndex + idx + 1),
+            user: {
+                id: p.UserId,
+                username: p.Username,
+                country_code: (p.Region || "XX").toUpperCase(),
+                avatar_url: osuDroidModel.getAvatarUrl(p.UserId),
+                server: 'droid'
+            }
+        };
+    });
 
-    const mapUrl = beatmapInfo
-        ? `https://osu.ppy.sh/b/${beatmapInfo.id}`
-        : `https://new.osudroid.moe/api2/game/leaderboard/?hash=${hash}`;
+    const beatmap_metadata = beatmapInfo || {
+        id: null,
+        version: 'Normal',
+        difficulty_rating: 0,
+        max_combo: 0,
+        mode: 'osu',
+        url: `https://new.osudroid.moe/api2/game/leaderboard/?hash=${hash}`,
+        beatmapset: {
+            title: `Beatmap MD5: ${hash.substring(0, 10)}...`,
+            covers: { cover: 'https://osudroid.moe/favicon.ico' }
+        }
+    };
 
-    const coverUrl = beatmapInfo?.beatmapset?.covers?.['list@2x']
-        || beatmapInfo?.beatmapset?.covers?.cover
-        || null;
-
-    const embed = new EmbedBuilder()
-        .setColor(embedColor)
-        .setTitle(`🌌 Leaderboard de osu!droid: ${title}`)
-        .setURL(mapUrl);
-
-    if (coverUrl) {
-        embed.setThumbnail(coverUrl);
-    }
-
-    if (currentPlays.length === 0) {
-        embed.setDescription(t(locale, 'droid.lb_empty') || '❌ No se encontraron jugadas en osu!droid para este mapa.');
-    } else {
-        const lines = currentPlays.map(p => {
-            const mods = osuDroidModel.formatDroidMods(p.Mods);
-            const pp = formatDecimal(p.MapPP || 0, locale, 2);
-            const acc = formatDecimal((p.MapAccuracy || 0) * 100, locale, 2);
-            const score = formatNumber(p.MapTotalScore || 0, locale);
-
-            return `**\`#${p.Rank || '?'}\`** **${p.Username}**\n` +
-                `└ ${p.MapRank || 'SH'} \`${mods}\` • **${pp}pp** • **${acc}%** • **${p.MapCombo || 0}x** • Score: \`${score}\``;
-        });
-
-        embed.setDescription(lines.join('\n\n'));
-    }
-
-    embed.setFooter({
-        text: `osu!droid Leaderboard • Página ${safePage} de ${maxPages}`,
-        iconURL: 'https://osudroid.moe/favicon.ico'
-    }).setTimestamp();
+    const embed = doOsuLbEmbed(message, normalizedScores, beatmap_metadata, startIndex, plays.length, safePage, maxPages, {}, null, locale);
+    const content = doOsuLbContent(beatmap_metadata, 'osu', null, null, false, locale, 'osu!droid');
 
     return {
+        content,
         embeds: [embed],
         components: [buildDroidLeaderboardButtons(hash, safePage, maxPages, locale)]
     };

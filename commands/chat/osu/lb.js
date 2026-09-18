@@ -39,9 +39,121 @@ async function run(messages, args) {
 
     const parsed_args = argsParserNoCommand(args);
     if (parsed_args.server === 'droid') {
-        const droidCmd = require('./droid.js');
-        const cleanArgs = (Array.isArray(args) ? args : []).filter(a => typeof a === 'string' && !['-droid', '--droid', 'droid', '-osudroid', '--osudroid'].includes(a.toLowerCase()));
-        return droidCmd.run(messages, ['lb', ...cleanArgs]);
+        let beatmap_url = parsed_args.beatmap_url;
+        if (!beatmap_url) {
+            const result = reply ? await findBeatmapInChannel(reply, true, parsed_args.index) : await findBeatmapInChannel(message, false, parsed_args.index);
+            beatmap_url = result?.beatmap_url;
+        }
+        if (!beatmap_url) {
+            return t(locale, 'leaderboard.no_map_found') || '❌ No se encontró ningún beatmap de osu! en este canal.';
+        }
+
+        const beatmap_metadata = await getBeatmap(beatmap_url);
+        if (!beatmap_metadata || !beatmap_metadata.checksum) {
+            return '❌ No se pudo obtener el hash del beatmap.';
+        }
+
+        const osuDroidModel = require("../../../models/osuDroidModel.js");
+        const lbData = await osuDroidModel.fetchLeaderboardByHash(beatmap_metadata.checksum, 1);
+        const plays = lbData?.Top50Plays || [];
+        if (plays.length === 0) {
+            return t(locale, 'droid.lb_empty') || '❌ No se encontraron jugadas en osu!droid para este mapa.';
+        }
+
+        const normalizedScores = plays.map((p, idx) => {
+            const mods = Array.isArray(p.Mods) ? p.Mods.map(m => m.acronym).filter(Boolean) : [];
+            return {
+                id: p.ScoreId,
+                total_score: p.MapTotalScore || 0,
+                legacy_total_score: p.MapTotalScore || 0,
+                accuracy: p.MapAccuracy || 0,
+                max_combo: p.MapCombo || 0,
+                rank: p.MapRank || 'A',
+                passed: p.MapRank !== 'F',
+                pp: p.MapPP || 0,
+                mods: mods,
+                droid_mods: p.Mods,
+                statistics: {
+                    count_300: p.MapPerfect || 0,
+                    count_100: p.MapGood || 0,
+                    count_50: p.MapBad || 0,
+                    count_miss: p.MapMiss || 0
+                },
+                ended_at: p.PlayedDate || new Date().toISOString(),
+                leaderboardRank: p.Rank || idx + 1,
+                user: {
+                    id: p.UserId,
+                    username: p.Username,
+                    country_code: (p.Region || "XX").toUpperCase(),
+                    avatar_url: osuDroidModel.getAvatarUrl(p.UserId),
+                    server: 'droid'
+                }
+            };
+        });
+
+        const total_plays = normalizedScores.length;
+        let page = parsed_args.page || 1;
+        const max_pages = Math.max(1, Math.ceil(total_plays / 5));
+        if (page > max_pages) page = max_pages;
+        if (page < 1) page = 1;
+
+        let startIndex = (page - 1) * 5;
+        const chunk = normalizedScores.slice(startIndex, startIndex + 5);
+
+        const content = doOsuLbContent(beatmap_metadata, 'osu', null, null, false, locale, 'osu!droid');
+        const embed = doOsuLbEmbed(message, chunk, beatmap_metadata, startIndex, total_plays, page, max_pages, parsed_args, null, locale);
+
+        const getLbButtonsRow = (start, total) => {
+            return buildPaginationRow({ prefix: 'lb', current: start, total, pageSize: 5 });
+        };
+
+        let sent_message;
+        const payload = {
+            content: content,
+            embeds: [embed],
+            components: total_plays > 5 ? [getLbButtonsRow(startIndex, total_plays)] : []
+        };
+
+        if (reply && typeof reply.reply === 'function') {
+            sent_message = await reply.reply(payload);
+        } else {
+            sent_message = await message.channel.send(payload);
+        }
+
+        if (total_plays <= 5 || !sent_message || typeof sent_message.createMessageComponentCollector !== 'function') return sent_message;
+
+        const btnFilter = btnInt => btnInt.user.id === message.author.id;
+        const collector = sent_message.createMessageComponentCollector({
+            filter: btnFilter,
+            idle: 60000
+        });
+
+        collector.on('collect', async i => {
+            try {
+                await i.deferUpdate();
+                if (i.customId === 'lb_first') startIndex = 0;
+                else if (i.customId === 'lb_prev') startIndex = Math.max(0, startIndex - 5);
+                else if (i.customId === 'lb_next') startIndex = Math.min(total_plays - 1, startIndex + 5);
+                else if (i.customId === 'lb_last') startIndex = (max_pages - 1) * 5;
+
+                const currPage = Math.floor(startIndex / 5) + 1;
+                const newChunk = normalizedScores.slice(startIndex, startIndex + 5);
+                const newEmbed = doOsuLbEmbed(message, newChunk, beatmap_metadata, startIndex, total_plays, currPage, max_pages, parsed_args, null, locale);
+                await sent_message.edit({
+                    content: content,
+                    embeds: [newEmbed],
+                    components: [getLbButtonsRow(startIndex, total_plays)]
+                });
+            } catch (err) {
+                console.error("[lb-droid] Error en collector:", err);
+            }
+        });
+
+        collector.on('end', async () => {
+            try { await sent_message.edit({ components: [] }); } catch {}
+        });
+
+        return sent_message;
     }
     let beatmap_url = parsed_args.beatmap_url;
     let countryFilter = parsed_args.country;

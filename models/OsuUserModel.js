@@ -358,7 +358,8 @@ async function _getOsuUser(parsed_args) {
                         play_time: 0,
                         total_score: droidUser.OverallScore,
                         level: { current: 100, progress: 0 },
-                        rank: { country: droidUser.CountryRank }
+                        rank: { country: droidUser.CountryRank },
+                        grade_counts: { ssh: 0, ss: 0, sh: 0, s: 0, a: 0 }
                     },
                     server: 'droid',
                     is_supporter: !!droidUser.Supporter,

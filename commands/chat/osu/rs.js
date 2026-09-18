@@ -21,11 +21,7 @@ async function run(messages, args) {
     });
 
     if (typeof parser_res.fn_response === 'string') return parser_res.fn_response;
-    if (parser_res.parsed_args?.server === 'droid') {
-        const droidCmd = require('./droid.js');
-        const userArg = parser_res.parsed_args.username?.[0] ? [String(parser_res.parsed_args.username[0])] : [];
-        return droidCmd.run(messages, ['recent', ...userArg]);
-    }
+
     
     if (parser_res.parsed_args.lazerMode) {
         currentScoreMode = 'lazer';
@@ -53,7 +49,7 @@ async function run(messages, args) {
         const playsToCheck = parser_res.fn_response.slice(0, 5);
         for (const play of playsToCheck) {
             const country = play.user?.country_code || play.user?.country?.code;
-            if (country === 'VE' || !country) {
+            if ((country === 'VE' || !country) && play.user?.server !== 'droid' && play.beatmap?.id) {
                 const sniperUsername = play.user?.username || parser_res.parsed_args.username?.[0] || 'Desconocido';
                 OsuScoreModel.checkAndRecordRealtimeSnipe(play, sniperUsername).catch(err => {
                     console.error("[RS-BACKGROUND-SNIPE] Error al comprobar snipe en segundo plano:", err);
@@ -76,6 +72,10 @@ async function run(messages, args) {
             const score = parser_res.fn_response[i];
             if (score.pp !== null && score.pp !== undefined) {
                 score.calculatedPP = score.pp;
+                continue;
+            }
+            if (!score.beatmap?.id) {
+                score.calculatedPP = score.pp || 0;
                 continue;
             }
             try {
@@ -249,7 +249,7 @@ async function run(messages, args) {
         // Iniciar precargas en segundo plano para el mapa más reciente de la lista
         try {
             const targetScore = parser_res.fn_response[0];
-            if (targetScore && targetScore.beatmap) {
+            if (targetScore && targetScore.beatmap?.id) {
                 const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
                 const isLazer = currentScoreMode === 'lazer';
                 setChannelRecentPlayType(message.channel.id, targetScore.beatmap.id, isLazer);
@@ -291,7 +291,24 @@ async function run(messages, args) {
         const recent_scores = parser_res.fn_response[scoreIndex - 1];
         const isLazer = currentScoreMode === 'lazer';
         const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
-        setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
+        if (recent_scores.beatmap?.id) {
+            setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
+        } else if (recent_scores.beatmap?.checksum) {
+            try {
+                const BeatmapModel = require("../../../models/BeatmapModel.js");
+                const bInfo = await BeatmapModel.lookupBeatmapByMD5(recent_scores.beatmap.checksum);
+                if (bInfo) {
+                    recent_scores.beatmap.id = bInfo.id;
+                    recent_scores.beatmap.beatmapset_id = bInfo.beatmapset_id;
+                    if (bInfo.beatmapset?.title) recent_scores.beatmapset.title = bInfo.beatmapset.title;
+                    if (bInfo.beatmapset?.artist) recent_scores.beatmapset.artist = bInfo.beatmapset.artist;
+                    if (bInfo.version) recent_scores.beatmap.version = bInfo.version;
+                    if (bInfo.difficulty_rating) recent_scores.beatmap.difficulty_rating = Number(bInfo.difficulty_rating);
+                    if (bInfo.beatmapset?.covers) recent_scores.beatmapset.covers = bInfo.beatmapset.covers;
+                    setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
+                }
+            } catch (_) {}
+        }
 
         const stats = recent_scores.statistics || {};
         const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
@@ -299,17 +316,27 @@ async function run(messages, args) {
         const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
         const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
         const total_hits = great + ok + meh + miss;
-        const beatmap = await getBeatmap(recent_scores.beatmap.id);
-        const map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
-        let maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
 
-        let user_pp = recent_scores.pp ? recent_scores.pp : calculatePP(recent_scores, map, null, maxAttrs).pp;
+        let beatmap = null;
+        let map = null;
+        let maxAttrs = null;
+        if (recent_scores.beatmap?.id) {
+            try {
+                beatmap = await getBeatmap(recent_scores.beatmap.id);
+                map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
+                maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
+            } catch (err) {
+                console.warn("[rs] No se pudo calcular PP con rosu-pp:", err.message);
+            }
+        }
 
-        const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+        let user_pp = recent_scores.pp ? recent_scores.pp : (map && maxAttrs ? calculatePP(recent_scores, map, null, maxAttrs).pp : 0);
+
+        const beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (recent_scores.max_combo || 0));
         let pp_fc = null;
         const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
 
-        if (!isFC) {
+        if (!isFC && map && maxAttrs) {
             try {
                 const fc_statistics = {
                     ...recent_scores.statistics,
@@ -330,7 +357,7 @@ async function run(messages, args) {
         let reworkCodeUsed = 'master';
         let reworkStarsUsed = null;
 
-        if (isRework) {
+        if (isRework && recent_scores.beatmap?.id) {
             try {
                 const ReworkModel = require("../../../models/ReworkModel.js");
                 const activeModsStr = recent_scores.mods ? (Array.isArray(recent_scores.mods) ? recent_scores.mods.map(m => typeof m === 'string' ? m : (m.acronym || m)).join('') : recent_scores.mods) : '';
@@ -431,9 +458,11 @@ async function run(messages, args) {
             "reworkStars": reworkStarsUsed
         };
 
-        saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
+        if (recent_scores.beatmap?.id) {
+            saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
+        }
         const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale, currentScoreMode);
-        map.free();
+        if (map) map.free();
         return embed;
     }
 
