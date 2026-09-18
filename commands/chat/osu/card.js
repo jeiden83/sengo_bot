@@ -89,6 +89,7 @@ async function run(messages, args) {
         else if (["-ultra", "--ultra", "ultra"].includes(lower)) explicitPreset = "ultra";
         else if (["-mini", "--mini", "mini", "-movil", "--movil"].includes(lower)) explicitPreset = "mini_card";
         else if (["-standard", "--standard", "standard", "-full", "--full"].includes(lower)) explicitPreset = "standard";
+        else if (["-preset_droid", "--preset_droid", "-preset-droid", "--preset-droid", "-droidcard", "--droidcard"].includes(lower)) explicitPreset = "droid";
     }
 
     // Detectar servidor explícito si fue pasado en los argumentos (-droid, droid, -gatari, etc.)
@@ -125,6 +126,7 @@ async function run(messages, args) {
             "-ultra", "--ultra", "ultra",
             "-mini", "--mini", "mini", "-movil", "--movil",
             "-standard", "--standard", "standard", "-full", "--full",
+            "-preset_droid", "--preset_droid", "-preset-droid", "--preset-droid", "-droidcard", "--droidcard",
             "-droid", "--droid", "droid", "-osudroid", "--osudroid", "osudroid", "-od", "-odroid",
             "-gatari", "--gatari", "gatari",
             "-mameosu", "--mameosu", "mameosu", "-mosu",

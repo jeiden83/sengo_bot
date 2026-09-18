@@ -38,6 +38,7 @@ const data = new SlashCommandBuilder()
             .addChoices(
                 { name: "Standard (Completa)", value: "standard" },
                 { name: "Compacta (Solo avatar y skills)", value: "compact" },
+                { name: "osu!droid (Compacto sin Sengo)", value: "droid" },
                 { name: "Línea (Fila única de 3 tarjetas)", value: "single_row" },
                 { name: "Línea con Pinned Play (4 tarjetas)", value: "single_row_play" },
                 { name: "Panorámica Completa (5 tarjetas)", value: "single_row_all" },

@@ -66,8 +66,52 @@ const MOD_COLORS = {
     'V2': { bg: '#bf55ec', fg: '#ffffff' },
     'SV2': { bg: '#bf55ec', fg: '#ffffff' },
     'MR': { bg: '#bf55ec', fg: '#ffffff' },
-    'TD': { bg: '#00b8ff', fg: '#002233' }
+    'TD': { bg: '#00b8ff', fg: '#002233' },
+    // Mods específicos de osu!droid y estado Nomod
+    'PR': { bg: '#3b82f6', fg: '#ffffff' },
+    'RV6': { bg: '#8b5cf6', fg: '#ffffff' },
+    'RV': { bg: '#8b5cf6', fg: '#ffffff' },
+    'CS': { bg: '#ec4899', fg: '#ffffff' },
+    'SU': { bg: '#06b6d4', fg: '#ffffff' },
+    'NM': { bg: '#64748b', fg: '#ffffff' }
 };
+
+/**
+ * Obtiene el conteo de los mods más utilizados en las mejores jugadas (topScores).
+ * @param {Array} scores - Lista de jugadas del usuario
+ * @param {number} limit - Cantidad máxima de mods a devolver (por defecto 4)
+ * @returns {Array<{ mod: string, count: number }>}
+ */
+function getTopUsedMods(scores = [], limit = 4) {
+    if (!Array.isArray(scores) || scores.length === 0) return [];
+    const counts = {};
+
+    for (const s of scores) {
+        let modList = [];
+        if (Array.isArray(s.mods) && s.mods.length > 0) {
+            modList = s.mods.map(m => (typeof m === "string" ? m : m?.acronym)).filter(Boolean);
+        } else if (Array.isArray(s.droid_mods) && s.droid_mods.length > 0) {
+            modList = s.droid_mods.map(m => (typeof m === "string" ? m : m?.acronym)).filter(Boolean);
+        } else if (typeof s.mods === "string" && s.mods.length > 0) {
+            const matches = s.mods.match(/[A-Z]{2}[0-9]?/gi);
+            if (matches) modList = matches;
+        }
+
+        if (modList.length === 0) {
+            counts["NM"] = (counts["NM"] || 0) + 1;
+        } else {
+            const unique = new Set(modList.map(m => String(m).toUpperCase()));
+            for (const m of unique) {
+                counts[m] = (counts[m] || 0) + 1;
+            }
+        }
+    }
+
+    return Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, limit)
+        .map(([mod, count]) => ({ mod, count }));
+}
 
 // Caché en memoria para imágenes remotas (evita re-descargas repetidas en Render)
 const imageMemoryCache = new Map();
@@ -883,6 +927,21 @@ const LAYOUT_PRESETS = {
         },
         leftCol: { avatarH: 240, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
         statsBox: { pillarW: 26, pillarH: 90 }
+    },
+    droid: {
+        name: "osu!droid Oficial",
+        canvas: { width: 1300, height: 610 },
+        cards: {
+            header: { visible: true },
+            leftCol: { visible: true, format: "full", x: 77, y: 110, w: 270, h: 435, customBg: null, customRadius: 14 },
+            rankBox: { visible: true, x: 368, y: 110, w: 270, h: 270, customBg: null, customRadius: 14 },
+            playBox: { visible: true, x: 659, y: 110, w: 575, h: 270, customBg: null, customRadius: 14 },
+            statsBox: { visible: true, format: "full", x: 368, y: 395, w: 865, h: 150, customBg: null, customRadius: 14 },
+            sengoBox: { visible: false },
+            footer: { visible: true }
+        },
+        leftCol: { avatarH: 265, avatarAlignY: 0.2, avatarShadow: true, avatarFit: "cover" },
+        statsBox: { pillarW: 24, pillarH: 65 }
     }
 };
 
@@ -894,6 +953,7 @@ function applyLayoutPresetToConfig(config, presetKey) {
     if (key === "mini" || key === "mobile" || key === "movil" || key === "cuadrada") key = "mini_card";
     if (key === "compacto") key = "compact";
     if (key === "full" || key === "default" || key === "standar") key = "standard";
+    if (key === "droid" || key === "osudroid" || key === "osu_droid" || key === "droid_card") key = "droid";
     const preset = LAYOUT_PRESETS[key];
     if (!preset) return;
     config.canvas = { ...preset.canvas };
@@ -908,7 +968,8 @@ async function renderOsuCard(user, topScores = [], options = {}) {
     if (mode === "std") mode = "osu";
     if (mode === "catch" || mode === "ctb") mode = "fruits";
 
-    const presetKey = options?.preset || options?.templateConfig?.preset || "standard";
+    const defaultPreset = user?.server === "droid" ? "droid" : "standard";
+    const presetKey = options?.preset || options?.templateConfig?.preset || defaultPreset;
     const cacheKey = `user:${user.id}:${mode}:${locale}:${presetKey}`;
 
     if (!options?.forceRefresh) {
@@ -934,8 +995,10 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
     const isEs = locale === "es";
     const numLocale = isEs ? "de-DE" : "en-US";
     const config = options?.templateConfig || getDefaultTemplate();
-    if (options?.preset || config.preset) {
-        applyLayoutPresetToConfig(config, options?.preset || config.preset);
+    const defaultPreset = user?.server === "droid" ? "droid" : "standard";
+    const effectivePreset = options?.preset || config.preset || defaultPreset;
+    if (effectivePreset) {
+        applyLayoutPresetToConfig(config, effectivePreset);
     }
     const width = options?.canvasWidth || config.canvas?.width || 1300;
     const height = options?.canvasHeight || config.canvas?.height || 720;
@@ -1203,21 +1266,59 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             ctx.fillStyle = "#ffffff";
             roundRect(ctx, lvlBarX, lvlBarY, Math.max(8, (lvlBarW * lvlProg) / 100), 8, 4, true);
 
-            // Medallas / Servidor alternativo
-            const medalsTextY = lvlBarY + 58;
+            // Medallas / Servidor alternativo (Top 4 Mods para osu!droid)
             if (user.server === 'droid') {
-                drawCustomText(ctx, fonts.medalsText, `osu!droid • UID #${user.id}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
-                const medalBarY = medalsTextY + 12;
-                ctx.fillStyle = "#2e253c";
-                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+                const topMods = getTopUsedMods(topScores, 4);
+                const medalsTextY = lvlBarY + 34;
+                const headerTitle = isEs ? "Top 4 Mods" : "Top 4 Mods";
+                drawCustomText(ctx, { ...fonts.medalsText, size: 18 }, headerTitle, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
 
-                const droidGrad = ctx.createLinearGradient(lvlBarX, 0, lvlBarX + lvlBarW, 0);
-                droidGrad.addColorStop(0, "#22c55e");
-                droidGrad.addColorStop(0.5, "#06b6d4");
-                droidGrad.addColorStop(1, "#3b82f6");
-                ctx.fillStyle = droidGrad;
-                roundRect(ctx, lvlBarX, medalBarY, lvlBarW, 8, 4, true);
+                const tilesY = medalsTextY + 12;
+                const tileW = 54;
+                const tileH = 46;
+                const gap = 8;
+                const countPlays = topScores.length || 50;
+
+                const displayMods = topMods.length > 0 ? topMods : [{ mod: "NM", count: 0 }];
+                const totalTilesW = displayMods.length * tileW + (displayMods.length - 1) * gap;
+                const startX = lvlBarX + (lvlBarW - totalTilesW) / 2;
+
+                displayMods.forEach((item, idx) => {
+                    const tx = startX + idx * (tileW + gap);
+                    const modColor = MOD_COLORS[item.mod] || { bg: "#705988", fg: "#ffffff" };
+
+                    // 1. Fondo de la tarjeta del mod
+                    ctx.save();
+                    ctx.fillStyle = "#1e142b";
+                    roundRect(ctx, tx, tilesY, tileW, tileH, 6, true);
+                    ctx.strokeStyle = "rgba(255, 255, 255, 0.08)";
+                    ctx.lineWidth = 1;
+                    roundRect(ctx, tx, tilesY, tileW, tileH, 6, false, true);
+
+                    // 2. Badge del mod (pastilla)
+                    const badgeW = Math.min(tileW - 8, item.mod.length > 2 ? 46 : 38);
+                    const badgeH = 17;
+                    const badgeX = tx + (tileW - badgeW) / 2;
+                    const badgeY = tilesY + 5;
+                    ctx.fillStyle = modColor.bg;
+                    roundRect(ctx, badgeX, badgeY, badgeW, badgeH, 4, true);
+
+                    // Texto del mod
+                    const modFontSize = item.mod.length > 2 ? 10 : 11;
+                    drawCustomText(ctx, { size: modFontSize, weight: "bold", style: "normal", color: modColor.fg }, item.mod, tx + (tileW / 2), badgeY + 13, "center", fontFamily);
+
+                    // 3. Conteo numérico de jugadas
+                    drawCustomText(ctx, { size: 14, weight: "bold", style: "normal", color: "#ffffff" }, String(item.count), tx + (tileW / 2), tilesY + 36, "center", fontFamily);
+
+                    // 4. Mini barra de progreso proporcional
+                    const progW = Math.max(3, Math.min(tileW - 8, Math.round(((item.count / countPlays) * (tileW - 8)))));
+                    ctx.fillStyle = modColor.bg;
+                    roundRect(ctx, tx + 4, tilesY + tileH - 4, progW, 2, 1, true);
+
+                    ctx.restore();
+                });
             } else {
+                const medalsTextY = lvlBarY + 58;
                 const medalsLabel = isEs ? "Medallas" : "Medals";
                 drawCustomText(ctx, fonts.medalsText, `${medalsLabel} ${medalsPct}% ${medalsCount}/${totalMedals}`, lc.x + (lc.w / 2), medalsTextY, "center", fontFamily);
 
@@ -1420,7 +1521,9 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
         if (!isCompact) {
             const rankedScoreVal = Number(stats.ranked_score || stats.total_score || 0).toLocaleString(numLocale);
-            const rankedScoreLabel = isEs ? "Puntuación Ranked" : "Ranked Score";
+            const rankedScoreLabel = user.server === 'droid'
+                ? (isEs ? "Puntuación Total" : "Total Score")
+                : (isEs ? "Puntuación Ranked" : "Ranked Score");
             const accLabel = isEs ? "Precisión" : "Accuracy";
             const playcountLabel = isEs ? "Partidas" : "Playcount";
 
@@ -1521,7 +1624,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             fruits: "osu!catch",
             mania: "osu!mania"
         };
-        const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : (user.server === 'droid' ? "Sengo • osu!droid" : (user.server === 'gatari' ? "Sengo • Gatari" : "Sengo"));
+        const footerTitle = mode !== "osu" ? `Sengo • ${MODE_NAMES[mode] || mode}` : (user.server === 'droid' ? `Sengo • osu!droid • #${user.id}` : (user.server === 'gatari' ? "Sengo • Gatari" : "Sengo"));
         const footerY = height - 22;
         const footerCenterX = Math.round(width / 2);
         drawCustomText(ctx, fonts.footerBrand, footerTitle, footerCenterX - 35, footerY, "right", fontFamily);
