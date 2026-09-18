@@ -1,6 +1,27 @@
 const sengoNative = require('sengo-pp');
 console.log("[PP-ENGINE] Motor nativo 'sengo-pp' (Rust NAPI) cargado exitosamente.");
 
+// Wrapper de compatibilidad para BeatmapAttributesBuilder
+// Permite instanciarlo con `{ map, mods, ... }` (compatibilidad con sintaxis estilo rosu-pp-js),
+// con la instancia directa `(map)` o con estadísticas manuales `{ cs, ar, od, hp, mode, mods }`.
+const NativeBeatmapAttributesBuilder = sengoNative.BeatmapAttributesBuilder;
+
+class BeatmapAttributesBuilder {
+    constructor(arg) {
+        if (arg && arg.map) {
+            const instance = new NativeBeatmapAttributesBuilder(arg.map);
+            if (arg.mods !== undefined && arg.mods !== null) instance.mods = arg.mods;
+            if (arg.clockRate !== undefined && arg.clockRate !== null) instance.clockRate = arg.clockRate;
+            if (arg.mode !== undefined && arg.mode !== null) instance.mode = arg.mode;
+            if (arg.isConvert !== undefined && arg.isConvert !== null) instance.isConvert = arg.isConvert;
+            return instance;
+        }
+        return new NativeBeatmapAttributesBuilder(arg);
+    }
+}
+
+sengoNative.BeatmapAttributesBuilder = BeatmapAttributesBuilder;
+
 /**
  * Obtiene el motor de cálculo de PP (sengo-pp).
  * @returns {Object} El módulo del motor nativo sengo-pp.
