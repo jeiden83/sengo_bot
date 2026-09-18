@@ -69,6 +69,33 @@ async function run(messages, args) {
         }
     }
 
+    if (osu_userdata.parsed_args.promedio) {
+        if (logger) logger.process("Consultando las 100 mejores puntuaciones...");
+        const { getUserTopScores } = require("../../utils/osu.js");
+        const TopStatsModel = require("../../../models/TopStatsModel.js");
+        const { doOsuTopStatsEmbed } = require("../../../views/osuTopStatsView.js");
+
+        const targetMode = osu_userdata.parsed_args.gamemode || osu_userdata.fn_response.playmode || "osu";
+        const targetServer = osu_userdata.parsed_args.server || "bancho";
+
+        const topScores = await getUserTopScores({
+            username: [String(osu_userdata.fn_response.id)],
+            gamemode: targetMode,
+            server: targetServer
+        }).catch(() => []);
+
+        if (!topScores || topScores.length === 0) {
+            return t(locale, 'topstats.no_scores', { username: osu_userdata.fn_response.username }) || `**${osu_userdata.fn_response.username}** no tiene puntuaciones registradas en su top.`;
+        }
+
+        const stats = TopStatsModel.calculateTop100Statistics(topScores, targetMode);
+        if (!stats) {
+            return t(locale, 'topstats.no_scores', { username: osu_userdata.fn_response.username }) || `**${osu_userdata.fn_response.username}** no tiene puntuaciones registradas en su top.`;
+        }
+
+        return doOsuTopStatsEmbed(message, osu_userdata.fn_response, stats, targetMode, locale);
+    }
+
     const is_detailed = osu_userdata.parsed_args.detailed || false;
 
     let osuworld_data = null;
@@ -171,6 +198,15 @@ run.alias = {
     },
     "scores": {
         "args": "-d"
+    },
+    "promedio": {
+        "args": "-promedio"
+    },
+    "topstats": {
+        "args": "-promedio"
+    },
+    "t100": {
+        "args": "-promedio"
     },
 }
 

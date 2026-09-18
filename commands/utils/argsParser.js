@@ -450,6 +450,7 @@ function argsParserNoCommand(args, options = {}) {
     let totalScoreSort = false;
     let bestSort = false;
     let detailed = false;
+    let promedio = false;
     let filterPass = false;
     let targetGuildId = null;
     let country = null;
@@ -865,6 +866,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-d"
         if (arg === "-d") {
             detailed = true;
+            continue;
+        }
+
+        // Si es "-promedio", "--promedio", "-stats", "--stats", etc.
+        if (arg === "-promedio" || arg === "--promedio" || arg === "-stats" || arg === "--stats" || arg === "-average" || arg === "--average" || arg === "-t100") {
+            promedio = true;
             continue;
         }
 
@@ -1348,6 +1355,7 @@ function argsParserNoCommand(args, options = {}) {
         'totalScoreSort': totalScoreSort,
         'bestSort': bestSort,
         'detailed': detailed,
+        'promedio': promedio,
         'filterPass': filterPass,
         'targetGuildId': targetGuildId,
         'country': country,

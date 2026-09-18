@@ -330,7 +330,7 @@
     "osu": {
       "header": "Para obtener el perfil de osu!",
       "body": "Muestra el perfil de un usuario en osu! dado, sea el vinculado al bot o según el argumento, con su banner bien hermoso y opción de ver detalles adicionales.",
-      "usage": "s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.scores : Muestra tus estadísticas y grados detallados directos."
+      "usage": "s.osu : Muestra el perfil vinculado al bot.\ns.osu 'usuario_osu' : Muestra el perfil de std del usuario en el argumento.\ns.osu 'usuario_osu' -d : Muestra el perfil completo junto a las estadísticas y grados detallados.\ns.osu -promedio : Muestra la tabla de estadísticas y promedios de tus 100 mejores jugadas (Top 100).\ns.scores : Muestra tus estadísticas y grados detallados directos."
     },
     "map": {
       "header": "Muestra detalles completos de un beatmap",
@@ -2056,6 +2056,24 @@
     "btn_prev_twin": "Gemelo Anterior",
     "btn_next_twin": "Gemelo Siguiente",
     "skills_breakdown": "Comparativa de Habilidades (Skills)"
+  },
+  "topstats": {
+    "no_scores": "❌ **{username}** no tiene puntuaciones registradas en su top.",
+    "stats_for": "🔘 **Top{count} statistics for [@{username}]({url}):**",
+    "col_min": "Minimum",
+    "col_avg": "Average",
+    "col_max": "Maximum",
+    "row_accuracy": "Accuracy",
+    "row_combo": "Combo",
+    "row_misses": "Misses",
+    "row_pp": "PP",
+    "row_stars": "Stars",
+    "row_bpm": "BPM",
+    "row_hp": "HP",
+    "row_ar": "AR",
+    "row_cs": "CS",
+    "row_od": "OD",
+    "row_length": "Length"
   }
 }
 

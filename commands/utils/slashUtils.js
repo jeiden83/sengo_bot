@@ -231,6 +231,9 @@ function parseOsuSlashArgs(interaction, res) {
     if (modo) args.push(`-${modo}`);
     if (servidor) args.push(`-${servidor}`);
 
+    const promedio = typeof interaction.options?.getBoolean === "function" ? interaction.options.getBoolean("promedio") : false;
+    if (promedio) args.push("-promedio");
+
     const messages = createSlashMessagesContext(interaction, res);
 
     return { args, messages };
