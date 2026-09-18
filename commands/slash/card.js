@@ -1,6 +1,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const cardChatCommand = require("../chat/osu/card.js");
-const { createSlashMessagesContext, addUsuarioOption } = require("../utils/slashUtils.js");
+const { createSlashMessagesContext, addUsuarioOption, addServidorOption } = require("../utils/slashUtils.js");
 
 const data = new SlashCommandBuilder()
     .setName("card")
@@ -17,6 +17,7 @@ const data = new SlashCommandBuilder()
                 { name: "osu!mania", value: "mania" }
             )
     )
+    .addStringOption(addServidorOption)
     .addBooleanOption(option =>
         option
             .setName("embed")
@@ -80,10 +81,12 @@ async function run(interaction, res, chat_commands) {
     const isForce = interaction.options.getBoolean("recargar");
     const targetUser = interaction.options.getString("usuario");
     const modo = interaction.options.getString("modo");
+    const servidor = interaction.options.getString("servidor");
 
     const args = [];
     if (targetUser) args.push(targetUser);
     if (modo) args.push(`-${modo}`);
+    if (servidor) args.push(`-${servidor}`);
     if (preset) args.push(`-${preset}`);
     if (isMapper) args.push("-mapper");
     if (isPlayer) args.push("-jugador");

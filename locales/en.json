@@ -399,8 +399,8 @@
     },
     "card": {
       "header": "Generates a dynamic osu! profile card with Canvas.",
-      "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Supports aesthetic mapper card (-mapper), design presets (-compact, -single, -allline, etc.) and -userpage to receive the BBCode via DM.",
-      "usage": "s.card [user] [-mapper] [-embed] [-userpage] [-compact|-single|-allline|-ultra|-mini] [-taiko|-catch|-mania]"
+      "body": "Generates a visual profile card with osu! and Sengo ecosystem stats. Supports aesthetic mapper card (-mapper), alternative servers (-droid, -gatari, etc.), design presets (-compact, -single, -allline, etc.) and -userpage to receive the BBCode via DM.",
+      "usage": "s.card [user] [-droid|-bancho|-gatari|-mameosu] [-mapper] [-embed] [-userpage] [-compact|-single|-allline|-ultra|-mini] [-taiko|-catch|-mania]"
     },
     "skills": {
       "header": "Breaks down osu! profile card skills (.card) with top plays.",
