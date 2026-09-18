@@ -125,7 +125,7 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 * **`s.osu` o `s.o [usuario]`**
   Muestra el perfil general de un jugador en osu!, con estadísticas de Ranked Play, PP, precisión, medallas, nivel y tiempo de juego.
   * *Flags:*
-    * `-promedio` (o `-stats`, `-t100`, `-average`): Muestra la tabla de estadísticas mínimas, promedio y máximas calculadas sobre las 100 mejores jugadas (Top 100) del usuario (Accuracy, Combo, Misses, PP, Stars con mods, BPM, HP, AR, CS, OD y Length).
+    * `-promedio` (o `-stats`, `-t100`, `-t200`, `-average`): Muestra la tabla compacta de estadísticas mínimas, promedio y máximas calculadas sobre las 200 mejores jugadas (Top 200) del usuario (Accuracy, Combo, Misses, PP, Stars con mods, BPM, HP, AR, CS, OD y Length).
     * `-d` o `-detail`: Muestra el perfil completo con grados y estadísticas avanzadas.
     * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
     * `-bancho` / `-gatari`: Cambia el servidor consultado.

@@ -35,12 +35,12 @@ function summarize(arr) {
  * @param {string} mode Modo de juego ('osu', 'taiko', 'fruits', 'mania')
  * @returns {Object} Resumen con min, avg, max formateados y valores numéricos
  */
-function calculateTop100Statistics(scores, mode = 'osu') {
+function calculateTop100Statistics(scores, mode = 'osu', limit = 200) {
     if (!scores || !Array.isArray(scores) || scores.length === 0) {
         return null;
     }
 
-    const topList = scores.slice(0, 100);
+    const topList = scores.slice(0, limit);
     const engine = ppEngine.getEngine();
     const MODE_INT = { osu: 0, taiko: 1, fruits: 2, catch: 2, ctb: 2, mania: 3 };
     const targetModeInt = MODE_INT[mode] ?? 0;
@@ -254,6 +254,7 @@ function calculateTop100Statistics(scores, mode = 'osu') {
 }
 
 module.exports = {
+    calculateTopStats: calculateTop100Statistics,
     calculateTop100Statistics,
     formatTime,
     summarize

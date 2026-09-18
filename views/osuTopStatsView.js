@@ -19,35 +19,32 @@ function getCountryFlag(countryCode) {
 }
 
 /**
- * Construye la tabla ASCII alineada para las estadísticas
+ * Construye la tabla ASCII compacta y alineada para las estadísticas.
+ * Ancho total exacto: 35 caracteres (anti-wrap en Discord con miniatura lateral).
  * @param {Array<[string, string, string, string]>} rows Filas con [Label, Min, Avg, Max]
  * @param {[string, string, string, string]} headers Encabezados [LabelHeader, MinHeader, AvgHeader, MaxHeader]
  * @returns {string}
  */
-function renderAsciiTable(rows, headers = ["", "Minimum", "Average", "Maximum"]) {
-    let w0 = headers[0].length;
-    let w1 = headers[1].length;
-    let w2 = headers[2].length;
-    let w3 = headers[3].length;
+function renderAsciiTable(rows, headers = ["", "Min", "Avg", "Max"]) {
+    const w0 = 8;
+    const w1 = 6;
+    const w2 = 6;
+    const w3 = 6;
 
-    for (const r of rows) {
-        if (r[0].length > w0) w0 = r[0].length;
-        if (r[1].length > w1) w1 = r[1].length;
-        if (r[2].length > w2) w2 = r[2].length;
-        if (r[3].length > w3) w3 = r[3].length;
-    }
+    const padCenter = (str, len) => {
+        const s = String(str);
+        if (s.length >= len) return s;
+        const totalPad = len - s.length;
+        const left = Math.floor(totalPad / 2);
+        const right = totalPad - left;
+        return ' '.repeat(left) + s + ' '.repeat(right);
+    };
 
-    // Asegurar anchos estándar mínimos para paridad estética con Bathbot
-    w0 = Math.max(w0, 10);
-    w1 = Math.max(w1, 7);
-    w2 = Math.max(w2, 7);
-    w3 = Math.max(w3, 7);
-
-    const headerLine = `${headers[0].padEnd(w0)} | ${headers[1].padStart(w1)} | ${headers[2].padStart(w2)} | ${headers[3].padStart(w3)}`;
+    const headerLine = `${''.padEnd(w0)} | ${padCenter(headers[1], w1)} | ${padCenter(headers[2], w2)} | ${padCenter(headers[3], w3)}`;
     const dividerLine = `${'-'.repeat(w0 + 1)}+${'-'.repeat(w1 + 2)}+${'-'.repeat(w2 + 2)}+${'-'.repeat(w3 + 1)}`;
 
     const dataLines = rows.map(r => {
-        return `${r[0].padEnd(w0)} | ${r[1].padStart(w1)} | ${r[2].padStart(w2)} | ${r[3].padStart(w3)}`;
+        return `${r[0].padEnd(w0)} | ${String(r[1]).padStart(w1)} | ${String(r[2]).padStart(w2)} | ${String(r[3]).padStart(w3)}`;
     });
 
     return [headerLine, dividerLine, ...dataLines].join('\n');
@@ -94,9 +91,9 @@ function doOsuTopStatsEmbed(message, osuUser, stats, mode = 'osu', locale = 'es'
 
     const headers = [
         "",
-        t(locale, 'topstats.col_min') || "Minimum",
-        t(locale, 'topstats.col_avg') || "Average",
-        t(locale, 'topstats.col_max') || "Maximum"
+        t(locale, 'topstats.col_min') || "Min",
+        t(locale, 'topstats.col_avg') || "Avg",
+        t(locale, 'topstats.col_max') || "Max"
     ];
 
     const f = stats.formatted;

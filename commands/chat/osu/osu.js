@@ -208,6 +208,9 @@ run.alias = {
     "t100": {
         "args": "-promedio"
     },
+    "t200": {
+        "args": "-promedio"
+    },
 }
 
 run.description = {

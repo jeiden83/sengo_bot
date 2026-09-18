@@ -10,7 +10,7 @@ const data = new SlashCommandBuilder()
     .addStringOption(addServidorOption)
     .addBooleanOption(option =>
         option.setName("promedio")
-            .setDescription("Muestra las estadísticas y promedios de las 100 mejores jugadas")
+            .setDescription("Muestra las estadísticas y promedios de las 200 mejores jugadas")
     );
 
 if (typeof data.setIntegrationTypes === "function") {

@@ -330,7 +330,7 @@
     "osu": {
       "header": "Get your osu! profile",
       "body": "Shows the profile of a given osu! user, whether linked to the bot or specified in the argument, with a beautiful banner and option to view additional details.",
-      "usage": "s.osu : Shows the profile linked to the bot.\ns.osu 'osu_username' : Shows the std profile of the user in the argument.\ns.osu 'osu_username' -d : Shows the complete profile with detailed stats and grades.\ns.osu -promedio : Shows statistics and averages table for your top 100 plays (Top 100).\ns.scores : Shows your detailed stats and grades directly."
+      "usage": "s.osu : Shows the profile linked to the bot.\ns.osu 'osu_username' : Shows the std profile of the user in the argument.\ns.osu 'osu_username' -d : Shows the complete profile with detailed stats and grades.\ns.osu -promedio : Shows statistics and averages table for your best plays (Top 200).\ns.scores : Shows your detailed stats and grades directly."
     },
     "map": {
       "header": "Shows complete details of a beatmap",
@@ -2056,9 +2056,9 @@
   "topstats": {
     "no_scores": "❌ **{username}** doesn't have any scores recorded in their top plays.",
     "stats_for": "🔘 **Top{count} statistics for [@{username}]({url}):**",
-    "col_min": "Minimum",
-    "col_avg": "Average",
-    "col_max": "Maximum",
+    "col_min": "Min",
+    "col_avg": "Avg",
+    "col_max": "Max",
     "row_accuracy": "Accuracy",
     "row_combo": "Combo",
     "row_misses": "Misses",

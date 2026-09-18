@@ -870,7 +870,7 @@ function argsParserNoCommand(args, options = {}) {
         }
 
         // Si es "-promedio", "--promedio", "-stats", "--stats", etc.
-        if (arg === "-promedio" || arg === "--promedio" || arg === "-stats" || arg === "--stats" || arg === "-average" || arg === "--average" || arg === "-t100") {
+        if (arg === "-promedio" || arg === "--promedio" || arg === "-stats" || arg === "--stats" || arg === "-average" || arg === "--average" || arg === "-t100" || arg === "-t200") {
             promedio = true;
             continue;
         }
