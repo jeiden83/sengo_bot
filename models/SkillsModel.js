@@ -635,11 +635,17 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
         const BeatmapModel = require('../models/BeatmapModel.js');
         const fs = require('fs');
 
+        const md5List = Array.from(candidateScoreMap.values())
+            .map(s => s.beatmap?.checksum)
+            .filter(Boolean);
+        const beatmapMap = await BeatmapModel.lookupBeatmapsByMD5Batch(md5List);
+
         await Promise.all(Array.from(candidateScoreMap.entries()).map(async ([key, score]) => {
             try {
                 let bInfo = score.beatmap?.id ? score.beatmap : null;
                 if (!bInfo?.id && score.beatmap?.checksum) {
-                    bInfo = await BeatmapModel.lookupBeatmapByMD5(score.beatmap.checksum);
+                    const cleanMd5 = String(score.beatmap.checksum).trim().toLowerCase();
+                    bInfo = beatmapMap.get(cleanMd5) || await BeatmapModel.lookupBeatmapByMD5(cleanMd5);
                     if (bInfo) {
                         score.beatmap.id = bInfo.id;
                         score.beatmap.beatmapset_id = bInfo.beatmapset_id;
@@ -785,6 +791,26 @@ async function analyzeSkillsBreakdown(scores, mode = "osu") {
         finalResult[`top${capKey}`] = sorted;
         finalResult.averageStars[k] = avgStars(sorted);
     });
+
+    // ponytail: Recalcular promedios ponderados basados en las 50 jugadas evaluadas con el motor nativo de osu!droid
+    if (isDroid) {
+        const realSums = {};
+        skillKeys.forEach(k => { realSums[k] = 0; });
+        let realTotalWeight = 0;
+        scores.forEach((s, idx) => {
+            const weight = Math.pow(0.95, idx);
+            realTotalWeight += weight;
+            skillKeys.forEach(k => {
+                realSums[k] += (s.skills?.[k] || 0) * weight;
+            });
+        });
+
+        if (realTotalWeight > 0) {
+            skillKeys.forEach(k => {
+                finalResult[k] = Number((realSums[k] / realTotalWeight).toFixed(2));
+            });
+        }
+    }
 
     return finalResult;
 }

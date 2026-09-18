@@ -27,6 +27,7 @@ module.exports = {
     getBeatmapset: BeatmapModel.getBeatmapset,
     getOsuPpsData: BeatmapModel.getOsuPpsData,
     lookupBeatmapByMD5: BeatmapModel.lookupBeatmapByMD5,
+    lookupBeatmapsByMD5Batch: BeatmapModel.lookupBeatmapsByMD5Batch,
     getScoreDetails: OsuScoreModel.getScoreDetails,
     findBeatmapInChannel,
     parsingCommandFunction,

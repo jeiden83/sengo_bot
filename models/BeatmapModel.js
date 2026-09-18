@@ -522,7 +522,7 @@ const md5LookupCache = new Map();
 const MAX_MD5_CACHE = 1000;
 
 /**
- * Busca los detalles de dificultad de un beatmap dado su hash MD5 con caché en memoria.
+ * Busca los detalles de dificultad de un beatmap dado su hash MD5 con caché en memoria y Supabase.
  */
 async function lookupBeatmapByMD5(md5) {
     if (!md5) return null;
@@ -530,6 +530,32 @@ async function lookupBeatmapByMD5(md5) {
     if (md5LookupCache.has(cleanMd5)) {
         return md5LookupCache.get(cleanMd5);
     }
+
+    // 1. Consultar base de datos local / Supabase (evita saturar el rate limit de osu! v2 API)
+    try {
+        const { getSupabaseClient } = require('../db/database.js');
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            const { data: rows } = await supabase
+                .from('local_beatmaps')
+                .select('*')
+                .eq('checksum', cleanMd5)
+                .limit(1);
+            if (rows && rows[0]?.beatmap_id) {
+                const bm = await getBeatmap(rows[0].beatmap_id).catch(() => null);
+                if (bm && bm.id) {
+                    if (md5LookupCache.size >= MAX_MD5_CACHE) {
+                        const firstKey = md5LookupCache.keys().next().value;
+                        md5LookupCache.delete(firstKey);
+                    }
+                    md5LookupCache.set(cleanMd5, bm);
+                    return bm;
+                }
+            }
+        }
+    } catch {}
+
+    // 2. Fallback a la API de osu! v2 si no está en la base de datos local
     await OsuUserModel.NewloadToken();
     try {
         const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: cleanMd5 });
@@ -539,11 +565,78 @@ async function lookupBeatmapByMD5(md5) {
                 md5LookupCache.delete(firstKey);
             }
             md5LookupCache.set(cleanMd5, result);
+
+            // Guardar pasivamente en local_beatmaps para no volver a consultar la API
+            try {
+                const { getSupabaseClient } = require('../db/database.js');
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    supabase.from('local_beatmaps').upsert({
+                        beatmap_id: String(result.id),
+                        checksum: cleanMd5,
+                        status: result.status,
+                        name: `[${result.version}]`
+                    }, { onConflict: 'beatmap_id' }).catch(() => {});
+                }
+            } catch {}
         }
         return result;
     } catch (e) {
         return null;
     }
+}
+
+/**
+ * Busca detalles de beatmaps en lote por sus hashes MD5 optimizado en una sola consulta a Supabase.
+ */
+async function lookupBeatmapsByMD5Batch(md5List) {
+    if (!Array.isArray(md5List) || md5List.length === 0) return new Map();
+    const result = new Map();
+    const missing = [];
+
+    for (const md5 of md5List) {
+        if (!md5) continue;
+        const clean = String(md5).trim().toLowerCase();
+        if (md5LookupCache.has(clean)) {
+            result.set(clean, md5LookupCache.get(clean));
+        } else {
+            missing.push(clean);
+        }
+    }
+
+    if (missing.length === 0) return result;
+
+    try {
+        const { getSupabaseClient } = require('../db/database.js');
+        const supabase = getSupabaseClient();
+        if (supabase) {
+            const { data: rows } = await supabase
+                .from('local_beatmaps')
+                .select('*')
+                .in('checksum', missing);
+            if (rows) {
+                for (const row of rows) {
+                    if (row.checksum && row.beatmap_id) {
+                        const bm = await getBeatmap(row.beatmap_id).catch(() => null);
+                        if (bm && bm.id) {
+                            md5LookupCache.set(row.checksum.toLowerCase(), bm);
+                            result.set(row.checksum.toLowerCase(), bm);
+                        }
+                    }
+                }
+            }
+        }
+    } catch {}
+
+    const stillMissing = missing.filter(m => !result.has(m));
+    if (stillMissing.length > 0) {
+        for (const md5 of stillMissing) {
+            const bm = await lookupBeatmapByMD5(md5);
+            if (bm) result.set(md5, bm);
+        }
+    }
+
+    return result;
 }
 
 const ppsCaches = {};
@@ -952,6 +1045,7 @@ const BeatmapModel = {
     getBeatmapset,
     batchGetBeatmaps,
     lookupBeatmapByMD5,
+    lookupBeatmapsByMD5Batch,
     getOsuPpsData,
     getBeatmapsetTags,
     getBeatmapsetTagsDetail,
