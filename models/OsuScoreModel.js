@@ -2897,6 +2897,10 @@ function sortScores(scores, parsed_args = {}, mode = 'osu') {
         scores.sort((a, b) => getHp(b) - getHp(a) || (b.pp || 0) - (a.pp || 0));
     }
 
+    if (parsed_args.reverseSort) {
+        scores.reverse();
+    }
+
     return scores;
 }
 

@@ -61,6 +61,11 @@ const data = new SlashCommandBuilder()
             .setDescription("¿Mostrar el top de PP recalculado como si todas las jugadas fueran Full Combo?")
             .setRequired(false)
     )
+    .addBooleanOption(option =>
+        option.setName("revertir")
+            .setDescription("¿Invertir el orden de la lista? (ej: menor a mayor)")
+            .setRequired(false)
+    )
     .addStringOption(option =>
         option.setName("dificultad")
             .setDescription("Filtra por Star Rating (ej: >5, >=5.5, <7, =5)")
@@ -78,6 +83,7 @@ async function run(interaction, res) {
     const ordenarReciente = interaction.options.getBoolean("ordenar_reciente");
     const ordenar = interaction.options.getString("ordenar");
     const nochoke = interaction.options.getBoolean("nochoke");
+    const revertir = interaction.options.getBoolean("revertir");
     const dificultad = interaction.options.getString("dificultad");
 
     if (index) {
@@ -114,6 +120,9 @@ async function run(interaction, res) {
     }
     if (nochoke) {
         args.push("-nc");
+    }
+    if (revertir) {
+        args.push("-rev");
     }
     if (dificultad) {
         args.push("-sr", dificultad);

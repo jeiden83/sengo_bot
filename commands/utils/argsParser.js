@@ -477,6 +477,7 @@ function argsParserNoCommand(args, options = {}) {
     let arSort = false;
     let odSort = false;
     let hpSort = false;
+    let reverseSort = false;
     let scoreSort = false;
     let totalScoreSort = false;
     let bestSort = false;
@@ -898,6 +899,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-hp" o "--hp"
         if (arg === "-hp" || arg === "--hp") {
             hpSort = true;
+            continue;
+        }
+
+        // Si es "-rev", "--rev", "-reverse", "--reverse", "-inv" o "--inv"
+        if (arg === "-rev" || arg === "--rev" || arg === "-reverse" || arg === "--reverse" || arg === "-inv" || arg === "--inv") {
+            reverseSort = true;
             continue;
         }
 
@@ -1447,6 +1454,7 @@ function argsParserNoCommand(args, options = {}) {
         'arSort': arSort,
         'odSort': odSort,
         'hpSort': hpSort,
+        'reverseSort': reverseSort,
         'scoreSort': scoreSort,
         'totalScoreSort': totalScoreSort,
         'bestSort': bestSort,

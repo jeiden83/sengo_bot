@@ -466,14 +466,18 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu', locale = 'es
  */
 function getActiveSortFilter(parsed_args = {}, locale = 'es') {
     const { t } = require('../utils/i18n.js');
-    if (parsed_args.recentSort) return t(locale, 'top.filter_recent_sort_short');
-    if (parsed_args.comboSort) return t(locale, 'top.filter_combo_sort_short');
-    if (parsed_args.accSort) return t(locale, 'top.filter_acc_sort_short');
-    if (parsed_args.bpmSort) return t(locale, 'top.filter_bpm_sort_short');
-    if (parsed_args.csSort) return t(locale, 'top.filter_cs_sort_short');
-    if (parsed_args.arSort) return t(locale, 'top.filter_ar_sort_short');
-    if (parsed_args.odSort) return t(locale, 'top.filter_od_sort_short');
-    if (parsed_args.hpSort) return t(locale, 'top.filter_hp_sort_short');
+    const isRev = Boolean(parsed_args.reverseSort);
+    const revSuffix = isRev ? ` (${t(locale, 'top.filter_reverse_suffix')})` : '';
+
+    if (parsed_args.recentSort) return `${t(locale, 'top.filter_recent_sort_short')}${revSuffix}`;
+    if (parsed_args.comboSort) return `${t(locale, 'top.filter_combo_sort_short')}${revSuffix}`;
+    if (parsed_args.accSort) return `${t(locale, 'top.filter_acc_sort_short')}${revSuffix}`;
+    if (parsed_args.bpmSort) return `${t(locale, 'top.filter_bpm_sort_short')}${revSuffix}`;
+    if (parsed_args.csSort) return `${t(locale, 'top.filter_cs_sort_short')}${revSuffix}`;
+    if (parsed_args.arSort) return `${t(locale, 'top.filter_ar_sort_short')}${revSuffix}`;
+    if (parsed_args.odSort) return `${t(locale, 'top.filter_od_sort_short')}${revSuffix}`;
+    if (parsed_args.hpSort) return `${t(locale, 'top.filter_hp_sort_short')}${revSuffix}`;
+    if (isRev) return t(locale, 'top.filter_reverse_sort_short');
     return null;
 }
 

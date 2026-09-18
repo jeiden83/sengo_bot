@@ -1121,6 +1121,8 @@
     "filter_ar_sort_short": "order: AR 👁️",
     "filter_od_sort_short": "order: OD ⚖️",
     "filter_hp_sort_short": "order: HP 🩸",
+    "filter_reverse_sort_short": "order: lowest PP 🔄",
+    "filter_reverse_suffix": "reversed 🔄",
     "filter_nochoke_short": "no-choke: active 🛡️",
     "single_embed_author_nc": "Score #{index} [{originalRank}] in the PP Top (No Choke) of {username}",
     "single_embed_author": "Score #{rank} in the PP Top of {username}",
