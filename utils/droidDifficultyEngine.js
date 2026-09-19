@@ -226,6 +226,9 @@ function calculateDroidPlayAttributes(osuContent, score, cacheKey = null) {
     const user_pp = Number(currentPerf.total.toFixed(2));
     const max_pp = Number(ssPerf.total.toFixed(2));
 
+    const firstTiming = beatmap.controlPoints?.timing?.points?.[0];
+    const bpm = firstTiming && firstTiming.msPerBeat > 0 ? Math.round(60000 / firstTiming.msPerBeat) : 0;
+
     return {
         stars,
         beatmap_max_combo: maxCombo,
@@ -239,7 +242,14 @@ function calculateDroidPlayAttributes(osuContent, score, cacheKey = null) {
         },
         user_pp,
         pp_fc,
-        isFC
+        isFC,
+        baseStats: {
+            cs: beatmap.difficulty?.cs != null ? Number(beatmap.difficulty.cs) : undefined,
+            ar: beatmap.difficulty?.ar != null ? Number(beatmap.difficulty.ar) : undefined,
+            od: beatmap.difficulty?.od != null ? Number(beatmap.difficulty.od) : undefined,
+            hp: beatmap.difficulty?.hp != null ? Number(beatmap.difficulty.hp) : undefined,
+            bpm
+        }
     };
 }
 

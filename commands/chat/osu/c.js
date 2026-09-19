@@ -241,6 +241,13 @@ async function run(messages, args) {
                     let bInfo = score.beatmap || beatmap_metadata;
                     if (!bInfo?.id && bInfo?.checksum) {
                         bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                        if (bInfo && score.beatmap) {
+                            BeatmapModel.enrichBeatmapMetadata(score.beatmap, bInfo);
+                            if (bInfo.beatmapset) {
+                                if (!score.beatmapset) score.beatmapset = {};
+                                BeatmapModel.enrichBeatmapsetMetadata(score.beatmapset, bInfo.beatmapset);
+                            }
+                        }
                     }
                     if (bInfo?.beatmapset_id && bInfo?.id) {
                         const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
@@ -254,6 +261,14 @@ async function run(messages, args) {
                                 beatmap_max_combo = droidAttrs.beatmap_max_combo;
                                 if (score.beatmap) {
                                     score.beatmap.difficulty_rating = droidAttrs.stars;
+                                    if (droidAttrs.baseStats) {
+                                        if (score.beatmap.cs == null) score.beatmap.cs = droidAttrs.baseStats.cs;
+                                        if (score.beatmap.ar == null) score.beatmap.ar = droidAttrs.baseStats.ar;
+                                        if (score.beatmap.accuracy == null) score.beatmap.accuracy = droidAttrs.baseStats.od;
+                                        if (score.beatmap.hp == null) score.beatmap.hp = droidAttrs.baseStats.hp;
+                                        if (score.beatmap.drain == null) score.beatmap.drain = droidAttrs.baseStats.hp;
+                                        if (score.beatmap.bpm == null) score.beatmap.bpm = droidAttrs.baseStats.bpm;
+                                    }
                                 }
                             }
                         }

@@ -163,6 +163,13 @@ async function run(messages, args) {
                         if (!bInfo?.id && bInfo?.checksum) {
                             bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
                         }
+                        if (bInfo) {
+                            BeatmapModel.enrichBeatmapMetadata(score.beatmap, bInfo);
+                            if (bInfo.beatmapset) {
+                                if (!score.beatmapset) score.beatmapset = {};
+                                BeatmapModel.enrichBeatmapsetMetadata(score.beatmapset, bInfo.beatmapset);
+                            }
+                        }
                         if (bInfo?.beatmapset_id && bInfo?.id) {
                             const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
                             if (filePath && fs.existsSync(filePath)) {
@@ -173,6 +180,13 @@ async function run(messages, args) {
                                     starsVal = droidAttrs.stars;
                                     if (score.beatmap) {
                                         score.beatmap.difficulty_rating = droidAttrs.stars;
+                                        if (droidAttrs.baseStats) {
+                                            if (score.beatmap.cs == null) score.beatmap.cs = droidAttrs.baseStats.cs;
+                                            if (score.beatmap.ar == null) score.beatmap.ar = droidAttrs.baseStats.ar;
+                                            if (score.beatmap.accuracy == null) score.beatmap.accuracy = droidAttrs.baseStats.od;
+                                            if (score.beatmap.hp == null) score.beatmap.hp = droidAttrs.baseStats.hp;
+                                            if (score.beatmap.bpm == null) score.beatmap.bpm = droidAttrs.baseStats.bpm;
+                                        }
                                     }
                                 }
                             }
@@ -326,13 +340,11 @@ async function run(messages, args) {
                 const BeatmapModel = require("../../../models/BeatmapModel.js");
                 const bInfo = await BeatmapModel.lookupBeatmapByMD5(recent_scores.beatmap.checksum);
                 if (bInfo) {
-                    recent_scores.beatmap.id = bInfo.id;
-                    recent_scores.beatmap.beatmapset_id = bInfo.beatmapset_id;
-                    if (bInfo.beatmapset?.title) recent_scores.beatmapset.title = bInfo.beatmapset.title;
-                    if (bInfo.beatmapset?.artist) recent_scores.beatmapset.artist = bInfo.beatmapset.artist;
-                    if (bInfo.version) recent_scores.beatmap.version = bInfo.version;
-                    if (bInfo.difficulty_rating) recent_scores.beatmap.difficulty_rating = Number(bInfo.difficulty_rating);
-                    if (bInfo.beatmapset?.covers) recent_scores.beatmapset.covers = bInfo.beatmapset.covers;
+                    BeatmapModel.enrichBeatmapMetadata(recent_scores.beatmap, bInfo);
+                    if (bInfo.beatmapset) {
+                        if (!recent_scores.beatmapset) recent_scores.beatmapset = {};
+                        BeatmapModel.enrichBeatmapsetMetadata(recent_scores.beatmapset, bInfo.beatmapset);
+                    }
                     setChannelRecentPlayType(message.channel.id, recent_scores.beatmap.id, isLazer);
                 }
             } catch (_) {}
@@ -351,6 +363,14 @@ async function run(messages, args) {
         if (recent_scores.beatmap?.id) {
             try {
                 beatmap = await getBeatmap(recent_scores.beatmap.id);
+                if (beatmap) {
+                    const BeatmapModel = require("../../../models/BeatmapModel.js");
+                    BeatmapModel.enrichBeatmapMetadata(recent_scores.beatmap, beatmap);
+                    if (beatmap.beatmapset) {
+                        if (!recent_scores.beatmapset) recent_scores.beatmapset = {};
+                        BeatmapModel.enrichBeatmapsetMetadata(recent_scores.beatmapset, beatmap.beatmapset);
+                    }
+                }
                 map = await getBeatmap_osu(recent_scores.beatmap.beatmapset_id, recent_scores.beatmap.id, beatmap);
                 maxAttrs = calculatePP(recent_scores, map, "maximo_pp");
             } catch (err) {
@@ -391,6 +411,13 @@ async function run(messages, args) {
                 let bInfo = recent_scores.beatmap;
                 if (!bInfo?.id && bInfo?.checksum) {
                     bInfo = await BeatmapModel.lookupBeatmapByMD5(bInfo.checksum);
+                    if (bInfo) {
+                        BeatmapModel.enrichBeatmapMetadata(recent_scores.beatmap, bInfo);
+                        if (bInfo.beatmapset) {
+                            if (!recent_scores.beatmapset) recent_scores.beatmapset = {};
+                            BeatmapModel.enrichBeatmapsetMetadata(recent_scores.beatmapset, bInfo.beatmapset);
+                        }
+                    }
                 }
                 if (bInfo?.beatmapset_id && bInfo?.id) {
                     const filePath = await BeatmapModel.downloadBeatmapOsuFile(bInfo.beatmapset_id, bInfo.id, bInfo);
@@ -404,6 +431,14 @@ async function run(messages, args) {
                             beatmap_max_combo = droidAttrs.beatmap_max_combo;
                             if (recent_scores.beatmap) {
                                 recent_scores.beatmap.difficulty_rating = droidAttrs.stars;
+                                if (droidAttrs.baseStats) {
+                                    if (recent_scores.beatmap.cs == null) recent_scores.beatmap.cs = droidAttrs.baseStats.cs;
+                                    if (recent_scores.beatmap.ar == null) recent_scores.beatmap.ar = droidAttrs.baseStats.ar;
+                                    if (recent_scores.beatmap.accuracy == null) recent_scores.beatmap.accuracy = droidAttrs.baseStats.od;
+                                    if (recent_scores.beatmap.hp == null) recent_scores.beatmap.hp = droidAttrs.baseStats.hp;
+                                    if (recent_scores.beatmap.drain == null) recent_scores.beatmap.drain = droidAttrs.baseStats.hp;
+                                    if (recent_scores.beatmap.bpm == null) recent_scores.beatmap.bpm = droidAttrs.baseStats.bpm;
+                                }
                             }
                         }
                     }
