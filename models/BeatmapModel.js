@@ -1138,43 +1138,45 @@ function getBeatmapAdjustedStats(beatmap = {}, mods = [], mode = 'osu') {
 
 /**
  * Enriquece los metadatos de un objeto beatmap destino con los atributos de un beatmap origen.
- * Asegura que campos clave como cs, ar, accuracy/od, hp/drain, bpm, total_length, etc., queden poblados.
+ * Asegura que campos clave como cs, ar, accuracy/od, hp/drain, bpm, total_length, etc., queden poblados
+ * con prioridad en los datos del mapa oficial.
  */
 function enrichBeatmapMetadata(target = {}, source = {}) {
     if (!source || typeof source !== 'object') return target;
-    if (source.id != null && !target.id) target.id = source.id;
-    if (source.beatmapset_id != null && !target.beatmapset_id) target.beatmapset_id = source.beatmapset_id;
-    if (source.version != null && (!target.version || target.version === 'Normal')) target.version = source.version;
-    if (source.difficulty_rating != null && target.difficulty_rating == null) target.difficulty_rating = Number(source.difficulty_rating);
-    if (source.cs != null && target.cs == null) target.cs = Number(source.cs);
-    if (source.ar != null && target.ar == null) target.ar = Number(source.ar);
+    if (source.id != null) target.id = source.id;
+    if (source.beatmapset_id != null) target.beatmapset_id = source.beatmapset_id;
+    if (source.version != null) target.version = source.version;
+    if (source.difficulty_rating != null) target.difficulty_rating = Number(source.difficulty_rating);
+    if (source.cs != null) target.cs = Number(source.cs);
+    if (source.ar != null) target.ar = Number(source.ar);
     const acc = source.accuracy ?? source.od;
-    if (acc != null && target.accuracy == null) target.accuracy = Number(acc);
+    if (acc != null) target.accuracy = Number(acc);
     const hp = source.hp ?? source.drain;
-    if (hp != null && target.hp == null) target.hp = Number(hp);
-    if (source.drain != null && target.drain == null) target.drain = Number(source.drain);
-    if (source.bpm != null && target.bpm == null) target.bpm = Number(source.bpm);
-    if (source.total_length != null && target.total_length == null) target.total_length = Number(source.total_length);
-    if (source.hit_length != null && target.hit_length == null) target.hit_length = Number(source.hit_length);
-    if (source.max_combo != null && target.max_combo == null) target.max_combo = Number(source.max_combo);
-    if (source.status != null && target.status == null) target.status = source.status;
-    if (source.mode != null && !target.mode) target.mode = source.mode;
+    if (hp != null) target.hp = Number(hp);
+    if (source.drain != null) target.drain = Number(source.drain);
+    if (source.bpm != null) target.bpm = Number(source.bpm);
+    if (source.total_length != null) target.total_length = Number(source.total_length);
+    if (source.hit_length != null) target.hit_length = Number(source.hit_length);
+    if (source.max_combo != null) target.max_combo = Number(source.max_combo);
+    if (source.status != null) target.status = source.status;
+    if (source.mode != null) target.mode = source.mode;
     return target;
 }
 
 /**
  * Enriquece los metadatos de un objeto beatmapset destino con los atributos de un beatmapset origen.
+ * Asegura que las portadas oficiales del mapa prevalezcan sobre el avatar del usuario utilizado como fallback.
  */
 function enrichBeatmapsetMetadata(targetSet = {}, sourceSet = {}) {
     if (!sourceSet || typeof sourceSet !== 'object') return targetSet;
-    if (sourceSet.id != null && !targetSet.id) targetSet.id = sourceSet.id;
-    if (sourceSet.title != null && (!targetSet.title || targetSet.title === 'Beatmap')) targetSet.title = sourceSet.title;
-    if (sourceSet.artist != null && !targetSet.artist) targetSet.artist = sourceSet.artist;
-    if (sourceSet.creator != null && !targetSet.creator) targetSet.creator = sourceSet.creator;
+    if (sourceSet.id != null) targetSet.id = sourceSet.id;
+    if (sourceSet.title != null) targetSet.title = sourceSet.title;
+    if (sourceSet.artist != null) targetSet.artist = sourceSet.artist;
+    if (sourceSet.creator != null) targetSet.creator = sourceSet.creator;
     if (sourceSet.covers) {
         targetSet.covers = {
-            ...sourceSet.covers,
-            ...targetSet.covers
+            ...targetSet.covers,
+            ...sourceSet.covers
         };
     }
     return targetSet;
