@@ -1138,7 +1138,9 @@
     "pp_threshold_filter_search": " matching \"{search}\"",
     "calc_pp_footer": "⏳ Calculating pp of play #{index} of {total}...",
     "nochoke_total_pp": "Total PP",
-    "nochoke_play_pp": "Play PP"
+    "nochoke_play_pp": "Play PP",
+    "nochoke_global_rank": "Global Rank",
+    "nochoke_country_rank": "Country Rank"
   },
   "leaderboard": {
     "err_oauth_required": "❌ To use mod, friend, or country filters, you need to link your osu! account securely with OAuth. **I have sent you a private message with the linking link.** 🔒",

@@ -19,7 +19,8 @@ const {
     formatDecimal,
     getActiveSortFilter,
     getSortAttributeBadge,
-    isLazerScore
+    isLazerScore,
+    getFlagEmoji
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -455,12 +456,37 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     }
 
     if (parsed_args.noChokePPSummary) {
-        const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
+        const {
+            originalPP, simulatedPP, diffPP,
+            originalGlobalRank, simulatedGlobalRank, diffGlobalRank,
+            originalCountryRank, simulatedCountryRank, diffCountryRank,
+            countryCode
+        } = parsed_args.noChokePPSummary;
         const origStr = formatDecimal(originalPP, locale, 2);
         const simStr = formatDecimal(simulatedPP, locale, 2);
         const sign = diffPP >= 0 ? '+' : '';
         const diffStr = sign + formatDecimal(diffPP, locale, 2);
         prefix_desc += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n`;
+
+        if (simulatedGlobalRank) {
+            const origGlobStr = originalGlobalRank ? `#${formatNumber(originalGlobalRank, locale)}` : '-';
+            const simGlobStr = `#${formatNumber(simulatedGlobalRank, locale)}`;
+            const diffGlobStr = diffGlobalRank !== null && diffGlobalRank !== undefined
+                ? ` (\`${diffGlobalRank >= 0 ? '+' : ''}${formatNumber(diffGlobalRank, locale)}\`)`
+                : '';
+            prefix_desc += `🌐 **${t(locale, 'top.nochoke_global_rank')}:** \`${origGlobStr}\` ➔ **\`${simGlobStr}\`**${diffGlobStr}\n`;
+        }
+
+        if (simulatedCountryRank) {
+            const flag = getFlagEmoji(countryCode);
+            const origCountryStr = originalCountryRank ? `#${formatNumber(originalCountryRank, locale)}` : '-';
+            const simCountryStr = `#${formatNumber(simulatedCountryRank, locale)}`;
+            const diffCountryStr = diffCountryRank !== null && diffCountryRank !== undefined
+                ? ` (\`${diffCountryRank >= 0 ? '+' : ''}${formatNumber(diffCountryRank, locale)}\`)`
+                : '';
+            prefix_desc += `${flag} **${t(locale, 'top.nochoke_country_rank')}:** \`${origCountryStr}\` ➔ **\`${simCountryStr}\`**${diffCountryStr}\n`;
+        }
+
         if (score.originalPP !== undefined && Math.abs(score.pp - score.originalPP) > 0.05) {
             const playOrigStr = formatDecimal(score.originalPP, locale, 2);
             const playSimStr = formatDecimal(score.pp, locale, 2);
@@ -557,12 +583,38 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
     }
 
     if (parsed_args.noChokePPSummary) {
-        const { originalPP, simulatedPP, diffPP } = parsed_args.noChokePPSummary;
+        const {
+            originalPP, simulatedPP, diffPP,
+            originalGlobalRank, simulatedGlobalRank, diffGlobalRank,
+            originalCountryRank, simulatedCountryRank, diffCountryRank,
+            countryCode
+        } = parsed_args.noChokePPSummary;
         const origStr = formatDecimal(originalPP, locale, 2);
         const simStr = formatDecimal(simulatedPP, locale, 2);
         const sign = diffPP >= 0 ? '+' : '';
         const diffStr = sign + formatDecimal(diffPP, locale, 2);
-        embed_description += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n\n`;
+        embed_description += `📊 **${t(locale, 'top.nochoke_total_pp')}:** \`${origStr}pp\` ➔ **\`${simStr}pp\`** (\`${diffStr}pp\`)\n`;
+
+        if (simulatedGlobalRank) {
+            const origGlobStr = originalGlobalRank ? `#${formatNumber(originalGlobalRank, locale)}` : '-';
+            const simGlobStr = `#${formatNumber(simulatedGlobalRank, locale)}`;
+            const diffGlobStr = diffGlobalRank !== null && diffGlobalRank !== undefined
+                ? ` (\`${diffGlobalRank >= 0 ? '+' : ''}${formatNumber(diffGlobalRank, locale)}\`)`
+                : '';
+            embed_description += `🌐 **${t(locale, 'top.nochoke_global_rank')}:** \`${origGlobStr}\` ➔ **\`${simGlobStr}\`**${diffGlobStr}\n`;
+        }
+
+        if (simulatedCountryRank) {
+            const flag = getFlagEmoji(countryCode);
+            const origCountryStr = originalCountryRank ? `#${formatNumber(originalCountryRank, locale)}` : '-';
+            const simCountryStr = `#${formatNumber(simulatedCountryRank, locale)}`;
+            const diffCountryStr = diffCountryRank !== null && diffCountryRank !== undefined
+                ? ` (\`${diffCountryRank >= 0 ? '+' : ''}${formatNumber(diffCountryRank, locale)}\`)`
+                : '';
+            embed_description += `${flag} **${t(locale, 'top.nochoke_country_rank')}:** \`${origCountryStr}\` ➔ **\`${simCountryStr}\`**${diffCountryStr}\n`;
+        }
+
+        embed_description += '\n';
     }
 
     for (let i = 0; i < top_scores_chunk.length; i++) {

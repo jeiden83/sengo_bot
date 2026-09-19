@@ -47,5 +47,7 @@ module.exports = {
     fetchRankingPage: OsuUserModel.fetchRankingPage,
     fetchRankingAcc: OsuUserModel.fetchRankingAcc,
     ensureNoChokeScores: OsuScoreModel.ensureNoChokeScores,
-    getBeatmapModeAttributes: BeatmapModel.getBeatmapModeAttributes
+    getBeatmapModeAttributes: BeatmapModel.getBeatmapModeAttributes,
+    estimateGlobalRankByPP: OsuUserModel.estimateGlobalRankByPP,
+    estimateCountryRankByPP: OsuUserModel.estimateCountryRankByPP
 }

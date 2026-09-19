@@ -1,4 +1,4 @@
-const { getBeatmap_osu, getUserTopScores, getOsuUser, argsParser, getBeatmap, calculatePP, ensureNoChokeScores } = require("../../utils/osu.js");
+const { getBeatmap_osu, getUserTopScores, getOsuUser, argsParser, getBeatmap, calculatePP, ensureNoChokeScores, estimateGlobalRankByPP, estimateCountryRankByPP } = require("../../utils/osu.js");
 const { sortScores, hasCustomSort } = require("../../../models/OsuScoreModel.js");
 
 const { doOsuTopSingleEmbed, doOsuTopListEmbed, doOsuTopProgressEmbed } = require("../../../views/osuEmbeds.js");
@@ -200,10 +200,56 @@ async function run(messages, args, options = {}) {
         }
 
         const diffPP = simulatedTotalPP - originalTotalPP;
+
+        const originalGlobalRank = osuUser?.statistics?.global_rank || osuUser?.statistics?.rank?.global || null;
+        const originalCountryRank = osuUser?.statistics?.rank?.country ?? osuUser?.statistics?.country_rank ?? null;
+        const countryCode = osuUser?.country_code || osuUser?.country?.code || null;
+        const gamemode = parser_res.parsed_args.gamemode || "osu";
+        const server = osuUser?.server || parser_res.parsed_args.server || "bancho";
+
+        let simulatedGlobalRank = null;
+        let simulatedCountryRank = null;
+
+        if (server === 'bancho') {
+            if (diffPP === 0) {
+                simulatedGlobalRank = originalGlobalRank;
+                simulatedCountryRank = originalCountryRank;
+            } else if (diffPP > 0) {
+                const [globalRes, countryRes] = await Promise.allSettled([
+                    estimateGlobalRankByPP(simulatedTotalPP, gamemode),
+                    countryCode ? estimateCountryRankByPP(countryCode, simulatedTotalPP, gamemode, originalCountryRank) : Promise.resolve(null)
+                ]);
+
+                if (globalRes.status === 'fulfilled' && globalRes.value) {
+                    simulatedGlobalRank = globalRes.value;
+                    if (originalGlobalRank && simulatedGlobalRank > originalGlobalRank) {
+                        simulatedGlobalRank = originalGlobalRank;
+                    }
+                }
+
+                if (countryRes.status === 'fulfilled' && countryRes.value) {
+                    simulatedCountryRank = countryRes.value;
+                    if (originalCountryRank && simulatedCountryRank > originalCountryRank) {
+                        simulatedCountryRank = originalCountryRank;
+                    }
+                }
+            }
+        }
+
+        const diffGlobalRank = (originalGlobalRank && simulatedGlobalRank) ? (originalGlobalRank - simulatedGlobalRank) : null;
+        const diffCountryRank = (originalCountryRank && simulatedCountryRank) ? (originalCountryRank - simulatedCountryRank) : null;
+
         parser_res.parsed_args.noChokePPSummary = {
             originalPP: originalTotalPP,
             simulatedPP: simulatedTotalPP,
-            diffPP: diffPP
+            diffPP: diffPP,
+            originalGlobalRank,
+            simulatedGlobalRank,
+            diffGlobalRank,
+            originalCountryRank,
+            simulatedCountryRank,
+            diffCountryRank,
+            countryCode
         };
 
         if (options.isSkillTop && !hasCustomSort(parser_res.parsed_args)) {

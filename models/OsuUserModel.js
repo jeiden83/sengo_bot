@@ -1107,6 +1107,159 @@ async function fetchRankingPage(countryFilter, gamemode, startIndex) {
     return { chunk, total };
 }
 
+const globalRankEstimateCache = new Map();
+const countryRankEstimateCache = new Map();
+
+/**
+ * Estima el ranking global correspondiente a un valor de PP total usando osudaily.
+ * @param {number} pp - Cantidad de PP total a consultar.
+ * @param {string} [gamemode='osu'] - Modo de juego.
+ * @returns {Promise<number|null>} Ranking global estimado o null.
+ */
+async function estimateGlobalRankByPP(pp, gamemode = 'osu') {
+    if (!pp || pp <= 0) return null;
+    const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'catch': 2, 'ctb': 2, 'mania': 3 };
+    const m = modeMap[gamemode.toLowerCase()] ?? 0;
+    const roundedPP = Math.round(pp * 100) / 100;
+
+    const cacheKey = `${m}_${roundedPP}`;
+    if (globalRankEstimateCache.has(cacheKey)) {
+        const cached = globalRankEstimateCache.get(cacheKey);
+        if (Date.now() - cached.timestamp < 3600000) {
+            return cached.rank;
+        }
+    }
+
+    try {
+        const res = await axios.get(`https://osudaily.net/data/getPPRank.php?t=pp&v=${roundedPP}&m=${m}`, {
+            headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)' },
+            timeout: 4000
+        });
+        const rank = parseInt(String(res.data).trim().replace(/\s+/g, ''), 10);
+        if (!isNaN(rank) && rank > 0) {
+            setWithLimit(globalRankEstimateCache, cacheKey, { rank, timestamp: Date.now() }, 200);
+            return rank;
+        }
+    } catch (e) {
+        // Fallback silencioso si osudaily no responde
+    }
+    return null;
+}
+
+/**
+ * Estima la posición nacional (country rank) que alcanzaría un usuario con un valor de PP dado
+ * mediante búsqueda binaria sobre el ranking oficial de performance del país en osu! v2.
+ * @param {string} countryCode - Código ISO del país (ej: 'CL', 'VE', 'ES').
+ * @param {number} targetPP - Cantidad de PP simulado.
+ * @param {string} [gamemode='osu'] - Modo de juego.
+ * @param {number|null} [currentCountryRank=null] - Ranking nacional actual para optimizar la búsqueda.
+ * @returns {Promise<number|null>} Posición nacional teórica o null.
+ */
+async function estimateCountryRankByPP(countryCode, targetPP, gamemode = 'osu', currentCountryRank = null) {
+    if (!countryCode || !targetPP || targetPP <= 0) return null;
+
+    const tokenData = await loadToken();
+    const accessToken = tokenData?.access_token;
+    if (!accessToken) return null;
+
+    const cacheKey = `${gamemode.toLowerCase()}_${countryCode.toUpperCase()}_${Math.round(targetPP * 10) / 10}`;
+    if (countryRankEstimateCache.has(cacheKey)) {
+        const cached = countryRankEstimateCache.get(cacheKey);
+        if (Date.now() - cached.timestamp < 1800000) {
+            return cached.rank;
+        }
+    }
+
+    const fetchPage = async (page) => {
+        const pageKey = `${gamemode.toLowerCase()}_${countryCode.toUpperCase()}_page_${page}`;
+        const now = Date.now();
+        if (rankingPageCache.has(pageKey)) {
+            const cached = rankingPageCache.get(pageKey);
+            if (now - cached.timestamp < RANKING_CACHE_TTL) {
+                return cached.data;
+            }
+        }
+
+        const data = await osuApiQueue.add(async () => {
+            const url = `https://osu.ppy.sh/api/v2/rankings/${gamemode}/performance?country=${countryCode}&page=${page}`;
+            const res = await axios.get(url, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json',
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            });
+            return res.data;
+        });
+
+        rankingPageCache.set(pageKey, { data, timestamp: now });
+        return data;
+    };
+
+    try {
+        let minPage = 1;
+        let maxPage = currentCountryRank && currentCountryRank > 0 ? Math.ceil(currentCountryRank / 50) : 200;
+
+        const p1 = await fetchPage(1);
+        const total = p1.total || 0;
+        if (total === 0 || !p1.ranking || p1.ranking.length === 0) return null;
+
+        const totalPages = Math.min(Math.ceil(total / 50), 200);
+        maxPage = Math.min(maxPage, totalPages);
+
+        if (targetPP >= p1.ranking[0].pp) {
+            setWithLimit(countryRankEstimateCache, cacheKey, { rank: 1, timestamp: Date.now() }, 200);
+            return 1;
+        }
+
+        let foundRank = null;
+        let iterations = 0;
+
+        while (minPage <= maxPage && iterations < 8) {
+            iterations++;
+            const midPage = Math.floor((minPage + maxPage) / 2);
+            const data = await fetchPage(midPage);
+            const ranking = data.ranking || [];
+            if (ranking.length === 0) {
+                maxPage = midPage - 1;
+                continue;
+            }
+
+            const pFirst = ranking[0].pp;
+            const pLast = ranking[ranking.length - 1].pp;
+
+            if (targetPP < pLast) {
+                minPage = midPage + 1;
+            } else if (targetPP >= pFirst) {
+                maxPage = midPage - 1;
+            } else {
+                let offset = 0;
+                for (let i = 0; i < ranking.length; i++) {
+                    if (targetPP >= ranking[i].pp) {
+                        offset = i;
+                        break;
+                    }
+                    offset = i + 1;
+                }
+                foundRank = (midPage - 1) * 50 + offset + 1;
+                break;
+            }
+        }
+
+        if (foundRank === null && minPage > maxPage) {
+            foundRank = (maxPage * 50) + 1;
+        }
+
+        if (foundRank) {
+            setWithLimit(countryRankEstimateCache, cacheKey, { rank: foundRank, timestamp: Date.now() }, 200);
+        }
+        return foundRank;
+    } catch (e) {
+        return null;
+    }
+}
+
 /**
  * Obtiene los primeros 1000 jugadores de un país y modo de juego,
  * ordenándolos por precisión (acc) de forma descendente, con caché persistente de 2 horas.
@@ -2505,7 +2658,9 @@ const OsuUserModel = {
     upsertMapperFromProfile,
     backgroundUpdateMappers,
     isCountryScraped,
-    setCountryScraped
+    setCountryScraped,
+    estimateGlobalRankByPP,
+    estimateCountryRankByPP
 };
 
 module.exports = OsuUserModel;
