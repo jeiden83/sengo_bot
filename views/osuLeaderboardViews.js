@@ -7,7 +7,8 @@ const {
     getPlainStatsString,
     getFlagEmoji,
     getDisplayGamemode,
-    formatDecimal
+    formatDecimal,
+    isLazerScore
 } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
@@ -27,7 +28,7 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
         const userId = score.user?.id || score.user_id;
         const username_link = userId ? `[${username}](https://osu.ppy.sh/users/${userId})` : `*${username}*`;
 
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const isLazer = isLazerScore(score);
         const mods_used = formatMods(score.mods, isLazer);
 
         const total_score = getFormattedScore(score, 'classic', locale);
@@ -123,7 +124,7 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
             : (score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${userId}` : `https://osu.ppy.sh/users/${userId}`);
         const userLink = `[${username}](${userUrl})`;
 
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const isLazer = isLazerScore(score);
         const mods_used = formatMods(score.mods, isLazer);
 
         const isLazerMode = parsed_args.lazerMode || parsed_args.isLazerMode;

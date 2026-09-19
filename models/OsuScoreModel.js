@@ -1782,6 +1782,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 }
                 
                 if (shouldReplace) {
+                    const isLazer = (Number(row.total_score) > 0 && Number(row.legacy_total_score) > 0 && Number(row.total_score) !== Number(row.legacy_total_score));
                     const mappedScore = {
                         id: Number(row.id),
                         accuracy: row.accuracy,
@@ -1796,6 +1797,8 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                         pp: row.pp,
                         rank: row.rank,
                         map_completion: row.map_completion,
+                        build_id: row.build_id || (isLazer ? 1 : null),
+                        is_lazer: isLazer,
                         beatmap: {
                             id: Number(row.beatmap_id),
                             status: row.beatmap_status

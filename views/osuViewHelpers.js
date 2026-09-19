@@ -26,6 +26,19 @@ function getGradeEmoji(rank, passed) {
     return grade_emoji[0] === "grade_f" ? `:${grade_emoji[1]}:` : `<:${grade_emoji[0]}:${grade_emoji[1]}>`;
 }
 
+/**
+ * Determina si una jugada proviene de osu! lazer.
+ * Verifica build_id o si los puntajes total y legacy difieren (lazer estandarizado).
+ */
+function isLazerScore(score) {
+    if (!score) return false;
+    if (score.build_id !== null && score.build_id !== undefined) return true;
+    if (score.is_lazer === true) return true;
+    const total = Number(score.total_score || 0);
+    const legacy = Number(score.legacy_total_score || 0);
+    return total > 0 && legacy > 0 && total !== legacy;
+}
+
 function formatMods(mods, isLazer) {
     if (!mods) return `<:NM:${emoji_mods["NM"]}>`;
 
@@ -529,6 +542,7 @@ module.exports = {
     formatNumber,
     formatDecimal,
     getActiveSortFilter,
-    getSortAttributeBadge
+    getSortAttributeBadge,
+    isLazerScore
 };
 

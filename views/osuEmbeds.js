@@ -18,7 +18,8 @@ const {
     formatNumber,
     formatDecimal,
     getActiveSortFilter,
-    getSortAttributeBadge
+    getSortAttributeBadge,
+    isLazerScore
 } = require("./osuViewHelpers.js");
 const { colorear } = require("../commands/utils/admin.js");
 const emoji_mods = require("../src/emoji_mods.json");
@@ -49,7 +50,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const beatmap_url = recent_scores.beatmap?.id ? `https://osu.ppy.sh/b/${recent_scores.beatmap.id}` : getUserUrl(recent_scores.user);
     const beatmap_cover = recent_scores.beatmapset?.covers?.["cover@2x"] || recent_scores.beatmapset?.covers?.cover || avatar_url;
 
-    const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+    const isLazer = isLazerScore(recent_scores);
     const score = getFormattedScore(recent_scores, scoreMode, locale);
     const accuracy = formatDecimal(recent_scores.accuracy * 100, locale, 2);
     const user_max_combo = recent_scores.max_combo;
@@ -297,7 +298,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const isLazer = isLazerScore(score);
         const mods_used = formatMods(score.mods, isLazer);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
@@ -400,7 +401,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const beatmap_url = score.beatmap?.id ? `https://osu.ppy.sh/b/${score.beatmap.id}` : getUserUrl(score.user);
     const beatmap_cover = score.beatmapset?.covers?.["cover@2x"] || score.beatmapset?.covers?.cover || avatar_url;
 
-    const isLazer = score.build_id !== null && score.build_id !== undefined;
+    const isLazer = isLazerScore(score);
     const score_val = getFormattedScore(score, scoreMode, locale);
     const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     const user_max_combo = score.max_combo;
@@ -569,7 +570,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const isLazer = isLazerScore(score);
         const mods_used = formatMods(score.mods, isLazer);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
@@ -677,7 +678,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const beatmap_url = beatmap_metadata.id ? `https://osu.ppy.sh/b/${beatmap_metadata.id}` : null;
     const beatmap_cover = beatmap_metadata.beatmapset?.covers?.["cover@2x"] || beatmap_metadata.beatmapset?.covers?.cover || "";
 
-    const isLazer = score.build_id !== null && score.build_id !== undefined;
+    const isLazer = isLazerScore(score);
     const score_val = getFormattedScore(score, scoreMode, locale);
     const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     const user_max_combo = score.max_combo;
@@ -812,7 +813,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
+        const isLazer = isLazerScore(score);
         const mods_used = formatMods(score.mods, isLazer);
         const legacy_score = getFormattedScore(score, scoreMode, locale);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
@@ -905,7 +906,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale = 'es', uploadMetadata = null) {
     const embedColor = getEmbedColor(message);
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
-    const isLazer = recent_scores.build_id !== null && recent_scores.build_id !== undefined;
+    const isLazer = isLazerScore(recent_scores);
     const mods_used = formatMods(recent_scores.mods, isLazer);
     const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
