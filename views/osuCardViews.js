@@ -1043,7 +1043,12 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
     // Descarga paralela en segundo plano de todos los assets requeridos y cálculo de Star Rating con mods físicos
     const srPromise = (async () => {
-        if (options?.overrideSR != null) return Number(options.overrideSR);
+        if (options?.overrideSR != null) {
+            return {
+                stars: Number(options.overrideSR),
+                maxCombo: options?.overrideMaxCombo != null ? Number(options.overrideMaxCombo) : null
+            };
+        }
         if (!pinnedPlay?.beatmap?.id) return null;
         try {
             const BeatmapModel = require("../models/BeatmapModel.js");
@@ -1079,22 +1084,28 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                 const srMods = rawMods.filter(m => !["FL", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
                 const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
                 const stars = diffAttrs?.stars;
+                const maxCombo = diffAttrs?.maxCombo;
                 mapObj.free();
-                if (typeof stars === "number" && !isNaN(stars) && stars >= 0) {
-                    return stars;
-                }
+                return {
+                    stars: (typeof stars === "number" && !isNaN(stars) && stars >= 0) ? stars : null,
+                    maxCombo: (typeof maxCombo === "number" && !isNaN(maxCombo) && maxCombo > 0) ? maxCombo : null
+                };
             }
         } catch (_) {}
         return null;
     })();
 
-    const [bgImg, avatarImg, flagImg, mapCoverImg, calculatedPlaySR] = await Promise.all([
+    const [bgImg, avatarImg, flagImg, mapCoverImg, playDiffData] = await Promise.all([
         fetchImageSafe(activeBgUrl),
         fetchImageSafe(user.avatar_url || (user.id ? `https://a.ppy.sh/${user.id}` : null)),
         fetchImageSafe(flagUrl),
         fetchImageSafe(coverUrl),
         srPromise
     ]);
+    const calculatedPlaySR = (typeof playDiffData === "number")
+        ? playDiffData
+        : (playDiffData?.stars != null ? playDiffData.stars : null);
+    const calculatedMaxCombo = playDiffData?.maxCombo != null ? playDiffData.maxCombo : null;
 
     // 1. FONDO PRINCIPAL
     ctx.fillStyle = theme.bgColor || "#27152c";
@@ -1419,7 +1430,12 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         const srText = `${mapSR}★`;
         const scoreVal = pinnedPlay ? Number(pinnedPlay.total_score || pinnedPlay.score || 0).toLocaleString(numLocale) : "32.219.611";
         const scoreAcc = pinnedPlay ? (Number(pinnedPlay.accuracy != null ? pinnedPlay.accuracy : 0.96) * 100).toFixed(2) : "96.12";
-        const scoreCombo = pinnedPlay ? `${pinnedPlay.max_combo ?? 0}x` : "262x";
+        const mapMaxCombo = calculatedMaxCombo
+            || pinnedPlay?.beatmap?.max_combo
+            || pinnedPlay?.beatmap_max_combo
+            || (pinnedPlay ? null : 1770);
+        const playerCombo = pinnedPlay ? (pinnedPlay.max_combo ?? 0) : 262;
+        const scoreCombo = mapMaxCombo ? `${playerCombo}x/${mapMaxCombo}x` : `${playerCombo}x`;
         const scoreGrade = pinnedPlay?.rank || "S";
 
         drawCustomText(ctx, fonts.playTitle, `${mapTitle} by ${mapArtist}`.slice(0, 48), pb.x + 16, pb.y + 34, "left", fontFamily);
