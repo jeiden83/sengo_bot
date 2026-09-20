@@ -85,6 +85,7 @@ const MOD_COLORS = {
 function getTopUsedMods(scores = [], limit = 4) {
     if (!Array.isArray(scores) || scores.length === 0) return [];
     const counts = {};
+    const EXCLUDED_MODS = new Set(["RV6", "RV"]);
 
     for (const s of scores) {
         let modList = [];
@@ -96,6 +97,9 @@ function getTopUsedMods(scores = [], limit = 4) {
             const matches = s.mods.match(/[A-Z]{2}[0-9]?/gi);
             if (matches) modList = matches;
         }
+
+        // Excluir mods técnicos de replay como RV6 / RV
+        modList = modList.filter(m => !EXCLUDED_MODS.has(String(m).toUpperCase()));
 
         if (modList.length === 0) {
             counts["NM"] = (counts["NM"] || 0) + 1;
