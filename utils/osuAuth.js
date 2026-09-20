@@ -66,7 +66,13 @@ async function refreshAccessToken(refreshToken) {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
+        if (response.status === 429) {
+            throw new Error(`Rate limit exceeded (HTTP 429) en osu.ppy.sh al refrescar token.`);
+        }
+        let errorText = await response.text();
+        if (errorText.includes('<html') || errorText.includes('<!DOCTYPE')) {
+            errorText = `[Página de error HTML - HTTP ${response.status}]`;
+        }
         throw new Error(`Failed to refresh token: ${response.statusText} - ${errorText}`);
     }
 

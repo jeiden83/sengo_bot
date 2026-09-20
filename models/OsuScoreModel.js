@@ -63,20 +63,29 @@ async function refreshTokenPool(force = false) {
         }
 
         const OsuUserModel = require("./OsuUserModel.js");
-        const refreshed = await Promise.all(dbTokens.map(async (row) => {
-            try {
-                const token = await OsuUserModel.getValidTokenForUser(row.discord_id, 2, row);
-                if (token) {
-                    return {
-                        token,
-                        username: row.username || row.discord_id
-                    };
+        const refreshed = [];
+        const BATCH_SIZE = 5;
+        for (let i = 0; i < dbTokens.length; i += BATCH_SIZE) {
+            const batch = dbTokens.slice(i, i + BATCH_SIZE);
+            const batchResults = await Promise.all(batch.map(async (row) => {
+                try {
+                    const token = await OsuUserModel.getValidTokenForUser(row.discord_id, 2, row);
+                    if (token) {
+                        return {
+                            token,
+                            username: row.username || row.discord_id
+                        };
+                    }
+                } catch {
+                    // Silenciar error individual de usuario
                 }
-            } catch (err) {
-                // Silenciar error individual de usuario
+                return null;
+            }));
+            refreshed.push(...batchResults);
+            if (i + BATCH_SIZE < dbTokens.length) {
+                await new Promise(r => setTimeout(r, 150));
             }
-            return null;
-        }));
+        }
 
         cachedTokenPool = refreshed.filter(Boolean);
         cachedTokenCountryCodes = newCountryCodes;
