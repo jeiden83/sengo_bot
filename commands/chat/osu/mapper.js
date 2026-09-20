@@ -225,6 +225,8 @@ async function run(messages, args) {
                 isSengoMode = true;
             } else if (arg === '-global' || arg === '-g') {
                 isGlobalMode = true;
+            } else if (arg === '-nacional' || arg === '-nac') {
+                // Modo nacional explícito
             } else if (arg === '-all' || arg === '-todos') {
                 playmodeFilter = 'all';
                 playmodeSpecified = true;

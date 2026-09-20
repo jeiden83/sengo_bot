@@ -56,7 +56,7 @@ const FLAG_HANDLERS = {
             if (sort === 'recent') return '-recent';
             if (sort === 'combo') return '-c';
             if (sort === 'stars') return '-sr';
-            if (sort === 'length') return '-len';
+            if (sort === 'length') return '-dur';
             return `-${sort}`;
         }
         if (answers.is_recent_sort?.noul > 0.70) {
@@ -111,7 +111,17 @@ const FLAG_HANDLERS = {
     // 13. Habilidad en comando skills
     skills_breakdown: (answers, entities) => {
         const args = [];
-        const sk = answers.skill_filter?.choice;
+        let sk = answers.skill_filter?.choice;
+        if (!sk || sk === 'none') {
+            const skillMatch = entities.cleanText.match(/\b(aim|speed|reading|stamina|acc|accuracy|precision)\b/i);
+            if (skillMatch) {
+                sk = skillMatch[1].toLowerCase();
+                if (sk === 'accuracy' || sk === 'precision') sk = 'acc';
+            }
+        }
+        if (entities.cleanText.match(/\b(?:top|mejores)\b/i)) {
+            args.push('-top');
+        }
         if (sk && sk !== 'none' && sk !== 'all') {
             args.push(`-${sk}`);
         }
@@ -236,11 +246,31 @@ const FLAG_HANDLERS = {
     // 20. Opciones de Mapper
     mapper_options: (answers, entities) => {
         const args = [];
-        if (entities.cleanText.match(/\b(?:activos?|abiertos?|open|active)\b/i)) args.push('-activo');
-        if (entities.cleanText.match(/\b(?:track|seguir|seguimiento|rastrear)\b/i)) {
+        const text = entities.cleanText;
+        if (text.match(/\b(?:top|mejores|ranking|clasificaci[oó]n)\b/i)) {
+            args.push('-top');
+        }
+        if (text.match(/\b(?:nacional|pa[ií]s|country)\b/i)) {
+            args.push('-nacional');
+        }
+        if (text.match(/\b(?:servidor|server|guild)\b/i)) {
+            args.push('-server');
+        }
+        if (text.match(/\b(?:global|mundial|todos)\b/i)) {
+            args.push('-global');
+        }
+        if (text.match(/\b(?:kudos|kudosus)\b/i)) args.push('-kudos');
+        if (text.match(/\b(?:gd|gds|guest\s*diffs?)\b/i)) args.push('-gd');
+        if (text.match(/\b(?:ranked|rankeds|rankeados)\b/i)) args.push('-ranked');
+        if (text.match(/\b(?:loved|amados)\b/i)) args.push('-loved');
+        if (text.match(/\b(?:followers|seguidores)\b/i)) args.push('-followers');
+        if (text.match(/\b(?:graveyard|abandonados)\b/i)) args.push('-graveyard');
+        if (text.match(/\b(?:bn|bns|nominators?)\b/i)) args.push('-bn');
+        if (text.match(/\b(?:card|tarjeta)\b/i)) args.push('-card');
+        if (text.match(/\b(?:activos?|abiertos?|open|active)\b/i)) args.push('-activo');
+        if (text.match(/\b(?:track|seguir|seguimiento|rastrear)\b/i)) {
             args.push('-track');
-            if (entities.cleanText.match(/\b(?:servidor|server)\b/i)) args.push('-servidor');
-            if (entities.cleanText.match(/\b(?:quitar|borrar|remove|delete)\b/i)) args.push('-quitar');
+            if (text.match(/\b(?:quitar|borrar|remove|delete)\b/i)) args.push('-quitar');
         }
         return args.length > 0 ? args : null;
     },
@@ -340,10 +370,10 @@ const FLAG_HANDLERS = {
         return null;
     },
 
-    // 32. Índice de score (<idx> o -i<idx>)
+    // 32. Índice de score (-i <idx>)
     score_index: (answers, entities) => {
         if (entities.scoreIndex) {
-            return String(entities.scoreIndex);
+            return ['-i', String(entities.scoreIndex)];
         }
         return null;
     },
@@ -351,6 +381,40 @@ const FLAG_HANDLERS = {
     recent_index: (answers, entities) => {
         if (entities.scoreIndex) {
             return `-i${entities.scoreIndex}`;
+        }
+        return null;
+    },
+
+    // 32.1 Opciones de cumpleaños
+    cumple_options: (answers, entities) => {
+        const action = answers.cumple_action?.choice;
+        if (action === 'siguiente') return 'siguiente';
+        if (action === 'anterior') return 'anterior';
+        if (action === 'lista') return 'lista';
+        if (action === 'quitar') return 'quitar';
+
+        const text = entities.cleanText;
+        if (text.match(/\b(?:siguiente|pr[oó]ximo|next)\b/i)) {
+            return 'siguiente';
+        }
+        if (text.match(/\b(?:anterior|pasado|prev|previo)\b/i)) {
+            return 'anterior';
+        }
+        if (text.match(/\b(?:lista|listado|todos)\b/i)) {
+            return 'lista';
+        }
+        if (text.match(/\b(?:quitar|borrar|eliminar|remove)\b/i)) {
+            return 'quitar';
+        }
+        if (text.match(/\b(?:canal|channel)\b/i)) {
+            return 'canal';
+        }
+        if (text.match(/\b(?:rol|role)\b/i)) {
+            return 'rol';
+        }
+        const dateMatch = text.match(/\b(\d{1,2}[\/\-]\d{1,2}(?:[\/\-]\d{2,4})?)\b/);
+        if (dateMatch) {
+            return dateMatch[1];
         }
         return null;
     },
@@ -407,6 +471,20 @@ const FLAG_HANDLERS = {
     // 39. Mención de usuario de Discord (<@ID>)
     target_mention: (answers, entities) => {
         return entities.targetDiscordId ? `<@${entities.targetDiscordId}>` : null;
+    },
+
+    // 40. Comando objetivo para el menú de ayuda (help <cmd>)
+    help_target: (answers, entities) => {
+        const text = entities.cleanText;
+        const match = text.match(/\b(?:ayuda|help|gu[ií]a|c[oó]mo\s+usar?|c[oó]mo\s+se\s+usa|info)(?:\s+(?:con\s+el\s+comando|con\s+el|con|del\s+comando|de\s+el\s+comando|de\s+comando|el\s+comando|del\s+bot|de\s+la|del|de|sobre|para|el|la))?\s+([a-zA-Z0-9_\-]+)\b/i);
+        if (match) {
+            const candidate = match[1].toLowerCase().trim();
+            const ignoredWords = new Set(['comando', 'comandos', 'bot', 'sengo', 'general', 'todo', 'todos', 'aqui', 'porfa', 'favor', 'del', 'de', 'el', 'la', 'los', 'las']);
+            if (!ignoredWords.has(candidate)) {
+                return ALIAS_MAP[candidate] || candidate;
+            }
+        }
+        return null;
     }
 };
 
@@ -423,10 +501,10 @@ const COMMAND_DEFINITIONS = {
             'star_rating', 'page', 'score_index', 'mods', 'country', 'target_user', 'target_mention'
         ]
     },
-    rs: {
-        intent: "Consultar la jugada más reciente (última partida jugada, rs, recent play)",
+    r: {
+        intent: "Consultar la jugada más reciente (última partida jugada, r, rs, recent play)",
         category: "osu",
-        aliases: ['recent', 'r'],
+        aliases: ['recent', 'rs'],
         flags: [
             'gamemode', 'server', 'client_mode', 'pass_only', 'list', 'detailed',
             'star_rating_cond', 'pp_threshold', 'recent_index', 'mods', 'target_user', 'target_mention'
@@ -445,9 +523,9 @@ const COMMAND_DEFINITIONS = {
         flags: ['gamemode', 'server', 'client_mode', 'pass_only', 'list', 'beatmap', 'mods', 'target_user', 'target_mention']
     },
     skills: {
-        intent: "Ver habilidades cinéticas, radar o desglose de skills",
+        intent: "Ver habilidades cinéticas, radar, desglose de skills (aim, speed, reading, stamina) o mejores jugadas por habilidad en el top (skills)",
         category: "osu",
-        flags: ['gamemode', 'skills_breakdown', 'country', 'target_user', 'target_mention']
+        flags: ['gamemode', 'skills_breakdown', 'score_index', 'country', 'target_user', 'target_mention']
     },
     card: {
         intent: "Generar tarjeta gráfica o imagen Canvas de perfil (card)",
@@ -483,7 +561,7 @@ const COMMAND_DEFINITIONS = {
         flags: ['gamemode', 'server', 'client_mode', 'friends', 'country', 'page', 'beatmap', 'mods']
     },
     nacional: {
-        intent: "Ver ranking nacional o jugadores top de un país (nacional)",
+        intent: "Ver ranking nacional general de jugadores o mejores jugadas de un país en osu! (excluyendo mappers) (nacional)",
         category: "osu",
         flags: ['gamemode', 'nacional_options', 'star_rating_cond', 'country', 'page']
     },
@@ -498,9 +576,10 @@ const COMMAND_DEFINITIONS = {
         flags: ['torneo_options']
     },
     mapper: {
-        intent: "Ver estadísticas de mapas creados por un mapper (mapper)",
+        intent: "Consultar creadores de mapas, estadísticas de mapper, o ranking/top nacional o global de mappers (mapper, mappers)",
         category: "osu",
-        flags: ['gamemode', 'mapper_options', 'target_user', 'target_mention']
+        aliases: ['mappers'],
+        flags: ['gamemode', 'mapper_options', 'country', 'target_user', 'target_mention']
     },
     skin: {
         intent: "Buscar o descargar skins de osu! (skin)",
@@ -617,7 +696,7 @@ const COMMAND_DEFINITIONS = {
     help: {
         intent: "Ver la ayuda de comandos o lista de funciones del bot (help, ayuda)",
         category: "general",
-        flags: []
+        flags: ['help_target']
     },
     invite: {
         intent: "Obtener el enlace de invitación para añadir el bot (invite, invitar)",
@@ -655,9 +734,9 @@ const COMMAND_DEFINITIONS = {
         flags: []
     },
     cumple: {
-        intent: "Ver o celebrar cumpleaños de usuarios (cumple, cumpleaños)",
-        category: "utils",
-        flags: ['target_mention']
+        intent: "Ver, consultar o registrar cumpleaños del servidor (cumple, cumpleaños, siguiente cumpleaños)",
+        category: "moderation",
+        flags: ['cumple_options', 'target_mention']
     },
     fumo: {
         intent: "Ver una foto o imagen de fumo (fumo)",
@@ -681,8 +760,9 @@ const COMMAND_DEFINITIONS = {
  * Se inicializa con atajos frecuentes y se sincroniza automáticamente al escanear commands/chat.
  */
 const ALIAS_MAP = {
-    recent: 'rs',
-    r: 'rs',
+    recent: 'r',
+    rs: 'r',
+    r: 'r',
     compare: 'c',
     comparar: 'c',
     compara: 'c',
@@ -722,7 +802,10 @@ function scanChatCommands() {
                 const aliases = cmdModule.run?.alias ? Object.keys(cmdModule.run.alias) : [];
 
                 for (const alias of aliases) {
-                    ALIAS_MAP[alias.toLowerCase()] = cmdName;
+                    const cleanAlias = alias.toLowerCase();
+                    if (!COMMAND_DEFINITIONS[cleanAlias]) {
+                        ALIAS_MAP[cleanAlias] = cmdName;
+                    }
                 }
 
                 if (COMMAND_DEFINITIONS[cmdName]) {
@@ -774,6 +857,14 @@ function scanChatCommands() {
             } catch {}
         }
     }
+
+    // Asegurar que los comandos canónicos principales apunten a sí mismos y tengan prioridad
+    for (const cmd of Object.keys(COMMAND_DEFINITIONS)) {
+        ALIAS_MAP[cmd.toLowerCase()] = cmd;
+    }
+    ALIAS_MAP['recent'] = 'r';
+    ALIAS_MAP['rs'] = 'r';
+    ALIAS_MAP['mappers'] = 'mapper';
 }
 
 // Inicializar escaneo dinámico de comandos al cargar el módulo

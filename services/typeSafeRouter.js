@@ -233,6 +233,18 @@ function buildJevQuestions() {
         is_mapset: {
             type: "noul",
             instructions: "¿El usuario pide ver la información del mapset o pack completo en vez de una sola dificultad?"
+        },
+        // 24. Acción de cumpleaños
+        cumple_action: {
+            type: "choice",
+            instructions: "¿Qué acción o consulta de cumpleaños solicita el usuario?",
+            criteria: {
+                none: "Consulta general de cumpleaños o no aplica",
+                siguiente: "Siguiente o próximo cumpleaños a celebrarse",
+                anterior: "Cumpleaños anterior o más reciente en el pasado",
+                lista: "Ver lista o listado de todos los cumpleaños del servidor",
+                quitar: "Quitar o borrar su fecha de cumpleaños"
+            }
         }
     };
 }
@@ -278,11 +290,19 @@ function extractEntities(rawText) {
             'quinta': 5, 'quinto': 5
         };
         for (const [word, val] of Object.entries(ordinals)) {
-            const regex = new RegExp(`\\b(?:la|el)?\\s*${word}\\s+(?:play|jugada|score|puntuaci[oó]n)\\b`, 'i');
+            const regex = new RegExp(`\\b(?:la|el)?\\s*${word}\\s+(?:play|jugada|score|puntuaci[oó]n|mapa)\\b`, 'i');
             if (regex.test(cleanText)) {
                 scoreIndex = val;
                 break;
             }
+        }
+    }
+
+    // Si el usuario pregunta por un elemento singular superlativo ("el mapa con más...", "la mejor play...", "la play con mayor...")
+    if (!scoreIndex) {
+        const singularSuperlative = /\b(?:el|la)\s+(?:mapa|play|jugada|score|puntuaci[oó]n)\s+(?:con\s+m[aá]s|con\s+mayor|con\s+menos|m[aá]s\s+\w+|mejor)\b/i;
+        if (singularSuperlative.test(cleanText)) {
+            scoreIndex = 1;
         }
     }
 
@@ -435,18 +455,32 @@ function extractEntities(rawText) {
         comparePlayers = [entreMatch[1].trim(), entreMatch[2].trim()];
     }
 
-    // 17. Extraer nombre de usuario objetivo de la consulta (ej: "top de mrekk", "recent de chicony")
+    // 17. Extraer nombre de usuario objetivo de la consulta (ej: "top de mrekk", "play reciente de milin", "perfil de chicony")
     let targetUsername = null;
-    const userMatch = cleanText.match(/\b(?:top|recent|rs|perfil|stats|osu|tarjeta|card|snipes|comparar?|c)\s+(?:de|del usuario|del jugador)\s+([a-zA-Z0-9_\[\]\-]+)/i);
+    const nonUsernames = new Set([
+        'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'un', 'una', 'el', 'la', 'los', 'las', 'este', 'esta',
+        'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru',
+        'std', 'taiko', 'fruits', 'mania', 'gatari', 'droid', 'bancho', 'lazer', 'stable',
+        'mapa', 'mapas', 'beatmap', 'beatmaps', 'canal', 'servidor', 'server', 'guild',
+        'cumple', 'cumpleaños', 'mappers', 'mapper', 'torneo', 'torneos',
+        'mayor', 'menor', 'mas', 'menos', 'aim', 'speed', 'reading', 'stamina', 'acc', 'accuracy',
+        'precision', 'bpm', 'combo', 'stars', 'pp', 'duracion', 'tiempo', 'fecha', 'ranking'
+    ]);
+
+    const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
     if (userMatch) {
         const candidate = userMatch[1].trim();
-        const nonUsernames = new Set([
-            'mi', 'mis', 'tu', 'tus', 'su', 'sus',
-            'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru',
-            'std', 'taiko', 'fruits', 'mania', 'gatari', 'droid', 'bancho', 'lazer', 'stable'
-        ]);
         if (!nonUsernames.has(candidate.toLowerCase())) {
             targetUsername = candidate;
+        }
+    }
+    if (!targetUsername) {
+        const fallbackMatch = cleanText.match(/\b(?:de|del usuario|del jugador)\s+([a-zA-Z0-9_\[\]\-]{2,15})\b/i);
+        if (fallbackMatch) {
+            const candidate = fallbackMatch[1].trim();
+            if (!nonUsernames.has(candidate.toLowerCase())) {
+                targetUsername = candidate;
+            }
         }
     }
 
