@@ -1,5 +1,4 @@
 const { t } = require("../../../utils/i18n.js");
-const { parseNaturalLanguage } = require("../../../services/typeSafeRouter.js");
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
@@ -9,6 +8,8 @@ async function run(messages, args) {
     if (cleanArgs.length === 0) {
         return t(locale, 'ai.err_no_prompt');
     }
+
+    const { parseNaturalLanguage } = require("../../../services/typeSafeRouter.js");
 
     const prompt = cleanArgs.join(' ');
     const parsed = await parseNaturalLanguage(prompt);

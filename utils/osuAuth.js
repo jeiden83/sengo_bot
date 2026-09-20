@@ -91,7 +91,13 @@ async function fetchOsuMe(accessToken) {
     });
 
     if (!response.ok) {
-        const errorText = await response.text();
+        if (response.status === 429) {
+            throw new Error(`Rate limit exceeded (HTTP 429) en osu.ppy.sh al consultar /me.`);
+        }
+        let errorText = await response.text();
+        if (errorText.includes('<html') || errorText.includes('<!DOCTYPE')) {
+            errorText = `[Página de error HTML - HTTP ${response.status}]`;
+        }
         throw new Error(`Failed to fetch /me: ${response.statusText} - ${errorText}`);
     }
 
