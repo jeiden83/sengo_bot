@@ -2186,6 +2186,10 @@
     "err_rate_limited": "⚠️ La API de osu!droid está temporalmente saturada (límite de peticiones alcanzado). Por favor, espera un momento antes de volver a consultar.",
     "link_usage": "💡 Uso: `s.droid link <nombre_o_uid>`",
     "searching": "Consultando API de osu!droid..."
+  },
+  "ai": {
+    "err_no_prompt": "❌ Debes especificar lo que deseas consultar o hacer en lenguaje natural. Ej: `s.ai dime mi top en std` o `s.ai recomiéndame mapas`.",
+    "err_not_understood": "❌ No pude identificar con certeza qué comando deseas ejecutar con: *\"{prompt}\"*.\n💡 Prueba siendo un poco más específico, por ejemplo: `s.ai dime mi top en std`, `s.ai cuál fue mi última partida` o `s.ai cuál es la tasa bcv`."
   }
 }
 

@@ -151,7 +151,15 @@ async function chat_command_listener(chat_commands, client, config, res) {
             return;
         }
 
-        if (!message.content.toLowerCase().startsWith(config.BOT_PREFIX)) {
+        let isNaturalLanguage = false;
+        let naturalCommand = null;
+        let naturalArgs = [];
+
+        const startsWithPrefix = message.content.toLowerCase().startsWith(config.BOT_PREFIX);
+        const isBotMention = client.user && message.mentions?.users?.has(client.user.id);
+        const isDM = !message.guild;
+
+        if (!startsWithPrefix) {
             // Detección pasiva de enlaces de osu! para precarga
             const containsOsuLink = /osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/i.test(message.content) || /#(?:osu|taiko|fruits|mania)\/(\d+)/i.test(message.content);
             if (containsOsuLink) {
@@ -170,7 +178,31 @@ async function chat_command_listener(chat_commands, client, config, res) {
                     console.error("[PRELOAD-PASIVO] Error en detección pasiva de links de osu!:", err);
                 }
             }
-            return;
+
+            // Enrutamiento de Lenguaje Natural (TypeSafe Jev) para menciones y mensajes privados (DMs)
+            if (isBotMention || isDM) {
+                try {
+                    const { parseNaturalLanguage } = require("../services/typeSafeRouter.js");
+                    const botMentionRegex = client.user ? new RegExp(`<@!?${client.user.id}>`, 'g') : null;
+                    const cleanInput = botMentionRegex ? message.content.replace(botMentionRegex, '').trim() : message.content.trim();
+
+                    if (cleanInput.length >= 3) {
+                        const parsed = await parseNaturalLanguage(cleanInput);
+                        if (parsed && parsed.command) {
+                            isNaturalLanguage = true;
+                            naturalCommand = parsed.command;
+                            naturalArgs = parsed.args;
+                            console.log(`[TYPESAFE] Comando por lenguaje natural (${(parsed.confidence * 100).toFixed(0)}%): "${cleanInput}" -> ${parsed.fullCommandString}`);
+                        }
+                    }
+                } catch (nlpErr) {
+                    console.error("[TYPESAFE] Error al procesar lenguaje natural en chat:", nlpErr);
+                }
+            }
+
+            if (!isNaturalLanguage) {
+                return;
+            }
         } 
 
         if (message.guild) {
@@ -190,8 +222,33 @@ async function chat_command_listener(chat_commands, client, config, res) {
             resolvedLocale = await getGuildLanguage(message.guild.id);
         }
         message.locale = resolvedLocale || 'es';
-        const message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
-        const message_command = message_args.shift().toLowerCase();
+
+        let message_command;
+        let message_args;
+
+        if (isNaturalLanguage) {
+            message_command = naturalCommand;
+            message_args = naturalArgs;
+        } else {
+            message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
+            message_command = message_args.shift().toLowerCase();
+
+            // Si es s.ai o s.ia o s.?, intentar enrutarlo directamente como lenguaje natural
+            if ((message_command === 'ai' || message_command === 'ia' || message_command === '?') && message_args.length > 0) {
+                try {
+                    const { parseNaturalLanguage } = require("../services/typeSafeRouter.js");
+                    const prompt = message_args.join(' ');
+                    const parsed = await parseNaturalLanguage(prompt);
+                    if (parsed && parsed.command) {
+                        console.log(`[TYPESAFE] Enrutado vía s.${message_command} (${(parsed.confidence * 100).toFixed(0)}%): "${prompt}" -> ${parsed.fullCommandString}`);
+                        message_command = parsed.command;
+                        message_args = parsed.args;
+                    }
+                } catch (nlpErr) {
+                    console.error("[TYPESAFE] Error al procesar s.ai:", nlpErr);
+                }
+            }
+        }
 
         // Detectar si el usuario escribió una flag separada por espacio o sin el guión (ej: "- top", "top", "list", "lazer")
         const FLAG_CHECK_COMMANDS = new Set([

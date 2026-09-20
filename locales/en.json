@@ -2182,6 +2182,10 @@
     "err_rate_limited": "⚠️ The osu!droid API is temporarily rate limited. Please wait a moment before trying again.",
     "link_usage": "💡 Usage: `s.droid link <username_or_uid>`",
     "searching": "Querying osu!droid API..."
+  },
+  "ai": {
+    "err_no_prompt": "❌ You must specify what you want to query or do in natural language. E.g.: `s.ai show my top in std` or `s.ai recommend maps`.",
+    "err_not_understood": "❌ I could not identify with certainty which command you want to run for: *\"{prompt}\"*.\n💡 Try being a bit more specific, for example: `s.ai show my top in std`, `s.ai what was my last score` or `s.ai recommend maps`."
   }
 }
 

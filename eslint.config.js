@@ -29,6 +29,7 @@ module.exports = [
                 Request: "readonly",
                 Response: "readonly",
                 AbortController: "readonly",
+                AbortSignal: "readonly",
                 performance: "readonly"
             }
         },

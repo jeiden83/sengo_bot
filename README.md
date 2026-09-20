@@ -79,6 +79,9 @@ GROQ_API_KEY=tu_api_key_de_groq_aqui
 # Google Gemini API (para análisis multimodal y OCR de afiches de torneos en foros)
 GEMINI_API_KEY=tu_api_key_de_gemini_aqui
 
+# TypeSafe AI Jev (para comprensión y ejecución de comandos con lenguaje natural)
+TYPESAFE_API_KEY=tu_api_key_de_typesafe_aqui
+
 # Token de GitHub (para webhooks de commits)
 GITHUB_TOKEN=tu_token_de_github_aqui
 
@@ -120,6 +123,28 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
 ---
 
 ### 🎮 Comandos de osu!
+
+#### 🧠 Lenguaje Natural e Inteligencia Artificial (TypeSafe AI / Jev)
+* **`s.ai <petición>` o `@Sengo <petición>`**
+  Interpreta y ejecuta cualquier comando de Sengo a partir de lo que pides en lenguaje natural, usando el modelo System One ultrarrápido **Jev (TypeSafe AI)** sin alucinaciones y con latencia de ~200ms.
+  * *Métodos de activación (Híbrido):*
+    * **Mención directa:** `@Sengo dime mi top en std` (en cualquier canal donde el bot esté presente).
+    * **Mensaje Privado (DM):** Escribe directo a Sengo sin necesidad de prefijo (ej: `dime mi top en std`, `recomiéndame mapas`, `a cuánto está el bcv`).
+    * **Comando con prefijo:** `s.ai <petición>` o `s.? <petición>`.
+    * **Slash Command:** `/ai prompt:<petición>`.
+  * *Ejemplos soportados:*
+    * `dime mi top en std` ➔ `s.top -std`
+    * `dime mis mejores jugadas de taiko en lista` ➔ `s.top -taiko -list`
+    * `cuál fue mi última partida` ➔ `s.rs`
+    * `muestra mi reciente con pass en ctb` ➔ `s.rs -fruits -ps`
+    * `dime mi top con double time` ➔ `s.top +DT`
+    * `recomiéndame mapas para farmear` ➔ `s.recommend`
+    * `cómo están mis skills` ➔ `s.skills`
+    * `qué necesito para subir` ➔ `s.subir`
+    * `a cuánto está el dólar bcv` ➔ `s.bcv`
+    * `cuál es el reto diario` ➔ `s.daily`
+    * `compara mi score en este mapa: <enlace>` ➔ `s.c <enlace>`
+    * `show me my top 5 plays in mania` ➔ `s.top -mania -list 5`
 
 #### 👤 Perfil y Jugadas
 * **`s.osu` o `s.o [usuario]`**
