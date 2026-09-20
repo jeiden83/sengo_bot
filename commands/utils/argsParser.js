@@ -477,6 +477,7 @@ function argsParserNoCommand(args, options = {}) {
     let arSort = false;
     let odSort = false;
     let hpSort = false;
+    let durationSort = false;
     let reverseSort = false;
     let scoreSort = false;
     let totalScoreSort = false;
@@ -899,6 +900,12 @@ function argsParserNoCommand(args, options = {}) {
         // Si es exactamente "-hp" o "--hp"
         if (arg === "-hp" || arg === "--hp") {
             hpSort = true;
+            continue;
+        }
+
+        // Si es "-d", "-len", "-length", "-time", "-dur", "-duracion", etc.
+        if (arg === "-d" || arg === "-len" || arg === "--len" || arg === "-length" || arg === "--length" || arg === "-time" || arg === "--time" || arg === "-dur" || arg === "--dur" || arg === "-duracion" || arg === "--duracion" || arg === "-duration" || arg === "--duration") {
+            durationSort = true;
             continue;
         }
 
@@ -1454,6 +1461,7 @@ function argsParserNoCommand(args, options = {}) {
         'arSort': arSort,
         'odSort': odSort,
         'hpSort': hpSort,
+        'durationSort': durationSort,
         'reverseSort': reverseSort,
         'scoreSort': scoreSort,
         'totalScoreSort': totalScoreSort,

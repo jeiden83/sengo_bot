@@ -53,7 +53,8 @@ const data = new SlashCommandBuilder()
                 { name: "Mayor Circle Size / CS (-cs)", value: "cs" },
                 { name: "Mayor Approach Rate / AR (-ar)", value: "ar" },
                 { name: "Mayor Overall Difficulty / OD (-od)", value: "od" },
-                { name: "Mayor HP Drain (-hp)", value: "hp" }
+                { name: "Mayor HP Drain (-hp)", value: "hp" },
+                { name: "Mayor Duración (-d / -len)", value: "duracion" }
             )
     )
     .addBooleanOption(option =>
@@ -117,6 +118,8 @@ async function run(interaction, res) {
         args.push("-od");
     } else if (ordenar === "hp") {
         args.push("-hp");
+    } else if (ordenar === "duracion") {
+        args.push("-d");
     }
     if (nochoke) {
         args.push("-nc");

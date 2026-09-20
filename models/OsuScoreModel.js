@@ -2898,6 +2898,15 @@ function sortScores(scores, parsed_args = {}, mode = 'osu') {
     } else if (parsed_args.hpSort) {
         const getHp = s => (s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode))).hp;
         scores.sort((a, b) => getHp(b) - getHp(a) || (b.pp || 0) - (a.pp || 0));
+    } else if (parsed_args.durationSort) {
+        const getDuration = s => {
+            const beatmap = s.beatmap || {};
+            const totalLength = Number(beatmap.total_length || beatmap.hit_length || 0);
+            const stats = s._adjustedStats || (s._adjustedStats = BeatmapModel.getBeatmapAdjustedStats(s.beatmap, s.mods, mode));
+            const clockRate = stats.clockRate || 1.0;
+            return totalLength / clockRate;
+        };
+        scores.sort((a, b) => getDuration(b) - getDuration(a) || (b.pp || 0) - (a.pp || 0));
     }
 
     if (parsed_args.reverseSort) {
@@ -2921,7 +2930,8 @@ function hasCustomSort(parsed_args = {}) {
         parsed_args.csSort ||
         parsed_args.arSort ||
         parsed_args.odSort ||
-        parsed_args.hpSort
+        parsed_args.hpSort ||
+        parsed_args.durationSort
     );
 }
 

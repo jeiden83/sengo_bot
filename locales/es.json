@@ -1121,6 +1121,7 @@
     "filter_ar_sort_short": "orden: AR 👁️",
     "filter_od_sort_short": "orden: OD ⚖️",
     "filter_hp_sort_short": "orden: HP 🩸",
+    "filter_duration_sort_short": "orden: duración ⏳",
     "filter_reverse_sort_short": "orden: menor PP 🔄",
     "filter_reverse_suffix": "invertido 🔄",
     "filter_nochoke_short": "no-choke: activo 🛡️",

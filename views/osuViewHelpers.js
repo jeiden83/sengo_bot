@@ -490,13 +490,14 @@ function getActiveSortFilter(parsed_args = {}, locale = 'es') {
     if (parsed_args.arSort) return `${t(locale, 'top.filter_ar_sort_short')}${revSuffix}`;
     if (parsed_args.odSort) return `${t(locale, 'top.filter_od_sort_short')}${revSuffix}`;
     if (parsed_args.hpSort) return `${t(locale, 'top.filter_hp_sort_short')}${revSuffix}`;
+    if (parsed_args.durationSort) return `${t(locale, 'top.filter_duration_sort_short')}${revSuffix}`;
     if (isRev) return t(locale, 'top.filter_reverse_sort_short');
     return null;
 }
 
 /**
- * Retorna la etiqueta formateada del atributo por el cual se ordenó la jugada (ej: "270 BPM", "CS 6,5").
- * Retorna null si no se ordenó por ningún atributo de dificultad (BPM, CS, AR, OD, HP).
+ * Retorna la etiqueta formateada del atributo por el cual se ordenó la jugada (ej: "270 BPM", "CS 6,5", "3:45").
+ * Retorna null si no se ordenó por ningún atributo de dificultad (BPM, CS, AR, OD, HP, Duración).
  * @param {Object} score 
  * @param {Object} parsed_args 
  * @param {string|number} mode 
@@ -504,7 +505,7 @@ function getActiveSortFilter(parsed_args = {}, locale = 'es') {
  * @returns {string|null}
  */
 function getSortAttributeBadge(score, parsed_args = {}, mode = 'osu', locale = 'es') {
-    if (!score || (!parsed_args.bpmSort && !parsed_args.csSort && !parsed_args.arSort && !parsed_args.odSort && !parsed_args.hpSort)) {
+    if (!score || (!parsed_args.bpmSort && !parsed_args.csSort && !parsed_args.arSort && !parsed_args.odSort && !parsed_args.hpSort && !parsed_args.durationSort)) {
         return null;
     }
     const BeatmapModel = require('../models/BeatmapModel.js');
@@ -517,6 +518,15 @@ function getSortAttributeBadge(score, parsed_args = {}, mode = 'osu', locale = '
     if (parsed_args.arSort) return `AR ${formatDecimal(attrStats.ar, locale, 1)}`;
     if (parsed_args.odSort) return `OD ${formatDecimal(attrStats.od, locale, 1)}`;
     if (parsed_args.hpSort) return `HP ${formatDecimal(attrStats.hp, locale, 1)}`;
+    if (parsed_args.durationSort) {
+        const totalLength = Number(score.beatmap?.total_length || score.beatmap?.hit_length || 0);
+        const clockRate = attrStats.clockRate || 1.0;
+        const duration = totalLength / clockRate;
+        const s = Math.round(duration);
+        const mins = Math.floor(s / 60);
+        const secs = s % 60;
+        return `${mins}:${secs.toString().padStart(2, '0')}`;
+    }
     return null;
 }
 
