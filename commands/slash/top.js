@@ -54,7 +54,7 @@ const data = new SlashCommandBuilder()
                 { name: "Mayor Approach Rate / AR (-ar)", value: "ar" },
                 { name: "Mayor Overall Difficulty / OD (-od)", value: "od" },
                 { name: "Mayor HP Drain (-hp)", value: "hp" },
-                { name: "Mayor Duración (-d / -len)", value: "duracion" }
+                { name: "Mayor Duración (-len / -time)", value: "duracion" }
             )
     )
     .addBooleanOption(option =>
@@ -119,7 +119,7 @@ async function run(interaction, res) {
     } else if (ordenar === "hp") {
         args.push("-hp");
     } else if (ordenar === "duracion") {
-        args.push("-d");
+        args.push("-len");
     }
     if (nochoke) {
         args.push("-nc");

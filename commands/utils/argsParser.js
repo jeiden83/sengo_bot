@@ -903,8 +903,8 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es "-d", "-len", "-length", "-time", "-dur", "-duracion", etc.
-        if (arg === "-d" || arg === "-len" || arg === "--len" || arg === "-length" || arg === "--length" || arg === "-time" || arg === "--time" || arg === "-dur" || arg === "--dur" || arg === "-duracion" || arg === "--duracion" || arg === "-duration" || arg === "--duration") {
+        // Si es "-len", "-length", "-time", "-dur", "-duracion", etc.
+        if (arg === "-len" || arg === "--len" || arg === "-length" || arg === "--length" || arg === "-time" || arg === "--time" || arg === "-dur" || arg === "--dur" || arg === "-duracion" || arg === "--duracion" || arg === "-duration" || arg === "--duration") {
             durationSort = true;
             continue;
         }
