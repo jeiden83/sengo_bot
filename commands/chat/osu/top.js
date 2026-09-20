@@ -676,12 +676,34 @@ async function run(messages, args, options = {}) {
     let startIndex = (page - 1) * 5;
 
     async function getListStars(chunk) {
+        // Consultar en lote la información de ranked_beatmaps para los mapas del chunk que aún no tengan max_combo
+        const missingComboIds = chunk
+            .filter(s => s.beatmap?.id && !s.beatmap?.max_combo && !s.beatmap_max_combo)
+            .map(s => s.beatmap.id);
+
+        if (missingComboIds.length > 0) {
+            try {
+                const BeatmapModel = require("../../../models/BeatmapModel.js");
+                const dbBeatmaps = await BeatmapModel.batchGetBeatmaps(missingComboIds);
+                const mapById = new Map(dbBeatmaps.map(b => [b.id, b]));
+                for (const score of chunk) {
+                    if (score.beatmap?.id && mapById.has(score.beatmap.id)) {
+                        const dbMap = mapById.get(score.beatmap.id);
+                        if (dbMap.max_combo) {
+                            score.beatmap_max_combo = dbMap.max_combo;
+                            if (score.beatmap) score.beatmap.max_combo = dbMap.max_combo;
+                        }
+                    }
+                }
+            } catch (_) {}
+        }
+
         return Promise.all(chunk.map(async (score) => {
             const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
             const targetMode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || parser_res.parsed_args.gamemode || score.beatmap?.mode || 'osu';
             const isDroid = score.user?.server === 'droid' || parser_res.parsed_args.server === 'droid';
 
-            if (!isDroid && score.mods.length === 0 && score.beatmap?.mode === targetMode && score.beatmap?.difficulty_rating) {
+            if (!isDroid && score.mods.length === 0 && score.beatmap?.mode === targetMode && score.beatmap?.difficulty_rating && (score.beatmap_max_combo || score.beatmap?.max_combo)) {
                 return score.beatmap.difficulty_rating;
             }
 
@@ -699,7 +721,13 @@ async function run(messages, args, options = {}) {
                         if (filePath && fs.existsSync(filePath)) {
                             const osuContent = fs.readFileSync(filePath, 'utf8');
                             const droidAttrs = droidEngine.calculateDroidPlayAttributes(osuContent, score, String(bInfo.id));
-                            if (droidAttrs) return droidAttrs.stars;
+                            if (droidAttrs) {
+                                if (droidAttrs.beatmap_max_combo) {
+                                    score.beatmap_max_combo = droidAttrs.beatmap_max_combo;
+                                    if (score.beatmap) score.beatmap.max_combo = droidAttrs.beatmap_max_combo;
+                                }
+                                return droidAttrs.stars;
+                            }
                         }
                     }
                 } catch (_) {}
@@ -717,6 +745,10 @@ async function run(messages, args, options = {}) {
                                 if (!score.beatmapset) score.beatmapset = {};
                                 BeatmapModel.enrichBeatmapsetMetadata(score.beatmapset, bInfo.beatmapset);
                             }
+                            if (bInfo.max_combo) {
+                                score.beatmap_max_combo = bInfo.max_combo;
+                                if (score.beatmap) score.beatmap.max_combo = bInfo.max_combo;
+                            }
                         }
                     } catch {}
                 }
@@ -727,6 +759,11 @@ async function run(messages, args, options = {}) {
                 const map = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmap, parser_res.parsed_args.ppEngine);
                 const maxAttrs = calculatePP(score, map, "maximo_pp", null, parser_res.parsed_args.ppEngine);
                 const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : score.beatmap.difficulty_rating);
+                const maxCombo = maxAttrs.difficulty?.maxCombo || maxAttrs.maxCombo;
+                if (maxCombo) {
+                    score.beatmap_max_combo = maxCombo;
+                    if (score.beatmap) score.beatmap.max_combo = maxCombo;
+                }
                 map.free();
                 return stars;
             } catch {

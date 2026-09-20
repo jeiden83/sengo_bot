@@ -626,7 +626,10 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const mods_used = formatMods(score.mods, isLazer);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
-        const combo_val_str = max_combo !== null && max_combo !== undefined ? `x${max_combo}` : 'x?';
+        const map_max_combo = score.beatmap?.max_combo || score.beatmap_max_combo || null;
+        const combo_val_str = max_combo !== null && max_combo !== undefined
+            ? (map_max_combo ? `x${max_combo}/${map_max_combo}` : `x${max_combo}`)
+            : 'x?';
         const maxComboStr = max_combo !== null && max_combo !== undefined ? max_combo : '?';
 
         const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };

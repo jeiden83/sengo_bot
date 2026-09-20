@@ -766,10 +766,32 @@ async function run(messages, args){
 
         const getListStars = async (chunk) => {
             const { getBeatmap, getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+            const BeatmapModel = require("../../../models/BeatmapModel.js");
+
+            const missingComboIds = chunk
+                .filter(s => s.beatmap?.id && !s.beatmap?.max_combo && !s.beatmap_max_combo)
+                .map(s => s.beatmap.id);
+
+            if (missingComboIds.length > 0) {
+                try {
+                    const dbBeatmaps = await BeatmapModel.batchGetBeatmaps(missingComboIds);
+                    const mapById = new Map(dbBeatmaps.map(b => [b.id, b]));
+                    for (const score of chunk) {
+                        if (score.beatmap?.id && mapById.has(score.beatmap.id)) {
+                            const dbMap = mapById.get(score.beatmap.id);
+                            if (dbMap.max_combo) {
+                                score.beatmap_max_combo = dbMap.max_combo;
+                                if (score.beatmap) score.beatmap.max_combo = dbMap.max_combo;
+                            }
+                        }
+                    }
+                } catch (_) {}
+            }
+
             return Promise.all(chunk.map(async (score) => {
                 const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
                 const targetMode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || osu_userdata.parsed_args?.gamemode || score.beatmap?.mode || 'osu';
-                if (score.mods.length === 0 && score.beatmap?.mode === targetMode) {
+                if (score.mods.length === 0 && score.beatmap?.mode === targetMode && (score.beatmap_max_combo || score.beatmap?.max_combo)) {
                     return score.beatmap.difficulty_rating;
                 }
                 try {
@@ -777,6 +799,11 @@ async function run(messages, args){
                     const map = await getBeatmap_osu(score.beatmapset.id, score.beatmap.id, beatmap);
                     const maxAttrs = calculatePP(score, map, "maximo_pp");
                     const stars = maxAttrs.stars || (maxAttrs.difficulty ? maxAttrs.difficulty.stars : score.beatmap.difficulty_rating);
+                    const maxCombo = maxAttrs.difficulty?.maxCombo || maxAttrs.maxCombo;
+                    if (maxCombo) {
+                        score.beatmap_max_combo = maxCombo;
+                        if (score.beatmap) score.beatmap.max_combo = maxCombo;
+                    }
                     map.free();
                     return stars;
                 } catch (e) {
