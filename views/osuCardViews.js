@@ -1448,20 +1448,26 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         const diffFont = fonts.playDiff || { size: 23, weight: "bold", style: "italic", color: "#ffffff" };
         const srFont = fonts.playSR || diffFont;
 
-        // Medir ancho requerido para el SR
-        const srItalic = srFont.style === "italic" ? "italic " : "";
-        const srWeight = srFont.weight ? `${srFont.weight} ` : "";
-        const srSize = srFont.size || 23;
+        // Medir ancho requerido para el badge de SR
+        const srValText = Number(effectiveSRNumber).toFixed(2);
+        const srPadX = 8;
+        const srGap = 4;
+        const srPillH = 24;
+        const srPillR = 12;
+
         ctx.save();
-        ctx.font = `${srItalic}${srWeight}${srSize}px ${fontFamily}`;
-        const srWidth = ctx.measureText(srText).width;
+        ctx.font = `bold 15px ${fontFamily}`;
+        const starW = ctx.measureText("★").width;
+        const numW = ctx.measureText(srValText).width;
+
+        const srPillW = Math.round(srPadX + starW + srGap + numW + srPadX);
 
         // Truncar nombre de dificultad si es muy largo para asegurar espacio a SR y Score
         const dItalic = diffFont.style === "italic" ? "italic " : "";
         const dWeight = diffFont.weight ? `${diffFont.weight} ` : "";
         const dSize = diffFont.size || 23;
         ctx.font = `${dItalic}${dWeight}${dSize}px ${fontFamily}`;
-        const maxDiffWidth = pb.w - srWidth - 270;
+        const maxDiffWidth = pb.w - srPillW - 275;
         let displayDiff = cleanDiff;
         while (displayDiff.length > 3 && ctx.measureText(displayDiff + "...").width > maxDiffWidth) {
             displayDiff = displayDiff.slice(0, -1);
@@ -1473,15 +1479,31 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         // 1. Dibujar nombre de dificultad
         drawCustomText(ctx, diffFont, displayDiff, pb.x + 16, pb.y + 76, "left", fontFamily);
 
-        // 2. Dibujar SR con color dinámico de dificultad y delineado adaptable
-        const srX = pb.x + 16 + diffWidth + 8;
-        const srColor = getDifficultyColor(effectiveSRNumber);
-        const srOutline = getDifficultyOutlineColor(effectiveSRNumber);
-        drawCustomText(ctx, srFont, srText, srX, pb.y + 76, "left", fontFamily, null, {
-            color: srColor,
-            outlineColor: srOutline,
-            outlineWidth: 2.8
-        });
+        // 2. Dibujar Badge/Pill de SR con fondo dinámico según dificultad
+        const pillX = pb.x + 16 + diffWidth + 10;
+        const pillY = pb.y + 54;
+        const pillBg = getDifficultyColor(effectiveSRNumber);
+        const isDarkText = effectiveSRNumber < 6.5;
+        const textColor = isDarkText ? "#000000" : "#ffffff";
+        const starColor = isDarkText ? "#000000" : "#facc15";
+
+        ctx.save();
+        ctx.fillStyle = pillBg;
+        roundRect(ctx, pillX, pillY, srPillW, srPillH, srPillR, true);
+
+        ctx.font = `bold 15px ${fontFamily}`;
+        ctx.textBaseline = "middle";
+        const textMidY = pillY + (srPillH / 2) + 0.5;
+
+        // Estrella
+        ctx.fillStyle = starColor;
+        ctx.textAlign = "left";
+        ctx.fillText("★", pillX + srPadX, textMidY);
+
+        // Número de SR
+        ctx.fillStyle = textColor;
+        ctx.fillText(srValText, pillX + srPadX + starW + srGap, textMidY);
+        ctx.restore();
 
         drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
