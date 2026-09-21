@@ -749,7 +749,7 @@ async function saveOAuthToken(discordId, osuUser, tokenData) {
         .upsert({
             discord_id: discordId,
             osu_id: osuUser.id.toString(),
-            main_gamemode: 'osu'
+            main_gamemode: osuUser.playmode || 'osu'
         }, { onConflict: 'discord_id' });
 
     if (userError) throw userError;

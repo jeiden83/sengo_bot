@@ -217,7 +217,7 @@ async function run(messages, args) {
         }
     }
 
-    const targetMode = detectedMode || osuUser?.playmode || "osu";
+    let targetMode = detectedMode;
 
     if (!osuUser || !osuUser.id) {
         // Buscar usuario vinculado del autor
@@ -226,6 +226,7 @@ async function run(messages, args) {
             if (isDroid) {
                 if (linked && linked.droid_uid) {
                     osuUser = await getOsuUser({ username: [String(linked.droid_uid)], gamemode: "osu", server: "droid" });
+                    targetMode = "osu";
                 } else {
                     await progressPromise;
                     const noDroidErr = `⚠️ No tienes una cuenta de \`osu!droid\` vinculada. Usa \`s.droid link <nombre_o_uid>\` o especifica un usuario con \`s.card -droid <usuario>\`.`;
@@ -234,7 +235,13 @@ async function run(messages, args) {
                 }
             } else if (linked && (linked.osu_id || linked.username)) {
                 const queryUser = String(linked.osu_id || linked.username);
-                osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: explicitServer || "bancho" });
+                const linkedMode = (linked.main_gamemode && linked.main_gamemode !== "default") ? linked.main_gamemode : null;
+                const modeToQuery = explicitMode || linkedMode || undefined;
+                osuUser = await getOsuUser({ username: [queryUser], gamemode: modeToQuery, server: explicitServer || "bancho" });
+                targetMode = explicitMode || linkedMode || osuUser?.playmode || "osu";
+                if (modeToQuery !== targetMode && typeof osuUser !== "string" && osuUser?.id) {
+                    osuUser = await getOsuUser({ username: [queryUser], gamemode: targetMode, server: explicitServer || "bancho" });
+                }
             }
         } catch (err) {
             console.warn("[s.card] Error al obtener usuario vinculado:", err.message);
@@ -248,6 +255,8 @@ async function run(messages, args) {
             return isSlash ? { content: noUserErr, embeds: [] } : noUserErr;
         }
     }
+
+    targetMode = targetMode || osuUser?.playmode || "osu";
 
     if (!osuUser || !osuUser.id || typeof osuUser === "string") {
         await progressPromise;
