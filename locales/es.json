@@ -411,7 +411,7 @@
     "skills": {
       "header": "Desglosa las habilidades de osu! de la tarjeta (.card) con sus mejores jugadas.",
       "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad. Admite ranking nacional con -nacional / -pais y ranking de servidor con -server [id].",
-      "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO] [-server [id]]"
+      "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO] [-server [id]] [-force]"
     },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",

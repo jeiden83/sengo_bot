@@ -51,6 +51,7 @@ async function run(messages, args) {
 
     let isNational = false;
     let isServer = false;
+    let isForce = false;
     let targetGuildId = null;
     let countryArg = null;
     let selectedSkill = null;
@@ -61,6 +62,11 @@ async function run(messages, args) {
         if (typeof arg !== "string") continue;
         const lower = arg.toLowerCase().trim();
         const stripped = lower.replace(/^--?/, "");
+
+        if (["-force", "--force", "-f", "-refresh", "--refresh", "-recargar"].includes(lower)) {
+            isForce = true;
+            continue;
+        }
 
         // 1. Caso flag con prefijo y separador : o = (ej: -server:123456, --server=123456, -srv:123456)
         const inlineMatch = lower.match(/^--(server|servidor|guild|srv)[:=](.+)$/) || lower.match(/^-(server|servidor|guild|srv)[:=](.+)$/);
@@ -610,13 +616,22 @@ async function run(messages, args) {
     try {
         const targetServer = osuUser.server || explicitServer || "bancho";
         if (logger) logger.process(`Obteniendo Top 100 puntuaciones en ${targetMode} (${targetServer}) y analizando habilidades`);
-        const topScores = await getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: targetServer }).catch(() => []);
+        const topScores = await getUserTopScores({
+            username: [String(osuUser.id)],
+            gamemode: targetMode,
+            server: targetServer,
+            force: isForce
+        }).catch(() => []);
 
         if (!topScores || topScores.length === 0) {
             return t(locale, "skills.err_no_scores", { username: osuUser.username });
         }
 
-        const skillsBreakdown = await analyzeSkillsBreakdown(topScores, targetMode);
+        const skillsBreakdown = await analyzeSkillsBreakdown(topScores, targetMode, {
+            userId: osuUser.id,
+            server: targetServer,
+            forceRefresh: isForce
+        });
         const embed = doOsuSkillsEmbed(message, osuUser, skillsBreakdown, locale);
 
         // Determinar si el osuUser consultado pertenece al autor del mensaje
@@ -651,6 +666,15 @@ run.alias = {
     skill: true,
     ts: true
 };
+
+run.flags = [
+    'gamemode',
+    'server',
+    'skills_breakdown',
+    'country',
+    'force',
+    'target_user'
+];
 
 run.description = {
     header: t("es", "commands.skills.header"),

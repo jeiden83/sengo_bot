@@ -566,11 +566,81 @@ function analyzeSkills(scores, returnBreakdown = false, mode = "osu") {
     return result;
 }
 
+// ponytail: Cache en memoria con TTL de 5m y deduplicador in-flight para evitar procesar ~50 mapas con sengo-pp repetidamente
+const skillsBreakdownCache = new Map();
+const activeSkillsPromises = new Map();
+const SKILLS_BREAKDOWN_TTL = 5 * 60 * 1000; // 5 minutos, paridad con TOP_SCORES_CACHE_TTL en OsuScoreModel
+
+function setSkillsWithLimit(map, key, value, limit = 150) {
+    if (map.size >= limit) {
+        const firstKey = map.keys().next().value;
+        map.delete(firstKey);
+    }
+    map.set(key, value);
+}
+
+function clearSkillsCache(userId = null) {
+    if (!userId) {
+        skillsBreakdownCache.clear();
+        return;
+    }
+    const cleanId = String(userId).toLowerCase();
+    for (const key of skillsBreakdownCache.keys()) {
+        if (key.includes(`:${cleanId}:`) || key.startsWith(`${cleanId}:`)) {
+            skillsBreakdownCache.delete(key);
+        }
+    }
+}
+
 /**
  * Realiza el desglose completo de habilidades para el comando .skills,
- * calculando las estrellas exactas con mods para el Top 3 de cada habilidad.
+ * con caché en memoria (TTL 5m) y deduplicador concurrente para evitar cálculos repetitivos en CPU.
  */
-async function analyzeSkillsBreakdown(scores, mode = "osu") {
+async function analyzeSkillsBreakdown(scores, mode = "osu", options = {}) {
+    if (!scores || scores.length === 0) {
+        return _computeSkillsBreakdown(scores, mode);
+    }
+
+    const opts = typeof options === "boolean" ? { force: options } : (options || {});
+    const force = Boolean(opts.force || opts.forceRefresh);
+    const userId = opts.userId || scores[0]?.user_id || scores[0]?.user?.id || scores[0]?.uid || scores[0]?.user?.username || "anon";
+    const server = opts.server || scores[0]?.user?.server || (scores[0]?.droid_mods != null ? "droid" : "bancho");
+    const topFingerprint = `${scores.length}_${scores[0]?.id || scores[0]?.pp || ''}_${scores[scores.length - 1]?.id || ''}`;
+    const cacheKey = `${server}:${mode}:${userId}:${topFingerprint}`;
+
+    if (!force) {
+        const cached = skillsBreakdownCache.get(cacheKey);
+        if (cached && (Date.now() - cached.timestamp) < SKILLS_BREAKDOWN_TTL) {
+            return typeof globalThis.structuredClone === "function"
+                ? globalThis.structuredClone(cached.data)
+                : JSON.parse(JSON.stringify(cached.data));
+        }
+
+        if (activeSkillsPromises.has(cacheKey)) {
+            return await activeSkillsPromises.get(cacheKey);
+        }
+    }
+
+    let resolveActivePromise;
+    const p = new Promise(resolve => { resolveActivePromise = resolve; });
+    activeSkillsPromises.set(cacheKey, p);
+
+    try {
+        const result = await _computeSkillsBreakdown(scores, mode);
+        setSkillsWithLimit(skillsBreakdownCache, cacheKey, {
+            data: result,
+            timestamp: Date.now()
+        }, 150);
+        return typeof globalThis.structuredClone === "function"
+            ? globalThis.structuredClone(result)
+            : JSON.parse(JSON.stringify(result));
+    } finally {
+        resolveActivePromise();
+        activeSkillsPromises.delete(cacheKey);
+    }
+}
+
+async function _computeSkillsBreakdown(scores, mode = "osu") {
     const base = analyzeSkills(scores, true, mode);
     const skillKeys = base.skillKeys || ["aim", "speed", "acc", "reading"];
     if (!scores || scores.length === 0) {
@@ -1221,6 +1291,7 @@ module.exports = {
     calculateManiaSkillsForScore,
     analyzeSkills,
     analyzeSkillsBreakdown,
+    clearSkillsCache,
     analyzePlayerPushProfile,
     estimateMapSkills,
     saveUserSkills,

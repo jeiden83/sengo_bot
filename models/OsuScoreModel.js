@@ -916,7 +916,7 @@ async function _getUserTopScores(parsed_args) {
     const now = Date.now();
     const cached = userTopScoresCache.get(cacheKey);
 
-    if (cached && (now - cached.timestamp) < TOP_SCORES_CACHE_TTL) {
+    if (!parsed_args.force && !parsed_args.forceUpdate && cached && (now - cached.timestamp) < TOP_SCORES_CACHE_TTL) {
         return typeof globalThis.structuredClone === 'function' ? globalThis.structuredClone(cached.scores) : JSON.parse(JSON.stringify(cached.scores));
     }
 

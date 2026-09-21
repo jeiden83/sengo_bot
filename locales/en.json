@@ -411,7 +411,7 @@
     "skills": {
       "header": "Breaks down osu! profile card skills (.card) with top plays.",
       "body": "Shows the breakdown of Aim, Speed, Accuracy, and Reading with averages and Top 3 plays for each skill. Supports national leaderboard with -national / -country and server leaderboard with -server [id].",
-      "usage": "s.skills [user] [-top] [-aim|-speed|-acc|-reading] [-national] [-country CO] [-server [id]]"
+      "usage": "s.skills [user] [-top] [-aim|-speed|-acc|-reading] [-national] [-country CO] [-server [id]] [-force]"
     },
     "yo": {
       "header": "Sends the YO picture or generates a dynamic profile card with Canvas.",

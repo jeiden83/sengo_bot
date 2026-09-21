@@ -488,6 +488,14 @@ const FLAG_HANDLERS = {
             }
         }
         return null;
+    },
+
+    // 41. Flag de actualización forzada (-force)
+    force: (answers, entities) => {
+        if (answers.is_force?.noul > 0.60 || entities.cleanText.match(/\b(?:force|forzar|refrescar|actualizar)\b/i)) {
+            return ['-force'];
+        }
+        return null;
     }
 };
 
@@ -528,7 +536,7 @@ const COMMAND_DEFINITIONS = {
     skills: {
         intent: "Ver habilidades cinéticas, radar, desglose de skills (aim, speed, reading, stamina) o mejores jugadas por habilidad en el top (skills)",
         category: "osu",
-        flags: ['gamemode', 'skills_breakdown', 'score_index', 'country', 'target_user', 'target_mention']
+        flags: ['gamemode', 'server', 'skills_breakdown', 'score_index', 'country', 'force', 'target_user', 'target_mention']
     },
     card: {
         intent: "Generar tarjeta gráfica o imagen Canvas de perfil (card)",
