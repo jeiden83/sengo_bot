@@ -198,6 +198,15 @@ async function run(messages, args) {
         if (logger) logger.process(`Consultando miembros vinculados en ${serverName}...`);
 
         const effectiveGuildId = targetGuild ? targetGuild.id : targetGuildId;
+        const isBotInGuild = message.client?.guilds?.cache?.has(effectiveGuildId);
+
+        // Si el bot no está en el servidor (ej. User-Installed App en servidor externo), advertir que se requiere a Sengo en el servidor
+        if (!isBotInGuild) {
+            const err = t(locale, "skills.server_not_member") || "❌ Esta opción requiere que Sengo sea miembro de este servidor de Discord para poder consultar los perfiles y jugadas de sus integrantes. ¡Invita a Sengo al servidor para usar el ranking de habilidades del servidor!";
+            if (typeof message.reply === "function") return await message.reply(err);
+            return message.channel?.send ? await message.channel.send(err) : err;
+        }
+
         const linkedUsers = await OsuUserModel.getLinkedUsers({ guildId: effectiveGuildId, guild: targetGuild });
         let osuIds = (linkedUsers || []).map(u => String(u.osu_id)).filter(Boolean);
 
@@ -234,9 +243,9 @@ async function run(messages, args) {
             } catch {}
         }
 
-        // Si el bot no está en el servidor y no hay ningún usuario registrado para esa guild en Supabase
-        if (!targetGuild && osuIds.length === 0) {
-            const err = t(locale, "skills.server_not_found", { guildId: targetGuildId }) || `❌ No se encontró el servidor con ID \`${targetGuildId}\` o no tiene miembros vinculados en la base de datos.`;
+        // Si no se encontraron usuarios vinculados en el servidor
+        if (osuIds.length === 0) {
+            const err = t(locale, "skills.server_no_members", { server: serverName }) || `❌ No se encontraron jugadores de osu! vinculados a Sengo en **${serverName}**.`;
             if (typeof message.reply === "function") return await message.reply(err);
             return message.channel?.send ? await message.channel.send(err) : err;
         }

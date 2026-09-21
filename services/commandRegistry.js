@@ -429,7 +429,10 @@ const FLAG_HANDLERS = {
         }
         const mod = answers.mods_filter?.choice;
         if (mod && mod !== 'none') {
-            const modMap = { dt: '+DT', hr: '+HR', hd: '+HD', ez: '+EZ', fl: '+FL', nomod: '+NM' };
+            const modMap = {
+                dt: '+DT', hr: '+HR', hd: '+HD', ez: '+EZ', fl: '+FL', nomod: '+NM',
+                hdhr: '+HDHR', hddt: '+HDDT', dthr: '+DTHR', ezfl: '+EZFL'
+            };
             return modMap[mod] || null;
         }
         return null;

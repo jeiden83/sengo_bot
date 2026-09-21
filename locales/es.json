@@ -1971,6 +1971,9 @@
     "err_no_perms": "❌ Necesitas permisos de **Administrar Canal** o **Administrador** para configurar el Mapping Tracker.",
     "err_no_perms_other_user": "❌ Solo los administradores pueden modificar la configuración de otros usuarios. Tú únicamente puedes configurar tus propias alertas con `s.mapper -track -usuario`.",
     "err_save_channel": "❌ Error al guardar canal: {error}",
+    "err_channel_not_found": "❌ El canal <#{channelId}> no fue encontrado en este servidor o el bot no tiene acceso.",
+    "err_channel_not_text": "❌ El canal seleccionado debe ser un canal de texto.",
+    "err_channel_missing_permissions": "⚠️ Al bot le faltan los siguientes permisos necesarios en el canal <#{channelId}>:\n{missingPermissions}\nPor favor, otorga estos permisos antes de configurar el canal.",
     "success_set_channel": "✅ **Canal de Mapping Tracker configurado correctamente en <#{channelId}>**.\n\nAhora puedes añadir mappers usando:\n• `s.mapper -track -usuario <ID/mención>`\n• `s.mapper -track -usuario -server` (añade a todos los miembros vinculados).",
     "success_delete_channel": "🗑️ **Mapping Tracker deshabilitado en este servidor**.\nSe ha eliminado la configuración del canal y se han borrado automáticamente todas las suscripciones de mappers asociadas a este servidor.",
     "err_no_channel_set": "⚠️ Primero debes configurar un canal para notificaciones usando `s.mapper -track -canal #canal`.",
@@ -2190,6 +2193,12 @@
   "ai": {
     "err_no_prompt": "❌ Debes especificar lo que deseas consultar o hacer en lenguaje natural. Ej: `s.ai dime mi top en std` o `s.ai recomiéndame mapas`.",
     "err_not_understood": "❌ No pude identificar con certeza qué comando deseas ejecutar con: *\"{prompt}\"*.\n💡 Prueba siendo un poco más específico, por ejemplo: `s.ai dime mi top en std`, `s.ai cuál fue mi última partida` o `s.ai cuál es la tasa bcv`."
+  },
+  "skills": {
+    "server_not_member": "❌ Esta opción requiere que Sengo sea miembro de este servidor de Discord para poder consultar los perfiles y jugadas de sus integrantes. ¡Invita a Sengo al servidor para usar el ranking de habilidades del servidor!",
+    "server_no_members": "❌ No se encontraron jugadores de osu! vinculados a Sengo en **{server}**.",
+    "server_dm_error": "❌ Este comando con `-server` solo puede utilizarse dentro de un servidor de Discord donde Sengo sea miembro o indicando la ID del servidor.",
+    "server_not_found": "❌ No se encontró el servidor con ID `{guildId}` o no tiene miembros vinculados en la base de datos."
   }
 }
 

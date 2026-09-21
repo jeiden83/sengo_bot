@@ -490,7 +490,11 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
                 }
             }
         } catch (sendErr) {
-            console.error(`[MAPPING-TRACKER-SERVICE] Error al enviar mensaje a canal ${sub.channel_id}:`, sendErr.message);
+            if (sendErr.code === 50013) {
+                console.warn(`[MAPPING-TRACKER-SERVICE] Permisos insuficientes (error 50013) para enviar alertas de mapping al canal ${sub.channel_id} en el servidor ${sub.guild_id}. Asegúrate de otorgar permisos de Ver canal, Enviar mensajes e Insertar enlaces.`);
+            } else {
+                console.error(`[MAPPING-TRACKER-SERVICE] Error al enviar mensaje a canal ${sub.channel_id}:`, sendErr.message);
+            }
         }
     }
 }

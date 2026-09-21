@@ -111,7 +111,7 @@ function buildJevQuestions() {
         // 12. Filtro de mods
         mods_filter: {
             type: "choice",
-            instructions: "¿El usuario especifica algún mod específico de juego (como DT, HR, HD, EZ, FL, NoMod)?",
+            instructions: "¿El usuario especifica algún mod específico de juego (como DT, HR, HD, EZ, FL, NoMod, HDHR, HDDT)?",
             criteria: {
                 none: "No especifica ningún mod o filtro de mods",
                 dt: "Double Time, DT, NC, Nightcore, acelerado",
@@ -119,7 +119,11 @@ function buildJevQuestions() {
                 hd: "Hidden, HD, oculto",
                 ez: "Easy, EZ, fácil",
                 fl: "Flashlight, FL, linterna",
-                nomod: "NoMod, NM, sin mods"
+                nomod: "NoMod, NM, sin mods",
+                hdhr: "Hidden + Hard Rock, HDHR",
+                hddt: "Hidden + Double Time, HDDT, HDNC",
+                dthr: "Double Time + Hard Rock, DTHR",
+                ezfl: "Easy + Flashlight, EZFL"
             }
         },
         // 13. Filtro o vista de habilidades (Skills)
@@ -313,21 +317,60 @@ function extractEntities(rawText) {
         pageNumber = parseInt(pageMatch[1], 10);
     }
 
-    // 5. Extraer mods explícitos en formato +MODS (ej: +HDDT, +HR, +EZFL)
+    // 5. Extraer mods explícitos en formato +MODS o frases en lenguaje natural (ej: +HDDT, +HR, "filtrado por hdhr", "en hdhr", "con mods dthr", "sin mods", "nomod")
     let explicitPlusMods = null;
+    let modContainFilter = null;
+
+    const validModPairs = new Set([
+        'NF', 'EZ', 'TD', 'HD', 'HR', 'SD', 'DT', 'HT', 'NC', 'FL', 'AT', 'SO', 'AP', 'PF',
+        '4K', '5K', '6K', '7K', '8K', '9K', 'RN', 'CN', 'RD', 'FI', 'MR', 'CL', 'RX', 'NM'
+    ]);
+
+    const isValidModString = (str) => {
+        if (!str) return false;
+        const upper = str.toUpperCase();
+        if (upper === 'NM' || upper === 'NOMOD') return true;
+        if (upper.length < 2 || upper.length % 2 !== 0) return false;
+        for (let i = 0; i < upper.length; i += 2) {
+            if (!validModPairs.has(upper.slice(i, i + 2))) return false;
+        }
+        return true;
+    };
+
+    // A) +MODS explícito (ej: +HDHR, +DT, +NM)
     const plusModMatch = cleanText.match(/\+([A-Za-z0-9]{2,8})\b/);
-    if (plusModMatch) {
-        explicitPlusMods = `+${plusModMatch[1].toUpperCase()}`;
+    if (plusModMatch && isValidModString(plusModMatch[1])) {
+        explicitPlusMods = `+${plusModMatch[1].toUpperCase() === 'NOMOD' ? 'NM' : plusModMatch[1].toUpperCase()}`;
     }
 
-    // 6. Extraer filtro de contención de mods (ej: "con HD", "que tenga DT")
-    let modContainFilter = null;
-    const containModMatch = cleanText.match(/\b(?:con|tenga|incluya)\s+([A-Za-z]{2})\b/i);
-    if (containModMatch) {
-        const candidate = containModMatch[1].toUpperCase();
-        const validPairs = new Set(['HD', 'HR', 'DT', 'NC', 'EZ', 'FL', 'HT', 'SO', 'NF']);
-        if (validPairs.has(candidate)) {
-            modContainFilter = candidate;
+    // B) Mods en lenguaje natural (ej: "filtrado por hdhr", "filtro de hdhr", "con mods hdhr", "en hdhr", "mods dthr")
+    if (!explicitPlusMods) {
+        if (/\b(?:sin\s+mods?|sin\s+ning[uú]n\s+mod|nomod)\b/i.test(cleanText)) {
+            explicitPlusMods = '+NM';
+        } else {
+            const natModMatch = cleanText.match(/\b(?:filtrad[oa]s?\s+(?:por|con|de)|filtrar\s+(?:por|con)|filtro\s+(?:de|por)?|con\s+(?:los\s+)?mods?|con\s+|mods?\s+|en\s+)([A-Za-z0-9]{2,8})\b/i);
+            if (natModMatch && isValidModString(natModMatch[1])) {
+                const upper = natModMatch[1].toUpperCase();
+                explicitPlusMods = `+${upper === 'NOMOD' ? 'NM' : upper}`;
+            } else {
+                // Standalone multi-mod o par conocido al final o entre palabras (ej: "top hdhr", "rs hddt")
+                const words = cleanText.split(/\s+/);
+                for (const w of words) {
+                    const cleanW = w.replace(/[^a-zA-Z0-9]/g, '');
+                    if (cleanW.length >= 4 && isValidModString(cleanW)) {
+                        explicitPlusMods = `+${cleanW.toUpperCase()}`;
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    // 6. Extraer filtro de contención de mods (ej: "que tenga DT", "que contenga HD", "incluya HR")
+    if (!explicitPlusMods) {
+        const containModMatch = cleanText.match(/\b(?:que\s+tenga|que\s+incluya|que\s+contenga|contenga|incluya)\s+([A-Za-z]{2,8})\b/i);
+        if (containModMatch && isValidModString(containModMatch[1])) {
+            modContainFilter = containModMatch[1].toUpperCase();
         }
     }
 
@@ -464,7 +507,10 @@ function extractEntities(rawText) {
         'mapa', 'mapas', 'beatmap', 'beatmaps', 'canal', 'servidor', 'server', 'guild',
         'cumple', 'cumpleaños', 'mappers', 'mapper', 'torneo', 'torneos',
         'mayor', 'menor', 'mas', 'menos', 'aim', 'speed', 'reading', 'stamina', 'acc', 'accuracy',
-        'precision', 'bpm', 'combo', 'stars', 'pp', 'duracion', 'tiempo', 'fecha', 'ranking'
+        'precision', 'bpm', 'combo', 'stars', 'pp', 'duracion', 'tiempo', 'fecha', 'ranking',
+        'filtrado', 'filtrada', 'filtrados', 'filtradas', 'filtro', 'filtros', 'filtrar',
+        'mods', 'mod', 'hdhr', 'hddt', 'dthr', 'ezfl', 'ezhd', 'nomod', 'nm',
+        'hd', 'hr', 'dt', 'ez', 'fl', 'nc', 'ht', 'nf', 'so', 'rx', 'ap', 'cl'
     ]);
 
     const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);

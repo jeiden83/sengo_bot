@@ -1035,6 +1035,37 @@ async function handleMappingTrackerCommand(messages, args) {
         }
 
         if (targetChannelId) {
+            const guild = message.guild;
+            const targetChannel = guild.channels?.cache?.get(targetChannelId) || 
+                (guild.channels?.fetch ? await guild.channels.fetch(targetChannelId).catch(() => null) : null);
+
+            if (!targetChannel) {
+                return { content: t(locale, 'mapping_tracker.err_channel_not_found', { channelId: targetChannelId }) };
+            }
+
+            if (typeof targetChannel.isTextBased === 'function' && !targetChannel.isTextBased()) {
+                return { content: t(locale, 'mapping_tracker.err_channel_not_text') };
+            }
+
+            // Validar permisos del bot en el canal
+            const botMember = guild.members?.me || (guild.members?.fetch && message.client?.user?.id ? await guild.members.fetch(message.client.user.id).catch(() => null) : null);
+            if (botMember && typeof targetChannel.permissionsFor === 'function') {
+                const permissions = targetChannel.permissionsFor(botMember);
+                const missing = [];
+                if (!permissions.has(PermissionFlagsBits.ViewChannel)) missing.push("- `Ver canal` (ViewChannel)");
+                if (!permissions.has(PermissionFlagsBits.SendMessages)) missing.push("- `Enviar mensajes` (SendMessages)");
+                if (!permissions.has(PermissionFlagsBits.EmbedLinks)) missing.push("- `Insertar enlaces` (EmbedLinks)");
+
+                if (missing.length > 0) {
+                    return {
+                        content: t(locale, 'mapping_tracker.err_channel_missing_permissions', {
+                            channelId: targetChannelId,
+                            missingPermissions: missing.join("\n")
+                        })
+                    };
+                }
+            }
+
             const resSet = await MappingTrackerModel.setTrackerChannel(guildId, targetChannelId, message.author.id);
             if (!resSet.success) {
                 return { content: t(locale, 'mapping_tracker.err_save_channel', { error: resSet.error }) };

@@ -151,9 +151,13 @@ async function run(interaction, res) {
         if (err.code === 'InteractionCollectorError') {
             console.warn("El modal de bug expiró sin respuesta del usuario.");
         } else {
-            console.error("Error al procesar el modal de bug:", err);
-            
-            const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook")) || err.status === 404;
+            const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook"));
+            const isInteractionExpired = err.code === 10062 || (err.message && err.message.toLowerCase().includes("unknown interaction"));
+            if (isInteractionExpired) {
+                console.warn("[BUG] La interacción de Discord expiró antes de poder completarse (error 10062).");
+                return false;
+            }
+
             const errorMsg = isWebhookError ? t(locale, 'bug.err_webhook_invalid') : t(locale, 'bug.err_send_failed');
 
             // Intentar responder amigablemente si ocurre otro error

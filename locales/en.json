@@ -1967,6 +1967,9 @@
     "err_no_perms": "❌ You need **Manage Channels** or **Administrator** permissions to configure Mapping Tracker.",
     "err_no_perms_other_user": "❌ Only administrators can modify other users' alert settings. You can only configure your own alerts with `s.mapper -track -usuario`.",
     "err_save_channel": "❌ Error saving channel: {error}",
+    "err_channel_not_found": "❌ Channel <#{channelId}> was not found in this server or the bot lacks access.",
+    "err_channel_not_text": "❌ The selected channel must be a text channel.",
+    "err_channel_missing_permissions": "⚠️ The bot lacks the following permissions in channel <#{channelId}>:\n{missingPermissions}\nPlease grant these permissions before setting the channel.",
     "success_set_channel": "✅ **Mapping Tracker channel successfully set to <#{channelId}>**.\n\nYou can now add mappers using:\n• `s.mapper -track -usuario <ID/mention>`\n• `s.mapper -track -usuario -server` (adds all linked members).",
     "success_delete_channel": "🗑️ **Mapping Tracker disabled on this server**.\nChannel configuration and all associated mapper subscriptions for this server have been automatically deleted.",
     "err_no_channel_set": "⚠️ You must first configure a notification channel using `s.mapper -track -canal #channel`.",
@@ -2186,6 +2189,12 @@
   "ai": {
     "err_no_prompt": "❌ You must specify what you want to query or do in natural language. E.g.: `s.ai show my top in std` or `s.ai recommend maps`.",
     "err_not_understood": "❌ I could not identify with certainty which command you want to run for: *\"{prompt}\"*.\n💡 Try being a bit more specific, for example: `s.ai show my top in std`, `s.ai what was my last score` or `s.ai recommend maps`."
+  },
+  "skills": {
+    "server_not_member": "❌ This option requires Sengo to be a member of this Discord server in order to check members' profiles and scores. Invite Sengo to this server to use the server skills ranking!",
+    "server_no_members": "❌ No osu! players linked to Sengo were found in **{server}**.",
+    "server_dm_error": "❌ This command with `-server` can only be used inside a Discord server where Sengo is a member or by providing the server ID.",
+    "server_not_found": "❌ Server with ID `{guildId}` was not found or has no linked members in the database."
   }
 }
 

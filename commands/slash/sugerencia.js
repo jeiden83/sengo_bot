@@ -151,9 +151,13 @@ async function run(interaction, res) {
         if (err.code === 'InteractionCollectorError') {
             console.warn("El modal de sugerencia expiró sin respuesta del usuario.");
         } else {
-            console.error("Error al procesar el modal de sugerencia:", err);
-            
-            const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook")) || err.status === 404;
+            const isWebhookError = err.code === 10015 || (err.message && err.message.toLowerCase().includes("unknown webhook"));
+            const isInteractionExpired = err.code === 10062 || (err.message && err.message.toLowerCase().includes("unknown interaction"));
+            if (isInteractionExpired) {
+                console.warn("[SUGERENCIA] La interacción de Discord expiró antes de poder completarse (error 10062).");
+                return false;
+            }
+
             const errorMsg = isWebhookError ? t(locale, 'sugerencia.err_webhook_invalid') : t(locale, 'sugerencia.err_send_failed');
 
             // Intentar responder amigablemente si ocurre otro error
