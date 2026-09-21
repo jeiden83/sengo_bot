@@ -479,6 +479,8 @@
     "ranking_server_title": "Ranking de Habilidades en {server} ({skill}) - {mode}",
     "ranking_no_players": "No hay jugadores registrados en el ranking de habilidades para **{country}**.",
     "ranking_no_players_server": "No hay jugadores vinculados registrados con habilidades en **{server}**.\n\n*¡Usa `s.skills` para analizar tu perfil y aparecer en este ranking!*",
+    "server_not_member": "❌ Esta opción requiere que Sengo sea miembro de este servidor de Discord para poder consultar los perfiles y jugadas de sus integrantes. ¡Invita a Sengo al servidor para usar el ranking de habilidades del servidor!",
+    "server_no_members": "❌ No se encontraron jugadores de osu! vinculados a Sengo en **{server}**.",
     "server_dm_error": "❌ Este comando con `-server` solo puede utilizarse dentro de un servidor de Discord o indicando la ID del servidor.",
     "server_not_found": "❌ No se encontró el servidor con ID `{guildId}` o Sengo no es miembro de él.",
     "ranking_footer_empty": "Ranking de Habilidades • Sin datos",
@@ -2193,12 +2195,6 @@
   "ai": {
     "err_no_prompt": "❌ Debes especificar lo que deseas consultar o hacer en lenguaje natural. Ej: `s.ai dime mi top en std` o `s.ai recomiéndame mapas`.",
     "err_not_understood": "❌ No pude identificar con certeza qué comando deseas ejecutar con: *\"{prompt}\"*.\n💡 Prueba siendo un poco más específico, por ejemplo: `s.ai dime mi top en std`, `s.ai cuál fue mi última partida` o `s.ai cuál es la tasa bcv`."
-  },
-  "skills": {
-    "server_not_member": "❌ Esta opción requiere que Sengo sea miembro de este servidor de Discord para poder consultar los perfiles y jugadas de sus integrantes. ¡Invita a Sengo al servidor para usar el ranking de habilidades del servidor!",
-    "server_no_members": "❌ No se encontraron jugadores de osu! vinculados a Sengo en **{server}**.",
-    "server_dm_error": "❌ Este comando con `-server` solo puede utilizarse dentro de un servidor de Discord donde Sengo sea miembro o indicando la ID del servidor.",
-    "server_not_found": "❌ No se encontró el servidor con ID `{guildId}` o no tiene miembros vinculados en la base de datos."
   }
 }
 

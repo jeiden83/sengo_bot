@@ -479,6 +479,8 @@
     "ranking_server_title": "Skills Leaderboard in {server} ({skill}) - {mode}",
     "ranking_no_players": "No players registered in the skills leaderboard for **{country}**.",
     "ranking_no_players_server": "No linked players with recorded skills found in **{server}**.\n\n*Use `s.skills` to analyze your profile and appear in this leaderboard!*",
+    "server_not_member": "❌ This option requires Sengo to be a member of this Discord server in order to check members' profiles and scores. Invite Sengo to this server to use the server skills ranking!",
+    "server_no_members": "❌ No osu! players linked to Sengo were found in **{server}**.",
     "server_dm_error": "❌ This command with `-server` can only be used inside a Discord server or by specifying a server ID.",
     "server_not_found": "❌ Could not find server with ID `{guildId}` or Sengo is not a member of it.",
     "ranking_footer_empty": "Skills Leaderboard • No data",
@@ -2189,12 +2191,6 @@
   "ai": {
     "err_no_prompt": "❌ You must specify what you want to query or do in natural language. E.g.: `s.ai show my top in std` or `s.ai recommend maps`.",
     "err_not_understood": "❌ I could not identify with certainty which command you want to run for: *\"{prompt}\"*.\n💡 Try being a bit more specific, for example: `s.ai show my top in std`, `s.ai what was my last score` or `s.ai recommend maps`."
-  },
-  "skills": {
-    "server_not_member": "❌ This option requires Sengo to be a member of this Discord server in order to check members' profiles and scores. Invite Sengo to this server to use the server skills ranking!",
-    "server_no_members": "❌ No osu! players linked to Sengo were found in **{server}**.",
-    "server_dm_error": "❌ This command with `-server` can only be used inside a Discord server where Sengo is a member or by providing the server ID.",
-    "server_not_found": "❌ Server with ID `{guildId}` was not found or has no linked members in the database."
   }
 }
 
