@@ -811,7 +811,7 @@ async function handleNationalPPPlays(messages, args, parsed_args, countryFilter,
 
     // 6. Ordenamientos alternativos si se especifican (-r, -c, -acc, -bpm, -cs, -ar, -od, -hp)
     const { sortScores } = require("../../../models/OsuScoreModel.js");
-    sortScores(filtered_scores, parsed_args, mode);
+    sortScores(filtered_scores, parsed_args, targetGamemode);
 
     const total_plays = filtered_scores.length;
     if (total_plays === 0) {

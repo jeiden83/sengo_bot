@@ -258,6 +258,10 @@ function buildJevQuestions() {
  */
 function extractEntities(rawText) {
     let cleanText = (rawText || '').trim();
+    if (cleanText.includes('\n')) {
+        const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+        cleanText = [...new Set(lines)].join(' ');
+    }
 
     // 1. Extraer menciones de Discord: <@123456789> o <@!123456789>
     let targetDiscordId = null;
@@ -435,14 +439,22 @@ function extractEntities(rawText) {
         'nueva zelanda': 'NZ', 'nz': 'NZ'
     };
     for (const [countryName, code] of Object.entries(COUNTRY_MAP)) {
-        const regex = new RegExp(`\\b(?:de|en|del pa[ií]s|pais|pa[ií]s)\\s+${countryName}\\b`, 'i');
-        if (regex.test(cleanText)) {
-            countryCode = code;
-            break;
+        if (countryName.length > 2) {
+            const regex = new RegExp(`\\b${countryName}\\b`, 'i');
+            if (regex.test(cleanText)) {
+                countryCode = code;
+                break;
+            }
+        } else {
+            const regex = new RegExp(`\\b(?:de|del|en|para|por|pa[ií]s|pais|country)\\s+${countryName}\\b`, 'i');
+            if (regex.test(cleanText)) {
+                countryCode = code;
+                break;
+            }
         }
     }
     if (!countryCode) {
-        const explicitIsoMatch = cleanText.match(/\b(?:pais|pa[ií]s|country)\s+([a-zA-Z]{2})\b/i);
+        const explicitIsoMatch = cleanText.match(/\b(?:pais|pa[ií]s|country|para|de|en|del|por)\s+([a-zA-Z]{2})\b/i);
         if (explicitIsoMatch) {
             countryCode = explicitIsoMatch[1].toUpperCase();
         }
@@ -502,12 +514,13 @@ function extractEntities(rawText) {
     let targetUsername = null;
     const nonUsernames = new Set([
         'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'un', 'una', 'el', 'la', 'los', 'las', 'este', 'esta',
-        'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru',
+        'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru', 'brasil', 'uruguay', 'bolivia', 'ecuador',
         'std', 'taiko', 'fruits', 'mania', 'gatari', 'droid', 'bancho', 'lazer', 'stable',
         'mapa', 'mapas', 'beatmap', 'beatmaps', 'canal', 'servidor', 'server', 'guild',
         'cumple', 'cumpleaños', 'mappers', 'mapper', 'torneo', 'torneos',
         'mayor', 'menor', 'mas', 'menos', 'aim', 'speed', 'reading', 'stamina', 'acc', 'accuracy',
         'precision', 'bpm', 'combo', 'stars', 'pp', 'duracion', 'tiempo', 'fecha', 'ranking',
+        'clasificacion', 'clasificación', 'leaderboard', 'tabla', 'posiciones', 'puestos', 'nacional', 'general', 'global',
         'filtrado', 'filtrada', 'filtrados', 'filtradas', 'filtro', 'filtros', 'filtrar',
         'mods', 'mod', 'hdhr', 'hddt', 'dthr', 'ezfl', 'ezhd', 'nomod', 'nm',
         'hd', 'hr', 'dt', 'ez', 'fl', 'nc', 'ht', 'nf', 'so', 'rx', 'ap', 'cl'

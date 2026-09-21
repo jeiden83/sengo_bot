@@ -558,13 +558,13 @@ const COMMAND_DEFINITIONS = {
         flags: ['gamemode', 'rework_options', 'target_user', 'target_mention']
     },
     lb: {
-        intent: "Ver la tabla de clasificación o ranking de un mapa (lb, leaderboard)",
+        intent: "Ver la tabla de clasificación o leaderboard de un beatmap o mapa, o leaderboard nacional/por país de un mapa (lb, leaderboard, tabla del mapa)",
         category: "osu",
-        aliases: ['leaderboard'],
+        aliases: ['leaderboard', 'lbm', 'lbc', 'lbt', 'lbp'],
         flags: ['gamemode', 'server', 'client_mode', 'friends', 'country', 'page', 'beatmap', 'mods']
     },
     nacional: {
-        intent: "Ver ranking nacional general de jugadores o mejores jugadas de un país en osu! (excluyendo mappers) (nacional)",
+        intent: "Ver ranking nacional de jugadores de un país o mejores jugadas registradas en el país (nacional, ranking nacional de jugadores)",
         category: "osu",
         flags: ['gamemode', 'nacional_options', 'star_rating_cond', 'country', 'page']
     },
@@ -672,9 +672,9 @@ const COMMAND_DEFINITIONS = {
         flags: ['target_user', 'target_mention']
     },
     pais: {
-        intent: "Ver información o top de un país (pais)",
-        category: "osu",
-        flags: ['country']
+        intent: "Asignar autorol de país de Discord en el servidor osu! Latinoamérica (pais, autorol país)",
+        category: "moderation",
+        flags: []
     },
     bcv: {
         intent: "Consultar la tasa del dólar oficial BCV en Venezuela (bcv, tasa bcv, dolar bcv)",

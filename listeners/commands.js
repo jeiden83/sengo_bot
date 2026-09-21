@@ -192,7 +192,9 @@ async function chat_command_listener(chat_commands, client, config, res) {
                             isNaturalLanguage = true;
                             naturalCommand = parsed.command;
                             naturalArgs = parsed.args;
-                            console.log(`[TYPESAFE] Comando por lenguaje natural (${(parsed.confidence * 100).toFixed(0)}%): "${cleanInput}" -> ${parsed.fullCommandString}`);
+                            console.log(`[TYPESAFE] Comando por lenguaje natural (${(parsed.confidence * 100).toFixed(0)}%): "${cleanInput.replace(/\n+/g, ' ')}" -> ${parsed.fullCommandString}`);
+                        } else {
+                            console.log(`[TYPESAFE] Mención o DM recibido sin comando identificado (${parsed?.confidence !== undefined ? (parsed.confidence * 100).toFixed(0) + '%' : 'N/A'}): "${cleanInput.replace(/\n+/g, ' ')}"`);
                         }
                     }
                 } catch (nlpErr) {
