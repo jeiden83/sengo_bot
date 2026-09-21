@@ -501,7 +501,7 @@ const COMMAND_DEFINITIONS = {
         flags: [
             'gamemode', 'server', 'client_mode', 'nochoke', 'sort_metric', 'reverse',
             'list', 'detailed', 'promedio', 'top_skill', 'top_rework', 'pp_threshold',
-            'star_rating', 'page', 'score_index', 'mods', 'country', 'target_user', 'target_mention'
+            'star_rating', 'page', 'score_index', 'mods', 'target_user', 'target_mention'
         ]
     },
     r: {

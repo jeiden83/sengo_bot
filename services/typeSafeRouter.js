@@ -411,52 +411,67 @@ function extractEntities(rawText) {
 
     // 9. Extraer código de país o nombre de país
     let countryCode = null;
-    const COUNTRY_MAP = {
-        'chile': 'CL', 'cl': 'CL',
-        'mexico': 'MX', 'méxico': 'MX', 'mx': 'MX',
-        'venezuela': 'VE', 've': 'VE',
-        'argentina': 'AR', 'ar': 'AR',
-        'colombia': 'CO', 'co': 'CO',
-        'españa': 'ES', 'spain': 'ES', 'es': 'ES',
-        'peru': 'PE', 'perú': 'PE', 'pe': 'PE',
-        'brasil': 'BR', 'brazil': 'BR', 'br': 'BR',
-        'uruguay': 'UY', 'uy': 'UY',
-        'estados unidos': 'US', 'usa': 'US', 'us': 'US',
-        'bolivia': 'BO', 'bo': 'BO',
-        'costa rica': 'CR', 'cr': 'CR',
-        'cuba': 'CU', 'cu': 'CU',
-        'ecuador': 'EC', 'ec': 'EC',
-        'el salvador': 'SV', 'sv': 'SV',
-        'guatemala': 'GT', 'gt': 'GT',
-        'honduras': 'HN', 'hn': 'HN',
-        'nicaragua': 'NI', 'ni': 'NI',
-        'panama': 'PA', 'panamá': 'PA', 'pa': 'PA',
-        'paraguay': 'PY', 'py': 'PY',
-        'puerto rico': 'PR', 'pr': 'PR',
-        'reino unido': 'GB', 'uk': 'GB', 'gb': 'GB',
-        'canada': 'CA', 'canadá': 'CA', 'ca': 'CA',
-        'australia': 'AU', 'au': 'AU',
-        'nueva zelanda': 'NZ', 'nz': 'NZ'
+    const COUNTRY_NAMES = {
+        'chile': 'CL',
+        'mexico': 'MX', 'méxico': 'MX',
+        'venezuela': 'VE',
+        'argentina': 'AR',
+        'colombia': 'CO',
+        'españa': 'ES', 'spain': 'ES',
+        'peru': 'PE', 'perú': 'PE',
+        'brasil': 'BR', 'brazil': 'BR',
+        'uruguay': 'UY',
+        'estados unidos': 'US', 'usa': 'US',
+        'bolivia': 'BO',
+        'costa rica': 'CR',
+        'cuba': 'CU',
+        'ecuador': 'EC',
+        'el salvador': 'SV',
+        'guatemala': 'GT',
+        'honduras': 'HN',
+        'nicaragua': 'NI',
+        'panama': 'PA', 'panamá': 'PA',
+        'paraguay': 'PY',
+        'puerto rico': 'PR',
+        'reino unido': 'GB',
+        'canada': 'CA', 'canadá': 'CA',
+        'australia': 'AU',
+        'nueva zelanda': 'NZ'
     };
-    for (const [countryName, code] of Object.entries(COUNTRY_MAP)) {
-        if (countryName.length > 2) {
-            const regex = new RegExp(`\\b${countryName}\\b`, 'i');
-            if (regex.test(cleanText)) {
-                countryCode = code;
-                break;
-            }
-        } else {
-            const regex = new RegExp(`\\b(?:de|del|en|para|por|pa[ií]s|pais|country)\\s+${countryName}\\b`, 'i');
-            if (regex.test(cleanText)) {
-                countryCode = code;
-                break;
+
+    const VALID_ISO_CODES = new Set(Object.values(COUNTRY_NAMES));
+    const OSU_MOD_ACRONYMS = new Set([
+        'HD', 'HR', 'DT', 'NC', 'FL', 'EZ', 'HT', 'SO', 'NF', 'RX', 'AP', 'CL', 'NM', 'SD', 'PF', 'AT', 'TD'
+    ]);
+
+    // A) Coincidencia por nombre completo de país (inambiguo, sin riesgo de colisión con mods)
+    for (const [countryName, code] of Object.entries(COUNTRY_NAMES)) {
+        const regex = new RegExp(`\\b${countryName}\\b`, 'i');
+        if (regex.test(cleanText)) {
+            countryCode = code;
+            break;
+        }
+    }
+
+    // B) Coincidencia por código ISO de 2 letras precedido explícitamente por palabra de país (ej: "pais ar", "país cl", "country mx")
+    if (!countryCode) {
+        const explicitIsoMatch = cleanText.match(/\b(?:pais|pa[ií]s|country)\s+([a-zA-Z]{2})\b/i);
+        if (explicitIsoMatch) {
+            const candidate = explicitIsoMatch[1].toUpperCase();
+            if (VALID_ISO_CODES.has(candidate)) {
+                countryCode = candidate;
             }
         }
     }
+
+    // C) Coincidencia por código ISO de 2 letras con preposiciones comunes (de|del|en|para) pero excluyendo estrictamente siglas de mods
     if (!countryCode) {
-        const explicitIsoMatch = cleanText.match(/\b(?:pais|pa[ií]s|country|para|de|en|del|por)\s+([a-zA-Z]{2})\b/i);
-        if (explicitIsoMatch) {
-            countryCode = explicitIsoMatch[1].toUpperCase();
+        const prepIsoMatch = cleanText.match(/\b(?:de|del|en|para)\s+([a-zA-Z]{2})\b/i);
+        if (prepIsoMatch) {
+            const candidate = prepIsoMatch[1].toUpperCase();
+            if (VALID_ISO_CODES.has(candidate) && !OSU_MOD_ACRONYMS.has(candidate)) {
+                countryCode = candidate;
+            }
         }
     }
 
