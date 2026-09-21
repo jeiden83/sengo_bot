@@ -65,7 +65,9 @@ async function run(messages, args, options = {}) {
         const mode = parser_res.parsed_args.gamemode || "osu";
         let selectedSkill = options.requestedSkill || parser_res.parsed_args.skillFilter;
         const { analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
-        const skillsData = await analyzeSkillsBreakdown(originalScores, mode);
+        const skillsData = await analyzeSkillsBreakdown(originalScores, mode, {
+            force: Boolean(parser_res.parsed_args.force || parser_res.parsed_args.forceUpdate)
+        });
 
         if (!selectedSkill) {
             const keys = skillsData.skillKeys || ['aim', 'speed', 'acc', 'reading'];
@@ -75,7 +77,8 @@ async function run(messages, args, options = {}) {
         }
 
         originalScores.forEach(s => {
-            s.skillPoints = s.skills ? (s.skills[selectedSkill] || 0) : 0;
+            const pts = s.skills?.[selectedSkill];
+            s.skillPoints = typeof pts === "number" ? pts : 0;
             s.selectedSkill = selectedSkill;
         });
 
@@ -252,7 +255,7 @@ async function run(messages, args, options = {}) {
             countryCode
         };
 
-        if (options.isSkillTop && !hasCustomSort(parser_res.parsed_args)) {
+        if ((options.isSkillTop || parser_res.parsed_args.skillFilter) && !hasCustomSort(parser_res.parsed_args)) {
             originalScores.sort((a, b) => (b.skillPoints || 0) - (a.skillPoints || 0));
             originalScores.forEach((score, idx) => {
                 score.skillRank = idx + 1;

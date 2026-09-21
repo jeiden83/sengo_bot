@@ -601,6 +601,11 @@ async function analyzeSkillsBreakdown(scores, mode = "osu", options = {}) {
         return _computeSkillsBreakdown(scores, mode);
     }
 
+    // ponytail: Asignación analítica base instantánea (<0.2ms) para asegurar que todos los scores tengan s.skills
+    if (Array.isArray(scores) && scores.length > 0) {
+        analyzeSkills(scores, false, mode);
+    }
+
     const opts = typeof options === "boolean" ? { force: options } : (options || {});
     const force = Boolean(opts.force || opts.forceRefresh);
     const userId = opts.userId || scores[0]?.user_id || scores[0]?.user?.id || scores[0]?.uid || scores[0]?.user?.username || "anon";
@@ -611,13 +616,42 @@ async function analyzeSkillsBreakdown(scores, mode = "osu", options = {}) {
     if (!force) {
         const cached = skillsBreakdownCache.get(cacheKey);
         if (cached && (Date.now() - cached.timestamp) < SKILLS_BREAKDOWN_TTL) {
+            if (Array.isArray(scores) && cached.scoreSkillsMap) {
+                scores.forEach((s, idx) => {
+                    if (!s) return;
+                    const idKey = s.id ? `id:${s.id}` : null;
+                    const bmKey = s.beatmap?.id ? `bm:${s.beatmap.id}` : null;
+                    const skillData = (idKey && cached.scoreSkillsMap.get(idKey))
+                        || (bmKey && cached.scoreSkillsMap.get(bmKey))
+                        || cached.scoreSkillsMap.get(`idx:${idx}`);
+                    if (skillData) {
+                        s.skills = { ...skillData };
+                    }
+                });
+            }
             return typeof globalThis.structuredClone === "function"
                 ? globalThis.structuredClone(cached.data)
                 : JSON.parse(JSON.stringify(cached.data));
         }
 
         if (activeSkillsPromises.has(cacheKey)) {
-            return await activeSkillsPromises.get(cacheKey);
+            const activeRes = await activeSkillsPromises.get(cacheKey);
+            if (activeRes?.scoreSkillsMap && Array.isArray(scores)) {
+                scores.forEach((s, idx) => {
+                    if (!s) return;
+                    const idKey = s.id ? `id:${s.id}` : null;
+                    const bmKey = s.beatmap?.id ? `bm:${s.beatmap.id}` : null;
+                    const skillData = (idKey && activeRes.scoreSkillsMap.get(idKey))
+                        || (bmKey && activeRes.scoreSkillsMap.get(bmKey))
+                        || activeRes.scoreSkillsMap.get(`idx:${idx}`);
+                    if (skillData) s.skills = { ...skillData };
+                });
+            }
+            if (activeRes?.result) {
+                return typeof globalThis.structuredClone === "function"
+                    ? globalThis.structuredClone(activeRes.result)
+                    : JSON.parse(JSON.stringify(activeRes.result));
+            }
         }
     }
 
@@ -627,15 +661,30 @@ async function analyzeSkillsBreakdown(scores, mode = "osu", options = {}) {
 
     try {
         const result = await _computeSkillsBreakdown(scores, mode);
+        const scoreSkillsMap = new Map();
+        if (Array.isArray(scores)) {
+            scores.forEach((s, idx) => {
+                if (s && s.skills) {
+                    const skillCopy = { ...s.skills };
+                    if (s.id) scoreSkillsMap.set(`id:${s.id}`, skillCopy);
+                    if (s.beatmap?.id) scoreSkillsMap.set(`bm:${s.beatmap.id}`, skillCopy);
+                    scoreSkillsMap.set(`idx:${idx}`, skillCopy);
+                }
+            });
+        }
         setSkillsWithLimit(skillsBreakdownCache, cacheKey, {
             data: result,
+            scoreSkillsMap,
             timestamp: Date.now()
         }, 150);
+        resolveActivePromise({ result, scoreSkillsMap });
         return typeof globalThis.structuredClone === "function"
             ? globalThis.structuredClone(result)
             : JSON.parse(JSON.stringify(result));
+    } catch (err) {
+        resolveActivePromise(null);
+        throw err;
     } finally {
-        resolveActivePromise();
         activeSkillsPromises.delete(cacheKey);
     }
 }
