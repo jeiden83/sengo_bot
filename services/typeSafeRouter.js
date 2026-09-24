@@ -66,9 +66,9 @@ function buildJevQuestions() {
         // 6. Criterio de ordenamiento métrico
         sort_metric: {
             type: "choice",
-            instructions: "¿El usuario solicita ordenar sus jugadas por alguna métrica específica distinta del PP?",
+            instructions: "¿El usuario solicita explícitamente ordenar sus jugadas por alguna métrica específica distinta del PP (ej: ordenado por bpm, por estrellas, menor combo)? Si sólo pide ver su top o filtrar por mods/país sin pedir ordenamiento, responder 'none'.",
             criteria: {
-                none: "Sin ordenamiento especial o por defecto (ordenado por PP)",
+                none: "Sin ordenamiento especial o por defecto (ordenado por PP; o sólo pide filtrar por mods, país o rango sin ordenar)",
                 bpm: "BPM, velocidad del mapa, tempo",
                 acc: "Precisión, accuracy, acc",
                 combo: "Combo máximo, racha",

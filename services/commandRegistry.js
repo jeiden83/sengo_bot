@@ -50,9 +50,33 @@ const FLAG_HANDLERS = {
     },
 
     // 5. Criterios de ordenamiento métrico
-    sort_metric: (answers) => {
+    sort_metric: (answers, entities) => {
         const sort = answers.sort_metric?.choice;
         if (sort && sort !== 'none') {
+            const conf = answers.sort_metric?.confidence ?? 0;
+            if (conf < 0.65) return null;
+
+            const SORT_KEYWORD_MAP = {
+                bpm: /\b(?:bpm|velocidad|tempo)\b/i,
+                acc: /\b(?:acc|accuracy|precisi[oó]n)\b/i,
+                combo: /\b(?:combo|racha)\b/i,
+                stars: /\b(?:stars?|estrellas?|sr|dificultad)\b/i,
+                ar: /\b(?:ar|approach\s*rate)\b/i,
+                cs: /\b(?:cs|circle\s*size|tamaño)\b/i,
+                od: /\b(?:od|overall\s*difficulty)\b/i,
+                hp: /\b(?:hp|drain|vida|health)\b/i,
+                length: /\b(?:length|duraci[oó]n|duracion|largo|tiempo)\b/i,
+                recent: /\b(?:recent|recientes?|fecha|cronol[oó]gico)\b/i,
+                score: /\b(?:score|puntuaci[oó]n|puntos)\b/i,
+                totalscore: /\b(?:totalscore|puntuaci[oó]n\s*total)\b/i
+            };
+
+            if (entities && entities.cleanText && SORT_KEYWORD_MAP[sort]) {
+                if (!SORT_KEYWORD_MAP[sort].test(entities.cleanText)) {
+                    return null;
+                }
+            }
+
             if (sort === 'recent') return '-r';
             if (sort === 'combo') return '-c';
             if (sort === 'stars') return '-sr';
