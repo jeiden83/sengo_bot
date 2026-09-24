@@ -25,8 +25,13 @@ async function run(messages, args) {
     const beatmap_metadata = await getBeatmap(beatmap_url);
     const unranked_statuses = new Set(['pending', 'graveyard', 'wip']);
 
-    // Si detectamos el modo de juego de la última play mostrada en el canal, lo priorizamos frente al nativo del beatmap
-    const targetGamemode = detected_gamemode || beatmap_metadata.mode;
+    // Si el mapa es nativo de un modo específico (mania, taiko, ctb), no se puede convertir a std.
+    let targetGamemode;
+    if (beatmap_metadata.mode && beatmap_metadata.mode !== 'osu') {
+        targetGamemode = beatmap_metadata.mode;
+    } else {
+        targetGamemode = detected_gamemode || beatmap_metadata.mode || 'osu';
+    }
 
     if (logger) logger.process(t(locale, 'compare.fetching_scores'));
     const { fn_response, parsed_args } = await argsParser(args,                  // Si es un mapa unranked lo mandamos a buscar los scores locales, sino los rankeados

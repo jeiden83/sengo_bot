@@ -21,44 +21,40 @@ const getGamemodeFromMessage = (msg) => {
         return text
             .replace(/https?:\/\/\S+/gi, '')
             .replace(/\S*osu\.ppy\.sh\S*/gi, '')
-            .replace(/\S*osu\.direct\S*/gi, '');
+            .replace(/\S*osu\.direct\S*/gi, '')
+            .replace(/on\s+osu!\s+bancho\s+server/gi, '')
+            .replace(/osu!\s+bancho/gi, '')
+            .replace(/bancho\s+server/gi, '');
     };
 
-    // 1. Buscar en embeds
+    const maniaRegex = /\b(?:mania|\d+k)\b/i;
+    const taikoRegex = /\btaiko\b/i;
+    const fruitsRegex = /\b(?:fruits|ctb|catch)\b/i;
+    const explicitStdRegex = /\b(?:std|standard|osu!std|osu!standard)\b/i;
+
     const e = msg.embeds?.[0];
-    if (e) {
-        const authorText = clean(e.author?.name || '').toLowerCase();
-        const footerText = clean(e.footer?.text || '').toLowerCase();
-        const titleText = clean(e.title || '').toLowerCase();
-        const descText = clean(e.description || '').toLowerCase();
-
-        // Regex para buscar modos como palabras completas o con prefijo/sufijo común
-        const maniaRegex = /\bmania\b/i;
-        const taikoRegex = /\btaiko\b/i;
-        const fruitsRegex = /\b(fruits|ctb|catch)\b/i;
-        const stdRegex = /\b(std|standard|osu)\b/i;
-
-        // Primero buscar en Autor y Footer (altísima confianza)
-        const metadataCombined = `${authorText} | ${footerText}`;
-        if (maniaRegex.test(metadataCombined)) return 'mania';
-        if (taikoRegex.test(metadataCombined)) return 'taiko';
-        if (fruitsRegex.test(metadataCombined)) return 'fruits';
-        if (stdRegex.test(metadataCombined)) return 'osu';
-
-        // Si no se encuentra en autor/footer, buscar en Título y Descripción
-        const contentCombined = `${titleText} | ${descText}`;
-        if (maniaRegex.test(contentCombined)) return 'mania';
-        if (taikoRegex.test(contentCombined)) return 'taiko';
-        if (fruitsRegex.test(contentCombined)) return 'fruits';
-        if (stdRegex.test(contentCombined)) return 'osu';
-    }
-
-    // 2. Buscar en contenido de texto
     const content = clean(msg.content || '').toLowerCase();
-    if (/\bmania\b/i.test(content) || content.includes('osu!mania') || content.includes(' en mania')) return 'mania';
-    if (/\btaiko\b/i.test(content) || content.includes('osu!taiko') || content.includes(' en taiko')) return 'taiko';
-    if (/\b(fruits|ctb|catch)\b/i.test(content) || content.includes('osu!ctb') || content.includes('osu!fruits') || content.includes(' en fruits')) return 'fruits';
-    if (/\b(std|standard|osu)\b/i.test(content) || content.includes('osu!std') || content.includes(' en standard') || content.includes(' en osu')) return 'osu';
+    const authorText = clean(e?.author?.name || '').toLowerCase();
+    const footerText = clean(e?.footer?.text || '').toLowerCase();
+    const titleText = clean(e?.title || '').toLowerCase();
+    const descText = clean(e?.description || '').toLowerCase();
+
+    // 1. Autor, contenido del mensaje o título (máxima prioridad)
+    const primaryCombined = `${content} | ${authorText} | ${titleText}`;
+    if (maniaRegex.test(primaryCombined)) return 'mania';
+    if (taikoRegex.test(primaryCombined)) return 'taiko';
+    if (fruitsRegex.test(primaryCombined)) return 'fruits';
+    if (explicitStdRegex.test(primaryCombined)) return 'osu';
+
+    // 2. Descripción y footer
+    const secondaryCombined = `${descText} | ${footerText}`;
+    if (maniaRegex.test(secondaryCombined)) return 'mania';
+    if (taikoRegex.test(secondaryCombined)) return 'taiko';
+    if (fruitsRegex.test(secondaryCombined)) return 'fruits';
+    if (explicitStdRegex.test(secondaryCombined)) return 'osu';
+
+    // 3. Fallback a presencia de 'osu' si no es ninguno de los modos especiales
+    if (/\bosu\b/i.test(`${primaryCombined} | ${secondaryCombined}`)) return 'osu';
 
     return null;
 };

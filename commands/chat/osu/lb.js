@@ -270,7 +270,14 @@ async function run(messages, args) {
         countryFilter = dbCountry || "VE";
     }
 
-    const targetGamemode = parsed_args.gamemode || detected_gamemode || beatmap_metadata.mode;
+    let targetGamemode;
+    if (parsed_args.gamemode) {
+        targetGamemode = parsed_args.gamemode;
+    } else if (beatmap_metadata.mode && beatmap_metadata.mode !== 'osu') {
+        targetGamemode = beatmap_metadata.mode;
+    } else {
+        targetGamemode = detected_gamemode || beatmap_metadata.mode || 'osu';
+    }
     const modeAttrs = await getBeatmapModeAttributes(beatmap_metadata, targetGamemode, parsed_args.ppEngine);
     beatmap_metadata.difficulty_rating = modeAttrs.stars;
     if (modeAttrs.maxCombo) {
