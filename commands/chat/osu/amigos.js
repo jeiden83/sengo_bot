@@ -67,6 +67,9 @@ async function run(messages, args) {
             if (checkResult && checkResult.changed) {
                 return;
             }
+            if (checkResult?.error === 'fetch_failed') {
+                return t(locale, 'amigos.track_check_fetch_failed', { followers: checkResult?.followers ?? 'N/A' });
+            }
             return t(locale, 'amigos.track_check_no_changes', { followers: checkResult?.followers ?? 'N/A' });
         }
 

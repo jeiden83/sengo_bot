@@ -27,7 +27,7 @@ async function fetchWebFriends({ bypassCache = false } = {}) {
 
     session = session.trim();
     const cookieHeader = session.startsWith('osu_session=') ? session : `osu_session=${session}`;
-    const userAgent = process.env.OSU_USER_AGENT || 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+    const userAgent = process.env.OSU_USER_AGENT || 'SengoBot/1.0';
 
     try {
         const res = await axios.get('https://osu.ppy.sh/home/friends', {
@@ -42,6 +42,11 @@ async function fetchWebFriends({ bypassCache = false } = {}) {
 
         if (res.status === 401) {
             Logger.system('Error 401 en sesión de osu!: la cookie osu_session es inválida o ha expirado.');
+            return null;
+        }
+
+        if (res.status === 403) {
+            Logger.system('Error 403 en sesión de osu!: Cloudflare bloqueó la petición o se requiere verificación.');
             return null;
         }
 

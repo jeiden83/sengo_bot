@@ -50,7 +50,7 @@ async function runOwnerFriendsCheck(client, { force = false, targetChannelId = n
         const webData = await OsuWebSessionModel.fetchWebFriends({ bypassCache: true });
         if (!webData || !webData.currentUser) {
             Logger.system('[FRIENDS-TRACKER] No se pudieron obtener los datos de /home/friends.');
-            return { changed: false, error: 'fetch_failed' };
+            return { changed: false, followers: currentFollowers, error: 'fetch_failed' };
         }
 
         if (!ownerOsuId && webData.currentUser.id) {
