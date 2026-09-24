@@ -53,14 +53,14 @@ const FLAG_HANDLERS = {
     sort_metric: (answers) => {
         const sort = answers.sort_metric?.choice;
         if (sort && sort !== 'none') {
-            if (sort === 'recent') return '-recent';
+            if (sort === 'recent') return '-r';
             if (sort === 'combo') return '-c';
             if (sort === 'stars') return '-sr';
             if (sort === 'length') return '-dur';
             return `-${sort}`;
         }
         if (answers.is_recent_sort?.noul > 0.70) {
-            return '-recent';
+            return '-r';
         }
         return null;
     },
@@ -513,7 +513,7 @@ const COMMAND_DEFINITIONS = {
         ]
     },
     r: {
-        intent: "Consultar la jugada más reciente (última partida jugada, r, rs, recent play)",
+        intent: "Consultar la jugada más reciente o lista de partidas recientes (última partida jugada, partidas recientes, lista de recientes, recent, r, rs, recent plays)",
         category: "osu",
         aliases: ['recent', 'rs'],
         flags: [

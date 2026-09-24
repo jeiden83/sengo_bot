@@ -530,6 +530,7 @@ function extractEntities(rawText) {
     const nonUsernames = new Set([
         'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'un', 'una', 'el', 'la', 'los', 'las', 'este', 'esta',
         'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru', 'brasil', 'uruguay', 'bolivia', 'ecuador',
+        'osu', 'game', 'juego', 'pass', 'passes', 'fail', 'fails', 'lista', 'list',
         'std', 'taiko', 'fruits', 'mania', 'gatari', 'droid', 'bancho', 'lazer', 'stable',
         'mapa', 'mapas', 'beatmap', 'beatmaps', 'canal', 'servidor', 'server', 'guild',
         'cumple', 'cumpleaños', 'mappers', 'mapper', 'torneo', 'torneos',
@@ -541,11 +542,14 @@ function extractEntities(rawText) {
         'hd', 'hr', 'dt', 'ez', 'fl', 'nc', 'ht', 'nf', 'so', 'rx', 'ap', 'cl'
     ]);
 
-    const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
-    if (userMatch) {
-        const candidate = userMatch[1].trim();
-        if (!nonUsernames.has(candidate.toLowerCase())) {
-            targetUsername = candidate;
+    const isSelfRef = /\b(?:mis?|yo|m[ií]as?|propias?)\s+(?:plays?|jugadas?|partidas?|scores?|top|perfil|cuenta)\b/i.test(cleanText);
+    if (!isSelfRef) {
+        const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
+        if (userMatch) {
+            const candidate = userMatch[1].trim();
+            if (!nonUsernames.has(candidate.toLowerCase())) {
+                targetUsername = candidate;
+            }
         }
     }
     if (!targetUsername) {

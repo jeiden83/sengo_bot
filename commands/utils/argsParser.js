@@ -855,8 +855,8 @@ function argsParserNoCommand(args, options = {}) {
             continue;
         }
 
-        // Si es exactamente "-r"
-        if (arg === "-r") {
+        // Si es exactamente "-r" o "-recent"
+        if (arg === "-r" || arg === "-recent") {
             recentSort = true;
             continue;
         }
