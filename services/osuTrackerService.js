@@ -276,6 +276,16 @@ async function processNewScore(client, userObj, score) {
             }
         }
 
+        // ponytail: En osu! un usuario sólo tiene como máximo 1 score por beatmap en /scores/best.
+        // Si ya posee una jugada en este mapa con igual o mayor PP, este score no puede entrar a sus top plays.
+        const existingMapPlay = bestScores.find(s =>
+            String(s.beatmap?.id) === String(score.beatmap?.id) &&
+            (!score.id || String(s.id) !== String(score.id))
+        );
+        if (existingMapPlay && (existingMapPlay.pp || 0) >= user_pp) {
+            return;
+        }
+
         // 3. Buscar si el score reciente está en el top 200
         let positionIndex = bestScores.findIndex(s => {
             return (score.id && s.id.toString() === score.id.toString()) ||
@@ -326,7 +336,7 @@ async function processNewScore(client, userObj, score) {
         if (positionIndex === -1 && user_pp > 0 && !OsuScoreModel.hasUnrankedPPMods(score) && score.ranked !== false && bestScores && Array.isArray(bestScores) && bestScores.length > 0) {
             const minTopPP = bestScores[bestScores.length - 1]?.pp || 0;
             if (user_pp >= minTopPP || bestScores.length < 100) {
-                const higherPlays = bestScores.filter(s => (s.pp || 0) > user_pp).length;
+                const higherPlays = bestScores.filter(s => String(s.beatmap?.id) !== String(score.beatmap?.id) && (s.pp || 0) > user_pp).length;
                 if (higherPlays < 100) {
                     positionIndex = higherPlays;
                     Logger.system(`[TRACKER-SERVICE] Top Play #${positionIndex + 1} identificada predictivamente para ${userObj.osuUsername} (${user_pp.toFixed(2)}pp).`);
