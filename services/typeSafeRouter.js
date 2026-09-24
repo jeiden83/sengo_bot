@@ -562,6 +562,28 @@ function extractEntities(rawText) {
         }
     }
 
+    // 18. Extraer texto entre comillas (ej: "jeiden desbaneame", 'agrega soporte para ctb')
+    let quotedText = null;
+    const quoteMatch = cleanText.match(/["'“«]([^"'”»]+)["'”»]/);
+    if (quoteMatch) {
+        quotedText = quoteMatch[1].trim();
+    }
+
+    // 19. Extraer texto de sugerencia o reporte de bug
+    let reportText = null;
+    if (quotedText) {
+        reportText = quotedText;
+    } else {
+        const reportPrefixMatch = cleanText.match(/\b(?:sugerencia|sugerir|bug|error|fallo|reporte|reportar)(?:\s+(?:que\s+dice|que\s+diga|que\s+contenga|con\s+el\s+texto|con\s+texto|de|que))?\s*[:\-]?\s*(.+)$/i);
+        if (reportPrefixMatch) {
+            let candidate = reportPrefixMatch[1].trim();
+            candidate = candidate.replace(/^["'“«]|["'”»]$/g, '').trim();
+            if (candidate) {
+                reportText = candidate;
+            }
+        }
+    }
+
     return { 
         cleanText, 
         targetDiscordId, 
@@ -582,7 +604,9 @@ function extractEntities(rawText) {
         reworkQuery,
         userTag,
         comparePlayers,
-        targetUsername
+        targetUsername,
+        quotedText,
+        reportText
     };
 }
 
@@ -626,6 +650,35 @@ async function parseNaturalLanguage(userInput) {
     const entities = extractEntities(userInput);
     if (!entities.cleanText || entities.cleanText.length < 3) {
         return null;
+    }
+
+    // Enrutamiento determinista de alta prioridad para solicitudes explícitas de sugerencias o reportes de bugs
+    const isSuggestion = /\b(?:haz|hacer|crear|mandar|enviar|tengo|dejar?)\s+(?:una\s+)?sugerencia\b/i.test(entities.cleanText) ||
+                         /^(?:sugerir|sugerencia)\b/i.test(entities.cleanText);
+    if (isSuggestion) {
+        const payload = entities.reportText || entities.quotedText;
+        if (payload) {
+            return {
+                command: 'sugerencia',
+                args: [payload],
+                fullCommandString: `s.sugerencia ${payload}`,
+                confidence: 1.0
+            };
+        }
+    }
+
+    const isBug = /\b(?:reportar?|notificar?|mandar?|enviar?)\s+(?:un\s+)?(?:bug|error|fallo)\b/i.test(entities.cleanText) ||
+                  /^(?:reporte|bug)\b/i.test(entities.cleanText);
+    if (isBug) {
+        const payload = entities.reportText || entities.quotedText;
+        if (payload) {
+            return {
+                command: 'bug',
+                args: [payload],
+                fullCommandString: `s.bug ${payload}`,
+                confidence: 1.0
+            };
+        }
     }
 
     const payload = {

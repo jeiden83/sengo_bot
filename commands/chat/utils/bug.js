@@ -159,6 +159,8 @@ async function run(messages, args) {
     }
 }
 
+run.flags = ['report_text'];
+
 run.description = {
     'header': t('es', 'commands.bug.header'),
     'body': t('es', 'commands.bug.body'),

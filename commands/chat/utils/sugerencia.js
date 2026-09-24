@@ -165,6 +165,8 @@ run.alias = {
     }
 };
 
+run.flags = ['report_text'];
+
 run.description = {
     'header': t('es', 'commands.sugerencia.header'),
     'body': t('es', 'commands.sugerencia.body'),

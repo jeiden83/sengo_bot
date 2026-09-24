@@ -496,6 +496,11 @@ const FLAG_HANDLERS = {
             return ['-force'];
         }
         return null;
+    },
+
+    // 42. Texto de carga útil para sugerencias y reportes de bug
+    report_text: (answers, entities) => {
+        return entities.reportText || entities.quotedText || null;
     }
 };
 
@@ -735,14 +740,16 @@ const COMMAND_DEFINITIONS = {
         flags: []
     },
     bug: {
-        intent: "Reportar un error o bug del bot (bug)",
+        intent: "Reportar un fallo, error o bug del bot a los desarrolladores (ej. 'reportar bug', 'hay un error', 'reportar fallo')",
         category: "utils",
-        flags: []
+        aliases: ['error', 'fallo', 'report'],
+        flags: ['report_text']
     },
     sugerencia: {
-        intent: "Enviar una sugerencia para el bot (sugerencia)",
+        intent: "Enviar, proponer o crear una sugerencia para el bot o sus desarrolladores (ej. 'haz una sugerencia', 'sugerir', 'sugerencia', 'tengo una sugerencia')",
         category: "utils",
-        flags: []
+        aliases: ['sugerir', 'suggest', 'feat'],
+        flags: ['report_text']
     },
     cumple: {
         intent: "Ver, consultar o registrar cumpleaños del servidor (cumple, cumpleaños, siguiente cumpleaños)",
@@ -761,6 +768,11 @@ const COMMAND_DEFINITIONS = {
     },
     laburo: {
         intent: "Meme de laburo o chamba (laburo)",
+        category: "meme",
+        flags: []
+    },
+    jeiden: {
+        intent: "Frases célebres, citas misteriosas o meme del creador Jeiden (exclusivo para 'frases de jeiden', s.jeiden. NO usar para partidas, jugadas, top, recientes ni sugerencias)",
         category: "meme",
         flags: []
     }
