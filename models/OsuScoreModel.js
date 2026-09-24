@@ -344,7 +344,6 @@ function hasUnrankedPPMods(score) {
 }
 
 const ZERO_PP_MODS = new Set([
-    'RX', 'RELAX',
     'AP', 'AUTOPILOT',
     'AT', 'AUTO',
     'CN', 'CINEMA',
@@ -366,11 +365,73 @@ function hasZeroPPMods(score) {
         }
     } else if (typeof rawMods === 'string') {
         const upper = rawMods.toUpperCase();
-        for (const zeroMod of ['RX', 'AP', 'AT', 'CN', 'TP']) {
+        for (const zeroMod of ['AP', 'AT', 'CN', 'TP']) {
             if (upper.includes(zeroMod)) return true;
         }
     }
     return false;
+}
+
+function hasRelaxMod(score) {
+    if (!score) return false;
+
+    const rawMods = score.mods;
+    if (!rawMods) return false;
+
+    if (Array.isArray(rawMods)) {
+        for (const m of rawMods) {
+            const acronym = (typeof m === 'string' ? m : m.acronym || m.name || '').toUpperCase();
+            if (acronym === 'RX' || acronym === 'RELAX') {
+                return true;
+            }
+        }
+    } else if (typeof rawMods === 'string') {
+        const upper = rawMods.toUpperCase();
+        if (upper.includes('RX') || upper.includes('RELAX')) return true;
+    }
+    return false;
+}
+
+/**
+ * Calcula el PP teórico para jugadas con el mod Relax (RX).
+ * En osu! standard, Relax automatiza completamente el tecleo (speed y accuracy son 0),
+ * evaluando únicamente la puntería (Aim), lectura (Reading) y linterna (Flashlight).
+ */
+function calculateRelaxTheoreticalPP(perf) {
+    if (!perf) return 0;
+    const aim = perf.ppAim || 0;
+    const reading = perf.ppReading || 0;
+    const fl = perf.ppFlashlight || 0;
+    const spd = perf.ppSpeed || 0;
+    const acc = perf.ppAcc || 0;
+
+    // Si no cuenta con atributos de puntería (otros modos de juego), respetar el valor base si existe
+    if (perf.ppAim === undefined) {
+        return typeof perf.pp === 'number' && !isNaN(perf.pp) ? perf.pp : 0;
+    }
+
+    const allNorm = Math.pow(
+        Math.pow(aim, 1.1) +
+        Math.pow(spd, 1.1) +
+        Math.pow(acc, 1.1) +
+        Math.pow(fl, 1.1) +
+        Math.pow(reading, 1.1),
+        1 / 1.1
+    );
+
+    const multiplier = (allNorm > 0 && typeof perf.pp === 'number' && perf.pp > 0)
+        ? (perf.pp / allNorm)
+        : 1.12;
+
+    const rxNorm = Math.pow(
+        Math.pow(aim, 1.1) +
+        Math.pow(fl, 1.1) +
+        Math.pow(reading, 1.1),
+        1 / 1.1
+    );
+
+    const totalRxPP = rxNorm * multiplier;
+    return typeof totalRxPP === 'number' && !isNaN(totalRxPP) ? totalRxPP : 0;
 }
 
 /**
@@ -380,9 +441,10 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     normalizeScore(recent_scores);
     const { great = 0, ok = 0, meh = 0, miss = 0, perfect = 0, good = 0, small_tick_miss = 0 } = recent_scores.statistics;
 
-    // ponytail: Solo mods puramente automatizados (Relax, Autopilot, Auto, Cinema) anulan el PP a 0.
-    // Mods de ajuste como DA (Difficulty Adjust) calculan su PP real con sengo-pp, pero siguen bloqueados en el tracker oficial.
+    // ponytail: Mods puramente automatizados sin interacción humana (Auto, Cinema) anulan el PP a 0.
+    // Relax calcula su PP teórico (Aim + Reading + Flashlight) sin alterar el repositorio nativo sengo-pp.
     const isZeroPP = hasZeroPPMods(recent_scores);
+    const isRelax = hasRelaxMod(recent_scores);
     const engine = ppEngine.getEngine(engineChoice || recent_scores?.ppEngine);
 
     let mode = recent_scores.mode;
@@ -480,9 +542,11 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
             ? Attrs 
             : new engine.Difficulty(max_perfomance_constructor).calculate(map);
         const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
-        const effectiveStars = (typeof targetDiffAttrs?.stars === 'number')
-            ? targetDiffAttrs.stars
-            : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0);
+        const effectiveStars = (isRelax && typeof maxAttrs.difficulty?.stars === 'number')
+            ? maxAttrs.difficulty.stars
+            : ((typeof targetDiffAttrs?.stars === 'number')
+                ? targetDiffAttrs.stars
+                : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0));
         if (typeof effectiveStars === 'number') {
             maxAttrs.stars = effectiveStars;
             if (maxAttrs.difficulty) {
@@ -491,9 +555,14 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         }
         if (isZeroPP) {
             Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
+        } else if (isRelax) {
+            const rxPP = calculateRelaxTheoreticalPP(maxAttrs);
+            Object.defineProperty(maxAttrs, 'pp', { value: rxPP, writable: true, configurable: true });
+            maxAttrs.isRelaxTheoretical = true;
         } else if (typeof maxAttrs.pp !== 'number' || isNaN(maxAttrs.pp)) {
             Object.defineProperty(maxAttrs, 'pp', { value: 0, writable: true, configurable: true });
         }
+        maxAttrs.rawDiffAttrs = targetDiffAttrs;
         return maxAttrs;
     }
 
@@ -517,13 +586,25 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         }
         const targetDiffAttrs = (Attrs && Attrs.constructor?.name === 'DifficultyAttributes') 
             ? Attrs 
-            : new engine.Difficulty(max_perfomance_constructor).calculate(map);
+            : (Attrs?.rawDiffAttrs || new engine.Difficulty(max_perfomance_constructor).calculate(map));
         const perfResult = new engine.Performance(perfConstructor).calculate(targetDiffAttrs);
-        if (typeof targetDiffAttrs?.stars === 'number') {
-            perfResult.stars = targetDiffAttrs.stars;
+        const effectiveStars = (isRelax && typeof perfResult.difficulty?.stars === 'number')
+            ? perfResult.difficulty.stars
+            : ((typeof targetDiffAttrs?.stars === 'number')
+                ? targetDiffAttrs.stars
+                : (perfResult.difficulty && typeof perfResult.difficulty.stars === 'number' ? perfResult.difficulty.stars : 0));
+        if (typeof effectiveStars === 'number') {
+            perfResult.stars = effectiveStars;
+            if (perfResult.difficulty) {
+                perfResult.difficulty.stars = effectiveStars;
+            }
         }
         if (isZeroPP) {
             Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
+        } else if (isRelax) {
+            const rxPP = calculateRelaxTheoreticalPP(perfResult);
+            Object.defineProperty(perfResult, 'pp', { value: rxPP, writable: true, configurable: true });
+            perfResult.isRelaxTheoretical = true;
         } else if (typeof perfResult.pp !== 'number' || isNaN(perfResult.pp)) {
             Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
         }
@@ -534,7 +615,16 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
     const difficulty = new engine.Difficulty(max_perfomance_constructor);
     const gradResult = difficulty.gradualPerformance(map).nth(difficulty_constructor, total_hits);
     if (gradResult) {
-        if (isZeroPP || typeof gradResult.pp !== 'number' || isNaN(gradResult.pp)) {
+        if (isZeroPP) {
+            Object.defineProperty(gradResult, 'pp', { value: 0, writable: true, configurable: true });
+        } else if (isRelax) {
+            const rxPP = calculateRelaxTheoreticalPP(gradResult);
+            Object.defineProperty(gradResult, 'pp', { value: rxPP, writable: true, configurable: true });
+            if (typeof gradResult.difficulty?.stars === 'number') {
+                gradResult.stars = gradResult.difficulty.stars;
+            }
+            gradResult.isRelaxTheoretical = true;
+        } else if (typeof gradResult.pp !== 'number' || isNaN(gradResult.pp)) {
             Object.defineProperty(gradResult, 'pp', { value: 0, writable: true, configurable: true });
         }
     }
@@ -2952,6 +3042,8 @@ const OsuScoreModel = {
     calculatePP,
     hasUnrankedPPMods,
     hasZeroPPMods,
+    hasRelaxMod,
+    calculateRelaxTheoreticalPP,
     benchmarkPP,
     getUnrankedBeatmapUserAllScores,
     getUserRecentScores,

@@ -1185,6 +1185,7 @@
     "embed_footer_virgo": "virgo ratio",
     "embed_footer_negativo": "negative ratio",
     "embed_footer_default": "Sengo",
+    "embed_footer_relax": "Sengo • Theoretical PP (Relax)",
     "list_author": "Recent scores of {username} in osu!{mode}",
     "list_footer": "Showing recent plays {start}-{end} of {total}",
     "list_footer_loading": "⏳ Calculating pp of play #{index} of {total}...",

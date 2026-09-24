@@ -86,8 +86,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                 const { v2 } = require('osu-api-extended');
                 const OsuUserModel = require('../models/OsuUserModel.js');
                 await OsuUserModel.NewloadToken();
+                const OsuScoreModel = require('../models/OsuScoreModel.js');
                 const unrankedWithoutLeaderboard = new Set(['pending', 'wip', 'graveyard']);
                 const hasLeaderboard = recent_scores.beatmap.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
+                const isRankedPlay = !OsuScoreModel.hasUnrankedPPMods(recent_scores) && recent_scores.ranked !== false && hasLeaderboard;
 
                 let best = null;
                 let topScores = null;
@@ -103,7 +105,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                             mode: recent_scores.beatmap.mode
                         }).catch(() => null);
                     }
-                } else {
+                } else if (isRankedPlay) {
                     const [fetchedBest, fetchedTopScores] = await Promise.all([
                         hasLeaderboard ? v2.scores.list({
                             type: 'user_beatmap_best',
@@ -120,6 +122,13 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                     ]);
                     best = fetchedBest;
                     topScores = fetchedTopScores;
+                } else if (hasLeaderboard) {
+                    best = await v2.scores.list({
+                        type: 'user_beatmap_best',
+                        beatmap_id: recent_scores.beatmap.id,
+                        user_id: recent_scores.user.id,
+                        mode: recent_scores.beatmap.mode
+                    }).catch(() => null);
                 }
 
                 if (best && best.score) {
@@ -134,7 +143,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                     }
                 }
 
-                if (!hasUserTopPos && topScores && Array.isArray(topScores)) {
+                if (isRankedPlay && !hasUserTopPos && topScores && Array.isArray(topScores)) {
                     let topIndex = topScores.findIndex(s => {
                         return (recent_scores.id && s.id === recent_scores.id) ||
                             (new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
@@ -240,6 +249,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         if (isLazerCustomRework) {
             footerText += ` • ⚠️ ${t(locale, 'rework.lazer_custom_mods_footer_tag')}`;
         }
+    } else if (require('../models/OsuScoreModel.js').hasRelaxMod(recent_scores)) {
+        footerText = t(locale, 'recent.embed_footer_relax');
     } else if (activeGamemode === 'mania') {
         const ratioVal = great > 0 ? (perfect / great) : null;
         if (ratioVal !== null) {
