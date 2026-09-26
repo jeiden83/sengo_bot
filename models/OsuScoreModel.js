@@ -542,11 +542,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
             ? Attrs 
             : new engine.Difficulty(max_perfomance_constructor).calculate(map);
         const maxAttrs = new engine.Performance(max_perfomance_constructor).calculate(targetDiffAttrs);
-        const effectiveStars = (isRelax && typeof maxAttrs.difficulty?.stars === 'number')
-            ? maxAttrs.difficulty.stars
-            : ((typeof targetDiffAttrs?.stars === 'number')
-                ? targetDiffAttrs.stars
-                : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0));
+        const effectiveStars = (typeof targetDiffAttrs?.stars === 'number')
+            ? targetDiffAttrs.stars
+            : (maxAttrs.difficulty && typeof maxAttrs.difficulty.stars === 'number' ? maxAttrs.difficulty.stars : 0);
         if (typeof effectiveStars === 'number') {
             maxAttrs.stars = effectiveStars;
             if (maxAttrs.difficulty) {
@@ -588,11 +586,9 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
             ? Attrs 
             : (Attrs?.rawDiffAttrs || new engine.Difficulty(max_perfomance_constructor).calculate(map));
         const perfResult = new engine.Performance(perfConstructor).calculate(targetDiffAttrs);
-        const effectiveStars = (isRelax && typeof perfResult.difficulty?.stars === 'number')
-            ? perfResult.difficulty.stars
-            : ((typeof targetDiffAttrs?.stars === 'number')
-                ? targetDiffAttrs.stars
-                : (perfResult.difficulty && typeof perfResult.difficulty.stars === 'number' ? perfResult.difficulty.stars : 0));
+        const effectiveStars = (typeof targetDiffAttrs?.stars === 'number')
+            ? targetDiffAttrs.stars
+            : (perfResult.difficulty && typeof perfResult.difficulty.stars === 'number' ? perfResult.difficulty.stars : 0);
         if (typeof effectiveStars === 'number') {
             perfResult.stars = effectiveStars;
             if (perfResult.difficulty) {
@@ -608,6 +604,7 @@ function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) 
         } else if (typeof perfResult.pp !== 'number' || isNaN(perfResult.pp)) {
             Object.defineProperty(perfResult, 'pp', { value: 0, writable: true, configurable: true });
         }
+        perfResult.rawDiffAttrs = targetDiffAttrs;
         return perfResult;
     }
 
