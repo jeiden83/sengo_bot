@@ -45,8 +45,11 @@ const FLAG_HANDLERS = {
     },
 
     // 4. No Choke (-nochoke)
-    nochoke: (answers) => {
-        return answers.is_nochoke?.noul > 0.50 ? '-nochoke' : null;
+    nochoke: (answers, entities) => {
+        if (answers.is_nochoke?.noul > 0.50 || entities?.cleanText?.match(/\b(?:nochoke|no\s*choke|sin\s*chokes?|sin\s*fallos?|sin\s*miss(?:es)?|unchoke|fc|full\s*combo|si\s+no\s+hubiera\s+chockeado)\b/i)) {
+            return '-nochoke';
+        }
+        return null;
     },
 
     // 5. Criterios de ordenamiento métrico
@@ -57,18 +60,18 @@ const FLAG_HANDLERS = {
             if (conf < 0.65) return null;
 
             const SORT_KEYWORD_MAP = {
-                bpm: /\b(?:bpm|velocidad|tempo)\b/i,
-                acc: /\b(?:acc|accuracy|precisi[oó]n)\b/i,
-                combo: /\b(?:combo|racha)\b/i,
-                stars: /\b(?:stars?|estrellas?|sr|dificultad)\b/i,
+                bpm: /\b(?:bpm|velocidad|tempo|rapidez|r[aá]pid[oa]s?|lentos?)\b/i,
+                acc: /\b(?:acc|accuracy|precisi[oó]n|precision)\b/i,
+                combo: /\b(?:combo|racha|mayor\s+combo|m[aá]s\s+combo)\b/i,
+                stars: /\b(?:stars?|estrellas?|sr|dificultad|dif[ií]ciles?|f[aá]ciles?)\b/i,
                 ar: /\b(?:ar|approach\s*rate)\b/i,
                 cs: /\b(?:cs|circle\s*size|tamaño)\b/i,
                 od: /\b(?:od|overall\s*difficulty)\b/i,
                 hp: /\b(?:hp|drain|vida|health)\b/i,
-                length: /\b(?:length|duraci[oó]n|duracion|largo|tiempo)\b/i,
-                recent: /\b(?:recent|recientes?|fecha|cronol[oó]gico)\b/i,
-                score: /\b(?:score|puntuaci[oó]n|puntos)\b/i,
-                totalscore: /\b(?:totalscore|puntuaci[oó]n\s*total)\b/i
+                length: /\b(?:length|duraci[oó]n|duracion|largo|tiempo|larg[oa]s?|cort[oa]s?)\b/i,
+                recent: /\b(?:recent|recientes?|fecha|cronol[oó]gico|[uú]ltim[oa]s?)\b/i,
+                score: /\b(?:score|puntuaci[oó]n|puntuacion|puntos)\b/i,
+                totalscore: /\b(?:totalscore|puntuaci[oó]n\s*total|score\s*total)\b/i
             };
 
             if (entities && entities.cleanText && SORT_KEYWORD_MAP[sort]) {
@@ -90,33 +93,48 @@ const FLAG_HANDLERS = {
     },
 
     // 6. Orden invertido (-rev)
-    reverse: (answers) => {
-        return answers.is_reverse?.noul > 0.60 ? '-rev' : null;
+    reverse: (answers, entities) => {
+        if (answers.is_reverse?.noul > 0.60 || entities?.cleanText?.match(/\b(?:al\s*rev[eé]s|invertid[oa]|de\s+menor\s+a\s+mayor|menor\s+primero|peores|m[aá]s\s+baj[oa]s?|invers[oa])\b/i)) {
+            return '-rev';
+        }
+        return null;
     },
 
     // 7. Formato lista compacta (-list)
-    list: (answers) => {
-        return answers.is_list?.noul > 0.70 ? '-list' : null;
+    list: (answers, entities) => {
+        if (answers.is_list?.noul > 0.70 || entities?.cleanText?.match(/\b(?:en\s+lista|en\s+listado|formato\s+lista|compact[oa]|resumen)\b/i)) {
+            return '-list';
+        }
+        return null;
     },
 
     // 8. Solo jugadas pasadas (-ps)
-    pass_only: (answers) => {
-        return answers.is_pass_only?.noul > 0.50 ? '-ps' : null;
+    pass_only: (answers, entities) => {
+        if (answers.is_pass_only?.noul > 0.50 || entities?.cleanText?.match(/\b(?:solo\s+pass(?:es)?|sin\s+fails?|solo\s+pasadas?|completadas?)\b/i)) {
+            return '-ps';
+        }
+        return null;
     },
 
     // 9. Vista detallada (-d)
-    detailed: (answers) => {
-        return answers.is_detailed?.noul > 0.70 ? '-d' : null;
+    detailed: (answers, entities) => {
+        if (answers.is_detailed?.noul > 0.70 || entities?.cleanText?.match(/\b(?:detallad[oa]|con\s+detalles?|desglose|con\s+todo|extendido|completo)\b/i)) {
+            return '-d';
+        }
+        return null;
     },
 
     // 10. Estadísticas promedio del top (-promedio)
-    promedio: (answers) => {
-        return answers.is_promedio?.noul > 0.65 ? '-promedio' : null;
+    promedio: (answers, entities) => {
+        if (answers.is_promedio?.noul > 0.65 || entities?.cleanText?.match(/\b(?:promedio|average|t100|t200|stats\s+de\s+mi\s+top|estad[ií]sticas\s+de\s+mi\s+top)\b/i)) {
+            return '-promedio';
+        }
+        return null;
     },
 
     // 11. Habilidad cinética en top (-aim, -speed, -reading, -acc, -stamina, -skill)
     top_skill: (answers, entities) => {
-        if (!entities.cleanText.match(/\b(skills?|habilidad(es)?)\b/i)) return null;
+        if (!entities.cleanText.match(/\b(skills?|habilidad(?:es)?|radar)\b/i)) return null;
         const sk = answers.skill_filter?.choice;
         if (sk && sk !== 'none') {
             return sk === 'all' ? '-skill' : `-${sk}`;
@@ -271,7 +289,10 @@ const FLAG_HANDLERS = {
     mapper_options: (answers, entities) => {
         const args = [];
         const text = entities.cleanText;
-        if (text.match(/\b(?:top|mejores|ranking|clasificaci[oó]n)\b/i)) {
+        if (
+            text.match(/\b(?:top|mejores|ranking|clasificaci[oó]n|clasificacion|lista|tabla|listado|ver\s+mappers?|mappers?\s+de)\b/i) ||
+            (entities.countryCode && !entities.targetUsername)
+        ) {
             args.push('-top');
         }
         if (text.match(/\b(?:nacional|pa[ií]s|country)\b/i)) {
@@ -289,7 +310,7 @@ const FLAG_HANDLERS = {
         if (text.match(/\b(?:loved|amados)\b/i)) args.push('-loved');
         if (text.match(/\b(?:followers|seguidores)\b/i)) args.push('-followers');
         if (text.match(/\b(?:graveyard|abandonados)\b/i)) args.push('-graveyard');
-        if (text.match(/\b(?:bn|bns|nominators?)\b/i)) args.push('-bn');
+        if (text.match(/\b(?:bn|bns|nominators?|beatmap\s*nominators?)\b/i)) args.push('-bn');
         if (text.match(/\b(?:card|tarjeta)\b/i)) args.push('-card');
         if (text.match(/\b(?:activos?|abiertos?|open|active)\b/i)) args.push('-activo');
         if (text.match(/\b(?:track|seguir|seguimiento|rastrear)\b/i)) {
@@ -344,8 +365,8 @@ const FLAG_HANDLERS = {
     nacional_options: (answers, entities) => {
         const args = [];
         if (entities.regionalFilter) args.push('-regional', entities.regionalFilter);
-        if (entities.cleanText.match(/\b(?:tops?|mejores jugadas|mejores scores)\b/i)) args.push('-tops');
-        if (entities.cleanText.match(/\b(?:acc|precisi[oó]n|accuracy)\b/i)) args.push('-acc');
+        if (entities.cleanText.match(/\b(?:tops?|mejores\s+jugadas?|mejores\s+scores?|mejores\s+plays?|records?)\b/i)) args.push('-tops');
+        if (entities.cleanText.match(/\b(?:acc|precisi[oó]n|precision|accuracy)\b/i)) args.push('-acc');
         return args.length > 0 ? args : null;
     },
 
@@ -533,7 +554,7 @@ const FLAG_HANDLERS = {
  */
 const COMMAND_DEFINITIONS = {
     top: {
-        intent: "Consultar mejores jugadas (top plays, mejores puntuaciones, récords personales, mejores scores)",
+        intent: "Consultar mejores jugadas, top plays, récords personales o mejores scores (top, mejores jugadas, top plays, mis scores, mis records, mejores puntuaciones, jugadas con más pp, mis mapas con más pp, dame mi top, pasa mi top, récord personal)",
         category: "osu",
         flags: [
             'gamemode', 'server', 'client_mode', 'nochoke', 'sort_metric', 'reverse',
@@ -542,7 +563,7 @@ const COMMAND_DEFINITIONS = {
         ]
     },
     r: {
-        intent: "Consultar la jugada más reciente o lista de partidas recientes (última partida jugada, partidas recientes, lista de recientes, recent, r, rs, recent plays)",
+        intent: "Consultar la jugada más reciente o lista de partidas recientes (recent, rs, r, última jugada, última partida, lo que acabo de jugar, partida reciente, scores recientes, historial de jugadas, qué jugué, último mapa jugado, lo último que pasé)",
         category: "osu",
         aliases: ['recent', 'rs'],
         flags: [
@@ -551,200 +572,200 @@ const COMMAND_DEFINITIONS = {
         ]
     },
     osu: {
-        intent: "Ver perfil general, estadísticas globales o tarjeta de usuario (osu, perfil, stats)",
+        intent: "Ver perfil general, estadísticas globales o resumen de cuenta de osu! (osu, perfil, profile, stats, mi cuenta, estadísticas, mi rango, cuánto pp tengo, mi rank, resumen de cuenta, info de jugador)",
         category: "osu",
         aliases: ['perfil', 'profile', 'o'],
         flags: ['gamemode', 'server', 'promedio', 'detailed', 'target_user', 'target_mention']
     },
     c: {
-        intent: "Comparar puntuación en un beatmap específico o último mapa (c, compare)",
+        intent: "Comparar puntuación o score en un beatmap específico o último mapa del canal (c, compare, comparar, mi score en este mapa, cómo me fue en el mapa, mi récord en este mapa, puntuación en el mapa, comparar jugada)",
         category: "osu",
         aliases: ['compare', 'comparar'],
         flags: ['gamemode', 'server', 'client_mode', 'pass_only', 'list', 'beatmap', 'mods', 'target_user', 'target_mention']
     },
     skills: {
-        intent: "Ver habilidades cinéticas, radar, desglose de skills (aim, speed, reading, stamina) o mejores jugadas por habilidad en el top (skills)",
+        intent: "Ver habilidades cinéticas, radar, gráfico de skills o mejores jugadas por habilidad en el top (skills, habilidades, radar, radar de habilidades, mis skills, en qué destaco, desglose de skills, mis puntos fuertes, aim o speed)",
         category: "osu",
         flags: ['gamemode', 'server', 'skills_breakdown', 'score_index', 'country', 'force', 'target_user', 'target_mention']
     },
     card: {
-        intent: "Generar tarjeta gráfica o imagen Canvas de perfil (card)",
+        intent: "Generar tarjeta gráfica o imagen Canvas de perfil de jugador o mapper (card, tarjeta, mi tarjeta, banner de osu, tarjeta gráfica, card de mapper, imagen de perfil, ficha de jugador)",
         category: "osu",
         aliases: ['tarjeta'],
         flags: ['gamemode', 'server', 'card_preset', 'target_user', 'target_mention']
     },
     recommend: {
-        intent: "Recomendar beatmaps para jugar o farmear pp (recommend, rec)",
+        intent: "Recomendar beatmaps para jugar o farmear pp (recommend, rec, recomiéndame mapas, mapas para farmear, qué juego, farm maps, sugerir mapas, mapas para ganar pp, sugerencias de beatmaps)",
         category: "osu",
         aliases: ['rec'],
         flags: ['gamemode', 'recommend_style', 'mods', 'target_user', 'target_mention']
     },
     snipes: {
-        intent: "Ver snipes, primer lugar (#1s) o historial de snipes (snipes)",
+        intent: "Ver snipes, primer lugar (#1s), némesis o historial de snipes robados/perdidos (snipes, #1, primeros lugares, números uno, top 1s, mis #1s, tops robados, némesis, rivales, quién me robó tops)",
         category: "osu",
         flags: ['gamemode', 'snipes_filter', 'detailed', 'star_rating_cond', 'target_user', 'target_mention']
     },
     render: {
-        intent: "Renderizar o grabar video de replay de osu! (render, o!rdr)",
+        intent: "Renderizar o grabar video de replay de osu! (render, o!rdr, grabar replay, video de la play, video del score, clip de la partida, grabar video)",
         category: "osu",
         flags: ['render_options']
     },
     rework: {
-        intent: "Consultar cambios de pp o impacto con reworks de osu! (rework)",
+        intent: "Consultar cambios de pp o impacto con reworks de osu! (rework, reworks, cambios de pp, nuevo cálculo de pp, cómo me afecta el rework, rework combo scaling)",
         category: "osu",
         flags: ['gamemode', 'rework_options', 'target_user', 'target_mention']
     },
     lb: {
-        intent: "Ver la tabla de clasificación o leaderboard de un beatmap o mapa, o leaderboard nacional/por país de un mapa (lb, leaderboard, tabla del mapa)",
+        intent: "Ver la tabla de clasificación o leaderboard de un beatmap, top del mapa o leaderboard nacional del mapa (lb, leaderboard, tabla del mapa, top del mapa, ranking del mapa, mejores puntuaciones del mapa, quién tiene el #1 en este mapa)",
         category: "osu",
         aliases: ['leaderboard', 'lbm', 'lbc', 'lbt', 'lbp'],
         flags: ['gamemode', 'server', 'client_mode', 'friends', 'country', 'page', 'beatmap', 'mods']
     },
     nacional: {
-        intent: "Ver ranking nacional de jugadores de un país o mejores jugadas registradas en el país (nacional, ranking nacional de jugadores)",
+        intent: "Ver ranking nacional de jugadores de un país o mejores jugadas registradas en el país (nacional, ranking nacional, top jugadores del país, mejores jugadores de colombia/chile/venezuela/etc, ranking por país)",
         category: "osu",
         flags: ['gamemode', 'nacional_options', 'star_rating_cond', 'country', 'page']
     },
     regional: {
-        intent: "Ver ranking regional (regional)",
+        intent: "Ver ranking regional de jugadores (regional, ranking regional, tabla de región)",
         category: "osu",
         flags: ['gamemode', 'regional_param']
     },
     torneos: {
-        intent: "Consultar torneos de osu! activos o información de torneos (torneos)",
+        intent: "Consultar torneos de osu! activos, próximos o información de torneos (torneos, torneo, torneos activos, torneos de osu)",
         category: "osu",
         flags: ['torneo_options']
     },
     mapper: {
-        intent: "Consultar creadores de mapas, estadísticas de mapper, o ranking/top nacional o global de mappers (mapper, mappers)",
+        intent: "Consultar creadores de mapas, estadísticas de mapper, perfil de mapper, o ranking/top/lista nacional o global de mappers de un país o servidor (mapper, mappers, creadores, lista de mappers, top mappers, mappers de un país, beatmap nominators, bn)",
         category: "osu",
         aliases: ['mappers'],
         flags: ['gamemode', 'mapper_options', 'country', 'target_user', 'target_mention']
     },
     skin: {
-        intent: "Buscar o descargar skins de osu! (skin)",
+        intent: "Buscar, ver o descargar skins de osu! (skin, skins, descargar skin, buscar skin, pasa la skin, cambiar mi skin, poner skin)",
         category: "osu",
         flags: ['gamemode', 'skin_options', 'target_user', 'target_mention']
     },
     queue: {
-        intent: "Ver cola de mapas para testear o modear (queue)",
+        intent: "Ver cola de mapas para testear o modear (queue, colas, modding queue, cola de mapas, abrir cola, cerrar cola)",
         category: "osu",
         flags: ['gamemode', 'queue_options', 'target_user', 'target_mention']
     },
     twins: {
-        intent: "Buscar gemelos de estadísticas o jugadores similares (twins, twin)",
+        intent: "Buscar gemelos de estadísticas o jugadores similares (twins, twin, mi gemelo, jugador similar, quién juega como yo, mi clon de stats, jugador parecido)",
         category: "osu",
         aliases: ['twin'],
         flags: ['gamemode', 'twins_options', 'country', 'list', 'mods', 'target_user', 'target_mention']
     },
     amigos: {
-        intent: "Ver lista o estado de amigos vinculados de osu! (amigos)",
+        intent: "Ver lista o estado de amigos vinculados de osu! (amigos, mis amigos, amigos de osu, amigos vinculados)",
         category: "osu",
         flags: ['amigos_options']
     },
     entre: {
-        intent: "Ver o comparar jugadores entre dos rangos o posiciones de pp (entre)",
+        intent: "Ver o comparar jugadores entre dos rangos o posiciones de pp (entre, jugadores entre tal rango, quién está entre el puesto X e Y)",
         category: "osu",
         flags: ['gamemode', 'server', 'entre_players']
     },
     m: {
-        intent: "Ver información, dificultad o enlace de un beatmap (m, map)",
+        intent: "Ver información, dificultad o enlace de un beatmap (m, map, mapa, info del mapa, información de beatmap, dificultad del mapa, ver mapa, datos del mapa)",
         category: "osu",
         aliases: ['map'],
         flags: ['gamemode', 'mapset', 'beatmap']
     },
     bg: {
-        intent: "Obtener o descargar el fondo o background de un beatmap (bg)",
+        intent: "Obtener o descargar el fondo o background de un beatmap (bg, fondo, background, wallpaper del mapa, foto del mapa, imagen de fondo)",
         category: "osu",
         flags: ['beatmap']
     },
     sim: {
-        intent: "Simular pp y dificultad de un beatmap con mods o precisión (sim)",
+        intent: "Simular pp y dificultad de un beatmap con mods o precisión (sim, simular, simulación de pp, cuánto daría con dt, cuánto pp da con 98 acc, calcular pp)",
         category: "osu",
         flags: ['gamemode', 'beatmap', 'mods']
     },
     subir: {
-        intent: "Calcular qué jugada o pp necesita para subir de rango o posición",
+        intent: "Calcular qué jugada o pp necesita para subir de rango o posición (subir, qué necesito para subir de rango, cuánto pp para subir puesto, qué play necesito para rankear)",
         category: "osu",
         flags: ['gamemode', 'target_user', 'target_mention']
     },
     gap: {
-        intent: "Calcular diferencia de pp o posiciones con otro jugador",
+        intent: "Calcular diferencia de pp o posiciones con otro jugador (gap, cuánto me falta para alcanzar a, distancia de pp, diferencia de pp con)",
         category: "osu",
         flags: ['gamemode', 'server', 'target_user', 'target_mention']
     },
     daily: {
-        intent: "Consultar el desafío o reto diario de osu! (reto del día, daily)",
+        intent: "Consultar el desafío o reto diario de osu! (daily, reto del día, reto diario, daily challenge, mapa del día)",
         category: "osu",
         flags: ['gamemode']
     },
     link: {
-        intent: "Vincular o enlazar cuenta de osu! con OAuth (link, vincular)",
+        intent: "Vincular o enlazar cuenta de osu! con OAuth (link, vincular, enlazar, conectar cuenta, loguear osu, vincular cuenta)",
         category: "osu",
         flags: ['target_user']
     },
     track: {
-        intent: "Rastrear o hacer seguimiento de actividad de un jugador (track)",
+        intent: "Rastrear o hacer seguimiento de actividad de un jugador (track, rastrear, seguir jugador, notificarme cuando juegue, avisar de jugadas)",
         category: "osu",
         flags: ['target_user', 'target_mention']
     },
     digitos: {
-        intent: "Ver estadísticas por dígitos de ranking (digitos)",
+        intent: "Ver estadísticas por dígitos de ranking (digitos, dígitos, 4 dígitos, 5 dígitos, stats por dígitos)",
         category: "osu",
         flags: ['target_user', 'target_mention']
     },
     lazer: {
-        intent: "Consultar scores o ranking de osu! lazer (lazer)",
+        intent: "Consultar scores o ranking de osu! lazer (lazer, osu lazer, puntuaciones de lazer)",
         category: "osu",
         flags: ['target_user', 'target_mention']
     },
     classic: {
-        intent: "Consultar scores o modo classic de osu! (classic)",
+        intent: "Consultar scores o modo classic de osu! (classic, stable, modo clásico, scores stable)",
         category: "osu",
         flags: ['target_user', 'target_mention']
     },
     droid: {
-        intent: "Consultar scores o perfil de osu! droid (droid)",
+        intent: "Consultar scores o perfil de osu! droid (droid, osu droid, perfil droid, móvil, celular)",
         category: "osu",
         flags: ['target_user', 'target_mention']
     },
     pais: {
-        intent: "Asignar autorol de país de Discord en el servidor osu! Latinoamérica (pais, autorol país)",
+        intent: "Asignar autorol de país de Discord en el servidor osu! Latinoamérica (pais, autorol país, rol de país, ponerme rol de país)",
         category: "moderation",
         flags: []
     },
     bcv: {
-        intent: "Consultar la tasa del dólar oficial BCV en Venezuela (bcv, tasa bcv, dolar bcv)",
+        intent: "Consultar la tasa del dólar oficial BCV en Venezuela (bcv, tasa bcv, dolar bcv, precio del dólar bcv, a cuánto está el bcv)",
         category: "utils",
         flags: []
     },
     binance: {
-        intent: "Consultar el precio o tasa de Binance P2P USDT (binance, tasa binance)",
+        intent: "Consultar el precio o tasa de Binance P2P USDT (binance, tasa binance, p2p, precio usdt, dólar binance)",
         category: "utils",
         flags: []
     },
     brecha: {
-        intent: "Consultar la brecha cambiaria entre dólar paralelo y BCV (brecha)",
+        intent: "Consultar la brecha cambiaria entre dólar paralelo y BCV (brecha, brecha cambiaria, diferencia entre paralelo y bcv)",
         category: "utils",
         flags: []
     },
     ping: {
-        intent: "Medir la latencia o ping del bot (ping)",
+        intent: "Medir la latencia o ping del bot (ping, latencia, ms, lag, estás vivo, tiempo de respuesta)",
         category: "utils",
         flags: []
     },
     help: {
-        intent: "Ver la ayuda de comandos o lista de funciones del bot (help, ayuda)",
+        intent: "Ver la ayuda de comandos o lista de funciones del bot (help, ayuda, comandos, qué comandos tienes, cómo se usa, guía de comandos)",
         category: "general",
         flags: ['help_target']
     },
     invite: {
-        intent: "Obtener el enlace de invitación para añadir el bot (invite, invitar)",
+        intent: "Obtener el enlace de invitación para añadir el bot a un servidor (invite, invitar, link del bot, cómo te meto a mi server, invitación)",
         category: "general",
         flags: []
     },
     acerca: {
-        intent: "Información acerca del bot, creadores o versión (acerca, about)",
+        intent: "Información acerca del bot, creadores o versión (acerca, about, información del bot, quién te creó)",
         category: "about",
         flags: []
     },
@@ -764,19 +785,19 @@ const COMMAND_DEFINITIONS = {
         flags: []
     },
     bug: {
-        intent: "Reportar un fallo, error o bug del bot a los desarrolladores (ej. 'reportar bug', 'hay un error', 'reportar fallo')",
+        intent: "Reportar un fallo, error o bug del bot a los desarrolladores (bug, error, reportar bug, reportar error, fallo, algo no funciona, el bot falló)",
         category: "utils",
         aliases: ['error', 'fallo', 'report'],
         flags: ['report_text']
     },
     sugerencia: {
-        intent: "Enviar, proponer o crear una sugerencia para el bot o sus desarrolladores (ej. 'haz una sugerencia', 'sugerir', 'sugerencia', 'tengo una sugerencia')",
+        intent: "Enviar, proponer o crear una sugerencia para el bot (sugerencia, sugerir, suggest, proponer idea, tengo una idea, deberían agregar)",
         category: "utils",
         aliases: ['sugerir', 'suggest', 'feat'],
         flags: ['report_text']
     },
     cumple: {
-        intent: "Ver, consultar o registrar cumpleaños del servidor (cumple, cumpleaños, siguiente cumpleaños)",
+        intent: "Ver, consultar o registrar cumpleaños del servidor (cumple, cumpleaños, siguiente cumpleaños, anotar cumple)",
         category: "moderation",
         flags: ['cumple_options', 'target_mention']
     },
@@ -791,7 +812,7 @@ const COMMAND_DEFINITIONS = {
         flags: []
     },
     laburo: {
-        intent: "Meme de laburo o chamba (laburo)",
+        intent: "Meme de laburo o chamba (laburo, chamba)",
         category: "meme",
         flags: []
     },

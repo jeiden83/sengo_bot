@@ -31,10 +31,10 @@ function buildJevQuestions() {
             type: "choice",
             instructions: "¿Qué modo de juego de osu! especificó explícitamente el usuario en su mensaje?",
             criteria: {
-                osu: "Standard, std, normal, círculos, osu",
-                taiko: "Taiko, tambores",
-                fruits: "Catch the Beat, ctb, frutas, catch",
-                mania: "Mania, teclas, 4k, 7k",
+                osu: "Standard, std, normal, círculos, circulos, osu, modo clásico de círculos",
+                taiko: "Taiko, tambores, tambor, bachi",
+                fruits: "Catch the Beat, ctb, frutas, fruta, catch, plato",
+                mania: "Mania, teclas, 4k, 7k, piano, vertical scrolling",
                 default: "No especificó ningún modo (usar modo principal o estándar)"
             }
         },
@@ -45,7 +45,7 @@ function buildJevQuestions() {
             criteria: {
                 default: "Servidor oficial Bancho o no especificado",
                 gatari: "Servidor privado Gatari",
-                droid: "Servidor de osu!droid"
+                droid: "Servidor de osu!droid, celular, móvil, android"
             }
         },
         // 4. Modalidad de cliente (Lazer vs Classic)
@@ -54,59 +54,59 @@ function buildJevQuestions() {
             instructions: "¿El usuario especifica la modalidad de cliente o puntuación (Lazer vs Classic/Stable)?",
             criteria: {
                 none: "No especificado / modo por defecto",
-                lazer: "osu! lazer (puntuación normalizada a 1M)",
-                classic: "osu! classic o stable (puntuación clásica)"
+                lazer: "osu! lazer, nuevo osu (puntuación normalizada a 1M)",
+                classic: "osu! classic, stable, modo clásico (puntuación clásica)"
             }
         },
         // 5. No Choke
         is_nochoke: {
             type: "noul",
-            instructions: "¿El usuario solicita calcular o filtrar por no choke (nochoke, no choke, sin fallos/chokes, unchoke)?"
+            instructions: "¿El usuario solicita calcular o filtrar por no choke (nochoke, no choke, sin fallos, sin chokes, sin misses, unchoke, fc, full combo, si no hubiera chockeado)?"
         },
         // 6. Criterio de ordenamiento métrico
         sort_metric: {
             type: "choice",
-            instructions: "¿El usuario solicita explícitamente ordenar sus jugadas por alguna métrica específica distinta del PP (ej: ordenado por bpm, por estrellas, menor combo)? Si sólo pide ver su top o filtrar por mods/país sin pedir ordenamiento, responder 'none'.",
+            instructions: "¿El usuario solicita explícitamente ordenar sus jugadas por alguna métrica específica distinta del PP (ej: ordenado por bpm, por estrellas, menor combo, más rápidos, más difíciles)? Si sólo pide ver su top o filtrar por mods/país sin pedir ordenamiento, responder 'none'.",
             criteria: {
                 none: "Sin ordenamiento especial o por defecto (ordenado por PP; o sólo pide filtrar por mods, país o rango sin ordenar)",
-                bpm: "BPM, velocidad del mapa, tempo",
-                acc: "Precisión, accuracy, acc",
-                combo: "Combo máximo, racha",
-                stars: "Estrellas, dificultad estelar, star rating, sr",
+                bpm: "BPM, velocidad del mapa, tempo, más rápidos, más lentos, rapidez",
+                acc: "Precisión, accuracy, acc, mejor acc, peor acc",
+                combo: "Combo máximo, racha, mayor combo, más combo, menor combo",
+                stars: "Estrellas, dificultad estelar, star rating, sr, más difíciles, más fáciles",
                 ar: "Approach Rate, velocidad de reacción, AR",
                 cs: "Circle Size, tamaño de círculos, CS",
                 od: "Overall Difficulty, dificultad de timing, OD",
                 hp: "HP Drain, drenaje de vida, HP",
-                length: "Duración, largo, tiempo del mapa",
-                recent: "Fecha más reciente, tiempo, orden cronológico",
-                score: "Puntuación estandarizada",
-                totalscore: "Puntuación total"
+                length: "Duración, largo, tiempo del mapa, más largos, más cortos",
+                recent: "Fecha más reciente, tiempo, orden cronológico, últimas jugadas",
+                score: "Puntuación estandarizada, puntuación, puntos",
+                totalscore: "Puntuación total, total score"
             }
         },
         // 7. Invertir orden
         is_reverse: {
             type: "noul",
-            instructions: "¿El usuario pide invertir el orden del listado (al revés, invertido, de menor a mayor, menor primero)?"
+            instructions: "¿El usuario pide invertir el orden del listado (al revés, invertido, de menor a mayor, menor primero, peores, más bajos, orden inverso)?"
         },
         // 8. Formato lista
         is_list: {
             type: "noul",
-            instructions: "¿El usuario pide ver una lista compacta de jugadas en vez de un embed individual?"
+            instructions: "¿El usuario pide ver una lista o listado compacto de jugadas en vez de un embed individual (lista, listado, formato lista, compacto, resumen)?"
         },
         // 9. Solo pasadas (pass only)
         is_pass_only: {
             type: "noul",
-            instructions: "¿El usuario pide específicamente solo jugadas pasadas (pass / completadas sin fail)?"
+            instructions: "¿El usuario pide específicamente solo jugadas pasadas (pass, passes, completadas sin fail, solo pass)?"
         },
         // 10. Vista detallada
         is_detailed: {
             type: "noul",
-            instructions: "¿El usuario pide ver la información detallada, completa o con desglose avanzado (detallado, con detalles, detail)?"
+            instructions: "¿El usuario pide ver la información detallada, completa o con desglose avanzado (detallado, con detalles, detail, desglose, completo, extendido)?"
         },
         // 11. Panel de estadísticas / promedio
         is_promedio: {
             type: "noul",
-            instructions: "¿El usuario pide ver estadísticas globales, promedios de su top o panel de métricas de jugador (promedio, stats de mi top, average, t100)?"
+            instructions: "¿El usuario pide ver estadísticas globales, promedios de su top o panel de métricas de jugador (promedio, stats de mi top, average, t100, métricas)?"
         },
         // 12. Filtro de mods
         mods_filter: {
@@ -132,7 +132,7 @@ function buildJevQuestions() {
             instructions: "¿El usuario consulta o filtra por una habilidad cinética particular?",
             criteria: {
                 none: "General o no aplica",
-                all: "Todas las habilidades o desglose de skills",
+                all: "Todas las habilidades o desglose de skills, radar",
                 aim: "Aim, puntería, saltos, jumps",
                 speed: "Speed, velocidad, streams, dedos",
                 acc: "Accuracy, precisión, ritmo",
@@ -417,11 +417,11 @@ function extractEntities(rawText) {
         'venezuela': 'VE',
         'argentina': 'AR',
         'colombia': 'CO',
-        'españa': 'ES', 'spain': 'ES',
+        'españa': 'ES', 'spain': 'ES', 'espana': 'ES',
         'peru': 'PE', 'perú': 'PE',
         'brasil': 'BR', 'brazil': 'BR',
         'uruguay': 'UY',
-        'estados unidos': 'US', 'usa': 'US',
+        'estados unidos': 'US', 'usa': 'US', 'ee.uu.': 'US', 'eeuu': 'US', 'united states': 'US',
         'bolivia': 'BO',
         'costa rica': 'CR',
         'cuba': 'CU',
@@ -433,10 +433,100 @@ function extractEntities(rawText) {
         'panama': 'PA', 'panamá': 'PA',
         'paraguay': 'PY',
         'puerto rico': 'PR',
-        'reino unido': 'GB',
+        'republica dominicana': 'DO', 'república dominicana': 'DO', 'dominican republic': 'DO',
+        'reino unido': 'GB', 'gran bretaña': 'GB', 'gran bretana': 'GB', 'inglaterra': 'GB', 'united kingdom': 'GB', 'uk': 'GB', 'great britain': 'GB', 'england': 'GB',
         'canada': 'CA', 'canadá': 'CA',
         'australia': 'AU',
-        'nueva zelanda': 'NZ'
+        'nueva zelanda': 'NZ', 'nueva zelandia': 'NZ', 'new zealand': 'NZ',
+        'uzbekistan': 'UZ', 'uzbekistán': 'UZ', 'uzbekia': 'UZ',
+        'japon': 'JP', 'japón': 'JP', 'japan': 'JP',
+        'corea del sur': 'KR', 'south korea': 'KR', 'corea': 'KR', 'korea': 'KR',
+        'corea del norte': 'KP', 'north korea': 'KP',
+        'alemania': 'DE', 'germany': 'DE', 'deutschland': 'DE',
+        'francia': 'FR', 'france': 'FR',
+        'rusia': 'RU', 'russia': 'RU',
+        'polonia': 'PL', 'poland': 'PL',
+        'italia': 'IT', 'italy': 'IT',
+        'portugal': 'PT',
+        'ucrania': 'UA', 'ukraine': 'UA',
+        'turquia': 'TR', 'turquía': 'TR', 'turkey': 'TR',
+        'paises bajos': 'NL', 'países bajos': 'NL', 'holanda': 'NL', 'netherlands': 'NL', 'holland': 'NL',
+        'belgica': 'BE', 'bélgica': 'BE', 'belgium': 'BE',
+        'suecia': 'SE', 'sweden': 'SE',
+        'noruega': 'NO', 'norway': 'NO',
+        'finlandia': 'FI', 'finland': 'FI',
+        'dinamarca': 'DK', 'denmark': 'DK',
+        'suiza': 'CH', 'switzerland': 'CH',
+        'austria': 'AT',
+        'republica checa': 'CZ', 'república checa': 'CZ', 'chequia': 'CZ', 'czech republic': 'CZ', 'czechia': 'CZ',
+        'eslovaquia': 'SK', 'slovakia': 'SK',
+        'hungria': 'HU', 'hungría': 'HU', 'hungary': 'HU',
+        'rumania': 'RO', 'rumanía': 'RO', 'romania': 'RO',
+        'bulgaria': 'BG',
+        'grecia': 'GR', 'greece': 'GR',
+        'croacia': 'HR', 'croatia': 'HR',
+        'serbia': 'RS',
+        'irlanda': 'IE', 'ireland': 'IE',
+        'islandia': 'IS', 'iceland': 'IS',
+        'lituania': 'LT', 'lithuania': 'LT',
+        'letonia': 'LV', 'latvia': 'LV',
+        'estonia': 'EE',
+        'bielorrusia': 'BY', 'belarus': 'BY',
+        'filipinas': 'PH', 'philippines': 'PH',
+        'indonesia': 'ID',
+        'malasia': 'MY', 'malaysia': 'MY',
+        'singapur': 'SG', 'singapore': 'SG',
+        'tailandia': 'TH', 'thailand': 'TH',
+        'vietnam': 'VN',
+        'taiwan': 'TW', 'taiwán': 'TW',
+        'hong kong': 'HK',
+        'china': 'CN',
+        'india': 'IN',
+        'pakistan': 'PK', 'pakistán': 'PK',
+        'banglades': 'BD', 'bangladés': 'BD', 'bangladesh': 'BD',
+        'israel': 'IL',
+        'arabia saudita': 'SA', 'arabia saudí': 'SA', 'saudi arabia': 'SA',
+        'emiratos arabes unidos': 'AE', 'emiratos árabes unidos': 'AE', 'emiratos arabes': 'AE', 'emiratos árabes': 'AE', 'uae': 'AE', 'eau': 'AE',
+        'egipto': 'EG', 'egypt': 'EG',
+        'marruecos': 'MA', 'morocco': 'MA',
+        'sudafrica': 'ZA', 'sudáfrica': 'ZA', 'south africa': 'ZA',
+        'nigeria': 'NG',
+        'kazajistan': 'KZ', 'kazajistán': 'KZ', 'kazakhstan': 'KZ',
+        'albania': 'AL',
+        'argelia': 'DZ', 'algeria': 'DZ',
+        'andorra': 'AD',
+        'angola': 'AO',
+        'armenia': 'AM',
+        'azerbaiyan': 'AZ', 'azerbaiyán': 'AZ', 'azerbaijan': 'AZ',
+        'bahamas': 'BS',
+        'barein': 'BH', 'baréin': 'BH', 'bahrain': 'BH',
+        'barbados': 'BB',
+        'belice': 'BZ', 'belize': 'BZ',
+        'benin': 'BJ', 'benín': 'BJ',
+        'bosnia y herzegovina': 'BA', 'bosnia': 'BA',
+        'camboya': 'KH', 'cambodia': 'KH',
+        'camerun': 'CM', 'camerún': 'CM', 'cameroon': 'CM',
+        'chipre': 'CY', 'cyprus': 'CY',
+        'georgia': 'GE',
+        'haiti': 'HT', 'haití': 'HT',
+        'jamaica': 'JM',
+        'jordania': 'JO', 'jordan': 'JO',
+        'kenia': 'KE', 'kenya': 'KE',
+        'kuwait': 'KW',
+        'libano': 'LB', 'líbano': 'LB', 'lebanon': 'LB',
+        'luxemburgo': 'LU', 'luxembourg': 'LU',
+        'malta': 'MT',
+        'monaco': 'MC', 'mónaco': 'MC',
+        'moldavia': 'MD', 'moldova': 'MD',
+        'montenegro': 'ME',
+        'nepal': 'NP',
+        'qatar': 'QA', 'catar': 'QA',
+        'san marino': 'SM',
+        'senegal': 'SN',
+        'eslovenia': 'SI', 'slovenia': 'SI',
+        'sri lanka': 'LK',
+        'tunez': 'TN', 'túnez': 'TN', 'tunisia': 'TN',
+        'trinidad y tobago': 'TT', 'trinidad and tobago': 'TT'
     };
 
     const VALID_ISO_CODES = new Set(Object.values(COUNTRY_NAMES));
@@ -444,8 +534,9 @@ function extractEntities(rawText) {
         'HD', 'HR', 'DT', 'NC', 'FL', 'EZ', 'HT', 'SO', 'NF', 'RX', 'AP', 'CL', 'NM', 'SD', 'PF', 'AT', 'TD'
     ]);
 
-    // A) Coincidencia por nombre completo de país (inambiguo, sin riesgo de colisión con mods)
-    for (const [countryName, code] of Object.entries(COUNTRY_NAMES)) {
+    // A) Coincidencia por nombre completo de país (ordenado por longitud descendente para evitar colisiones)
+    const sortedCountryEntries = Object.entries(COUNTRY_NAMES).sort((a, b) => b[0].length - a[0].length);
+    for (const [countryName, code] of sortedCountryEntries) {
         const regex = new RegExp(`\\b${countryName}\\b`, 'i');
         if (regex.test(cleanText)) {
             countryCode = code;
@@ -529,11 +620,13 @@ function extractEntities(rawText) {
     let targetUsername = null;
     const nonUsernames = new Set([
         'mi', 'mis', 'tu', 'tus', 'su', 'sus', 'un', 'una', 'el', 'la', 'los', 'las', 'este', 'esta',
-        'chile', 'venezuela', 'mexico', 'argentina', 'colombia', 'españa', 'peru', 'brasil', 'uruguay', 'bolivia', 'ecuador',
         'osu', 'game', 'juego', 'pass', 'passes', 'fail', 'fails', 'lista', 'list',
         'std', 'taiko', 'fruits', 'mania', 'gatari', 'droid', 'bancho', 'lazer', 'stable',
         'mapa', 'mapas', 'beatmap', 'beatmaps', 'canal', 'servidor', 'server', 'guild',
         'cumple', 'cumpleaños', 'mappers', 'mapper', 'torneo', 'torneos',
+        'skills', 'skill', 'habilidad', 'habilidades', 'radar', 'card', 'tarjeta',
+        'mejor', 'mejores', 'jugador', 'jugadores', 'jugadora', 'jugadoras', 'usuario', 'usuarios', 'user', 'users', 'player', 'players', 'perfil', 'perfiles',
+        'farm', 'farmeo', 'cancion', 'canción', 'canciones', 'rola', 'rolas', 'tema', 'temas', 'musica', 'música',
         'mayor', 'menor', 'mas', 'menos', 'aim', 'speed', 'reading', 'stamina', 'acc', 'accuracy',
         'precision', 'bpm', 'combo', 'stars', 'pp', 'duracion', 'tiempo', 'fecha', 'ranking',
         'clasificacion', 'clasificación', 'leaderboard', 'tabla', 'posiciones', 'puestos', 'nacional', 'general', 'global',
@@ -542,9 +635,20 @@ function extractEntities(rawText) {
         'hd', 'hr', 'dt', 'ez', 'fl', 'nc', 'ht', 'nf', 'so', 'rx', 'ap', 'cl'
     ]);
 
+    // Agregar nombres de países, sub-palabras de países y códigos ISO a nonUsernames para evitar que se interpreten como jugadores
+    for (const cName of Object.keys(COUNTRY_NAMES)) {
+        nonUsernames.add(cName.toLowerCase());
+        for (const part of cName.toLowerCase().split(/\s+/)) {
+            if (part.length >= 2) nonUsernames.add(part);
+        }
+    }
+    for (const code of Object.values(COUNTRY_NAMES)) {
+        nonUsernames.add(code.toLowerCase());
+    }
+
     const isSelfRef = /\b(?:mis?|yo|m[ií]as?|propias?)\s+(?:plays?|jugadas?|partidas?|scores?|top|perfil|cuenta)\b/i.test(cleanText);
     if (!isSelfRef) {
-        const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
+        const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|con|contra|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
         if (userMatch) {
             const candidate = userMatch[1].trim();
             if (!nonUsernames.has(candidate.toLowerCase())) {

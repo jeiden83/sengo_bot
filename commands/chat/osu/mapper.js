@@ -177,8 +177,9 @@ async function run(messages, args) {
         return;
     }
 
-    // Detectar si estamos en modo top
-    const isTopMode = args.some(arg => arg.toLowerCase() === '-top');
+    // Detectar si estamos en modo top (explícito con -top, o implícito al filtrar por país/servidor/global/lista sin ser track, card o bn)
+    const isTopMode = args.some(arg => ['-top', '--top', '-ranking', '--ranking', '-lista', '--lista'].includes(arg.toLowerCase())) ||
+                      args.some(arg => ['-pais', '-country', '--pais', '--country'].includes(arg.toLowerCase()));
 
     if (isTopMode) {
         if (logger) logger.process("Procesando clasificación de mappers...");

@@ -1,28 +1,690 @@
 {
-  "BR": {"country": "Brazil", "color": "009440"},
-  "AR": {"country": "Argentina", "color": "#75AADB"},
-  "BO": {"country": "Bolivia", "color": "#FFD700"},
-  "CL": {"country": "Chile", "color": "#D52B1E"},
-  "CO": {"country": "Colombia", "color": "#FFFF00"},
-  "CR": {"country": "Costa Rica", "color": "#002B7F"},
-  "CU": {"country": "Cuba", "color": "#002A8F"},
-  "DO": {"country": "Republica Dominicana", "color": "#002D62"},
-  "EC": {"country": "Ecuador", "color": "#FFFF00"},
-  "SV": {"country": "El Salvador", "color": "#0047AB"},
-  "GT": {"country": "Guatemala", "color": "#4997D0"},
-  "HN": {"country": "Honduras", "color": "#0073CF"},
-  "MX": {"country": "México", "color": "#006341"},
-  "NI": {"country": "Nicaragua", "color": "#0067C6"},
-  "PA": {"country": "Panama", "color": "#DA121A"},
-  "PY": {"country": "Paraguay", "color": "#D52B1E"},
-  "PE": {"country": "Peru", "color": "#D91023"},
-  "PR": {"country": "Puerto Rico", "color": "#3A5EAB"},
-  "ES": {"country": "España", "color": "#AA151B"},
-  "UY": {"country": "Uruguay", "color": "#0038A8"},
-  "VE": {"country": "Venezuela", "color": "#FFFF00"},
-  "US": {"country": "Estados Unidos", "color": "#B22234"},
-  "GB": {"country": "Reino Unido", "color": "#00247D"},
-  "CA": {"country": "Canada", "color": "#FF0000"},
-  "AU": {"country": "Australia", "color": "#00247D"},
-  "NZ": {"country": "Nueva Zelanda", "color": "#00247D"}
+  "BR": {
+    "country": "Brazil",
+    "color": "009440"
+  },
+  "AR": {
+    "country": "Argentina",
+    "color": "#75AADB"
+  },
+  "BO": {
+    "country": "Bolivia",
+    "color": "#FFD700"
+  },
+  "CL": {
+    "country": "Chile",
+    "color": "#D52B1E"
+  },
+  "CO": {
+    "country": "Colombia",
+    "color": "#FFFF00"
+  },
+  "CR": {
+    "country": "Costa Rica",
+    "color": "#002B7F"
+  },
+  "CU": {
+    "country": "Cuba",
+    "color": "#002A8F"
+  },
+  "DO": {
+    "country": "Republica Dominicana",
+    "color": "#002D62"
+  },
+  "EC": {
+    "country": "Ecuador",
+    "color": "#FFFF00"
+  },
+  "SV": {
+    "country": "El Salvador",
+    "color": "#0047AB"
+  },
+  "GT": {
+    "country": "Guatemala",
+    "color": "#4997D0"
+  },
+  "HN": {
+    "country": "Honduras",
+    "color": "#0073CF"
+  },
+  "MX": {
+    "country": "México",
+    "color": "#006341"
+  },
+  "NI": {
+    "country": "Nicaragua",
+    "color": "#0067C6"
+  },
+  "PA": {
+    "country": "Panama",
+    "color": "#DA121A"
+  },
+  "PY": {
+    "country": "Paraguay",
+    "color": "#D52B1E"
+  },
+  "PE": {
+    "country": "Peru",
+    "color": "#D91023"
+  },
+  "PR": {
+    "country": "Puerto Rico",
+    "color": "#3A5EAB"
+  },
+  "ES": {
+    "country": "España",
+    "color": "#AA151B"
+  },
+  "UY": {
+    "country": "Uruguay",
+    "color": "#0038A8"
+  },
+  "VE": {
+    "country": "Venezuela",
+    "color": "#FFFF00"
+  },
+  "US": {
+    "country": "Estados Unidos",
+    "color": "#B22234"
+  },
+  "GB": {
+    "country": "Reino Unido",
+    "color": "#00247D"
+  },
+  "CA": {
+    "country": "Canada",
+    "color": "#FF0000"
+  },
+  "AU": {
+    "country": "Australia",
+    "color": "#00247D"
+  },
+  "NZ": {
+    "country": "Nueva Zelanda",
+    "color": "#00247D"
+  },
+  "AF": {
+    "country": "Afganistán",
+    "color": "#D32F2F"
+  },
+  "AL": {
+    "country": "Albania",
+    "color": "#D32F2F"
+  },
+  "DZ": {
+    "country": "Argelia",
+    "color": "#388E3C"
+  },
+  "AD": {
+    "country": "Andorra",
+    "color": "#1976D2"
+  },
+  "AO": {
+    "country": "Angola",
+    "color": "#D32F2F"
+  },
+  "AM": {
+    "country": "Armenia",
+    "color": "#D32F2F"
+  },
+  "AT": {
+    "country": "Austria",
+    "color": "#D32F2F"
+  },
+  "AZ": {
+    "country": "Azerbaiyán",
+    "color": "#0097A7"
+  },
+  "BS": {
+    "country": "Bahamas",
+    "color": "#0097A7"
+  },
+  "BH": {
+    "country": "Baréin",
+    "color": "#D32F2F"
+  },
+  "BD": {
+    "country": "Bangladés",
+    "color": "#388E3C"
+  },
+  "BB": {
+    "country": "Barbados",
+    "color": "#1976D2"
+  },
+  "BY": {
+    "country": "Bielorrusia",
+    "color": "#D32F2F"
+  },
+  "BE": {
+    "country": "Bélgica",
+    "color": "#FFC107"
+  },
+  "BZ": {
+    "country": "Belice",
+    "color": "#1976D2"
+  },
+  "BJ": {
+    "country": "Benín",
+    "color": "#388E3C"
+  },
+  "BT": {
+    "country": "Bután",
+    "color": "#FF9800"
+  },
+  "BA": {
+    "country": "Bosnia y Herzegovina",
+    "color": "#1976D2"
+  },
+  "BW": {
+    "country": "Botsuana",
+    "color": "#1976D2"
+  },
+  "BN": {
+    "country": "Brunéi",
+    "color": "#FFEB3B"
+  },
+  "BG": {
+    "country": "Bulgaria",
+    "color": "#388E3C"
+  },
+  "BF": {
+    "country": "Burkina Faso",
+    "color": "#D32F2F"
+  },
+  "BI": {
+    "country": "Burundi",
+    "color": "#D32F2F"
+  },
+  "KH": {
+    "country": "Camboya",
+    "color": "#1976D2"
+  },
+  "CM": {
+    "country": "Camerún",
+    "color": "#388E3C"
+  },
+  "CV": {
+    "country": "Cabo Verde",
+    "color": "#1976D2"
+  },
+  "CN": {
+    "country": "China",
+    "color": "#DE2910"
+  },
+  "KM": {
+    "country": "Comoras",
+    "color": "#388E3C"
+  },
+  "CG": {
+    "country": "Congo",
+    "color": "#388E3C"
+  },
+  "CD": {
+    "country": "República Democrática del Congo",
+    "color": "#1976D2"
+  },
+  "CI": {
+    "country": "Costa de Marfil",
+    "color": "#FF9800"
+  },
+  "HR": {
+    "country": "Croacia",
+    "color": "#D32F2F"
+  },
+  "CY": {
+    "country": "Chipre",
+    "color": "#FF9800"
+  },
+  "CZ": {
+    "country": "República Checa",
+    "color": "#1976D2"
+  },
+  "DK": {
+    "country": "Dinamarca",
+    "color": "#C60C30"
+  },
+  "DJ": {
+    "country": "Yibuti",
+    "color": "#1976D2"
+  },
+  "DM": {
+    "country": "Dominica",
+    "color": "#388E3C"
+  },
+  "EG": {
+    "country": "Egipto",
+    "color": "#C09300"
+  },
+  "GQ": {
+    "country": "Guinea Ecuatorial",
+    "color": "#388E3C"
+  },
+  "ER": {
+    "country": "Eritrea",
+    "color": "#D32F2F"
+  },
+  "EE": {
+    "country": "Estonia",
+    "color": "#1976D2"
+  },
+  "ET": {
+    "country": "Etiopía",
+    "color": "#388E3C"
+  },
+  "FJ": {
+    "country": "Fiyi",
+    "color": "#1976D2"
+  },
+  "FI": {
+    "country": "Finlandia",
+    "color": "#003580"
+  },
+  "FR": {
+    "country": "Francia",
+    "color": "#002395"
+  },
+  "GA": {
+    "country": "Gabón",
+    "color": "#388E3C"
+  },
+  "GM": {
+    "country": "Gambia",
+    "color": "#D32F2F"
+  },
+  "GE": {
+    "country": "Georgia",
+    "color": "#D32F2F"
+  },
+  "DE": {
+    "country": "Alemania",
+    "color": "#000000"
+  },
+  "GH": {
+    "country": "Ghana",
+    "color": "#D32F2F"
+  },
+  "GR": {
+    "country": "Grecia",
+    "color": "#0D5EAF"
+  },
+  "GD": {
+    "country": "Granada",
+    "color": "#D32F2F"
+  },
+  "GN": {
+    "country": "Guinea",
+    "color": "#D32F2F"
+  },
+  "GW": {
+    "country": "Guinea-Bisáu",
+    "color": "#D32F2F"
+  },
+  "GY": {
+    "country": "Guyana",
+    "color": "#388E3C"
+  },
+  "HT": {
+    "country": "Haití",
+    "color": "#D32F2F"
+  },
+  "HK": {
+    "country": "Hong Kong",
+    "color": "#D32F2F"
+  },
+  "HU": {
+    "country": "Hungría",
+    "color": "#388E3C"
+  },
+  "IS": {
+    "country": "Islandia",
+    "color": "#02529C"
+  },
+  "IN": {
+    "country": "India",
+    "color": "#FF9933"
+  },
+  "ID": {
+    "country": "Indonesia",
+    "color": "#D32F2F"
+  },
+  "IR": {
+    "country": "Irán",
+    "color": "#388E3C"
+  },
+  "IQ": {
+    "country": "Irak",
+    "color": "#D32F2F"
+  },
+  "IE": {
+    "country": "Irlanda",
+    "color": "#169B62"
+  },
+  "IL": {
+    "country": "Israel",
+    "color": "#0038B8"
+  },
+  "IT": {
+    "country": "Italia",
+    "color": "#008C45"
+  },
+  "JM": {
+    "country": "Jamaica",
+    "color": "#007749"
+  },
+  "JP": {
+    "country": "Japón",
+    "color": "#BC002D"
+  },
+  "JO": {
+    "country": "Jordania",
+    "color": "#007A3D"
+  },
+  "KZ": {
+    "country": "Kazajistán",
+    "color": "#00AFCA"
+  },
+  "KE": {
+    "country": "Kenia",
+    "color": "#006600"
+  },
+  "KP": {
+    "country": "Corea del Norte",
+    "color": "#D32F2F"
+  },
+  "KR": {
+    "country": "Corea del Sur",
+    "color": "#003478"
+  },
+  "KW": {
+    "country": "Kuwait",
+    "color": "#007A3D"
+  },
+  "KG": {
+    "country": "Kirguistán",
+    "color": "#D32F2F"
+  },
+  "LA": {
+    "country": "Laos",
+    "color": "#D32F2F"
+  },
+  "LV": {
+    "country": "Letonia",
+    "color": "#9E3039"
+  },
+  "LB": {
+    "country": "Líbano",
+    "color": "#EE161F"
+  },
+  "LS": {
+    "country": "Lesoto",
+    "color": "#1976D2"
+  },
+  "LR": {
+    "country": "Liberia",
+    "color": "#D32F2F"
+  },
+  "LY": {
+    "country": "Libia",
+    "color": "#D32F2F"
+  },
+  "LI": {
+    "country": "Liechtenstein",
+    "color": "#1976D2"
+  },
+  "LT": {
+    "country": "Lituania",
+    "color": "#FDB913"
+  },
+  "LU": {
+    "country": "Luxemburgo",
+    "color": "#00A1DE"
+  },
+  "MO": {
+    "country": "Macao",
+    "color": "#388E3C"
+  },
+  "MG": {
+    "country": "Madagascar",
+    "color": "#D32F2F"
+  },
+  "MW": {
+    "country": "Malaui",
+    "color": "#D32F2F"
+  },
+  "MY": {
+    "country": "Malasia",
+    "color": "#010066"
+  },
+  "MV": {
+    "country": "Maldivas",
+    "color": "#D32F2F"
+  },
+  "ML": {
+    "country": "Malí",
+    "color": "#388E3C"
+  },
+  "MT": {
+    "country": "Malta",
+    "color": "#D32F2F"
+  },
+  "MR": {
+    "country": "Mauritania",
+    "color": "#388E3C"
+  },
+  "MU": {
+    "country": "Mauricio",
+    "color": "#D32F2F"
+  },
+  "MD": {
+    "country": "Moldavia",
+    "color": "#003DA5"
+  },
+  "MC": {
+    "country": "Mónaco",
+    "color": "#D32F2F"
+  },
+  "MN": {
+    "country": "Mongolia",
+    "color": "#D32F2F"
+  },
+  "ME": {
+    "country": "Montenegro",
+    "color": "#C40308"
+  },
+  "MA": {
+    "country": "Marruecos",
+    "color": "#C1272D"
+  },
+  "MZ": {
+    "country": "Mozambique",
+    "color": "#388E3C"
+  },
+  "MM": {
+    "country": "Birmania",
+    "color": "#FFC107"
+  },
+  "NA": {
+    "country": "Namibia",
+    "color": "#1976D2"
+  },
+  "NP": {
+    "country": "Nepal",
+    "color": "#D32F2F"
+  },
+  "NL": {
+    "country": "Países Bajos",
+    "color": "#AE1C28"
+  },
+  "NE": {
+    "country": "Níger",
+    "color": "#FF9800"
+  },
+  "NG": {
+    "country": "Nigeria",
+    "color": "#008751"
+  },
+  "MK": {
+    "country": "Macedonia del Norte",
+    "color": "#D20000"
+  },
+  "NO": {
+    "country": "Noruega",
+    "color": "#BA0C2F"
+  },
+  "OM": {
+    "country": "Omán",
+    "color": "#D32F2F"
+  },
+  "PK": {
+    "country": "Pakistán",
+    "color": "#01411C"
+  },
+  "PG": {
+    "country": "Papúa Nueva Guinea",
+    "color": "#D32F2F"
+  },
+  "PH": {
+    "country": "Filipinas",
+    "color": "#0038A8"
+  },
+  "PL": {
+    "country": "Polonia",
+    "color": "#DC143C"
+  },
+  "PT": {
+    "country": "Portugal",
+    "color": "#006600"
+  },
+  "QA": {
+    "country": "Catar",
+    "color": "#8D1B3D"
+  },
+  "RO": {
+    "country": "Rumania",
+    "color": "#002B7F"
+  },
+  "RU": {
+    "country": "Rusia",
+    "color": "#0039A6"
+  },
+  "RW": {
+    "country": "Ruanda",
+    "color": "#1976D2"
+  },
+  "SA": {
+    "country": "Arabia Saudita",
+    "color": "#006C35"
+  },
+  "SN": {
+    "country": "Senegal",
+    "color": "#388E3C"
+  },
+  "RS": {
+    "country": "Serbia",
+    "color": "#C6363C"
+  },
+  "SG": {
+    "country": "Singapur",
+    "color": "#ED2939"
+  },
+  "SK": {
+    "country": "Eslovaquia",
+    "color": "#0B3F86"
+  },
+  "SI": {
+    "country": "Eslovenia",
+    "color": "#005DA4"
+  },
+  "SO": {
+    "country": "Somalia",
+    "color": "#1976D2"
+  },
+  "ZA": {
+    "country": "Sudáfrica",
+    "color": "#007749"
+  },
+  "LK": {
+    "country": "Sri Lanka",
+    "color": "#FF9800"
+  },
+  "SD": {
+    "country": "Sudán",
+    "color": "#D32F2F"
+  },
+  "SE": {
+    "country": "Suecia",
+    "color": "#006AA7"
+  },
+  "CH": {
+    "country": "Suiza",
+    "color": "#D52B1E"
+  },
+  "SY": {
+    "country": "Siria",
+    "color": "#D32F2F"
+  },
+  "TW": {
+    "country": "Taiwán",
+    "color": "#FE0000"
+  },
+  "TJ": {
+    "country": "Tayikistán",
+    "color": "#D32F2F"
+  },
+  "TZ": {
+    "country": "Tanzania",
+    "color": "#388E3C"
+  },
+  "TH": {
+    "country": "Tailandia",
+    "color": "#A51931"
+  },
+  "TT": {
+    "country": "Trinidad y Tobago",
+    "color": "#D32F2F"
+  },
+  "TN": {
+    "country": "Túnez",
+    "color": "#E70013"
+  },
+  "TR": {
+    "country": "Turquía",
+    "color": "#E30A17"
+  },
+  "TM": {
+    "country": "Turkmenistán",
+    "color": "#388E3C"
+  },
+  "UG": {
+    "country": "Uganda",
+    "color": "#FFC107"
+  },
+  "UA": {
+    "country": "Ucrania",
+    "color": "#005BBB"
+  },
+  "AE": {
+    "country": "Emiratos Árabes Unidos",
+    "color": "#00732F"
+  },
+  "UZ": {
+    "country": "Uzbekistán",
+    "color": "#0099B5"
+  },
+  "VN": {
+    "country": "Vietnam",
+    "color": "#DA251D"
+  },
+  "YE": {
+    "country": "Yemen",
+    "color": "#D32F2F"
+  },
+  "ZM": {
+    "country": "Zambia",
+    "color": "#388E3C"
+  },
+  "ZW": {
+    "country": "Zimbabue",
+    "color": "#388E3C"
+  }
 }

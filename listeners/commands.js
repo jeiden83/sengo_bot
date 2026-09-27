@@ -256,7 +256,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
         const FLAG_CHECK_COMMANDS = new Set([
             'rs', 'recent', 'c', 'compare', 'lb', 'leaderboard', 
             'm', 'map', 'subir', 'gap', 'bg', 'top', 't', 'rework',
-            'lbm', 'lbc', 'lbt', 'lbp', 'lazer', 'classic'
+            'lbm', 'lbc', 'lbt', 'lbp', 'lazer', 'classic', 'mapper', 'mappers'
         ]);
 
         if (FLAG_CHECK_COMMANDS.has(message_command)) {
