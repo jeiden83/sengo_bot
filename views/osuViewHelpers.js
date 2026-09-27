@@ -89,12 +89,14 @@ function getStatsString(statistics = {}, mode = 'osu') {
     const meh = statistics.meh !== undefined ? statistics.meh : (statistics.count_50 || 0);
     const miss = statistics.miss !== undefined ? statistics.miss : (statistics.count_miss || 0);
 
+    const missStr = miss > 0 ? colorear(miss, "rojo") : miss;
+
     if (mode === 'mania') {
-        return `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${colorear(miss, "rojo")}]`;
+        return `[${colorear(perfect, "cyan")}/${colorear(great, "amarillo")}/${colorear(good, "verde")}/${colorear(ok, "azul")}/${colorear(meh, "magenta")}/${missStr}]`;
     } else if (mode === 'taiko') {
-        return `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(miss, "rojo")}]`;
+        return `[${great}/${ok}/${missStr}]`;
     } else {
-        return `[${colorear(great, "azul")}/${colorear(ok, "verde")}/${colorear(meh, "amarillo")}/${colorear(miss, "rojo")}]`;
+        return `[${great}/${ok}/${meh}/${missStr}]`;
     }
 }
 
@@ -468,7 +470,17 @@ function getBeatmapStatsLine(beatmap = {}, mods = [], mode = 'osu', locale = 'es
     const hpStr = formatStat('HP', stats.baseHp, stats.hp, 1);
     const bpmStr = formatStat('BPM', stats.baseBpm, stats.bpm, 0);
 
-    return `\`${csStr} | ${arStr} | ${odStr} | ${hpStr} | ${bpmStr}\``;
+    const totalLength = Number(beatmap.total_length || beatmap.hit_length || 0);
+    let durationPart = '';
+    if (totalLength > 0) {
+        const clockRate = stats.clockRate || 1.0;
+        const adjustedLength = clockRate > 0 ? Math.round(totalLength / clockRate) : totalLength;
+        const mins = Math.floor(adjustedLength / 60);
+        const secs = adjustedLength % 60;
+        durationPart = `${mins}:${secs.toString().padStart(2, '0')} | `;
+    }
+
+    return `\`${durationPart}${csStr} | ${arStr} | ${odStr} | ${hpStr} | ${bpmStr}\``;
 }
 
 /**
