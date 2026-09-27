@@ -156,6 +156,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
         let naturalArgs = [];
 
         const startsWithPrefix = message.content.toLowerCase().startsWith(config.BOT_PREFIX);
+        const isReply = Boolean(message.reference);
         const isBotMention = client.user && message.mentions?.users?.has(client.user.id);
         const isDM = !message.guild;
 
@@ -180,7 +181,8 @@ async function chat_command_listener(chat_commands, client, config, res) {
             }
 
             // Enrutamiento de Lenguaje Natural (TypeSafe Jev) para menciones y mensajes privados (DMs)
-            if (isBotMention || isDM) {
+            // No activar el modo IA si el mensaje es una respuesta (reply) a otro mensaje
+            if (!isReply && (isBotMention || isDM)) {
                 try {
                     const { parseNaturalLanguage } = require("../services/typeSafeRouter.js");
                     const botMentionRegex = client.user ? new RegExp(`<@!?${client.user.id}>`, 'g') : null;
@@ -383,7 +385,6 @@ async function chat_command_listener(chat_commands, client, config, res) {
                 // Primero disparamos la precarga del usuario y sus top scores predictivos
                 handlePredictivePreload(message.author.id, null, 'osu', message);
                 
-                const isReply = !!message.reference;
                 const targetMessage = message_reply || message;
                 findBeatmapInChannel(targetMessage, isReply)
                     .then(result => {
