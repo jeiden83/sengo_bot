@@ -148,10 +148,10 @@ function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, locale = 'es') {
     if (numUserPp <= 0 && (!numMaxPp || numMaxPp <= 0)) {
         ppStr = colorear(zeroPpFormatted);
     } else if (numPpFc && numPpFc > 0 && numUserPp > 0) {
-        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}/${colorear("(" + formatDecimal(numPpFc, locale) + "PP)", "amarillo")}`;
+        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}/${colorear("(" + formatDecimal(numPpFc, locale) + "PP)", "amarillo", 0)}`;
     } else {
         const maxPpStr = (numMaxPp !== null && !isNaN(numMaxPp) && numMaxPp > 0) ? `${formatDecimal(numMaxPp, locale)}PP` : '';
-        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo") : ''}`;
+        ppStr = `${colorear(formatDecimal(numUserPp, locale) + 'PP')}${maxPpStr ? '/' + colorear(maxPpStr, "amarillo", 0) : ''}`;
     }
     return `\`\`\`ansi\n${stats_str} • ${ppStr}\n\`\`\``;
 }
