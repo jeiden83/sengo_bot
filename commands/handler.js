@@ -133,6 +133,9 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
             let countryCode = null;
             
             for (const arg of args) {
+                if (typeof arg !== 'string') continue;
+                const lower = arg.toLowerCase().replace(/^-+/, '').trim();
+                if (lower === 'lb' || lower === 'pais' || lower === 'country') continue;
                 const cleanArg = arg.toUpperCase().replace(/^-+/, '').trim();
                 if (countryCodes[cleanArg]) {
                     countryCode = cleanArg;
@@ -219,6 +222,8 @@ async function smartErrorSuggester(command, args, message, res, errorTextOrResul
             // 1. Verificar si algún argumento es un código de país directamente (ej. "MX", "VE")
             for (const arg of args) {
                 if (typeof arg !== 'string') continue;
+                const lower = arg.toLowerCase().replace(/^-+/, '').trim();
+                if (lower === 'lb' || lower === 'pais' || lower === 'country') continue;
                 const cleanArg = arg.toUpperCase().replace(/^-+/, '').trim();
                 if (countryCodes[cleanArg]) {
                     detectedCountryCode = cleanArg;

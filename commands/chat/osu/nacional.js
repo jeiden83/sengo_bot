@@ -151,9 +151,12 @@ async function run(messages, args) {
         return await handleNationalPPPlays(messages, args, parsed_args, countryFilter, targetGamemode, gamemodeName, embedPage);
     }
 
-    // Modo de habilidades a nivel nacional (-skills / -aim / -speed / -acc / -reading / -stamina)
-    const SKILL_FLAGS = new Set(["-skills", "--skills", "-skill", "--skill", "-aim", "--aim", "-speed", "--speed", "-acc", "--acc", "-reading", "--reading", "-read", "--read", "-stamina", "--stamina", "-stam", "--stam"]);
-    const hasSkillFlag = Array.isArray(args) && args.some(a => typeof a === 'string' && SKILL_FLAGS.has(a.toLowerCase()));
+    // Modo de habilidades a nivel nacional (-skills / -aim / -speed / -reading / -stamina)
+    // Nota: -acc por sí solo es el ordenamiento de precisión nativo de nacional (isAccSort),
+    // a menos que se acompañe explícitamente de -skills / -skill.
+    const hasExplicitSkills = Array.isArray(args) && args.some(a => typeof a === 'string' && (a.toLowerCase() === '-skills' || a.toLowerCase() === '--skills' || a.toLowerCase() === '-skill' || a.toLowerCase() === '--skill'));
+    const OTHER_SKILL_FLAGS = new Set(["-aim", "--aim", "-speed", "--speed", "-reading", "--reading", "-read", "--read", "-stamina", "--stamina", "-stam", "--stam"]);
+    const hasSkillFlag = hasExplicitSkills || (Array.isArray(args) && args.some(a => typeof a === 'string' && OTHER_SKILL_FLAGS.has(a.toLowerCase())));
     if (hasSkillFlag) {
         const skillsCommand = require("./skills.js");
         return await skillsCommand.run(messages, [...(args || []), "-nacional", "-pais", countryFilter]);
