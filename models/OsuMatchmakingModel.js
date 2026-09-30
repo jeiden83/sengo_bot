@@ -1,4 +1,6 @@
 
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+
 let cachedPoolId = null;
 let cachedPoolIdTimestamp = 0;
 
@@ -11,11 +13,11 @@ async function getActivePoolId() {
         return cachedPoolId;
     }
     try {
-        const res = await fetch("https://osu.ppy.sh/rankings/ranked-play/osu", {
+        const res = await osuApiQueue.add(() => fetch("https://osu.ppy.sh/rankings/ranked-play/osu", {
             headers: {
                 "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
             }
-        });
+        }), 10);
         const match = res.url.match(/\/ranked-play\/[a-z]+\/(\d+)/);
         if (match) {
             cachedPoolId = parseInt(match[1], 10);
@@ -114,11 +116,11 @@ async function fetchRankedPlayLeaderboard(page = 1) {
     }
 
     const url = `https://osu.ppy.sh/rankings/ranked-play/osu/${poolId}?page=${page}`;
-    const res = await fetch(url, {
+    const res = await osuApiQueue.add(() => fetch(url, {
         headers: {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
         }
-    });
+    }), 10);
     if (!res.ok) {
         throw new Error(`Error en respuesta de osu! al obtener leaderboard: ${res.statusText}`);
     }

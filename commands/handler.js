@@ -892,15 +892,15 @@ async function loadSlashCommands(chat_commands, config) {
 
 	let lastHash = '';
 	try {
-		const { getSetting } = require('../models/BotSettingsModel.js');
-		lastHash = await getSetting('slash_commands_hash');
+		if (fs.existsSync(hashPath)) {
+			lastHash = fs.readFileSync(hashPath, 'utf8').trim();
+		}
 	} catch (_) {}
 
 	if (!lastHash) {
 		try {
-			if (fs.existsSync(hashPath)) {
-				lastHash = fs.readFileSync(hashPath, 'utf8').trim();
-			}
+			const { getSetting } = require('../models/BotSettingsModel.js');
+			lastHash = await getSetting('slash_commands_hash');
 		} catch (_) {}
 	}
 

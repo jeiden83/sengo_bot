@@ -136,8 +136,19 @@ function buildAnsiBlock(stats_str, user_pp, max_pp, pp_fc, locale = 'es') {
     const parseVal = (v) => {
         if (typeof v === 'number') return v;
         if (!v) return 0;
-        const normalized = String(v).replace(',', '.');
-        return parseFloat(normalized) || 0;
+        let s = String(v).trim();
+        if (s.includes('.') && s.includes(',')) {
+            if (s.indexOf('.') < s.indexOf(',')) {
+                // Formato es-ES: 1.333,81 -> 1333.81
+                s = s.replace(/\./g, '').replace(',', '.');
+            } else {
+                // Formato en-US: 1,333.81 -> 1333.81
+                s = s.replace(/,/g, '');
+            }
+        } else if (s.includes(',')) {
+            s = s.replace(',', '.');
+        }
+        return parseFloat(s) || 0;
     };
     const numUserPp = parseVal(user_pp);
     const numMaxPp = (max_pp !== null && max_pp !== undefined) ? parseVal(max_pp) : null;

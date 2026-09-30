@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const Logger = require('../utils/logger.js');
 
 // Caché en memoria para evitar consultas web repetitivas durante la navegación de páginas
@@ -30,7 +31,7 @@ async function fetchWebFriends({ bypassCache = false } = {}) {
     const userAgent = process.env.OSU_USER_AGENT || 'SengoBot/1.0';
 
     try {
-        const res = await axios.get('https://osu.ppy.sh/home/friends', {
+        const res = await osuApiQueue.add(() => axios.get('https://osu.ppy.sh/home/friends', {
             headers: {
                 'Cookie': cookieHeader,
                 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -38,7 +39,7 @@ async function fetchWebFriends({ bypassCache = false } = {}) {
             },
             timeout: 12000,
             validateStatus: () => true
-        });
+        }), 0);
 
         if (res.status === 401) {
             Logger.system('Error 401 en sesión de osu!: la cookie osu_session es inválida o ha expirado.');

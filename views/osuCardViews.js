@@ -421,32 +421,8 @@ function generateCardTitle(skills, modStats, pp, user, sengoData, locale = "es",
  * Obtiene los pinned scores del usuario de osu! o fallback a su jugada top #1
  */
 async function fetchPinnedScore(userId, topScores, mode = "osu", server = "bancho") {
-    if (server === 'droid' || server === 'gatari' || server === 'mameosu') {
-        return topScores && topScores.length > 0 ? topScores[0] : null;
-    }
-
-    try {
-        const OsuUserModel = require("../models/OsuUserModel.js");
-        const tokenData = await OsuUserModel.loadToken().catch(() => null);
-        const token = tokenData?.access_token;
-
-        if (token) {
-            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=${mode}&limit=1`, {
-                headers: {
-                    "Authorization": `Bearer ${token}`,
-                    "x-api-version": "20240728"
-                },
-                timeout: 4000
-            });
-            if (res.data && res.data.length > 0) {
-                return res.data[0];
-            }
-        }
-    } catch (err) {
-        console.warn("[fetchPinnedScore] Error al consultar pinned score:", err.message);
-    }
-
-    return topScores && topScores.length > 0 ? topScores[0] : null;
+    const OsuScoreModel = require("../models/OsuScoreModel.js");
+    return OsuScoreModel.fetchPinnedScore(userId, topScores, mode, server);
 }
 
 /**

@@ -10,32 +10,12 @@ const url = require('url');
 const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
 const { getOsuUser, getUserTopScores } = require('../utils/osu.js');
 const OsuUserModel = require('../../models/OsuUserModel.js');
+const OsuScoreModel = require('../../models/OsuScoreModel.js');
+const { osuApiQueue } = require('../../utils/OsuApiQueue.js');
 const { getWebhookChannels } = require('../../db/database.js');
 
 async function fetchPinnedScore(userId, topScores, mode = 'osu') {
-    try {
-        let globalToken = null;
-        try {
-            const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-            globalToken = tokenData.access_token;
-        } catch {}
-
-        if (globalToken) {
-            const validMode = (mode === 'fruits' || mode === 'catch' || mode === 'ctb') ? 'fruits' : mode;
-            const res = await axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=${validMode}&limit=1`, {
-                headers: {
-                    'Authorization': `Bearer ${globalToken}`,
-                    'x-api-version': '20240728'
-                },
-                timeout: 5000
-            });
-            if (res.data && res.data.length > 0) {
-                return res.data[0];
-            }
-        }
-    } catch {}
-
-    return topScores && topScores.length > 0 ? topScores[0] : null;
+    return OsuScoreModel.fetchPinnedScore(userId, topScores, mode, 'bancho');
 }
 
 /**
@@ -405,7 +385,7 @@ function startServer(client, dbRes, port, config) {
 
             exchangeCode(code, redirectUri)
                 .then(async (tokenData) => {
-                    const osuUser = await fetchOsuMe(tokenData.access_token);
+                    const osuUser = await osuApiQueue.add(() => fetchOsuMe(tokenData.access_token), 10);
                     const dbResult = await OsuUserModel.saveOAuthToken(discordId, osuUser, tokenData);
 
                     Logger.system(`[OAuth] Vinculación exitosa por OAuth para Discord ID: ${discordId} -> osu!: ${osuUser.username} (${osuUser.id})`);

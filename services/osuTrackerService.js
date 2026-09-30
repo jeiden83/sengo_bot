@@ -194,8 +194,8 @@ async function processNewScore(client, userObj, score) {
         return;
     }
 
-    // ponytail: Mods no rankeados (Relax, Autopilot, Cinema, etc.) no otorgan PP ni forman parte de Top Plays (/scores/best)
-    if (OsuScoreModel.hasUnrankedPPMods(score) || score.ranked === false) {
+    // ponytail: Mods no rankeados (Relax, Cinema, etc.) o jugadas sin PP oficial de Bancho (Rate Adjust, etc.) no otorgan PP ni forman parte de Top Plays (/scores/best)
+    if (OsuScoreModel.hasUnrankedPPMods(score) || score.ranked === false || !score.pp || score.pp <= 0) {
         return;
     }
     

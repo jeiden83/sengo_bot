@@ -1,6 +1,7 @@
 const { getSupabaseClient } = require("../db/database.js");
 const Logger = require("../utils/logger.js");
 const SkillsModel = require("./SkillsModel.js");
+const { osuApiQueue } = require("../utils/OsuApiQueue.js");
 
 const AIM_TAGS = ['jump', 'aim', 'cross-screen', 'wide-angle', 'farm', 'sotarks', 'nevo', 'fieryrage', 'complexity'];
 const SPEED_TAGS = ['stream', 'burst', 'speed', 'stamina', 'deathstream', 'alt', 'alternate', 'finger control'];
@@ -507,13 +508,13 @@ async function fetchNativeBeatmapsFromOsuApi(modeInt, minStars, maxStars) {
 
         const sortParam = minStars >= 6.0 ? 'difficulty_desc' : 'plays_desc';
         const url = `https://osu.ppy.sh/api/v2/beatmapsets/search?m=${modeInt}&s=ranked&sort=${sortParam}`;
-        const res = await fetch(url, {
+        const res = await osuApiQueue.add(() => fetch(url, {
             headers: {
                 'Authorization': `Bearer ${token}`,
                 'Content-Type': 'application/json',
                 'x-api-version': '20240728'
             }
-        });
+        }), 10);
         if (!res.ok) return [];
         const json = await res.json();
         const sets = json.beatmapsets || [];

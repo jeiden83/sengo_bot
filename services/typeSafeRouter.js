@@ -648,20 +648,30 @@ function extractEntities(rawText) {
 
     const isSelfRef = /\b(?:mis?|yo|m[ií]as?|propias?)\s+(?:plays?|jugadas?|partidas?|scores?|top|perfil|cuenta)\b/i.test(cleanText);
     if (!isSelfRef) {
-        const userMatch = cleanText.match(/\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|snipes|comparar?|c|scores?|plays?|r)\s+(?:de|con|contra|del usuario|del jugador|de la cuenta)?\s+([a-zA-Z0-9_\[\]\-]+)/i);
-        if (userMatch) {
-            const candidate = userMatch[1].trim();
-            if (!nonUsernames.has(candidate.toLowerCase())) {
-                targetUsername = candidate;
+        // ponytail: extrae el primer token tras el trigger ignorando modificadores o descriptores (std, mapper, etc.)
+        const triggerRegex = /\b(?:top|reciente|recent|play|partida|jugada|rs|perfil|profile|stats|osu|tarjeta|card|mapper|mappers|snipes|comparar?|c|scores?|plays?|r)\b/i;
+        const triggerMatch = cleanText.match(triggerRegex);
+        if (triggerMatch) {
+            const textAfterTrigger = cleanText.slice(triggerMatch.index + triggerMatch[0].length);
+            const tokens = textAfterTrigger.match(/[a-zA-Z0-9_\[\]\-]+/g) || [];
+            for (const token of tokens) {
+                const lower = token.toLowerCase();
+                if (/^\d{1,2}$/.test(token) || nonUsernames.has(lower) || ['de', 'del', 'con', 'contra', 'para', 'a', 'en', 'por'].includes(lower)) {
+                    continue;
+                }
+                targetUsername = token;
+                break;
             }
         }
     }
-    if (!targetUsername) {
-        const fallbackMatch = cleanText.match(/\b(?:de|del usuario|del jugador)\s+([a-zA-Z0-9_\[\]\-]{2,15})\b/i);
-        if (fallbackMatch) {
-            const candidate = fallbackMatch[1].trim();
-            if (!nonUsernames.has(candidate.toLowerCase())) {
+    // Fallback: iterar sobre todas las ocurrencias de "de <usuario>", "del usuario <usuario>", etc.
+    if (!targetUsername && !isSelfRef) {
+        const fallbackMatches = cleanText.matchAll(/\b(?:de|del usuario|del jugador|para|a)\s+([a-zA-Z0-9_\[\]\-]{2,15})\b/gi);
+        for (const m of fallbackMatches) {
+            const candidate = m[1].trim();
+            if (!nonUsernames.has(candidate.toLowerCase()) && !/^\d{1,2}$/.test(candidate)) {
                 targetUsername = candidate;
+                break;
             }
         }
     }

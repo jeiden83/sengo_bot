@@ -558,7 +558,7 @@ async function lookupBeatmapByMD5(md5) {
     // 2. Fallback a la API de osu! v2 si no está en la base de datos local
     await OsuUserModel.NewloadToken();
     try {
-        const result = await v2.beatmaps.lookup({ type: 'difficulty', checksum: cleanMd5 });
+        const result = await osuApiQueue.add(() => v2.beatmaps.lookup({ type: 'difficulty', checksum: cleanMd5 }), 10);
         if (result && result.id) {
             if (md5LookupCache.size >= MAX_MD5_CACHE) {
                 const firstKey = md5LookupCache.keys().next().value;
@@ -1005,14 +1005,14 @@ async function getBeatmapModeAttributes(beatmap_metadata, targetMode, engineChoi
             } catch {}
 
             if (globalToken) {
-                const apiRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/attributes`, {
+                const apiRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmap_metadata.id}/attributes`, {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${globalToken}`,
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ ruleset: normTargetMode })
-                });
+                }), 10);
                 if (apiRes.ok) {
                     const json = await apiRes.json();
                     if (json && json.attributes && typeof json.attributes.star_rating === 'number') {
@@ -1182,6 +1182,101 @@ function enrichBeatmapsetMetadata(targetSet = {}, sourceSet = {}) {
     return targetSet;
 }
 
+/**
+ * Busca beatmapsets en la API de osu! v2 a través de la cola centralizada.
+ * @param {string} query
+ * @param {Object} options
+ * @returns {Promise<Array>}
+ */
+async function searchBeatmapsets(query, options = {}) {
+    await OsuUserModel.NewloadToken();
+    let token = null;
+    try {
+        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+        token = tokenData.access_token;
+    } catch {}
+    if (!token) return [];
+
+    const params = {
+        q: query || '',
+        s: options.status || 'any',
+        ...options.params
+    };
+
+    return osuApiQueue.add(async () => {
+        const res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
+            params,
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Accept': 'application/json'
+            }
+        });
+        return res.data?.beatmapsets || [];
+    }, options.priority !== undefined ? options.priority : 10);
+}
+
+/**
+ * Obtiene el Daily Challenge actual desde las salas de osu! v2 a través de la cola centralizada.
+ * @returns {Promise<{ dailyRoom: Object, beatmap: Object }|null>}
+ */
+async function getDailyChallenge() {
+    await OsuUserModel.NewloadToken();
+    let token = null;
+    try {
+        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+        token = tokenData.access_token;
+    } catch {}
+    if (!token) return null;
+
+    const rooms = await osuApiQueue.add(async () => {
+        const res = await axios.get('https://osu.ppy.sh/api/v2/rooms', {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            params: {
+                mode: 'all',
+                limit: 250
+            }
+        });
+        return res.data || [];
+    }, 10);
+
+    const dailyRoom = rooms.find(room => room.category === 'daily_challenge');
+    if (!dailyRoom) return null;
+
+    const beatmap = dailyRoom.current_playlist_item?.beatmap;
+    return { dailyRoom, beatmap };
+}
+
+/**
+ * Obtiene la tabla de clasificación de una sala de Daily Challenge a través de la cola centralizada.
+ * @param {string|number} roomId
+ * @returns {Promise<Array>}
+ */
+async function getDailyChallengeLeaderboard(roomId) {
+    if (!roomId) return [];
+    await OsuUserModel.NewloadToken();
+    let token = null;
+    try {
+        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
+        token = tokenData.access_token;
+    } catch {}
+    if (!token) return [];
+
+    return osuApiQueue.add(async () => {
+        const res = await axios.get(`https://osu.ppy.sh/api/v2/rooms/${roomId}/leaderboard`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        });
+        return res.data?.leaderboard || [];
+    }, 10);
+}
+
 const BeatmapModel = {
     getBeatmap_osu,
     downloadBeatmapOsuFile,
@@ -1200,7 +1295,10 @@ const BeatmapModel = {
     getBeatmapModeAttributes,
     getBeatmapAdjustedStats,
     enrichBeatmapMetadata,
-    enrichBeatmapsetMetadata
+    enrichBeatmapsetMetadata,
+    searchBeatmapsets,
+    getDailyChallenge,
+    getDailyChallengeLeaderboard
 };
 
 module.exports = BeatmapModel;

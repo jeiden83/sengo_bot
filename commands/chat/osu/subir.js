@@ -1,10 +1,9 @@
 const config = require("../../../config.js");
-const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand, searchBeatmapsets } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 
 const { doOsuSubirEmbed } = require("../../../views/osuEmbeds.js");
-const axios = require('axios');
 const ppEngine = require("../../../utils/ppEngine.js");
 const { t } = require("../../../utils/i18n.js");
 
@@ -173,21 +172,11 @@ function similarity(s1, s2) {
 
 async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
     try {
-        await OsuUserModel.NewloadToken();
-        const fs = require('fs');
-        const path = require('path');
-        const tokenData = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../../../osu_api_extended_token.json'), 'utf8'));
-
         // Reemplazamos guiones por espacios para evitar que el motor de búsqueda de osu! 
         // los interprete como operadores de exclusión (ej. "-Scramble-" -> excluir Scramble)
         const clean_query = beatmap_name ? beatmap_name.replace(/-/g, ' ') : '';
 
-        let res = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
-            params: { q: clean_query, s: 'any' },
-            headers: { Authorization: 'Bearer ' + tokenData.access_token }
-        });
-
-        let beatmapsets = res.data.beatmapsets || [];
+        let beatmapsets = await searchBeatmapsets(clean_query, { status: 'any' });
         let bestSetScore = -1;
         let chosenSet = beatmapsets[0];
 
@@ -206,12 +195,9 @@ async function getBeatmapIdFromSearch(beatmap_name, diff_name, creator) {
         if (creator && (beatmapsets.length === 0 || bestSetScore < 0.6)) {
             console.log(`[S.SUBIR] Similitud de creador baja o sin resultados. Intentando búsqueda con creador: "${clean_query} ${creator}"`);
             try {
-                const fallbackRes = await axios.get('https://osu.ppy.sh/api/v2/beatmapsets/search', {
-                    params: { q: `${clean_query} ${creator}`, s: 'any' },
-                    headers: { Authorization: 'Bearer ' + tokenData.access_token }
-                });
-                if (fallbackRes.data.beatmapsets && fallbackRes.data.beatmapsets.length > 0) {
-                    beatmapsets = fallbackRes.data.beatmapsets;
+                const fallbackSets = await searchBeatmapsets(`${clean_query} ${creator}`, { status: 'any' });
+                if (fallbackSets && fallbackSets.length > 0) {
+                    beatmapsets = fallbackSets;
                     bestSetScore = -1;
                     chosenSet = beatmapsets[0];
                     for (const set of beatmapsets) {

@@ -77,15 +77,10 @@ async function run(messages, args) {
             const scoreId = scoreIdMatch[1];
             try {
                 const OsuUserModel = require("../../../models/OsuUserModel.js");
-                const token = await OsuUserModel.getValidTokenForUser(message.author?.id) || process.env.OSU_BEARER_TOKEN;
-                if (token) {
-                    const downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/osu/${scoreId}/download`, {
-                        headers: { 'Authorization': `Bearer ${token}` }
-                    });
-                    if (downloadRes.ok) {
-                        replayBuffer = Buffer.from(await downloadRes.arrayBuffer());
-                        fileName = `score_${scoreId}.osr`;
-                    }
+                const buffer = await OsuUserModel.downloadReplay(scoreId, 'osu');
+                if (buffer) {
+                    replayBuffer = buffer;
+                    fileName = `score_${scoreId}.osr`;
                 }
             } catch (dlErr) {
                 console.error("[S.RENDER] Error intentando descargar replay Top Global:", dlErr.message);

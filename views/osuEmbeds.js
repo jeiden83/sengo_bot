@@ -56,7 +56,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const accuracy = formatDecimal(recent_scores.accuracy * 100, locale, 2);
     const user_max_combo = recent_scores.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
+    const user_pp = pre_calculated.pp;
     const difficultyStars = pre_calculated.reworkStars || pre_calculated.maxAttrs?.stars || (pre_calculated.maxAttrs?.difficulty ? pre_calculated.maxAttrs.difficulty.stars : (recent_scores.beatmap?.difficulty_rating || 0));
     const difficulty = formatDecimal(difficultyStars || 0, locale, 2);
     const embedColor = getEmbedColor(message);
@@ -80,55 +80,39 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
 
     let leaderboard_pos = null;
     let user_top_pos = null;
+    let isUnrankedTop = false;
+
     if (recent_scores.passed) {
+        const OsuScoreModel = require('../models/OsuScoreModel.js');
         if (recent_scores.user.server === 'bancho' || !recent_scores.user.server) {
             try {
-                const { v2 } = require('osu-api-extended');
-                const OsuUserModel = require('../models/OsuUserModel.js');
-                await OsuUserModel.NewloadToken();
-                const OsuScoreModel = require('../models/OsuScoreModel.js');
                 const unrankedWithoutLeaderboard = new Set(['pending', 'wip', 'graveyard']);
-                const hasLeaderboard = recent_scores.beatmap.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
-                const isRankedPlay = !OsuScoreModel.hasUnrankedPPMods(recent_scores) && recent_scores.ranked !== false && hasLeaderboard;
+                const hasLeaderboard = recent_scores.beatmap?.status && !unrankedWithoutLeaderboard.has(recent_scores.beatmap.status);
+                const isRankedPlay = !OsuScoreModel.hasUnrankedPPMods(recent_scores) && recent_scores.ranked !== false && hasLeaderboard && recent_scores.beatmap?.status !== 'loved';
 
                 let best = null;
                 let topScores = null;
                 const hasUserTopPos = pre_calculated && pre_calculated.user_top_pos !== undefined && pre_calculated.user_top_pos !== null;
+                const numericPP = Number(pre_calculated?.pp || 0);
 
                 if (hasUserTopPos) {
                     user_top_pos = pre_calculated.user_top_pos;
                     if (hasLeaderboard) {
-                        best = await v2.scores.list({
-                            type: 'user_beatmap_best',
-                            beatmap_id: recent_scores.beatmap.id,
-                            user_id: recent_scores.user.id,
-                            mode: recent_scores.beatmap.mode
-                        }).catch(() => null);
+                        best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode);
                     }
-                } else if (isRankedPlay) {
+                } else if (isRankedPlay || numericPP > 0) {
                     const [fetchedBest, fetchedTopScores] = await Promise.all([
-                        hasLeaderboard ? v2.scores.list({
-                            type: 'user_beatmap_best',
-                            beatmap_id: recent_scores.beatmap.id,
-                            user_id: recent_scores.user.id,
-                            mode: recent_scores.beatmap.mode
-                        }).catch(() => null) : null,
-                        v2.scores.list({
-                            type: 'user_best',
-                            user_id: recent_scores.user.id,
-                            mode: recent_scores.beatmap.mode,
-                            limit: 100
+                        hasLeaderboard ? OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode) : null,
+                        OsuScoreModel.getUserTopScores({
+                            username: [String(recent_scores.user.id)],
+                            gamemode: recent_scores.beatmap.mode,
+                            server: recent_scores.user?.server || 'bancho'
                         }).catch(() => null)
                     ]);
                     best = fetchedBest;
                     topScores = fetchedTopScores;
                 } else if (hasLeaderboard) {
-                    best = await v2.scores.list({
-                        type: 'user_beatmap_best',
-                        beatmap_id: recent_scores.beatmap.id,
-                        user_id: recent_scores.user.id,
-                        mode: recent_scores.beatmap.mode
-                    }).catch(() => null);
+                    best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode);
                 }
 
                 if (best && best.score) {
@@ -151,30 +135,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                     });
                     if (topIndex !== -1) {
                         user_top_pos = topIndex + 1;
-                    } else if (topScores.length === 100) {
-                        const topScoresPage2 = await v2.scores.list({
-                            type: 'user_best',
-                            user_id: recent_scores.user.id,
-                            mode: recent_scores.beatmap.mode,
-                            limit: 100,
-                            offset: 100
-                        }).catch(() => null);
-
-                        if (topScoresPage2 && Array.isArray(topScoresPage2)) {
-                            const topIndexPage2 = topScoresPage2.findIndex(s => {
-                                return (recent_scores.id && s.id === recent_scores.id) ||
-                                    (new Date(s.ended_at || s.created_at).getTime() === new Date(recent_scores.ended_at || recent_scores.created_at).getTime() &&
-                                        (s.legacy_total_score === recent_scores.legacy_total_score || s.total_score === recent_scores.total_score));
-                            });
-                            if (topIndexPage2 !== -1) {
-                                user_top_pos = 100 + topIndexPage2 + 1;
-                            }
-                        }
                     }
 
                     // ponytail: fallback predictivo ante desfase de propagación en la API de osu! Bancho
-                    if (!user_top_pos && pre_calculated && pre_calculated.pp > 0 && topScores.length > 0) {
-                        const numericPP = Number(pre_calculated.pp);
+                    if (!user_top_pos && numericPP > 0 && topScores.length > 0) {
                         const minTopPP = topScores[topScores.length - 1]?.pp || 0;
                         if (numericPP >= minTopPP || topScores.length < 100) {
                             const higherPlays = topScores.filter(s => (s.pp || 0) > numericPP).length;
@@ -183,46 +147,36 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                             }
                         }
                     }
+                } else if (!isRankedPlay && !hasUserTopPos && numericPP > 0 && topScores && Array.isArray(topScores) && topScores.length > 0) {
+                    // ponytail: posición hipotética en top para jugadas que no dan PP (RX, graveyard, loved, etc.)
+                    const minTopPP = topScores[topScores.length - 1]?.pp || 0;
+                    if (numericPP >= minTopPP || topScores.length < 100) {
+                        const higherPlays = topScores.filter(s => (s.pp || 0) > numericPP).length;
+                        if (higherPlays < 100) {
+                            user_top_pos = higherPlays + 1;
+                            isUnrankedTop = true;
+                        }
+                    }
                 }
             } catch (e) {
                 console.error("Error fetching beatmap best score position / top scores:", e);
             }
-        } else if (recent_scores.user.server === 'gatari') {
+        } else if (recent_scores.user.server === 'gatari' || recent_scores.user.server === 'mameosu') {
             try {
-                const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
-                const m = modeMap[recent_scores.beatmap.mode || 'osu'];
-                const response = await fetch(`https://api.gatari.pw/user/scores/best?id=${recent_scores.user.id}&mode=${m}&l=100`);
-                const data = await response.json();
-                if (data && Array.isArray(data.scores)) {
-                    const topIndex = data.scores.findIndex(s => {
-                        const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
-                        const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
-                        return s.beatmap.beatmap_id === recent_scores.beatmap.id &&
-                            Math.abs(s.score - scoreVal) < 100 &&
-                            Math.abs(s.time - recentTime) < 5;
-                    });
-                    if (topIndex !== -1) {
-                        user_top_pos = topIndex + 1;
-                    }
-                }
-            } catch (e) {
-                console.error("Error fetching gatari best scores:", e);
-            }
-        } else if (recent_scores.user.server === 'mameosu') {
-            try {
-                const modeMap = { 'osu': 0, 'taiko': 1, 'fruits': 2, 'mania': 3 };
-                const m = modeMap[recent_scores.beatmap.mode || 'osu'];
-                const response = await fetch(`https://api.mamesosu.net/v1/get_player_scores?id=${recent_scores.user.id}&scope=best&mode=${m}&limit=100`, {
-                    headers: { 'User-Agent': 'osu!' }
-                });
-                const data = await response.json();
-                if (data && Array.isArray(data.scores)) {
-                    const topIndex = data.scores.findIndex(s => {
-                        const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
-                        const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
-                        const sTime = Math.floor(new Date(s.play_time + 'Z').getTime() / 1000);
-                        return s.beatmap.id === recent_scores.beatmap.id &&
-                            Math.abs(s.score - scoreVal) < 100 &&
+                const targetServer = recent_scores.user.server;
+                const topScores = await OsuScoreModel.getUserTopScores({
+                    username: [recent_scores.user.id || recent_scores.user.username],
+                    gamemode: recent_scores.beatmap?.mode || 'osu'
+                }, targetServer);
+                if (topScores && Array.isArray(topScores)) {
+                    const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
+                    const scoreVal = recent_scores.legacy_total_score || recent_scores.total_score || 0;
+                    const topIndex = topScores.findIndex(s => {
+                        const sTime = Math.floor(new Date(s.ended_at || s.created_at || (s.play_time ? s.play_time + 'Z' : 0)).getTime() / 1000);
+                        const sVal = s.legacy_total_score || s.total_score || s.score || 0;
+                        const beatmapMatch = (s.beatmap?.id === recent_scores.beatmap.id) || (s.beatmap?.beatmap_id === recent_scores.beatmap.id);
+                        return beatmapMatch &&
+                            Math.abs(sVal - scoreVal) < 100 &&
                             Math.abs(sTime - recentTime) < 5;
                     });
                     if (topIndex !== -1) {
@@ -230,7 +184,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                     }
                 }
             } catch (e) {
-                console.error("Error fetching mameosu best scores:", e);
+                console.error(`Error fetching ${recent_scores.user.server} best scores:`, e);
             }
         }
     }
@@ -249,6 +203,8 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         if (isLazerCustomRework) {
             footerText += ` • ⚠️ ${t(locale, 'rework.lazer_custom_mods_footer_tag')}`;
         }
+    } else if (isUnrankedTop) {
+        footerText = t(locale, 'recent.embed_footer_unranked_top');
     } else if (require('../models/OsuScoreModel.js').hasRelaxMod(recent_scores)) {
         footerText = t(locale, 'recent.embed_footer_relax');
     } else if (activeGamemode === 'mania') {
@@ -266,7 +222,10 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const playDate = recent_scores.ended_at || recent_scores.created_at || new Date();
     const time_relative = `<t:${Math.floor(new Date(playDate).getTime() / 1000)}:R>`;
     const line1 = `${grade_emoji}${map_completion ? ' ' + map_completion : ''}\u00A0\u00A0\u00A0${mods_used}\u00A0\u00A0\u00A0${accuracy}%${ratio_str}\u00A0\u00A0\u00A0${time_relative}`;
-    const line2 = `${score} ▸ ${user_max_combo || 0}x/${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}${leaderboard_pos ? ` ▸ 🌐 #${leaderboard_pos}` : ''}${user_top_pos ? ` ▸ 🏆 #${user_top_pos}` : ''}`;
+    const topTag = user_top_pos
+        ? (isUnrankedTop ? ` ▸ *🥈 #${user_top_pos}*` : ` ▸ 🏆 #${user_top_pos}`)
+        : '';
+    const line2 = `${score} ▸ ${user_max_combo || 0}x/${beatmap_max_combo ? beatmap_max_combo + 'x' : '?'}${leaderboard_pos ? ` ▸ 🌐 #${leaderboard_pos}` : ''}${topTag}`;
     const line3 = getBeatmapStatsLine(map, recent_scores.mods, activeGamemode, locale);
     const maxPpVal = pre_calculated.maxAttrs ? pre_calculated.maxAttrs.pp : null;
     const ansiBlock = buildAnsiBlock(stats_str, user_pp, maxPpVal, pre_calculated.pp_fc, locale);
@@ -418,7 +377,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
     const user_max_combo = score.max_combo;
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
+    const user_pp = pre_calculated.pp;
     const difficultyStars = pre_calculated.maxAttrs ? (pre_calculated.maxAttrs.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) : (score.beatmap?.difficulty_rating || 0);
     const difficulty = formatDecimal(difficultyStars || 0, locale, 2);
     const embedColor = getEmbedColor(message);
@@ -750,7 +709,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const user_max_combo = score.max_combo;
 
     const beatmap_max_combo = pre_calculated.beatmap_max_combo;
-    const user_pp = formatDecimal(pre_calculated.pp, locale, 2);
+    const user_pp = pre_calculated.pp;
     const difficulty = formatDecimal(((pre_calculated.maxAttrs?.stars !== undefined ? pre_calculated.maxAttrs.stars : (pre_calculated.maxAttrs?.difficulty ? pre_calculated.maxAttrs.difficulty.stars : 0)) || 0), locale, 2);
     const embedColor = getEmbedColor(message);
 

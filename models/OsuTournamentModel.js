@@ -1,5 +1,6 @@
 const { getSupabaseClient } = require('../db/database.js');
 const { v2 } = require('osu-api-extended');
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const OsuUserModel = require('./OsuUserModel.js');
 const https = require('https');
 const cheerio = require('cheerio');
@@ -797,7 +798,7 @@ async function syncLatestTournaments(limit = 10) {
         await OsuUserModel.NewloadToken();
 
         // 1. Obtener la lista de temas del foro (sección 55)
-        const listResult = await v2.forums.topics.list({ id: 55, limit });
+        const listResult = await osuApiQueue.add(() => v2.forums.topics.list({ id: 55, limit }), 0);
         if (!listResult || !listResult.topics || listResult.topics.length === 0) {
             return { newTournaments: [], updatedTournaments: [] };
         }
@@ -844,7 +845,7 @@ async function syncLatestTournaments(limit = 10) {
                 if (!shouldProcess) continue;
 
                 // Obtener detalles del tema (para el primer post)
-                const details = await v2.forums.topics.details({ id: topic.id });
+                const details = await osuApiQueue.add(() => v2.forums.topics.details({ id: topic.id }), 0);
                 if (!details.posts || details.posts.length === 0) continue;
 
                 const firstPost = details.posts[0];

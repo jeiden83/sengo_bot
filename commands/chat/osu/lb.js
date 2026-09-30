@@ -1,6 +1,7 @@
 const { findBeatmapInChannel, getBeatmap, getBeatmapModeAttributes, argsParserNoCommand, NewloadToken } = require("../../utils/osu.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 const { buildPaginationRow } = require("../../../views/osuViewHelpers.js");
+const { osuApiQueue } = require("../../../utils/OsuApiQueue.js");
 
 const leaderboardCache = new Map();
 const CACHE_TTL = 30000; // 30 segundos de caché para tablas de clasificación
@@ -17,12 +18,14 @@ async function fetchLeaderboardCached(url, headers, logger = null) {
         return cached.data;
     }
 
-    const apiRes = await fetch(url, { headers });
-    if (!apiRes.ok) {
-        throw new Error(`Status ${apiRes.status}`);
-    }
+    const resJson = await osuApiQueue.add(async () => {
+        const apiRes = await fetch(url, { headers });
+        if (!apiRes.ok) {
+            throw new Error(`Status ${apiRes.status}`);
+        }
+        return await apiRes.json();
+    }, 10);
 
-    const resJson = await apiRes.json();
     const scores = resJson.scores || resJson || [];
 
     leaderboardCache.set(cacheKey, { data: scores, timestamp: now });

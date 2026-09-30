@@ -1,4 +1,5 @@
 const { auth, v2 } = require('osu-api-extended');
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const { getSupabaseClient } = require('../db/database.js');
 const CONFIG = require('../config.js');
 const Logger = require('../utils/logger.js');
@@ -35,11 +36,11 @@ async function checkNewBeatmaps() {
         let totalSaved = 0;
 
         for (const status of statuses) {
-            const response = await v2.search({
+            const response = await osuApiQueue.add(() => v2.search({
                 type: 'beatmaps',
                 mode: 0, // standard
                 status: status
-            });
+            }), 0);
 
             if (!response || !response.beatmapsets || response.beatmapsets.length === 0) {
                 continue;

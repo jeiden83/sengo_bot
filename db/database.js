@@ -1,6 +1,14 @@
 const CONFIG = require("../config.js");
 const { createClient } = require('@supabase/supabase-js');
 
+const SUPABASE_CLIENT_OPTIONS = {
+    auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+        detectSessionInUrl: false
+    }
+};
+
 let supabase;
 
 async function connectDB(config) {
@@ -10,21 +18,34 @@ async function connectDB(config) {
         const url = config.SUPABASE_URL || CONFIG.SUPABASE_URL;
         const key = config.SUPABASE_KEY || CONFIG.SUPABASE_KEY;
         
-        supabase = createClient(url, key);
+        supabase = createClient(url, key, SUPABASE_CLIENT_OPTIONS);
 
         const User = {
             async findOne({ discord_id }) {
-                const { data, error } = await supabase
-                    .from('users')
-                    .select('*')
-                    .eq('discord_id', discord_id)
-                    .maybeSingle();
+                try {
+                    let { data, error } = await supabase
+                        .from('users')
+                        .select('*')
+                        .eq('discord_id', discord_id)
+                        .maybeSingle();
 
-                if (error) {
-                    console.error('Error en User.findOne de Supabase:', error);
-                    throw new Error(`Database error: ${error.message}`);
+                    if (error) {
+                        const retry = await supabase
+                            .from('users')
+                            .select('*')
+                            .eq('discord_id', discord_id)
+                            .maybeSingle();
+                        if (retry.error) {
+                            console.error('Error en User.findOne de Supabase tras reintento:', retry.error);
+                            return null;
+                        }
+                        return retry.data;
+                    }
+                    return data;
+                } catch (err) {
+                    console.error('Error en User.findOne de Supabase:', err.message || err);
+                    return null;
                 }
-                return data;
             },
             async find(query) {
                 let q = supabase.from('users').select('*');
@@ -189,7 +210,7 @@ function getSupabaseClient() {
         const url = CONFIG.SUPABASE_URL || process.env.SUPABASE_URL;
         const key = CONFIG.SUPABASE_KEY || process.env.SUPABASE_KEY;
         if (url && key) {
-            supabase = createClient(url, key);
+            supabase = createClient(url, key, SUPABASE_CLIENT_OPTIONS);
         }
     }
     return supabase;

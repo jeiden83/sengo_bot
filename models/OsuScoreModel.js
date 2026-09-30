@@ -333,6 +333,12 @@ function hasUnrankedPPMods(score) {
             if (UNRANKED_PP_MODS.has(acronym)) {
                 return true;
             }
+            // ponytail: Detectar Rate Adjust en osu!lazer (DT/NC distinto de 1.5x, o HT/DC distinto de 0.75x)
+            if (typeof m === 'object' && m?.settings?.speed_change !== undefined) {
+                const sc = Number(m.settings.speed_change);
+                if (['DT', 'NC'].includes(acronym) && Math.abs(sc - 1.5) > 0.001) return true;
+                if (['HT', 'DC'].includes(acronym) && Math.abs(sc - 0.75) > 0.001) return true;
+            }
         }
     } else if (typeof rawMods === 'string') {
         const upper = rawMods.toUpperCase();
@@ -925,29 +931,31 @@ async function getUserRecentScores(parsed_args) {
             urlObj.searchParams.append('include_fails', '1');
             urlObj.searchParams.append('limit', '100');
 
-            const apiRes = await fetch(urlObj.toString(), {
-                headers: {
-                    'Authorization': `Bearer ${globalToken}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }
-            });
+            result = await osuApiQueue.add(async () => {
+                const apiRes = await fetch(urlObj.toString(), {
+                    headers: {
+                        'Authorization': `Bearer ${globalToken}`,
+                        'Content-Type': 'application/json',
+                        'x-api-version': '20240728'
+                    }
+                });
 
-            if (apiRes.ok) {
-                result = await apiRes.json();
-            } else {
-                throw new Error(`Status ${apiRes.status}`);
-            }
+                if (apiRes.ok) {
+                    return await apiRes.json();
+                } else {
+                    throw new Error(`Status ${apiRes.status}`);
+                }
+            }, 10);
         } catch (e) {
             console.error("Error fetching recent scores via fetch:", e);
             try {
-                result = await v2.scores.list({
+                result = await osuApiQueue.add(() => v2.scores.list({
                     type: 'user_recent',
                     user_id: parsed_args.username[0],
                     mode: parsed_args.gamemode || "osu",
                     include_fails: true,
                     limit: 100,
-                });
+                }), 10);
             } catch (err) {
                 console.error("Error in v2.scores.list user_recent fallback:", err);
                 throw err;
@@ -1271,19 +1279,21 @@ async function _getUserTopScores(parsed_args) {
             urlObj.searchParams.append('limit', '100');
             urlObj.searchParams.append('offset', offset.toString());
 
-            const apiRes = await fetch(urlObj.toString(), {
-                headers: {
-                    'Authorization': `Bearer ${globalToken}`,
-                    'Content-Type': 'application/json',
-                    'x-api-version': '20240728'
-                }
-            });
+            return osuApiQueue.add(async () => {
+                const apiRes = await fetch(urlObj.toString(), {
+                    headers: {
+                        'Authorization': `Bearer ${globalToken}`,
+                        'Content-Type': 'application/json',
+                        'x-api-version': '20240728'
+                    }
+                });
 
-            if (apiRes.ok) {
-                return await apiRes.json();
-            } else {
-                throw new Error(`Status ${apiRes.status}`);
-            }
+                if (apiRes.ok) {
+                    return await apiRes.json();
+                } else {
+                    throw new Error(`Status ${apiRes.status}`);
+                }
+            }, 10);
         };
 
         let result = [];
@@ -1302,13 +1312,13 @@ async function _getUserTopScores(parsed_args) {
     } catch (e) {
         console.error("Error fetching top scores via fetch:", e);
         try {
-            const result1 = await v2.scores.list({
+            const result1 = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: parsed_args.username[0],
                 mode: parsed_args.gamemode || "osu",
                 limit: 100,
                 offset: 0
-            });
+            }), 10);
 
             if (!result1 || result1.length < 100) {
                 const res = result1 || [];
@@ -1316,13 +1326,13 @@ async function _getUserTopScores(parsed_args) {
                 return returnAndCache(res);
             }
 
-            const result2 = await v2.scores.list({
+            const result2 = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: parsed_args.username[0],
                 mode: parsed_args.gamemode || "osu",
                 limit: 100,
                 offset: 100
-            });
+            }), 10);
 
             const res = result1.concat(result2 || []);
             if (Array.isArray(res)) res.forEach(normalizeScore);
@@ -1340,7 +1350,7 @@ async function _getUserTopScores(parsed_args) {
 async function getScoreDetails(score_id) {
     await OsuUserModel.NewloadToken();
     try {
-        const result = await v2.scores.details({ id: score_id });
+        const result = await osuApiQueue.add(() => v2.scores.details({ id: score_id }), 10);
         if (result) normalizeScore(result);
         return result;
     } catch (e) {
@@ -1361,7 +1371,7 @@ async function getBeatmapUserScore(parsed_args) {
     const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores/users/${userId}`;
 
     try {
-        const response = await axios.get(url, {
+        const response = await osuApiQueue.add(() => axios.get(url, {
             headers: {
                 'Authorization': `Bearer ${osu_token.access_token}`,
                 'Content-Type': 'application/json',
@@ -1373,13 +1383,67 @@ async function getBeatmapUserScore(parsed_args) {
                 mode: gamemode,
                 mods: mods
             }
-        });
+        }), 10);
 
         if (response.data) normalizeScore(response.data);
         return response.data;
     } catch (error) {
         return null;
     }
+}
+
+/**
+ * Obtiene la mejor puntuación de un usuario en un beatmap específico pasando por la cola oficial.
+ */
+async function getUserBeatmapBest(beatmapId, userId, mode = 'osu') {
+    await OsuUserModel.NewloadToken();
+    try {
+        const result = await osuApiQueue.add(() => v2.scores.list({
+            type: 'user_beatmap_best',
+            beatmap_id: beatmapId,
+            user_id: userId,
+            mode: mode
+        }), 10);
+        if (result && result.score) {
+            normalizeScore(result.score);
+        }
+        return result;
+    } catch (e) {
+        return null;
+    }
+}
+
+/**
+ * Obtiene la jugada pineada de un usuario pasando por la cola oficial de peticiones.
+ */
+async function fetchPinnedScore(userId, topScores, mode = 'osu', server = 'bancho') {
+    if (server !== 'bancho') {
+        return topScores && topScores.length > 0 ? topScores[0] : null;
+    }
+
+    try {
+        const tokenData = await OsuUserModel.loadToken().catch(() => null);
+        const token = tokenData?.access_token;
+
+        if (token) {
+            const validMode = (mode === 'fruits' || mode === 'catch' || mode === 'ctb') ? 'fruits' : mode;
+            const res = await osuApiQueue.add(() => axios.get(`https://osu.ppy.sh/api/v2/users/${userId}/scores/pinned?mode=${validMode}&limit=1`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'x-api-version': '20240728'
+                },
+                timeout: 5000
+            }), 10).catch(() => null);
+
+            if (res && res.data && res.data.length > 0) {
+                return res.data[0];
+            }
+        }
+    } catch (err) {
+        // Silenciar error y caer a topScores
+    }
+
+    return topScores && topScores.length > 0 ? topScores[0] : null;
 }
 
 /**
@@ -1470,12 +1534,12 @@ async function getBeatmapUserAllScores(parsed_args) {
 
     let result = [];
     try {
-        result = await v2.scores.list({
+        result = await osuApiQueue.add(() => v2.scores.list({
             type: 'user_beatmap_all',
             user_id: userId,
             beatmap_id: beatmapId,
             mode: mode,
-        });
+        }), 10);
     } catch (e) {
         const errorStr = e.message || String(e);
         if (errorStr.includes("difficulty couldn't be found") || errorStr.includes("404")) {
@@ -1717,7 +1781,7 @@ async function saveUserscore(recent_scores, pre_calculated, force_save = false) 
     }
 }
 
-async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null, isLazerMode = false) {
+async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null, isLazerMode = false, isBackground = false) {
     const key = `${beatmapId}_${gamemode}`;
     if (!forceUpdate && activeGapPromises.has(key)) {
         if (logger) logger.process(`Deduplicador: Ya existe una consulta de gap en curso para el mapa ${beatmapId}. Esperando resolución...`);
@@ -1727,7 +1791,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
             console.error(`[GAP-DEDUPLICATOR] La consulta en progreso para ${beatmapId} falló:`, e);
         }
         if (logger) logger.process(`Deduplicador: Consulta en curso finalizada. Cargando datos desde caché.`);
-        return getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, logger, beatmapMetadata, isLazerMode);
+        return getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, logger, beatmapMetadata, isLazerMode, isBackground);
     }
 
     let resolveActivePromise;
@@ -1737,7 +1801,7 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
     }
 
     try {
-        const result = await _getNewBeatmapUserScores(beatmapId, usersArray, gamemode, forceUpdate, logger, beatmapMetadata, isLazerMode);
+        const result = await _getNewBeatmapUserScores(beatmapId, usersArray, gamemode, forceUpdate, logger, beatmapMetadata, isLazerMode, isBackground);
         return result;
     } finally {
         if (resolveActivePromise) resolveActivePromise();
@@ -1745,9 +1809,10 @@ async function getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', 
     }
 }
 
-async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null, isLazerMode = false) {
+async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu', forceUpdate = false, logger = null, beatmapMetadata = null, isLazerMode = false, isBackground = false) {
     await OsuUserModel.NewloadToken();
     const scores = new Collection();
+    const reqPriority = isBackground ? 0 : 5;
 
     const cacheDir = path.join(process.cwd(), 'db/local/gap_cache');
     const cacheFile = path.join(cacheDir, `${beatmapId}_${gamemode}.json`);
@@ -2023,14 +2088,14 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                 try {
                     const legacyOnlyVal = isLazerMode ? 0 : 1;
                     const url = `https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=${gamemode}&type=friend&legacy_only=${legacyOnlyVal}`;
-                    const response = await axios.get(url, {
+                    const response = await osuApiQueue.add(() => axios.get(url, {
                         headers: {
                             'Authorization': `Bearer ${supporterToken}`,
                             'Content-Type': 'application/json',
                             'x-api-version': '20240728'
                         }
-                    });
-                    apiFriendScores = response.data.scores || response.data || [];
+                    }), 0);
+                    apiFriendScores = response.data?.scores || response.data || [];
                     useOptimization = true;
                 } catch (e) {
                     console.error("[GAP] Error al obtener amigos de la API (es posible que el token no tenga supporter o esté inactivo):", e.message || e);
@@ -2156,7 +2221,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                                             'Accept': 'application/json',
                                             'x-api-version': '20240728'
                                         }
-                                    }));
+                                    }), reqPriority);
                                     result = response.data;
                                     success = true;
                                 } catch (error) {
@@ -2181,7 +2246,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                                         beatmap_id: beatmapId,
                                         user_id: user.osu_id,
                                         mode: gamemode
-                                    }));
+                                    }), reqPriority);
                                     success = true;
                                 } catch (error) {
                                     throw error;
@@ -2486,7 +2551,7 @@ async function triggerBackgroundGapCache(message, beatmapId, gamemode = 'osu') {
 
         if (usersArray.length === 0) return;
 
-        getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, null)
+        getNewBeatmapUserScores(beatmapId, usersArray, gamemode, false, null, null, false, true)
             .then(() => {
                 console.log(`[BG-GAP] Caché de gap completado para el mapa ${beatmapId} (${usersArray.length} usuarios).`);
             })
@@ -3068,7 +3133,9 @@ const OsuScoreModel = {
     refreshTokenPool,
     initTokenPoolScheduler,
     sortScores,
-    hasCustomSort
+    hasCustomSort,
+    getUserBeatmapBest,
+    fetchPinnedScore
 };
 
 async function getCountryTopPlays(countryCode = 'VE', mode = 0, limit = 1000) {

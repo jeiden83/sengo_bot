@@ -1537,10 +1537,17 @@ async function loadOsuWorldUserCache() {
 /**
  * Obtiene los detalles de un usuario en osu!World con caché persistente y fallback en caso de error.
  */
-async function getOsuWorldUser(osuId) {
+async function getOsuWorldUser(osuId, mode = null) {
     await loadOsuWorldUserCache();
     const now = Date.now();
-    const cacheKey = String(osuId);
+    let osuWorldMode = null;
+    if (mode) {
+        osuWorldMode = mode.toLowerCase();
+        if (osuWorldMode === 'ctb' || osuWorldMode === 'fruits') {
+            osuWorldMode = 'fruits';
+        }
+    }
+    const cacheKey = osuWorldMode ? `${osuId}_${osuWorldMode}` : String(osuId);
     const TTL = 86400000; // 24 horas
 
     if (osuWorldUserCache[cacheKey]) {
@@ -1553,7 +1560,11 @@ async function getOsuWorldUser(osuId) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 6000);
     try {
-        const response = await fetch(`https://osuworld.octo.moe/api/users/${osuId}`, {
+        let url = `https://osuworld.octo.moe/api/users/${osuId}`;
+        if (osuWorldMode) {
+            url += `?mode=${osuWorldMode}`;
+        }
+        const response = await fetch(url, {
             signal: controller.signal
         });
         clearTimeout(timeout);
@@ -1574,7 +1585,6 @@ async function getOsuWorldUser(osuId) {
         return data;
     } catch (err) {
         clearTimeout(timeout);
-        console.error(`Error al obtener usuario ${osuId} de osu!World:`, err);
         if (osuWorldUserCache[cacheKey]) {
             return osuWorldUserCache[cacheKey].data;
         }
@@ -2592,18 +2602,18 @@ async function downloadReplay(scoreId, mode = 'osu') {
         throw new Error("No token available");
     }
     
-    let downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
+    let downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
-    });
+    }), 10);
     
     if (!downloadRes.ok) {
-        downloadRes = await fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
+        downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
-        });
+        }), 10);
     }
     
     if (!downloadRes.ok) {

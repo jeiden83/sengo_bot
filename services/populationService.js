@@ -4,6 +4,7 @@ require('dotenv').config({ path: path.join(__dirname, '../.env') });
 const crypto = require('crypto');
 const { getSupabaseClient } = require('../db/database.js');
 const OsuUserModel = require('../models/OsuUserModel.js');
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const TursoDB = require('../db/turso.js');
 
 const activeSessions = new Map(); // countryCode -> { countryCode, isStopped: false, activeWorkers: Set }
@@ -1080,26 +1081,26 @@ class PopulationService {
         }
 
         try {
-            let osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
+            let osuRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
                 headers: {
                     'Authorization': `Bearer ${supporterData.token}`,
                     'x-api-version': '20220705',
                     'User-Agent': 'osu-api-extended v3.4.7'
                 }
-            });
+            }), 0);
 
             // Si la API responde con 429 (Demasiadas peticiones), esperar 1.5s y reintentar con otro token del pool
             if (osuRes.status === 429) {
                 await new Promise(r => setTimeout(r, 1500));
                 supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
                 if (supporterData && supporterData.token) {
-                    osuRes = await fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
+                    osuRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/beatmaps/${beatmapId}/scores?mode=osu&type=country`, {
                         headers: {
                             'Authorization': `Bearer ${supporterData.token}`,
                             'x-api-version': '20220705',
                             'User-Agent': 'osu-api-extended v3.4.7'
                         }
-                    });
+                    }), 0);
                 }
             }
 

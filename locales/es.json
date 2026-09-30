@@ -1186,6 +1186,7 @@
     "embed_footer_negativo": "ratio negativo",
     "embed_footer_default": "Sengo",
     "embed_footer_relax": "Sengo • PP Teórico (Relax)",
+    "embed_footer_unranked_top": "Sengo • Top play unranked",
     "list_author": "Puntuaciones recientes de {username} en osu!{mode}",
     "list_footer": "Mostrando jugadas {start}-{end} de {total} recientes",
     "list_footer_loading": "⏳ Calculando pp de la play #{index} de {total}...",

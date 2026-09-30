@@ -1,33 +1,7 @@
-const { getOsuUser, argsParser } = require("../../utils/osu.js");
+const { getOsuUser, getOsuWorldUser, argsParser } = require("../../utils/osu.js");
 const { doOsuProfileEmbed, doOsuUserBadgesEmbed } = require("../../../views/osuEmbeds.js");
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { t } = require("../../../utils/i18n.js");
-
-async function getOsuWorldUser(userId, mode) {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 1500);
-    try {
-        let url = `https://osuworld.octo.moe/api/users/${userId}`;
-        if (mode) {
-            let osuWorldMode = mode.toLowerCase();
-            if (osuWorldMode === 'ctb' || osuWorldMode === 'fruits') {
-                osuWorldMode = 'fruits';
-            }
-            url += `?mode=${osuWorldMode}`;
-        }
-        const response = await fetch(url, {
-            signal: controller.signal
-        });
-        clearTimeout(timeout);
-        if (!response.ok) return null;
-        const data = await response.json();
-        if (data && data.error) return null;
-        return data;
-    } catch (e) {
-        clearTimeout(timeout);
-        return null;
-    }
-}
 
 async function run(messages, args) {
     const { message, res, reply, logger } = messages;
