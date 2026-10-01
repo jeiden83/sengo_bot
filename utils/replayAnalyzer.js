@@ -336,7 +336,22 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
     const displayMisses = totalMissCount !== undefined ? totalMissCount : misses.length;
     ctx.fillStyle = '#ff4d6d';
     ctx.font = `bold ${15 * scale}px "Segoe UI", sans-serif`;
-    ctx.fillText(`❌ ${displayMisses} Misses`, width - padX, 35 * scale);
+    const missText = `${displayMisses} Misses`;
+    ctx.fillText(missText, width - padX, 35 * scale);
+
+    // Icono vectorial de cruz roja para evitar glifos faltantes
+    const missTextW = ctx.measureText(missText).width;
+    const crossX = width - padX - missTextW - 12 * scale;
+    const crossY = 35 * scale - 5 * scale;
+    const cr = 4.5 * scale;
+    ctx.strokeStyle = '#ff4d6d';
+    ctx.lineWidth = 2.2 * scale;
+    ctx.beginPath();
+    ctx.moveTo(crossX - cr, crossY - cr);
+    ctx.lineTo(crossX + cr, crossY + cr);
+    ctx.moveTo(crossX + cr, crossY - cr);
+    ctx.lineTo(crossX - cr, crossY + cr);
+    ctx.stroke();
 
     ctx.fillStyle = '#e0af68';
     ctx.font = `${13 * scale}px "Segoe UI", sans-serif`;
@@ -406,7 +421,7 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
         ctx.lineWidth = 1.2 * scale;
         ctx.strokeRect(x1, chartY, w, chartH);
 
-        // Pastilla distintiva
+        // Pastilla distintiva (notación limpia universal: #1 (19x))
         const pillW = 62 * scale;
         const pillH = 18 * scale;
         const pillX = x1 + (w - pillW) / 2;
@@ -418,9 +433,9 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
         ctx.fill();
 
         ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${10.5 * scale}px "Segoe UI", sans-serif`;
+        ctx.font = `bold ${11 * scale}px "Segoe UI", sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(`#${idx + 1} (${sec.count}❌)`, pillX + pillW / 2, pillY + 13 * scale);
+        ctx.fillText(`#${idx + 1} (${sec.count}x)`, pillX + pillW / 2, pillY + 13 * scale);
     });
 
     // 3. Línea vertical de Primer Choke (Dorado discontinuo)
