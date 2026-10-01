@@ -358,6 +358,11 @@
       "body": "Attach a `.osr` replay file or reply to a `.osr` replay or a compatible score embed (from OwO bot or Sengo) with the details of a score and it will save it to the local database.\n\n**Options:**\n`-m <mods>` or `-mods <mods>`: Overwrites the detected mods (e.g. `-m HDDT`). Use `-m NM` for No Mod.",
       "usage": "s.subir [attaching .osr file or replying to a message] [-m MODS]"
     },
+    "analizar": {
+      "header": "Analyzes an osu! replay (.osr) and generates advanced stats and performance charts.",
+      "body": "Attach an `.osr` file or reply to a replay message to get a detailed breakdown:\n• Accuracy, combo, real PP vs FC PP.\n• Unstable Rate (UR) and tapping offset.\n• First choke timestamp and total misses.\n• Top 3 hardest map sections with highest miss density.\n• Aim and player difficulty diagnosis.\n• Visual song timeline chart with difficulty strain and marked misses.",
+      "usage": "s.analizar [attaching .osr file or replying to one]"
+    },
     "rework": {
       "header": "Upcoming PP Reworks Command",
       "body": "Calculates how much PP a map with mods will give under the upcoming rework, shows the recalculated user profile under a rework, or their top best plays.",
@@ -1453,6 +1458,34 @@
     "err_map_not_found": "Could not find the beatmap `{mapName}` in the osu! database.",
     "err_user_not_found": "Could not resolve the ID for user `{username}` and you are not linked to a profile.",
     "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` to use this command."
+  },
+  "analyze": {
+    "embed_title": "🔍 Replay Analysis: {title} [{version}]",
+    "embed_desc": "Kinematic analysis and play breakdown for **{player}** on **{artist} - {title} [{version}]**.",
+    "field_stats": "📊 Play Statistics",
+    "field_performance": "⚡ Performance & PP",
+    "field_tapping": "⏱️ Tapping & Instability",
+    "field_sections": "🔥 Top 3 Hardest Sections (Most Misses)",
+    "field_diagnosis": "🎯 Play Diagnosis",
+    "label_score": "Score",
+    "label_combo": "Max Combo",
+    "label_hits": "300 / 100 / 50 / Miss",
+    "ur_relax": "N/A (Relax Mod)",
+    "offset_late": "Late",
+    "offset_early": "Early",
+    "offset_perfect": "Perfect",
+    "no_choke": "No Chokes (FC)",
+    "no_critical_sections": "No grouped miss sections detected.",
+    "diag_consistent": "Excellent consistency and control throughout the entire song.",
+    "diag_jumps": "Highest difficulty on wide spaced fast jumps (Aim jumps / Flicking).",
+    "diag_streams": "Highest difficulty on high-density fast bursts (Speed / Continuous streams).",
+    "diag_sliders": "Instability tracking or reading complex slider velocities.",
+    "footer": "Sengo Bot • Replay Analysis (.osr)",
+    "err_no_osr": "❌ You must attach an `.osr` file or reply to a message containing a replay.",
+    "err_download_failed": "❌ Could not download the attached `.osr` file.",
+    "err_corrupt_osr": "❌ The `.osr` file appears corrupted or could not be decompressed.",
+    "err_map_not_found": "❌ Could not find the corresponding beatmap on the osu! API (MD5: `{md5}`).",
+    "err_osu_file_failed": "❌ Error downloading or reading the map `.osu` file for simulation."
   },
   "rework": {
     "calc_author": "PP Estimation in Rework: {reworkName}",

@@ -358,6 +358,11 @@
       "body": "Adjunta un archivo `.osr` o haz reply a una replay `.osr` o a un embed de score compatible (de OwO bot o Sengo) con los detalles de una score y la guardará en la base de datos local.\n\n**Opciones:**\n`-m <mods>` o `-mods <mods>`: Sobrescribe los mods detectados (ej. `-m HDDT`). Usar `-m NM` para No Mod.",
       "usage": "s.subir [adjuntando archivo .osr o respondiendo a un mensaje] [-m MODS]"
     },
+    "analizar": {
+      "header": "Analiza una repetición (.osr) de osu! y genera estadísticas avanzadas y gráficas de rendimiento.",
+      "body": "Adjunta un archivo `.osr` o responde a un mensaje con una replay para obtener un desglose detallado:\n• Precisión, combo, PP real vs PP FC.\n• Unstable Rate (UR) y desviación de tapping.\n• Momento del primer choke y total de misses.\n• Las 3 secciones más difíciles del mapa con más fallos.\n• Diagnóstico de aim y dificultad del jugador.\n• Gráfica visual del timeline de la canción con mapa de tensión (strain) y misses marcados.",
+      "usage": "s.analizar [adjuntando archivo .osr o respondiendo a uno]"
+    },
     "rework": {
       "header": "Comando de Reworks Próximos de PP",
       "body": "Calcula cuánto PP dará un mapa con mods bajo el rework que viene, muestra el perfil recalculado de un usuario en un rework, o su top de mejores jugadas.",
@@ -1453,6 +1458,34 @@
     "err_map_not_found": "No pude encontrar el mapa `{mapName}` en la base de datos de osu!.",
     "err_user_not_found": "No pude resolver la ID del usuario `{username}` y no estás vinculado a un perfil.",
     "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando."
+  },
+  "analyze": {
+    "embed_title": "🔍 Análisis de Replay: {title} [{version}]",
+    "embed_desc": "Análisis cinético y desglose de la partida de **{player}** en **{artist} - {title} [{version}]**.",
+    "field_stats": "📊 Estadísticas de la Play",
+    "field_performance": "⚡ Rendimiento & PP",
+    "field_tapping": "⏱️ Tapping & Inestabilidad",
+    "field_sections": "🔥 Las 3 Secciones Más Difíciles (Más Misses)",
+    "field_diagnosis": "🎯 Diagnóstico de la Play",
+    "label_score": "Puntuación",
+    "label_combo": "Combo Máx.",
+    "label_hits": "300 / 100 / 50 / Miss",
+    "ur_relax": "N/A (Mod Relax)",
+    "offset_late": "Tarde",
+    "offset_early": "Temprano",
+    "offset_perfect": "Perfecto",
+    "no_choke": "Sin Chokes (FC)",
+    "no_critical_sections": "No se registraron secciones con fallos agrupados.",
+    "diag_consistent": "Excelente consistencia y control a lo largo de toda la canción.",
+    "diag_jumps": "Mayor dificultad en saltos rápidos de alto espaciado (Aim jumps / Flicking).",
+    "diag_streams": "Mayor dificultad en ráfagas densas de alta velocidad (Speed / Streams continuos).",
+    "diag_sliders": "Inestabilidad en el seguimiento o lectura de sliders complejos.",
+    "footer": "Sengo Bot • Análisis de Replay (.osr)",
+    "err_no_osr": "❌ Debes adjuntar un archivo `.osr` o responder a un mensaje que contenga una replay.",
+    "err_download_failed": "❌ No se pudo descargar el archivo `.osr` adjunto.",
+    "err_corrupt_osr": "❌ El archivo `.osr` parece estar corrupto o no se pudo descomprimir.",
+    "err_map_not_found": "❌ No se pudo encontrar el mapa correspondiente en la API de osu! (MD5: `{md5}`).",
+    "err_osu_file_failed": "❌ Error al descargar o leer el archivo `.osu` del mapa para la simulación."
   },
   "rework": {
     "calc_author": "Estimación de PP en Rework: {reworkName}",
