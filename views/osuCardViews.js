@@ -1071,10 +1071,18 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                 const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
                 const stars = diffAttrs?.stars;
                 const maxCombo = diffAttrs?.maxCombo;
+                const mapAttrs = {
+                    cs: mapObj.cs,
+                    ar: mapObj.ar,
+                    od: mapObj.od,
+                    hp: mapObj.hp,
+                    bpm: mapObj.bpm
+                };
                 mapObj.free();
                 return {
                     stars: (typeof stars === "number" && !isNaN(stars) && stars >= 0) ? stars : null,
-                    maxCombo: (typeof maxCombo === "number" && !isNaN(maxCombo) && maxCombo > 0) ? maxCombo : null
+                    maxCombo: (typeof maxCombo === "number" && !isNaN(maxCombo) && maxCombo > 0) ? maxCombo : null,
+                    mapAttrs
                 };
             }
         } catch (_) {}
@@ -1494,15 +1502,72 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
             : (typeof pinnedPlay?.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : ["HD", "DT"]);
 
+        // Cálculo de estadísticas modificadas con mods (BPM, OD, CS, AR, HP, Duración)
+        const BeatmapModel = require("../models/BeatmapModel.js");
+        const baseBeatmapData = {
+            cs: playDiffData?.mapAttrs?.cs ?? pinnedPlay?.beatmap?.cs ?? (pinnedPlay ? 4.0 : 4.0),
+            ar: playDiffData?.mapAttrs?.ar ?? pinnedPlay?.beatmap?.ar ?? (pinnedPlay ? 9.6 : 9.6),
+            accuracy: playDiffData?.mapAttrs?.od ?? pinnedPlay?.beatmap?.accuracy ?? pinnedPlay?.beatmap?.od ?? (pinnedPlay ? 9.6 : 9.6),
+            drain: playDiffData?.mapAttrs?.hp ?? pinnedPlay?.beatmap?.drain ?? pinnedPlay?.beatmap?.hp ?? (pinnedPlay ? 6.0 : 6.0),
+            bpm: playDiffData?.mapAttrs?.bpm || pinnedPlay?.beatmap?.bpm || pinnedPlay?.beatmapset?.bpm || 178,
+            total_length: pinnedPlay?.beatmap?.total_length || pinnedPlay?.beatmap?.hit_length || (pinnedPlay ? 0 : 132)
+        };
+        const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+        const playRuleset = pinnedPlay?.mode || (pinnedPlay?.ruleset_id !== undefined ? rulesetMap[pinnedPlay.ruleset_id] : null) || user.playmode || mode || 'osu';
+        const convertedStats = BeatmapModel.getBeatmapAdjustedStats(baseBeatmapData, mods, playRuleset);
+
+        const totalLength = Number(baseBeatmapData.total_length || 0);
+        let durationStr = "";
+        if (totalLength > 0) {
+            const clockRate = convertedStats.clockRate || 1.0;
+            const adjustedLength = clockRate > 0 ? Math.round(totalLength / clockRate) : totalLength;
+            const mins = Math.floor(adjustedLength / 60);
+            const secs = adjustedLength % 60;
+            durationStr = `${mins}:${secs.toString().padStart(2, "0")}`;
+        }
+
+        const statItems = [];
+        const fmtVal = (val, maxDec = 1) => {
+            if (val == null || isNaN(val)) return "-";
+            const num = Number(val);
+            return Math.abs(num % 1) > 0.05 ? num.toFixed(maxDec) : Math.round(num).toString();
+        };
+
+        if (playRuleset === 'taiko') {
+            statItems.push({ label: 'OD', val: fmtVal(convertedStats.od) });
+            statItems.push({ label: 'HP', val: fmtVal(convertedStats.hp) });
+        } else if (playRuleset === 'mania') {
+            const keyCount = Math.round(convertedStats.cs || 4);
+            statItems.push({ label: 'CS', val: `${keyCount}K` });
+            statItems.push({ label: 'OD', val: fmtVal(convertedStats.od) });
+            statItems.push({ label: 'HP', val: fmtVal(convertedStats.hp) });
+        } else if (playRuleset === 'fruits') {
+            statItems.push({ label: 'CS', val: fmtVal(convertedStats.cs) });
+            statItems.push({ label: 'AR', val: fmtVal(convertedStats.ar) });
+            statItems.push({ label: 'HP', val: fmtVal(convertedStats.hp) });
+        } else {
+            // osu! standard
+            statItems.push({ label: 'CS', val: fmtVal(convertedStats.cs) });
+            statItems.push({ label: 'AR', val: fmtVal(convertedStats.ar) });
+            statItems.push({ label: 'OD', val: fmtVal(convertedStats.od) });
+            statItems.push({ label: 'HP', val: fmtVal(convertedStats.hp) });
+        }
+
+        statItems.push({ label: 'BPM', val: `${Math.round(convertedStats.bpm || 0)}` });
+        if (durationStr && durationStr !== '0:00') {
+            statItems.push({ label: '', val: durationStr });
+        }
+
         // Grade S/A
+        const isShortBox = pb.h < 260;
         const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade, mods) };
         const displayGrade = (scoreGrade === "XH" || scoreGrade === "SSH") ? "X" : (scoreGrade === "SH" ? "S" : scoreGrade);
-        drawCustomText(ctx, gradeFont, displayGrade, pb.x + 80, pb.y + 175, "center", fontFamily);
+        drawCustomText(ctx, gradeFont, displayGrade, pb.x + 80, pb.y + (isShortBox ? 155 : 168), "center", fontFamily);
 
         let modX = pb.x + 20;
         const modW = 54;
-        const modH = 34;
-        const modY = pb.y + 206;
+        const modH = isShortBox ? 28 : 32;
+        const modY = pb.y + (isShortBox ? 175 : 198);
 
         for (const mod of mods.slice(0, 4)) {
             const cleanMod = String(mod).toUpperCase();
@@ -1513,16 +1578,77 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             roundRect(ctx, modX, modY, modW, modH, 8, true);
 
             ctx.fillStyle = colors.fg;
-            ctx.font = `bold 16px ${fontFamily}`;
+            ctx.font = `bold ${isShortBox ? 14 : 16}px ${fontFamily}`;
             ctx.textAlign = "center";
-            ctx.fillText(cleanMod, modX + (modW / 2), modY + (modH / 2) + 6);
+            ctx.fillText(cleanMod, modX + (modW / 2), modY + (modH / 2) + (isShortBox ? 5 : 6));
             ctx.restore();
 
             modX += modW + 8;
         }
 
-        drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + 155, "right", fontFamily);
-        drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + 225, "right", fontFamily);
+        drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + (isShortBox ? 135 : 148), "right", fontFamily);
+        drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + (isShortBox ? 190 : 218), "right", fontFamily);
+
+        // 4. Barra de estadísticas convertidas del beatmap con mods
+        if (statItems.length > 0) {
+            const mapStatsFont = fonts.playMapStats || {
+                size: isShortBox ? 12 : 14,
+                weight: "bold",
+                style: "normal",
+                color: "#ffffff"
+            };
+            const fSize = isShortBox ? Math.min(mapStatsFont.size || 14, 12) : (mapStatsFont.size || 14);
+            const fWeight = mapStatsFont.weight ? `${mapStatsFont.weight} ` : "bold ";
+            const fStyle = mapStatsFont.style === "italic" ? "italic " : "";
+            ctx.save();
+            ctx.font = `${fStyle}${fWeight}${fSize}px ${fontFamily}`;
+
+            const labelColor = mapStatsFont.labelColor || "#a78bfa";
+            const valColor = mapStatsFont.color || "#ffffff";
+            const bulletColor = "#64748b";
+            const bulletChar = "•";
+            const bulletW = ctx.measureText(bulletChar).width;
+            const itemGap = isShortBox ? 10 : 14;
+
+            let totalRowW = 0;
+            const itemWidths = statItems.map((item, idx) => {
+                const lWidth = item.label ? ctx.measureText(item.label + " ").width : 0;
+                const vWidth = ctx.measureText(item.val).width;
+                const iWidth = lWidth + vWidth;
+                totalRowW += iWidth + (idx < statItems.length - 1 ? bulletW + itemGap * 2 : 0);
+                return { lWidth, vWidth, iWidth };
+            });
+
+            let drawX = Math.round(pb.x + (pb.w - totalRowW) / 2);
+            if (drawX < pb.x + 16) {
+                drawX = pb.x + 16;
+            }
+            const drawY = pb.y + (isShortBox ? 222 : 252);
+
+            ctx.shadowColor = "rgba(0, 0, 0, 0.85)";
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 2;
+
+            statItems.forEach((item, idx) => {
+                if (item.label) {
+                    ctx.fillStyle = labelColor;
+                    ctx.fillText(item.label, drawX, drawY);
+                    drawX += itemWidths[idx].lWidth;
+                }
+                ctx.fillStyle = valColor;
+                ctx.fillText(item.val, drawX, drawY);
+                drawX += itemWidths[idx].vWidth;
+
+                if (idx < statItems.length - 1) {
+                    drawX += itemGap;
+                    ctx.fillStyle = bulletColor;
+                    ctx.fillText(bulletChar, drawX, drawY);
+                    drawX += bulletW + itemGap;
+                }
+            });
+            ctx.restore();
+        }
 
         ctx.restore();
 

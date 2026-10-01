@@ -265,6 +265,20 @@
       "effectOpacity": 1,
       "effectOffsetY": 3
     },
+    "playMapStats": {
+      "size": 14,
+      "weight": "bold",
+      "style": "normal",
+      "color": "#ffffff",
+      "labelColor": "#a78bfa",
+      "glowBlur": 0,
+      "glowColor": "#c084fc",
+      "effectBlur": 4,
+      "effectType": "shadow",
+      "effectColor": "#000000",
+      "effectOpacity": 1,
+      "effectOffsetY": 2
+    },
     "statsLabels": {
       "size": 18,
       "weight": "normal",

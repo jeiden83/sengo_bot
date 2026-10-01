@@ -1026,6 +1026,7 @@
                             <option value="playScore">Puntaje de Play</option>
                             <option value="playGrade">Letra de Rango (S/A)</option>
                             <option value="playStats">Accuracy y Combo de Play</option>
+                            <option value="playMapStats">Stats de Beatmap (CS, AR, OD, HP, BPM, Duración)</option>
                             <option value="statsLabels">Etiquetas de Stats Generales (Total Score...)</option>
                             <option value="skillValues">Valores de Skills (76.36, 47.97...)</option>
                             <option value="skillLabels">Etiquetas de Skills (ACC, AIM...)</option>
@@ -1389,6 +1390,7 @@
                 playScore: { size: 24, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectBlur: 2, effectOffsetY: 3 },
                 playGrade: { size: 76, weight: 'bold', style: 'normal', color: '#facc15', glowBlur: 0, glowColor: '#c084fc' },
                 playStats: { size: 24, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc', effectBlur: 2, effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectOffsetY: 3 },
+                playMapStats: { size: 14, weight: 'bold', style: 'normal', color: '#ffffff', labelColor: '#a78bfa', glowBlur: 0, glowColor: '#c084fc', effectBlur: 4, effectType: 'shadow', effectColor: '#000000', effectOpacity: 1, effectOffsetY: 2 },
                 statsLabels: { size: 18, weight: 'normal', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
                 skillValues: { size: 22, weight: 'bold', style: 'normal', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
                 skillLabels: { size: 18, weight: 'bold', style: 'italic', color: '#ffffff', glowBlur: 0, glowColor: '#c084fc' },
@@ -1426,6 +1428,12 @@
                     acc: "99.42%",
                     combo: "1682x/1682x",
                     mods: ["CL"],
+                    cs: "4.0",
+                    ar: "9.6",
+                    od: "9.2",
+                    hp: "6.0",
+                    bpm: "178",
+                    duration: "4:21",
                     cover: "https://assets.ppy.sh/beatmaps/896080/covers/cover@2x.jpg?1650673178"
                 },
                 avatar: "https://a.ppy.sh/31038461?1787089430.jpeg"
@@ -3008,21 +3016,83 @@
                     ? (isSilver ? '#e2e8f0' : '#facc15')
                     : (pGrade === 'A' ? '#22c55e' : pGrade === 'B' ? '#3b82f6' : pGrade === 'C' ? '#a855f7' : '#ef4444');
                 state.fonts.playGrade.color = gradeColor;
+                const isShortBox = pb.h < 260;
                 const displayGrade = (pGrade === 'XH' || pGrade === 'SSH') ? 'X' : (pGrade === 'SH' ? 'S' : pGrade);
-                drawCustomText('playGrade', displayGrade, pb.x + 80, pb.y + 175, 'center');
+                drawCustomText('playGrade', displayGrade, pb.x + 80, pb.y + (isShortBox ? 155 : 168), 'center');
 
                 let modX = pb.x + 20;
                 const modW = 54;
-                const modH = 34;
-                const modY = pb.y + 206;
+                const modH = isShortBox ? 28 : 32;
+                const modY = pb.y + (isShortBox ? 175 : 198);
 
                 for (const mod of (player.play.mods || [])) {
                     drawLazerModBadge(ctx, mod, modX, modY, modW, modH);
                     modX += modW + 8;
                 }
 
-                drawCustomText('playStats', player.play.acc, pb.x + pb.w - 16, pb.y + 155, 'right');
-                drawCustomText('playStats', player.play.combo, pb.x + pb.w - 16, pb.y + 225, 'right');
+                drawCustomText('playStats', player.play.acc, pb.x + pb.w - 16, pb.y + (isShortBox ? 135 : 148), 'right');
+                drawCustomText('playStats', player.play.combo, pb.x + pb.w - 16, pb.y + (isShortBox ? 190 : 218), 'right');
+
+                // Estadísticas convertidas del beatmap con mods
+                const statItems = [
+                    { label: 'CS', val: player.play.cs || '4.0' },
+                    { label: 'AR', val: player.play.ar || '9.6' },
+                    { label: 'OD', val: player.play.od || '9.2' },
+                    { label: 'HP', val: player.play.hp || '6.0' },
+                    { label: 'BPM', val: player.play.bpm || '178' },
+                    { label: '', val: player.play.duration || '4:21' }
+                ];
+
+                const mapStatsFont = state.fonts.playMapStats || { size: 14, weight: 'bold', style: 'normal', color: '#ffffff', labelColor: '#a78bfa' };
+                const fSize = isShortBox ? Math.min(mapStatsFont.size || 14, 12) : (mapStatsFont.size || 14);
+                const fWeight = mapStatsFont.weight ? `${mapStatsFont.weight} ` : 'bold ';
+                const fStyle = mapStatsFont.style === 'italic' ? 'italic ' : '';
+                ctx.save();
+                ctx.font = `${fStyle}${fWeight}${fSize}px ${theme.fontFamily || DEFAULT_FONT_STACK}`;
+
+                const labelColor = mapStatsFont.labelColor || '#a78bfa';
+                const valColor = mapStatsFont.color || '#ffffff';
+                const bulletColor = '#64748b';
+                const bulletChar = '•';
+                const bulletW = ctx.measureText(bulletChar).width;
+                const itemGap = isShortBox ? 10 : 14;
+
+                let totalRowW = 0;
+                const itemWidths = statItems.map((item, idx) => {
+                    const lWidth = item.label ? ctx.measureText(item.label + ' ').width : 0;
+                    const vWidth = ctx.measureText(item.val).width;
+                    const iWidth = lWidth + vWidth;
+                    totalRowW += iWidth + (idx < statItems.length - 1 ? bulletW + itemGap * 2 : 0);
+                    return { lWidth, vWidth, iWidth };
+                });
+
+                let drawX = Math.round(pb.x + (pb.w - totalRowW) / 2);
+                if (drawX < pb.x + 16) drawX = pb.x + 16;
+                const drawY = pb.y + (isShortBox ? 222 : 252);
+
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+                ctx.shadowBlur = 4;
+                ctx.shadowOffsetX = 0;
+                ctx.shadowOffsetY = 2;
+
+                statItems.forEach((item, idx) => {
+                    if (item.label) {
+                        ctx.fillStyle = labelColor;
+                        ctx.fillText(item.label, drawX, drawY);
+                        drawX += itemWidths[idx].lWidth;
+                    }
+                    ctx.fillStyle = valColor;
+                    ctx.fillText(item.val, drawX, drawY);
+                    drawX += itemWidths[idx].vWidth;
+
+                    if (idx < statItems.length - 1) {
+                        drawX += itemGap;
+                        ctx.fillStyle = bulletColor;
+                        ctx.fillText(bulletChar, drawX, drawY);
+                        drawX += bulletW + itemGap;
+                    }
+                });
+                ctx.restore();
                 ctx.restore();
             }
 
