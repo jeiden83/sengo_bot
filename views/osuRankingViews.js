@@ -1,6 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const country_codes = require("../src/country_codes.json");
-const { getEmbedColor, formatMods, getGradeEmoji, getPlainStatsString, formatNumber, formatDecimal, getActiveSortFilter, getSortAttributeBadge } = require("./osuViewHelpers.js");
+const { getEmbedColor, formatMods, isLazerScore, getGradeEmoji, getPlainStatsString, formatNumber, formatDecimal, getActiveSortFilter, getSortAttributeBadge } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
 
 /**
@@ -288,8 +288,9 @@ async function doOsuNationalPlaysListEmbed({ chunk, startIndex, total, countryFi
         const rankPrefix = `**#${globalIndex}**`;
         const userLink = `[**${score.user.username}**](https://osu.ppy.sh/users/${score.user.id})`;
         const mapLink = `[${score.beatmapset.title} [${score.beatmap.version}]](https://osu.ppy.sh/b/${score.beatmap.id})`;
-        const isLazer = score.build_id !== null && score.build_id !== undefined;
-        const modsUsed = formatMods(score.mods, isLazer);
+        const isLazer = isLazerScore(score);
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
+        const modsUsed = formatMods(score.mods, isLazer, isDroid);
         const gradeEmoji = getGradeEmoji(score.rank, score.passed);
         const ppStr = score.pp ? `${formatDecimal(score.pp, locale, 2)}pp` : `${formatDecimal(0, locale, 2)}pp`;
         const accStr = formatDecimal(score.accuracy * 100, locale, 2);

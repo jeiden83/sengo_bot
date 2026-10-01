@@ -302,7 +302,7 @@ async function doDroidTopEmbed(message, profile, page = 0, pageSize = 5, locale 
         };
     });
 
-    const embed = await doOsuTopListEmbed(message, { gamemode: 'osu' }, normalizedChunk, startIndex, total_plays, 0, [], locale);
+    const embed = await doOsuTopListEmbed(message, { gamemode: 'osu', server: 'droid' }, normalizedChunk, startIndex, total_plays, 0, [], locale);
     return {
         embeds: [embed],
         components: [buildDroidTopButtons(profile.UserId, page, Math.max(1, Math.ceil(total_plays / pageSize)), locale)]
@@ -365,7 +365,7 @@ function doDroidLeaderboardEmbed(message, hash, lbData, beatmapInfo = null, page
         }
     };
 
-    const embed = doOsuLbEmbed(message, normalizedScores, beatmap_metadata, startIndex, plays.length, safePage, maxPages, {}, null, locale);
+    const embed = doOsuLbEmbed(message, normalizedScores, beatmap_metadata, startIndex, plays.length, safePage, maxPages, { server: 'droid' }, null, locale);
     const content = doOsuLbContent(beatmap_metadata, 'osu', null, null, false, locale, 'osu!droid');
 
     return {

@@ -28,8 +28,9 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
         const userId = score.user?.id || score.user_id;
         const username_link = userId ? `[${username}](https://osu.ppy.sh/users/${userId})` : `*${username}*`;
 
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined;
         const isLazer = isLazerScore(score);
-        const mods_used = formatMods(score.mods, isLazer);
+        const mods_used = formatMods(score.mods, isLazer, isDroid);
 
         const total_score = getFormattedScore(score, 'classic', locale);
         let accuracy = formatDecimal(score.accuracy * 100, locale, 2);
@@ -124,8 +125,9 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
             : (score.user?.server === 'gatari' ? `https://osu.gatari.pw/u/${userId}` : `https://osu.ppy.sh/users/${userId}`);
         const userLink = `[${username}](${userUrl})`;
 
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
         const isLazer = isLazerScore(score);
-        const mods_used = formatMods(score.mods, isLazer);
+        const mods_used = formatMods(score.mods, isLazer, isDroid);
 
         const isLazerMode = parsed_args.lazerMode || parsed_args.isLazerMode;
         const legacy_score = getFormattedScore(score, isLazerMode ? 'lazer' : 'classic', locale);

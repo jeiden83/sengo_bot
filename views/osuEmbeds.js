@@ -65,8 +65,9 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
     const perfect = stats.perfect !== undefined ? stats.perfect : (stats.count_geki || 0);
 
+    const isDroid = recent_scores.user?.server === 'droid' || recent_scores.server === 'droid' || recent_scores.droid_mods !== undefined;
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
-    const mods_used = formatMods(recent_scores.mods, isLazer);
+    const mods_used = formatMods(recent_scores.mods, isLazer, isDroid);
     const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
@@ -235,7 +236,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
         .setAuthor({
             name: authorName,
             url: user_url,
-            iconURL: `${avatar_url}`,
+            iconURL: avatar_url || undefined,
         })
         .setTitle(`${song_title} [${beatmap_difficulty}] - ${difficulty + '★'} `)
         .setURL(beatmap_url)
@@ -269,8 +270,9 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
         const isLazer = isLazerScore(score);
-        const mods_used = formatMods(score.mods, isLazer);
+        const mods_used = formatMods(score.mods, isLazer, isDroid);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
 
@@ -383,7 +385,8 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
-    const mods_used = formatMods(score.mods, isLazer);
+    const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
+    const mods_used = formatMods(score.mods, isLazer, isDroid);
     const map_completion = score.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = score.statistics || {};
@@ -592,8 +595,9 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
         const isLazer = isLazerScore(score);
-        const mods_used = formatMods(score.mods, isLazer);
+        const mods_used = formatMods(score.mods, isLazer, isDroid);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
         const map_max_combo = score.beatmap?.max_combo || score.beatmap_max_combo || null;
@@ -714,7 +718,8 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const embedColor = getEmbedColor(message);
 
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
-    const mods_used = formatMods(score.mods, isLazer);
+    const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
+    const mods_used = formatMods(score.mods, isLazer, isDroid);
 
     let compVal = pre_calculated.map_completion;
     if (compVal < 1.0) compVal = compVal * 100;
@@ -739,7 +744,6 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     let resolvedOsuId = null;
     let uploaderName = '';
     let isDifferentUser = false;
-    const isDroid = score.user?.server === 'droid' || parsed_args?.server === 'droid';
 
     if (!isDroid) {
         // Primero verificamos si el jugador de la score existe online
@@ -838,8 +842,9 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
         const globalIndex = startIndex + i + 1;
 
         const grade_emoji = getGradeEmoji(score.rank, score.passed);
+        const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
         const isLazer = isLazerScore(score);
-        const mods_used = formatMods(score.mods, isLazer);
+        const mods_used = formatMods(score.mods, isLazer, isDroid);
         const legacy_score = getFormattedScore(score, scoreMode, locale);
         const accuracy = formatDecimal(score.accuracy * 100, locale, 2);
         const max_combo = score.max_combo;
@@ -930,9 +935,10 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
  */
 function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, user_id, beatmap_id, locale = 'es', uploadMetadata = null) {
     const embedColor = getEmbedColor(message);
+    const isDroid = recent_scores.user?.server === 'droid' || recent_scores.server === 'droid' || recent_scores.droid_mods !== undefined;
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const isLazer = isLazerScore(recent_scores);
-    const mods_used = formatMods(recent_scores.mods, isLazer);
+    const mods_used = formatMods(recent_scores.mods, isLazer, isDroid);
     const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
 
     const stats = recent_scores.statistics || {};

@@ -359,7 +359,7 @@ async function run(messages, args) {
                         const stars = (targetScore.beatmap?.difficulty_rating || beatmap_metadata.difficulty_rating)
                             ? ` (${(targetScore.beatmap?.difficulty_rating || beatmap_metadata.difficulty_rating).toFixed(2)}★)`
                             : '';
-                        const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods)}` : '';
+                        const modsString = targetScore.mods && targetScore.mods.length > 0 ? ` +${formatMods(targetScore.mods, targetScore)}` : '';
                         const accuracy = targetScore.accuracy ? ` | Accuracy: ${(targetScore.accuracy * 100).toFixed(2)}%` : '';
                         const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
 

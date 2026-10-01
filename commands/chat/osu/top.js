@@ -607,7 +607,7 @@ async function run(messages, args, options = {}) {
                         const stars = (currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating)
                             ? ` (${(currentScore.beatmap?.difficulty_rating || beatmapInfo?.difficulty_rating).toFixed(2)}★)`
                             : '';
-                        const modsString = currentScore.mods && currentScore.mods.length > 0 ? ` +${formatMods(currentScore.mods)}` : '';
+                        const modsString = currentScore.mods && currentScore.mods.length > 0 ? ` +${formatMods(currentScore.mods, currentScore)}` : '';
                         const accuracy = currentScore.accuracy ? ` | Accuracy: ${(currentScore.accuracy * 100).toFixed(2)}%` : '';
                         const customDescription = `${username} on ${artist} - ${title} [${version}]${stars}${modsString}${accuracy}`;
 

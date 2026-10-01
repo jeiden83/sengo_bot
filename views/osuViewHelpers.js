@@ -39,11 +39,28 @@ function isLazerScore(score) {
     return total > 0 && legacy > 0 && total !== legacy;
 }
 
-function formatMods(mods, isLazer) {
+function formatMods(mods, isLazer, isDroid = false) {
     if (!mods) return `<:NM:${emoji_mods["NM"]}>`;
 
-    const modsCopy = [...mods];
-    if (!isLazer) {
+    let effectiveIsLazer = false;
+    let isDroidServer = false;
+
+    if (typeof isLazer === 'object' && isLazer !== null) {
+        effectiveIsLazer = isLazerScore(isLazer);
+        isDroidServer = isLazer.server === 'droid' || isLazer.user?.server === 'droid' || isLazer.droid_mods !== undefined;
+    } else {
+        effectiveIsLazer = Boolean(isLazer);
+        isDroidServer = isDroid === true ||
+            isDroid === 'droid' ||
+            (typeof isDroid === 'object' && isDroid !== null && (isDroid.server === 'droid' || isDroid.user?.server === 'droid' || isDroid.droid_mods !== undefined)) ||
+            isLazer === 'droid';
+    }
+
+    let modsCopy = [...mods];
+    if (isDroidServer) {
+        // En osu!droid no hay separación de servidores o clientes (Bancho vs Lazer), por lo que nunca se denota con el mod CL
+        modsCopy = modsCopy.filter(m => (m.acronym || m) !== 'CL');
+    } else if (!effectiveIsLazer) {
         const hasCL = modsCopy.some(m => (m.acronym || m) === 'CL');
         if (!hasCL) {
             const isObjectMod = modsCopy.length > 0 && typeof modsCopy[0] === 'object';

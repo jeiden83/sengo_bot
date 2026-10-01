@@ -101,6 +101,12 @@ function getTopUsedMods(scores = [], limit = 4) {
         // Excluir mods técnicos de replay como RV6 / RV
         modList = modList.filter(m => !EXCLUDED_MODS.has(String(m).toUpperCase()));
 
+        // En osu!droid no hay separación de servidores/clientes (Bancho vs Lazer), no se denota CL
+        const isDroidScore = s.user?.server === 'droid' || s.server === 'droid' || s.droid_mods !== undefined;
+        if (isDroidScore) {
+            modList = modList.filter(m => String(m).toUpperCase() !== 'CL');
+        }
+
         if (modList.length === 0) {
             counts["NM"] = (counts["NM"] || 0) + 1;
         } else {
@@ -1671,6 +1677,7 @@ module.exports = {
     analyzeSkills,
     analyzeSkillsBreakdown,
     generateCardTitle,
+    getTopUsedMods,
     difficultySpectrum,
     getDifficultyColor,
     getDifficultyOutlineColor,
