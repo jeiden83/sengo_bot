@@ -986,6 +986,16 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         formatRow(t(locale, 'entre.stat_playcount_short'), pcAStr, pcBStr, markersPc, markersPc)
     ];
 
+    if (medA > 0 || medB > 0) {
+        generalRows.push(formatRow(t(locale, 'entre.stat_medals_short'), medalsAStr, medalsBStr, markersMedals, markersMedals));
+    }
+    if (rkA > 0 || rkB > 0) {
+        generalRows.push(formatRow(t(locale, 'entre.stat_ranked_maps_short'), rankedMapsAStr, rankedMapsBStr, markersRankedMaps, markersRankedMaps));
+    }
+    if (kdA > 0 || kdB > 0) {
+        generalRows.push(formatRow(t(locale, 'entre.stat_kudosu_short'), kudosuAStr, kudosuBStr, markersKudosu, markersKudosu));
+    }
+
     const skillRows = [];
     skillRows.push(formatRow(t(locale, 'entre.stat_top_play_short'), topPpAStr, topPpBStr, markersTopPp, markersTopPp));
     if (avgPpA > 0 || avgPpB > 0) {
@@ -1000,22 +1010,11 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     if (peakValA > 0 || peakValB > 0) {
         skillRows.push(formatRow(t(locale, 'entre.stat_peak_skill_short'), topSkillAStr, topSkillBStr, markersPeakSkill, markersPeakSkill));
     }
-
-    const communityRows = [];
     if (natA > 0 || natB > 0) {
-        communityRows.push(formatRow(t(locale, 'entre.stat_national_tops_short'), nationalTopsAStr, nationalTopsBStr, markersNationalTops, markersNationalTops));
+        skillRows.push(formatRow(t(locale, 'entre.stat_national_tops_short'), nationalTopsAStr, nationalTopsBStr, markersNationalTops, markersNationalTops));
     }
     if (snA > 0 || snB > 0) {
-        communityRows.push(formatRow(t(locale, 'entre.stat_snipes_short'), snipesAStr, snipesBStr, markersSnipes, markersSnipes));
-    }
-    if (rkA > 0 || rkB > 0) {
-        communityRows.push(formatRow(t(locale, 'entre.stat_ranked_maps_short'), rankedMapsAStr, rankedMapsBStr, markersRankedMaps, markersRankedMaps));
-    }
-    if (kdA > 0 || kdB > 0) {
-        communityRows.push(formatRow(t(locale, 'entre.stat_kudosu_short'), kudosuAStr, kudosuBStr, markersKudosu, markersKudosu));
-    }
-    if (medA > 0 || medB > 0) {
-        communityRows.push(formatRow(t(locale, 'entre.stat_medals_short'), medalsAStr, medalsBStr, markersMedals, markersMedals));
+        skillRows.push(formatRow(t(locale, 'entre.stat_snipes_short'), snipesAStr, snipesBStr, markersSnipes, markersSnipes));
     }
 
     const sections = [];
@@ -1026,12 +1025,6 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         sections.push('');
         sections.push(formatSection(t(locale, 'entre.section_skills')));
         sections.push(...skillRows);
-    }
-
-    if (communityRows.length > 0) {
-        sections.push('');
-        sections.push(formatSection(t(locale, 'entre.section_community')));
-        sections.push(...communityRows);
     }
 
     const blockRows = sections.join('\n');

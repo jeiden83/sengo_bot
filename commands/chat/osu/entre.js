@@ -262,19 +262,18 @@ async function run(messages, args) {
     const pcB = userB.statistics?.play_count || 0;
     compareMetric(pcA, pcB, true);
 
+    if (medalsA > 0 || medalsB > 0) compareMetric(medalsA, medalsB, true);
+    if (rankedMapsA > 0 || rankedMapsB > 0) compareMetric(rankedMapsA, rankedMapsB, true);
+    if (kudosuA > 0 || kudosuB > 0) compareMetric(kudosuA, kudosuB, true);
+
     // --- SECCIÓN 2: RENDIMIENTO & SKILLS ---
     compareMetric(topPpA, topPpB, true);
     if (avgPpA > 0 || avgPpB > 0) compareMetric(avgPpA, avgPpB, true);
     if (avgSrA > 0 || avgSrB > 0) compareMetric(avgSrA, avgSrB, true);
     if (sumSkillsA > 0 || sumSkillsB > 0) compareMetric(sumSkillsA, sumSkillsB, true);
     if (topSkillA.val > 0 || topSkillB.val > 0) compareMetric(topSkillA.val, topSkillB.val, true);
-
-    // --- SECCIÓN 3: ECOSISTEMA SENGO & COMUNIDAD ---
     if (natA > 0 || natB > 0) compareMetric(natA, natB, true);
     if (snipesA > 0 || snipesB > 0) compareMetric(snipesA, snipesB, true);
-    if (rankedMapsA > 0 || rankedMapsB > 0) compareMetric(rankedMapsA, rankedMapsB, true);
-    if (kudosuA > 0 || kudosuB > 0) compareMetric(kudosuA, kudosuB, true);
-    if (medalsA > 0 || medalsB > 0) compareMetric(medalsA, medalsB, true);
 
     const extra = {
         topPpA,
