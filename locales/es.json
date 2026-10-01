@@ -1460,8 +1460,7 @@
     "err_need_oauth": "❌ Debes vincular tu cuenta con OAuth primero usando `s.link` para poder utilizar este comando."
   },
   "analyze": {
-    "embed_title": "🔍 Análisis de Replay: {title} [{version}]",
-    "embed_desc": "Análisis cinético y desglose de la partida de **{player}** en **{artist} - {title} [{version}]**.",
+    "embed_title": "{artist} - {title} [{version}]",
     "field_stats": "📊 Estadísticas de la Play",
     "field_performance": "⚡ Rendimiento & PP",
     "field_tapping": "⏱️ Tapping & Inestabilidad",
@@ -1470,6 +1469,7 @@
     "label_score": "Puntuación",
     "label_combo": "Combo Máx.",
     "label_hits": "300 / 100 / 50 / Miss",
+    "label_pp_fc": "PP si FC ({mods})",
     "ur_relax": "N/A (Mod Relax)",
     "offset_late": "Tarde",
     "offset_early": "Temprano",

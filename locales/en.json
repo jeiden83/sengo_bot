@@ -1460,8 +1460,7 @@
     "err_need_oauth": "❌ You must link your account with OAuth first using `s.link` to use this command."
   },
   "analyze": {
-    "embed_title": "🔍 Replay Analysis: {title} [{version}]",
-    "embed_desc": "Kinematic analysis and play breakdown for **{player}** on **{artist} - {title} [{version}]**.",
+    "embed_title": "{artist} - {title} [{version}]",
     "field_stats": "📊 Play Statistics",
     "field_performance": "⚡ Performance & PP",
     "field_tapping": "⏱️ Tapping & Instability",
@@ -1470,6 +1469,7 @@
     "label_score": "Score",
     "label_combo": "Max Combo",
     "label_hits": "300 / 100 / 50 / Miss",
+    "label_pp_fc": "FC PP ({mods})",
     "ur_relax": "N/A (Relax Mod)",
     "offset_late": "Late",
     "offset_early": "Early",

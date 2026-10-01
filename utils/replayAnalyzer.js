@@ -280,51 +280,38 @@ function analyzeReplayPerformance({ replay, mapData }) {
  * - Zonas críticas destacadas con badges #1, #2, #3.
  */
 function renderAnalyzeChart({ title, artist, version, player, modsStr, durationMs, misses, topSections, comboPeak, firstChokeTime, strains, totalMissCount }) {
-    const width = 900;
-    const height = 270;
+    // Resolución 2x HiDPI (1800x540) para máxima nitidez en Discord
+    const scale = 2;
+    const width = 900 * scale;
+    const height = 270 * scale;
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext('2d');
 
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
+    // Fondo degradado Dark OLED
     const bgGrad = ctx.createLinearGradient(0, 0, width, height);
-    bgGrad.addColorStop(0, '#0c0e17');
-    bgGrad.addColorStop(1, '#16192b');
+    bgGrad.addColorStop(0, '#090a12');
+    bgGrad.addColorStop(0.5, '#0e111d');
+    bgGrad.addColorStop(1, '#141829');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, width, height);
 
-    ctx.strokeStyle = '#272b43';
-    ctx.lineWidth = 1.5;
-    ctx.strokeRect(1, 1, width - 2, height - 2);
+    // Borde exterior
+    ctx.strokeStyle = '#232840';
+    ctx.lineWidth = 2 * scale;
+    ctx.strokeRect(scale, scale, width - 2 * scale, height - 2 * scale);
 
-    const padX = 50;
-    const chartY = 75;
-    const chartH = 135;
+    const padX = 50 * scale;
+    const chartY = 75 * scale;
+    const chartH = 135 * scale;
     const chartW = width - padX * 2;
     const totalMs = Math.max(1, durationMs);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = 'bold 16px sans-serif';
-    ctx.fillText(`${player}  •  ${modsStr ? `+${modsStr}` : 'No Mod'}`, padX, 35);
-
-    ctx.fillStyle = '#8f9bbd';
-    ctx.font = '13px sans-serif';
-    const subTitle = `${artist} - ${title} [${version}]`;
-    const truncatedSub = subTitle.length > 55 ? subTitle.slice(0, 52) + '...' : subTitle;
-    ctx.fillText(truncatedSub, padX, 55);
-
-    ctx.textAlign = 'right';
-    ctx.fillStyle = '#ff5555';
-    ctx.font = 'bold 14px sans-serif';
-    const displayMisses = totalMissCount !== undefined ? totalMissCount : misses.length;
-    ctx.fillText(`❌ ${displayMisses} Misses`, width - padX, 35);
-
-    ctx.fillStyle = '#e0af68';
-    ctx.font = '13px sans-serif';
-    const chokeStr = firstChokeTime ? `Primer Choke: ${formatTime(firstChokeTime)}` : 'Full Combo';
-    ctx.fillText(`Max Combo: ${comboPeak}x  •  ${chokeStr}`, width - padX, 55);
-    ctx.textAlign = 'left';
-
-    ctx.strokeStyle = '#1b1e33';
-    ctx.lineWidth = 1;
+    // Rejilla horizontal
+    ctx.strokeStyle = '#181b2e';
+    ctx.lineWidth = 1 * scale;
     for (let i = 0; i <= 4; i++) {
         const y = chartY + (chartH / 4) * i;
         ctx.beginPath();
@@ -333,6 +320,31 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
         ctx.stroke();
     }
 
+    // Cabecera izquierda: Jugador + Mods y Título de Canción
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `bold ${17 * scale}px "Segoe UI", sans-serif`;
+    ctx.fillText(`${player}  •  ${modsStr ? `+${modsStr}` : 'No Mod'}`, padX, 35 * scale);
+
+    ctx.fillStyle = '#8f9bbd';
+    ctx.font = `${13 * scale}px "Segoe UI", sans-serif`;
+    const fullSubTitle = `${artist} - ${title} [${version}]`;
+    const truncatedSub = fullSubTitle.length > 58 ? fullSubTitle.slice(0, 55) + '...' : fullSubTitle;
+    ctx.fillText(truncatedSub, padX, 55 * scale);
+
+    // Cabecera derecha: Conteo de Misses y Combo / Choke
+    ctx.textAlign = 'right';
+    const displayMisses = totalMissCount !== undefined ? totalMissCount : misses.length;
+    ctx.fillStyle = '#ff4d6d';
+    ctx.font = `bold ${15 * scale}px "Segoe UI", sans-serif`;
+    ctx.fillText(`❌ ${displayMisses} Misses`, width - padX, 35 * scale);
+
+    ctx.fillStyle = '#e0af68';
+    ctx.font = `${13 * scale}px "Segoe UI", sans-serif`;
+    const chokeStr = firstChokeTime ? `Primer Choke: ${formatTime(firstChokeTime)}` : 'Full Combo';
+    ctx.fillText(`Max Combo: ${comboPeak}x   •   ${chokeStr}`, width - padX, 55 * scale);
+    ctx.textAlign = 'left';
+
+    // 1. Curva de Dificultad (Strains combinados Aim + Speed)
     let combinedStrains = [];
     if (strains && strains.aim && strains.speed && strains.aim.length > 0) {
         for (let i = 0; i < strains.aim.length; i++) {
@@ -344,9 +356,11 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
         const maxStrain = Math.max(1, ...combinedStrains);
         const numPoints = combinedStrains.length;
 
+        // Degradado de área
         const strainGrad = ctx.createLinearGradient(0, chartY, 0, chartY + chartH);
-        strainGrad.addColorStop(0, 'rgba(122, 162, 247, 0.40)');
-        strainGrad.addColorStop(1, 'rgba(122, 162, 247, 0.02)');
+        strainGrad.addColorStop(0, 'rgba(122, 162, 247, 0.42)');
+        strainGrad.addColorStop(0.6, 'rgba(122, 162, 247, 0.15)');
+        strainGrad.addColorStop(1, 'rgba(122, 162, 247, 0.00)');
 
         ctx.fillStyle = strainGrad;
         ctx.beginPath();
@@ -354,87 +368,136 @@ function renderAnalyzeChart({ title, artist, version, player, modsStr, durationM
         for (let i = 0; i < numPoints; i++) {
             const px = padX + (i / (numPoints - 1)) * chartW;
             const norm = combinedStrains[i] / maxStrain;
-            const py = chartY + chartH - (norm * (chartH - 8));
+            const py = chartY + chartH - (norm * (chartH - 8 * scale));
             ctx.lineTo(px, py);
         }
         ctx.lineTo(padX + chartW, chartY + chartH);
         ctx.closePath();
         ctx.fill();
 
+        // Línea trazada con brillo sutil
+        ctx.save();
+        ctx.shadowColor = 'rgba(122, 162, 247, 0.5)';
+        ctx.shadowBlur = 6 * scale;
         ctx.strokeStyle = '#7aa2f7';
-        ctx.lineWidth = 1.5;
+        ctx.lineWidth = 1.8 * scale;
         ctx.beginPath();
         for (let i = 0; i < numPoints; i++) {
             const px = padX + (i / (numPoints - 1)) * chartW;
             const norm = combinedStrains[i] / maxStrain;
-            const py = chartY + chartH - (norm * (chartH - 8));
+            const py = chartY + chartH - (norm * (chartH - 8 * scale));
             if (i === 0) ctx.moveTo(px, py);
             else ctx.lineTo(px, py);
         }
         ctx.stroke();
+        ctx.restore();
     }
 
+    // 2. Dibujar las 3 Secciones Críticas de Misses (Columnas rojas con pill badge)
     topSections.forEach((sec, idx) => {
         const x1 = padX + (sec.startTime / totalMs) * chartW;
         const x2 = padX + (sec.endTime / totalMs) * chartW;
-        const w = Math.max(14, x2 - x1);
+        const w = Math.max(18 * scale, x2 - x1);
 
-        ctx.fillStyle = 'rgba(255, 60, 60, 0.20)';
+        ctx.fillStyle = 'rgba(255, 60, 90, 0.16)';
         ctx.fillRect(x1, chartY, w, chartH);
 
-        ctx.strokeStyle = 'rgba(255, 75, 75, 0.7)';
-        ctx.lineWidth = 1.2;
+        ctx.strokeStyle = 'rgba(255, 80, 110, 0.7)';
+        ctx.lineWidth = 1.2 * scale;
         ctx.strokeRect(x1, chartY, w, chartH);
 
-        ctx.fillStyle = '#ff757f';
-        ctx.font = 'bold 11px sans-serif';
+        // Pastilla distintiva
+        const pillW = 62 * scale;
+        const pillH = 18 * scale;
+        const pillX = x1 + (w - pillW) / 2;
+        const pillY = chartY + 6 * scale;
+
+        ctx.fillStyle = 'rgba(255, 50, 80, 0.85)';
+        ctx.beginPath();
+        ctx.roundRect(pillX, pillY, pillW, pillH, 4 * scale);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = `bold ${10.5 * scale}px "Segoe UI", sans-serif`;
         ctx.textAlign = 'center';
-        ctx.fillText(`#${idx + 1} (${sec.count}❌)`, x1 + w / 2, chartY + 16);
+        ctx.fillText(`#${idx + 1} (${sec.count}❌)`, pillX + pillW / 2, pillY + 13 * scale);
     });
 
+    // 3. Línea vertical de Primer Choke (Dorado discontinuo)
+    if (firstChokeTime && firstChokeTime > 0) {
+        const chokeX = padX + (firstChokeTime / totalMs) * chartW;
+        ctx.save();
+        ctx.setLineDash([4 * scale, 3 * scale]);
+        ctx.strokeStyle = 'rgba(224, 175, 104, 0.85)';
+        ctx.lineWidth = 1.5 * scale;
+        ctx.beginPath();
+        ctx.moveTo(chokeX, chartY);
+        ctx.lineTo(chokeX, chartY + chartH);
+        ctx.stroke();
+
+        ctx.setLineDash([]);
+        ctx.fillStyle = '#e0af68';
+        ctx.font = `bold ${10 * scale}px "Segoe UI", sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText('⚡ CHOKE', chokeX, chartY - 6 * scale);
+        ctx.restore();
+    }
+
+    // 4. Marcadores de Misses (Líneas verticales neon y puntos con núcleo blanco)
     misses.forEach(m => {
         const px = padX + (m.time / totalMs) * chartW;
 
-        ctx.strokeStyle = 'rgba(247, 118, 142, 0.55)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = 'rgba(255, 77, 109, 0.65)';
+        ctx.lineWidth = 1.6 * scale;
         ctx.beginPath();
-        ctx.moveTo(px, chartY + chartH - 2);
-        ctx.lineTo(px, chartY + chartH - 26);
+        ctx.moveTo(px, chartY + chartH - 2 * scale);
+        ctx.lineTo(px, chartY + chartH - 26 * scale);
         ctx.stroke();
 
-        ctx.fillStyle = '#ff0033';
+        ctx.fillStyle = '#ff1744';
         ctx.beginPath();
-        ctx.arc(px, chartY + chartH - 26, 3.5, 0, Math.PI * 2);
+        ctx.arc(px, chartY + chartH - 26 * scale, 3.8 * scale, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1;
-        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(px, chartY + chartH - 26 * scale, 1.6 * scale, 0, Math.PI * 2);
+        ctx.fill();
     });
 
+    // 5. Eje de Tiempo (Ticks y minutos:segundos)
     ctx.textAlign = 'center';
     ctx.fillStyle = '#787c99';
-    ctx.font = '11px sans-serif';
+    ctx.font = `${11 * scale}px "Segoe UI", sans-serif`;
     const numTicks = 6;
     for (let i = 0; i <= numTicks; i++) {
         const t = (totalMs / numTicks) * i;
         const px = padX + (i / numTicks) * chartW;
-        ctx.fillText(formatTime(t), px, chartY + chartH + 20);
+        ctx.fillText(formatTime(t), px, chartY + chartH + 20 * scale);
 
         ctx.strokeStyle = '#3e4466';
-        ctx.lineWidth = 1;
+        ctx.lineWidth = 1 * scale;
         ctx.beginPath();
         ctx.moveTo(px, chartY + chartH);
-        ctx.lineTo(px, chartY + chartH + 5);
+        ctx.lineTo(px, chartY + chartH + 5 * scale);
         ctx.stroke();
     }
 
+    // Leyenda inferior
     ctx.textAlign = 'left';
+    ctx.font = `${11 * scale}px "Segoe UI", sans-serif`;
+
     ctx.fillStyle = '#7aa2f7';
-    ctx.fillText('■ Dificultad (Strain)', padX, height - 12);
-    ctx.fillStyle = '#ff5555';
-    ctx.fillText('● Miss registrado', padX + 170, height - 12);
-    ctx.fillStyle = '#ff757f';
-    ctx.fillText('▨ Zona de mayor fallo', padX + 330, height - 12);
+    ctx.fillText('■ Dificultad (Strain)', padX, height - 12 * scale);
+
+    ctx.fillStyle = '#ff1744';
+    ctx.fillText('● Miss registrado', padX + 180 * scale, height - 12 * scale);
+
+    ctx.fillStyle = '#ff4d6d';
+    ctx.fillText('▨ Zona crítica de fallos', padX + 350 * scale, height - 12 * scale);
+
+    ctx.fillStyle = '#e0af68';
+    ctx.fillText('┊ Primer Choke', padX + 540 * scale, height - 12 * scale);
 
     return canvas.toBuffer('image/png');
 }

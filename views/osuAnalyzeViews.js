@@ -13,7 +13,7 @@ function doOsuAnalyzeEmbed({ message, replay, mapData, analysis, ppData, beatmap
     const artist = mapData.artist || 'Unknown Artist';
     const version = mapData.version || 'Normal';
     const player = replay.playerName || 'Player';
-    const modsStr = replay.modsStr ? `+${replay.modsStr}` : 'No Mod';
+    const modsStr = replay.modsStr && replay.modsStr !== 'NM' ? `+${replay.modsStr}` : 'No Mod';
 
     const accuracy = formatDecimal(replay.accuracy !== undefined ? replay.accuracy * 100 : 0, locale, 2) + '%';
     const scoreStr = formatNumber(replay.totalScore || 0, locale);
@@ -53,14 +53,14 @@ function doOsuAnalyzeEmbed({ message, replay, mapData, analysis, ppData, beatmap
     const diagnosisText = t(locale, `analyze.${analysis.patternDiagnosisKey}`);
 
     const embed = new EmbedBuilder()
-        .setTitle(t(locale, 'analyze.embed_title', { title, version }))
+        .setTitle(t(locale, 'analyze.embed_title', { artist, title, version }))
         .setURL(`https://osu.ppy.sh/b/${beatmapId}`)
         .setColor(embedColor)
         .setAuthor({
             name: `${player} (${modsStr})`,
-            iconURL: `https://a.ppy.sh/${replay.user_id || 0}`
+            iconURL: `https://a.ppy.sh/${replay.user_id || 0}`,
+            url: `https://osu.ppy.sh/users/${replay.user_id || 0}`
         })
-        .setDescription(t(locale, 'analyze.embed_desc', { artist, title, version, player }))
         .addFields(
             {
                 name: t(locale, 'analyze.field_stats'),
@@ -75,7 +75,7 @@ function doOsuAnalyzeEmbed({ message, replay, mapData, analysis, ppData, beatmap
                 name: t(locale, 'analyze.field_performance'),
                 value: [
                     `• **PP:** **${ppActual}**`,
-                    `• **PP si FC:** **${ppFc}**`,
+                    `• **${t(locale, 'analyze.label_pp_fc', { mods: modsStr })}:** **${ppFc}**`,
                     `• **Primer Choke:** \`${firstChokeStr}\``
                 ].join('\n'),
                 inline: true
