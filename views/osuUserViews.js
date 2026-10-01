@@ -740,7 +740,7 @@ function doOsuBnListEmbed(message, bnUsers, page, totalPages, playmodeFilter, on
 /**
  * Renderiza el embed para la comparación de estadísticas (s.entre)
  */
-function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale = 'es', topPpA = 0, topPpB = 0, nationalTopsA = null, nationalTopsB = null) {
+function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, winsB, locale = 'es', extraOrLegacyTopPpA = 0, legacyTopPpB = 0, legacyNatA = null, legacyNatB = null) {
     const embedColor = getEmbedColor(message);
     const flagA = getFlagEmoji(userA.country_code);
     const flagB = getFlagEmoji(userB.country_code);
@@ -754,14 +754,32 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         return formatNumber(num, loc);
     };
 
-    // PP
+    let extra = {};
+    if (typeof extraOrLegacyTopPpA === 'object' && extraOrLegacyTopPpA !== null) {
+        extra = extraOrLegacyTopPpA;
+    } else {
+        extra = {
+            topPpA: extraOrLegacyTopPpA,
+            topPpB: legacyTopPpB,
+            nationalTopsA: legacyNatA,
+            nationalTopsB: legacyNatB
+        };
+    }
+
+    function getMarkers(valA, valB) {
+        if (valA === valB) return { a: '', a_end: '', b: '', b_end: '' };
+        return valA > valB
+            ? { a: '🏆 **', a_end: '**', b: '', b_end: '' }
+            : { a: '', a_end: '', b: '🏆 **', b_end: '**' };
+    }
+
+    // --- SECCIÓN 1: PERFIL GENERAL ---
     const ppA = userA.statistics.pp || 0;
     const ppB = userB.statistics.pp || 0;
     const markersPP = getMarkers(ppA, ppB);
     const ppAStr = formatNumber(ppA, locale) + ' pp';
     const ppBStr = formatNumber(ppB, locale) + ' pp';
 
-    // Rank
     const rankA = userA.statistics.global_rank;
     const rankB = userB.statistics.global_rank;
     let markersRank = { a: '', a_end: '', b: '', b_end: '' };
@@ -779,69 +797,103 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     const rankAStr = rankA ? '#' + formatNumber(rankA, locale) : 'N/A';
     const rankBStr = rankB ? '#' + formatNumber(rankB, locale) : 'N/A';
 
-    // Max Combo
     const mcA = userA.statistics.maximum_combo || 0;
     const mcB = userB.statistics.maximum_combo || 0;
     const markersMc = getMarkers(mcA, mcB);
     const mcAStr = formatNumber(mcA, locale) + 'x';
     const mcBStr = formatNumber(mcB, locale) + 'x';
 
-    // Accuracy
     const accA = userA.statistics.hit_accuracy || 0;
     const accB = userB.statistics.hit_accuracy || 0;
     const markersAcc = getMarkers(accA, accB);
     const accAStr = formatDecimal(accA, locale, 2) + '%';
     const accBStr = formatDecimal(accB, locale, 2) + '%';
 
-    // Play Count
     const pcA = userA.statistics.play_count || 0;
     const pcB = userB.statistics.play_count || 0;
     const markersPc = getMarkers(pcA, pcB);
     const pcAStr = formatNumber(pcA, locale);
     const pcBStr = formatNumber(pcB, locale);
 
-    // Play Time
     const ptA = userA.statistics.play_time || 0;
     const ptB = userB.statistics.play_time || 0;
     const markersPt = getMarkers(ptA, ptB);
     const ptAStr = formatNumber(Math.floor(ptA / 3600), locale) + ' hrs';
     const ptBStr = formatNumber(Math.floor(ptB / 3600), locale) + ' hrs';
 
-    // Ranked Score
     const rsA = userA.statistics.ranked_score || 0;
     const rsB = userB.statistics.ranked_score || 0;
     const markersRs = getMarkers(rsA, rsB);
     const rsAStr = formatCompact(rsA, locale);
     const rsBStr = formatCompact(rsB, locale);
 
-    // Top PP
-    const markersTopPp = getMarkers(topPpA, topPpB);
-    const topPpAStr = topPpA > 0 ? formatDecimal(topPpA, locale, 1) + ' pp' : '0 pp';
-    const topPpBStr = topPpB > 0 ? formatDecimal(topPpB, locale, 1) + ' pp' : '0 pp';
-
-    // Level
     const lvlA = (userA.statistics.level?.current || 0) + (userA.statistics.level?.progress || 0) / 100;
     const lvlB = (userB.statistics.level?.current || 0) + (userB.statistics.level?.progress || 0) / 100;
     const markersLvl = getMarkers(lvlA, lvlB);
     const lvlAStr = formatDecimal(lvlA, locale, 2);
     const lvlBStr = formatDecimal(lvlB, locale, 2);
 
-    // National Tops (optional)
-    let nationalTopsAStr = '';
-    let nationalTopsBStr = '';
-    let markersNationalTops = { a: '', a_end: '', b: '', b_end: '' };
-    if (nationalTopsA !== null && nationalTopsB !== null) {
-        markersNationalTops = getMarkers(nationalTopsA, nationalTopsB);
-        nationalTopsAStr = formatNumber(nationalTopsA, locale);
-        nationalTopsBStr = formatNumber(nationalTopsB, locale);
-    }
+    // --- SECCIÓN 2: RENDIMIENTO & SKILLS (SENGO) ---
+    const topPpA = extra.topPpA || 0;
+    const topPpB = extra.topPpB || 0;
+    const markersTopPp = getMarkers(topPpA, topPpB);
+    const topPpAStr = topPpA > 0 ? formatDecimal(topPpA, locale, 1) + ' pp' : '0 pp';
+    const topPpBStr = topPpB > 0 ? formatDecimal(topPpB, locale, 1) + ' pp' : '0 pp';
 
-    function getMarkers(valA, valB) {
-        if (valA === valB) return { a: '', a_end: '', b: '', b_end: '' };
-        return valA > valB
-            ? { a: '🏆 **', a_end: '**', b: '', b_end: '' }
-            : { a: '', a_end: '', b: '🏆 **', b_end: '**' };
-    }
+    const avgPpA = extra.avgPpA || 0;
+    const avgPpB = extra.avgPpB || 0;
+    const markersAvgPp = getMarkers(avgPpA, avgPpB);
+    const avgPpAStr = avgPpA > 0 ? formatDecimal(avgPpA, locale, 1) + ' pp' : '-';
+    const avgPpBStr = avgPpB > 0 ? formatDecimal(avgPpB, locale, 1) + ' pp' : '-';
+
+    const avgSrA = extra.avgSrA || 0;
+    const avgSrB = extra.avgSrB || 0;
+    const markersAvgSr = getMarkers(avgSrA, avgSrB);
+    const avgSrAStr = avgSrA > 0 ? formatDecimal(avgSrA, locale, 2) + '★' : '-';
+    const avgSrBStr = avgSrB > 0 ? formatDecimal(avgSrB, locale, 2) + '★' : '-';
+
+    const sumSkillsA = extra.sumSkillsA || 0;
+    const sumSkillsB = extra.sumSkillsB || 0;
+    const markersSumSkills = getMarkers(sumSkillsA, sumSkillsB);
+    const sumSkillsAStr = sumSkillsA > 0 ? formatDecimal(sumSkillsA, locale, 1) : '-';
+    const sumSkillsBStr = sumSkillsB > 0 ? formatDecimal(sumSkillsB, locale, 1) : '-';
+
+    const peakValA = extra.topSkillA?.val || 0;
+    const peakValB = extra.topSkillB?.val || 0;
+    const markersPeakSkill = getMarkers(peakValA, peakValB);
+    const topSkillAStr = peakValA > 0 ? `${extra.topSkillA.key} ${formatDecimal(peakValA, locale, 1)}` : '-';
+    const topSkillBStr = peakValB > 0 ? `${extra.topSkillB.key} ${formatDecimal(peakValB, locale, 1)}` : '-';
+
+    // --- SECCIÓN 3: ECOSISTEMA SENGO & COMUNIDAD ---
+    const natA = extra.nationalTopsA || 0;
+    const natB = extra.nationalTopsB || 0;
+    const markersNationalTops = getMarkers(natA, natB);
+    const nationalTopsAStr = formatNumber(natA, locale);
+    const nationalTopsBStr = formatNumber(natB, locale);
+
+    const snA = extra.snipesA || 0;
+    const snB = extra.snipesB || 0;
+    const markersSnipes = getMarkers(snA, snB);
+    const snipesAStr = formatNumber(snA, locale);
+    const snipesBStr = formatNumber(snB, locale);
+
+    const rkA = extra.rankedMapsA || 0;
+    const rkB = extra.rankedMapsB || 0;
+    const markersRankedMaps = getMarkers(rkA, rkB);
+    const rankedMapsAStr = formatNumber(rkA, locale);
+    const rankedMapsBStr = formatNumber(rkB, locale);
+
+    const kdA = extra.kudosuA || 0;
+    const kdB = extra.kudosuB || 0;
+    const markersKudosu = getMarkers(kdA, kdB);
+    const kudosuAStr = formatNumber(kdA, locale);
+    const kudosuBStr = formatNumber(kdB, locale);
+
+    const medA = extra.medalsA || 0;
+    const medB = extra.medalsB || 0;
+    const markersMedals = getMarkers(medA, medB);
+    const medalsAStr = `${formatNumber(medA, locale)}/352`;
+    const medalsBStr = `${formatNumber(medB, locale)}/352`;
 
     let winnerText = '';
     if (winsA > winsB) {
@@ -873,11 +925,12 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         cyan: "\u001b[0;36m",
         greenBold: "\u001b[1;32m",
         red: "\u001b[0;31m",
-        white: "\u001b[0;37m"
+        white: "\u001b[0;37m",
+        purpleBold: "\u001b[1;35m"
     };
 
     const pad = (str, len, align = 'left') => {
-        const s = str || '';
+        const s = str != null ? String(str) : '';
         if (align === 'right') {
             return s.padStart(len);
         } else if (align === 'center') {
@@ -891,9 +944,9 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
     };
 
     const formatRow = (label, valA, valB, markerA, markerB) => {
-        const valACol = pad(valA, 10, 'right');
-        const labelCol = pad(label, 10, 'center');
-        const valBCol = pad(valB, 10, 'left');
+        const valACol = pad(valA, 11, 'right');
+        const labelCol = pad(label, 11, 'center');
+        const valBCol = pad(valB, 11, 'left');
 
         const coloredLabel = `${ansi.cyan}${labelCol}${ansi.reset}`;
 
@@ -917,23 +970,83 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         return `${coloredValA}  ${coloredLabel}  ${coloredValB}`;
     };
 
-    const rows = [
+    const formatSection = (title) => {
+        const totalW = 37;
+        return `${ansi.purpleBold}${pad('── ' + title + ' ──', totalW, 'center')}${ansi.reset}`;
+    };
+
+    const generalRows = [
         formatRow(t(locale, 'entre.stat_pp_short'), ppAStr, ppBStr, markersPP, markersPP),
         formatRow(t(locale, 'entre.stat_rank_short'), rankAStr, rankBStr, markersRank, markersRank),
-        formatRow(t(locale, 'entre.stat_max_combo_short'), mcAStr, mcBStr, markersMc, markersMc),
         formatRow(t(locale, 'entre.stat_acc_short'), accAStr, accBStr, markersAcc, markersAcc),
+        formatRow(t(locale, 'entre.stat_max_combo_short'), mcAStr, mcBStr, markersMc, markersMc),
         formatRow(t(locale, 'entre.stat_ranked_score_short'), rsAStr, rsBStr, markersRs, markersRs),
-        formatRow(t(locale, 'entre.stat_top_play_short'), topPpAStr, topPpBStr, markersTopPp, markersTopPp),
-        formatRow(t(locale, 'entre.stat_playcount_short'), pcAStr, pcBStr, markersPc, markersPc),
         formatRow(t(locale, 'entre.stat_playtime_short'), ptAStr, ptBStr, markersPt, markersPt),
-        formatRow(t(locale, 'entre.stat_level_short'), `Lv. ${lvlAStr}`, `Lv. ${lvlBStr}`, markersLvl, markersLvl)
+        formatRow(t(locale, 'entre.stat_level_short'), `Lv. ${lvlAStr}`, `Lv. ${lvlBStr}`, markersLvl, markersLvl),
+        formatRow(t(locale, 'entre.stat_playcount_short'), pcAStr, pcBStr, markersPc, markersPc)
     ];
 
-    if (nationalTopsA !== null && nationalTopsB !== null) {
-        rows.push(formatRow(t(locale, 'entre.stat_national_tops_short'), nationalTopsAStr, nationalTopsBStr, markersNationalTops, markersNationalTops));
+    const skillRows = [];
+    skillRows.push(formatRow(t(locale, 'entre.stat_top_play_short'), topPpAStr, topPpBStr, markersTopPp, markersTopPp));
+    if (avgPpA > 0 || avgPpB > 0) {
+        skillRows.push(formatRow(t(locale, 'entre.stat_avg_pp_short'), avgPpAStr, avgPpBStr, markersAvgPp, markersAvgPp));
+    }
+    if (avgSrA > 0 || avgSrB > 0) {
+        skillRows.push(formatRow(t(locale, 'entre.stat_avg_sr_short'), avgSrAStr, avgSrBStr, markersAvgSr, markersAvgSr));
+    }
+    if (sumSkillsA > 0 || sumSkillsB > 0) {
+        skillRows.push(formatRow(t(locale, 'entre.stat_skills_sum_short'), sumSkillsAStr, sumSkillsBStr, markersSumSkills, markersSumSkills));
+    }
+    if (peakValA > 0 || peakValB > 0) {
+        skillRows.push(formatRow(t(locale, 'entre.stat_peak_skill_short'), topSkillAStr, topSkillBStr, markersPeakSkill, markersPeakSkill));
     }
 
-    const blockRows = rows.join('\n');
+    const communityRows = [];
+    if (natA > 0 || natB > 0) {
+        communityRows.push(formatRow(t(locale, 'entre.stat_national_tops_short'), nationalTopsAStr, nationalTopsBStr, markersNationalTops, markersNationalTops));
+    }
+    if (snA > 0 || snB > 0) {
+        communityRows.push(formatRow(t(locale, 'entre.stat_snipes_short'), snipesAStr, snipesBStr, markersSnipes, markersSnipes));
+    }
+    if (rkA > 0 || rkB > 0) {
+        communityRows.push(formatRow(t(locale, 'entre.stat_ranked_maps_short'), rankedMapsAStr, rankedMapsBStr, markersRankedMaps, markersRankedMaps));
+    }
+    if (kdA > 0 || kdB > 0) {
+        communityRows.push(formatRow(t(locale, 'entre.stat_kudosu_short'), kudosuAStr, kudosuBStr, markersKudosu, markersKudosu));
+    }
+    if (medA > 0 || medB > 0) {
+        communityRows.push(formatRow(t(locale, 'entre.stat_medals_short'), medalsAStr, medalsBStr, markersMedals, markersMedals));
+    }
+
+    const sections = [];
+    sections.push(formatSection(t(locale, 'entre.section_general')));
+    sections.push(...generalRows);
+
+    if (skillRows.length > 0) {
+        sections.push('');
+        sections.push(formatSection(t(locale, 'entre.section_skills')));
+        sections.push(...skillRows);
+    }
+
+    if (communityRows.length > 0) {
+        sections.push('');
+        sections.push(formatSection(t(locale, 'entre.section_community')));
+        sections.push(...communityRows);
+    }
+
+    const blockRows = sections.join('\n');
+
+    let rivalryText = '';
+    const directA = extra.directAtoB || 0;
+    const directB = extra.directBtoA || 0;
+    if (directA > 0 || directB > 0) {
+        rivalryText = '\n' + t(locale, 'entre.rivalry_direct', {
+            userA: userA.username,
+            countA: directA,
+            userB: userB.username,
+            countB: directB
+        });
+    }
 
     const description = [
         descHeader,
@@ -941,7 +1054,7 @@ function doOsuCompareStatsEmbed(message, userA, userB, gamemode, server, winsA, 
         `\`\`\`ansi`,
         blockRows,
         `\`\`\``,
-        `\n${winnerText}`
+        `\n${winnerText}${rivalryText}`
     ].join('\n');
 
     return new EmbedBuilder()
