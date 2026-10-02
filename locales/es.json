@@ -2016,6 +2016,13 @@
     "err_no_map": "❌ No se encontró ningún mapa para simular. Por favor especifica un link/ID de mapa o responde a un mensaje con un mapa.",
     "err_fetch_map": "❌ Ocurrió un error al obtener la información del mapa para simular."
   },
+  "puedo": {
+    "embed_author": "🔍 ¿Me lo puedo pasar? • {username}",
+    "embed_footer": "Sengo • Diagnóstico Cinemático",
+    "err_no_map": "❌ No se encontró ningún beatmap para analizar. Especifica un link o responde a un mensaje con un mapa.",
+    "err_no_user": "❌ No se encontró tu cuenta de osu! vinculada ni el usuario especificado. Usa `s.link` para vincular tu cuenta.",
+    "err_fetch_map": "❌ No se pudo obtener la información del mapa seleccionado."
+  },
   "mapping_tracker": {
     "err_guild_only": "⚠️ Este comando solo se puede usar dentro de un servidor de Discord.",
     "err_no_channel": "⚠️ No hay un canal de tracking configurado en este servidor. Usa `s.mapper -track -canal #canal` primero.",

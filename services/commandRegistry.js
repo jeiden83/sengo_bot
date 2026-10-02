@@ -684,6 +684,11 @@ const COMMAND_DEFINITIONS = {
         category: "osu",
         flags: ['gamemode', 'beatmap', 'mods']
     },
+    puedo: {
+        intent: "Determinar si el usuario se puede pasar o fcear un beatmap (puedo, canipass, me lo paso, me lo puedo pasar, fcear, puedo fcear, paso este mapa, probabilidad de pasar)",
+        category: "osu",
+        flags: ['gamemode', 'beatmap', 'mods', 'target_user', 'target_mention']
+    },
     subir: {
         intent: "Calcular qué jugada o pp necesita para subir de rango o posición (subir, qué necesito para subir de rango, cuánto pp para subir puesto, qué play necesito para rankear)",
         category: "osu",

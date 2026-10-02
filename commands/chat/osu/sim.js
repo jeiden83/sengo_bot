@@ -451,7 +451,7 @@ async function run(messages, args) {
 }
 
 run.description = "Simula una jugada en un mapa para calcular su PP.";
-run.alias = ["simulate"];
+run.alias = { "simulate": {} };
 run.flags = ["-acc", "-combo", "-misses", "-modo", "-fc", "+mods", "-mods"];
 
 module.exports = { run, parseSimArgs, solveHits, description: run.description, alias: run.alias };

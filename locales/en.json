@@ -2012,6 +2012,13 @@
     "err_no_map": "❌ No beatmap found to simulate. Please specify a map link/ID or reply to a message containing a map.",
     "err_fetch_map": "❌ An error occurred while fetching beatmap data for simulation."
   },
+  "puedo": {
+    "embed_author": "🔍 Can I pass it? • {username}",
+    "embed_footer": "Sengo • Kinetic Performance Diagnostic",
+    "err_no_map": "❌ No beatmap found to analyze. Please specify a map link/ID or reply to a message containing a map.",
+    "err_no_user": "❌ Could not find your linked osu! account or the specified user. Use `s.link` to link your account.",
+    "err_fetch_map": "❌ Could not retrieve beatmap information for analysis."
+  },
   "mapping_tracker": {
     "err_guild_only": "⚠️ This command can only be used inside a Discord server.",
     "err_no_channel": "⚠️ No tracking channel configured in this server. Use `s.mapper -track -canal #channel` first.",
