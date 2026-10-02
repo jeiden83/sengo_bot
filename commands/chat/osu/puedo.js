@@ -23,22 +23,25 @@ function parsePuedoArgs(args) {
         const clean = arg.trim();
         const lower = clean.toLowerCase();
 
-        // 1. Beatmap URL o ID directo
-        const urlMatch = clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
-                         clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(?:osu|taiko|fruits|mania)\/(\d+)/);
+        // 1. Beatmap URL con modo específico (#osu/123, #taiko/123, etc.)
+        const modeUrlMatch = clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#(osu|taiko|fruits|mania)\/(\d+)/i);
+        if (modeUrlMatch) {
+            options.beatmapId = modeUrlMatch[2];
+            if (!options.mode) options.mode = modeUrlMatch[1].toLowerCase();
+            continue;
+        }
+
+        // Beatmap URL clásico o ID directo en URL
+        const urlMatch = clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/i) ||
+                         clean.match(/osu\.ppy\.sh\/beatmapsets\/\d+#\w+\/(\d+)/i);
         if (urlMatch) {
             options.beatmapId = urlMatch[1];
             continue;
         }
 
-        const setMatch = clean.match(/osu\.ppy\.sh\/beatmapsets\/(\d+)/);
+        const setMatch = clean.match(/osu\.ppy\.sh\/(?:beatmapsets|s)\/(\d+)/i);
         if (setMatch) {
             options.beatmapId = `set/${setMatch[1]}`;
-            continue;
-        }
-
-        if (/^\d{5,10}$/.test(clean) && !options.beatmapId) {
-            options.beatmapId = clean;
             continue;
         }
 
@@ -72,10 +75,36 @@ function parsePuedoArgs(args) {
         if (lower === '-mania') { options.mode = 'mania'; continue; }
         if (lower === '-std' || lower === '-osu') { options.mode = 'osu'; continue; }
 
-        // 4. Usuario o mención
-        if (clean.startsWith('<@') && clean.endsWith('>')) {
+        // 4. Usuario o mención explícita (-u, -user, perfil osu! o ID)
+        if ((lower === '-u' || lower === '-user' || lower === '--user') && i + 1 < argsList.length) {
+            options.targetUser = argsList[++i].trim();
+            continue;
+        }
+
+        const profileMatch = clean.match(/osu\.ppy\.sh\/u(?:sers)?\/([^\/\s\?#]+)/i);
+        if (profileMatch) {
+            try {
+                options.targetUser = decodeURIComponent(profileMatch[1]);
+            } catch {
+                options.targetUser = profileMatch[1];
+            }
+            continue;
+        }
+
+        if (/^<@!?\d+>$/.test(clean)) {
             const idMatch = clean.match(/\d+/);
             if (idMatch) options.targetUser = idMatch[0];
+            continue;
+        }
+
+        if (/^\d{17,20}$/.test(clean)) {
+            options.targetUser = clean;
+            continue;
+        }
+
+        // Si es número de 1 a 10 dígitos y no tenemos ID de mapa aún, asignar como mapa
+        if (/^\d{1,10}$/.test(clean) && !options.beatmapId) {
+            options.beatmapId = clean;
             continue;
         }
 
@@ -273,19 +302,59 @@ async function run(messages, args) {
 
     // Resolver usuario de osu!
     let osuUser = null;
+    let targetGamemode = options.mode;
+
     try {
         if (options.targetUser) {
-            osuUser = await OsuUserModel.getOsuUser({ username: [options.targetUser], gamemode: options.mode || 'osu', server: 'bancho' });
+            let target = options.targetUser;
+            // Si es un ID de Discord (mención o 17-20 dígitos)
+            if (/^\d{17,20}$/.test(target)) {
+                let linked = await OsuUserModel.getLinkedUser(res?.User, target);
+                if (!linked || !linked.osu_id) {
+                    const oauthRec = await OsuUserModel.getOAuthTokenRecord(target);
+                    if (oauthRec && oauthRec.osu_id) {
+                        linked = { osu_id: oauthRec.osu_id, username: oauthRec.username, main_gamemode: 'osu' };
+                    }
+                }
+                if (linked && (linked.osu_id || linked.username)) {
+                    target = String(linked.osu_id || linked.username);
+                    if (!targetGamemode && linked.main_gamemode) targetGamemode = linked.main_gamemode;
+                } else {
+                    return t(locale, 'general.err_discord_user_not_linked') || '❌ El usuario de Discord especificado no tiene su cuenta de osu! vinculada.';
+                }
+            }
+            osuUser = await OsuUserModel.getOsuUser({ username: [target], gamemode: targetGamemode || 'osu', server: 'bancho' });
         } else {
             // Intentar con usuario vinculado del autor
-            osuUser = await OsuUserModel.getOsuUser({ discord_id: message.author.id, gamemode: options.mode || 'osu', server: 'bancho' });
-            if (!osuUser || !osuUser.id) {
-                osuUser = await OsuUserModel.getOsuUser({ username: [message.author.username], gamemode: options.mode || 'osu', server: 'bancho' });
+            const authorDiscordId = message.author?.id;
+            let linked = authorDiscordId ? await OsuUserModel.getLinkedUser(res?.User, authorDiscordId) : null;
+            if (!linked || !linked.osu_id) {
+                const oauthRec = authorDiscordId ? await OsuUserModel.getOAuthTokenRecord(authorDiscordId) : null;
+                if (oauthRec && oauthRec.osu_id) {
+                    linked = { osu_id: oauthRec.osu_id, username: oauthRec.username, main_gamemode: 'osu' };
+                }
+            }
+
+            if (linked && (linked.osu_id || linked.username)) {
+                if (!targetGamemode && linked.main_gamemode) targetGamemode = linked.main_gamemode;
+                osuUser = await OsuUserModel.getOsuUser({ username: [String(linked.osu_id || linked.username)], gamemode: targetGamemode || 'osu', server: 'bancho' });
+            }
+
+            // Fallback: si no está vinculado, intentar con el username de Discord del autor
+            if (!osuUser || typeof osuUser === 'string' || !osuUser.id) {
+                if (message.author?.username) {
+                    const fallbackUser = await OsuUserModel.getOsuUser({ username: [message.author.username], gamemode: targetGamemode || 'osu', server: 'bancho' }).catch(() => null);
+                    if (fallbackUser && typeof fallbackUser !== 'string' && fallbackUser.id) {
+                        osuUser = fallbackUser;
+                    }
+                }
             }
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error('[s.puedo] Error al resolver usuario:', e);
+    }
 
-    if (!osuUser || !osuUser.id) {
+    if (!osuUser || typeof osuUser === 'string' || !osuUser.id) {
         return t(locale, 'puedo.err_no_user') || '❌ No se encontró tu cuenta de osu! vinculada ni el usuario especificado. Usa `s.link` para vincular tu cuenta.';
     }
 
@@ -320,7 +389,7 @@ async function run(messages, args) {
         return t(locale, 'puedo.err_fetch_map') || '❌ No se pudo obtener la información del mapa seleccionado.';
     }
 
-    const targetMode = options.mode || beatmapData.mode || 'osu';
+    const targetMode = targetGamemode || beatmapData.mode || osuUser.playmode || 'osu';
     const cleanMods = options.mods ? options.mods.toUpperCase().replace(/[^A-Z0-9]/g, '') : 'NM';
     const activeModsStr = cleanMods === '' ? 'NM' : cleanMods;
 
@@ -364,9 +433,8 @@ async function run(messages, args) {
         locale
     });
 
-    if (reply) {
-        reply.reply({ embeds: [embed] });
-        return;
+    if (reply && typeof reply.reply === 'function') {
+        return await reply.reply({ embeds: [embed] });
     }
     return { embeds: [embed] };
 }

@@ -450,6 +450,17 @@ async function getLinkedUser(User, discordId) {
             }
             return data;
         }
+
+        const oauthRecord = await getOAuthTokenRecord(discordId);
+        if (oauthRecord && oauthRecord.osu_id) {
+            return {
+                discord_id: discordId,
+                osu_id: oauthRecord.osu_id,
+                username: oauthRecord.username,
+                main_gamemode: 'osu',
+                is_supporter: !oauthRecord.is_supporter
+            };
+        }
         return null;
     } catch (err) {
         console.error(`Error al buscar vinculación para ${discordId} en OsuUserModel:`, err);
