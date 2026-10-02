@@ -2602,14 +2602,16 @@ async function downloadReplay(scoreId, mode = 'osu') {
         throw new Error("No token available");
     }
     
-    let downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
+    // Probar primero ruta directa de solo_score (Lazer / v2 moderno)
+    let downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
         headers: {
             'Authorization': `Bearer ${token}`
         }
     }), 10);
     
+    // Si falla, probar con ruta de ruleset clásico (legacy)
     if (!downloadRes.ok) {
-        downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
+        downloadRes = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -2617,10 +2619,44 @@ async function downloadReplay(scoreId, mode = 'osu') {
     }
     
     if (!downloadRes.ok) {
-        throw new Error(`osu! API returned ${downloadRes.status}`);
+        const err = new Error(`osu! API returned ${downloadRes.status}`);
+        err.status = downloadRes.status;
+        err.is404 = downloadRes.status === 404;
+        throw err;
     }
     
     return Buffer.from(await downloadRes.arrayBuffer());
+}
+
+/**
+ * Comprueba de forma ligera (HEAD) si el archivo de repetición ya está disponible en los servidores de osu!
+ * @param {string|number} scoreId ID de la puntuación
+ * @param {string} mode Modo de juego
+ * @returns {Promise<boolean>}
+ */
+async function checkReplayAvailable(scoreId, mode = 'osu') {
+    try {
+        await NewloadToken();
+        const tokenData = JSON.parse(await fs.readFile('./osu_api_extended_token.json', 'utf8'));
+        const token = tokenData?.access_token;
+        if (!token) return false;
+
+        let res = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${scoreId}/download`, {
+            method: 'HEAD',
+            headers: { 'Authorization': `Bearer ${token}` }
+        }), 10);
+
+        if (res.ok) return true;
+
+        res = await osuApiQueue.add(() => fetch(`https://osu.ppy.sh/api/v2/scores/${mode}/${scoreId}/download`, {
+            method: 'HEAD',
+            headers: { 'Authorization': `Bearer ${token}` }
+        }), 10);
+
+        return res.ok;
+    } catch {
+        return false;
+    }
 }
 
 const OsuUserModel = {
@@ -2640,6 +2676,7 @@ const OsuUserModel = {
     setQueue,
     getAllQueues,
     downloadReplay,
+    checkReplayAvailable,
     linkUser,
     unlinkUser,
     getLinkedUsers,

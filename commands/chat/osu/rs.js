@@ -764,8 +764,46 @@ async function run(messages, args) {
                 try {
                     const OsuUserModel = require('../../../models/OsuUserModel.js');
                     const scoreId = currentScore.id;
-                    const replayBuffer = await OsuUserModel.downloadReplay(scoreId, currentScore.mode || parser_res.parsed_args?.gamemode || 'osu');
+                    const scoreGamemode = currentScore.mode || parser_res.parsed_args?.gamemode || 'osu';
+                    const username = currentScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
                     
+                    let replayBuffer = null;
+                    try {
+                        replayBuffer = await OsuUserModel.downloadReplay(scoreId, scoreGamemode);
+                    } catch (downloadErr) {
+                        // Si falló por 404 (replay aún no sincronizado en osu! tras jugarse en Lazer)
+                        if (downloadErr.is404 || downloadErr.status === 404) {
+                            const delays = [3000, 5000, 7000];
+                            for (let attempt = 0; attempt < delays.length; attempt++) {
+                                await infoMsg.edit(`⏳ **[o!rdr]** La repetición se está procesando en osu!... Comprobando disponibilidad (${attempt + 1}/${delays.length})...`).catch(() => {});
+                                await new Promise(r => setTimeout(r, delays[attempt]));
+                                try {
+                                    replayBuffer = await OsuUserModel.downloadReplay(scoreId, scoreGamemode);
+                                    if (replayBuffer) break;
+                                } catch (_) {}
+                            }
+                        }
+
+                        // Si tras los reintentos rápidos aún no está disponible, iniciar watcher en background
+                        if (!replayBuffer) {
+                            if (downloadErr.is404 || downloadErr.status === 404) {
+                                await infoMsg.edit(t(locale, 'render.replay_processing_watch')).catch(() => {});
+                                startReplayBackgroundWatcher({
+                                    scoreId,
+                                    mode: scoreGamemode,
+                                    username,
+                                    sentMessage: sent_message,
+                                    infoMsg,
+                                    locale,
+                                    getComponents: (renderDisabled) => buildRecentButtonsRow(index, total_plays, currentScore, renderDisabled, currentScoreMode),
+                                    getCurrentScoreId: () => parser_res.fn_response[index - 1]?.id
+                                });
+                                return;
+                            }
+                            throw downloadErr;
+                        }
+                    }
+
                     // Invocar el flujo de renderizado usando startRenderFlow
                     const renderCmd = require('./render.js');
                     const mockMessages = {
@@ -789,7 +827,6 @@ async function run(messages, args) {
                         console.warn("[rs_render] No se pudo obtener metadatos adicionales del beatmap:", err.message);
                     }
 
-                    const username = currentScore.user?.username || parser_res.parsed_args.username?.[0] || 'Usuario';
                     const artist = currentScore.beatmapset?.artist || beatmapInfo?.beatmapset?.artist || '';
                     const title = currentScore.beatmapset?.title || beatmapInfo?.beatmapset?.title || '';
                     const version = currentScore.beatmap?.version || beatmapInfo?.version || '';
@@ -885,6 +922,51 @@ async function run(messages, args) {
     }
 
     return;
+}
+
+/**
+ * Monitorea periódicamente en segundo plano la disponibilidad de la repetición
+ * en los servidores de osu! (común para partidas recién enviadas por Lazer).
+ * En cuanto el archivo está listo, reactiva el botón de render (🎬) en el mensaje.
+ */
+function startReplayBackgroundWatcher({ scoreId, mode, username, sentMessage, infoMsg, locale, getComponents, getCurrentScoreId }) {
+    const OsuUserModel = require('../../../models/OsuUserModel.js');
+    let attempts = 0;
+    const maxAttempts = 10; // 10 intentos x 12s = 120s (2 minutos)
+    const intervalMs = 12000;
+
+    const interval = setInterval(async () => {
+        attempts++;
+        try {
+            const isReady = await OsuUserModel.checkReplayAvailable(scoreId, mode);
+            if (isReady) {
+                clearInterval(interval);
+                // Si la puntuación actual en el mensaje sigue siendo la misma, habilitar el botón
+                if (getCurrentScoreId() === scoreId && sentMessage && typeof sentMessage.edit === 'function') {
+                    await sentMessage.edit({ components: getComponents(false) }).catch(() => {});
+                }
+                if (infoMsg && typeof infoMsg.edit === 'function') {
+                    await infoMsg.edit(t(locale, 'render.replay_ready_notice', { username })).catch(() => {});
+                    setTimeout(() => { infoMsg.delete().catch(() => {}); }, 15000);
+                }
+                return;
+            }
+
+            if (attempts >= maxAttempts) {
+                clearInterval(interval);
+                // Si se agotan los intentos, re-habilitar el botón para que el usuario pueda probar manualmente
+                if (getCurrentScoreId() === scoreId && sentMessage && typeof sentMessage.edit === 'function') {
+                    await sentMessage.edit({ components: getComponents(false) }).catch(() => {});
+                }
+                if (infoMsg && typeof infoMsg.edit === 'function') {
+                    await infoMsg.edit(t(locale, 'render.replay_timeout_notice', { username })).catch(() => {});
+                    setTimeout(() => { infoMsg.delete().catch(() => {}); }, 20000);
+                }
+            }
+        } catch (_) {
+            // Silenciar error transitorio en comprobación
+        }
+    }, intervalMs);
 }
 
 run.alias = {
