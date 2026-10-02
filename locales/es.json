@@ -288,6 +288,11 @@
       "body": "Sube un archivo `.osr` al chat junto con el comando `s.replay`, o responde al mensaje que tenga el archivo para ver sus datos técnicos.",
       "usage": "s.replay [adjuntando archivo .osr]"
     },
+    "puedo": {
+      "header": "Diagnóstico cinemático para determinar si puedes pasar o fcear un beatmap",
+      "body": "Evalúa tus probabilidades matemáticas reales de Pass (%) y FC (%) en un beatmap combinando tus habilidades de Aim/Speed, tolerancia al HP drain, tempo (BPM) y la cinemática del mapa con el motor sengo-pp.\n\nGenera un gráfico panorámico híbrido en 2x Retina con la curva de esfuerzo temporal (strains), líneas guía horizontales de tu techo de Pass y FC, y un panel de benchmark comparativo.",
+      "usage": "s.puedo [mapa] [+mods] [-modo] [-server]\ns.puedo\ns.puedo https://osu.ppy.sh/b/3197079\ns.puedo +HDDT\ns.puedo <usuario> <mapa>\ns.puedo -taiko <mapa>"
+    },
     "nacional": {
       "header": "Ranking nacional de rendimiento y tops",
       "body": "Muestra la tabla de clasificación por Performance Points (pp) para un país específico en osu!, el ranking nacional de tops (#1s) con -tops, o las mejores jugadas por PP de todo el país con -pp (admite filtros como -m, -sr, -g, -?, -i).",

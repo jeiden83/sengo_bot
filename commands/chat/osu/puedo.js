@@ -684,7 +684,11 @@ async function run(messages, args) {
     return responsePayload;
 }
 
-run.description = "Determina si te puedes pasar o fcear un beatmap analizando tus skills, historial y cinemática.";
+run.description = {
+    header: t("es", "commands.puedo.header"),
+    body: t("es", "commands.puedo.body"),
+    usage: t("es", "commands.puedo.usage")
+};
 run.alias = {
     "canipass": {},
     "pass": {},

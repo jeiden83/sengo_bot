@@ -288,6 +288,11 @@
       "body": "Upload an `.osr` file to the chat along with the `s.replay` command, or reply to a message containing the file to see its technical details.",
       "usage": "s.replay [attaching .osr file]"
     },
+    "puedo": {
+      "header": "Kinetic diagnostic to determine if you can pass or FC a beatmap",
+      "body": "Evaluates your real mathematical Pass (%) and FC (%) probabilities on a beatmap by combining your Aim/Speed skills, HP drain tolerance, tempo (BPM), and map kinetics calculated via sengo-pp.\n\nGenerates a 2x Retina panoramic hybrid chart displaying the strain timeline, horizontal Pass/FC ceiling guidelines, and a comparative benchmark panel.",
+      "usage": "s.puedo [beatmap] [+mods] [-mode] [-server]\ns.puedo\ns.puedo https://osu.ppy.sh/b/3197079\ns.puedo +HDDT\ns.puedo <user> <beatmap>\ns.puedo -taiko <beatmap>"
+    },
     "nacional": {
       "header": "National performance and tops ranking",
       "body": "Shows the leaderboard by Performance Points (pp) for a specific country in osu!, national tops (#1s) with -tops, or top plays by PP across the country with -pp (supports filters like -m, -sr, -g, -?, -i).",

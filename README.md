@@ -144,6 +144,7 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
     * `a cuánto está el dólar bcv` ➔ `s.bcv`
     * `cuál es el reto diario` ➔ `s.daily`
     * `compara mi score en este mapa: <enlace>` ➔ `s.c <enlace>`
+    * `¿me puedo pasar este mapa?` ➔ `s.puedo <enlace>`
     * `show me my top 5 plays in mania` ➔ `s.top -mania -list 5`
 
 #### 👤 Perfil y Jugadas
@@ -201,6 +202,21 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
   * *Ejemplos:*
     * `s.sim +HDDT 98.5% 1200x 2m`
     * `s.sim 99.2% 5x100 1x50`
+* **`s.puedo [mapa/enlace] [+mods] [usuario]`**
+  Diagnóstico cinemático y predictivo para determinar si un jugador puede pasar (**Pass**) o hacer Full Combo (**FC**) en un beatmap.
+  * *Modelo Matemático y Cinemático:*
+    * **Desacople Pass vs FC:** Modela de forma independiente la probabilidad de supervivencia (Pass) y de consistencia (FC). En mapas con alta demanda de saltos (Aim puro), permite techos de Pass de hasta ~1.5★ por encima del límite de FC.
+    * **Análisis de Strains:** Desglosa el esfuerzo de Aim y Speed del mapa en intervalos de 400ms vía `sengo-pp`.
+    * **Tolerancia y Tempo:** Evalúa el HP Drain (mayor tolerancia y margen de fallos con HP bajo) y penalización por BPM sobre el umbral de confort en mapas de stream.
+    * **Aislamiento de Mods:** Filtra y aísla mods asistidos (`RX`, `AP`, `AT`), reducción (`EZ`, `HT`) o velocidad (`DT`), evitando falsos positivos por jugadas en Relax.
+  * *Gráfico Diagnóstico Panorámico (Canvas 2x Retina):*
+    * Genera un gráfico de 1920x760 px en milisegundos que ilustra el cronograma temporal de strains (Aim en magenta, Speed en cian) con líneas horizontales del límite de Pass y FC, tarjetas de probabilidad y barras de benchmark (excedente de Aim, confort de tempo y dificultad).
+  * *Flags y Filtros:*
+    * `+<mods>` o `-m <mods>`: Simula la predicción con mods específicos (ej: `+HDDT`, `+HR`).
+    * `-u <usuario>` o mención: Evalúa a otro jugador en vez del usuario vinculado.
+    * `-std` / `-taiko` / `-ctb` / `-mania`: Cambia el modo de juego.
+    * `-bancho` / `-gatari`: Cambia el servidor consultado.
+  * *Alias:* `s.pass`, `s.canipass`, `s.canifc`.
 * **`s.subir`**
   Sube y calcula los datos detallados de una jugada a partir de un archivo `.osr` adjunto o respondiendo a un embed de score compatible.
   * *Flags:* `-m <mods>` para sobrescribir o forzar mods detectados (ej: `-m HDDT`, `-m NM`).
