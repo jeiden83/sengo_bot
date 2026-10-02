@@ -841,7 +841,7 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
-        const { fetchUserBeatmapsets, fetchBeatmapsetEvents, detectBeatmapsetGamemode } = require("../../../services/mappingTrackerService.js");
+        const { fetchUserBeatmapsets, fetchBeatmapsetEvents, fetchBeatmapsetPraise, detectBeatmapsetGamemode } = require("../../../services/mappingTrackerService.js");
 
         let realMapset = null;
         let realUser = null;
@@ -970,7 +970,25 @@ async function handleMappingTrackerCommand(messages, args) {
                 }
             } catch (e) {}
 
-            // 3. Fallback de usuario para asegurar que el header del embed de autor siempre se renderice en las pruebas de nominación/calificado
+            // 3. Si no hay comentario explícito, consultar las alabanzas (praises) dejadas por el BN en modding discussions
+            if (!nomComment && typeof fetchBeatmapsetPraise === 'function') {
+                try {
+                    const praiseInfo = await fetchBeatmapsetPraise(realMapset.id, nomUser?.id);
+                    if (praiseInfo) {
+                        nomComment = praiseInfo.text;
+                        if ((!nomUser || nomUser.username?.startsWith('BN #')) && praiseInfo.user) {
+                            nomUser = {
+                                id: praiseInfo.user.id,
+                                username: praiseInfo.user.username,
+                                avatar_url: praiseInfo.user.avatar_url,
+                                url: `https://osu.ppy.sh/users/${praiseInfo.user.id}`
+                            };
+                        }
+                    }
+                } catch (e) {}
+            }
+
+            // 4. Fallback de usuario para asegurar que el header del embed de autor siempre se renderice en las pruebas de nominación/calificado
             if (!nomUser) {
                 nomUser = {
                     id: realUser.id,

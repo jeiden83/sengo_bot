@@ -198,15 +198,31 @@ async function runGlobalEventsScan() {
 
             const subscriptions = await MappingTrackerModel.getSubscriptionsForOsuId(mapperOsuId);
             if (subscriptions.length > 0) {
-                const nominatorUser = event.user ? {
+                let nominatorUser = event.user ? {
                     id: event.user.id || event.user_id,
                     username: event.user.username || `BN #${event.user_id}`,
                     avatar_url: event.user.avatar_url || `https://a.ppy.sh/${event.user_id}`
                 } : (event.user_id ? { id: event.user_id, username: `BN #${event.user_id}`, avatar_url: `https://a.ppy.sh/${event.user_id}` } : null);
 
+                let commentText = event.comment?.text || (typeof event.comment === 'string' ? event.comment : null);
+                if (!commentText && event.discussion?.starting_post?.message) {
+                    commentText = event.discussion.starting_post.message;
+                }
+
+                // Si es evento de nominación o calificado y no vino texto en comment, consultar praises de BN en discusiones
+                if (!commentText && (eventType === 'nomination' || eventType === 'qualified')) {
+                    const praiseInfo = await fetchBeatmapsetPraise(mapset.id, nominatorUser?.id);
+                    if (praiseInfo) {
+                        commentText = praiseInfo.text;
+                        if (!nominatorUser && praiseInfo.user) {
+                            nominatorUser = praiseInfo.user;
+                        }
+                    }
+                }
+
                 const extraInfo = {
                     nominator: nominatorUser,
-                    comment: event.comment?.text || (typeof event.comment === 'string' ? event.comment : null)
+                    comment: commentText
                 };
 
                 await notifyEvent(mapset, mapperOsuId, eventType, subscriptions, extraInfo);
@@ -306,7 +322,18 @@ async function runMappingTrackerScan() {
                     } else if (prevStatus === 'qualified' && (currentStatus === 'pending' || currentStatus === 'wip')) {
                         eventType = 'disqualified';
                     }
-                    await notifyEvent(mapset, osuId, eventType, subscriptions);
+
+                    let extraInfo = null;
+                    if (eventType === 'qualified') {
+                        const praiseInfo = await fetchBeatmapsetPraise(mapset.id);
+                        if (praiseInfo) {
+                            extraInfo = {
+                                nominator: praiseInfo.user,
+                                comment: praiseInfo.text
+                            };
+                        }
+                    }
+                    await notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo);
                 } else if (prevUpdated && currentUpdated && prevUpdated !== currentUpdated) {
                     // Notificación de actualización de mapa (BSB / Update) solo si está en pending/wip
                     if (currentStatus === 'pending' || currentStatus === 'wip') {
@@ -605,6 +632,61 @@ async function fetchBeatmapsetEvents(beatmapsetId) {
     }
 }
 
+/**
+ * Consulta alabanzas (praises) o reseñas de un beatmapset mediante la API v2 de osu!
+ * Los Beatmap Nominators (BN) registran habitualmente sus comentarios de nominación
+ * como temas de tipo 'praise' en el sistema de discusiones del beatmapset.
+ */
+async function fetchBeatmapsetPraise(beatmapsetId, nominatorUserId = null) {
+    const token = await getOsuApiToken();
+    if (!token || !beatmapsetId) return null;
+
+    try {
+        const url = `https://osu.ppy.sh/api/v2/beatmapsets/discussions?beatmapset_id=${beatmapsetId}&message_types[]=praise&message_types[]=review`;
+        const res = await osuApiQueue.add(() => axios.get(url, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Sengo/2.0'
+            }
+        }), 0);
+
+        const discussions = Array.isArray(res.data?.discussions) ? res.data.discussions : [];
+        const activeDiscussions = discussions.filter(d => !d.deleted_at && d.starting_post?.message);
+        if (activeDiscussions.length === 0) return null;
+
+        const users = Array.isArray(res.data?.users) ? res.data.users : [];
+        const userMap = new Map(users.map(u => [Number(u.id), u]));
+
+        let targetDiscussion = null;
+
+        if (nominatorUserId) {
+            targetDiscussion = activeDiscussions.find(d => Number(d.user_id) === Number(nominatorUserId));
+        }
+
+        // Si no se encuentra praise específico del nominador o nominatorUserId es nulo, tomar el más reciente
+        if (!targetDiscussion && activeDiscussions.length > 0) {
+            targetDiscussion = activeDiscussions[0];
+        }
+
+        if (!targetDiscussion?.starting_post?.message) return null;
+
+        const authorUser = userMap.get(Number(targetDiscussion.user_id));
+
+        return {
+            text: targetDiscussion.starting_post.message.trim(),
+            user_id: targetDiscussion.user_id,
+            user: authorUser ? {
+                id: authorUser.id,
+                username: authorUser.username,
+                avatar_url: authorUser.avatar_url || `https://a.ppy.sh/${authorUser.id}`
+            } : null
+        };
+    } catch (err) {
+        return null;
+    }
+}
+
 module.exports = {
     initMappingTracker,
     runMappingTrackerScan,
@@ -612,5 +694,6 @@ module.exports = {
     fetchUserBeatmapsets,
     fetchGlobalBeatmapEvents,
     fetchBeatmapsetEvents,
+    fetchBeatmapsetPraise,
     detectBeatmapsetGamemode
 };

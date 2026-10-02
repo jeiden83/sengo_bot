@@ -211,7 +211,12 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
     } else if (!statusCfg.showDiffs) {
         const commentText = extraInfo?.comment || beatmapset.comment;
         if (commentText) {
-            desc += `-# ${commentText}\n`;
+            let cleanComment = String(commentText).trim().replace(/\n{3,}/g, '\n\n');
+            if (cleanComment.length > 500) {
+                cleanComment = cleanComment.slice(0, 497) + '...';
+            }
+            const formattedComment = cleanComment.split('\n').map(line => line.trim() ? `-# ${line}` : '-#').join('\n');
+            desc += `${formattedComment}\n`;
         } else {
             desc += `-# ${t(locale, 'mapping_tracker.comment_placeholder')}\n`;
         }
