@@ -551,12 +551,17 @@ async function run(messages, args) {
     // Calcular atributos precisos con el motor de PP
     let diffAttrs = null;
     let perfAttrs = null;
+    let strains = null;
     try {
         const engine = ppEngine.getEngine();
         const map = await getBeatmap_osu(beatmapData.beatmapset_id || beatmapData.beatmapset?.id, beatmapData.id, beatmapData);
         if (map) {
-            diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+            const diff = new engine.Difficulty({ mods: activeModsStr });
+            diffAttrs = diff.calculate(map);
             perfAttrs = new engine.Performance({ mods: activeModsStr, accuracy: 100 }).calculate(diffAttrs);
+            try {
+                strains = diff.strains(map);
+            } catch (_) {}
             map.free();
         }
     } catch (e) {}
@@ -633,24 +638,50 @@ async function run(messages, args) {
         scoreCompatibility: chosenCompat
     });
 
+    // Generar gráfico panorámico híbrido de diagnóstico
+    let graphAttachment = null;
+    try {
+        const { generatePuedoGraph } = require('../../../utils/puedoGraph.js');
+        const graphBuffer = await generatePuedoGraph({
+            mapData: beatmapData,
+            analysis,
+            strains,
+            activeModsStr,
+            user: osuUser,
+            locale
+        });
+        if (graphBuffer) {
+            const { AttachmentBuilder } = require('discord.js');
+            graphAttachment = new AttachmentBuilder(graphBuffer, { name: 'puedo_diagnostic.png' });
+        }
+    } catch (err) {
+        console.error('[s.puedo] Error al generar gráfico de diagnóstico:', err);
+    }
+
     const embed = doOsuPuedoEmbed({
         message,
         user: osuUser,
         map: {
             ...beatmapData,
-            artist: beatmapData.beatmapset?.artist,
-            title: beatmapData.beatmapset?.title,
-            covers: beatmapData.beatmapset?.covers
+            artist: beatmapData.beatmapset?.artist || beatmapData.artist,
+            title: beatmapData.beatmapset?.title || beatmapData.title,
+            covers: beatmapData.beatmapset?.covers || beatmapData.covers
         },
         analysis,
         activeModsStr,
-        locale
+        locale,
+        hasGraph: Boolean(graphAttachment)
     });
 
+    const responsePayload = {
+        embeds: [embed],
+        files: graphAttachment ? [graphAttachment] : []
+    };
+
     if (reply && typeof reply.reply === 'function') {
-        return await reply.reply({ embeds: [embed] });
+        return await reply.reply(responsePayload);
     }
-    return { embeds: [embed] };
+    return responsePayload;
 }
 
 run.description = "Determina si te puedes pasar o fcear un beatmap analizando tus skills, historial y cinemática.";

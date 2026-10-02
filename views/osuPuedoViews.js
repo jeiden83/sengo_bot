@@ -9,7 +9,7 @@ function renderProgressBar(percentage, length = 10) {
     return '▰'.repeat(filled) + '▱'.repeat(empty);
 }
 
-function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale = 'es' }) {
+function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale = 'es', hasGraph = false }) {
     const embedColor = getEmbedColor(message);
 
     const modsTag = (activeModsStr && activeModsStr !== 'NM') ? ` +${activeModsStr}` : '';
@@ -149,7 +149,7 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
                 inline: true
             }
         )
-        .setImage(coverUrl)
+        .setImage(hasGraph ? 'attachment://puedo_diagnostic.png' : coverUrl)
         .setColor(analysis.passProb >= 65 ? 0x2ecc71 : (analysis.passProb >= 35 ? 0xf39c12 : 0xe74c3c))
         .setFooter({
             text: t(locale, 'puedo.embed_footer'),
