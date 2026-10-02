@@ -51,7 +51,10 @@ async function run(interaction, res) {
     if (acc) args.push("-acc", acc);
 
     const mods = interaction.options.getString("mods");
-    if (mods) args.push("+ " + mods);
+    if (mods) {
+        const cleanMods = mods.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        if (cleanMods) args.push(`+${cleanMods}`);
+    }
 
     const misses = interaction.options.getInteger("misses");
     if (misses !== null && misses !== undefined) args.push("-misses", String(misses));

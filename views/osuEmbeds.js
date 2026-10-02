@@ -1037,8 +1037,9 @@ function doOsuMapEmbed({
 
     // Emojis de mods para título
     let modsStr = attributes.modsStr || "";
-    const mods_emoji_str = modsStr ? modsStr.match(/.{1,2}/g).reduce((acc, mod) => {
-        return `${acc}<:${mod}:${emoji_mods[mod] || '123'}>`;
+    const mods_emoji_str = modsStr ? (modsStr.replace(/[^A-Za-z0-9]/g, '').toUpperCase().match(/.{1,2}/g) || []).reduce((acc, mod) => {
+        const emojiId = emoji_mods[mod];
+        return emojiId ? `${acc}<:${mod}:${emojiId}>` : `${acc}\`${mod}\``;
     }, ' +') : '';
 
     const mode_names = {
@@ -1196,8 +1197,9 @@ function doOsuMapSkillsEmbed({
     locale = 'es'
 }) {
     let modsStr = attributes.modsStr || "";
-    const mods_emoji_str = modsStr ? modsStr.match(/.{1,2}/g).reduce((acc, mod) => {
-        return `${acc}<:${mod}:${emoji_mods[mod] || '123'}>`;
+    const mods_emoji_str = modsStr ? (modsStr.replace(/[^A-Za-z0-9]/g, '').toUpperCase().match(/.{1,2}/g) || []).reduce((acc, mod) => {
+        const emojiId = emoji_mods[mod];
+        return emojiId ? `${acc}<:${mod}:${emojiId}>` : `${acc}\`${mod}\``;
     }, ' +') : '';
 
     const mode_names = {
@@ -2173,8 +2175,9 @@ async function doOsuReworkMapEmbed(message, beatmap, livePPValues, reworkResult,
 
     let modsDisplay = `<:CL:${emoji_mods["CL"]}>`;
     if (modsStr && modsStr.toUpperCase() !== 'NM') {
-        const chunks = modsStr.toUpperCase().match(/.{1,2}/g) || [];
-        modsDisplay = chunks.map(mod => `<:${mod}:${emoji_mods[mod] || '123'}>`).join(" ");
+        const cleanModsStr = modsStr.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        const chunks = cleanModsStr === 'NM' ? [] : (cleanModsStr.match(/.{1,2}/g) || []);
+        modsDisplay = chunks.map(mod => emoji_mods[mod] ? `<:${mod}:${emoji_mods[mod]}>` : `\`${mod}\``).join(" ");
     }
     let statusText = "";
     if (reworkResult.isExactCalculation) {
@@ -2549,8 +2552,8 @@ async function doOsuReworkPlayEmbed(message, beatmap, parsedPlay, reworkPP, rewo
     let modsDisplay = `<:CL:${emoji_mods["CL"]}>`;
     if (parsedPlay.mods && parsedPlay.mods.length > 0) {
         modsDisplay = parsedPlay.mods.map(mod => {
-            const modUpper = mod.toUpperCase();
-            return `<:${modUpper}:${emoji_mods[modUpper] || '123'}>`;
+            const modUpper = String(mod || '').trim().toUpperCase();
+            return emoji_mods[modUpper] ? `<:${modUpper}:${emoji_mods[modUpper]}>` : `\`${modUpper}\``;
         }).join(" ");
     }
 

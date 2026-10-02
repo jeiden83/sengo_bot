@@ -117,13 +117,21 @@ function parseSimArgs(args) {
             continue;
         }
 
-        // 3. Mods (+HDDT / -mods HDDT / -m HDDT)
-        if (clean.startsWith('+') && clean.length > 1 && !/^\+\d+$/.test(clean)) {
-            options.mods = clean.slice(1).toUpperCase();
+        // 3. Mods (+HDDT / + HDDT / -mods HDDT / -m HDDT)
+        if (clean.startsWith('+') && !/^\+\d+$/.test(clean)) {
+            let modStr = clean.slice(1).trim();
+            if (!modStr && i + 1 < argsList.length && !argsList[i + 1].startsWith('-') && !argsList[i + 1].startsWith('+')) {
+                modStr = argsList[++i].trim();
+            }
+            if (modStr) {
+                const sanitized = modStr.toUpperCase().replace(/[^A-Z0-9]/g, '');
+                options.mods = options.mods ? `${options.mods}${sanitized}` : sanitized;
+            }
             continue;
         }
         if ((lower === '-mods' || (lower === '-m' && !/^\d+$/.test(argsList[i + 1] || ''))) && i + 1 < argsList.length) {
-            options.mods = argsList[i + 1].toUpperCase().replace(/[^A-Z]/g, '');
+            const sanitized = argsList[i + 1].toUpperCase().replace(/[^A-Z0-9]/g, '');
+            options.mods = options.mods ? `${options.mods}${sanitized}` : sanitized;
             i++;
             continue;
         }
@@ -322,7 +330,9 @@ async function run(messages, args) {
         map.convert(activeMode);
     }
 
-    const activeModsStr = simOptions.mods || 'NM';
+    const rawActiveMods = simOptions.mods || 'NM';
+    const cleanActiveMods = rawActiveMods.toUpperCase().replace(/[^A-Z0-9]/g, '');
+    const activeModsStr = (cleanActiveMods === '' || cleanActiveMods === 'NM') ? 'NM' : cleanActiveMods;
 
     // Obtener DifficultyAttributes y Stars con el motor activo
     const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
@@ -440,4 +450,8 @@ async function run(messages, args) {
     return { embeds: [embed] };
 }
 
-module.exports = { run, parseSimArgs, solveHits, description: "Simula una jugada en un mapa para calcular su PP." };
+run.description = "Simula una jugada en un mapa para calcular su PP.";
+run.alias = ["simulate"];
+run.flags = ["-acc", "-combo", "-misses", "-modo", "-fc", "+mods", "-mods"];
+
+module.exports = { run, parseSimArgs, solveHits, description: run.description, alias: run.alias };

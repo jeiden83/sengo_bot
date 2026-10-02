@@ -42,6 +42,11 @@ function isLazerScore(score) {
 function formatMods(mods, isLazer, isDroid = false) {
     if (!mods) return `<:NM:${emoji_mods["NM"]}>`;
 
+    if (typeof mods === 'string') {
+        const cleanStr = mods.replace(/[^A-Za-z0-9]/g, '').toUpperCase();
+        mods = (cleanStr === 'NM' || cleanStr === '') ? [] : (cleanStr.match(/.{1,2}/g) || []);
+    }
+
     let effectiveIsLazer = false;
     let isDroidServer = false;
 
@@ -56,7 +61,7 @@ function formatMods(mods, isLazer, isDroid = false) {
             isLazer === 'droid';
     }
 
-    let modsCopy = [...mods];
+    let modsCopy = Array.isArray(mods) ? [...mods] : [];
     if (isDroidServer) {
         // En osu!droid no hay separación de servidores o clientes (Bancho vs Lazer), por lo que nunca se denota con el mod CL
         modsCopy = modsCopy.filter(m => (m.acronym || m) !== 'CL');
@@ -76,7 +81,7 @@ function formatMods(mods, isLazer, isDroid = false) {
 
     return modsCopy.reduce((acc, mod) => {
         let settings_str = '';
-        if (mod.settings) {
+        if (mod && mod.settings) {
             if (mod.acronym === 'DT' || mod.acronym === 'NC' || mod.acronym === 'HT') {
                 if (mod.settings.speed_change) settings_str = `(${mod.settings.speed_change}x)`;
             } else if (mod.acronym === 'DA') {
@@ -88,8 +93,13 @@ function formatMods(mods, isLazer, isDroid = false) {
                 if (da_changes.length > 0) settings_str = `(${da_changes.join(' ')})`;
             }
         }
-        const modAcronym = mod.acronym || mod;
-        return `${acc}<:${modAcronym}:${emoji_mods[modAcronym] || '123'}>${settings_str}`;
+        const rawAcronym = (typeof mod === 'object' && mod !== null) ? mod.acronym : mod;
+        const modAcronym = String(rawAcronym || '').trim().toUpperCase();
+        if (!modAcronym || modAcronym === 'NM') return acc;
+
+        const emojiId = emoji_mods[modAcronym];
+        const emojiStr = emojiId ? `<:${modAcronym}:${emojiId}>` : `\`${modAcronym}\``;
+        return `${acc}${emojiStr}${settings_str}`;
     }, '');
 }
 
