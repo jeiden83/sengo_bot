@@ -113,6 +113,29 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
         }));
     }
 
+    // Avisos de Flashlight (FL) y Lectura (High AR)
+    if (analysis.factors?.hasFL) {
+        if (analysis.factors.flMemorized) {
+            tips.push(t(locale, 'puedo.tip_flashlight_memorized'));
+        } else {
+            tips.push(t(locale, 'puedo.tip_flashlight'));
+        }
+    }
+
+    if (analysis.factors?.arExtreme) {
+        tips.push(t(locale, 'puedo.tip_ar_extreme', {
+            ar: (analysis.map.ar || 9.0).toFixed(1),
+            ms: analysis.factors.arMs || 300,
+            comfort: (analysis.factors.readingComfort || 9.5).toFixed(1)
+        }));
+    } else if ((analysis.factors?.arOver || 0) > 0.1) {
+        tips.push(t(locale, 'puedo.tip_ar_over', {
+            ar: (analysis.map.ar || 9.0).toFixed(1),
+            ms: analysis.factors.arMs || 400,
+            comfort: (analysis.factors.readingComfort || 9.5).toFixed(1)
+        }));
+    }
+
     const rankStr = user.statistics?.global_rank ? ` (#${formatNumber(user.statistics.global_rank, locale)})` : '';
     const authorName = t(locale, 'puedo.embed_author', {
         username: user.username,
@@ -140,7 +163,7 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
         .addFields(
             {
                 name: t(locale, 'puedo.field_map_attrs'),
-                value: `**${t(locale, 'puedo.attr_difficulty')}** \`${analysis.map.sr.toFixed(2)}★\` *(${t(locale, analysis.map.archetypeKey)})*\n**${t(locale, 'puedo.attr_tempo')}** \`${analysis.map.bpm} BPM\`\n**${t(locale, 'puedo.attr_combo')}** \`${analysis.map.combo}x\`\n**${t(locale, 'puedo.attr_ar_od')}** \`${analysis.map.ar} / ${analysis.map.od}\``,
+                value: `**${t(locale, 'puedo.attr_difficulty')}** \`${analysis.map.sr.toFixed(2)}★\` *(${t(locale, analysis.map.archetypeKey)})*\n**${t(locale, 'puedo.attr_tempo')}** \`${analysis.map.bpm} BPM\`\n**${t(locale, 'puedo.attr_combo')}** \`${analysis.map.combo}x\`\n**${t(locale, 'puedo.attr_ar_od_hp')}** \`${(analysis.map.ar || 9.0).toFixed(1)} / ${(analysis.map.od || 8.0).toFixed(1)} / ${(analysis.map.hp || 5.0).toFixed(1)}\``,
                 inline: true
             },
             {

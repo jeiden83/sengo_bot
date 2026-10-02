@@ -1043,17 +1043,27 @@ function estimateMapSkills(map, activeMod = "NM", gamemode = "osu") {
     const hasStreamTag = tags.some(t => t.includes('stream') || t.includes('speed') || t.includes('burst') || t.includes('stamina'));
     const hasJumpTag = tags.some(t => t.includes('jump') || t.includes('aim') || t.includes('cross-screen'));
 
-    let ar = Number(map.ar || 9.0);
-    let effAR = ar;
-    if (isHR) effAR = Math.min(10, ar * 1.4);
-    if (isEZ) effAR = ar * 0.5;
-    if (isDT) effAR = ar <= 5 ? (5 + (ar * 0.75)) : (5 + (ar - 5) * 0.75 * (2 / 3) + 2.5);
+    const clockRate = isDT ? 1.5 : (isHT ? 0.75 : 1.0);
 
-    let od = Number(map.od || map.accuracy || 8.0);
-    let effOD = od;
-    if (isHR) effOD = Math.min(10, od * 1.4);
-    if (isEZ) effOD = od * 0.5;
-    if (isDT) effOD = Math.min(11.1, effOD * 1.11);
+    let baseAR = Number(map.ar != null ? map.ar : 9.0);
+    if (isHR) baseAR = Math.min(10.0, baseAR * 1.4);
+    else if (isEZ) baseAR *= 0.5;
+    const baseArMs = baseAR <= 5 ? (1800 - 120 * baseAR) : (1200 - 150 * (baseAR - 5));
+    const effArMs = baseArMs / clockRate;
+    const effAR = effArMs > 1200 ? ((1800 - effArMs) / 120) : (5 + (1200 - effArMs) / 150);
+
+    let baseOD = Number(map.od != null ? map.od : (map.accuracy != null ? map.accuracy : 8.0));
+    if (isHR) baseOD = Math.min(10.0, baseOD * 1.4);
+    else if (isEZ) baseOD *= 0.5;
+    const baseOdMs = 80 - 6 * baseOD;
+    const effOdMs = baseOdMs / clockRate;
+    const effOD = Math.max(0, Math.min(11.1, (80 - effOdMs) / 6));
+
+    let cs = Number(map.cs != null ? map.cs : 4.0);
+    const effCS = isHR ? Math.min(10.0, cs * 1.3) : (isEZ ? cs * 0.5 : cs);
+
+    let hp = Number(map.drain != null ? map.drain : (map.hp != null ? map.hp : 5.0));
+    const effHP = isHR ? Math.min(10.0, hp * 1.4) : (isEZ ? hp * 0.5 : hp);
 
     const normMode = (gamemode || "osu").toLowerCase();
 
@@ -1122,6 +1132,8 @@ function estimateMapSkills(map, activeMod = "NM", gamemode = "osu") {
         effBPM: Math.round(effBPM),
         effAR: Number(effAR.toFixed(1)),
         effOD: Number(effOD.toFixed(1)),
+        effCS: Number(effCS.toFixed(1)),
+        effHP: Number(effHP.toFixed(1)),
         readingReq: Math.min(100, Math.round(readingRequirement)),
         stars: Number(map.stars || 5.0)
     };

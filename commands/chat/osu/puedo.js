@@ -199,19 +199,93 @@ function evaluateScoreCompatibility(score, targetModsStr = 'NM') {
     };
 }
 
-function calculateProbabilities({ user, topScores, beatmap, bestScore, activeModsStr = 'NM', diffAttrs, perfAttrs = null, scoreCompatibility = null }) {
+function calculateProbabilities({ user, topScores, beatmap, bestScore, activeModsStr = 'NM', diffAttrs, perfAttrs = null, scoreCompatibility = null, mapAttrs = null }) {
     const mode = beatmap.mode || 'osu';
     const pushProfile = SkillsModel.analyzePlayerPushProfile(topScores, mode);
     const userSkills = SkillsModel.analyzeSkills(topScores, false, mode);
     const mapSkills = SkillsModel.estimateMapSkills(beatmap, activeModsStr, mode);
 
+    const activeMods = extractModAcronyms(activeModsStr);
+    const hasDT = activeMods.includes('DT') || activeMods.includes('NC');
+    const hasHT = activeMods.includes('HT') || activeMods.includes('DC');
+    const hasHR = activeMods.includes('HR');
+    const hasEZ = activeMods.includes('EZ');
+    const hasHD = activeMods.includes('HD');
+    const hasFL = activeMods.includes('FL');
+
+    const clockRate = mapAttrs?.clockRate ?? (hasDT ? 1.5 : (hasHT ? 0.75 : 1.0));
+    const baseBPM = Number(beatmap.bpm || 180);
+    const mapBPM = Math.round(mapAttrs ? baseBPM * mapAttrs.clockRate : (mapSkills.effBPM || baseBPM));
     const mapSR = Number(diffAttrs?.stars || beatmap.difficulty_rating || 5.0);
-    const mapBPM = mapSkills.effBPM || beatmap.bpm || 180;
     const mapCombo = diffAttrs?.maxCombo || beatmap.max_combo || 500;
-    const effAR = mapSkills.effAR || beatmap.ar || 9.0;
-    const effOD = mapSkills.effOD || beatmap.accuracy || 8.0;
-    const mapHP = Number(diffAttrs?.hp != null ? diffAttrs.hp : (diffAttrs?.drainRate || beatmap.hp || 5.0));
-    const hitLength = Math.max(20, Number(beatmap.hit_length || beatmap.total_length || 100));
+
+    let effAR = Number(mapAttrs?.ar != null ? mapAttrs.ar : (mapSkills.effAR || beatmap.ar || 9.0));
+    let effOD = Number(mapAttrs?.od != null ? mapAttrs.od : (mapSkills.effOD || beatmap.accuracy || 8.0));
+    let effCS = Number(mapAttrs?.cs != null ? mapAttrs.cs : (mapSkills.effCS || beatmap.cs || 4.0));
+    let effHP = Number(mapAttrs?.hp != null ? mapAttrs.hp : (mapSkills.effHP || beatmap.drain || beatmap.hp || 5.0));
+
+    if (!mapAttrs) {
+        let baseAR = Number(beatmap.ar ?? 9.0);
+        let baseOD = Number(beatmap.accuracy ?? beatmap.od ?? 8.0);
+        let baseCS = Number(beatmap.cs ?? 4.0);
+        let baseHP = Number(beatmap.drain ?? beatmap.hp ?? 5.0);
+
+        if (hasHR) {
+            baseAR = Math.min(10.0, baseAR * 1.4);
+            baseOD = Math.min(10.0, baseOD * 1.4);
+            baseCS = Math.min(10.0, baseCS * 1.3);
+            baseHP = Math.min(10.0, baseHP * 1.4);
+        } else if (hasEZ) {
+            baseAR *= 0.5;
+            baseOD *= 0.5;
+            baseCS *= 0.5;
+            baseHP *= 0.5;
+        }
+
+        const baseArMs = baseAR <= 5 ? (1800 - 120 * baseAR) : (1200 - 150 * (baseAR - 5));
+        const effArMs = baseArMs / clockRate;
+        effAR = effArMs > 1200 ? ((1800 - effArMs) / 120) : (5 + (1200 - effArMs) / 150);
+
+        const baseOdMs = 80 - 6 * baseOD;
+        const effOdMs = baseOdMs / clockRate;
+        effOD = Math.max(0, Math.min(11.1, (80 - effOdMs) / 6));
+        effCS = baseCS;
+        effHP = baseHP;
+    }
+
+    const effArMs = Math.round(effAR <= 5 ? (1800 - 120 * effAR) : (1200 - 150 * (effAR - 5)));
+    const hitLength = Math.max(20, Math.floor(Number(beatmap.hit_length || beatmap.total_length || 100) / clockRate));
+
+    // Analizar historial de lectura del jugador y familiaridad con FL
+    const playerARHistory = [];
+    let playerHasFLInTops = false;
+    for (const s of (topScores || [])) {
+        const sMods = extractModAcronyms(s.mods);
+        if (sMods.includes('FL')) playerHasFLInTops = true;
+
+        const sIsHR = sMods.includes('HR');
+        const sIsEZ = sMods.includes('EZ');
+        const sIsDT = sMods.includes('DT') || sMods.includes('NC');
+        const sIsHT = sMods.includes('HT') || sMods.includes('DC');
+        const sClock = sIsDT ? 1.5 : (sIsHT ? 0.75 : 1.0);
+
+        let sBaseAR = Number(s.beatmap?.ar != null ? s.beatmap.ar : 9.0);
+        if (sIsHR) sBaseAR = Math.min(10.0, sBaseAR * 1.4);
+        else if (sIsEZ) sBaseAR *= 0.5;
+
+        const sArMs = sBaseAR <= 5 ? (1800 - 120 * sBaseAR) : (1200 - 150 * (sBaseAR - 5));
+        const sEffMs = sArMs / sClock;
+        const sEffAR = sEffMs > 1200 ? ((1800 - sEffMs) / 120) : (5 + (1200 - sEffMs) / 150);
+
+        playerARHistory.push(sEffAR);
+    }
+
+    const sortedARs = [...playerARHistory].sort((a, b) => b - a);
+    const maxProvenAR = sortedARs.length > 0 ? sortedARs[0] : 9.0;
+    const top10Idx = Math.min(sortedARs.length - 1, Math.floor(sortedARs.length * 0.1));
+    const p90AR = sortedARs.length > 0 ? sortedARs[top10Idx] : 9.0;
+    const readingSkill = Number(userSkills.reading || 10);
+    const readingComfort = Math.max(9.0, Math.min(10.5, p90AR + (readingSkill >= 50 ? 0.4 : 0.2)));
 
     // Determinar balance y arquetipo del mapa (Jumps / Aim vs Streams / Stamina)
     let aimWeight = 0.5;
@@ -240,6 +314,7 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     let playedBefore = false;
     let passedBefore = false;
     let usedNF = false;
+    let flMemorized = false;
     let prevScore = null;
 
     if (bestScore) {
@@ -248,12 +323,15 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         usedNF = scoreMods.includes('NF');
         const isPassedRaw = bestScore.passed !== false && !['F'].includes(bestScore.rank);
 
+        if (hasFL && scoreMods.includes('FL') && isPassedRaw) {
+            flMemorized = true;
+        }
+
         const compat = scoreCompatibility || evaluateScoreCompatibility(bestScore, activeModsStr);
         if (compat.isCompatiblePass) {
             playedBefore = true;
             passedBefore = isPassedRaw;
         } else {
-            // Puntuación previa con mods incompatibles (ej: RX en NM, EZ en NM, NM en DT)
             playedBefore = false;
             passedBefore = false;
         }
@@ -308,31 +386,14 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     }
 
     // Factor HP Drain (HP bajo <=4 es muy tolerante para pasar, HP >=6.5 es estricto)
-    if (mapHP <= 4.0) passProb += (4.0 - mapHP) * 3;
-    else if (mapHP >= 6.5) passProb -= (mapHP - 6.5) * 4;
+    if (effHP <= 4.0) passProb += (4.0 - effHP) * 3;
+    else if (effHP >= 6.5) passProb -= (effHP - 6.5) * 4;
 
     // Factor Longitud (mapas cortos de jumps acumulan menos fatiga)
     if (hitLength < 90) passProb += 5;
     else if (hitLength > 240) passProb -= 4;
 
-    // Factor Lectura High AR
-    if (effAR > 10.2 && (userSkills.reading || 1) < 20) {
-        passProb -= (effAR - 10.2) * 12;
-    }
-
-    // Historial previo compatible
-    if (passedBefore && !usedNF) {
-        passProb = Math.max(90, Math.min(99, passProb + 35));
-    } else if (playedBefore && usedNF) {
-        const prevAcc = (prevScore.accuracy || 0.8) * (prevScore.accuracy <= 1 ? 100 : 1);
-        if (prevAcc >= 92) passProb = Math.max(70, passProb + 25);
-        else if (prevAcc >= 85) passProb = Math.max(45, passProb + 10);
-        else passProb = Math.min(passProb, 35);
-    }
-
-    passProb = Math.max(1, Math.min(99, Math.round(passProb)));
-
-    // --- CÁLCULO DE PROBABILIDAD DE FC ---
+    // --- CÁLCULO DE PROBABILIDAD DE FC (Base antes de barreras de lectura/FL) ---
     let fcProb = 10;
     const fcSrDelta = mapSR - avgTopSR;
 
@@ -356,7 +417,67 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         }
     }
 
-    fcProb = Math.max(0.1, Math.min(95, Number(fcProb.toFixed(1))));
+    // --- BARRERA DE LECTURA (HIGH AR / REACTION WALL) ---
+    let arExtreme = false;
+    let arOver = 0;
+
+    if (effAR >= 10.6) {
+        // AR extremo (<= 350ms de tiempo de reacción)
+        if (maxProvenAR < effAR - 0.2) {
+            arExtreme = true;
+            if (effAR >= 11.0) {
+                // AR 11.0 (300ms): si no se tiene dominio de AR 11, la reacción física hace casi imposible pasar
+                const readingGap = Math.max(0.5, effAR - maxProvenAR);
+                const penaltyFactor = Math.max(0.01, Math.pow(0.2, readingGap));
+                passProb = Math.max(1, Math.min(4, Math.round(passProb * penaltyFactor)));
+                fcProb = 0.0;
+            } else {
+                const readingGap = Math.max(0.3, effAR - maxProvenAR);
+                const penaltyFactor = Math.max(0.05, Math.pow(0.35, readingGap * 2.0));
+                passProb *= penaltyFactor;
+                fcProb *= Math.max(0.01, penaltyFactor * 0.5);
+            }
+        }
+    } else if (effAR > readingComfort + 0.3) {
+        arOver = effAR - readingComfort;
+        const penalty = Math.min(45, (arOver / 0.5) * 15);
+        passProb -= penalty;
+        fcProb *= Math.max(0.05, 1 - (arOver / 0.5) * 0.4);
+    }
+
+    // --- FACTOR FLASHLIGHT (FL) - EXIGE MEMORIZACIÓN ---
+    if (hasFL) {
+        if (!flMemorized) {
+            if (!playerHasFLInTops) {
+                // Jugador normal sin memorización en este mapa:
+                // FL reduce el campo visual masivamente. A más de 3.5★ o más de 120x, es fail garantizado
+                if (mapSR >= 3.8 || mapCombo > 120) {
+                    passProb = 1;
+                    fcProb = 0.0;
+                } else {
+                    passProb = Math.min(passProb, 8);
+                    fcProb = Math.min(fcProb, 0.2);
+                }
+            } else {
+                // Jugador con experiencia en FL, pero sin memorizar este mapa en particular
+                passProb = Math.min(passProb, 12);
+                fcProb = Math.min(fcProb, 0.5);
+            }
+        }
+    }
+
+    // Historial previo compatible
+    if (passedBefore && !usedNF) {
+        passProb = Math.max(90, Math.min(99, passProb + 35));
+    } else if (playedBefore && usedNF) {
+        const prevAcc = (prevScore.accuracy || 0.8) * (prevScore.accuracy <= 1 ? 100 : 1);
+        if (prevAcc >= 92) passProb = Math.max(70, passProb + 25);
+        else if (prevAcc >= 85) passProb = Math.max(45, passProb + 10);
+        else passProb = Math.min(passProb, 35);
+    }
+
+    passProb = Math.max(1, Math.min(99, Math.round(passProb)));
+    fcProb = Math.max(0.0, Math.min(95, Number(fcProb.toFixed(1))));
 
     const prevScoreMods = prevScore ? extractModAcronyms(prevScore.mods) : [];
     const prevScoreModsStr = prevScoreMods.length > 0 ? `+${prevScoreMods.join('')}` : 'NM';
@@ -382,9 +503,10 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
             sr: mapSR,
             bpm: mapBPM,
             combo: mapCombo,
-            ar: effAR,
-            od: effOD,
-            hp: mapHP,
+            ar: Number(effAR.toFixed(1)),
+            od: Number(effOD.toFixed(1)),
+            cs: Number(effCS.toFixed(1)),
+            hp: Number(effHP.toFixed(1)),
             archetypeKey: mapArchetypeKey,
             aimWeight: Number(aimWeight.toFixed(2)),
             speedWeight: Number(speedWeight.toFixed(2))
@@ -396,7 +518,14 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
             userSpeed: userSpeedVal,
             estimatedComfortBPM: Math.round(estimatedComfortBPM),
             bpmOver: Math.max(0, mapBPM - Math.round(estimatedComfortBPM)),
-            avgAcc: pushProfile.avgAcc
+            avgAcc: pushProfile.avgAcc,
+            hasFL,
+            flMemorized,
+            arExtreme,
+            arOver,
+            arMs: effArMs,
+            readingComfort: Number(readingComfort.toFixed(1)),
+            maxProvenAR: Number(maxProvenAR.toFixed(1))
         }
     };
 }
@@ -552,10 +681,16 @@ async function run(messages, args) {
     let diffAttrs = null;
     let perfAttrs = null;
     let strains = null;
+    let mapAttrs = null;
     try {
         const engine = ppEngine.getEngine();
         const map = await getBeatmap_osu(beatmapData.beatmapset_id || beatmapData.beatmapset?.id, beatmapData.id, beatmapData);
         if (map) {
+            try {
+                const builder = new engine.BeatmapAttributesBuilder({ map, mods: activeModsStr });
+                mapAttrs = builder.build();
+            } catch (_) {}
+
             const diff = new engine.Difficulty({ mods: activeModsStr });
             diffAttrs = diff.calculate(map);
             perfAttrs = new engine.Performance({ mods: activeModsStr, accuracy: 100 }).calculate(diffAttrs);
@@ -635,7 +770,8 @@ async function run(messages, args) {
         activeModsStr,
         diffAttrs,
         perfAttrs,
-        scoreCompatibility: chosenCompat
+        scoreCompatibility: chosenCompat,
+        mapAttrs
     });
 
     // Generar gráfico panorámico híbrido de diagnóstico

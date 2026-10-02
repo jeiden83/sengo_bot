@@ -132,7 +132,9 @@ async function generatePuedoGraph({
     ctx.font = '12px Poppins, Montserrat, sans-serif';
     ctx.fillStyle = '#9e9aa8';
     const hpStr = Number(analysis.map?.hp || 5.0).toFixed(1);
-    ctx.fillText(`${analysis.map?.bpm || 180} BPM  •  AR ${analysis.map?.ar || 9.0}  •  OD ${analysis.map?.od || 8.0}  •  HP ${hpStr}`, W - 22, 48);
+    const arStr = Number(analysis.map?.ar || 9.0).toFixed(1);
+    const odStr = Number(analysis.map?.od || 8.0).toFixed(1);
+    ctx.fillText(`${analysis.map?.bpm || 180} BPM  •  AR ${arStr}  •  OD ${odStr}  •  HP ${hpStr}`, W - 22, 48);
     ctx.restore();
 
     // ==========================================
