@@ -942,6 +942,51 @@ async function _computeSkillsBreakdown(scores, mode = "osu") {
  * - isChokePusher: detecta jugadores que juegan dificultades más altas sin buscar necesariamente FCs perfectos.
  * - pushStars: estrellas promedio de las dificultades altas que el jugador suele pushear.
  */
+/**
+ * ponytail: Estima la dificultad efectiva de un play con mods (DT, HR, EZ, etc.) usando
+ * multiplicadores físicos y anclaje por PP cuando está disponible.
+ * Evita subestimar a jugadores de DT/HR/EZ cuyos beatmaps base reportan nomod SR en la API.
+ */
+function estimateScoreEffectiveStars(score, gamemode = 'osu') {
+    const baseSR = Number(score.beatmap?.difficulty_rating || 0);
+    if (baseSR <= 0 && !score.pp) return 5.0;
+
+    const modsList = Array.isArray(score.mods)
+        ? score.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+        : (typeof score.mods === "string" ? score.mods.match(/.{1,2}/g) || [] : []);
+
+    const isDT = modsList.includes('DT') || modsList.includes('NC');
+    const isHR = modsList.includes('HR');
+    const isEZ = modsList.includes('EZ');
+    const isHD = modsList.includes('HD');
+    const isHT = modsList.includes('HT') || modsList.includes('DC');
+    const pp = Number(score.pp || 0);
+
+    let modMult = 1.0;
+    if (isDT) modMult *= 1.38;
+    if (isHR) modMult *= 1.08;
+    if (isHT) modMult *= 0.75;
+    if (isEZ) {
+        if (isDT) modMult *= 1.15;
+        else if (isHD) modMult *= 1.05;
+        else modMult *= 0.92;
+    } else if (isHD && !isDT && !isHR) {
+        modMult *= 1.04;
+    }
+
+    const modEstimatedSR = (baseSR > 0 ? baseSR : 5.0) * modMult;
+
+    if (pp > 30) {
+        const rawAcc = Number(score.accuracy != null ? score.accuracy : 0.98);
+        const acc = rawAcc <= 1 ? rawAcc : rawAcc / 100;
+        const accWeight = Math.pow(Math.max(0.7, acc), 2.5);
+        const ppImpliedSR = Math.pow(pp / (0.16 * accWeight), 1 / 3.8);
+        return Number(((modEstimatedSR * 0.45) + (ppImpliedSR * 0.55)).toFixed(2));
+    }
+
+    return Number(modEstimatedSR.toFixed(2));
+}
+
 function analyzePlayerPushProfile(topScores, gamemode = "osu") {
     if (!Array.isArray(topScores) || topScores.length === 0) {
         return {
@@ -976,7 +1021,7 @@ function analyzePlayerPushProfile(topScores, gamemode = "osu") {
             chokePlays.push({ acc, score: s });
         }
 
-        const sr = Number(s.beatmap?.difficulty_rating || 0);
+        const sr = estimateScoreEffectiveStars(s, gamemode);
         if (sr > 0) allStars.push(sr);
     });
 
@@ -1354,6 +1399,7 @@ module.exports = {
     analyzeSkillsBreakdown,
     clearSkillsCache,
     analyzePlayerPushProfile,
+    estimateScoreEffectiveStars,
     estimateMapSkills,
     saveUserSkills,
     getCountrySkillsLeaderboard,

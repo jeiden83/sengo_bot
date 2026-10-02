@@ -100,10 +100,11 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
         }));
     }
 
-    if (analysis.map.sr > analysis.factors.pushStars + 0.6) {
+    const effectiveFc = analysis.factors?.effectiveFcRating || analysis.factors?.pushStars || 5.0;
+    if (analysis.map.sr > effectiveFc + 0.6) {
         tips.push(t(locale, 'puedo.tip_sr_fc_gap', {
             sr: analysis.map.sr.toFixed(2),
-            pushStars: analysis.factors.pushStars.toFixed(2)
+            pushStars: effectiveFc.toFixed(2)
         }));
     }
 
@@ -168,7 +169,7 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
             },
             {
                 name: t(locale, 'puedo.field_player_profile'),
-                value: `**${t(locale, 'puedo.field_fc_pass_rating')}** \`${analysis.factors.pushStars.toFixed(2)}★ / ${analysis.factors.effectivePassRating.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\`\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
+                value: `**${t(locale, 'puedo.field_fc_pass_rating')}** \`${(analysis.factors.effectiveFcRating || analysis.factors.pushStars).toFixed(2)}★ / ${analysis.factors.effectivePassRating.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\`\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
                 inline: true
             }
         )

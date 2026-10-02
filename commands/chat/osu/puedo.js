@@ -308,7 +308,7 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     if (aimWeight >= 0.65) mapArchetypeKey = 'puedo.archetype_jumps';
     else if (aimWeight <= 0.58) mapArchetypeKey = 'puedo.archetype_streams';
 
-    const topSRs = topScores.map(s => Number(s.beatmap?.difficulty_rating || 0)).filter(sr => sr > 0);
+    const topSRs = topScores.map(s => (SkillsModel.estimateScoreEffectiveStars ? SkillsModel.estimateScoreEffectiveStars(s, mode) : Number(s.beatmap?.difficulty_rating || 0))).filter(sr => sr > 0);
     const avgTopSR = topSRs.length > 0 ? (topSRs.reduce((a, b) => a + b, 0) / topSRs.length) : pushProfile.avgPlayedStars;
 
     let playedBefore = false;
@@ -394,26 +394,58 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     else if (hitLength > 240) passProb -= 4;
 
     // --- CÁLCULO DE PROBABILIDAD DE FC (Base antes de barreras de lectura/FL) ---
-    let fcProb = 10;
-    const fcSrDelta = mapSR - avgTopSR;
+    // ponytail: El techo de FC se modela en torno a pushStars (las dificultades altas que el jugador suele
+    // jugar y pushear) modulado por su afinidad al arquetipo del mapa (Aim vs Speed).
+    const fcAimBonus = Math.max(-0.4, Math.min(1.2, ((userAimVal - 45) / 25) * 0.7));
+    const fcSpeedBonus = Math.max(-0.4, Math.min(1.2, ((userSpeedVal - 45) / 25) * 0.7));
+    const effectiveFcRating = pushProfile.pushStars + (aimWeight * fcAimBonus) + (speedWeight * fcSpeedBonus);
 
-    if (fcSrDelta <= -0.5) fcProb = 75;
-    else if (fcSrDelta <= 0) fcProb = 50 - (fcSrDelta / -0.5) * 20;
-    else if (fcSrDelta <= 0.4) fcProb = 30 - (fcSrDelta / 0.4) * 20;
-    else if (fcSrDelta <= 0.8) fcProb = 10 - ((fcSrDelta - 0.4) / 0.4) * 8;
-    else fcProb = Math.max(0.1, 2 - (fcSrDelta - 0.8) * 2);
+    // Delta continuo respecto al techo de consistencia (FC) real del jugador
+    const fcDelta = mapSR - effectiveFcRating;
 
-    if (mapCombo > 1200) fcProb *= 0.5;
-    else if (mapCombo > 800) fcProb *= 0.75;
+    let fcProb = 50;
+    if (fcDelta <= -1.2) {
+        fcProb = 88 + Math.min(7, (-1.2 - fcDelta) * 5); // 88% a 95%
+    } else if (fcDelta <= -0.6) {
+        fcProb = 72 + ((-0.6 - fcDelta) / 0.6) * 16; // 72% a 88%
+    } else if (fcDelta <= 0.0) {
+        fcProb = 48 + ((-fcDelta) / 0.6) * 24; // 48% a 72%
+    } else if (fcDelta <= 0.3) {
+        fcProb = 28 - (fcDelta / 0.3) * 20; // 28% a 48%
+    } else if (fcDelta <= 0.7) {
+        fcProb = 12 - ((fcDelta - 0.3) / 0.4) * 16; // 12% a 28%
+    } else if (fcDelta <= 1.2) {
+        fcProb = 2.5 - ((fcDelta - 0.7) / 0.5) * 9.5; // 2.5% a 12%
+    } else {
+        fcProb = Math.max(0.1, 2.5 - (fcDelta - 1.2) * 2.0); // < 2.5%
+    }
 
-    if (pushProfile.isChokePusher) fcProb *= 0.8;
-    if (mapBPM > estimatedComfortBPM + 15) fcProb *= 0.3;
+    // Factor de consistencia continuo según longitud/combo del mapa (curva suave sin escalones bruscos)
+    const comboFactor = Math.max(0.55, Math.min(1.1, 1.05 - (Math.max(0, mapCombo - 500) / 3500) * 0.5));
+    fcProb *= comboFactor;
 
-    if (playedBefore) {
+    if (pushProfile.isChokePusher) fcProb *= 0.88;
+
+    if (mapBPM > estimatedComfortBPM + 10) {
+        const bpmOver = mapBPM - estimatedComfortBPM;
+        const bpmPenalty = Math.min(0.65, (bpmOver / 30) * 0.4 * (speedWeight >= 0.5 ? 1.0 : 0.6));
+        fcProb *= (1.0 - bpmPenalty);
+    }
+
+    // Historial previo en el mapa específico
+    if (playedBefore && prevScore) {
+        const misses = Number(prevScore.statistics?.count_miss ?? prevScore.statistics?.miss ?? 0);
+        const isFc = prevScore.perfect === true || prevScore.legacy_perfect === true || misses === 0;
         const comboRatio = (prevScore.max_combo || prevScore.combo || 0) / Math.max(1, mapCombo);
-        const prevMisses = Number(prevScore.statistics?.count_miss || prevScore.statistics?.miss || 0);
-        if (prevMisses > 10 || comboRatio < 0.25) {
-            fcProb = Math.min(fcProb, 5);
+
+        if (isFc) {
+            // Ya tiene un FC previo verificado en este mapa: probabilidad muy alta de repetir
+            fcProb = Math.max(fcProb, 82);
+        } else if (misses <= 2 && comboRatio >= 0.80) {
+            // Choke probado en el pasado (1-2 misses en tramo final)
+            fcProb = Math.max(fcProb, Math.min(75, fcProb * 1.6 + 15));
+        } else if (misses > 20 && comboRatio < 0.25) {
+            fcProb *= 0.75;
         }
     }
 
@@ -514,6 +546,7 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         factors: {
             pushStars: pushProfile.pushStars,
             effectivePassRating: Number(effectivePassRating.toFixed(2)),
+            effectiveFcRating: Number(effectiveFcRating.toFixed(2)),
             userAim: userAimVal,
             userSpeed: userSpeedVal,
             estimatedComfortBPM: Math.round(estimatedComfortBPM),

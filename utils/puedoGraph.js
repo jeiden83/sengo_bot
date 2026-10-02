@@ -278,7 +278,8 @@ async function generatePuedoGraph({
         }
 
         // Línea Horizontal: Techo de FC del Jugador
-        const fcRatio = (analysis.factors?.pushStars || mapSR) / mapSR;
+        const fcRating = analysis.factors?.effectiveFcRating || analysis.factors?.pushStars || mapSR;
+        const fcRatio = fcRating / mapSR;
         const fcStrainEquiv = maxStrain * fcRatio;
         const fcLineY = getY(fcStrainEquiv);
 
@@ -295,7 +296,7 @@ async function generatePuedoGraph({
 
             ctx.fillStyle = '#ffd700';
             ctx.font = 'bold 9px Poppins, Montserrat, sans-serif';
-            ctx.fillText(`FC Push: ${(analysis.factors?.pushStars || 0).toFixed(2)}★`, gx + gw - 90, fcLineY - 4);
+            ctx.fillText(`FC Limit: ${fcRating.toFixed(2)}★`, gx + gw - 90, fcLineY - 4);
         }
 
         // Marcas de tiempo en el eje X
@@ -455,7 +456,7 @@ async function generatePuedoGraph({
 
     // 3. Techos de Dificultad (FC vs Pass)
     const sr = analysis.map?.sr || 5.0;
-    const fcCeil = analysis.factors?.pushStars || 5.0;
+    const fcCeil = analysis.factors?.effectiveFcRating || analysis.factors?.pushStars || 5.0;
     const passCeil = analysis.factors?.effectivePassRating || 6.0;
     const diffPct = Math.min(100, Math.max(10, ((sr - (fcCeil - 1.0)) / (passCeil - (fcCeil - 1.0) + 0.5)) * 100));
 
