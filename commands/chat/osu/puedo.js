@@ -117,7 +117,89 @@ function parsePuedoArgs(args) {
     return options;
 }
 
-function calculateProbabilities({ user, topScores, beatmap, bestScore, activeModsStr = 'NM', diffAttrs }) {
+function extractModAcronyms(mods) {
+    if (!mods) return [];
+    if (typeof mods === 'string') {
+        const clean = mods.toUpperCase().replace(/[^A-Z0-9]/g, '');
+        if (clean === 'NM' || clean === 'NOMOD' || clean === '') return [];
+        return clean.match(/.{1,2}/g) || [];
+    }
+    if (Array.isArray(mods)) {
+        return mods.map(m => {
+            if (typeof m === 'string') return m.toUpperCase();
+            if (m && typeof m === 'object' && m.acronym) return m.acronym.toUpperCase();
+            return '';
+        }).filter(Boolean);
+    }
+    return [];
+}
+
+function evaluateScoreCompatibility(score, targetModsStr = 'NM') {
+    if (!score) return { isExactMatch: false, isCompatiblePass: false, scoreMods: [], scoreHasNF: false };
+    const targetMods = extractModAcronyms(targetModsStr);
+    const scoreMods = extractModAcronyms(score.mods);
+
+    const isEvaluatingNM = targetMods.length === 0;
+    const targetHasRX = targetMods.includes('RX');
+    const targetHasAP = targetMods.includes('AP');
+    const targetHasEZ = targetMods.includes('EZ');
+    const targetHasHT = targetMods.includes('HT');
+    const targetHasDT = targetMods.includes('DT') || targetMods.includes('NC');
+    const targetHasHR = targetMods.includes('HR');
+    const targetHasFL = targetMods.includes('FL');
+
+    const scoreHasRX = scoreMods.includes('RX');
+    const scoreHasAP = scoreMods.includes('AP');
+    const scoreHasAT = scoreMods.includes('AT');
+    const scoreHasCN = scoreMods.includes('CN');
+    const scoreHasEZ = scoreMods.includes('EZ');
+    const scoreHasHT = scoreMods.includes('HT');
+    const scoreHasDT = scoreMods.includes('DT') || scoreMods.includes('NC');
+    const scoreHasHR = scoreMods.includes('HR');
+    const scoreHasFL = scoreMods.includes('FL');
+    const scoreHasNF = scoreMods.includes('NF');
+
+    // 1. Modos asistidos o automatizados (RX, AP, AT, CN)
+    const isAssistedMismatch = (!targetHasRX && scoreHasRX) || (!targetHasAP && scoreHasAP) || scoreHasAT || scoreHasCN;
+    if (isAssistedMismatch) {
+        return { isExactMatch: false, isCompatiblePass: false, isAssistedMismatch: true, scoreMods, scoreHasNF };
+    }
+
+    // 2. Modos de reducción de dificultad (EZ, HT)
+    const isReductionMismatch = (!targetHasEZ && scoreHasEZ) || (!targetHasHT && scoreHasHT);
+    if (isReductionMismatch) {
+        return { isExactMatch: false, isCompatiblePass: false, isReductionMismatch: true, scoreMods, scoreHasNF };
+    }
+
+    // 3. Modos de velocidad (DT/NC)
+    if (targetHasDT && !scoreHasDT) {
+        return { isExactMatch: false, isCompatiblePass: false, isSpeedMismatch: true, scoreMods, scoreHasNF };
+    }
+
+    // 4. Modos de precisión/dificultad (HR)
+    if (targetHasHR && !scoreHasHR) {
+        return { isExactMatch: false, isCompatiblePass: false, isDifficultyMismatch: true, scoreMods, scoreHasNF };
+    }
+
+    // 5. Modos de memoria (FL)
+    if (targetHasFL && !scoreHasFL) {
+        return { isExactMatch: false, isCompatiblePass: false, isMemoryMismatch: true, scoreMods, scoreHasNF };
+    }
+
+    const filterCosmetics = mList => mList.filter(m => !['NF', 'SO', 'SD', 'PF', 'CL'].includes(m)).sort().join('');
+    const isExactMatch = filterCosmetics(targetMods) === filterCosmetics(scoreMods);
+
+    return {
+        isExactMatch,
+        isCompatiblePass: true,
+        isAssistedMismatch: false,
+        isReductionMismatch: false,
+        scoreMods,
+        scoreHasNF
+    };
+}
+
+function calculateProbabilities({ user, topScores, beatmap, bestScore, activeModsStr = 'NM', diffAttrs, perfAttrs = null, scoreCompatibility = null }) {
     const mode = beatmap.mode || 'osu';
     const pushProfile = SkillsModel.analyzePlayerPushProfile(topScores, mode);
     const userSkills = SkillsModel.analyzeSkills(topScores, false, mode);
@@ -128,6 +210,29 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     const mapCombo = diffAttrs?.maxCombo || beatmap.max_combo || 500;
     const effAR = mapSkills.effAR || beatmap.ar || 9.0;
     const effOD = mapSkills.effOD || beatmap.accuracy || 8.0;
+    const mapHP = Number(diffAttrs?.hp != null ? diffAttrs.hp : (diffAttrs?.drainRate || beatmap.hp || 5.0));
+    const hitLength = Math.max(20, Number(beatmap.hit_length || beatmap.total_length || 100));
+
+    // Determinar balance y arquetipo del mapa (Jumps / Aim vs Streams / Stamina)
+    let aimWeight = 0.5;
+    let speedWeight = 0.5;
+
+    if (perfAttrs && ((perfAttrs.ppAim || 0) > 0 || (perfAttrs.ppSpeed || 0) > 0)) {
+        const totalPP = (perfAttrs.ppAim || 0) + (perfAttrs.ppSpeed || 0);
+        aimWeight = Math.max(0.1, Math.min(0.95, (perfAttrs.ppAim || 0) / totalPP));
+        speedWeight = 1.0 - aimWeight;
+    } else if (diffAttrs && diffAttrs.aim != null && diffAttrs.speed != null) {
+        const total = (diffAttrs.aim + diffAttrs.speed) || 1;
+        aimWeight = Math.max(0.1, Math.min(0.9, diffAttrs.aim / total));
+        speedWeight = 1.0 - aimWeight;
+    } else if (mapSkills.speedDominance != null) {
+        speedWeight = Math.max(0.1, Math.min(0.9, mapSkills.speedDominance));
+        aimWeight = 1.0 - speedWeight;
+    }
+
+    let mapArchetypeKey = 'puedo.archetype_hybrid';
+    if (aimWeight >= 0.65) mapArchetypeKey = 'puedo.archetype_jumps';
+    else if (aimWeight <= 0.58) mapArchetypeKey = 'puedo.archetype_streams';
 
     const topSRs = topScores.map(s => Number(s.beatmap?.difficulty_rating || 0)).filter(sr => sr > 0);
     const avgTopSR = topSRs.length > 0 ? (topSRs.reduce((a, b) => a + b, 0) / topSRs.length) : pushProfile.avgPlayedStars;
@@ -137,55 +242,92 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     let usedNF = false;
     let prevScore = null;
 
-    if (bestScore && bestScore.score) {
-        playedBefore = true;
-        prevScore = bestScore.score;
-        const modsList = Array.isArray(prevScore.mods)
-            ? prevScore.mods.map(m => (typeof m === 'string' ? m : m.acronym || ''))
-            : [];
-        usedNF = modsList.includes('NF');
-        passedBefore = prevScore.passed !== false && !['F'].includes(prevScore.rank);
+    if (bestScore) {
+        prevScore = bestScore;
+        const scoreMods = extractModAcronyms(bestScore.mods);
+        usedNF = scoreMods.includes('NF');
+        const isPassedRaw = bestScore.passed !== false && !['F'].includes(bestScore.rank);
+
+        const compat = scoreCompatibility || evaluateScoreCompatibility(bestScore, activeModsStr);
+        if (compat.isCompatiblePass) {
+            playedBefore = true;
+            passedBefore = isPassedRaw;
+        } else {
+            // Puntuación previa con mods incompatibles (ej: RX en NM, EZ en NM, NM en DT)
+            playedBefore = false;
+            passedBefore = false;
+        }
     }
 
-    // --- CÁLCULO DE PROBABILIDAD DE PASS ---
-    let passProb = 50;
+    // --- CÁLCULO DE PROBABILIDAD DE PASS (Diferenciado de FC) ---
+    // ponytail: El FC está fuertemente acotado por pushStars (top plays), pero el Pass
+    // en osu! es mucho más accesible (+0.8★ a +1.8★), especialmente en mapas de jumps para jugadores con buen aim.
+    let userAimVal = 50;
+    let userSpeedVal = 40;
+    if (mode === 'osu') {
+        userAimVal = Number(userSkills.aim || 50);
+        userSpeedVal = Number(userSkills.speed || 40);
+    } else if (mode === 'taiko') {
+        userSpeedVal = Number(userSkills.stamina || 45);
+        userAimVal = Number(userSkills.color || 45);
+    } else if (mode === 'fruits' || mode === 'catch') {
+        userAimVal = Number(userSkills.movement || 50);
+        userSpeedVal = Number(userSkills.consistency || 40);
+    } else if (mode === 'mania') {
+        userSpeedVal = Number(userSkills.speed || 40);
+        userAimVal = Number(userSkills.stamina || 45);
+    }
 
-    const srDelta = mapSR - pushProfile.pushStars;
-    if (srDelta <= -0.5) passProb = 95;
-    else if (srDelta <= 0) passProb = 85 + ((-srDelta) / 0.5) * 10;
-    else if (srDelta <= 0.3) passProb = 70 - (srDelta / 0.3) * 20;
-    else if (srDelta <= 0.7) passProb = 50 - ((srDelta - 0.3) / 0.4) * 30;
-    else if (srDelta <= 1.2) passProb = 20 - ((srDelta - 0.7) / 0.5) * 15;
-    else passProb = Math.max(1, 5 - (srDelta - 1.2) * 5);
+    const aimBonus = Math.max(-0.4, Math.min(1.6, ((userAimVal - 35) / 25) * 1.0));
+    const speedBonus = Math.max(-0.6, Math.min(1.5, ((userSpeedVal - 35) / 25) * 0.8));
+
+    // Techo dinámico de pass adaptado a la composición del mapa y skills del jugador
+    const effectivePassRating = pushProfile.pushStars + 0.85 + (aimWeight * aimBonus) + (speedWeight * speedBonus);
+
+    // Delta respecto al techo real de pass del jugador
+    const passDelta = mapSR - effectivePassRating;
+
+    let passProb = 50;
+    if (passDelta <= -1.0) passProb = 95;
+    else if (passDelta <= -0.5) passProb = 88 + ((-0.5 - passDelta) / 0.5) * 7;
+    else if (passDelta <= 0) passProb = 75 + ((-passDelta) / 0.5) * 13;
+    else if (passDelta <= 0.4) passProb = 55 - (passDelta / 0.4) * 20;
+    else if (passDelta <= 0.8) passProb = 35 - ((passDelta - 0.4) / 0.4) * 20;
+    else if (passDelta <= 1.3) passProb = 15 - ((passDelta - 0.8) / 0.5) * 10;
+    else passProb = Math.max(1, 5 - (passDelta - 1.3) * 4);
 
     // Factor Speed / BPM
-    const estimatedComfortBPM = 160 + (userSkills.speed || 40) * 1.2;
+    const estimatedComfortBPM = 160 + userSpeedVal * 1.2;
     if (mapBPM > estimatedComfortBPM) {
         const bpmOver = mapBPM - estimatedComfortBPM;
-        const speedPenalty = Math.min(45, (bpmOver / 40) * 30);
-        passProb -= speedPenalty;
+        const streamFactor = speedWeight >= 0.5 ? 1.2 : 0.6;
+        const bpmPenalty = Math.min(35, (bpmOver / 30) * 18 * streamFactor);
+        passProb -= bpmPenalty;
     } else {
-        passProb += Math.min(10, ((estimatedComfortBPM - mapBPM) / 40) * 8);
+        passProb += Math.min(6, ((estimatedComfortBPM - mapBPM) / 40) * 4);
     }
 
-    // Factor Densidad de Streams
-    if (mapSkills.streamDensity > 0.6 && (userSkills.speed || 40) < 45) {
-        passProb -= (mapSkills.streamDensity - 0.6) * 25;
-    }
+    // Factor HP Drain (HP bajo <=4 es muy tolerante para pasar, HP >=6.5 es estricto)
+    if (mapHP <= 4.0) passProb += (4.0 - mapHP) * 3;
+    else if (mapHP >= 6.5) passProb -= (mapHP - 6.5) * 4;
+
+    // Factor Longitud (mapas cortos de jumps acumulan menos fatiga)
+    if (hitLength < 90) passProb += 5;
+    else if (hitLength > 240) passProb -= 4;
 
     // Factor Lectura High AR
     if (effAR > 10.2 && (userSkills.reading || 1) < 20) {
-        passProb -= (effAR - 10.2) * 15;
+        passProb -= (effAR - 10.2) * 12;
     }
 
-    // Historial previo
+    // Historial previo compatible
     if (passedBefore && !usedNF) {
-        passProb = Math.max(88, Math.min(99, passProb + 40));
+        passProb = Math.max(90, Math.min(99, passProb + 35));
     } else if (playedBefore && usedNF) {
-        const prevAcc = (prevScore.accuracy || 0.8) * 100;
-        if (prevAcc >= 92) passProb = Math.max(65, passProb + 25);
-        else if (prevAcc >= 85) passProb = Math.max(40, passProb + 10);
-        else passProb = Math.min(passProb, 30);
+        const prevAcc = (prevScore.accuracy || 0.8) * (prevScore.accuracy <= 1 ? 100 : 1);
+        if (prevAcc >= 92) passProb = Math.max(70, passProb + 25);
+        else if (prevAcc >= 85) passProb = Math.max(45, passProb + 10);
+        else passProb = Math.min(passProb, 35);
     }
 
     passProb = Math.max(1, Math.min(99, Math.round(passProb)));
@@ -207,7 +349,7 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     if (mapBPM > estimatedComfortBPM + 15) fcProb *= 0.3;
 
     if (playedBefore) {
-        const comboRatio = (prevScore.max_combo || 0) / Math.max(1, mapCombo);
+        const comboRatio = (prevScore.max_combo || prevScore.combo || 0) / Math.max(1, mapCombo);
         const prevMisses = Number(prevScore.statistics?.count_miss || prevScore.statistics?.miss || 0);
         if (prevMisses > 10 || comboRatio < 0.25) {
             fcProb = Math.min(fcProb, 5);
@@ -215,6 +357,9 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     }
 
     fcProb = Math.max(0.1, Math.min(95, Number(fcProb.toFixed(1))));
+
+    const prevScoreMods = prevScore ? extractModAcronyms(prevScore.mods) : [];
+    const prevScoreModsStr = prevScoreMods.length > 0 ? `+${prevScoreMods.join('')}` : 'NM';
 
     return {
         passProb,
@@ -224,21 +369,31 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         usedNF,
         prevScore: prevScore ? {
             rank: prevScore.rank,
-            acc: ((prevScore.accuracy || 0) * 100).toFixed(2) + '%',
-            combo: `${prevScore.max_combo || 0}x/${mapCombo}x`,
-            mods: prevScore.mods
+            acc: ((prevScore.accuracy != null ? (prevScore.accuracy <= 1 ? prevScore.accuracy * 100 : prevScore.accuracy) : 0)).toFixed(2) + '%',
+            combo: `${prevScore.max_combo || prevScore.combo || 0}x/${mapCombo}x`,
+            mods: prevScoreMods,
+            modsStr: prevScoreModsStr,
+            isCompatiblePass: scoreCompatibility ? scoreCompatibility.isCompatiblePass : true,
+            isAssistedMismatch: scoreCompatibility ? scoreCompatibility.isAssistedMismatch : false,
+            isReductionMismatch: scoreCompatibility ? scoreCompatibility.isReductionMismatch : false,
+            isSpeedMismatch: scoreCompatibility ? scoreCompatibility.isSpeedMismatch : false
         } : null,
         map: {
             sr: mapSR,
             bpm: mapBPM,
             combo: mapCombo,
             ar: effAR,
-            od: effOD
+            od: effOD,
+            hp: mapHP,
+            archetypeKey: mapArchetypeKey,
+            aimWeight: Number(aimWeight.toFixed(2)),
+            speedWeight: Number(speedWeight.toFixed(2))
         },
         factors: {
             pushStars: pushProfile.pushStars,
-            userAim: userSkills.aim || 50,
-            userSpeed: userSkills.speed || 50,
+            effectivePassRating: Number(effectivePassRating.toFixed(2)),
+            userAim: userAimVal,
+            userSpeed: userSpeedVal,
             estimatedComfortBPM: Math.round(estimatedComfortBPM),
             bpmOver: Math.max(0, mapBPM - Math.round(estimatedComfortBPM)),
             avgAcc: pushProfile.avgAcc
@@ -393,30 +548,89 @@ async function run(messages, args) {
     const cleanMods = options.mods ? options.mods.toUpperCase().replace(/[^A-Z0-9]/g, '') : 'NM';
     const activeModsStr = cleanMods === '' ? 'NM' : cleanMods;
 
-    // Calcular atributos precisos con el motor de PP si hay mods
+    // Calcular atributos precisos con el motor de PP
     let diffAttrs = null;
+    let perfAttrs = null;
     try {
         const engine = ppEngine.getEngine();
         const map = await getBeatmap_osu(beatmapData.beatmapset_id || beatmapData.beatmapset?.id, beatmapData.id, beatmapData);
         if (map) {
             diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+            perfAttrs = new engine.Performance({ mods: activeModsStr, accuracy: 100 }).calculate(diffAttrs);
             map.free();
         }
     } catch (e) {}
 
-    // Obtener top scores y mejor puntuación en el mapa
-    const [topScores, bestScore] = await Promise.all([
-        OsuScoreModel.getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: 'bancho' }).catch(() => []),
-        OsuScoreModel.getUserBeatmapBest(beatmapData.id, osuUser.id, targetMode).catch(() => null)
-    ]);
+    // Obtener top scores y puntuaciones del usuario en el beatmap
+    let topScores = [];
+    let allUserScores = [];
+    let bestScoreFallback = null;
+
+    try {
+        [topScores, allUserScores, bestScoreFallback] = await Promise.all([
+            OsuScoreModel.getUserTopScores({ username: [String(osuUser.id)], gamemode: targetMode, server: 'bancho' }).catch(() => []),
+            OsuScoreModel.getBeatmapUserAllScores({
+                username: [String(osuUser.id)],
+                beatmap_url: beatmapData.id,
+                gamemode: targetMode,
+                server: 'bancho'
+            }).catch(() => []),
+            OsuScoreModel.getUserBeatmapBest(beatmapData.id, osuUser.id, targetMode).catch(() => null)
+        ]);
+    } catch (e) {
+        console.error('[s.puedo] Error al obtener puntuaciones del usuario:', e);
+    }
+
+    const candidateScores = [];
+    if (Array.isArray(allUserScores)) {
+        candidateScores.push(...allUserScores);
+    }
+    if (bestScoreFallback) {
+        const fallbackScore = bestScoreFallback.score || bestScoreFallback;
+        if (fallbackScore && fallbackScore.id && !candidateScores.some(s => s.id === fallbackScore.id)) {
+            candidateScores.push(fallbackScore);
+        }
+    }
+
+    let chosenScore = null;
+    let chosenCompat = null;
+
+    if (candidateScores.length > 0) {
+        const evaluated = candidateScores.map(score => {
+            const compat = evaluateScoreCompatibility(score, activeModsStr);
+            const isPassedRaw = score.passed !== false && !['F'].includes(score.rank);
+            const isPass = compat.isCompatiblePass && isPassedRaw;
+            const hasNF = compat.scoreHasNF;
+            const scoreVal = Number(score.legacy_total_score || score.total_score || score.score || 0);
+            const comboVal = Number(score.max_combo || score.combo || 0);
+
+            let tier = 1;
+            if (compat.isCompatiblePass) {
+                if (isPass && !hasNF) tier = compat.isExactMatch ? 5.5 : 5;
+                else if (isPass && hasNF) tier = 4;
+                else tier = 3;
+            } else {
+                if (isPassedRaw) tier = 2;
+                else tier = 1;
+            }
+
+            return { score, compat, tier, scoreVal, comboVal };
+        });
+
+        evaluated.sort((a, b) => b.tier - a.tier || b.scoreVal - a.scoreVal || b.comboVal - a.comboVal);
+        chosenScore = evaluated[0].score;
+        chosenCompat = evaluated[0].compat;
+    }
 
     const analysis = calculateProbabilities({
         user: osuUser,
         topScores: Array.isArray(topScores) ? topScores : [],
         beatmap: beatmapData,
-        bestScore,
+        bestScore: chosenScore,
         activeModsStr,
-        diffAttrs
+        diffAttrs,
+        perfAttrs,
+        scoreCompatibility: chosenCompat
     });
 
     const embed = doOsuPuedoEmbed({
@@ -449,4 +663,4 @@ run.alias = {
 };
 run.flags = ["+mods", "-mods", "-modo", "-server"];
 
-module.exports = { run, parsePuedoArgs, calculateProbabilities, description: run.description, alias: run.alias, flags: run.flags };
+module.exports = { run, parsePuedoArgs, calculateProbabilities, evaluateScoreCompatibility, extractModAcronyms, description: run.description, alias: run.alias, flags: run.flags };

@@ -39,16 +39,44 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
     let historyText = t(locale, 'puedo.history_empty');
     if (analysis.prevScore) {
         const nfTag = analysis.usedNF ? ' `[NoFail]`' : '';
+        const modsTag = (analysis.prevScore.modsStr && analysis.prevScore.modsStr !== 'NM') ? ` \`[${analysis.prevScore.modsStr}]\`` : '';
+        let mismatchNote = '';
+
+        if (!analysis.prevScore.isCompatiblePass) {
+            const target = (activeModsStr && activeModsStr !== '') ? activeModsStr : 'NM';
+            if (analysis.prevScore.isAssistedMismatch) {
+                mismatchNote = `\n└ ${t(locale, 'puedo.history_assisted_mismatch', { target })}`;
+            } else if (analysis.prevScore.isReductionMismatch) {
+                mismatchNote = `\n└ ${t(locale, 'puedo.history_reduction_mismatch', { target })}`;
+            } else {
+                mismatchNote = `\n└ ${t(locale, 'puedo.history_diff_mismatch', { target })}`;
+            }
+        }
+
         historyText = t(locale, 'puedo.history_score', {
             rank: analysis.prevScore.rank,
-            nfTag,
+            nfTag: `${nfTag}${modsTag}`,
             acc: analysis.prevScore.acc,
             combo: analysis.prevScore.combo
-        });
+        }) + mismatchNote;
     }
 
     // Diagnóstico
     const tips = [];
+
+    // Aviso si la puntuación previa no es compatible con los mods solicitados
+    if (analysis.prevScore && !analysis.prevScore.isCompatiblePass) {
+        const target = (activeModsStr && activeModsStr !== '') ? activeModsStr : 'NM';
+        const mods = analysis.prevScore.modsStr || 'mods';
+        if (analysis.prevScore.isAssistedMismatch) {
+            tips.push(t(locale, 'puedo.tip_assisted_mod', { mods, target }));
+        } else if (analysis.prevScore.isReductionMismatch) {
+            tips.push(t(locale, 'puedo.tip_reduction_mod', { mods, target }));
+        } else {
+            tips.push(t(locale, 'puedo.tip_diff_mod', { mods, target }));
+        }
+    }
+
     if (analysis.factors.bpmOver > 0) {
         tips.push(t(locale, 'puedo.tip_bpm_over', {
             bpm: analysis.map.bpm,
@@ -60,13 +88,20 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
         }));
     }
 
-    if (analysis.map.sr > analysis.factors.pushStars + 0.3) {
+    if (analysis.map.sr > analysis.factors.effectivePassRating + 0.2) {
         tips.push(t(locale, 'puedo.tip_sr_over', {
             sr: analysis.map.sr.toFixed(2),
-            pushStars: analysis.factors.pushStars.toFixed(2)
+            passRating: analysis.factors.effectivePassRating.toFixed(2)
         }));
-    } else if (analysis.map.sr <= analysis.factors.pushStars) {
+    } else {
         tips.push(t(locale, 'puedo.tip_sr_ok', {
+            sr: analysis.map.sr.toFixed(2),
+            passRating: analysis.factors.effectivePassRating.toFixed(2)
+        }));
+    }
+
+    if (analysis.map.sr > analysis.factors.pushStars + 0.6) {
+        tips.push(t(locale, 'puedo.tip_sr_fc_gap', {
             sr: analysis.map.sr.toFixed(2),
             pushStars: analysis.factors.pushStars.toFixed(2)
         }));
@@ -105,12 +140,12 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
         .addFields(
             {
                 name: t(locale, 'puedo.field_map_attrs'),
-                value: `**${t(locale, 'puedo.attr_difficulty')}** \`${analysis.map.sr.toFixed(2)}★\`\n**${t(locale, 'puedo.attr_tempo')}** \`${analysis.map.bpm} BPM\`\n**${t(locale, 'puedo.attr_combo')}** \`${analysis.map.combo}x\`\n**${t(locale, 'puedo.attr_ar_od')}** \`${analysis.map.ar} / ${analysis.map.od}\``,
+                value: `**${t(locale, 'puedo.attr_difficulty')}** \`${analysis.map.sr.toFixed(2)}★\` *(${t(locale, analysis.map.archetypeKey)})*\n**${t(locale, 'puedo.attr_tempo')}** \`${analysis.map.bpm} BPM\`\n**${t(locale, 'puedo.attr_combo')}** \`${analysis.map.combo}x\`\n**${t(locale, 'puedo.attr_ar_od')}** \`${analysis.map.ar} / ${analysis.map.od}\``,
                 inline: true
             },
             {
                 name: t(locale, 'puedo.field_player_profile'),
-                value: `**${t(locale, 'puedo.profile_push_stars')}** \`${analysis.factors.pushStars.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\`\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
+                value: `**${t(locale, 'puedo.field_fc_pass_rating')}** \`${analysis.factors.pushStars.toFixed(2)}★ / ${analysis.factors.effectivePassRating.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\`\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
                 inline: true
             }
         )
