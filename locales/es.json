@@ -423,6 +423,11 @@
       "body": "Muestra el desglose de Aim, Speed, Accuracy y Reading con promedios y el Top 3 de jugadas para cada habilidad. Admite ranking nacional con -nacional / -pais y ranking de servidor con -server [id].",
       "usage": "s.skills [usuario] [-top] [-aim|-speed|-acc|-reading] [-nacional] [-pais CO] [-server [id]] [-force]"
     },
+    "antiskills": {
+      "header": "Diagnóstico cinemático de debilidades, puntos ciegos, kryptonitas de mods y mapa némesis",
+      "body": "Analiza el Top 100 del jugador calculando la brecha relativa de habilidades frente a su pico, tasa de choke, límites de tempo (BPM) y perfil de mapa que más le cuesta.",
+      "usage": "s.antiskills [usuario] [-std|-taiko|-catch|-mania] [-droid|-gatari|-bancho] [-force]"
+    },
     "yo": {
       "header": "Envía la foto de YO o genera la tarjeta dinámica con Canvas.",
       "body": "Envía la imagen YO.png estática o genera la tarjeta dinámica de perfil con Canvas usando el flag -canva [usuario]. Permite embeberla con -embed.",
@@ -2310,6 +2315,121 @@
   "ai": {
     "err_no_prompt": "❌ Debes especificar lo que deseas consultar o hacer en lenguaje natural. Ej: `s.ai dime mi top en std` o `s.ai recomiéndame mapas`.",
     "err_not_understood": "❌ No pude identificar con certeza qué comando deseas ejecutar con: *\"{prompt}\"*.\n💡 Prueba siendo un poco más específico, por ejemplo: `s.ai dime mi top en std`, `s.ai cuál fue mi última partida` o `s.ai cuál es la tasa bcv`."
+  },
+  "antiskills": {
+    "title": "⚡ Diagnóstico de Anti-Skills y Puntos Ciegos",
+    "footer": "Sengo • Diagnóstico de Anti-Skills • s.antiskills",
+    "primary_deficit_label": "🎯 **Punto Ciego Principal:**",
+    "primary_deficit_desc": "**{skill}** (`{score} pts`) ▸ Brecha: **-{deficit} pts** (*{ratio}%* de tu habilidad pico en {peakSkill})",
+    "field_deficits_title": "📊 Brecha Relativa vs Pico ({peakScore} pts)",
+    "skill_peak_label": "🏆 **{skill}**: `{score} pts` *(Fortaleza pico de referencia)*",
+    "skill_deficit_line": "{emoji} **{skill}**: `{score} pts` [{bar}] **-{deficit} pts** (*{ratio}%*)",
+    "skill_aim": "Aim (Puntería)",
+    "skill_speed": "Speed (Velocidad)",
+    "skill_acc": "Accuracy (Precisión)",
+    "skill_reading": "Reading (Lectura)",
+    "skill_stamina": "Stamina (Resistencia)",
+    "skill_color": "Color / Switching",
+    "skill_rhythm": "Rhythm (Ritmo)",
+    "skill_movement": "Movement (Movimiento)",
+    "skill_precision": "Precision (Precisión)",
+    "skill_stream": "Stream (Velocidad)",
+    "skill_jack": "Jack (Resistencia)",
+    "skill_tech": "Tech / LN",
+    "severity_critical": "Crítico",
+    "severity_moderate": "Notable",
+    "severity_mild": "Leve",
+    "severity_balanced": "Equilibrado",
+    "field_consistency_title": "⚖️ Consistencia & Techo de FC",
+    "consistency_line_fc": "▸ **Techo de FC:** ~`{fcStars}★` • **Push:** ~`{pushStars}★`",
+    "consistency_line_choke": "▸ **Brecha de Choke:** `{chokeGap}★` ({emoji} *{status}*)",
+    "consistency_line_rate": "▸ **Tasa de No-FC en Top:** `{rate}%` ({nonFcCount}/{totalCount} jugadas)",
+    "choke_severe": "Choke Pusher extremo (dificultades muy por encima del FC)",
+    "choke_moderate": "Inconsistente (propenso a perder combo en partes clave)",
+    "choke_consistent": "Consistencia sólida (altas probabilidades de cerrar FC)",
+    "field_bpm_title": "🥁 Límites de Tempo (BPM)",
+    "bpm_line_avg": "▸ **BPM Ponderado:** ~`{avgBpm} BPM`",
+    "bpm_line_comfort": "▸ **Techo Cómodo (85%):** ~`{comfortBpm} BPM`",
+    "bpm_line_wall": "▸ **Muro Cinético:** ~`{wallBpm}+ BPM` *(riesgo de fatiga o colapso de tapping)*",
+    "field_mods_title": "☣️ Kryptonitas de Mods",
+    "mods_dominant": "▸ **Mods Dominantes:** {mods}",
+    "mods_dominant_none": "*Balanceado / Sin mod dominante*",
+    "mods_kryptonite": "▸ **Kryptonita Detectada:** {mods}",
+    "mods_kryptonite_none": "*Ninguna (estilo versátil en mods)*",
+    "mods_kryptonite_desc_hr": "• **HR**: Hipersensibilidad a círculos pequeños (CS alto) y precisión estricta (OD 10 / AR 10).",
+    "mods_kryptonite_desc_ez": "• **EZ**: Dificultad para procesar baja velocidad de aproximación (<AR 8) y alta densidad de notas.",
+    "mods_kryptonite_desc_dt": "• **DT**: Muro de tempo; fatiga cinemática y lectura colapsada ante AR > 10.3.",
+    "mods_kryptonite_desc_hd": "• **HD**: Dependencia de círculos de aproximación; dificultad al leer notas invisibles.",
+    "mods_kryptonite_desc_nm": "• **NM**: Inconsistencia al tocar en OD nativo alto sin asistencia de escalado de tempo.",
+    "field_nemesis_title": "💀 Beatmap Némesis: {name}",
+    "nemesis_zone": "▸ **Zona Crítica:** `{zone}` • Peligro: **~{sr}★**",
+    "nemesis_mods": "▸ **Mods que lo activan:** `{mods}`",
+    "field_training_title": "💡 Prescripción de Entrenamiento",
+    "training_reading_density": "• **Entrenamiento de Lectura:** Juega mapas con AR 7.5-8.5 densos o activa EZ en dificultades intermedias para forzar el procesamiento visual de clusters.",
+    "training_reading_high_ar": "• **Entrenamiento de Lectura Rápida:** Practica mapas con AR 9.8-10.3 para reducir el tiempo de reacción periférico y dejar de depender de baja densidad.",
+    "training_speed_stamina": "• **Entrenamiento de Velocidad & Stamina:** Dedica sesiones a streams continuos a ~{targetBpm} BPM con mapas de ritmo sostenido (deathstreams) para empujar tu techo cinético.",
+    "training_acc_finger_control": "• **Entrenamiento de Precisión & Control:** Juega mapas técnicos y de finger control con OD 9.5+ enfocándote en ritmos alternados (triplets, polirritmias).",
+    "training_aim_snapping": "• **Entrenamiento de Puntería (Aim):** Practica saltos de amplio rango (cross-screen) a tempos cómodos para consolidar la memoria muscular y el snap.",
+    "training_consistency_choke": "• **Consistencia Mental:** Juega mapas completos más largos (3-5 min) a ~{fcStars}★ sin reiniciar tras un miss para romper el patrón de reseteo compulsivo.",
+    "training_balanced_push": "• **Skillset Equilibrado:** Tu perfil es muy balanceado. Sube gradualmente la dificultad global (~+0.2★) en todas las áreas de forma armónica.",
+    "training_mod_diversity": "• **Diversificación de Mods:** Incorpora mapas con tu mod menos jugado ({kryptonite}) en dificultades bajas para desacondicionar tu sesgo de mods.",
+    "nemesis": {
+      "density_hell": {
+        "name": "Tormenta de Densidad Visual",
+        "desc": "Mapa con baja velocidad de aproximación, alta densidad de objetos y patrones superpuestos donde la lectura periférica colapsa."
+      },
+      "speed_wall": {
+        "name": "Muro de Mashing & Deathstreams",
+        "desc": "Mapa de alta velocidad con ráfagas continuas de streams que sobrepasan tu reserva de estamina y coordinación dactilar."
+      },
+      "strict_metronome": {
+        "name": "Metrónomo Quirúrgico",
+        "desc": "Mapa con Overall Difficulty (OD) implacable y ritmo complejo que castiga cualquier milisegundo de imprecisión con 100s y 50s."
+      },
+      "cross_screen_hell": {
+        "name": "Saltos Extremos de Pantalla Cruzada",
+        "desc": "Patrones de saltos gigantescos con ángulos incómodos y aceleraciones bruscas donde el snap del cursor pierde estabilidad."
+      },
+      "marathon_endurance": {
+        "name": "Maratón del Choker",
+        "desc": "Canción de 5+ minutos de tensión continua con una dificultad moderada y un pico brutal al 90% diseñado para inducir fallos por nervios."
+      },
+      "taiko_stream_wall": {
+        "name": "Muro de Redoblantes",
+        "desc": "Streams monocromáticos de alta velocidad continua a más de 260 BPM."
+      },
+      "taiko_complex_patterns": {
+        "name": "Laberinto de Patrones",
+        "desc": "Alternancias complejas ddkkddkk que sobrecargan la coordinación de manos."
+      },
+      "taiko_strict_od": {
+        "name": "Juicio de Timing Estricto",
+        "desc": "OD alto en Taiko donde el timing de impacto no perdona desincronizaciones."
+      },
+      "catch_droplets": {
+        "name": "Lluvia de Micro-Gotas",
+        "desc": "Mapas con gotas milimétricas y deslizamiento técnico que castigan el exceso de velocidad del plato."
+      },
+      "catch_hyperdash": {
+        "name": "Hiper-Velocidad Continua",
+        "desc": "Hyperdashes consecutivos con rebotes cruzados a alta velocidad."
+      },
+      "mania_dense_chordjack": {
+        "name": "Pesadilla de Chordjacks",
+        "desc": "Columnas de minijacks dobles y triples que agotan la fuerza explosiva de los dedos."
+      },
+      "mania_speed_stream": {
+        "name": "Corriente Imparable",
+        "desc": "Streams continuos densos que exigen velocidad sostenida."
+      },
+      "mania_ln_release": {
+        "name": "Liberación de Long Notes",
+        "desc": "Notas largas entrelazadas con liberaciones de alta precisión y dificultad técnica."
+      }
+    },
+    "err_no_scores": "❌ El usuario **{username}** no tiene suficientes puntuaciones en su Top para realizar un diagnóstico cinemático.",
+    "err_user_not_found": "❌ No se encontró ningún jugador con ese nombre o ID.",
+    "err_no_user": "❌ No se encontró tu cuenta vinculada. Usa `s.link` para vincularte o especifica un usuario con `s.antiskills <usuario>`."
   }
 }
 

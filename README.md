@@ -249,6 +249,15 @@ Sengo responde tanto a comandos de chat clásicos con prefijo (`s.`) como a coma
   * *Mejores Jugadas por Habilidad:*
     * `s.skills -top` o `s.skills -aim` / `-speed` / `-acc` / `-reading`: Muestra la lista interactiva de mejores jugadas del usuario ordenadas por los puntos de esa habilidad.
   * *Alias:* `s.skill`, `s.ts`.
+* **`s.antiskills [usuario]`**
+  Diagnóstico cinemático avanzado de debilidades relativas, puntos ciegos, kryptonitas de mods y arquetipo de mapa némesis.
+  * Calcula la brecha ($\Delta$) de cada habilidad respecto a la fortaleza pico del jugador y clasifica su severidad (🔴 Crítico, 🟡 Notable, 🟢 Equilibrado).
+  * Evalúa la tasa de chokes en el Top 100 ($0.95^i$), techo de FC consistente vs estrellas push, y límites de tempo (BPM promedio, zona de confort del 85% y muro cinético).
+  * Identifica combinaciones de mods dominantes y kryptonitas evidentes (ausencia extrema de mods opuestos como HR para jugadores EZ o viceversa).
+  * Sintetiza el perfil en un **Mapa Némesis** prototípico (densidad visual, muerte por streams, metrónomo quirúrgico, saltos de pantalla cruzada o maratón) y genera una prescripción concreta de entrenamiento.
+  * *Flags:* `-std`, `-taiko`, `-fruits`, `-mania` (para cambiar el modo de juego), `-droid`, `-gatari`, `-bancho` (servidor), `-force` (ignorar caché).
+  * *Slash Command:* `/antiskills [usuario] [modo] [force]`
+  * *Alias:* `s.antiskill`, `s.antihabilidades`, `s.debilidades`, `s.weaknesses`, `s.blindspots`.
 * **`s.twins [usuario]`**
   Encuentra a tu gemelo de juego en osu! según la afinidad y ponderación matemática real de tus mods en tus mejores jugadas (decaimiento $0.95^i \times \text{pp}$), cercanía de PP o similitud de habilidades.
   * *Búsqueda para otro usuario:* Puedes especificar un jugador directamente por parámetro (ej: `s.twins milin`, `s.twins heidy_ls173`), mediante `-u <usuario>` o mencionando al usuario de Discord. Si se omite, buscará gemelos para tu cuenta vinculada.

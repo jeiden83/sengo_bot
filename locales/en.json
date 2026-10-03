@@ -423,6 +423,11 @@
       "body": "Shows the breakdown of Aim, Speed, Accuracy, and Reading with averages and Top 3 plays for each skill. Supports national leaderboard with -national / -country and server leaderboard with -server [id].",
       "usage": "s.skills [user] [-top] [-aim|-speed|-acc|-reading] [-national] [-country CO] [-server [id]] [-force]"
     },
+    "antiskills": {
+      "header": "Kinematic diagnosis of weaknesses, blind spots, mod kryptonites, and nemesis beatmap",
+      "body": "Analyzes the player's Top 100 calculating relative skill deficits against peak strength, choke tendency, tempo (BPM) boundaries, and worst beatmap archetype.",
+      "usage": "s.antiskills [user] [-std|-taiko|-catch|-mania] [-droid|-gatari|-bancho] [-force]"
+    },
     "yo": {
       "header": "Sends the YO picture or generates a dynamic profile card with Canvas.",
       "body": "Sends the static YO.png asset image or generates a dynamic profile card with Canvas using the -canva [user] flag. Allows embedding it with -embed.",
@@ -2306,6 +2311,121 @@
   "ai": {
     "err_no_prompt": "❌ You must specify what you want to query or do in natural language. E.g.: `s.ai show my top in std` or `s.ai recommend maps`.",
     "err_not_understood": "❌ I could not identify with certainty which command you want to run for: *\"{prompt}\"*.\n💡 Try being a bit more specific, for example: `s.ai show my top in std`, `s.ai what was my last score` or `s.ai recommend maps`."
+  },
+  "antiskills": {
+    "title": "⚡ Anti-Skills & Blind Spot Diagnosis",
+    "footer": "Sengo • Anti-Skills Diagnosis • s.antiskills",
+    "primary_deficit_label": "🎯 **Primary Blind Spot:**",
+    "primary_deficit_desc": "**{skill}** (`{score} pts`) ▸ Gap: **-{deficit} pts** (*{ratio}%* of your peak skill in {peakSkill})",
+    "field_deficits_title": "📊 Relative Gap vs Peak ({peakScore} pts)",
+    "skill_peak_label": "🏆 **{skill}**: `{score} pts` *(Reference peak strength)*",
+    "skill_deficit_line": "{emoji} **{skill}**: `{score} pts` [{bar}] **-{deficit} pts** (*{ratio}%*)",
+    "skill_aim": "Aim",
+    "skill_speed": "Speed",
+    "skill_acc": "Accuracy",
+    "skill_reading": "Reading",
+    "skill_stamina": "Stamina",
+    "skill_color": "Color / Switching",
+    "skill_rhythm": "Rhythm",
+    "skill_movement": "Movement",
+    "skill_precision": "Precision",
+    "skill_stream": "Stream (Speed)",
+    "skill_jack": "Jack (Stamina)",
+    "skill_tech": "Tech / LN",
+    "severity_critical": "Critical",
+    "severity_moderate": "Notable",
+    "severity_mild": "Mild",
+    "severity_balanced": "Balanced",
+    "field_consistency_title": "⚖️ Consistency & FC Ceiling",
+    "consistency_line_fc": "▸ **FC Ceiling:** ~`{fcStars}★` • **Push:** ~`{pushStars}★`",
+    "consistency_line_choke": "▸ **Choke Gap:** `{chokeGap}★` ({emoji} *{status}*)",
+    "consistency_line_rate": "▸ **Non-FC Rate in Top:** `{rate}%` ({nonFcCount}/{totalCount} plays)",
+    "choke_severe": "Extreme Choke Pusher (difficulties way above FC ceiling)",
+    "choke_moderate": "Inconsistent (prone to losing combo in critical sections)",
+    "choke_consistent": "Solid consistency (high probability of closing out FCs)",
+    "field_bpm_title": "🥁 Tempo Limits (BPM)",
+    "bpm_line_avg": "▸ **Weighted BPM:** ~`{avgBpm} BPM`",
+    "bpm_line_comfort": "▸ **Comfort Ceiling (85%):** ~`{comfortBpm} BPM`",
+    "bpm_line_wall": "▸ **Kinetic Wall:** ~`{wallBpm}+ BPM` *(risk of fatigue or tapping collapse)*",
+    "field_mods_title": "☣️ Mod Kryptonites",
+    "mods_dominant": "▸ **Dominant Mods:** {mods}",
+    "mods_dominant_none": "*Balanced / No dominant mod*",
+    "mods_kryptonite": "▸ **Detected Kryptonite:** {mods}",
+    "mods_kryptonite_none": "*None (versatile mod style)*",
+    "mods_kryptonite_desc_hr": "• **HR**: High sensitivity to small circles (high CS) and strict timing (OD 10 / AR 10).",
+    "mods_kryptonite_desc_ez": "• **EZ**: Difficulty processing low approach rate (<AR 8) and high object density.",
+    "mods_kryptonite_desc_dt": "• **DT**: Tempo wall; kinetic stamina strain and collapsed reading above AR 10.3.",
+    "mods_kryptonite_desc_hd": "• **HD**: Heavy reliance on approach circles; difficulty reading vanishing notes.",
+    "mods_kryptonite_desc_nm": "• **NM**: Inconsistency tapping on high native OD without tempo assistance.",
+    "field_nemesis_title": "💀 Nemesis Beatmap: {name}",
+    "nemesis_zone": "▸ **Critical Zone:** `{zone}` • Danger: **~{sr}★**",
+    "nemesis_mods": "▸ **Trigger Mods:** `{mods}`",
+    "field_training_title": "💡 Training Prescription",
+    "training_reading_density": "• **Reading Training:** Play dense AR 7.5-8.5 maps or practice EZ on mid difficulties to train cluster visual processing.",
+    "training_reading_high_ar": "• **Fast Reading Training:** Practice AR 9.8-10.3 maps to reduce peripheral reaction time and eliminate low-density crutches.",
+    "training_speed_stamina": "• **Speed & Stamina Training:** Run continuous stream sessions at ~{targetBpm} BPM with sustained deathstreams to expand your kinetic ceiling.",
+    "training_acc_finger_control": "• **Accuracy & Control Training:** Play technical and finger control maps with OD 9.5+ focusing on alternating rhythms (triplets, polyrhythms).",
+    "training_aim_snapping": "• **Aim Snapping Training:** Practice wide cross-screen jumps at comfortable tempos to solidify muscle memory and snappy cursor motion.",
+    "training_consistency_choke": "• **Mental Consistency:** Play longer full songs (3-5 min) at ~{fcStars}★ without retrying on miss to break the compulsive retry loop.",
+    "training_balanced_push": "• **Balanced Skillset:** Your profile is exceptionally balanced. Gradually raise overall difficulty (~+0.2★) across all skills harmoniously.",
+    "training_mod_diversity": "• **Mod Diversification:** Practice lower difficulties with your least played mod ({kryptonite}) to eliminate mod bias.",
+    "nemesis": {
+      "density_hell": {
+        "name": "Visual Density Storm",
+        "desc": "Map with low approach rate, massive object density, and overlapping patterns where peripheral reading collapses."
+      },
+      "speed_wall": {
+        "name": "Mashing & Deathstream Wall",
+        "desc": "High tempo map with sustained high-BPM stream walls that deplete finger stamina and tapping coordination."
+      },
+      "strict_metronome": {
+        "name": "Surgical Metronome",
+        "desc": "Map with ruthless Overall Difficulty (OD) and tricky rhythm that severely punishes any timing deviation with 100s and 50s."
+      },
+      "cross_screen_hell": {
+        "name": "Extreme Cross-Screen Jumps",
+        "desc": "Giant jump patterns with sharp angles and sudden accelerations where cursor snap stability breaks down."
+      },
+      "marathon_endurance": {
+        "name": "Choker's Marathon",
+        "desc": "5+ minute endurance track with moderate difficulty and a brutal difficulty spike at 90% engineered to induce nerve chokes."
+      },
+      "taiko_stream_wall": {
+        "name": "Drumroll Wall",
+        "desc": "Monochrome high-speed continuous streams running above 260 BPM."
+      },
+      "taiko_complex_patterns": {
+        "name": "Pattern Labyrinth",
+        "desc": "Complex ddkkddkk hand alternations that overload tapping coordination."
+      },
+      "taiko_strict_od": {
+        "name": "Strict Timing Judgement",
+        "desc": "High OD in Taiko where hit window timing forgives zero desynchronization."
+      },
+      "catch_droplets": {
+        "name": "Micro-Droplet Shower",
+        "desc": "Tight droplet trails and technical sliding that heavily punish catcher over-acceleration."
+      },
+      "catch_hyperdash": {
+        "name": "Continuous Hyper-Speed",
+        "desc": "Consecutive cross-screen hyperdashes at high tempo."
+      },
+      "mania_dense_chordjack": {
+        "name": "Chordjack Nightmare",
+        "desc": "Dense double and triple minijack columns that rapidly exhaust finger explosiveness."
+      },
+      "mania_speed_stream": {
+        "name": "Unstoppable Stream",
+        "desc": "Continuous dense streams demanding sustained high-speed tapping."
+      },
+      "mania_ln_release": {
+        "name": "Long Note Release Hell",
+        "desc": "Entangled long notes with high-precision release timings and technical complexity."
+      }
+    },
+    "err_no_scores": "❌ User **{username}** does not have enough Top scores for a kinematic diagnosis.",
+    "err_user_not_found": "❌ No player was found with that name or ID.",
+    "err_no_user": "❌ Your linked account was not found. Use `s.link` to link your account or specify a user with `s.antiskills <user>`."
   }
 }
 

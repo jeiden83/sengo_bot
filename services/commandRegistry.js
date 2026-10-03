@@ -588,6 +588,12 @@ const COMMAND_DEFINITIONS = {
         category: "osu",
         flags: ['gamemode', 'server', 'skills_breakdown', 'score_index', 'country', 'force', 'target_user', 'target_mention']
     },
+    antiskills: {
+        intent: "Diagnosticar debilidades, puntos ciegos, kryptonitas de mods o mapa némesis de un jugador (antiskills, anti-skills, debilidades, puntos ciegos, en qué soy malo, peores habilidades, kryptonita, mapa pesadilla, anti skills, flaquezas)",
+        category: "osu",
+        aliases: ['antiskill', 'antihabilidades', 'debilidades', 'weaknesses', 'blindspots'],
+        flags: ['gamemode', 'server', 'force', 'target_user', 'target_mention']
+    },
     card: {
         intent: "Generar tarjeta gráfica o imagen Canvas de perfil de jugador o mapper (card, tarjeta, mi tarjeta, banner de osu, tarjeta gráfica, card de mapper, imagen de perfil, ficha de jugador)",
         category: "osu",

@@ -1469,6 +1469,282 @@ async function getUserSkills({ osuId, gamemode = "osu" }) {
     }
 }
 
+/**
+ * ponytail: Motor analítico de Anti-Skills y Puntos Ciegos.
+ * Evalúa la brecha relativa entre la fortaleza pico y las demás dimensiones del jugador,
+ * calculando la tasa de choke (push vs FC), límites de tempo/BPM, kryptonitas de mods
+ * y el arquetipo de mapa némesis.
+ */
+async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
+    const scores = Array.isArray(topScores) ? topScores : [];
+    const mode = gamemode || "osu";
+    const pushProfile = analyzePlayerPushProfile(scores, mode);
+
+    let breakdown = options.skillsBreakdown;
+    if (!breakdown) {
+        breakdown = await analyzeSkillsBreakdown(scores, mode, options);
+    }
+
+    const MODE_SKILLS = {
+        osu: ["aim", "speed", "acc", "reading"],
+        taiko: ["stamina", "acc", "reading", "color", "rhythm"],
+        fruits: ["movement", "reading", "precision", "acc"],
+        catch: ["movement", "reading", "precision", "acc"],
+        mania: ["stream", "jack", "tech", "acc"]
+    };
+
+    const targetKeys = MODE_SKILLS[mode] || MODE_SKILLS.osu;
+    const scoresMap = {};
+    let maxSkillVal = 0;
+    let strongestKey = targetKeys[0];
+
+    targetKeys.forEach(k => {
+        const val = Number((breakdown[k] != null ? breakdown[k] : 0).toFixed(2));
+        scoresMap[k] = val;
+        if (val > maxSkillVal) {
+            maxSkillVal = val;
+            strongestKey = k;
+        }
+    });
+
+    if (maxSkillVal <= 0) {
+        maxSkillVal = 10;
+    }
+
+    // ponytail: Cálculo de brecha relativa Δ_k y ratio R_k respecto al pico del jugador
+    const deficits = targetKeys.map(k => {
+        const score = scoresMap[k] || 0;
+        const deficit = Number(Math.max(0, maxSkillVal - score).toFixed(2));
+        const ratio = Number(((score / maxSkillVal) * 100).toFixed(1));
+
+        let severity = "balanced";
+        if (deficit >= 35 || ratio < 55) {
+            severity = "critical";
+        } else if (deficit >= 20 || ratio < 75) {
+            severity = "moderate";
+        } else if (deficit >= 10) {
+            severity = "mild";
+        }
+
+        return {
+            key: k,
+            score,
+            maxScore: maxSkillVal,
+            deficit,
+            ratio,
+            severity
+        };
+    });
+
+    deficits.sort((a, b) => b.deficit - a.deficit);
+
+    const primaryDeficit = deficits[0] || { key: "reading", score: 0, deficit: 0, ratio: 100, severity: "balanced" };
+    const strongestSkill = { key: strongestKey, score: maxSkillVal };
+
+    // Consistencia y Choke Tendency
+    const fcStars = pushProfile.fcStars || 5.0;
+    const pushStars = pushProfile.pushStars || 5.5;
+    const chokeGap = Number(Math.max(0, pushStars - fcStars).toFixed(2));
+    const nonFcRate = pushProfile.nonFcRate != null ? pushProfile.nonFcRate : 0.5;
+    const isChokePusher = Boolean(pushProfile.isChokePusher);
+
+    let chokeSeverity = "consistent";
+    if (chokeGap >= 1.2 || (isChokePusher && nonFcRate >= 0.75)) {
+        chokeSeverity = "severe_choke";
+    } else if (chokeGap >= 0.6 || nonFcRate >= 0.50) {
+        chokeSeverity = "moderate_choke";
+    }
+
+    // Límites de Tempo (BPM)
+    const weightedAvgBpm = pushProfile.weightedAvgBpm || 180;
+    const comfortBpm = pushProfile.comfortBpm || 195;
+    const maxBpmWall = Math.round(comfortBpm + 25);
+
+    // ponytail: Ponderación de mods por decaimiento oficial 0.95^i
+    let totalModWeight = 0;
+    const modWeights = { DT: 0, HR: 0, HD: 0, EZ: 0, FL: 0, NM: 0 };
+
+    scores.forEach((s, idx) => {
+        const weight = Math.pow(0.95, idx);
+        totalModWeight += weight;
+
+        const modsList = Array.isArray(s.mods)
+            ? s.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+            : (typeof s.mods === "string" ? s.mods.match(/.{1,2}/g) || [] : []);
+        const upper = modsList.map(m => m.toUpperCase());
+
+        const hasDT = upper.includes("DT") || upper.includes("NC");
+        const hasHR = upper.includes("HR");
+        const hasHD = upper.includes("HD");
+        const hasEZ = upper.includes("EZ");
+        const hasFL = upper.includes("FL");
+
+        if (hasDT) modWeights.DT += weight;
+        if (hasHR) modWeights.HR += weight;
+        if (hasHD) modWeights.HD += weight;
+        if (hasEZ) modWeights.EZ += weight;
+        if (hasFL) modWeights.FL += weight;
+        if (!hasDT && !hasHR && !hasEZ && !hasFL) modWeights.NM += weight;
+    });
+
+    const modRatios = {};
+    if (totalModWeight > 0) {
+        Object.keys(modWeights).forEach(m => {
+            modRatios[m] = Number((modWeights[m] / totalModWeight).toFixed(3));
+        });
+    }
+
+    const kryptoniteMods = [];
+    const dominantMods = [];
+
+    Object.keys(modRatios).forEach(m => {
+        if (modRatios[m] >= 0.25) dominantMods.push(m);
+    });
+
+    if (mode === "osu") {
+        if ((modRatios.EZ >= 0.15 || scoresMap.reading >= 55) && modRatios.HR < 0.03) {
+            kryptoniteMods.push("HR");
+        }
+        if ((modRatios.HR >= 0.20 || scoresMap.acc >= 65) && modRatios.EZ < 0.03 && scoresMap.reading < 45) {
+            kryptoniteMods.push("EZ");
+        }
+        if (scoresMap.speed < 45 && modRatios.DT < 0.05) {
+            kryptoniteMods.push("DT");
+        }
+        if (modRatios.HD < 0.04 && scores.length >= 20) {
+            kryptoniteMods.push("HD");
+        }
+        if (modRatios.DT >= 0.70 && scoresMap.acc < 52) {
+            kryptoniteMods.push("NM");
+        }
+    }
+
+    // Arquetipo de Mapa Némesis
+    let nemesisId = "density_hell";
+    let triggerMods = "+HDHR";
+    let arZone = "Low AR (< 8.0) / High CS (> 5.0)";
+    let estimatedDangerSR = Number((pushStars + 0.3).toFixed(2));
+
+    if (mode === "osu") {
+        if (primaryDeficit.key === "reading") {
+            nemesisId = "density_hell";
+            triggerMods = modRatios.EZ > 0.2 ? "+HDHR" : "+EZHD";
+            arZone = modRatios.EZ > 0.2 ? "AR 10.0+ / CS > 5.0" : "Low AR (< 8.0) / Overlap Denso";
+        } else if (primaryDeficit.key === "speed") {
+            nemesisId = "speed_wall";
+            triggerMods = "+DT";
+            arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
+        } else if (primaryDeficit.key === "acc") {
+            nemesisId = "strict_metronome";
+            triggerMods = "+HR";
+            arZone = "OD 9.8+ / Polirritmias y Finger Control";
+        } else if (primaryDeficit.key === "aim") {
+            nemesisId = "cross_screen_hell";
+            triggerMods = modRatios.DT > 0.4 ? "+HDDT" : "+HR";
+            arZone = "Cross-screen jumps / Ángulos agudos";
+        } else if (chokeSeverity === "severe_choke") {
+            nemesisId = "marathon_endurance";
+            triggerMods = "NM";
+            arZone = "Maratón 5+ min / Difficulty Spike al final";
+        }
+    } else if (mode === "taiko") {
+        if (primaryDeficit.key === "stamina") {
+            nemesisId = "taiko_stream_wall";
+            triggerMods = "+DT";
+            arZone = "Streams continuos > 260 BPM";
+        } else if (primaryDeficit.key === "color") {
+            nemesisId = "taiko_complex_patterns";
+            triggerMods = "NM";
+            arZone = "Patrones complejos DdKkDdKk";
+        } else {
+            nemesisId = "taiko_strict_od";
+            triggerMods = "+HR";
+            arZone = "OD 9.0+ / Strict Timing";
+        }
+    } else if (mode === "fruits" || mode === "catch") {
+        if (primaryDeficit.key === "precision") {
+            nemesisId = "catch_droplets";
+            triggerMods = "+HR";
+            arZone = "Droplets finos y CS pequeño";
+        } else {
+            nemesisId = "catch_hyperdash";
+            triggerMods = "+DT";
+            arZone = "Hyperjumps cruzados de alta velocidad";
+        }
+    } else if (mode === "mania") {
+        if (primaryDeficit.key === "jack") {
+            nemesisId = "mania_dense_chordjack";
+            triggerMods = "NM";
+            arZone = "Chordjacks densos a alto BPM";
+        } else if (primaryDeficit.key === "tech") {
+            nemesisId = "mania_ln_release";
+            triggerMods = "NM";
+            arZone = "Long notes complejas e inverse sliders";
+        } else {
+            nemesisId = "mania_speed_stream";
+            triggerMods = "+DT";
+            arZone = "Speed streams densos";
+        }
+    }
+
+    const recommendations = [];
+    if (primaryDeficit.key === "reading") {
+        if (kryptoniteMods.includes("HR")) {
+            recommendations.push("training_reading_high_ar");
+        } else {
+            recommendations.push("training_reading_density");
+        }
+    } else if (primaryDeficit.key === "speed") {
+        recommendations.push("training_speed_stamina");
+    } else if (primaryDeficit.key === "acc") {
+        recommendations.push("training_acc_finger_control");
+    } else if (primaryDeficit.key === "aim") {
+        recommendations.push("training_aim_snapping");
+    }
+
+    if (chokeSeverity === "severe_choke") {
+        recommendations.push("training_consistency_choke");
+    } else if (primaryDeficit.deficit < 15) {
+        recommendations.push("training_balanced_push");
+    }
+
+    if (kryptoniteMods.length > 0) {
+        recommendations.push("training_mod_diversity");
+    }
+
+    return {
+        mode,
+        strongestSkill,
+        primaryDeficit,
+        deficits,
+        consistency: {
+            fcStars,
+            pushStars,
+            chokeGap,
+            nonFcRate,
+            isChokePusher,
+            severity: chokeSeverity
+        },
+        bpmLimits: {
+            weightedAvgBpm,
+            comfortBpm,
+            maxBpmWall
+        },
+        modAnalysis: {
+            kryptoniteMods,
+            dominantMods,
+            weights: modRatios
+        },
+        nemesisArchetype: {
+            id: nemesisId,
+            triggerMods,
+            estimatedDangerSR,
+            arZone
+        },
+        recommendations: recommendations.slice(0, 3)
+    };
+}
+
 module.exports = {
     mapToSkillCurve,
     estimateAccPP,
@@ -1484,7 +1760,8 @@ module.exports = {
     saveUserSkills,
     getCountrySkillsLeaderboard,
     getServerSkillsLeaderboard,
-    getUserSkills
+    getUserSkills,
+    calculateAntiSkills
 };
 
 
