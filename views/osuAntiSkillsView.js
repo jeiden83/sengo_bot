@@ -17,26 +17,101 @@ function getCountryFlag(countryCode) {
 }
 
 /**
- * Genera una barra de progreso visual compacta en caracteres Unicode.
- * @param {number} current Puntuación actual
- * @param {number} max Puntuación máxima de referencia
- * @param {number} length Cantidad de bloques (por defecto 10)
+ * ponytail: Genera la tabla gráfica de barras horizontales coloreadas en ANSI para Discord.
  */
-function generateProgressBar(current, max, length = 10) {
-    if (max <= 0) return "□".repeat(length);
-    const filled = Math.max(0, Math.min(length, Math.round((current / max) * length)));
-    const empty = length - filled;
-    return "■".repeat(filled) + "□".repeat(empty);
+function buildAntiSkillsAnsiTable(deficits, peakKey, peakScore, locale = "es") {
+    const ansi = {
+        reset: "\x1b[0m",
+        red: "\x1b[1;31m",
+        yellow: "\x1b[1;33m",
+        green: "\x1b[1;32m",
+        cyan: "\x1b[1;36m",
+        white: "\x1b[1;37m",
+        gray: "\x1b[1;30m"
+    };
+
+    const header = locale === "en"
+        ? "SKILL         PTS    PROGRESS (PEAK)   GAP"
+        : "HABILIDAD     PTS    PROGRESO PICO     BRECHA";
+    const peakTag = locale === "en" ? "★ PEAK MAX" : "★ PICO MAX";
+
+    const lines = [header, "───────────────────────────────────────────────"];
+    const BAR_WIDTH = 12;
+
+    deficits.forEach(item => {
+        const isPeak = item.key === peakKey;
+        const skillName = t(locale, `antiskills.skill_${item.key}`) || t(locale, `skills.avg_${item.key}`) || item.key;
+        const shortName = skillName.split(" ")[0] || item.key;
+        const namePad = (shortName + (isPeak ? " 👑" : "")).padEnd(12);
+
+        const ptsStr = formatDecimal(item.score, locale, 1).padStart(5);
+        const pct = Math.max(0, Math.min(100, item.ratio));
+        const filled = Math.round((pct / 100) * BAR_WIDTH);
+        const empty = BAR_WIDTH - filled;
+
+        let color = ansi.green;
+        let tag = `-${formatDecimal(item.deficit, locale, 1)} (${formatDecimal(pct, locale, 0)}%)`;
+
+        if (isPeak) {
+            color = ansi.yellow;
+            tag = peakTag;
+        } else if (item.severity === "critical") {
+            color = ansi.red;
+        } else if (item.severity === "moderate") {
+            color = ansi.yellow;
+        } else if (item.severity === "mild") {
+            color = ansi.cyan;
+        }
+
+        const bar = `${color}${"█".repeat(filled)}${ansi.gray}${"░".repeat(empty)}${ansi.reset}`;
+        const line = `${color}${namePad}${ansi.reset} ${ansi.white}${ptsStr}${ansi.reset} [${bar}] ${color}${tag.padStart(13)}${ansi.reset}`;
+        lines.push(line);
+    });
+
+    return `\`\`\`ansi\n${lines.join("\n")}\n\`\`\``;
+}
+
+/**
+ * ponytail: Genera la tarjeta compacta de métricas cinemáticas (Consistencia, Choke, BPM) en ANSI.
+ */
+function buildMetricsAnsi(antiSkills, locale = "es") {
+    const ansi = {
+        reset: "\x1b[0m",
+        red: "\x1b[1;31m",
+        yellow: "\x1b[1;33m",
+        green: "\x1b[1;32m",
+        cyan: "\x1b[1;36m",
+        white: "\x1b[1;37m",
+        gray: "\x1b[1;30m"
+    };
+
+    const cons = antiSkills.consistency;
+    const bpm = antiSkills.bpmLimits;
+
+    let chokeCol = ansi.green;
+    let chokeText = locale === "en" ? "Solid" : "Sólido";
+    if (cons.severity === "severe_choke") {
+        chokeCol = ansi.red;
+        chokeText = locale === "en" ? "Choker" : "Choker";
+    } else if (cons.severity === "moderate_choke") {
+        chokeCol = ansi.yellow;
+        chokeText = locale === "en" ? "Inconsistent" : "Inconsistente";
+    }
+
+    const nonFcRatePct = Math.round(cons.nonFcRate * 100);
+
+    const l1_title = (locale === "en" ? "⚖️ CONSISTENCY:" : "⚖️ CONSISTENCIA:").padEnd(17);
+    const l1_val = `${ansi.white}~${formatDecimal(cons.fcStars, locale, 2)}★ FC${ansi.reset} ${ansi.gray}(Push ${formatDecimal(cons.pushStars, locale, 2)}★)${ansi.reset} • Choke: ${chokeCol}${formatDecimal(cons.chokeGap, locale, 2)}★ [${chokeText}]${ansi.reset} ${ansi.gray}(${nonFcRatePct}% no-fc)${ansi.reset}`;
+
+    const l2_title = (locale === "en" ? "🥁 TEMPO (BPM):" : "🥁 TEMPO (BPM):").padEnd(17);
+    const l2_val = `${ansi.green}~${bpm.comfortBpm} BPM Confort${ansi.reset} ${ansi.gray}(Avg ${bpm.weightedAvgBpm})${ansi.reset} • Muro: ${ansi.red}~${bpm.maxBpmWall}+ BPM${ansi.reset}`;
+
+    return `\`\`\`ansi\n${l1_title} ${l1_val}\n${l2_title} ${l2_val}\n\`\`\``;
 }
 
 /**
  * Genera el embed de Discord para el comando .antiskills / /antiskills
- * @param {object} params
- * @param {object} params.message Mensaje o contexto de interacción de Discord
- * @param {object} params.osuUser Datos del usuario de osu!
- * @param {object} params.antiSkillsData Resultado devuelto por SkillsModel.calculateAntiSkills
- * @param {string} params.locale Idioma ('es' o 'en')
- * @returns {EmbedBuilder} Embed configurado
+ * Optimizada para legibilidad visual con bloques ANSI y densidad sin muros de texto.
  */
 function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" }) {
     const embedColor = getEmbedColor(message);
@@ -72,167 +147,63 @@ function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" 
     const peakName = t(locale, `antiskills.skill_${peak.key}`) || t(locale, `skills.avg_${peak.key}`) || peak.key.toUpperCase();
     const primaryName = t(locale, `antiskills.skill_${primary.key}`) || t(locale, `skills.avg_${primary.key}`) || primary.key.toUpperCase();
 
-    // 1. Descripción principal: Punto ciego destacado
-    const descLines = [
-        `${t(locale, "antiskills.primary_deficit_label")} ${t(locale, "antiskills.primary_deficit_desc", {
-            skill: primaryName,
-            score: formatDecimal(primary.score, locale, 1),
-            deficit: formatDecimal(primary.deficit, locale, 1),
-            ratio: formatDecimal(primary.ratio, locale, 1),
-            peakSkill: peakName
-        })}`
-    ];
+    // Bloques ANSI gráficos
+    const ansiBars = buildAntiSkillsAnsiTable(antiSkillsData.deficits, peak.key, peak.score, locale);
+    const ansiMetrics = buildMetricsAnsi(antiSkillsData, locale);
 
-    // 2. Campo: Desglose de brechas relativas
-    const deficitLines = antiSkillsData.deficits.map(item => {
-        const skillTranslated = t(locale, `antiskills.skill_${item.key}`) || t(locale, `skills.avg_${item.key}`) || item.key.toUpperCase();
-        if (item.key === peak.key) {
-            return t(locale, "antiskills.skill_peak_label", {
-                skill: skillTranslated,
-                score: formatDecimal(item.score, locale, 1)
-            });
-        }
-
-        let emoji = "🟢";
-        if (item.severity === "critical") emoji = "🔴";
-        else if (item.severity === "moderate") emoji = "🟡";
-        else if (item.severity === "mild") emoji = "🔵";
-
-        const bar = generateProgressBar(item.score, item.maxScore, 8);
-        return t(locale, "antiskills.skill_deficit_line", {
-            emoji,
-            skill: skillTranslated,
-            score: formatDecimal(item.score, locale, 1),
-            bar,
-            deficit: formatDecimal(item.deficit, locale, 1),
-            ratio: formatDecimal(item.ratio, locale, 0)
-        });
-    });
-
-    // 3. Campo: Consistencia y Techo de FC
-    const cons = antiSkillsData.consistency;
-    let chokeEmoji = "🟢";
-    let chokeStatus = t(locale, "antiskills.choke_consistent");
-    if (cons.severity === "severe_choke") {
-        chokeEmoji = "🔴";
-        chokeStatus = t(locale, "antiskills.choke_severe");
-    } else if (cons.severity === "moderate_choke") {
-        chokeEmoji = "🟡";
-        chokeStatus = t(locale, "antiskills.choke_moderate");
-    }
-
-    const consistencyLines = [
-        t(locale, "antiskills.consistency_line_fc", {
-            fcStars: formatDecimal(cons.fcStars, locale, 2),
-            pushStars: formatDecimal(cons.pushStars, locale, 2)
-        }),
-        t(locale, "antiskills.consistency_line_choke", {
-            chokeGap: formatDecimal(cons.chokeGap, locale, 2),
-            emoji: chokeEmoji,
-            status: chokeStatus
-        }),
-        t(locale, "antiskills.consistency_line_rate", {
-            rate: formatDecimal(cons.nonFcRate * 100, locale, 0),
-            nonFcCount: Math.round(cons.nonFcRate * 100),
-            totalCount: 100
-        })
-    ];
-
-    // 4. Campo: Límites de Tempo (BPM)
-    const bpmLimits = antiSkillsData.bpmLimits;
-    const bpmLines = [
-        t(locale, "antiskills.bpm_line_avg", { avgBpm: bpmLimits.weightedAvgBpm }),
-        t(locale, "antiskills.bpm_line_comfort", { comfortBpm: bpmLimits.comfortBpm }),
-        t(locale, "antiskills.bpm_line_wall", { wallBpm: bpmLimits.maxBpmWall })
-    ];
-
-    // 5. Campo: Mod Analysis & Kryptonite
-    const modAnalysis = antiSkillsData.modAnalysis;
-    const domModsStr = modAnalysis.dominantMods.length > 0
-        ? modAnalysis.dominantMods.map(m => `\`+${m}\``).join(" • ")
-        : t(locale, "antiskills.mods_dominant_none");
-
-    const krypModsStr = modAnalysis.kryptoniteMods.length > 0
-        ? modAnalysis.kryptoniteMods.map(m => `\`+${m}\``).join(" • ")
-        : t(locale, "antiskills.mods_kryptonite_none");
-
-    const modLines = [
-        t(locale, "antiskills.mods_dominant", { mods: domModsStr }),
-        t(locale, "antiskills.mods_kryptonite", { mods: krypModsStr })
-    ];
-
-    modAnalysis.kryptoniteMods.forEach(kMod => {
-        const lowerMod = kMod.toLowerCase();
-        const descKey = `antiskills.mods_kryptonite_desc_${lowerMod}`;
-        const desc = t(locale, descKey);
-        if (desc && desc !== descKey) {
-            modLines.push(desc);
-        }
-    });
-
-    // 6. Campo: Nemesis Archetype
+    // Némesis Cinemático & Kryptonita combinados
     const nemesis = antiSkillsData.nemesisArchetype;
     const nemesisName = t(locale, `antiskills.nemesis.${nemesis.id}.name`) || "Mapa Némesis";
-    const nemesisDesc = t(locale, `antiskills.nemesis.${nemesis.id}.desc`) || "";
-    const nemesisLines = [
-        `*${nemesisDesc}*`,
-        t(locale, "antiskills.nemesis_zone", {
-            zone: nemesis.arZone,
-            sr: formatDecimal(nemesis.estimatedDangerSR, locale, 2)
-        }),
-        t(locale, "antiskills.nemesis_mods", { mods: `\`${nemesis.triggerMods}\`` })
-    ];
+    const modAnalysis = antiSkillsData.modAnalysis;
 
-    // 7. Campo: Prescripción de entrenamiento
-    const adviceLines = (antiSkillsData.recommendations || []).map(rKey => {
+    const krypMod = modAnalysis.kryptoniteMods.length > 0
+        ? `\`+${modAnalysis.kryptoniteMods.join("`, `+")}\``
+        : `*${t(locale, "antiskills.mods_kryptonite_none")}*`;
+
+    const domMod = modAnalysis.dominantMods.length > 0
+        ? `\`+${modAnalysis.dominantMods.join("`, `+")}\``
+        : (t(locale, "antiskills.mods_dominant_none") || "*Sin mod predominante*");
+
+    const krypDesc = modAnalysis.kryptoniteMods[0]
+        ? t(locale, `antiskills.mods_kryptonite_desc_${modAnalysis.kryptoniteMods[0].toLowerCase()}`) || ""
+        : "";
+    const cleanKrypDesc = krypDesc ? krypDesc.replace(/^•\s*\*\*[^*]+\*\*:\s*/, "") : "";
+
+    const nemesisSection = [
+        `▸ **${t(locale, "antiskills.label_nemesis_map") || "Mapa Némesis"}:** ${nemesisName} (**~${formatDecimal(nemesis.estimatedDangerSR, locale, 2)}★** con \`${nemesis.triggerMods}\`)`,
+        `  ↳ *${t(locale, "antiskills.label_zone") || "Zona"}:* \`${nemesis.arZone}\``,
+        `▸ **${t(locale, "antiskills.label_kryptonite") || "Kryptonita"}:** ☣️ ${krypMod}${cleanKrypDesc ? ` • *${cleanKrypDesc}*` : ""}`,
+        `▸ **${t(locale, "antiskills.label_dominant_mods") || "Mods Dominantes"}:** ${domMod}`
+    ].filter(Boolean).join("\n");
+
+    // Prescripción concisa de entrenamiento
+    const trainingLines = (antiSkillsData.recommendations || []).map(rKey => {
         return t(locale, `antiskills.${rKey}`, {
-            targetBpm: bpmLimits.comfortBpm + 15,
-            fcStars: formatDecimal(cons.fcStars, locale, 1),
+            targetBpm: antiSkillsData.bpmLimits.comfortBpm + 15,
+            fcStars: formatDecimal(antiSkillsData.consistency.fcStars, locale, 1),
             kryptonite: modAnalysis.kryptoniteMods[0] ? `+${modAnalysis.kryptoniteMods[0]}` : "mods secundarios"
         });
     }).filter(line => Boolean(line) && !line.startsWith("antiskills."));
+
+    const description = `${t(locale, "antiskills.primary_deficit_label")} **${primaryName}** (\`${formatDecimal(primary.score, locale, 1)} pts\`) ▸ Brecha: **-${formatDecimal(primary.deficit, locale, 1)} pts** (*${formatDecimal(primary.ratio, locale, 1)}%* de tu pico en ${peakName})\n${ansiBars}\n${ansiMetrics}`;
 
     const embed = new EmbedBuilder()
         .setColor(embedColor)
         .setAuthor({ name: authorName, iconURL: avatarUrl, url: userUrl })
         .setTitle(`${t(locale, "antiskills.title")} • ${modeDisplayName}`)
-        .setDescription(descLines.join("\n\n"))
+        .setDescription(description)
         .setThumbnail(avatarUrl)
-        .addFields(
-            {
-                name: t(locale, "antiskills.field_deficits_title", {
-                    peakScore: formatDecimal(peak.score, locale, 1)
-                }),
-                value: deficitLines.join("\n"),
-                inline: false
-            },
-            {
-                name: t(locale, "antiskills.field_consistency_title"),
-                value: consistencyLines.join("\n"),
-                inline: false
-            },
-            {
-                name: t(locale, "antiskills.field_bpm_title"),
-                value: bpmLines.join("\n"),
-                inline: true
-            },
-            {
-                name: t(locale, "antiskills.field_mods_title"),
-                value: modLines.join("\n"),
-                inline: true
-            },
-            {
-                name: t(locale, "antiskills.field_nemesis_title", { name: nemesisName }),
-                value: nemesisLines.join("\n"),
-                inline: false
-            }
-        )
+        .addFields({
+            name: t(locale, "antiskills.field_nemesis_combined_title") || "💀 Némesis Cinemático & Kryptonita",
+            value: nemesisSection,
+            inline: false
+        })
         .setFooter({ text: t(locale, "antiskills.footer") });
 
-    if (adviceLines.length > 0) {
+    if (trainingLines.length > 0) {
         embed.addFields({
-            name: t(locale, "antiskills.field_training_title"),
-            value: adviceLines.join("\n\n"),
+            name: t(locale, "antiskills.field_training_title") || "💡 Prescripción de Entrenamiento",
+            value: trainingLines.join("\n"),
             inline: false
         });
     }
@@ -243,5 +214,6 @@ function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" 
 module.exports = {
     doOsuAntiSkillsEmbed,
     getCountryFlag,
-    generateProgressBar
+    buildAntiSkillsAnsiTable,
+    buildMetricsAnsi
 };
