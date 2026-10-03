@@ -72,42 +72,38 @@ function buildAntiSkillsAnsiTable(deficits, peakKey, peakScore, locale = "es") {
 }
 
 /**
- * ponytail: Genera la tarjeta compacta de métricas cinemáticas (Consistencia, Choke, BPM) en ANSI.
+ * ponytail: Genera las métricas compactas (Consistencia, Choke, BPM) en formato nativo Discord (blockquote).
+ * Reemplaza el bloque ANSI para evitar recuadros oscuros de código y texto negro de baja legibilidad.
  */
-function buildMetricsAnsi(antiSkills, locale = "es") {
-    const ansi = {
-        reset: "\x1b[0m",
-        red: "\x1b[1;31m",
-        yellow: "\x1b[1;33m",
-        green: "\x1b[1;32m",
-        cyan: "\x1b[1;36m",
-        white: "\x1b[1;37m",
-        gray: "\x1b[1;30m"
-    };
-
+function buildMetricsNative(antiSkills, locale = "es") {
     const cons = antiSkills.consistency;
     const bpm = antiSkills.bpmLimits;
 
-    let chokeCol = ansi.green;
+    let chokeBadge = "🟢";
     let chokeText = locale === "en" ? "Solid" : "Sólido";
     if (cons.severity === "severe_choke") {
-        chokeCol = ansi.red;
+        chokeBadge = "🔴";
         chokeText = locale === "en" ? "Choker" : "Choker";
     } else if (cons.severity === "moderate_choke") {
-        chokeCol = ansi.yellow;
+        chokeBadge = "🟡";
         chokeText = locale === "en" ? "Inconsistent" : "Inconsistente";
     }
 
     const nonFcRatePct = Math.round(cons.nonFcRate * 100);
+    const isEn = locale === "en";
 
-    const l1_title = (locale === "en" ? "⚖️ CONSISTENCY:" : "⚖️ CONSISTENCIA:").padEnd(17);
-    const l1_val = `${ansi.white}~${formatDecimal(cons.fcStars, locale, 2)}★ FC${ansi.reset} ${ansi.gray}(Push ${formatDecimal(cons.pushStars, locale, 2)}★)${ansi.reset} • Choke: ${chokeCol}${formatDecimal(cons.chokeGap, locale, 2)}★ [${chokeText}]${ansi.reset} ${ansi.gray}(${nonFcRatePct}% no-fc)${ansi.reset}`;
+    const titleCons = isEn ? "Consistency" : "Consistencia";
+    const titleBpm = isEn ? "Tempo (BPM)" : "Tempo (BPM)";
+    const comfortLabel = isEn ? "Comfort" : "Confort";
+    const wallLabel = isEn ? "Wall" : "Muro";
 
-    const l2_title = (locale === "en" ? "🥁 TEMPO (BPM):" : "🥁 TEMPO (BPM):").padEnd(17);
-    const l2_val = `${ansi.green}~${bpm.comfortBpm} BPM Confort${ansi.reset} ${ansi.gray}(Avg ${bpm.weightedAvgBpm})${ansi.reset} • Muro: ${ansi.red}~${bpm.maxBpmWall}+ BPM${ansi.reset}`;
+    const line1 = `> ⚖️ **${titleCons}:** \`~${formatDecimal(cons.fcStars, locale, 2)}★ FC\` *(Push ${formatDecimal(cons.pushStars, locale, 2)}★)* • Choke: \`${formatDecimal(cons.chokeGap, locale, 2)}★\` ${chokeBadge} **${chokeText}** *(${nonFcRatePct}% no-fc)*`;
+    const line2 = `> 🥁 **${titleBpm}:** \`~${bpm.comfortBpm} BPM\` ${comfortLabel} *(Avg ${bpm.weightedAvgBpm})* • ${wallLabel}: \`~${bpm.maxBpmWall}+ BPM\` 🧱`;
 
-    return `\`\`\`ansi\n${l1_title} ${l1_val}\n${l2_title} ${l2_val}\n\`\`\``;
+    return `${line1}\n${line2}`;
 }
+
+const buildMetricsAnsi = buildMetricsNative;
 
 /**
  * Genera el embed de Discord para el comando .antiskills / /antiskills
@@ -147,9 +143,9 @@ function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" 
     const peakName = t(locale, `antiskills.skill_${peak.key}`) || t(locale, `skills.avg_${peak.key}`) || peak.key.toUpperCase();
     const primaryName = t(locale, `antiskills.skill_${primary.key}`) || t(locale, `skills.avg_${primary.key}`) || primary.key.toUpperCase();
 
-    // Bloques ANSI gráficos
+    // Bloques gráficos: tabla de barras ANSI y métricas en formato nativo Discord
     const ansiBars = buildAntiSkillsAnsiTable(antiSkillsData.deficits, peak.key, peak.score, locale);
-    const ansiMetrics = buildMetricsAnsi(antiSkillsData, locale);
+    const nativeMetrics = buildMetricsNative(antiSkillsData, locale);
 
     // Némesis Cinemático & Kryptonita combinados
     const nemesis = antiSkillsData.nemesisArchetype;
@@ -185,7 +181,7 @@ function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" 
         });
     }).filter(line => Boolean(line) && !line.startsWith("antiskills."));
 
-    const description = `${t(locale, "antiskills.primary_deficit_label")} **${primaryName}** (\`${formatDecimal(primary.score, locale, 1)} pts\`) ▸ Brecha: **-${formatDecimal(primary.deficit, locale, 1)} pts** (*${formatDecimal(primary.ratio, locale, 1)}%* de tu pico en ${peakName})\n${ansiBars}\n${ansiMetrics}`;
+    const description = `${t(locale, "antiskills.primary_deficit_label")} **${primaryName}** (\`${formatDecimal(primary.score, locale, 1)} pts\`) ▸ Brecha: **-${formatDecimal(primary.deficit, locale, 1)} pts** (*${formatDecimal(primary.ratio, locale, 1)}%* de tu pico en ${peakName})\n${ansiBars}\n${nativeMetrics}`;
 
     const embed = new EmbedBuilder()
         .setColor(embedColor)
@@ -215,5 +211,6 @@ module.exports = {
     doOsuAntiSkillsEmbed,
     getCountryFlag,
     buildAntiSkillsAnsiTable,
+    buildMetricsNative,
     buildMetricsAnsi
 };
