@@ -356,11 +356,11 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         userAimVal = Number(userSkills.stamina || 45);
     }
 
-    const aimBonus = Math.max(-0.4, Math.min(1.6, ((userAimVal - 35) / 25) * 1.0));
-    const speedBonus = Math.max(-0.6, Math.min(1.5, ((userSpeedVal - 35) / 25) * 0.8));
+    const aimBonus = Math.max(-0.4, Math.min(1.2, ((userAimVal - 35) / 25) * 0.8));
+    const speedBonus = Math.max(-0.6, Math.min(1.2, ((userSpeedVal - 35) / 25) * 0.6));
 
     // Techo dinámico de pass adaptado a la composición del mapa y skills del jugador
-    const effectivePassRating = pushProfile.pushStars + 0.85 + (aimWeight * aimBonus) + (speedWeight * speedBonus);
+    const effectivePassRating = pushProfile.pushStars + 0.75 + (aimWeight * aimBonus) + (speedWeight * speedBonus);
 
     // Delta respecto al techo real de pass del jugador
     const passDelta = mapSR - effectivePassRating;
@@ -374,8 +374,8 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     else if (passDelta <= 1.3) passProb = 15 - ((passDelta - 0.8) / 0.5) * 10;
     else passProb = Math.max(1, 5 - (passDelta - 1.3) * 4);
 
-    // Factor Speed / BPM
-    const estimatedComfortBPM = 160 + userSpeedVal * 1.2;
+    // Factor Speed / BPM basado en el percentil 85 ponderado de los top plays del jugador
+    const estimatedComfortBPM = pushProfile.comfortBpm || Math.round(160 + userSpeedVal * 1.2);
     if (mapBPM > estimatedComfortBPM) {
         const bpmOver = mapBPM - estimatedComfortBPM;
         const streamFactor = speedWeight >= 0.5 ? 1.2 : 0.6;
@@ -394,11 +394,12 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
     else if (hitLength > 240) passProb -= 4;
 
     // --- CÁLCULO DE PROBABILIDAD DE FC (Base antes de barreras de lectura/FL) ---
-    // ponytail: El techo de FC se modela en torno a pushStars (las dificultades altas que el jugador suele
-    // jugar y pushear) modulado por su afinidad al arquetipo del mapa (Aim vs Speed).
-    const fcAimBonus = Math.max(-0.4, Math.min(1.2, ((userAimVal - 45) / 25) * 0.7));
-    const fcSpeedBonus = Math.max(-0.4, Math.min(1.2, ((userSpeedVal - 45) / 25) * 0.7));
-    const effectiveFcRating = pushProfile.pushStars + (aimWeight * fcAimBonus) + (speedWeight * fcSpeedBonus);
+    // ponytail: El techo de consistencia (FC) se modela a partir de fcStars (jugadas limpias con 0-1 misses
+    // ponderadas al 0.95^i) modulado por el arquetipo del mapa (Aim vs Speed).
+    const baseFcStars = pushProfile.fcStars || (pushProfile.pushStars - (pushProfile.isChokePusher ? 0.6 : 0.3));
+    const fcAimBonus = Math.max(-0.4, Math.min(0.8, ((userAimVal - 45) / 25) * 0.5));
+    const fcSpeedBonus = Math.max(-0.4, Math.min(0.8, ((userSpeedVal - 45) / 25) * 0.5));
+    const effectiveFcRating = baseFcStars + (aimWeight * fcAimBonus) + (speedWeight * fcSpeedBonus);
 
     // Delta continuo respecto al techo de consistencia (FC) real del jugador
     const fcDelta = mapSR - effectiveFcRating;
@@ -444,14 +445,59 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         } else if (misses <= 2 && comboRatio >= 0.80) {
             // Choke probado en el pasado (1-2 misses en tramo final)
             fcProb = Math.max(fcProb, Math.min(75, fcProb * 1.6 + 15));
-        } else if (misses > 20 && comboRatio < 0.25) {
-            fcProb *= 0.75;
+        } else if (misses > 20 || comboRatio < 0.25 || (prevScore.accuracy != null && prevScore.accuracy < 0.85)) {
+            // Desempeño previo muy distante de FC (baja acc, combo muy quebrado)
+            const comboFactorPrev = Math.max(0.05, Math.min(0.8, Math.pow(comboRatio, 0.75)));
+            const accVal = (prevScore.accuracy != null ? (prevScore.accuracy <= 1 ? prevScore.accuracy : prevScore.accuracy / 100) : 0.8);
+            const accFactorPrev = Math.pow(Math.max(0.4, accVal), 2.5);
+            fcProb *= Math.max(0.01, comboFactorPrev * accFactorPrev);
+        } else if (misses >= 5 || comboRatio < 0.50) {
+            fcProb *= 0.65;
         }
     }
 
-    // --- BARRERA DE LECTURA (HIGH AR / REACTION WALL) ---
+    // --- BARRERA DE LECTURA (LOW AR / ALTA DENSIDAD / EZ & HIGH AR) ---
     let arExtreme = false;
     let arOver = 0;
+    let readingNote = null;
+
+    let readingDemand = 10;
+    let isReadingHeavy = false;
+
+    if (hasEZ) {
+        isReadingHeavy = true;
+        // En EZ el tiempo de aparición es muy alto (AR <= 5) y las notas se apilan masivamente
+        readingDemand = 60 + Math.max(0, 5.0 - effAR) * 12;
+        if (hasHD) readingDemand += 15;
+    } else if (hasHD) {
+        if (effAR <= 8.5) {
+            isReadingHeavy = true;
+            readingDemand = 38 + (8.5 - effAR) * 10;
+        }
+    } else if (effAR < 7.5) {
+        isReadingHeavy = true;
+        readingDemand = 30 + (7.5 - effAR) * 12;
+    }
+
+    if (isReadingHeavy) {
+        const readingGap = readingSkill - readingDemand;
+        if (readingGap < -20) {
+            // Jugador sin lectura para procesar esta densidad (ej: jugador de nomod de alta AR)
+            const penaltyFactor = Math.max(0.12, Math.pow(0.5, Math.abs(readingGap) / 25));
+            passProb *= penaltyFactor;
+            fcProb *= Math.max(0.01, penaltyFactor * 0.25);
+            readingNote = 'poor';
+        } else if (readingGap < 0) {
+            const penalty = Math.min(22, (Math.abs(readingGap) / 20) * 14);
+            passProb -= penalty;
+            fcProb *= Math.max(0.15, 1 - (Math.abs(readingGap) / 20) * 0.45);
+            readingNote = 'challenging';
+        } else {
+            // El jugador es especialista o tiene solidez en lectura (ej: Milin con reading 65.7)
+            passProb += Math.min(6, (readingGap / 25) * 5);
+            readingNote = 'good';
+        }
+    }
 
     if (effAR >= 10.6) {
         // AR extremo (<= 350ms de tiempo de reacción)
@@ -545,10 +591,15 @@ function calculateProbabilities({ user, topScores, beatmap, bestScore, activeMod
         },
         factors: {
             pushStars: pushProfile.pushStars,
+            fcStars: pushProfile.fcStars || pushProfile.pushStars,
             effectivePassRating: Number(effectivePassRating.toFixed(2)),
             effectiveFcRating: Number(effectiveFcRating.toFixed(2)),
             userAim: userAimVal,
             userSpeed: userSpeedVal,
+            userReading: readingSkill,
+            readingDemand: Math.round(readingDemand),
+            isReadingHeavy,
+            readingNote,
             estimatedComfortBPM: Math.round(estimatedComfortBPM),
             bpmOver: Math.max(0, mapBPM - Math.round(estimatedComfortBPM)),
             avgAcc: pushProfile.avgAcc,
@@ -806,6 +857,21 @@ async function run(messages, args) {
         scoreCompatibility: chosenCompat,
         mapAttrs
     });
+
+    // Calcular If FC PP (rendimiento en caso de FC al 100% y a la acc promedio del jugador)
+    if (diffAttrs && perfAttrs) {
+        try {
+            const engine = ppEngine.getEngine();
+            const pp100 = Math.round(perfAttrs.pp || 0);
+            const avgAccPct = Math.round((analysis.factors?.avgAcc || 0.98) * 1000) / 10;
+            const perfAvg = new engine.Performance({ mods: activeModsStr, accuracy: avgAccPct }).calculate(diffAttrs);
+            analysis.ifFc = {
+                pp100,
+                ppAvg: Math.round(perfAvg.pp || 0),
+                accAvg: avgAccPct.toFixed(1)
+            };
+        } catch (_) {}
+    }
 
     // Generar gráfico panorámico híbrido de diagnóstico
     let graphAttachment = null;

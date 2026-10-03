@@ -944,8 +944,7 @@ async function _computeSkillsBreakdown(scores, mode = "osu") {
  */
 /**
  * ponytail: Estima la dificultad efectiva de un play con mods (DT, HR, EZ, etc.) usando
- * multiplicadores físicos y anclaje por PP cuando está disponible.
- * Evita subestimar a jugadores de DT/HR/EZ cuyos beatmaps base reportan nomod SR en la API.
+ * multiplicadores físicos calibrados y anclaje por PP según la curva real de rendimiento de osu!.
  */
 function estimateScoreEffectiveStars(score, gamemode = 'osu') {
     const baseSR = Number(score.beatmap?.difficulty_rating || 0);
@@ -963,13 +962,12 @@ function estimateScoreEffectiveStars(score, gamemode = 'osu') {
     const pp = Number(score.pp || 0);
 
     let modMult = 1.0;
-    if (isDT) modMult *= 1.38;
-    if (isHR) modMult *= 1.08;
+    if (isDT) modMult *= 1.35;
+    if (isHR) modMult *= 1.06;
     if (isHT) modMult *= 0.75;
     if (isEZ) {
-        if (isDT) modMult *= 1.15;
-        else if (isHD) modMult *= 1.05;
-        else modMult *= 0.92;
+        if (isDT) modMult *= 0.90;
+        else modMult *= 0.88;
     } else if (isHD && !isDT && !isHR) {
         modMult *= 1.04;
     }
@@ -980,7 +978,8 @@ function estimateScoreEffectiveStars(score, gamemode = 'osu') {
         const rawAcc = Number(score.accuracy != null ? score.accuracy : 0.98);
         const acc = rawAcc <= 1 ? rawAcc : rawAcc / 100;
         const accWeight = Math.pow(Math.max(0.7, acc), 2.5);
-        const ppImpliedSR = Math.pow(pp / (0.16 * accWeight), 1 / 3.8);
+        // ponytail: Curva física calibrada en osu! standard (~500pp equivale a ~7.2★ FC, ~300pp a ~5.9★)
+        const ppImpliedSR = Math.pow(pp / (1.35 * accWeight), 1 / 3.05);
         return Number(((modEstimatedSR * 0.45) + (ppImpliedSR * 0.55)).toFixed(2));
     }
 
@@ -996,52 +995,130 @@ function analyzePlayerPushProfile(topScores, gamemode = "osu") {
             nonFcRate: 0.5,
             isChokePusher: false,
             avgPlayedStars: 5.0,
-            pushStars: 5.5
+            pushStars: 5.5,
+            fcStars: 5.0,
+            weightedAvgBpm: 180,
+            comfortBpm: 190
         };
     }
 
-    const sample = topScores.slice(0, 35);
-    const chokePlays = [];
-    const allAccs = [];
-    const allStars = [];
-    let nonFcCount = 0;
+    let totalWeight = 0;
+    let weightedAccSum = 0;
+    let weightedBpmSum = 0;
+    let weightedSrSum = 0;
 
-    sample.forEach(s => {
+    let fcWeightedSrSum = 0;
+    let fcTotalWeight = 0;
+    let nonFcWeight = 0;
+
+    const allAccs = [];
+    const chokePlays = [];
+    const bpmItems = [];
+    const srItems = [];
+    const fcSrItems = [];
+
+    topScores.forEach((s, i) => {
+        // ponytail: decaimiento exponencial oficial de osu! (0.95^i) para priorizar las mejores plays del jugador
+        const weight = Math.pow(0.95, i);
+        totalWeight += weight;
+
         const rawAcc = Number(s.accuracy != null ? s.accuracy : 0.98);
         const acc = rawAcc <= 1 ? rawAcc : rawAcc / 100;
+        weightedAccSum += acc * weight;
         allAccs.push(acc);
+
+        const modsList = Array.isArray(s.mods)
+            ? s.mods.map(m => (typeof m === 'string' ? m : m.acronym || '')).filter(Boolean)
+            : (typeof s.mods === 'string' ? s.mods.match(/.{1,2}/g) || [] : []);
+        const isDT = modsList.includes('DT') || modsList.includes('NC');
+        const isHT = modsList.includes('HT') || modsList.includes('DC');
+        const clock = isDT ? 1.5 : (isHT ? 0.75 : 1.0);
+        const bpm = Math.round(Number(s.beatmap?.bpm || 180) * clock);
+        weightedBpmSum += bpm * weight;
+        bpmItems.push({ bpm, weight });
+
+        const sr = estimateScoreEffectiveStars(s, gamemode);
+        if (sr > 0) {
+            weightedSrSum += sr * weight;
+            srItems.push({ sr, weight, score: s });
+        }
 
         const misses = Number(s.statistics?.miss ?? s.statistics?.count_miss ?? 0);
         const isPerfect = s.perfect === true || s.legacy_perfect === true;
         const rank = s.rank || '';
-        const isNonFc = misses > 0 || !isPerfect || ['A', 'B', 'C', 'D'].includes(rank);
+        const isCleanFc = (misses === 0 || isPerfect) && !['B', 'C', 'D'].includes(rank);
+        const isNearFc = misses <= 1 && !['C', 'D'].includes(rank);
 
-        if (isNonFc) {
-            nonFcCount++;
+        if (isCleanFc) {
+            fcWeightedSrSum += sr * weight;
+            fcTotalWeight += weight;
+            fcSrItems.push({ sr, weight });
+        } else if (isNearFc) {
+            fcWeightedSrSum += sr * (weight * 0.7);
+            fcTotalWeight += (weight * 0.7);
+            fcSrItems.push({ sr: sr * 0.98, weight: weight * 0.7 });
+            nonFcWeight += weight * 0.3;
+            chokePlays.push({ acc, score: s });
+        } else {
+            nonFcWeight += weight;
             chokePlays.push({ acc, score: s });
         }
-
-        const sr = estimateScoreEffectiveStars(s, gamemode);
-        if (sr > 0) allStars.push(sr);
     });
 
-    const nonFcRate = nonFcCount / sample.length;
-    allAccs.sort((a, b) => a - b);
-    allStars.sort((a, b) => a - b);
-
-    const avgAcc = allAccs.reduce((a, b) => a + b, 0) / allAccs.length;
-    const maxAcc = allAccs[allAccs.length - 1];
-    const avgPlayedStars = allStars.length > 0 ? (allStars.reduce((a, b) => a + b, 0) / allStars.length) : 5.0;
-    
-    // ponytail: estrellas en dificultades push (top 30% más alto de mapas jugados)
-    const topTierSrCount = Math.max(1, Math.floor(allStars.length * 0.30));
-    const pushStars = allStars.slice(-topTierSrCount).reduce((a, b) => a + b, 0) / topTierSrCount;
-
-    // Detectar si el jugador suele pushear dificultades altas con chokes/baja acc
+    const divisor = totalWeight > 0 ? totalWeight : 1;
+    const weightedAvgAcc = weightedAccSum / divisor;
+    const weightedAvgBpm = weightedBpmSum / divisor;
+    const weightedAvgPlayedStars = weightedSrSum / divisor;
+    const nonFcRate = nonFcWeight / divisor;
     const isChokePusher = nonFcRate >= 0.55;
 
-    // ponytail: para calcular targetPushAcc, si es choke pusher o tiene acc moderada,
-    // calcular entre el promedio y la media de su máximo en sus mapas push para instigar sin frustrar
+    // Percentil 85 ponderado de BPM en top plays para determinar el confort real del jugador
+    bpmItems.sort((a, b) => a.bpm - b.bpm);
+    let accumBpmW = 0;
+    let comfortBpm = weightedAvgBpm;
+    for (const it of bpmItems) {
+        accumBpmW += it.weight;
+        if (accumBpmW >= divisor * 0.85) {
+            comfortBpm = it.bpm;
+            break;
+        }
+    }
+
+    // Push Stars (percentil 85 ponderado de SR jugado en dificultades altas)
+    srItems.sort((a, b) => a.sr - b.sr);
+    let accumSrW = 0;
+    let pushStars = weightedAvgPlayedStars;
+    for (const it of srItems) {
+        accumSrW += it.weight;
+        if (accumSrW >= divisor * 0.85) {
+            pushStars = it.sr;
+            break;
+        }
+    }
+
+    // FC Stars: techo de consistencia real basado en jugadas limpias
+    let fcStars = weightedAvgPlayedStars - 0.3;
+    if (fcTotalWeight > 0.5) {
+        fcSrItems.sort((a, b) => a.sr - b.sr);
+        let accumFcW = 0;
+        let p80Fc = fcSrItems[0].sr;
+        for (const it of fcSrItems) {
+            accumFcW += it.weight;
+            if (accumFcW >= fcTotalWeight * 0.80) {
+                p80Fc = it.sr;
+                break;
+            }
+        }
+        // Penalización proporcional para choke pushers que rara vez fcean
+        const consistencyPenalty = isChokePusher ? (nonFcRate - 0.45) * 0.6 : 0;
+        fcStars = Math.max(p80Fc - consistencyPenalty, weightedAvgPlayedStars - (isChokePusher ? 0.7 : 0.3));
+    } else {
+        fcStars = Math.max(3.0, pushStars - 1.2);
+    }
+    fcStars = Math.min(fcStars, pushStars - 0.25);
+
+    allAccs.sort((a, b) => a - b);
+    const maxAcc = allAccs[allAccs.length - 1] || 1.0;
     let targetPushAcc;
     if (isChokePusher && chokePlays.length >= 5) {
         const chokeAccs = chokePlays.map(p => p.acc).sort((a, b) => a - b);
@@ -1050,17 +1127,20 @@ function analyzePlayerPushProfile(topScores, gamemode = "osu") {
         targetPushAcc = Number((chokeAvg + (chokeP85 - chokeAvg) * 0.50).toFixed(4));
     } else {
         const p85Acc = allAccs[Math.floor(allAccs.length * 0.85)] || maxAcc;
-        targetPushAcc = Number((avgAcc + (p85Acc - avgAcc) * 0.45).toFixed(4));
+        targetPushAcc = Number((weightedAvgAcc + (p85Acc - weightedAvgAcc) * 0.45).toFixed(4));
     }
 
     return {
-        avgAcc: Number(avgAcc.toFixed(4)),
+        avgAcc: Number(weightedAvgAcc.toFixed(4)),
         maxAcc: Number(maxAcc.toFixed(4)),
         targetPushAcc: Math.min(1.0, Math.max(0.85, targetPushAcc)),
         nonFcRate: Number(nonFcRate.toFixed(2)),
         isChokePusher,
-        avgPlayedStars: Number(avgPlayedStars.toFixed(2)),
-        pushStars: Number(pushStars.toFixed(2))
+        avgPlayedStars: Number(weightedAvgPlayedStars.toFixed(2)),
+        pushStars: Number(pushStars.toFixed(2)),
+        fcStars: Number(fcStars.toFixed(2)),
+        weightedAvgBpm: Math.round(weightedAvgBpm),
+        comfortBpm: Math.round(comfortBpm)
     };
 }
 

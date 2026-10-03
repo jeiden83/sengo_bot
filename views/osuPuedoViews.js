@@ -136,12 +136,37 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
             comfort: (analysis.factors.readingComfort || 9.5).toFixed(1)
         }));
     }
+    if (analysis.factors?.readingNote === 'good') {
+        const mods = (activeModsStr && activeModsStr !== 'NM') ? ` (+${activeModsStr})` : '';
+        tips.push(t(locale, 'puedo.tip_reading_good', {
+            ar: (analysis.map.ar || 9.0).toFixed(1),
+            mods,
+            reading: Math.round(analysis.factors.userReading || 50)
+        }));
+    } else if (analysis.factors?.readingNote === 'poor' || analysis.factors?.readingNote === 'challenging') {
+        const mods = (activeModsStr && activeModsStr !== 'NM') ? ` (+${activeModsStr})` : '';
+        tips.push(t(locale, 'puedo.tip_reading_poor', {
+            ar: (analysis.map.ar || 9.0).toFixed(1),
+            mods,
+            reading: Math.round(analysis.factors.userReading || 50)
+        }));
+    }
+
+    let ifFcLine = '';
+    if (analysis.ifFc && analysis.ifFc.ppAvg > 0) {
+        ifFcLine = `\n└ 🎯 **${t(locale, 'puedo.if_fc_label', { ppAvg: analysis.ifFc.ppAvg, accAvg: analysis.ifFc.accAvg, pp100: analysis.ifFc.pp100 })}**`;
+    }
 
     const rankStr = user.statistics?.global_rank ? ` (#${formatNumber(user.statistics.global_rank, locale)})` : '';
     const authorName = t(locale, 'puedo.embed_author', {
         username: user.username,
         rank: rankStr
     });
+
+    const hasReading = analysis.factors?.userReading != null;
+    const skillsLine = hasReading
+        ? `**${t(locale, 'puedo.profile_aim_speed_reading')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)} / ${analysis.factors.userReading.toFixed(1)}\``
+        : `**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\``;
 
     const embed = new EmbedBuilder()
         .setAuthor({
@@ -155,7 +180,7 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
             `**${t(locale, 'puedo.pass_prob')}** \`${passBar}\` **${analysis.passProb}%**\n` +
             `└ *${passVerdict}*\n\n` +
             `**${t(locale, 'puedo.fc_prob')}** \`${fcBar}\` **${analysis.fcProb}%**\n` +
-            `└ *${fcVerdict}*\n\n` +
+            `└ *${fcVerdict}*${ifFcLine}\n\n` +
             `**${t(locale, 'puedo.history_title')}**\n` +
             `└ ${historyText}\n\n` +
             `**${t(locale, 'puedo.diagnostic_title')}**\n` +
@@ -169,7 +194,7 @@ function doOsuPuedoEmbed({ message, user, map, analysis, activeModsStr, locale =
             },
             {
                 name: t(locale, 'puedo.field_player_profile'),
-                value: `**${t(locale, 'puedo.field_fc_pass_rating')}** \`${(analysis.factors.effectiveFcRating || analysis.factors.pushStars).toFixed(2)}★ / ${analysis.factors.effectivePassRating.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n**${t(locale, 'puedo.profile_aim_speed')}** \`${analysis.factors.userAim.toFixed(1)} / ${analysis.factors.userSpeed.toFixed(1)}\`\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
+                value: `**${t(locale, 'puedo.field_fc_pass_rating')}** \`${(analysis.factors.effectiveFcRating || analysis.factors.pushStars).toFixed(2)}★ / ${analysis.factors.effectivePassRating.toFixed(2)}★\`\n**${t(locale, 'puedo.profile_bpm_ceiling')}** \`~${analysis.factors.estimatedComfortBPM} BPM\`\n${skillsLine}\n**${t(locale, 'puedo.profile_precision')}** \`${(analysis.factors.avgAcc * 100).toFixed(1)}%\``,
                 inline: true
             }
         )

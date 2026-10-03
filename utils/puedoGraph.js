@@ -384,8 +384,8 @@ async function generatePuedoGraph({
             : (isEs ? '🔴 Imposible' : '🔴 Impossible'));
     ctx.fillText(fcStatus, fcBoxX + 12, gaugeY + 60);
 
-    // Barras de Benchmark Comparativo (3 Factores con espaciado amplio)
-    const bStartY = gaugeY + gBoxH + 18;
+    // Barras de Benchmark Comparativo (4 Factores: Aim, Tempo, Lectura y Techos)
+    const bStartY = gaugeY + gBoxH + 12;
     const bW = pRight.w - 30;
     const bX = pRight.x + 15;
 
@@ -401,22 +401,22 @@ async function generatePuedoGraph({
 
         // Barra de progreso
         const barY = y + 5;
-        const barH = 6;
+        const barH = 5;
         ctx.beginPath();
-        ctx.roundRect(bX, barY, bW, barH, 3);
+        ctx.roundRect(bX, barY, bW, barH, 2.5);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
         ctx.fill();
 
         const filledW = Math.max(4, Math.min(bW, (pct / 100) * bW));
         ctx.beginPath();
-        ctx.roundRect(bX, barY, filledW, barH, 3);
+        ctx.roundRect(bX, barY, filledW, barH, 2.5);
         ctx.fillStyle = barColor;
         ctx.fill();
 
         if (note) {
             ctx.font = '9px Poppins, Montserrat, sans-serif';
             ctx.fillStyle = barColor;
-            ctx.fillText(note, bX, barY + 16);
+            ctx.fillText(note, bX, barY + 15);
         }
     };
 
@@ -434,9 +434,9 @@ async function generatePuedoGraph({
         userAim >= 60 ? (isEs ? '✨ Alto superávit de Aim (+1.1★ bono pass)' : '✨ High Aim surplus (+1.1★ pass bonus)') : null
     );
 
-    curY += 44;
+    curY += 38;
 
-    // 2. Speed / BPM
+    // 2. Speed / BPM (ponderado al percentil 85 de top plays)
     const bpmComfort = analysis.factors?.estimatedComfortBPM || 180;
     const mapBPM = analysis.map?.bpm || 180;
     const bpmOver = mapBPM > bpmComfort;
@@ -452,9 +452,42 @@ async function generatePuedoGraph({
             : (isEs ? '✅ Dentro de velocidad cómoda' : '✅ Within comfortable speed')
     );
 
-    curY += 44;
+    curY += 38;
 
-    // 3. Techos de Dificultad (FC vs Pass)
+    // 3. Reading / Lectura vs Mapa
+    const userReading = analysis.factors?.userReading != null ? analysis.factors.userReading : 50;
+    const arVal = Number(analysis.map?.ar || 9.0).toFixed(1);
+    let readingNote = null;
+    let readingColor = '#a855f7';
+
+    if (analysis.factors?.readingNote === 'good') {
+        readingNote = isEs ? '👁️ Lectura dominada (procesa densidad/EZ)' : '👁️ Reading mastered (handles density/EZ)';
+        readingColor = '#2ecc71';
+    } else if (analysis.factors?.readingNote === 'poor') {
+        readingNote = isEs ? '⚠️ Baja experiencia en baja AR / alta densidad' : '⚠️ Low experience in low AR / high density';
+        readingColor = '#e74c3c';
+    } else if (analysis.factors?.readingNote === 'challenging') {
+        readingNote = isEs ? '🟡 Densidad exigente para tu nivel de lectura' : '🟡 Challenging density for reading level';
+        readingColor = '#f39c12';
+    } else if (analysis.factors?.arExtreme) {
+        readingNote = isEs ? '⚠️ AR extrema (tiempo de reacción crítico)' : '⚠️ Extreme AR (critical reaction time)';
+        readingColor = '#e74c3c';
+    } else {
+        readingNote = isEs ? '✅ Lectura dentro de rango estándar' : '✅ Reading within standard range';
+    }
+
+    renderMetricRow(
+        curY,
+        isEs ? `LECTURA: ${userReading.toFixed(1)} / 100` : `READING: ${userReading.toFixed(1)} / 100`,
+        isEs ? `Mapa: AR ${arVal}` : `Map: AR ${arVal}`,
+        Math.min(100, (userReading / 80) * 100),
+        readingColor,
+        readingNote
+    );
+
+    curY += 38;
+
+    // 4. Techos de Dificultad (FC vs Pass)
     const sr = analysis.map?.sr || 5.0;
     const fcCeil = analysis.factors?.effectiveFcRating || analysis.factors?.pushStars || 5.0;
     const passCeil = analysis.factors?.effectivePassRating || 6.0;
