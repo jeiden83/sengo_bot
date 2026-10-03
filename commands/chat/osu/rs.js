@@ -1,4 +1,4 @@
-const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, triggerBackgroundRecentPreload } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
@@ -288,14 +288,13 @@ async function run(messages, args) {
             } catch {}
         });
 
-        // Iniciar precargas en segundo plano para el mapa más reciente de la lista
+        // Registrar tipo de score en canal e invalidar caché de .rec si aplica
         try {
             const targetScore = parser_res.fn_response[0];
             if (targetScore && targetScore.beatmap?.id) {
                 const { setChannelRecentPlayType } = require("../../utils/channelPlayCache.js");
                 const isLazer = currentScoreMode === 'lazer';
                 setChannelRecentPlayType(message.channel.id, targetScore.beatmap.id, isLazer);
-                triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
 
                 // Invalidar caché de .rec si el mapa jugado coincide con una recomendación cacheada
                 try {
@@ -310,7 +309,7 @@ async function run(messages, args) {
                 }
             }
         } catch (err) {
-            console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano (lista):", err);
+            console.error("[RECENT-PLAY] Error al procesar caché de jugada reciente (lista):", err);
         }
 
         return;
@@ -900,14 +899,8 @@ async function run(messages, args) {
         }
     });
 
-    // Iniciar precargas en segundo plano para el mapa mostrado
+    // Invalidar caché de .rec si el mapa más reciente coincide con una recomendación cacheada
     try {
-        const targetScore = parser_res.fn_response[index - 1] || parser_res.fn_response[0];
-        if (targetScore && targetScore.beatmap) {
-            triggerBackgroundRecentPreload(message, targetScore, parser_res.parsed_args);
-        }
-
-        // Invalidar caché de .rec si el mapa más reciente coincide con una recomendación cacheada
         const mostRecentScore = parser_res.fn_response[0];
         if (mostRecentScore && mostRecentScore.beatmap) {
             const osuUserId = parser_res.parsed_args.username?.[0]?.toString();
@@ -918,7 +911,7 @@ async function run(messages, args) {
             }
         }
     } catch (err) {
-        console.error("[BG-PRELOAD] Error al disparar las precargas en segundo plano:", err);
+        console.error("[RECENT-REC] Error al invalidar recomendación:", err);
     }
 
     return;

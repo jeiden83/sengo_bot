@@ -2663,48 +2663,9 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
     }
 }
 
+// ponytail: Precarga de .c y .gap desactivada para evitar llamadas a la API y sobrecarga en segundo plano al lanzar .rs
 async function triggerBackgroundRecentPreload(message, recentScore, parsed_args) {
-    if (!recentScore || !recentScore.beatmap) return;
-    
-    const beatmapId = recentScore.beatmap.id;
-    const mode = recentScore.beatmap.mode || parsed_args?.gamemode || 'osu';
-    const userId = recentScore.user_id || recentScore.user?.id;
-    const username = recentScore.user?.username;
-    
-    let countryCode = recentScore.user?.country_code || recentScore.country_code;
-
-    Promise.resolve().then(async () => {
-        // 1. Precarga del Compare (.c), perfil de usuario y metadatos del mapa en ese mapa (Máxima prioridad)
-        if (userId && beatmapId) {
-            try {
-                const compareArgs = {
-                    username: [userId.toString()],
-                    beatmap_url: beatmapId.toString(),
-                    gamemode: mode,
-                    server: parsed_args?.server || 'bancho'
-                };
-                const OsuUserModel = require("./OsuUserModel.js");
-                const BeatmapModel = require("./BeatmapModel.js");
-                await Promise.all([
-                    getBeatmapUserAllScores(compareArgs),
-                    OsuUserModel.getOsuUser(compareArgs).catch(() => {}),
-                    BeatmapModel.getBeatmap(beatmapId).catch(() => {})
-                ]);
-                console.log(`[BG-RECENT-PRELOAD] Compare (.c), Perfil y Mapa precargados en segundo plano para ${username || userId} (ID: ${userId}) en el mapa ${beatmapId}`);
-            } catch (err) {
-                console.error(`[BG-RECENT-PRELOAD] Error al precargar compare/perfil/mapa para ${username || userId} en el mapa ${beatmapId}:`, err);
-            }
-        }
-
-        // 2. Precarga del Gap en segundo plano (Prioridad baja)
-        try {
-            await triggerBackgroundGapCache(message, beatmapId, mode);
-        } catch (err) {
-            console.error(`[BG-RECENT-PRELOAD] Error al precargar gap para el mapa ${beatmapId}:`, err);
-        }
-    }).catch(err => {
-        console.error(`[BG-RECENT-PRELOAD] Error general en el proceso en segundo plano:`, err);
-    });
+    return;
 }
 
 function calculateNoChokeRank(stats, mods, mode = 'osu') {
