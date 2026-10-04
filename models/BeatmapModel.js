@@ -1145,9 +1145,14 @@ function enrichBeatmapMetadata(target = {}, source = {}) {
     if (!source || typeof source !== 'object') return target;
     if (source.id != null) target.id = source.id;
     if (source.beatmapset_id != null) target.beatmapset_id = source.beatmapset_id;
-    if (source.version != null) target.version = source.version;
-    if (source.difficulty_rating != null) target.difficulty_rating = Number(source.difficulty_rating);
-    if (source.cs != null) target.cs = Number(source.cs);
+    const isConvert = target.convert === true || (target.mode != null && source.mode != null && target.mode !== source.mode);
+    if (!isConvert) {
+        if (source.version != null) target.version = source.version;
+        if (source.difficulty_rating != null) target.difficulty_rating = Number(source.difficulty_rating);
+        if (source.cs != null) target.cs = Number(source.cs);
+        if (source.mode != null) target.mode = source.mode;
+        if (source.max_combo != null) target.max_combo = Number(source.max_combo);
+    }
     if (source.ar != null) target.ar = Number(source.ar);
     const acc = source.accuracy ?? source.od;
     if (acc != null) target.accuracy = Number(acc);
@@ -1157,9 +1162,7 @@ function enrichBeatmapMetadata(target = {}, source = {}) {
     if (source.bpm != null) target.bpm = Number(source.bpm);
     if (source.total_length != null) target.total_length = Number(source.total_length);
     if (source.hit_length != null) target.hit_length = Number(source.hit_length);
-    if (source.max_combo != null) target.max_combo = Number(source.max_combo);
     if (source.status != null) target.status = source.status;
-    if (source.mode != null) target.mode = source.mode;
     return target;
 }
 

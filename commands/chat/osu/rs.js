@@ -213,7 +213,7 @@ async function run(messages, args) {
                         }
                         
                         if (globalIndex === 1) {
-                            const beatmap_max_combo = beatmap.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
+                            const beatmap_max_combo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : beatmap.max_combo) || 0;
                             const pre_calculated = {
                                 "map": map,
                                 "map_completion": score.passed ? 100 : total_hits / map.nObjects,
@@ -379,7 +379,7 @@ async function run(messages, args) {
 
         let user_pp = recent_scores.pp ? recent_scores.pp : (map && maxAttrs ? calculatePP(recent_scores, map, null, maxAttrs).pp : 0);
 
-        let beatmap_max_combo = (beatmap && beatmap.max_combo) || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : (recent_scores.max_combo || 0));
+        let beatmap_max_combo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : beatmap?.max_combo) || (recent_scores.max_combo || 0);
         let pp_fc = null;
         const isFC = recent_scores.perfect || (miss === 0 && recent_scores.max_combo >= beatmap_max_combo - 2);
 

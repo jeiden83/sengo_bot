@@ -99,21 +99,21 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                 if (hasUserTopPos) {
                     user_top_pos = pre_calculated.user_top_pos;
                     if (hasLeaderboard) {
-                        best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode);
+                        best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, activeGamemode);
                     }
                 } else if (isRankedPlay || numericPP > 0) {
                     const [fetchedBest, fetchedTopScores] = await Promise.all([
-                        hasLeaderboard ? OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode) : null,
+                        hasLeaderboard ? OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, activeGamemode) : null,
                         OsuScoreModel.getUserTopScores({
                             username: [String(recent_scores.user.id)],
-                            gamemode: recent_scores.beatmap.mode,
+                            gamemode: activeGamemode,
                             server: recent_scores.user?.server || 'bancho'
                         }).catch(() => null)
                     ]);
                     best = fetchedBest;
                     topScores = fetchedTopScores;
                 } else if (hasLeaderboard) {
-                    best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, recent_scores.beatmap.mode);
+                    best = await OsuScoreModel.getUserBeatmapBest(recent_scores.beatmap.id, recent_scores.user.id, activeGamemode);
                 }
 
                 if (best && best.score) {
@@ -167,7 +167,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
                 const targetServer = recent_scores.user.server;
                 const topScores = await OsuScoreModel.getUserTopScores({
                     username: [recent_scores.user.id || recent_scores.user.username],
-                    gamemode: recent_scores.beatmap?.mode || 'osu'
+                    gamemode: activeGamemode
                 }, targetServer);
                 if (topScores && Array.isArray(topScores)) {
                     const recentTime = Math.floor(new Date(recent_scores.ended_at || recent_scores.created_at).getTime() / 1000);
