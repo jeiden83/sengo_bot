@@ -80,6 +80,7 @@ function calculateGrade(accuracy, misses, combo, maxCombo) {
 function parseSimArgs(args) {
     const options = {
         beatmapId: null,
+        targetUser: null,
         mods: null,
         accuracy: null,
         misses: null,
@@ -98,6 +99,13 @@ function parseSimArgs(args) {
         if (typeof arg !== 'string') continue;
         const clean = arg.trim();
         const lower = clean.toLowerCase();
+
+        // 0. Usuario explícito (-u <usuario> / -user <usuario>)
+        if ((lower === '-u' || lower === '-user' || lower === '--user') && i + 1 < argsList.length) {
+            options.targetUser = argsList[i + 1].trim();
+            i++;
+            continue;
+        }
 
         // 1. Beatmap URL o ID directo
         const urlMatch = clean.match(/osu\.ppy\.sh\/b(?:eatmaps)?\/(\d+)/) ||
@@ -390,14 +398,67 @@ async function run(messages, args) {
     const authorUser = message.author || { username: 'Jugador', avatarURL: () => 'https://a.ppy.sh/0' };
     const avatarUrl = typeof authorUser.avatarURL === 'function' ? authorUser.avatarURL({ extension: 'png' }) : 'https://a.ppy.sh/0';
 
+    let simUser = null;
+
+    if (simOptions.targetUser) {
+        try {
+            const fetched = await OsuUserModel.getOsuUser({
+                username: [simOptions.targetUser],
+                gamemode: requestedModeStr
+            });
+            if (fetched) {
+                simUser = {
+                    username: fetched.username,
+                    avatar_url: fetched.avatar_url || avatarUrl,
+                    id: fetched.id,
+                    server: 'bancho'
+                };
+            }
+        } catch (_) {}
+    }
+
+    if (!simUser) {
+        try {
+            const linkedUser = await OsuUserModel.getLinkedUser(res?.User, message.author?.id);
+            if (linkedUser && linkedUser.osu_id) {
+                const osuUser = await OsuUserModel.getOsuUser({
+                    username: [linkedUser.osu_id],
+                    server: linkedUser.osu_server || 'bancho',
+                    gamemode: requestedModeStr
+                }).catch(() => null);
+
+                if (osuUser) {
+                    simUser = {
+                        username: osuUser.username,
+                        avatar_url: osuUser.avatar_url || avatarUrl,
+                        id: osuUser.id,
+                        server: linkedUser.osu_server || 'bancho'
+                    };
+                } else {
+                    simUser = {
+                        username: authorUser.username,
+                        avatar_url: avatarUrl,
+                        id: linkedUser.osu_id,
+                        server: linkedUser.osu_server || 'bancho'
+                    };
+                }
+            }
+        } catch (_) {}
+    }
+
+    if (!simUser) {
+        simUser = {
+            username: authorUser.username,
+            avatar_url: avatarUrl,
+            id: null,
+            server: 'bancho'
+        };
+    }
+
     // Construir estructura idéntica a recent_scores para reusar doOsuEmbed
     const simulatedScores = {
         isSimulated: true,
-        user: {
-            username: authorUser.username,
-            avatar_url: avatarUrl,
-            id: authorUser.id
-        },
+        user: simUser,
         beatmapset: {
             title: beatmapData.beatmapset.title,
             covers: beatmapData.beatmapset.covers

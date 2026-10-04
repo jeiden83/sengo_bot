@@ -27,7 +27,13 @@ const emoji_mods = require("../src/emoji_mods.json");
 
 function getUserUrl(user, fallbackId) {
     if (!user) return fallbackId ? `https://osu.ppy.sh/users/${fallbackId}` : `https://osu.ppy.sh/users/`;
-    const id = user.id || fallbackId || (user.username ? encodeURIComponent(user.username) : '');
+    let id = user.id || fallbackId;
+    if (id && /^\d{17,20}$/.test(String(id))) {
+        id = null;
+    }
+    if (!id) {
+        id = user.username ? encodeURIComponent(user.username) : '';
+    }
     if (user.server === 'gatari') return `https://osu.gatari.pw/u/${id}`;
     if (user.server === 'mameosu') return `https://web.mamesosu.net/u/${id}`;
     if (user.server === 'droid') return `https://osudroid.moe/profile.php?uid=${id}`;
@@ -83,7 +89,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     let user_top_pos = null;
     let isUnrankedTop = false;
 
-    if (recent_scores.passed) {
+    if (recent_scores.passed && !recent_scores.isSimulated) {
         const OsuScoreModel = require('../models/OsuScoreModel.js');
         if (recent_scores.user.server === 'bancho' || !recent_scores.user.server) {
             try {
