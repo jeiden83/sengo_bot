@@ -1063,12 +1063,26 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                     mapObj.convert(activeMode);
                 }
 
-                const rawMods = Array.isArray(pinnedPlay.mods)
-                    ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+                const rawPlayMods = Array.isArray(pinnedPlay.mods)
+                    ? pinnedPlay.mods
                     : (typeof pinnedPlay.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : []);
                 // HD, DT, HT, HR, EZ alteran el Star Rating en osu!lazer; FL se excluye por disparar el strain exponencial de memorización
-                const srMods = rawMods.filter(m => !["FL", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(m.toUpperCase()));
-                const diffAttrs = new engine.Difficulty({ mods: srMods, lazer: true }).calculate(mapObj);
+                const srMods = rawPlayMods.filter(m => {
+                    const acronym = (typeof m === "string" ? m : m?.acronym || "").toUpperCase();
+                    return !["FL", "NF", "SO", "TD", "SD", "PF", "CL", "RX", "AP"].includes(acronym);
+                });
+                let explicitClockRate = null;
+                for (const m of rawPlayMods) {
+                    if (typeof m === "object" && m !== null) {
+                        if (m.settings?.speed_change != null) explicitClockRate = Number(m.settings.speed_change);
+                        else if (m.settings?.clock_rate != null) explicitClockRate = Number(m.settings.clock_rate);
+                    }
+                }
+                const diffOptions = { mods: srMods, lazer: true };
+                if (explicitClockRate !== null && !isNaN(explicitClockRate) && explicitClockRate > 0) {
+                    diffOptions.clockRate = explicitClockRate;
+                }
+                const diffAttrs = new engine.Difficulty(diffOptions).calculate(mapObj);
                 const stars = diffAttrs?.stars;
                 const maxCombo = diffAttrs?.maxCombo;
                 const mapAttrs = {
@@ -1498,9 +1512,10 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
         // Badges de mods estilo lazer
-        const mods = Array.isArray(pinnedPlay?.mods)
-            ? pinnedPlay.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+        const rawPlayMods = Array.isArray(pinnedPlay?.mods)
+            ? pinnedPlay.mods
             : (typeof pinnedPlay?.mods === "string" ? pinnedPlay.mods.match(/.{1,2}/g) || [] : ["HD", "DT"]);
+        const displayMods = rawPlayMods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean);
 
         // Cálculo de estadísticas modificadas con mods (BPM, OD, CS, AR, HP, Duración)
         const BeatmapModel = require("../models/BeatmapModel.js");
@@ -1514,7 +1529,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         };
         const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
         const playRuleset = pinnedPlay?.mode || (pinnedPlay?.ruleset_id !== undefined ? rulesetMap[pinnedPlay.ruleset_id] : null) || user.playmode || mode || 'osu';
-        const convertedStats = BeatmapModel.getBeatmapAdjustedStats(baseBeatmapData, mods, playRuleset);
+        const convertedStats = BeatmapModel.getBeatmapAdjustedStats(baseBeatmapData, rawPlayMods, playRuleset);
 
         const totalLength = Number(baseBeatmapData.total_length || 0);
         let durationStr = "";
@@ -1560,7 +1575,7 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
         // Grade S/A
         const isShortBox = pb.h < 260;
-        const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade, mods) };
+        const gradeFont = { ...fonts.playGrade, color: getGradeColor(scoreGrade, displayMods) };
         const displayGrade = (scoreGrade === "XH" || scoreGrade === "SSH") ? "X" : (scoreGrade === "SH" ? "S" : scoreGrade);
         drawCustomText(ctx, gradeFont, displayGrade, pb.x + 80, pb.y + (isShortBox ? 155 : 168), "center", fontFamily);
 
@@ -1569,21 +1584,35 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         const modH = isShortBox ? 28 : 32;
         const modY = pb.y + (isShortBox ? 175 : 198);
 
-        for (const mod of mods.slice(0, 4)) {
-            const cleanMod = String(mod).toUpperCase();
+        for (let i = 0; i < Math.min(rawPlayMods.length, 4); i++) {
+            const rawMod = rawPlayMods[i];
+            const cleanMod = (typeof rawMod === "string" ? rawMod : rawMod?.acronym || "").toUpperCase();
+            if (!cleanMod) continue;
+
+            let badgeText = cleanMod;
+            if (typeof rawMod === "object" && rawMod?.settings?.speed_change != null) {
+                const sc = Number(rawMod.settings.speed_change);
+                if ((cleanMod === "HT" && sc !== 0.75) || ((cleanMod === "DT" || cleanMod === "NC") && sc !== 1.5)) {
+                    badgeText = `${cleanMod} ${sc}x`;
+                }
+            }
+
             const colors = MOD_COLORS[cleanMod] || { bg: "#fa4277", fg: "#ffffff" };
 
             ctx.save();
+            ctx.font = `bold ${isShortBox ? 14 : 16}px ${fontFamily}`;
+            const textWidth = ctx.measureText(badgeText).width;
+            const currentModW = Math.max(modW, Math.round(textWidth + 14));
+
             ctx.fillStyle = colors.bg;
-            roundRect(ctx, modX, modY, modW, modH, 8, true);
+            roundRect(ctx, modX, modY, currentModW, modH, 8, true);
 
             ctx.fillStyle = colors.fg;
-            ctx.font = `bold ${isShortBox ? 14 : 16}px ${fontFamily}`;
             ctx.textAlign = "center";
-            ctx.fillText(cleanMod, modX + (modW / 2), modY + (modH / 2) + (isShortBox ? 5 : 6));
+            ctx.fillText(badgeText, modX + (currentModW / 2), modY + (modH / 2) + (isShortBox ? 5 : 6));
             ctx.restore();
 
-            modX += modW + 8;
+            modX += currentModW + 8;
         }
 
         drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + (isShortBox ? 135 : 148), "right", fontFamily);

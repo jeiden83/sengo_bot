@@ -1059,21 +1059,37 @@ function getBeatmapAdjustedStats(beatmap = {}, mods = [], mode = 'osu') {
     const originalBaseOd = baseOd;
     const originalBaseHp = baseHp;
 
-    // Si hay mod DA (Difficulty Adjust), extraer las sobreescrituras de atributos
+    let explicitClockRate = null;
+
+    // Si hay mod DA (Difficulty Adjust) o rate adjust, extraer las sobreescrituras de atributos
     if (Array.isArray(mods)) {
-        const daMod = mods.find(m => (typeof m === 'object' && m !== null && (m.acronym === 'DA' || m.acronym === 'da')));
-        if (daMod && daMod.settings) {
-            if (daMod.settings.circle_size !== undefined && daMod.settings.circle_size !== null) {
-                baseCs = Number(daMod.settings.circle_size);
-            }
-            if (daMod.settings.approach_rate !== undefined && daMod.settings.approach_rate !== null) {
-                baseAr = Number(daMod.settings.approach_rate);
-            }
-            if (daMod.settings.overall_difficulty !== undefined && daMod.settings.overall_difficulty !== null) {
-                baseOd = Number(daMod.settings.overall_difficulty);
-            }
-            if (daMod.settings.drain_rate !== undefined && daMod.settings.drain_rate !== null) {
-                baseHp = Number(daMod.settings.drain_rate);
+        for (const m of mods) {
+            if (typeof m === 'object' && m !== null) {
+                const acr = (m.acronym || '').toUpperCase();
+                if (acr === 'DA' && m.settings) {
+                    if (m.settings.circle_size !== undefined && m.settings.circle_size !== null) {
+                        baseCs = Number(m.settings.circle_size);
+                    }
+                    if (m.settings.approach_rate !== undefined && m.settings.approach_rate !== null) {
+                        baseAr = Number(m.settings.approach_rate);
+                    }
+                    if (m.settings.overall_difficulty !== undefined && m.settings.overall_difficulty !== null) {
+                        baseOd = Number(m.settings.overall_difficulty);
+                    }
+                    if (m.settings.drain_rate !== undefined && m.settings.drain_rate !== null) {
+                        baseHp = Number(m.settings.drain_rate);
+                    }
+                }
+                if (m.settings?.speed_change != null) {
+                    explicitClockRate = Number(m.settings.speed_change);
+                } else if (m.settings?.clock_rate != null) {
+                    explicitClockRate = Number(m.settings.clock_rate);
+                }
+            } else if (typeof m === 'string') {
+                const match = m.match(/^(\d+(?:\.\d+)?)x$/i);
+                if (match) {
+                    explicitClockRate = parseFloat(match[1]);
+                }
             }
         }
     }
@@ -1096,24 +1112,28 @@ function getBeatmapAdjustedStats(beatmap = {}, mods = [], mode = 'osu') {
     let modAr = baseAr;
     let modOd = baseOd;
     let modHp = baseHp;
-    let clockRate = 1.0;
+    let clockRate = explicitClockRate || 1.0;
 
     try {
-        const builder = new ppEngine.BeatmapAttributesBuilder({
+        const builderParams = {
             cs: baseCs,
             ar: baseAr,
             od: baseOd,
             hp: baseHp,
             mode: activeMode,
             mods: mods || []
-        });
+        };
+        if (explicitClockRate !== null && !isNaN(explicitClockRate) && explicitClockRate > 0) {
+            builderParams.clockRate = explicitClockRate;
+        }
+        const builder = new ppEngine.BeatmapAttributesBuilder(builderParams);
         const attrs = builder.build();
         if (attrs) {
             modCs = attrs.cs !== undefined ? attrs.cs : baseCs;
             modAr = attrs.ar !== undefined ? attrs.ar : baseAr;
             modOd = attrs.od !== undefined ? attrs.od : baseOd;
             modHp = attrs.hp !== undefined ? attrs.hp : baseHp;
-            clockRate = attrs.clockRate || 1.0;
+            clockRate = attrs.clockRate || explicitClockRate || 1.0;
         }
     } catch {
         // En caso de error, se mantienen las estadísticas base
