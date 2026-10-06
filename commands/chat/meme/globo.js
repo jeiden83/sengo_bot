@@ -1,10 +1,9 @@
-const { createCanvas, loadImage } = require('canvas');
-const fs = require('fs');
+const sharp = require('sharp');
 const path = require('path');
-const GIFEncoder = require('gifencoder');
 const { t } = require('../../../utils/i18n.js');
 
 const globoPath = path.join(__dirname, '../../../src/globo.png');
+const MAX_WIDTH = 800;
 
 async function run(messages, args) {
   const { message, reply } = messages;
@@ -27,57 +26,49 @@ async function run(messages, args) {
 
   if (!imageUrl) return t(locale, 'globo.attach_image');
 
-  let baseImg;
+  let normalizedBase;
   try {
     const res = await fetch(imageUrl);
     if (!res.ok) return t(locale, 'globo.attach_image');
     const baseImgBuffer = Buffer.from(await res.arrayBuffer());
-    baseImg = await loadImage(baseImgBuffer);
+
+    // ponytail: normalizar rotación EXIF y acotar a MAX_WIDTH para prevenir OOM en Render (512MB RAM) y descartar canvas/gifencoder
+    normalizedBase = await sharp(baseImgBuffer)
+      .rotate()
+      .resize({ width: MAX_WIDTH, withoutEnlargement: true })
+      .toBuffer();
   } catch (err) {
     console.error('Error al cargar la imagen para globo:', err);
     return t(locale, 'globo.attach_image');
   }
 
-  const globoBuffer = fs.readFileSync(globoPath);
-  const globo = await loadImage(globoBuffer);
-
-  // Escalar el globo al mismo ancho que la imagen base
-  const canvasWidth = baseImg.width;
-  const globoHeight = (globo.height / globo.width) * canvasWidth;
-  const canvasHeight = globoHeight + baseImg.height;
-
-  const canvas = createCanvas(canvasWidth, canvasHeight);
-  const ctx = canvas.getContext('2d');
-
-  // Dibuja el globo en la parte superior
-  ctx.drawImage(globo, 0, 0, canvasWidth, globoHeight);
-
-  // Dibuja la imagen base debajo del globo
-  ctx.drawImage(baseImg, 0, globoHeight, baseImg.width, baseImg.height);
-
-  // Generar GIF estático
-  const encoder = new GIFEncoder(canvas.width, canvas.height);
-  const gifPath = path.join(__dirname, `globo_result_${Date.now()}_${Math.random().toString(36).slice(2, 7)}.gif`);
-  const stream = fs.createWriteStream(gifPath);
-
-  encoder.createReadStream().pipe(stream);
-  encoder.start();
-  encoder.setRepeat(0);
-  encoder.setDelay(500);
-  encoder.setQuality(10);
-  encoder.addFrame(ctx);
-  encoder.finish();
-
-  await new Promise(resolve => stream.on('finish', resolve));
-
   try {
+    const meta = await sharp(normalizedBase).metadata();
+    const globoMeta = await sharp(globoPath).metadata();
+    const globoHeight = Math.round((globoMeta.height / globoMeta.width) * meta.width);
+
+    const resizedGlobo = await sharp(globoPath)
+      .resize({ width: meta.width, height: globoHeight, fit: 'fill' })
+      .toBuffer();
+
+    const resultBuffer = await sharp(normalizedBase)
+      .extend({
+        top: globoHeight,
+        bottom: 0,
+        left: 0,
+        right: 0,
+        background: { r: 255, g: 255, b: 255, alpha: 0 }
+      })
+      .composite([{ input: resizedGlobo, top: 0, left: 0 }])
+      .gif()
+      .toBuffer();
+
     await message.channel.send({
-      files: [gifPath]
+      files: [{ attachment: resultBuffer, name: 'globo.gif' }]
     });
-  } finally {
-    fs.unlink(gifPath, (err) => {
-      if (err) console.error('Error al borrar el GIF:', err);
-    });
+  } catch (err) {
+    console.error('Error al procesar el globo:', err);
+    return t(locale, 'globo.attach_image');
   }
 
   return null;
