@@ -40,10 +40,11 @@ async function run(interaction, res, chat_commands) {
     if (isForce) args.push("-force");
 
     const messages = createSlashMessagesContext(interaction, res);
+    messages.interaction = interaction;
 
     const result = await antiskillsChatCommand.run(messages, args, chat_commands);
-    if (result && (result.embeds || result.content || typeof result === "string")) {
-        await interaction.editReply(result);
+    if (typeof result === "string") {
+        await interaction.editReply({ content: result });
     }
     return result || true;
 }

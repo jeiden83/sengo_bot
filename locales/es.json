@@ -2329,6 +2329,11 @@
     "skill_acc": "Accuracy (Precisión)",
     "skill_reading": "Reading (Lectura)",
     "skill_stamina": "Stamina (Resistencia)",
+    "skill_fingerControl": "Finger Control",
+    "skill_highAR": "High AR (Reacción)",
+    "skill_lowAR": "Densidad (Low AR / EZ)",
+    "skill_hdReading": "Hidden (Sin Anillos)",
+    "skill_flReading": "Flashlight (Memoria)",
     "skill_color": "Color / Switching",
     "skill_rhythm": "Rhythm (Ritmo)",
     "skill_movement": "Movement (Movimiento)",
@@ -2336,6 +2341,14 @@
     "skill_stream": "Stream (Velocidad)",
     "skill_jack": "Jack (Resistencia)",
     "skill_tech": "Tech / LN",
+    "btn_core": "📊 Mecánicas Core",
+    "btn_vision": "👁️ Lectura & Visión",
+    "vision_title": "⚡ Diagnóstico de Lectura & Percepción Visual",
+    "vision_primary_deficit_label": "👁️ **Punto Ciego de Lectura:**",
+    "vision_bias_label": "Perfil Visual",
+    "vision_bias_high_ar": "Enfoque High AR (Reacción rápida / Sightreading)",
+    "vision_bias_low_ar": "Especialista en Baja Velocidad & Densidad (EZ)",
+    "vision_bias_balanced": "Visión Estándar Equilibrada (AR 9.0 - 10.0)",
     "severity_critical": "Crítico",
     "severity_moderate": "Notable",
     "severity_mild": "Leve",
@@ -2370,8 +2383,10 @@
     "field_training_title": "💡 Prescripción de Entrenamiento",
     "training_reading_density": "• **Entrenamiento de Lectura:** Juega mapas con AR 7.5-8.5 densos o activa EZ en dificultades intermedias para forzar el procesamiento visual de clusters.",
     "training_reading_high_ar": "• **Entrenamiento de Lectura Rápida:** Practica mapas con AR 9.8-10.3 para reducir el tiempo de reacción periférico y dejar de depender de baja densidad.",
-    "training_speed_stamina": "• **Entrenamiento de Velocidad & Stamina:** Dedica sesiones a streams continuos a ~{targetBpm} BPM con mapas de ritmo sostenido (deathstreams) para empujar tu techo cinético.",
-    "training_acc_finger_control": "• **Entrenamiento de Precisión & Control:** Juega mapas técnicos y de finger control con OD 9.5+ enfocándote en ritmos alternados (triplets, polirritmias).",
+    "training_speed_stamina": "• **Entrenamiento de Velocidad:** Dedica sesiones a streams continuos a ~{targetBpm} BPM con mapas de ritmo sostenido (deathstreams) para empujar tu techo cinético.",
+    "training_stamina": "• **Entrenamiento de Resistencia (Stamina):** Juega mapas largos de streams continuos (>800 círculos) a tempo regular para desarrollar aguante muscular sostenido.",
+    "training_finger_control": "• **Entrenamiento de Finger Control:** Practica mapas de ritmo irregular con sliders técnicos, polirritmias y alternancias dactilares con OD 9+.",
+    "training_acc_finger_control": "• **Entrenamiento de Precisión:** Juega mapas técnicos y de finger control con OD 9.5+ enfocándote en ritmos alternados (triplets, polirritmias).",
     "training_aim_snapping": "• **Entrenamiento de Puntería (Aim):** Practica saltos de amplio rango (cross-screen) a tempos cómodos para consolidar la memoria muscular y el snap.",
     "training_consistency_choke": "• **Consistencia Mental:** Juega mapas completos más largos (3-5 min) a ~{fcStars}★ sin reiniciar tras un miss para romper el patrón de reseteo compulsivo.",
     "training_balanced_push": "• **Skillset Equilibrado:** Tu perfil es muy balanceado. Sube gradualmente la dificultad global (~+0.2★) en todas las áreas de forma armónica.",
@@ -2381,9 +2396,21 @@
         "name": "Tormenta de Densidad Visual",
         "desc": "Mapa con baja velocidad de aproximación, alta densidad de objetos y patrones superpuestos donde la lectura periférica colapsa."
       },
+      "high_ar_bullet": {
+        "name": "Ráfaga Supersónica (High AR)",
+        "desc": "Mapa con velocidad de aproximación extrema (AR 10.3+) que exige tiempo de reacción visual instantáneo (<330ms)."
+      },
       "speed_wall": {
         "name": "Muro de Mashing & Deathstreams",
         "desc": "Mapa de alta velocidad con ráfagas continuas de streams que sobrepasan tu reserva de estamina y coordinación dactilar."
+      },
+      "deathstream_endurance": {
+        "name": "Maratón de Deathstreams",
+        "desc": "Mapa extenso con secuencias de streams de cientos de notas que agotan las reservas de estamina muscular."
+      },
+      "polyrhythm_maze": {
+        "name": "Laberinto de Finger Control",
+        "desc": "Patrones rítmicos irregulares, sliders complejos y notas sincopadas que exigen total independencia entre dedos."
       },
       "strict_metronome": {
         "name": "Metrónomo Quirúrgico",

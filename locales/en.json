@@ -2325,6 +2325,11 @@
     "skill_acc": "Accuracy",
     "skill_reading": "Reading",
     "skill_stamina": "Stamina",
+    "skill_fingerControl": "Finger Control",
+    "skill_highAR": "High AR (Reaction)",
+    "skill_lowAR": "Density (Low AR / EZ)",
+    "skill_hdReading": "Hidden (No Rings)",
+    "skill_flReading": "Flashlight (Memory)",
     "skill_color": "Color / Switching",
     "skill_rhythm": "Rhythm",
     "skill_movement": "Movement",
@@ -2332,6 +2337,14 @@
     "skill_stream": "Stream (Speed)",
     "skill_jack": "Jack (Stamina)",
     "skill_tech": "Tech / LN",
+    "btn_core": "📊 Core Mechanics",
+    "btn_vision": "👁️ Reading & Vision",
+    "vision_title": "⚡ Reading & Visual Perception Diagnosis",
+    "vision_primary_deficit_label": "👁️ **Main Reading Blindspot:**",
+    "vision_bias_label": "Visual Profile",
+    "vision_bias_high_ar": "High AR Focus (Fast reaction / Sightreading)",
+    "vision_bias_low_ar": "Low Speed & Density Specialist (EZ)",
+    "vision_bias_balanced": "Balanced Standard Vision (AR 9.0 - 10.0)",
     "severity_critical": "Critical",
     "severity_moderate": "Notable",
     "severity_mild": "Mild",
@@ -2365,8 +2378,10 @@
     "field_training_title": "💡 Training Prescription",
     "training_reading_density": "• **Reading Training:** Play dense AR 7.5-8.5 maps or practice EZ on mid difficulties to train cluster visual processing.",
     "training_reading_high_ar": "• **Fast Reading Training:** Practice AR 9.8-10.3 maps to reduce peripheral reaction time and eliminate low-density crutches.",
-    "training_speed_stamina": "• **Speed & Stamina Training:** Run continuous stream sessions at ~{targetBpm} BPM with sustained deathstreams to expand your kinetic ceiling.",
-    "training_acc_finger_control": "• **Accuracy & Control Training:** Play technical and finger control maps with OD 9.5+ focusing on alternating rhythms (triplets, polyrhythms).",
+    "training_speed_stamina": "• **Speed Training:** Run continuous stream sessions at ~{targetBpm} BPM with sustained deathstreams to expand your kinetic ceiling.",
+    "training_stamina": "• **Stamina Training:** Play lengthy continuous stream maps (>800 circles) at steady tempos to build lasting muscular endurance.",
+    "training_finger_control": "• **Finger Control Training:** Practice irregular rhythm maps with technical sliders, polyrhythms, and finger alternations with OD 9+.",
+    "training_acc_finger_control": "• **Accuracy Training:** Play technical and finger control maps with OD 9.5+ focusing on alternating rhythms (triplets, polyrhythms).",
     "training_aim_snapping": "• **Aim Snapping Training:** Practice wide cross-screen jumps at comfortable tempos to solidify muscle memory and snappy cursor motion.",
     "training_consistency_choke": "• **Mental Consistency:** Play longer full songs (3-5 min) at ~{fcStars}★ without retrying on miss to break the compulsive retry loop.",
     "training_balanced_push": "• **Balanced Skillset:** Your profile is exceptionally balanced. Gradually raise overall difficulty (~+0.2★) across all skills harmoniously.",
@@ -2376,9 +2391,21 @@
         "name": "Visual Density Storm",
         "desc": "Map with low approach rate, massive object density, and overlapping patterns where peripheral reading collapses."
       },
+      "high_ar_bullet": {
+        "name": "Supersonic Burst (High AR)",
+        "desc": "Map with extreme approach rate (AR 10.3+) that demands instantaneous visual reaction time (<330ms)."
+      },
       "speed_wall": {
         "name": "Mashing & Deathstream Wall",
         "desc": "High tempo map with sustained high-BPM stream walls that deplete finger stamina and tapping coordination."
+      },
+      "deathstream_endurance": {
+        "name": "Deathstream Marathon",
+        "desc": "Lengthy map with continuous multi-hundred note stream sequences that exhaust muscular stamina reserves."
+      },
+      "polyrhythm_maze": {
+        "name": "Finger Control Labyrinth",
+        "desc": "Irregular rhythm patterns, technical sliders, and syncopated notes that require total finger independence."
       },
       "strict_metronome": {
         "name": "Surgical Metronome",

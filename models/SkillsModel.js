@@ -1485,12 +1485,141 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         breakdown = await analyzeSkillsBreakdown(scores, mode, options);
     }
 
+    // ponytail: Para osu! standard calculamos Stamina, Finger Control y Vision Profile (High AR vs Low AR)
+    let extraOsuSkills = null;
+    let visionProfile = null;
+
+    if (mode === "osu" && scores.length > 0) {
+        let staminaSum = 0, fingerSum = 0;
+        let highArSum = 0, lowArSum = 0;
+        let totalW = 0;
+
+        scores.forEach((s, idx) => {
+            const w = Math.pow(0.95, idx);
+            totalW += w;
+
+            const pp = Number(s.pp || 0);
+            const accuracy = Number(s.accuracy != null ? s.accuracy : 0.98);
+            const accPct = accuracy <= 1 ? accuracy * 100 : accuracy;
+
+            const modsList = Array.isArray(s.mods)
+                ? s.mods.map(m => (typeof m === "string" ? m : m.acronym || "")).filter(Boolean)
+                : (typeof s.mods === "string" ? s.mods.match(/.{1,2}/g) || [] : []);
+            const upperMods = modsList.map(m => m.toUpperCase());
+            const modsSet = new Set(upperMods);
+
+            const isDT = modsSet.has("DT") || modsSet.has("NC");
+            const isHT = modsSet.has("HT") || modsSet.has("DC");
+            const isHR = modsSet.has("HR");
+            const isHD = modsSet.has("HD");
+            const isEZ = modsSet.has("EZ");
+
+            const bpm = Number(s.beatmap?.bpm || 180);
+            const ar = Number(s.beatmap?.ar || 9.0);
+            const od = Number(s.beatmap?.accuracy || 8.0);
+            const circles = Number(s.beatmap?.count_circles || 0);
+            const sliders = Number(s.beatmap?.count_sliders || 0);
+            const stats = s.statistics || {};
+            const totalHits = (stats.count_300 || 0) + (stats.count_100 || 0) + (stats.count_50 || 0) + (stats.count_miss || 0);
+            const totalObj = Math.max(1, (circles + sliders) > 0 ? (circles + sliders) : totalHits);
+
+            const clockRate = isDT ? 1.5 : (isHT ? 0.75 : 1.0);
+            let effBPM = bpm * clockRate;
+            const effLen = Math.max(20, Number(s.beatmap?.hit_length || 100)) / clockRate;
+
+            let beats = (effLen / 60) * effBPM;
+            let circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
+            if (effBPM < 140 && circlesPerBeat >= 1.45) {
+                effBPM *= 2.0;
+                beats = (effLen / 60) * effBPM;
+                circlesPerBeat = beats > 0 ? (circles / beats) : 1.0;
+            }
+            const circleRatio = circles / totalObj;
+
+            // Acc PP y Strain PP
+            let hitWindow300 = 80 - 6 * od;
+            if (isEZ) hitWindow300 = 80 - 6 * (od * 0.5);
+            if (isHR) hitWindow300 = 80 - 6 * Math.min(10, od * 1.4);
+            if (isDT) hitWindow300 /= 1.5;
+            if (isHT) hitWindow300 /= 0.75;
+            const effOD = Math.max(0, Math.min(11.1, (80 - hitWindow300) / 6));
+            const lengthBonus = Math.min(1.15, Math.pow(totalObj / 1500, 0.3));
+            let rawAccPP = Math.pow(1.52163, effOD) * Math.pow(Math.max(0, (accPct - 80) / 20), 2.4) * lengthBonus * 2.2;
+            rawAccPP = Math.min(rawAccPP, pp * 0.28);
+            const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
+
+            // Speed
+            const bpmFactor = Math.max(0, (effBPM - 140) / 105);
+            let jumpSuppression = circlesPerBeat < 1.05 ? Math.max(0.20, Math.pow(circlesPerBeat / 1.05, 1.4)) : 1.0;
+            let baseSpeedPct = 0.05 + Math.max(0, (effBPM - 145) / 120) * 0.22;
+            if (effLen >= 90 && totalObj >= 380 && circlesPerBeat >= 0.95 && !isHR) baseSpeedPct = Math.max(baseSpeedPct, 0.22);
+            if (isHR) baseSpeedPct *= 0.80;
+            if (isEZ && !isDT) baseSpeedPct *= 0.70;
+            if (isHT) baseSpeedPct *= 0.40;
+
+            const rhythmDensity = Math.max(0.20, Math.min(1.4, (circlesPerBeat - 0.40) / 0.85 + circleRatio * 0.35));
+            let highBpmMultiplier = effBPM > 220 ? (1.0 + Math.pow((effBPM - 220) / 75, 1.25) * 0.70) : 1.0;
+            let speedFraction = (baseSpeedPct + (bpmFactor * 0.18 * rhythmDensity * highBpmMultiplier)) * jumpSuppression;
+            if (circles < 300 && effLen < 60 && circlesPerBeat < 1.15) {
+                speedFraction = isDT ? Math.max(0.12, Math.min(0.20, speedFraction * 0.65)) : Math.min(0.10, speedFraction * 0.45);
+            }
+            if (isHR && circlesPerBeat < 1.10) speedFraction = Math.min(0.10, speedFraction * 0.60);
+            if (sliders >= 350 && circleRatio < 0.65) speedFraction *= 0.75;
+            const maxAllowed = Math.min(0.66, 0.35 + Math.max(0, (effBPM - 190) / 180) * 0.31);
+            speedFraction = Math.max(0.04, Math.min(maxAllowed, speedFraction));
+            const rawSpeedPP = strainPP * speedFraction;
+
+            // Stamina (Resistencia de tapping en streams continuos y mapas extensos)
+            const streamCircleDensity = circles / Math.max(30, effLen);
+            const staminaLengthFactor = Math.min(1.5, Math.pow(effLen / 120, 0.45));
+            const staminaObjFactor = Math.min(1.4, Math.pow(circles / 700, 0.5));
+            const rawStaminaPP = (rawSpeedPP * 0.65 + strainPP * 0.35) * (staminaLengthFactor * 0.5 + staminaObjFactor * 0.5) * Math.min(1.3, streamCircleDensity / 3.0);
+            staminaSum += mapToSkillCurve(rawStaminaPP / 2.6) * w;
+
+            // Finger Control (Complejidad de sliders y ritmos sincopados)
+            const sliderComplexity = Math.min(1.4, (sliders / Math.max(1, circles * 0.4 + 100)) * 1.2);
+            const techFactor = (1.0 - Math.min(0.7, circlesPerBeat / 2.0)) * 0.5 + 0.5;
+            const rawFingerControlPP = (strainPP * 0.4 + rawAccPP * 0.6) * sliderComplexity * techFactor * (isHD ? 1.1 : 1.0);
+            fingerSum += mapToSkillCurve(rawFingerControlPP / 2.0) * w;
+
+            // Vision Profile (High AR vs Low AR / Densidad)
+            let baseAR = isHR ? Math.min(10, ar * 1.4) : (isEZ ? ar * 0.5 : ar);
+            const baseMs = baseAR <= 5 ? (1800 - 120 * baseAR) : (1200 - 150 * (baseAR - 5));
+            const effMs = baseMs / clockRate;
+            const effAR = effMs > 1200 ? ((1800 - effMs) / 120) : (5 + (1200 - effMs) / 150);
+
+            let rawHighArPP = 0;
+            if (effAR >= 9.8) {
+                rawHighArPP = (strainPP * 0.45 + rawSpeedPP * 0.45) * (1.0 + Math.pow(effAR - 9.8, 1.3) * 0.45);
+            } else if (effAR >= 9.3) {
+                rawHighArPP = (strainPP * 0.25) * (effAR / 10);
+            }
+            highArSum += mapToSkillCurve(rawHighArPP / 2.8) * w;
+
+            let rawLowArPP = 0;
+            if (effAR <= 8.5 || isEZ) {
+                const densityFactor = totalObj / effLen;
+                rawLowArPP = (pp * 0.35) * (1.0 + Math.max(0, 8.5 - effAR) * 0.4) * (densityFactor / 4.0) * (isEZ ? 1.5 : 1.0);
+            }
+            lowArSum += mapToSkillCurve(rawLowArPP / 2.5) * w;
+        });
+
+        if (totalW > 0) {
+            extraOsuSkills = {
+                stamina: Number((staminaSum / totalW).toFixed(2)),
+                fingerControl: Number((fingerSum / totalW).toFixed(2)),
+                highAR: Number((highArSum / totalW).toFixed(2)),
+                lowAR: Number((lowArSum / totalW).toFixed(2))
+            };
+        }
+    }
+
     const MODE_SKILLS = {
-        osu: ["aim", "speed", "acc", "reading"],
-        taiko: ["stamina", "acc", "reading", "color", "rhythm"],
-        fruits: ["movement", "reading", "precision", "acc"],
-        catch: ["movement", "reading", "precision", "acc"],
-        mania: ["stream", "jack", "tech", "acc"]
+        osu: ["aim", "speed", "acc", "stamina", "fingerControl"],
+        taiko: ["stamina", "acc", "color", "rhythm"],
+        fruits: ["movement", "speed", "acc", "precision"],
+        catch: ["movement", "speed", "acc", "precision"],
+        mania: ["stream", "jack", "acc", "tech"]
     };
 
     const targetKeys = MODE_SKILLS[mode] || MODE_SKILLS.osu;
@@ -1499,7 +1628,10 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
     let strongestKey = targetKeys[0];
 
     targetKeys.forEach(k => {
-        const val = Number((breakdown[k] != null ? breakdown[k] : 0).toFixed(2));
+        let val = Number((breakdown[k] != null ? breakdown[k] : 0).toFixed(2));
+        if (mode === "osu" && extraOsuSkills && extraOsuSkills[k] != null) {
+            val = extraOsuSkills[k];
+        }
         scoresMap[k] = val;
         if (val > maxSkillVal) {
             maxSkillVal = val;
@@ -1538,7 +1670,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
 
     deficits.sort((a, b) => b.deficit - a.deficit);
 
-    const primaryDeficit = deficits[0] || { key: "reading", score: 0, deficit: 0, ratio: 100, severity: "balanced" };
+    const primaryDeficit = deficits[0] || { key: "speed", score: 0, deficit: 0, ratio: 100, severity: "balanced" };
     const strongestSkill = { key: strongestKey, score: maxSkillVal };
 
     // Consistencia y Choke Tendency
@@ -1601,43 +1733,45 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         if (modRatios[m] >= 0.25) dominantMods.push(m);
     });
 
+    // ponytail: Diagnóstico de Kryptonita calibrado para mods principales sin forzar EZ a jugadores estándar
     if (mode === "osu") {
-        if ((modRatios.EZ >= 0.15 || scoresMap.reading >= 55) && modRatios.HR < 0.03) {
-            kryptoniteMods.push("HR");
-        }
-        if ((modRatios.HR >= 0.20 || scoresMap.acc >= 65) && modRatios.EZ < 0.03 && scoresMap.reading < 45) {
-            kryptoniteMods.push("EZ");
-        }
-        if (scoresMap.speed < 45 && modRatios.DT < 0.05) {
+        if (scoresMap.speed < 48 && modRatios.DT < 0.05 && comfortBpm < 195) {
             kryptoniteMods.push("DT");
+        }
+        if (modRatios.HR < 0.03 && (scoresMap.acc < 65 || (modRatios.DT >= 0.35 && scoresMap.aim >= 65))) {
+            kryptoniteMods.push("HR");
         }
         if (modRatios.HD < 0.04 && scores.length >= 20) {
             kryptoniteMods.push("HD");
         }
-        if (modRatios.DT >= 0.70 && scoresMap.acc < 52) {
+        if (modRatios.DT >= 0.65 && scoresMap.acc < 58 && modRatios.NM < 0.05) {
             kryptoniteMods.push("NM");
         }
     }
 
-    // Arquetipo de Mapa Némesis
-    let nemesisId = "density_hell";
-    let triggerMods = "+HDHR";
-    let arZone = "Low AR (< 8.0) / High CS (> 5.0)";
+    // ponytail: Arquetipo de Mapa Némesis adaptado a las debilidades reales
+    let nemesisId = "speed_wall";
+    let triggerMods = "+DT";
+    let arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
     let estimatedDangerSR = Number((pushStars + 0.3).toFixed(2));
 
     if (mode === "osu") {
-        if (primaryDeficit.key === "reading") {
-            nemesisId = "density_hell";
-            triggerMods = modRatios.EZ > 0.2 ? "+HDHR" : "+EZHD";
-            arZone = modRatios.EZ > 0.2 ? "AR 10.0+ / CS > 5.0" : "Low AR (< 8.0) / Overlap Denso";
-        } else if (primaryDeficit.key === "speed") {
+        if (primaryDeficit.key === "speed") {
             nemesisId = "speed_wall";
             triggerMods = "+DT";
             arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
+        } else if (primaryDeficit.key === "stamina") {
+            nemesisId = "deathstream_endurance";
+            triggerMods = "+DT";
+            arZone = "Streams extensos / Deathstreams sostenidos";
+        } else if (primaryDeficit.key === "fingerControl") {
+            nemesisId = "polyrhythm_maze";
+            triggerMods = "+HD";
+            arZone = "Finger Control / Sliders complejos y polirritmias";
         } else if (primaryDeficit.key === "acc") {
             nemesisId = "strict_metronome";
             triggerMods = "+HR";
-            arZone = "OD 9.8+ / Polirritmias y Finger Control";
+            arZone = "OD 9.8+ / Polirritmias y timing quirúrgico";
         } else if (primaryDeficit.key === "aim") {
             nemesisId = "cross_screen_hell";
             triggerMods = modRatios.DT > 0.4 ? "+HDDT" : "+HR";
@@ -1687,19 +1821,88 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         }
     }
 
-    const recommendations = [];
-    if (primaryDeficit.key === "reading") {
-        if (kryptoniteMods.includes("HR")) {
-            recommendations.push("training_reading_high_ar");
-        } else {
-            recommendations.push("training_reading_density");
+    // Perfil de Visión y Lectura (Sub-vista interactiva)
+    if (mode === "osu" && extraOsuSkills) {
+        const hdRatio = Number((modWeights.HD / Math.max(1, totalModWeight)).toFixed(3));
+        const flRatio = Number((modWeights.FL / Math.max(1, totalModWeight)).toFixed(3));
+        const hdReadingScore = Math.min(100, Math.round(hdRatio * 115 * 10) / 10);
+        const flReadingScore = Math.min(100, Math.round(flRatio * 200 * 10) / 10);
+
+        const vSkills = {
+            highAR: extraOsuSkills.highAR,
+            lowAR: extraOsuSkills.lowAR,
+            hdReading: hdReadingScore,
+            flReading: flReadingScore
+        };
+
+        const vKeys = ["highAR", "lowAR", "hdReading"];
+        if (flReadingScore > 5) vKeys.push("flReading");
+
+        let vMax = 0, vPeak = "highAR";
+        vKeys.forEach(k => {
+            if (vSkills[k] > vMax) {
+                vMax = vSkills[k];
+                vPeak = k;
+            }
+        });
+        if (vMax <= 0) vMax = 10;
+
+        const vDeficits = vKeys.map(k => {
+            const sc = vSkills[k];
+            const def = Number(Math.max(0, vMax - sc).toFixed(2));
+            const rat = Number(((sc / vMax) * 100).toFixed(1));
+            let sev = "balanced";
+            if (def >= 35 || rat < 55) sev = "critical";
+            else if (def >= 20 || rat < 75) sev = "moderate";
+            else if (def >= 10) sev = "mild";
+            return { key: k, score: sc, maxScore: vMax, deficit: def, ratio: rat, severity: sev };
+        }).sort((a, b) => b.deficit - a.deficit);
+
+        let bias = "balanced_vision";
+        if (extraOsuSkills.highAR >= 70 && extraOsuSkills.lowAR < 15) {
+            bias = "high_ar_focus";
+        } else if (extraOsuSkills.lowAR >= 35) {
+            bias = "low_ar_focus";
         }
-    } else if (primaryDeficit.key === "speed") {
+
+        let vNemesis = {
+            id: "density_hell",
+            name: "Tormenta de Densidad Visual",
+            triggerMods: "+EZHD",
+            zone: "Low AR (< 8.0) / Overlap Denso"
+        };
+        if (bias === "low_ar_focus" || vDeficits[0]?.key === "highAR") {
+            vNemesis = {
+                id: "high_ar_bullet",
+                name: "Ráfaga Supersónica (High AR)",
+                triggerMods: "+HDDT",
+                zone: "AR 10.3+ / Lectura Instantánea (<330ms)"
+            };
+        }
+
+        visionProfile = {
+            skills: vSkills,
+            deficits: vDeficits,
+            primaryDeficit: vDeficits[0] || { key: "lowAR", score: 0, deficit: 0, ratio: 100, severity: "balanced" },
+            peakSkill: { key: vPeak, score: vMax },
+            readingBias: bias,
+            nemesis: vNemesis
+        };
+    }
+
+    const recommendations = [];
+    if (primaryDeficit.key === "speed") {
         recommendations.push("training_speed_stamina");
+    } else if (primaryDeficit.key === "stamina") {
+        recommendations.push("training_stamina");
+    } else if (primaryDeficit.key === "fingerControl") {
+        recommendations.push("training_finger_control");
     } else if (primaryDeficit.key === "acc") {
         recommendations.push("training_acc_finger_control");
     } else if (primaryDeficit.key === "aim") {
         recommendations.push("training_aim_snapping");
+    } else if (primaryDeficit.key === "reading") {
+        recommendations.push("training_reading_density");
     }
 
     if (chokeSeverity === "severe_choke") {
@@ -1741,6 +1944,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
             estimatedDangerSR,
             arZone
         },
+        visionProfile,
         recommendations: recommendations.slice(0, 3)
     };
 }

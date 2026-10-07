@@ -1,7 +1,7 @@
 const { t } = require("../../../utils/i18n.js");
 const { getOsuUser, getUserTopScores, argsParser } = require("../../utils/osu.js");
 const { calculateAntiSkills, analyzeSkillsBreakdown } = require("../../../models/SkillsModel.js");
-const { doOsuAntiSkillsEmbed } = require("../../../views/osuAntiSkillsView.js");
+const { doOsuAntiSkillsEmbed, doOsuAntiSkillsVisionEmbed, buildAntiSkillsButtonRow } = require("../../../views/osuAntiSkillsView.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 
 /**
@@ -134,12 +134,65 @@ async function run(messages, args) {
             locale
         });
 
-        const responsePayload = { embeds: [embed] };
+        const isVisionAvailable = Boolean(antiSkillsData.visionProfile);
+        const components = isVisionAvailable ? [buildAntiSkillsButtonRow("core", locale, isVisionAvailable)] : [];
+        const responsePayload = { embeds: [embed], components };
 
+        let sentMessage = null;
         if (typeof message.reply === "function") {
-            return await message.reply(responsePayload);
+            sentMessage = await message.reply(responsePayload);
+        } else if (message.channel?.send) {
+            sentMessage = await message.channel.send(responsePayload);
+        } else {
+            return responsePayload;
         }
-        return message.channel?.send ? await message.channel.send(responsePayload) : responsePayload;
+
+        if (sentMessage && isVisionAvailable && typeof sentMessage.createMessageComponentCollector === "function") {
+            const authorId = message.author?.id || message.user?.id;
+            const collector = sentMessage.createMessageComponentCollector({
+                filter: btnInt => !authorId || btnInt.user.id === authorId,
+                idle: 60000
+            });
+
+            collector.on("collect", async i => {
+                try {
+                    await i.deferUpdate();
+                    if (i.customId === "antiskills_view_vision") {
+                        const visionEmbed = doOsuAntiSkillsVisionEmbed({
+                            message,
+                            osuUser,
+                            antiSkillsData,
+                            locale
+                        });
+                        await sentMessage.edit({
+                            embeds: [visionEmbed],
+                            components: [buildAntiSkillsButtonRow("vision", locale, true)]
+                        });
+                    } else if (i.customId === "antiskills_view_core") {
+                        const coreEmbed = doOsuAntiSkillsEmbed({
+                            message,
+                            osuUser,
+                            antiSkillsData,
+                            locale
+                        });
+                        await sentMessage.edit({
+                            embeds: [coreEmbed],
+                            components: [buildAntiSkillsButtonRow("core", locale, true)]
+                        });
+                    }
+                } catch (btnErr) {
+                    console.warn("[s.antiskills] Error en collector de botones:", btnErr.message);
+                }
+            });
+
+            collector.on("end", async () => {
+                try {
+                    await sentMessage.edit({ components: [] });
+                } catch {}
+            });
+        }
+
+        return sentMessage || responsePayload;
     } catch (err) {
         console.error("[s.antiskills] Error al procesar comando:", err);
         const errMsg = t(locale, "general.error_unexpected") || "❌ Ocurrió un error inesperado al procesar el comando.";

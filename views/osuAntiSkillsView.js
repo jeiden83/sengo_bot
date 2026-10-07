@@ -1,4 +1,4 @@
-const { EmbedBuilder } = require("discord.js");
+const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { t, formatNumber, formatDecimal } = require("../utils/i18n.js");
 const { getEmbedColor } = require("./osuViewHelpers.js");
 
@@ -207,8 +207,108 @@ function doOsuAntiSkillsEmbed({ message, osuUser, antiSkillsData, locale = "es" 
     return embed;
 }
 
+/**
+ * ponytail: Genera la fila de botones de Discord para alternar entre vista Core y Vision
+ */
+function buildAntiSkillsButtonRow(activeView = "core", locale = "es", isVisionAvailable = true) {
+    const row = new ActionRowBuilder();
+    row.addComponents(
+        new ButtonBuilder()
+            .setCustomId("antiskills_view_core")
+            .setLabel(t(locale, "antiskills.btn_core") || "📊 Mecánicas Core")
+            .setStyle(activeView === "core" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(activeView === "core"),
+        new ButtonBuilder()
+            .setCustomId("antiskills_view_vision")
+            .setLabel(t(locale, "antiskills.btn_vision") || "👁️ Lectura & Visión")
+            .setStyle(activeView === "vision" ? ButtonStyle.Primary : ButtonStyle.Secondary)
+            .setDisabled(activeView === "vision" || !isVisionAvailable)
+    );
+    return row;
+}
+
+/**
+ * ponytail: Genera el embed de Discord para el diagnóstico de Lectura & Percepción Visual
+ */
+function doOsuAntiSkillsVisionEmbed({ message, osuUser, antiSkillsData, locale = "es" }) {
+    const embedColor = getEmbedColor(message);
+
+    const flag = getCountryFlag(osuUser.country_code);
+    const username = osuUser.username || "Jugador";
+    const userUrl = osuUser.server === "droid"
+        ? `https://osudroid.moe/profile.php?uid=${osuUser.id}`
+        : `https://osu.ppy.sh/users/${osuUser.id}`;
+    const avatarUrl = osuUser.avatar_url || "https://osu.ppy.sh/images/layout/avatar-guest.png";
+
+    const stats = osuUser.statistics || {};
+    const rawPP = Number(stats.pp || 0);
+    const ppFormatted = formatDecimal(rawPP, locale, 2);
+    const globalRank = stats.global_rank ? `#${formatNumber(stats.global_rank, locale)}` : "#-";
+    const countryCode = (osuUser.country_code || "").toUpperCase();
+    const countryRank = stats.country_rank ? `${countryCode}${formatNumber(stats.country_rank, locale)}` : `${countryCode}-`;
+
+    const authorName = `${flag} ${username}: ${ppFormatted}pp (${globalRank} ${countryRank})`;
+    const vision = antiSkillsData.visionProfile || {
+        skills: { highAR: 50, lowAR: 5, hdReading: 0, flReading: 0 },
+        deficits: [],
+        primaryDeficit: { key: "lowAR", score: 0, deficit: 0, ratio: 100, severity: "balanced" },
+        peakSkill: { key: "highAR", score: 50 },
+        readingBias: "balanced_vision",
+        nemesis: { name: "Tormenta de Densidad Visual", triggerMods: "+EZHD", zone: "Low AR (< 8.0) / Overlap Denso" }
+    };
+
+    const peak = vision.peakSkill || { key: "highAR", score: 50 };
+    const primary = vision.primaryDeficit;
+    const peakName = t(locale, `antiskills.skill_${peak.key}`) || peak.key;
+    const primaryName = t(locale, `antiskills.skill_${primary.key}`) || primary.key;
+
+    const ansiBars = buildAntiSkillsAnsiTable(vision.deficits, peak.key, peak.score, locale);
+
+    const biasText = t(locale, `antiskills.vision_bias_${vision.readingBias}`) || vision.readingBias;
+    const descHeader = `${t(locale, "antiskills.vision_primary_deficit_label") || "👁️ **Punto Ciego de Lectura:**"} **${primaryName}** (\`${formatDecimal(primary.score, locale, 1)} pts\`) ▸ Brecha: **-${formatDecimal(primary.deficit, locale, 1)} pts** (*${formatDecimal(primary.ratio, locale, 1)}%* de tu pico en ${peakName})`;
+    const biasLine = `> 🔭 **${t(locale, "antiskills.vision_bias_label") || "Perfil Visual"}:** \`${biasText}\``;
+
+    const description = `${descHeader}\n${ansiBars}\n${biasLine}`;
+
+    const vNemesis = vision.nemesis;
+    const vNemesisSection = [
+        `▸ **${t(locale, "antiskills.label_nemesis_map") || "Mapa Némesis Visual"}:** ${vNemesis.name} (\`${vNemesis.triggerMods}\`)`,
+        `  ↳ *${t(locale, "antiskills.label_zone") || "Zona"}:* \`${vNemesis.zone}\``
+    ].join("\n");
+
+    const embed = new EmbedBuilder()
+        .setColor(embedColor)
+        .setAuthor({ name: authorName, iconURL: avatarUrl, url: userUrl })
+        .setTitle(`${t(locale, "antiskills.vision_title") || "⚡ Diagnóstico de Lectura & Percepción Visual"} • osu!`)
+        .setDescription(description)
+        .setThumbnail(avatarUrl)
+        .addFields({
+            name: "👁️ Némesis Visual & Zona de Conflicto",
+            value: vNemesisSection,
+            inline: false
+        })
+        .setFooter({ text: t(locale, "antiskills.footer") });
+
+    let trainingKey = "training_reading_density";
+    if (primary.key === "highAR") {
+        trainingKey = "training_reading_high_ar";
+    }
+    const trainingText = t(locale, `antiskills.${trainingKey}`);
+    if (trainingText) {
+        embed.addFields({
+            name: t(locale, "antiskills.field_training_title") || "💡 Prescripción de Entrenamiento Visual",
+            value: trainingText,
+            inline: false
+        });
+    }
+
+    return embed;
+}
+
 module.exports = {
     doOsuAntiSkillsEmbed,
+    doOsuAntiSkillsVisionEmbed,
+    buildAntiSkillsButtonRow,
     getCountryFlag,
     buildAntiSkillsAnsiTable,
     buildMetricsNative,
