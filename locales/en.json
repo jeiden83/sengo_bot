@@ -2157,6 +2157,8 @@
     "diffs_label": "Diffs:",
     "bpm_label": "BPM:",
     "comment_placeholder": "No comment from nominator",
+    "review_with_discussions": "📋 Modding review with {count} linked discussion points",
+    "review_discussions_note": "*(📋 {count} linked discussion points)*",
     "field_status": "📌 Status",
     "field_stars": "⭐ Star Rating",
     "field_bpm_diffs": "🥁 BPM / Diffs",

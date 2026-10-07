@@ -152,6 +152,68 @@ function buildTrackerListRow(currentPage, totalPages, locale = 'es') {
 }
 
 /**
+ * Parsea y limpia comentarios y reseñas de beatmapsets de osu!
+ * Maneja tanto texto plano/markdown como ASTs estructurados en JSON (usados por el editor web v2 en modding reviews).
+ */
+function parseDiscussionMessage(rawMessage, locale = 'es') {
+    if (!rawMessage) return null;
+    if (typeof rawMessage !== 'string' && typeof rawMessage !== 'object') return null;
+
+    let parsed = null;
+    if (typeof rawMessage === 'object') {
+        parsed = rawMessage;
+    } else {
+        const trimmed = String(rawMessage).trim();
+        if (!trimmed) return null;
+        if (!trimmed.startsWith('[') && !trimmed.startsWith('{')) {
+            return trimmed;
+        }
+        try {
+            parsed = JSON.parse(trimmed);
+        } catch (e) {
+            return trimmed;
+        }
+    }
+
+    if (Array.isArray(parsed)) {
+        const textParts = [];
+        let embedCount = 0;
+
+        for (const item of parsed) {
+            if (!item || typeof item !== 'object') continue;
+            if (typeof item.text === 'string' && item.text.trim()) {
+                textParts.push(item.text.trim());
+            } else if (item.type === 'embed' || item.discussion_id) {
+                embedCount++;
+            }
+        }
+
+        const cleanText = textParts.join('\n\n').trim();
+        if (cleanText && embedCount > 0) {
+            const note = t(locale, 'mapping_tracker.review_discussions_note', { count: embedCount })
+                || `*(📋 ${embedCount} sugerencias/puntos vinculados)*`;
+            return `${cleanText}\n\n${note}`;
+        } else if (cleanText) {
+            return cleanText;
+        } else if (embedCount > 0) {
+            return t(locale, 'mapping_tracker.review_with_discussions', { count: embedCount })
+                || `📋 Reseña con ${embedCount} puntos de modding vinculados`;
+        }
+        return null;
+    } else if (parsed && typeof parsed === 'object') {
+        if (typeof parsed.text === 'string' && parsed.text.trim()) {
+            return parsed.text.trim();
+        }
+        if (typeof parsed.message === 'string' && parsed.message.trim()) {
+            return parseDiscussionMessage(parsed.message, locale);
+        }
+        return null;
+    }
+
+    return String(rawMessage).trim() || null;
+}
+
+/**
  * Renderiza el embed de notificación para un evento de Mapping Tracker.
  */
 function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = 'pending', locale = 'es', ranksInfo = null, extraInfo = null) {
@@ -209,7 +271,8 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
         const bpmVal = beatmapset.bpm ? Math.round(beatmapset.bpm) : 0;
         desc += `\n🥁 **${t(locale, 'mapping_tracker.bpm_label')}**\n**\`${bpmVal}\`**\n`;
     } else if (!statusCfg.showDiffs) {
-        const commentText = extraInfo?.comment || beatmapset.comment;
+        const rawComment = extraInfo?.comment || beatmapset.comment;
+        const commentText = parseDiscussionMessage(rawComment, locale);
         if (commentText) {
             let cleanComment = String(commentText).trim().replace(/\n{3,}/g, '\n\n');
             if (cleanComment.length > 500) {
@@ -324,5 +387,6 @@ module.exports = {
     doMappingTrackerListEmbed,
     buildTrackerListRow,
     doMappingTrackerNotificationEmbed,
-    doMappingTrackerTestEmbed
+    doMappingTrackerTestEmbed,
+    parseDiscussionMessage
 };

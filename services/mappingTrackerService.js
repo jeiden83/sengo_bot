@@ -1,7 +1,7 @@
 const Logger = require("../utils/logger.js");
 const MappingTrackerModel = require("../models/MappingTrackerModel.js");
 const OsuUserModel = require("../models/OsuUserModel.js");
-const { doMappingTrackerNotificationEmbed } = require("../views/mappingTrackerViews.js");
+const { doMappingTrackerNotificationEmbed, parseDiscussionMessage } = require("../views/mappingTrackerViews.js");
 const { osuApiQueue } = require("../utils/OsuApiQueue.js");
 const axios = require("axios");
 
@@ -220,6 +220,9 @@ async function runGlobalEventsScan() {
                     }
                 }
 
+                // Limpiar cualquier JSON / AST de discusión o modding review antes de enviar
+                commentText = parseDiscussionMessage(commentText);
+
                 const extraInfo = {
                     nominator: nominatorUser,
                     comment: commentText
@@ -329,7 +332,7 @@ async function runMappingTrackerScan() {
                         if (praiseInfo) {
                             extraInfo = {
                                 nominator: praiseInfo.user,
-                                comment: praiseInfo.text
+                                comment: parseDiscussionMessage(praiseInfo.text)
                             };
                         }
                     }
@@ -661,20 +664,24 @@ async function fetchBeatmapsetPraise(beatmapsetId, nominatorUserId = null) {
         let targetDiscussion = null;
 
         if (nominatorUserId) {
-            targetDiscussion = activeDiscussions.find(d => Number(d.user_id) === Number(nominatorUserId));
+            const nomDiscussions = activeDiscussions.filter(d => Number(d.user_id) === Number(nominatorUserId));
+            targetDiscussion = nomDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message))
+                || nomDiscussions[0];
         }
 
         // Si no se encuentra praise específico del nominador o nominatorUserId es nulo, tomar el más reciente
         if (!targetDiscussion && activeDiscussions.length > 0) {
-            targetDiscussion = activeDiscussions[0];
+            targetDiscussion = activeDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message))
+                || activeDiscussions[0];
         }
 
         if (!targetDiscussion?.starting_post?.message) return null;
 
+        const cleanedMessage = parseDiscussionMessage(targetDiscussion.starting_post.message.trim());
         const authorUser = userMap.get(Number(targetDiscussion.user_id));
 
         return {
-            text: targetDiscussion.starting_post.message.trim(),
+            text: cleanedMessage,
             user_id: targetDiscussion.user_id,
             user: authorUser ? {
                 id: authorUser.id,

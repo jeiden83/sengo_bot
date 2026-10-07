@@ -2161,6 +2161,8 @@
     "diffs_label": "Diffs:",
     "bpm_label": "BPM:",
     "comment_placeholder": "Sin comentario del nominador",
+    "review_with_discussions": "📋 Reseña con {count} puntos de modding vinculados",
+    "review_discussions_note": "*(📋 {count} puntos de discusión vinculados)*",
     "field_status": "📌 Estado",
     "field_stars": "⭐ Estrellas",
     "field_bpm_diffs": "🥁 BPM / Diffs",
