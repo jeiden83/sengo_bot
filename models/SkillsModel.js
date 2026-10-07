@@ -1490,7 +1490,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
     let visionProfile = null;
 
     if (mode === "osu" && scores.length > 0) {
-        let staminaSum = 0, fingerSum = 0;
+        let speedSum = 0, staminaSum = 0, fingerSum = 0;
         let highArSum = 0, lowArSum = 0;
         let totalW = 0;
 
@@ -1548,32 +1548,30 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
             rawAccPP = Math.min(rawAccPP, pp * 0.28);
             const strainPP = Math.max(1, Math.pow(Math.max(0, Math.pow(pp, 1.1) - Math.pow(rawAccPP, 1.1)), 1 / 1.1));
 
-            // Speed
-            const bpmFactor = Math.max(0, (effBPM - 140) / 105);
-            let jumpSuppression = circlesPerBeat < 1.05 ? Math.max(0.20, Math.pow(circlesPerBeat / 1.05, 1.4)) : 1.0;
-            let baseSpeedPct = 0.05 + Math.max(0, (effBPM - 145) / 120) * 0.22;
-            if (effLen >= 90 && totalObj >= 380 && circlesPerBeat >= 0.95 && !isHR) baseSpeedPct = Math.max(baseSpeedPct, 0.22);
-            if (isHR) baseSpeedPct *= 0.80;
-            if (isEZ && !isDT) baseSpeedPct *= 0.70;
-            if (isHT) baseSpeedPct *= 0.40;
+            // Speed: Reconoce tempo de tapping (single-tap/bursts) además de streams puros
+            const bpmSpeedScale = Math.max(0, (effBPM - 150) / 100);
+            let jumpSuppression = circlesPerBeat < 1.05 ? Math.max(0.45, Math.pow(circlesPerBeat / 1.05, 1.1)) : 1.0;
+            let baseSpeedPct = 0.12 + Math.max(0, (effBPM - 150) / 120) * 0.28;
+            if (effLen >= 90 && totalObj >= 380 && circlesPerBeat >= 0.95 && !isHR) baseSpeedPct = Math.max(baseSpeedPct, 0.25);
+            if (isHR) baseSpeedPct *= 0.85;
 
-            const rhythmDensity = Math.max(0.20, Math.min(1.4, (circlesPerBeat - 0.40) / 0.85 + circleRatio * 0.35));
-            let highBpmMultiplier = effBPM > 220 ? (1.0 + Math.pow((effBPM - 220) / 75, 1.25) * 0.70) : 1.0;
-            let speedFraction = (baseSpeedPct + (bpmFactor * 0.18 * rhythmDensity * highBpmMultiplier)) * jumpSuppression;
+            const rhythmDensity = Math.max(0.30, Math.min(1.4, (circlesPerBeat - 0.35) / 0.85 + circleRatio * 0.35));
+            let highBpmMultiplier = effBPM > 220 ? (1.0 + Math.pow((effBPM - 220) / 75, 1.2) * 0.70) : 1.0;
+            let speedFraction = (baseSpeedPct + (bpmSpeedScale * 0.16 * rhythmDensity * highBpmMultiplier)) * jumpSuppression;
+
             if (circles < 300 && effLen < 60 && circlesPerBeat < 1.15) {
-                speedFraction = isDT ? Math.max(0.12, Math.min(0.20, speedFraction * 0.65)) : Math.min(0.10, speedFraction * 0.45);
+                speedFraction = isDT ? Math.max(0.18, Math.min(0.28, speedFraction * 0.75)) : Math.min(0.18, speedFraction * 0.65);
             }
-            if (isHR && circlesPerBeat < 1.10) speedFraction = Math.min(0.10, speedFraction * 0.60);
-            if (sliders >= 350 && circleRatio < 0.65) speedFraction *= 0.75;
-            const maxAllowed = Math.min(0.66, 0.35 + Math.max(0, (effBPM - 190) / 180) * 0.31);
-            speedFraction = Math.max(0.04, Math.min(maxAllowed, speedFraction));
+            const maxAllowed = Math.min(0.68, 0.40 + Math.max(0, (effBPM - 190) / 180) * 0.31);
+            speedFraction = Math.max(0.10, Math.min(maxAllowed, speedFraction));
             const rawSpeedPP = strainPP * speedFraction;
+            speedSum += mapToSkillCurve(rawSpeedPP / 2.2) * w;
 
             // Stamina (Resistencia de tapping en streams continuos y mapas extensos)
             const streamCircleDensity = circles / Math.max(30, effLen);
             const staminaLengthFactor = Math.min(1.5, Math.pow(effLen / 120, 0.45));
             const staminaObjFactor = Math.min(1.4, Math.pow(circles / 700, 0.5));
-            const rawStaminaPP = (rawSpeedPP * 0.65 + strainPP * 0.35) * (staminaLengthFactor * 0.5 + staminaObjFactor * 0.5) * Math.min(1.3, streamCircleDensity / 3.0);
+            const rawStaminaPP = (rawSpeedPP * 0.60 + strainPP * 0.40) * (staminaLengthFactor * 0.5 + staminaObjFactor * 0.5) * Math.min(1.3, streamCircleDensity / 3.0);
             staminaSum += mapToSkillCurve(rawStaminaPP / 2.6) * w;
 
             // Finger Control (Complejidad de sliders y ritmos sincopados)
@@ -1606,6 +1604,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
 
         if (totalW > 0) {
             extraOsuSkills = {
+                speed: Number((speedSum / totalW).toFixed(2)),
                 stamina: Number((staminaSum / totalW).toFixed(2)),
                 fingerControl: Number((fingerSum / totalW).toFixed(2)),
                 highAR: Number((highArSum / totalW).toFixed(2)),
@@ -1756,30 +1755,41 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
     let estimatedDangerSR = Number((pushStars + 0.3).toFixed(2));
 
     if (mode === "osu") {
-        if (primaryDeficit.key === "speed") {
-            nemesisId = "speed_wall";
-            triggerMods = "+DT";
-            arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
-        } else if (primaryDeficit.key === "stamina") {
+        const isSpeedPlayer = comfortBpm >= 235 || (modRatios.DT || 0) >= 0.35 || (scoresMap.speed || 0) >= 65;
+        const isChronicChoker = chokeSeverity === "severe_choke" || (chokeGap >= 0.45 && nonFcRate >= 0.70) || (isChokePusher && nonFcRate >= 0.65);
+
+        if (isChronicChoker) {
+            nemesisId = "marathon_endurance";
+            triggerMods = (modRatios.HD || 0) > 0.3 ? "+HD" : "NM";
+            arZone = "Maratón 5+ min / Difficulty Spike al final";
+        } else if (isSpeedPlayer && (primaryDeficit.key === "aim" || (scoresMap.aim || 0) < (scoresMap.speed || 0) - 5)) {
+            nemesisId = "cross_screen_hell";
+            triggerMods = (modRatios.DT || 0) > 0.4 ? "+HDDT" : "+HR";
+            arZone = "Cross-screen jumps / Ángulos agudos";
+        } else if (primaryDeficit.key === "aim") {
+            nemesisId = "cross_screen_hell";
+            triggerMods = (modRatios.DT || 0) > 0.4 ? "+HDDT" : "+HR";
+            arZone = "Cross-screen jumps / Ángulos agudos";
+        } else if (primaryDeficit.key === "stamina" || ((scoresMap.speed || 0) >= 60 && (scoresMap.stamina || 0) < 55)) {
             nemesisId = "deathstream_endurance";
-            triggerMods = "+DT";
+            triggerMods = (modRatios.DT || 0) > 0.3 ? "+DT" : "NM";
             arZone = "Streams extensos / Deathstreams sostenidos";
-        } else if (primaryDeficit.key === "fingerControl") {
+        } else if (primaryDeficit.key === "fingerControl" || ((scoresMap.fingerControl || 0) < 60 && (scoresMap.aim || 0) >= 65)) {
             nemesisId = "polyrhythm_maze";
             triggerMods = "+HD";
             arZone = "Finger Control / Sliders complejos y polirritmias";
-        } else if (primaryDeficit.key === "acc") {
+        } else if (primaryDeficit.key === "speed" && comfortBpm < 235) {
+            nemesisId = "speed_wall";
+            triggerMods = "+DT";
+            arZone = `High BPM (> ${maxBpmWall} BPM) / Bursts acelerados`;
+        } else if (primaryDeficit.key === "acc" || (scoresMap.acc || 0) < 65) {
             nemesisId = "strict_metronome";
             triggerMods = "+HR";
             arZone = "OD 9.8+ / Polirritmias y timing quirúrgico";
-        } else if (primaryDeficit.key === "aim") {
-            nemesisId = "cross_screen_hell";
-            triggerMods = modRatios.DT > 0.4 ? "+HDDT" : "+HR";
-            arZone = "Cross-screen jumps / Ángulos agudos";
-        } else if (chokeSeverity === "severe_choke") {
-            nemesisId = "marathon_endurance";
-            triggerMods = "NM";
-            arZone = "Maratón 5+ min / Difficulty Spike al final";
+        } else {
+            nemesisId = "speed_wall";
+            triggerMods = "+DT";
+            arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
         }
     } else if (mode === "taiko") {
         if (primaryDeficit.key === "stamina") {
@@ -1920,6 +1930,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         strongestSkill,
         primaryDeficit,
         deficits,
+        skills: scoresMap,
         consistency: {
             fcStars,
             pushStars,
