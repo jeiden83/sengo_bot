@@ -10,6 +10,7 @@ const { localBeatmapStatus } = require("../commands/utils/admin.js");
 const Logger = require("../utils/logger.js");
 const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 const { getSupabaseClient } = require("../db/database.js");
+const TursoDB = require('../db/turso.js');
 
 let osuDirectOnline = true;
 let lastOsuDirectCheck = 0;
@@ -46,7 +47,6 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     const beatmapsetPath = path.join(__dirname, '../db/local/beatmap.osu');
     const folderPath = path.join(beatmapsetPath, `${beatmapset_id}`);
     const filePath = path.join(folderPath, `${beatmap_osu_id}.osu`);
-    const storagePath = `${beatmapset_id}/${beatmap_osu_id}.osu`;
 
     let beatmap_index = null;
     let localFileIsValid = false;
@@ -83,8 +83,8 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
         return filePath;
     }
 
-    // 2. Si no es válido o no está localmente, verificar si podemos recuperarlo desde Supabase Storage
-    let trySupabase = false;
+    // 2. Si no es válido o no está localmente, verificar si podemos recuperarlo desde Turso
+    let tryTurso = false;
     if (!beatmap_index) {
         beatmap_index = await localBeatmapStatus(beatmap_osu_id);
     }
@@ -92,32 +92,25 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
     if (beatmap_index) {
         if (beatmap_metadata && beatmap_metadata.checksum) {
             if (beatmap_index.checksum && beatmap_index.checksum === beatmap_metadata.checksum) {
-                trySupabase = true;
+                tryTurso = true;
             }
         } else if (!unranked_statuses.has(beatmap_metadata.status) || 
             (beatmap_index.last_updated == beatmap_metadata.last_updated)) {
-            trySupabase = true;
+            tryTurso = true;
         }
     }
 
-    if (trySupabase) {
-        const supabase = getSupabaseClient();
-        if (supabase) {
-            try {
-                const { data: downloadData, error: downloadError } = await supabase.storage
-                    .from('osu_beatmaps')
-                    .download(storagePath);
-                
-                if (!downloadError && downloadData) {
-                    const fileText = await downloadData.text();
-                    fs.mkdirSync(folderPath, { recursive: true });
-                    fs.writeFileSync(filePath, fileText);
-                    console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} recuperado desde Supabase Storage.`);
-                    return filePath;
-                }
-            } catch (err) {
-                console.warn(`[BeatmapModel] Error al descargar ${beatmap_osu_id} de Supabase Storage:`, err.message);
+    if (tryTurso && TursoDB.isTursoAvailable()) {
+        try {
+            const tursoBeatmap = await TursoDB.getBeatmapRawFile(beatmap_osu_id);
+            if (tursoBeatmap && tursoBeatmap.data) {
+                fs.mkdirSync(folderPath, { recursive: true });
+                fs.writeFileSync(filePath, tursoBeatmap.data);
+                console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} recuperado desde Turso.`);
+                return filePath;
             }
+        } catch (err) {
+            console.warn(`[BeatmapModel] Error al descargar ${beatmap_osu_id} de Turso:`, err.message);
         }
     }
 
@@ -182,24 +175,16 @@ async function downloadBeatmapOsuFile(beatmapset_id, beatmap_osu_id, beatmap_met
             checksum: beatmap_metadata?.checksum || calculatedMD5
         });
 
-        // Subir a Supabase Storage en segundo plano
-        const supabase = getSupabaseClient();
-        if (supabase) {
-            supabase.storage
-                .from('osu_beatmaps')
-                .upload(storagePath, data, {
-                    contentType: 'text/plain',
-                    upsert: true
-                })
-                .then(({ error }) => {
-                    if (error) {
-                        console.error(`[BeatmapModel] Error al subir beatmap ${beatmap_osu_id} a Supabase Storage:`, error.message);
-                    } else {
-                        console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} subido exitosamente a Supabase Storage.`);
+        // Subir a Turso en segundo plano (reemplaza Supabase Storage para liberar cuota)
+        if (TursoDB.isTursoAvailable()) {
+            TursoDB.saveBeatmapRawFile(beatmap_osu_id, data, calculatedMD5)
+                .then(saved => {
+                    if (saved) {
+                        console.log(`[BeatmapModel] Beatmap ${beatmap_osu_id} guardado exitosamente en Turso.`);
                     }
                 })
                 .catch(err => {
-                    console.error(`[BeatmapModel] Excepción al subir beatmap ${beatmap_osu_id} a Supabase Storage:`, err.message);
+                    console.error(`[BeatmapModel] Excepción al guardar beatmap ${beatmap_osu_id} en Turso:`, err.message);
                 });
         }
 
