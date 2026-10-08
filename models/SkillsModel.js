@@ -1716,7 +1716,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         if (hasHD) modWeights.HD += weight;
         if (hasEZ) modWeights.EZ += weight;
         if (hasFL) modWeights.FL += weight;
-        if (!hasDT && !hasHR && !hasEZ && !hasFL) modWeights.NM += weight;
+        if (!hasDT && !hasHR && !hasHD && !hasEZ && !hasFL && !upper.includes("HT")) modWeights.NM += weight;
     });
 
     const modRatios = {};
