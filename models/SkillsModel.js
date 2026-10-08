@@ -1115,7 +1115,8 @@ function analyzePlayerPushProfile(topScores, gamemode = "osu") {
     } else {
         fcStars = Math.max(3.0, pushStars - 1.2);
     }
-    fcStars = Math.min(fcStars, pushStars - 0.25);
+    // ponytail: fcStars no debe exceder pushStars pero sin tope rígido artificial que fije chokeGap en 0.25★
+    fcStars = Math.min(fcStars, pushStars);
 
     allAccs.sort((a, b) => a - b);
     const maxAcc = allAccs[allAccs.length - 1] || 1.0;
@@ -1756,6 +1757,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
 
     if (mode === "osu") {
         const isSpeedPlayer = comfortBpm >= 235 || (modRatios.DT || 0) >= 0.35 || (scoresMap.speed || 0) >= 65;
+        const isHighBpmPlayer = comfortBpm >= 260 || (modRatios.DT || 0) >= 0.40;
         const isChronicChoker = chokeSeverity === "severe_choke" || (chokeGap >= 0.45 && nonFcRate >= 0.70) || (isChokePusher && nonFcRate >= 0.65);
 
         if (isChronicChoker) {
@@ -1770,7 +1772,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
             nemesisId = "cross_screen_hell";
             triggerMods = (modRatios.DT || 0) > 0.4 ? "+HDDT" : "+HR";
             arZone = "Cross-screen jumps / Ángulos agudos";
-        } else if (primaryDeficit.key === "stamina" || ((scoresMap.speed || 0) >= 60 && (scoresMap.stamina || 0) < 55)) {
+        } else if (primaryDeficit.key === "stamina" || ((scoresMap.speed || 0) >= 60 && (scoresMap.stamina || 0) < 55) || (isHighBpmPlayer && (scoresMap.stamina || 0) < 65)) {
             nemesisId = "deathstream_endurance";
             triggerMods = (modRatios.DT || 0) > 0.3 ? "+DT" : "NM";
             arZone = "Streams extensos / Deathstreams sostenidos";
@@ -1778,6 +1780,14 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
             nemesisId = "polyrhythm_maze";
             triggerMods = "+HD";
             arZone = "Finger Control / Sliders complejos y polirritmias";
+        } else if (isHighBpmPlayer && (modRatios.HR || 0) < 0.05 && (scoresMap.acc < 75 || kryptoniteMods.includes("HR"))) {
+            nemesisId = "strict_metronome";
+            triggerMods = "+HR";
+            arZone = "OD 10 / Timing quirúrgico y CS pequeño";
+        } else if (isHighBpmPlayer && primaryDeficit.key === "speed") {
+            nemesisId = "deathstream_endurance";
+            triggerMods = "+DT";
+            arZone = `Streams sostenidos a >${Math.max(180, comfortBpm - 20)} BPM / Deathstreams`;
         } else if (primaryDeficit.key === "speed" && comfortBpm < 235) {
             nemesisId = "speed_wall";
             triggerMods = "+DT";
@@ -1789,7 +1799,7 @@ async function calculateAntiSkills(topScores, gamemode = "osu", options = {}) {
         } else {
             nemesisId = "speed_wall";
             triggerMods = "+DT";
-            arZone = `High BPM (> ${maxBpmWall} BPM) / Deathstreams`;
+            arZone = `High BPM (> ${maxBpmWall} BPM) / Bursts acelerados`;
         }
     } else if (mode === "taiko") {
         if (primaryDeficit.key === "stamina") {
