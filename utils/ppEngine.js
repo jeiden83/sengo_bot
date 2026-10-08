@@ -1,13 +1,19 @@
-const sengoNative = require('sengo-pp');
-console.log("[PP-ENGINE] Motor nativo 'sengo-pp' (Rust NAPI) cargado exitosamente.");
+let sengoNative = null;
+try {
+    sengoNative = require('sengo-pp');
+    console.log("[PP-ENGINE] Motor nativo 'sengo-pp' (Rust NAPI) cargado exitosamente.");
+} catch (err) {
+    console.warn("[PP-ENGINE] Motor nativo 'sengo-pp' no disponible:", err.message);
+}
 
 // Wrapper de compatibilidad para BeatmapAttributesBuilder
 // Permite instanciarlo con `{ map, mods, ... }` (compatibilidad con sintaxis estilo rosu-pp-js),
 // con la instancia directa `(map)` o con estadísticas manuales `{ cs, ar, od, hp, mode, mods }`.
-const NativeBeatmapAttributesBuilder = sengoNative.BeatmapAttributesBuilder;
+const NativeBeatmapAttributesBuilder = sengoNative?.BeatmapAttributesBuilder;
 
 class BeatmapAttributesBuilder {
     constructor(arg) {
+        if (!NativeBeatmapAttributesBuilder) return {};
         if (arg && arg.map) {
             const instance = new NativeBeatmapAttributesBuilder(arg.map);
             if (arg.mods !== undefined && arg.mods !== null) instance.mods = arg.mods;
@@ -20,7 +26,9 @@ class BeatmapAttributesBuilder {
     }
 }
 
-sengoNative.BeatmapAttributesBuilder = BeatmapAttributesBuilder;
+if (sengoNative) {
+    sengoNative.BeatmapAttributesBuilder = BeatmapAttributesBuilder;
+}
 
 /**
  * Obtiene el motor de cálculo de PP (sengo-pp).
@@ -73,16 +81,16 @@ module.exports = {
     sengoNative,
     
     // Exportaciones directas del motor para compatibilidad drop-in 1:1
-    Beatmap: sengoNative.Beatmap,
-    Difficulty: sengoNative.Difficulty,
-    Performance: sengoNative.Performance,
-    BeatmapAttributesBuilder: sengoNative.BeatmapAttributesBuilder,
-    GradualPerformance: sengoNative.GradualPerformance,
-    GradualDifficulty: sengoNative.GradualDifficulty,
-    GameMode: sengoNative.GameMode,
-    Strains: sengoNative.Strains,
-    HitResultPriority: sengoNative.HitResultPriority,
-    PerformanceAttributes: sengoNative.PerformanceAttributes,
-    DifficultyAttributes: sengoNative.DifficultyAttributes
+    Beatmap: sengoNative?.Beatmap,
+    Difficulty: sengoNative?.Difficulty,
+    Performance: sengoNative?.Performance,
+    BeatmapAttributesBuilder: sengoNative ? BeatmapAttributesBuilder : class {},
+    GradualPerformance: sengoNative?.GradualPerformance,
+    GradualDifficulty: sengoNative?.GradualDifficulty,
+    GameMode: sengoNative?.GameMode,
+    Strains: sengoNative?.Strains,
+    HitResultPriority: sengoNative?.HitResultPriority,
+    PerformanceAttributes: sengoNative?.PerformanceAttributes,
+    DifficultyAttributes: sengoNative?.DifficultyAttributes
 };
 
