@@ -509,7 +509,7 @@ async function run(messages, args, options = {}) {
 
             const pre_calculated = {
                 "map": map,
-                "map_completion": score.passed ? 100 : total_hits / map.nObjects,
+                "map_completion": score.passed ? 1.0 : (map.nObjects > 0 ? total_hits / map.nObjects : 0),
                 "maxAttrs": maxAttrs,
                 "pp": user_pp,
                 "beatmap_max_combo": beatmap_max_combo,

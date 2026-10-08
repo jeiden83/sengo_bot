@@ -55,7 +55,10 @@ async function doOsuGapEmbed(message, user_scores, beatmap_metadata, startIndex 
     
         let grade_emoji = getGradeEmoji(score.rank, score.passed);
         if (!score.passed && score.map_completion !== undefined) {
-            grade_emoji += ` (${formatDecimal(score.map_completion * 100, locale, 2)}%)`;
+            let compVal = Number(score.map_completion);
+            if (compVal <= 1.0) compVal = compVal * 100;
+            if (compVal > 99.9) compVal = 99.9;
+            grade_emoji += ` (${formatDecimal(compVal, locale, 2)}%)`;
         }
  
         const isFirstGlobal = position === 1;

@@ -1,4 +1,4 @@
-const { getBeatmap_osu, getUserRecentScores, getUserTopScores, getBeatmapUserAllScores, getUnrankedBeatmapUserAllScores, getBeatmap, calculatePP, saveUserscore, argsParserNoCommand } = require("../../utils/osu.js");
+const { getBeatmap_osu, getUserRecentScores, getUserTopScores, getBeatmapUserAllScores, getUnrankedBeatmapUserAllScores, getBeatmap, calculatePP, saveUserscore, argsParserNoCommand, calculateMapCompletion } = require("../../utils/osu.js");
 const { doOsuEmbed, doOsuCompareSingleEmbed, doOsuTopSingleEmbed } = require("../../../views/osuEmbeds.js");
 const { buildRecentButtonsRow, buildCompareSingleButtonsRow, buildTopSingleButtonsRow, formatMods } = require("../../../views/osuViewHelpers.js");
 const { t } = require("../../../utils/i18n.js");
@@ -204,7 +204,7 @@ async function run(messages, args, forcedMode = 'lazer') {
 
         const pre_calculated = {
             "map": map,
-            "map_completion": score.passed ? 100 : total_hits / map.nObjects,
+            "map_completion": score.passed ? 1.0 : calculateMapCompletion(score, map, beatmap_max_combo, score.mode || 'osu'),
             "maxAttrs": maxAttrs,
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,

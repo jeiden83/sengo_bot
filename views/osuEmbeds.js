@@ -41,6 +41,17 @@ function getUserUrl(user, fallbackId) {
 }
 
 /**
+ * ponytail: Formatea el porcentaje de avance de una jugada fallida de forma consistente.
+ */
+function formatPassCompletion(compVal, passed, locale, decimals = 2) {
+    if (passed || compVal == null || isNaN(compVal)) return '';
+    let val = Number(compVal);
+    if (val <= 1.0) val = val * 100;
+    if (val > 99.9) val = 99.9;
+    return `(${formatDecimal(val, locale, decimals)}%)`;
+}
+
+/**
  * Renderiza el embed para una única jugada reciente de osu!
  * @param {object} message Mensaje de Discord de origen (para extraer colores/roles)
  * @param {object} recent_scores Objeto de la jugada devuelto por la API de osu!/Gatari
@@ -74,7 +85,7 @@ async function doOsuEmbed(message, recent_scores, pre_calculated, locale = 'es',
     const isDroid = recent_scores.user?.server === 'droid' || recent_scores.server === 'droid' || recent_scores.droid_mods !== undefined;
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const mods_used = formatMods(recent_scores.mods, isLazer, isDroid);
-    const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
+    const map_completion = formatPassCompletion(pre_calculated?.map_completion, recent_scores.passed, locale, 2);
 
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
     const activeGamemode = recent_scores.mode || (recent_scores.ruleset_id !== undefined ? rulesetMap[recent_scores.ruleset_id] : null) || recent_scores.beatmap?.mode || 'osu';
@@ -283,22 +294,35 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         const max_combo = score.max_combo;
 
         let map_completion = "";
-        if (score.calculatedPassPercent !== undefined) {
-            if (!score.passed && score.calculatedPassPercent > 0) {
-                map_completion = `*(${formatDecimal(score.calculatedPassPercent, locale, 1)}% pass)*`;
-            }
-        } else if (!score.passed) {
-            const count_circles = score.beatmap.count_circles || 0;
-            const count_sliders = score.beatmap.count_sliders || 0;
-            const count_spinners = score.beatmap.count_spinners || 0;
-            const total_objects = count_circles + count_sliders + count_spinners;
-            if (total_objects > 0) {
+        if (!score.passed) {
+            let pct = null;
+            if (score.calculatedPassPercent !== undefined && score.calculatedPassPercent > 0) {
+                pct = score.calculatedPassPercent;
+            } else if (score.beatmap) {
+                const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+                const gm = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || 'osu';
+                const beatmapMaxCombo = score.beatmap.max_combo || 0;
+                const count_circles = score.beatmap.count_circles || 0;
+                const count_sliders = score.beatmap.count_sliders || 0;
+                const count_spinners = score.beatmap.count_spinners || 0;
+                let total_objects = count_circles + count_sliders + count_spinners;
                 const stats = score.statistics || {};
                 const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
                 const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
                 const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
                 const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
-                map_completion = `*(${formatDecimal((great + ok + meh + miss) / total_objects * 100, locale, 1)}% pass)*`;
+                let hits = great + ok + meh + miss;
+                if ((gm === 'fruits' || gm === 'catch') && beatmapMaxCombo > 0) {
+                    total_objects = beatmapMaxCombo;
+                    hits = great + ok + miss;
+                }
+                if (total_objects > 0) pct = (hits / total_objects) * 100;
+            }
+            if (pct != null) {
+                let num = Number(pct);
+                if (num <= 1.0) num = num * 100;
+                if (num > 99.9) num = 99.9;
+                map_completion = `*(${formatDecimal(num, locale, 1)}% pass)*`;
             }
         }
 
@@ -393,7 +417,7 @@ async function doOsuTopSingleEmbed(message, score, pre_calculated, index, total_
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
     const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
     const mods_used = formatMods(score.mods, isLazer, isDroid);
-    const map_completion = score.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
+    const map_completion = formatPassCompletion(pre_calculated?.map_completion, score.passed, locale, 2);
 
     const stats = score.statistics || {};
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
@@ -726,10 +750,7 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     const grade_emoji = getGradeEmoji(score.rank, score.passed);
     const isDroid = score.user?.server === 'droid' || score.server === 'droid' || score.droid_mods !== undefined || parsed_args?.server === 'droid';
     const mods_used = formatMods(score.mods, isLazer, isDroid);
-
-    let compVal = pre_calculated.map_completion;
-    if (compVal < 1.0) compVal = compVal * 100;
-    const map_completion = score.passed ? `` : `(${formatDecimal(compVal, locale, 2)}%)`;
+    const map_completion = formatPassCompletion(pre_calculated?.map_completion, score.passed, locale, 2);
 
     const stats = score.statistics || {};
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
@@ -857,8 +878,9 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 
         let map_completion = "";
         if (score.map_completion !== undefined && !score.passed) {
-            let compVal = score.map_completion;
-            if (compVal < 1.0) compVal = compVal * 100;
+            let compVal = Number(score.map_completion);
+            if (compVal <= 1.0) compVal = compVal * 100;
+            if (compVal > 99.9) compVal = 99.9;
             map_completion = `*(${formatDecimal(compVal, locale, 1)}% pass)*`;
         }
 
@@ -945,7 +967,7 @@ function doOsuSubirEmbed(message, recent_scores, pre_calculated, parsedData, use
     const grade_emoji = getGradeEmoji(recent_scores.rank, recent_scores.passed);
     const isLazer = isLazerScore(recent_scores);
     const mods_used = formatMods(recent_scores.mods, isLazer, isDroid);
-    const map_completion = recent_scores.passed ? `` : `(${formatDecimal((pre_calculated.map_completion) * 100, locale, 2)}%)`;
+    const map_completion = formatPassCompletion(pre_calculated?.map_completion, recent_scores.passed, locale, 2);
 
     const stats = recent_scores.statistics || {};
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };

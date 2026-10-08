@@ -353,7 +353,7 @@ async function processNewScore(client, userObj, score) {
 
         pre_calculated = {
             "map": mapObj,
-            "map_completion": score.passed ? 100 : total_hits / mapObj.nObjects,
+            "map_completion": score.passed ? 1.0 : (mapObj.nObjects > 0 ? total_hits / mapObj.nObjects : 0),
             "maxAttrs": maxAttrs,
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,

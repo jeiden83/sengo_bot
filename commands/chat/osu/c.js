@@ -210,7 +210,7 @@ async function run(messages, args) {
             const score = filtered_scores[scoreIndex - 1];
             const { great = 0, ok = 0, meh = 0, miss = 0 } = score.statistics;
             const total_hits = great + ok + meh + miss;
-            const { getBeatmap_osu, calculatePP } = require("../../utils/osu.js");
+            const { getBeatmap_osu, calculatePP, calculateMapCompletion } = require("../../utils/osu.js");
             let map = await getBeatmap_osu(beatmap_metadata.beatmapset_id, beatmap_metadata.id, beatmap_metadata);
             let maxAttrs = calculatePP(score, map, "maximo_pp");
 
@@ -285,7 +285,7 @@ async function run(messages, args) {
 
             const pre_calculated = {
                 "map": map,
-                "map_completion": score.passed ? 1.0 : (map.nObjects > 0 ? total_hits / map.nObjects : score.map_completion || 0),
+                "map_completion": score.passed ? 1.0 : calculateMapCompletion(score, map, beatmap_max_combo, targetGamemode),
                 "maxAttrs": maxAttrs,
                 "pp": user_pp,
                 "beatmap_max_combo": beatmap_max_combo,

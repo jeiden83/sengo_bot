@@ -1,4 +1,4 @@
-const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getUserRecentScores, argsParser, getBeatmap, calculatePP, calculateMapCompletion } = require("../../utils/osu.js");
 const { t } = require("../../../utils/i18n.js");
 
 const { doOsuEmbed, doOsuListEmbed } = require("../../../views/osuEmbeds.js");
@@ -204,19 +204,18 @@ async function run(messages, args) {
                             ppVal = calculatePP(score, map, null, maxAttrs).pp;
                         }
 
-                        if (map.nObjects > 0) {
-                            passPercent = (total_hits / map.nObjects * 100);
-                        }
+                        const beatmap_max_combo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : beatmap.max_combo) || 0;
+                        const completionRatio = calculateMapCompletion(score, map, beatmap_max_combo, currentScoreMode);
+                        passPercent = completionRatio * 100;
 
                         if (maxAttrs && maxAttrs.difficulty && maxAttrs.difficulty.stars !== undefined) {
                             starsVal = maxAttrs.difficulty.stars;
                         }
                         
                         if (globalIndex === 1) {
-                            const beatmap_max_combo = (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : beatmap.max_combo) || 0;
                             const pre_calculated = {
                                 "map": map,
-                                "map_completion": score.passed ? 100 : total_hits / map.nObjects,
+                                "map_completion": score.passed ? 1.0 : completionRatio,
                                 "maxAttrs": maxAttrs,
                                 "pp": ppVal,
                                 "beatmap_max_combo": beatmap_max_combo
@@ -541,7 +540,7 @@ async function run(messages, args) {
 
         const pre_calculated = {
             "map": map,
-            "map_completion": recent_scores.passed ? 100 : total_hits / map.nObjects,
+            "map_completion": recent_scores.passed ? 1.0 : calculateMapCompletion(recent_scores, map, beatmap_max_combo, currentScoreMode),
             "maxAttrs": maxAttrs,
             "pp": user_pp,
             "beatmap_max_combo": beatmap_max_combo,
@@ -595,7 +594,8 @@ async function run(messages, args) {
             const speedMultiplier = mapAttrs.clockRate || 1.0;
             const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
 
-            const failPercent = map.nObjects > 0 ? (total_hits / map.nObjects) : 0;
+            const beatmap_max_combo = beatmap.max_combo || (mapAttrs.maxCombo || 0);
+            const failPercent = calculateMapCompletion(score, map, beatmap_max_combo, activeMode);
             const failLabel = `FAIL (${Math.round(failPercent * 100)}%)`;
 
             // Calcular la posición temporal exacta en el eje X (tiempo) usando hitobjects del archivo .osu
@@ -628,7 +628,7 @@ async function run(messages, args) {
                         }
                     }
                     if (times.length > 0) {
-                        const failIndex = Math.max(0, Math.min(total_hits - 1, times.length - 1));
+                        const failIndex = Math.max(0, Math.min(Math.floor(failPercent * (times.length - 1)), times.length - 1));
                         const failTimeMs = times[failIndex];
                         const totalLengthMs = totalLength * 1000;
                         if (totalLengthMs > 0) {

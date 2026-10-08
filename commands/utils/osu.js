@@ -39,6 +39,7 @@ module.exports = {
     argsParserNoCommand, 
     getBeatmapUserAllScores: OsuScoreModel.getBeatmapUserAllScores,
     calculatePP: OsuScoreModel.calculatePP,
+    calculateMapCompletion: OsuScoreModel.calculateMapCompletion,
     triggerBackgroundGapCache: OsuScoreModel.triggerBackgroundGapCache,
     triggerBackgroundRecentPreload: OsuScoreModel.triggerBackgroundRecentPreload,
     normalizeScore: OsuScoreModel.normalizeScore,

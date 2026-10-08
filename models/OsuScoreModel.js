@@ -441,6 +441,43 @@ function calculateRelaxTheoreticalPP(perf) {
 }
 
 /**
+ * ponytail: Cálculo unificado de porcentaje de avance (0.0 a 1.0) para jugadas fallidas.
+ * En Catch the Beat (fruits), el combo máximo representa el total de frutas/droplets,
+ * a diferencia de nObjects que sólo cuenta los hitobjects base del .osu.
+ */
+function calculateMapCompletion(score, mapInstance, beatmapMaxCombo = 0, mode = 'osu') {
+    if (!score) return 0;
+    if (score.passed) return 1.0;
+
+    const stats = score.statistics || {};
+    const great = stats.great !== undefined ? stats.great : (stats.count_300 || 0);
+    const ok = stats.ok !== undefined ? stats.ok : (stats.count_100 || 0);
+    const meh = stats.meh !== undefined ? stats.meh : (stats.count_50 || 0);
+    const miss = stats.miss !== undefined ? stats.miss : (stats.count_miss || 0);
+
+    const normMode = (typeof mode === 'number') 
+        ? { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' }[mode] 
+        : (mode || 'osu').toLowerCase();
+
+    let totalHits = great + ok + meh + miss;
+    let totalObjects = mapInstance ? (mapInstance.nObjects || 0) : 0;
+
+    if (normMode === 'fruits' || normMode === 'catch') {
+        const comboHits = great + ok + miss;
+        if (beatmapMaxCombo > 0) {
+            totalObjects = beatmapMaxCombo;
+            totalHits = comboHits;
+        } else if (totalObjects > 0 && totalHits > totalObjects) {
+            totalHits = Math.min(totalHits, totalObjects);
+        }
+    }
+
+    if (totalObjects <= 0) return 0;
+    const ratio = totalHits / totalObjects;
+    return Math.min(0.999, Math.max(0, ratio));
+}
+
+/**
  * Calcula el rendimiento (PP) y el PP teórico en caso de Full Combo.
  */
 function calculatePP(recent_scores, map, maximo_pp, Attrs, engineChoice = null) {
@@ -2128,9 +2165,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
                         processedCount++;
 
                         const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
-                        const { great = 0, ok = 0, meh = 0, miss = 0 } = apiScore.statistics || {};
-                        const total_hits = great + ok + meh + miss;
-                        const map_completion = apiScore.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
+                        const map_completion = calculateMapCompletion(apiScore, mapInstance, beatmap_max_combo, apiScore.mode);
 
                         const pre_calculated = {
                             pp: apiScore.pp,
@@ -2276,9 +2311,7 @@ async function _getNewBeatmapUserScores(beatmapId, usersArray, gamemode = 'osu',
 
                                     const scoreObj = result.score;
                                     const beatmap_max_combo = mapInstance ? (mapInstance.maxCombo || 0) : 0;
-                                    const { great = 0, ok = 0, meh = 0, miss = 0 } = scoreObj.statistics || {};
-                                    const total_hits = great + ok + meh + miss;
-                                    const map_completion = scoreObj.passed ? 100 : (mapInstance && mapInstance.nObjects > 0 ? total_hits / mapInstance.nObjects : 0);
+                                    const map_completion = calculateMapCompletion(scoreObj, mapInstance, beatmap_max_combo, scoreObj.mode);
 
                                     const pre_calculated = {
                                         pp: scoreObj.pp,
@@ -3062,6 +3095,7 @@ const OsuScoreModel = {
     normalizeStatistics,
     calculateScoreAccuracy,
     calculateScoreRank,
+    calculateMapCompletion,
     calculatePP,
     hasUnrankedPPMods,
     hasZeroPPMods,

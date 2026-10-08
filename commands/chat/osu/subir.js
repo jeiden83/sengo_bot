@@ -1,5 +1,5 @@
 const config = require("../../../config.js");
-const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand, searchBeatmapsets } = require("../../utils/osu.js");
+const { getBeatmap_osu, saveUserscore, getBeatmap, findBeatmapInChannel, getOsuUser, lookupBeatmapByMD5, getScoreDetails, argsParserNoCommand, searchBeatmapsets, calculateMapCompletion } = require("../../utils/osu.js");
 const { parseOSR } = require("../../utils/osr_parser.js");
 const OsuUserModel = require("../../../models/OsuUserModel.js");
 
@@ -643,7 +643,7 @@ async function run(messages, args, initialized_data) {
 
     const pre_calculated = {
         "map": map,
-        "map_completion": recent_scores.passed ? 100 : total_hits / map.nObjects,
+        "map_completion": recent_scores.passed ? 1.0 : calculateMapCompletion(recent_scores, map, beatmap_max_combo, recent_scores.mode || 'osu'),
         "maxAttrs": maxAttrs,
         "pp": user_pp,
         "beatmap_max_combo": beatmap_max_combo,
