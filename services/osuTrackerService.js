@@ -8,6 +8,7 @@ const Logger = require('../utils/logger.js');
 const { getGuildLanguage } = require('../models/GuildConfigModel.js');
 const { getBeatmap, getBeatmap_osu, calculatePP, normalizeScore } = require('../commands/utils/osu.js');
 const { doOsuEmbed } = require('../views/osuEmbeds.js');
+const { t } = require('../utils/i18n.js');
 
 // Estado en memoria del tracking
 const usersMap = new Map(); // osuId -> { osuId, osuUsername, discordId, lastScoreId, isActive, lastActiveAt, servers: [{ guildId, channelId, id, topLimit }] }
@@ -200,11 +201,13 @@ async function processNewScore(client, userObj, score) {
     }
     
     // 1. Obtener el Top 200 de mejores puntuaciones del usuario
+    const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
+    const activeGamemode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
     await OsuUserModel.NewloadToken();
     let bestScores = await osuApiQueue.add(() => v2.scores.list({
         type: 'user_best',
         user_id: osuId,
-        mode: score.beatmap.mode,
+        mode: activeGamemode,
         limit: 100,
         offset: 0
     }), 0);
@@ -214,7 +217,7 @@ async function processNewScore(client, userObj, score) {
             const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: osuId,
-                mode: score.beatmap.mode,
+                mode: activeGamemode,
                 limit: 100,
                 offset: 100
             }), 0);
@@ -301,7 +304,7 @@ async function processNewScore(client, userObj, score) {
             bestScores = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: osuId,
-                mode: score.beatmap.mode,
+                mode: activeGamemode,
                 limit: 100,
                 offset: 0
             }), 0);
@@ -311,7 +314,7 @@ async function processNewScore(client, userObj, score) {
                     const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
                         type: 'user_best',
                         user_id: osuId,
-                        mode: score.beatmap.mode,
+                        mode: activeGamemode,
                         limit: 100,
                         offset: 100
                     }), 0);
@@ -423,6 +426,23 @@ async function processNewScore(client, userObj, score) {
                 url: score.user.server === 'gatari' ? `https://osu.gatari.pw/u/${score.user.id}` : `https://osu.ppy.sh/users/${score.user.id}`,
                 iconURL: score.user.avatar_url
             });
+
+            // Si es de otro modo (taiko, catch, mania), indicarlo en el footer
+            if (activeGamemode && activeGamemode !== 'osu') {
+                const modeNames = {
+                    'taiko': 'osu!taiko',
+                    'fruits': 'osu!catch',
+                    'catch': 'osu!catch',
+                    'mania': 'osu!mania'
+                };
+                const displayModeName = modeNames[activeGamemode] || activeGamemode;
+                const footerText = t(locale, 'track.top_play_mode_footer', { mode: displayModeName }) || `Sengo • Modo: ${displayModeName}`;
+                const footerIcon = embed.data?.footer?.icon_url || "https://jeiden.s-ul.eu/3ssHl9Gd";
+                embed.setFooter({
+                    text: footerText,
+                    iconURL: footerIcon
+                });
+            }
 
             await channel.send({ embeds: [embed] }).catch(err => {
                 console.error(`[TRACKER-SERVICE] Error al enviar anuncio de top play a canal ${srv.channelId}:`, err);

@@ -1869,7 +1869,8 @@
     "channel_not_found": "❌ The configured tracking channel no longer exists or I don't have access to it.",
     "perm_view_channel": "`View Channel` (ViewChannel)",
     "perm_send_messages": "`Send Messages` (SendMessages)",
-    "perm_embed_links": "`Embed Links` (EmbedLinks)"
+    "perm_embed_links": "`Embed Links` (EmbedLinks)",
+    "top_play_mode_footer": "Sengo • Mode: {mode}"
   },
   "skin": {
     "not_found": "You do not have a linked skin. You can link one using `s.skin -set <link>`.",

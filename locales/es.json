@@ -1869,7 +1869,8 @@
     "channel_not_found": "❌ El canal de tracking configurado ya no existe o no tengo acceso a él.",
     "perm_view_channel": "`Ver canal` (ViewChannel)",
     "perm_send_messages": "`Enviar mensajes` (SendMessages)",
-    "perm_embed_links": "`Insertar enlaces` (EmbedLinks)"
+    "perm_embed_links": "`Insertar enlaces` (EmbedLinks)",
+    "top_play_mode_footer": "Sengo • Modo: {mode}"
   },
   "skin": {
     "not_found": "No tienes ninguna skin vinculada. Puedes vincular una con `s.skin -set <enlace>`.",
