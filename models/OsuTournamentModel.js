@@ -94,6 +94,10 @@ function parseRankNumber(str) {
         let num = parseFloat(clean);
         return isNaN(num) ? null : Math.round(num * multiplier);
     } else {
+        // Ignorar decimales como 6.4 que son Star Ratings o números flotantes y no separadores de miles
+        if (/[.,]\d{1,2}$/.test(clean)) {
+            return null;
+        }
         clean = clean.replace(/[,.]/g, '');
         let num = parseInt(clean, 10);
         return isNaN(num) ? null : num;
@@ -170,6 +174,12 @@ function parseNumericRankFromText(text) {
     const rangeRegex = /#?([0-9.,]+[kK]?)\s*(?:-|to|und)\s*#?([0-9.,]+[kK]?|inf|infinity|∞)/i;
     const match = text.match(rangeRegex);
     if (match) {
+        // Ignorar si el número va seguido inmediatamente de un indicador de dificultad / estrellas
+        const afterMatch = text.slice(match.index + match[0].length, match.index + match[0].length + 15);
+        if (/[★*]|stars?\b|sr\b/i.test(afterMatch)) {
+            return null;
+        }
+
         let part1 = match[1].replace(/[.,]+$/, '');
         let part2 = match[2].replace(/[.,]+$/, '');
 
@@ -180,7 +190,7 @@ function parseNumericRankFromText(text) {
         else if (part2.toLowerCase() === '9k') maxVal = 9999;
 
         if (minVal !== null && maxVal !== null && minVal < 2000000 && maxVal <= Infinity) {
-            const hasSep = /[.,]\d+/.test(part1) || /[.,]\d+/.test(part2);
+            const hasSep = /[.,]\d{3}\b/.test(part1) || /[.,]\d{3}\b/.test(part2);
             const hasK = /[kK]/.test(part1) || /[kK]/.test(part2);
             const hasHash = match[0].includes('#');
             const hasInf = /inf|infinity|∞/i.test(part2);
@@ -314,14 +324,15 @@ function parseRegexMetadata(title, rawBody) {
 
     const prizeLineRegex = /\b(prizes?|premios?|rewards?|recompensas?|banners?|supporter|badges?|cash|pot|1st|2nd|3rd|1er|2do|3er|lugar|place)\b/i;
     const teamSizeLineRegex = /\b(team size|teams? of|ts\s*\d|equipo de|jugadores por equipo|roster size)\b/i;
+    const poolLineRegex = /\b(bo\d+|map\s*pool|mappool|star\s*rating|round of|\b\d+nm\b|\b\d+hd\b|\b\d+hr\b|\b\d+dt\b|\b\d+tb\b|[★])\b/i;
 
     if (!isOpen && rankMin === null) {
         const lines = rawBody.split('\n');
         const rankKeywords = ['rank', 'rango', 'limit', 'bws', 'ceil', 'ceiling', 'digit', 'digits', 'range', 'restriction', 'eligibility'];
         for (const line of lines) {
             const lineLower = line.toLowerCase();
-            // Ignorar líneas de premios o de tamaño de equipo para no capturar falsos positivos
-            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower)) {
+            // Ignorar líneas de premios, tamaño de equipo o mappools para no capturar falsos positivos
+            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower) || poolLineRegex.test(lineLower)) {
                 continue;
             }
             if (rankKeywords.some(kw => lineLower.includes(kw))) {
@@ -347,7 +358,7 @@ function parseRegexMetadata(title, rawBody) {
         const lines = rawBody.split('\n');
         for (const line of lines) {
             const lineLower = line.toLowerCase();
-            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower)) {
+            if (prizeLineRegex.test(lineLower) || teamSizeLineRegex.test(lineLower) || poolLineRegex.test(lineLower)) {
                 continue;
             }
             const lineNumeric = parseNumericRankFromText(line);
