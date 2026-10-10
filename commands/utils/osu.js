@@ -50,6 +50,7 @@ module.exports = {
     ensureNoChokeScores: OsuScoreModel.ensureNoChokeScores,
     getBeatmapModeAttributes: BeatmapModel.getBeatmapModeAttributes,
     estimateGlobalRankByPP: OsuUserModel.estimateGlobalRankByPP,
+    estimateCountryRankByPP: OsuUserModel.estimateCountryRankByPP,
     getUserBeatmapBest: OsuScoreModel.getUserBeatmapBest,
     fetchPinnedScore: OsuScoreModel.fetchPinnedScore,
     searchBeatmapsets: BeatmapModel.searchBeatmapsets,
