@@ -841,7 +841,7 @@ async function handleMappingTrackerCommand(messages, args) {
             return { content: t(locale, 'mapping_tracker.err_no_tracked_users') };
         }
 
-        const { fetchUserBeatmapsets, fetchBeatmapsetEvents, fetchBeatmapsetPraise, detectBeatmapsetGamemode } = require("../../../services/mappingTrackerService.js");
+        const { fetchUserBeatmapsets, fetchBeatmapsetEvents, fetchBeatmapsetPraise, resolveBeatmapsetNominator, detectBeatmapsetGamemode } = require("../../../services/mappingTrackerService.js");
 
         let realMapset = null;
         let realUser = null;
@@ -936,39 +936,27 @@ async function handleMappingTrackerCommand(messages, args) {
             let nomUser = null;
             let nomComment = customComment || null;
 
-            // 1. Probar desde las nominaciones del objeto beatmapset
-            const currNoms = realMapset.current_nominations || realMapset.recent_nominations || [];
-            if (currNoms.length > 0 && (currNoms[0].user || currNoms[0].user_id)) {
-                const u = currNoms[0].user || {};
-                const uId = u.id || currNoms[0].user_id;
-                nomUser = {
-                    id: uId,
-                    username: u.username || `BN #${uId}`,
-                    avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
-                    url: `https://osu.ppy.sh/users/${uId}`
-                };
+            // 1. Resolver el BN real del beatmapset desde los eventos de osu!
+            if (typeof resolveBeatmapsetNominator === 'function') {
+                try {
+                    nomUser = await resolveBeatmapsetNominator(realMapset.id);
+                } catch (e) {}
             }
 
-            // 2. Probar desde el feed de eventos de la API de osu!
-            try {
-                const events = await fetchBeatmapsetEvents(realMapset.id);
-                const nomEvent = events.find(e => ['nominate', 'qualify', 'approve'].includes((e.type || '').toLowerCase()));
-                if (nomEvent) {
-                    if ((!nomUser || nomUser.username?.startsWith('BN #')) && (nomEvent.user || nomEvent.user_id)) {
-                        const u = nomEvent.user || {};
-                        const uId = u.id || nomEvent.user_id;
-                        nomUser = {
-                            id: uId,
-                            username: u.username || `BN #${uId}`,
-                            avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
-                            url: `https://osu.ppy.sh/users/${uId}`
-                        };
-                    }
-                    if (!nomComment && nomEvent.comment) {
-                        nomComment = nomEvent.comment?.text || (typeof nomEvent.comment === 'string' ? nomEvent.comment : null);
-                    }
+            // 2. Si no se resolvió, intentar desde las nominaciones del objeto beatmapset
+            if (!nomUser) {
+                const currNoms = realMapset.current_nominations || realMapset.recent_nominations || [];
+                if (currNoms.length > 0 && (currNoms[0].user || currNoms[0].user_id)) {
+                    const u = currNoms[0].user || {};
+                    const uId = u.id || currNoms[0].user_id;
+                    nomUser = {
+                        id: uId,
+                        username: u.username || `BN #${uId}`,
+                        avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
+                        url: `https://osu.ppy.sh/users/${uId}`
+                    };
                 }
-            } catch (e) {}
+            }
 
             // 3. Si no hay comentario explícito, consultar las alabanzas (praises) dejadas por el BN en modding discussions
             if (!nomComment && typeof fetchBeatmapsetPraise === 'function') {
@@ -976,7 +964,8 @@ async function handleMappingTrackerCommand(messages, args) {
                     const praiseInfo = await fetchBeatmapsetPraise(realMapset.id, nomUser?.id);
                     if (praiseInfo) {
                         nomComment = praiseInfo.text;
-                        if ((!nomUser || nomUser.username?.startsWith('BN #')) && praiseInfo.user) {
+                        // ponytail: nunca sobrescribir el autor del embed con el autor de un praise ajeno
+                        if (!nomUser && praiseInfo.isNominatorPraise && praiseInfo.user) {
                             nomUser = {
                                 id: praiseInfo.user.id,
                                 username: praiseInfo.user.username,

@@ -204,6 +204,11 @@ async function runGlobalEventsScan() {
                     avatar_url: event.user.avatar_url || `https://a.ppy.sh/${event.user_id}`
                 } : (event.user_id ? { id: event.user_id, username: `BN #${event.user_id}`, avatar_url: `https://a.ppy.sh/${event.user_id}` } : null);
 
+                // Si es evento de calificado o nominación y nominatorUser es nulo, resolver el BN real de los eventos
+                if (!nominatorUser && (eventType === 'nomination' || eventType === 'qualified')) {
+                    nominatorUser = await resolveBeatmapsetNominator(mapset.id, events);
+                }
+
                 let commentText = event.comment?.text || (typeof event.comment === 'string' ? event.comment : null);
                 if (!commentText && event.discussion?.starting_post?.message) {
                     commentText = event.discussion.starting_post.message;
@@ -214,7 +219,8 @@ async function runGlobalEventsScan() {
                     const praiseInfo = await fetchBeatmapsetPraise(mapset.id, nominatorUser?.id);
                     if (praiseInfo) {
                         commentText = praiseInfo.text;
-                        if (!nominatorUser && praiseInfo.user) {
+                        // ponytail: solo asignar praiseInfo.user si este es comprobadamente el BN (isNominatorPraise)
+                        if (!nominatorUser && praiseInfo.isNominatorPraise && praiseInfo.user) {
                             nominatorUser = praiseInfo.user;
                         }
                     }
@@ -327,14 +333,13 @@ async function runMappingTrackerScan() {
                     }
 
                     let extraInfo = null;
-                    if (eventType === 'qualified') {
-                        const praiseInfo = await fetchBeatmapsetPraise(mapset.id);
-                        if (praiseInfo) {
-                            extraInfo = {
-                                nominator: praiseInfo.user,
-                                comment: parseDiscussionMessage(praiseInfo.text)
-                            };
-                        }
+                    if (eventType === 'qualified' || eventType === 'nomination') {
+                        const nomUser = await resolveBeatmapsetNominator(mapset.id);
+                        const praiseInfo = await fetchBeatmapsetPraise(mapset.id, nomUser?.id);
+                        extraInfo = {
+                            nominator: nomUser,
+                            comment: parseDiscussionMessage(praiseInfo?.text)
+                        };
                     }
                     await notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo);
                 } else if (prevUpdated && currentUpdated && prevUpdated !== currentUpdated) {
@@ -687,11 +692,63 @@ async function fetchBeatmapsetPraise(beatmapsetId, nominatorUserId = null) {
                 id: authorUser.id,
                 username: authorUser.username,
                 avatar_url: authorUser.avatar_url || `https://a.ppy.sh/${authorUser.id}`
-            } : null
+            } : null,
+            isNominatorPraise: Boolean(nominatorUserId && Number(targetDiscussion.user_id) === Number(nominatorUserId))
         };
     } catch (err) {
         return null;
     }
+}
+
+/**
+ * Resuelve el Beatmap Nominator (BN) más reciente asociado a un beatmapset.
+ * - Busca primero en los eventos conocidos en memoria (si se proporcionan).
+ * - Si no, consulta el historial de eventos del beatmapset buscando el evento 'nominate' o 'approve' más reciente.
+ * - Retorna un objeto de usuario del BN con { id, username, avatar_url, url }, o null si no se encuentra.
+ */
+async function resolveBeatmapsetNominator(beatmapsetId, knownEvents = null) {
+    if (!beatmapsetId) return null;
+
+    // ponytail: resolver primero en eventos en memoria para ahorrar llamadas a la API de osu!
+    if (Array.isArray(knownEvents) && knownEvents.length > 0) {
+        const match = knownEvents.find(e =>
+            e.beatmapset?.id === Number(beatmapsetId) &&
+            ['nominate', 'approve'].includes((e.type || '').toLowerCase()) &&
+            (e.user || e.user_id)
+        );
+        if (match) {
+            const u = match.user || {};
+            const uId = u.id || match.user_id;
+            return {
+                id: uId,
+                username: u.username || `BN #${uId}`,
+                avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
+                url: `https://osu.ppy.sh/users/${uId}`
+            };
+        }
+    }
+
+    try {
+        const events = await fetchBeatmapsetEvents(beatmapsetId);
+        const nomEvent = events.find(e =>
+            ['nominate', 'approve'].includes((e.type || '').toLowerCase()) &&
+            (e.user || e.user_id)
+        );
+        if (nomEvent) {
+            const u = nomEvent.user || {};
+            const uId = u.id || nomEvent.user_id;
+            return {
+                id: uId,
+                username: u.username || `BN #${uId}`,
+                avatar_url: u.avatar_url || `https://a.ppy.sh/${uId}`,
+                url: `https://osu.ppy.sh/users/${uId}`
+            };
+        }
+    } catch (err) {
+        // Silenciar error en consulta de eventos
+    }
+
+    return null;
 }
 
 module.exports = {
@@ -702,5 +759,6 @@ module.exports = {
     fetchGlobalBeatmapEvents,
     fetchBeatmapsetEvents,
     fetchBeatmapsetPraise,
+    resolveBeatmapsetNominator,
     detectBeatmapsetGamemode
 };
