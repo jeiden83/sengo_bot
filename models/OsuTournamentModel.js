@@ -241,6 +241,51 @@ function parseNumericRankFromText(text) {
 }
 
 /**
+ * Extrae restricciones basadas en Performance Points (PP) del título o texto.
+ * Ej: 'PP>=4000', '4000pp+', '3500pp-7000pp', '10000pp-'.
+ */
+function extractPpRestriction(text, locale = 'es') {
+    if (!text || typeof text !== 'string') return null;
+
+    // 1. Rango de PP: ej. 3500pp-7000pp, 3500 - 7000 pp, 3.5k - 7k pp
+    const rangeMatch = text.match(/\b([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\s*[-~to]\s*([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\b|\b([0-9]+(?:[.,]\d+)?[kK]?)\s*[-~to]\s*([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\b/i);
+    if (rangeMatch) {
+        let p1 = (rangeMatch[1] || rangeMatch[3]).replace(/[.,]+$/, '');
+        let p2 = (rangeMatch[2] || rangeMatch[4]).replace(/[.,]+$/, '');
+        return `${formatPpNumber(p1, locale)} - ${formatPpNumber(p2, locale)} PP`;
+    }
+
+    // 2. PP mayor o igual: ej. PP>=4000, PP >= 4000, PP>4000, 4000pp+, 4k pp+
+    const gteMatch = text.match(/pp\s*(?:>=|=>|≥|>)\s*([0-9]+(?:[.,]\d+)?[kK]?)\b|\b([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\s*\+/i);
+    if (gteMatch) {
+        let val = (gteMatch[1] || gteMatch[2]).replace(/[.,]+$/, '');
+        return `≥ ${formatPpNumber(val, locale)} PP`;
+    }
+
+    // 3. PP menor o igual: ej. PP<=4000, PP <= 4000, PP<4000, 10000pp-, 10k pp-, under 5000pp
+    const lteMatch = text.match(/pp\s*(?:<=|=<|≤|<)\s*([0-9]+(?:[.,]\d+)?[kK]?)\b|\b([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\s*[-–]|\b(?:under|<)\s*([0-9]+(?:[.,]\d+)?[kK]?)\s*pp\b/i);
+    if (lteMatch) {
+        let val = (lteMatch[1] || lteMatch[2] || lteMatch[3]).replace(/[.,]+$/, '');
+        return `≤ ${formatPpNumber(val, locale)} PP`;
+    }
+
+    return null;
+}
+
+function formatPpNumber(str, locale = 'es') {
+    let clean = str.toLowerCase().trim();
+    let mult = 1;
+    if (clean.endsWith('k')) {
+        mult = 1000;
+        clean = clean.slice(0, -1);
+    }
+    let num = parseFloat(clean.replace(',', '.'));
+    if (isNaN(num)) return str;
+    const finalVal = Math.round(num * mult);
+    return locale === 'es' ? finalVal.toLocaleString('es-ES') : finalVal.toLocaleString('en-US');
+}
+
+/**
  * Parseo de metadatos básicos usando expresiones regulares sobre el BBCode.
  */
 function parseRegexMetadata(title, rawBody) {
@@ -286,10 +331,13 @@ function parseRegexMetadata(title, rawBody) {
     let rankMax = null;
     let isOpen = false;
 
+    // Verificar si el título o cuerpo tiene restricción explícita de PP (Performance Points)
+    const ppRestriction = extractPpRestriction(title) || extractPpRestriction(rawBody);
+
     const openKeywords = /\b(open rank|open-rank|open division|open tier|no rank limit|no rank restriction|all ranks|all rank|open to all players|open to all|open for all|for all players|for everyone|everyone can join|anyone can join|abierto a todos|sin restricci[oó]n de rango|sin l[ií]mite de rango|rango libre|todos los rangos)\b/i;
     
     // Prioridad 1: Título del torneo
-    if (openKeywords.test(titleLower)) {
+    if (!ppRestriction && openKeywords.test(titleLower)) {
         isOpen = true;
         rankMin = 1;
         rankMax = Infinity;
@@ -488,7 +536,7 @@ function parseRegexMetadata(title, rawBody) {
         format,
         rankMin: rankMin || 1,
         rankMax: rankMax === Infinity ? null : rankMax,
-        isOpenRange: isOpen || (!rankMin && !rankMax) || (rankMin === 1 && (!rankMax || rankMax === Infinity)),
+        isOpenRange: !ppRestriction && (isOpen || (!rankMin && !rankMax) || (rankMin === 1 && (!rankMax || rankMax === Infinity))),
         regStatus,
         links
     };
@@ -1123,6 +1171,7 @@ module.exports = {
     getSentMessages,
     deleteSentMessage,
     parseRegexMetadata,
+    extractPpRestriction,
     extractImageUrls,
     inspectGoogleFormForRanks,
     parseWithGeminiVision

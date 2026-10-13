@@ -1,6 +1,7 @@
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { getEmbedColor, formatNumber } = require("./osuViewHelpers.js");
 const { t } = require("../utils/i18n.js");
+const { extractPpRestriction } = require("../models/OsuTournamentModel.js");
 
 // Emojis representativos de los modos de juego de osu!
 const MODE_EMOJIS = {
@@ -17,6 +18,44 @@ const STATUS_DATA = {
     completed: { emoji: "🔴", textKey: "status_completed" },
     unknown: { emoji: "⚪", textKey: "status_unknown" }
 };
+
+/**
+ * Obtiene el texto representativo del rango o requisito de elegibilidad del torneo.
+ * - Prioriza restricciones explícitas de PP si están presentes en el título o reglas (ej: ≥ 4.000 PP).
+ * - Evita mostrar '#1 - #∞' ante rangos abiertos o límites indefinidos.
+ */
+function getTournamentRankDisplay(tournament, locale = 'es') {
+    // 1. Revisar si el título o las reglas contienen una restricción basada en PP
+    const ppInTitle = extractPpRestriction(tournament.title, locale);
+    if (ppInTitle) return ppInTitle;
+
+    const ppInRules = extractPpRestriction(tournament.rules_summary, locale);
+    if (ppInRules) return ppInRules;
+
+    // 2. Si es rango completamente abierto sin restricciones
+    if (tournament.is_open_range) {
+        return t(locale, 'torneos.open_range');
+    }
+
+    // 3. Rangos numéricos estándar
+    const minVal = tournament.rank_min;
+    const maxVal = tournament.rank_max;
+
+    if (minVal && maxVal && maxVal !== Infinity) {
+        return `#${formatNumber(minVal, locale)} - #${formatNumber(maxVal, locale)}`;
+    }
+
+    if (minVal && minVal > 1 && (!maxVal || maxVal === Infinity)) {
+        return `#${formatNumber(minVal, locale)}+`;
+    }
+
+    if ((!minVal || minVal === 1) && maxVal && maxVal !== Infinity) {
+        return `Top #${formatNumber(maxVal, locale)}`;
+    }
+
+    // Si rank_min es 1 y rank_max es nulo o infinito, representa rango abierto
+    return t(locale, 'torneos.open_range');
+}
 
 /**
  * Genera el embed de lista de torneos.
@@ -75,12 +114,7 @@ function doTournamentListEmbed({ tournaments, total, page, pageSize, message, lo
         const status = STATUS_DATA[tourney.reg_status] || STATUS_DATA.unknown;
         const statusText = t(locale, `torneos.${status.textKey}`);
         
-        let rankStr = t(locale, 'torneos.open_range');
-        if (!tourney.is_open_range) {
-            const minStr = tourney.rank_min ? formatNumber(tourney.rank_min, locale) : "1";
-            const maxStr = tourney.rank_max ? formatNumber(tourney.rank_max, locale) : "∞";
-            rankStr = `#${minStr} - #${maxStr}`;
-        }
+        const rankStr = getTournamentRankDisplay(tourney, locale);
 
         const formatStr = tourney.team_format ? ` • \`${tourney.team_format}\`` : "";
         const safeTitle = tourney.title.replace(/\[/g, '(').replace(/\]/g, ')');
@@ -121,12 +155,7 @@ function doTournamentDetailEmbed(tournament, message, locale = 'es') {
     const status = STATUS_DATA[tournament.reg_status] || STATUS_DATA.unknown;
     const statusText = t(locale, `torneos.${status.textKey}`);
 
-    let rankStr = t(locale, 'torneos.open_range');
-    if (!tournament.is_open_range) {
-        const minStr = tournament.rank_min ? formatNumber(tournament.rank_min, locale) : "1";
-        const maxStr = tournament.rank_max ? formatNumber(tournament.rank_max, locale) : "∞";
-        rankStr = `#${minStr} - #${maxStr}`;
-    }
+    const rankStr = getTournamentRankDisplay(tournament, locale);
 
     const modeName = tournament.game_mode === 'osu' ? 'std' : tournament.game_mode;
 
