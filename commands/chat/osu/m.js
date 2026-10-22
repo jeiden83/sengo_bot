@@ -110,7 +110,7 @@ async function run(messages, args) {
     let requestedMode = parsed_args.gamemode; // 'osu', 'taiko', 'fruits', 'mania' o ''
     let activeMode = beatmap.mode; // 'osu', 'taiko', 'fruits', 'mania'
     let isConverted = false;
-    let stars, maxCombo, difficulty, cs, ar, od, hp, speedMultiplier, bpm, totalLength, hitLength, ppSS, pp99, pp98, pp95, skillsData, statusName, embedColor, csLabel, objectsValue;
+    let stars, baseStars, maxCombo, difficulty, cs, baseCs, ar, baseAr, od, baseOd, hp, baseHp, speedMultiplier, bpm, baseBpm, totalLength, hitLength, ppSS, pp99, pp98, pp95, skillsData, statusName, embedColor, csLabel, objectsValue;
 
     try {
         // Si el base es 'osu' (std) y el usuario especificó otro modo de juego, lo convertimos
@@ -130,16 +130,16 @@ async function run(messages, args) {
 
         // Calcular estrellas base (con o sin conversión, pero sin mods)
         const baseDiffAttrs = new engine.Difficulty({ mods: [] }).calculate(map);
-        const baseStars = baseDiffAttrs.stars || 0;
+        baseStars = baseDiffAttrs.stars || 0;
 
         // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
         const baseBuilder = new engine.BeatmapAttributesBuilder({ map: map });
         const baseMapAttrs = baseBuilder.build();
-        const baseCs = baseMapAttrs.cs;
-        const baseAr = baseMapAttrs.ar;
-        const baseOd = baseMapAttrs.od;
-        const baseHp = baseMapAttrs.hp;
-        const baseBpm = Math.round(map.bpm);
+        baseCs = baseMapAttrs.cs;
+        baseAr = baseMapAttrs.ar;
+        baseOd = baseMapAttrs.od;
+        baseHp = baseMapAttrs.hp;
+        baseBpm = Math.round(map.bpm);
 
         // Calcular estadísticas y atributos ajustados por mods
         const builder = new engine.BeatmapAttributesBuilder({
