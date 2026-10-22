@@ -516,9 +516,11 @@ async function run(messages, args, options = {}) {
                 "pp_fc": pp_fc
             };
 
-            const embed = await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount, locale, currentScoreMode);
-            if (map) map.free();
-            return embed;
+            try {
+                return await doOsuTopSingleEmbed(message, score, pre_calculated, scoreIndex, total_plays, parser_res.parsed_args, ppThresholdCount, locale, currentScoreMode);
+            } finally {
+                if (map) try { map.free(); } catch (_) {}
+            }
         }
 
         const initialEmbed = await processScore(index);

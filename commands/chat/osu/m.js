@@ -110,133 +110,135 @@ async function run(messages, args) {
     let requestedMode = parsed_args.gamemode; // 'osu', 'taiko', 'fruits', 'mania' o ''
     let activeMode = beatmap.mode; // 'osu', 'taiko', 'fruits', 'mania'
     let isConverted = false;
+    let stars, maxCombo, difficulty, cs, ar, od, hp, speedMultiplier, bpm, totalLength, hitLength, ppSS, pp99, pp98, pp95, skillsData, statusName, embedColor, csLabel, objectsValue;
 
-    // Si el base es 'osu' (std) y el usuario especificó otro modo de juego, lo convertimos
-    if (activeMode === 'osu' && requestedMode && requestedMode !== 'osu') {
-        const modeMap = {
-            'osu': engine.GameMode.Osu,
-            'taiko': engine.GameMode.Taiko,
-            'fruits': engine.GameMode.Catch,
-            'mania': engine.GameMode.Mania
-        };
-        if (modeMap[requestedMode] !== undefined) {
-            map.convert(modeMap[requestedMode]);
-            activeMode = requestedMode;
-            isConverted = true;
+    try {
+        // Si el base es 'osu' (std) y el usuario especificó otro modo de juego, lo convertimos
+        if (activeMode === 'osu' && requestedMode && requestedMode !== 'osu') {
+            const modeMap = {
+                'osu': engine.GameMode.Osu,
+                'taiko': engine.GameMode.Taiko,
+                'fruits': engine.GameMode.Catch,
+                'mania': engine.GameMode.Mania
+            };
+            if (modeMap[requestedMode] !== undefined) {
+                map.convert(modeMap[requestedMode]);
+                activeMode = requestedMode;
+                isConverted = true;
+            }
         }
-    }
 
-    // Calcular estrellas base (con o sin conversión, pero sin mods)
-    const baseDiffAttrs = new engine.Difficulty({ mods: [] }).calculate(map);
-    const baseStars = baseDiffAttrs.stars || 0;
+        // Calcular estrellas base (con o sin conversión, pero sin mods)
+        const baseDiffAttrs = new engine.Difficulty({ mods: [] }).calculate(map);
+        const baseStars = baseDiffAttrs.stars || 0;
 
-    // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
-    const baseBuilder = new engine.BeatmapAttributesBuilder({ map: map });
-    const baseMapAttrs = baseBuilder.build();
-    const baseCs = baseMapAttrs.cs;
-    const baseAr = baseMapAttrs.ar;
-    const baseOd = baseMapAttrs.od;
-    const baseHp = baseMapAttrs.hp;
-    const baseBpm = Math.round(map.bpm);
+        // Calcular atributos base del mapa (con o sin conversión, pero sin mods)
+        const baseBuilder = new engine.BeatmapAttributesBuilder({ map: map });
+        const baseMapAttrs = baseBuilder.build();
+        const baseCs = baseMapAttrs.cs;
+        const baseAr = baseMapAttrs.ar;
+        const baseOd = baseMapAttrs.od;
+        const baseHp = baseMapAttrs.hp;
+        const baseBpm = Math.round(map.bpm);
 
-    // Calcular estadísticas y atributos ajustados por mods
-    const builder = new engine.BeatmapAttributesBuilder({
-        map: map,
-        mods: activeModsStr
-    });
-    const mapAttrs = builder.build();
+        // Calcular estadísticas y atributos ajustados por mods
+        const builder = new engine.BeatmapAttributesBuilder({
+            map: map,
+            mods: activeModsStr
+        });
+        const mapAttrs = builder.build();
 
-    const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
-    const stars = diffAttrs.stars;
-    const maxCombo = diffAttrs.maxCombo || beatmap.max_combo || 0;
-    const difficulty = diffAttrs;
+        const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+        stars = diffAttrs.stars;
+        maxCombo = diffAttrs.maxCombo || beatmap.max_combo || 0;
+        difficulty = diffAttrs;
 
-    const cs = mapAttrs.cs;
-    const ar = mapAttrs.ar;
-    const od = mapAttrs.od;
-    const hp = mapAttrs.hp;
-    const speedMultiplier = mapAttrs.clockRate;
+        cs = mapAttrs.cs;
+        ar = mapAttrs.ar;
+        od = mapAttrs.od;
+        hp = mapAttrs.hp;
+        speedMultiplier = mapAttrs.clockRate;
 
-    const bpm = (map.bpm * speedMultiplier).toFixed(0);
-    const totalLength = Math.floor(beatmap.total_length / speedMultiplier);
-    const hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
+        bpm = (map.bpm * speedMultiplier).toFixed(0);
+        totalLength = Math.floor(beatmap.total_length / speedMultiplier);
+        hitLength = Math.floor(beatmap.hit_length / speedMultiplier);
 
-    // 6. Calcular PP y desglose de skills para diferentes precisiones
-    const skillsByAcc = [100, 99, 98, 95].map(acc => {
-        const perf = new engine.Performance({ mods: activeModsStr, accuracy: acc }).calculate(diffAttrs);
-        return {
-            accuracy: acc,
-            pp: Number(perf.pp || 0),
-            aimPP: Number(perf.ppAim || 0),
-            speedPP: Number(perf.ppSpeed || 0),
-            accPP: Number(perf.ppAcc || 0),
-            flPP: Number(perf.ppFlashlight || 0),
-            readingPP: Number(perf.ppReading || 0),
-            diffPP: Number(perf.ppDifficulty || 0)
+        // 6. Calcular PP y desglose de skills para diferentes precisiones
+        const skillsByAcc = [100, 99, 98, 95].map(acc => {
+            const perf = new engine.Performance({ mods: activeModsStr, accuracy: acc }).calculate(diffAttrs);
+            return {
+                accuracy: acc,
+                pp: Number(perf.pp || 0),
+                aimPP: Number(perf.ppAim || 0),
+                speedPP: Number(perf.ppSpeed || 0),
+                accPP: Number(perf.ppAcc || 0),
+                flPP: Number(perf.ppFlashlight || 0),
+                readingPP: Number(perf.ppReading || 0),
+                diffPP: Number(perf.ppDifficulty || 0)
+            };
+        });
+
+        ppSS = skillsByAcc[0].pp.toFixed(2);
+        pp99 = skillsByAcc[1].pp.toFixed(2);
+        pp98 = skillsByAcc[2].pp.toFixed(2);
+        pp95 = skillsByAcc[3].pp.toFixed(2);
+
+        skillsData = {
+            activeMode,
+            stars,
+            baseStars,
+            aimStars: diffAttrs.aimStars || diffAttrs.aim || 0,
+            speedStars: diffAttrs.speedStars || diffAttrs.speed || 0,
+            flashlightStars: diffAttrs.flashlightStars || diffAttrs.flashlight || 0,
+            readingStars: diffAttrs.readingStars || diffAttrs.reading || 0,
+            stamina: diffAttrs.stamina || 0,
+            rhythm: diffAttrs.rhythm || 0,
+            od: od != null ? od : (diffAttrs.od || 0),
+            skillsByAcc
         };
-    });
 
-    const ppSS = skillsByAcc[0].pp.toFixed(2);
-    const pp99 = skillsByAcc[1].pp.toFixed(2);
-    const pp98 = skillsByAcc[2].pp.toFixed(2);
-    const pp95 = skillsByAcc[3].pp.toFixed(2);
+        // Estilo de estados de mapa con traducciones
+        const status_names = {
+            'ranked': t(locale, 'map.status_ranked'),
+            'approved': t(locale, 'map.status_approved'),
+            'loved': t(locale, 'map.status_loved'),
+            'qualified': t(locale, 'map.status_qualified'),
+            'pending': t(locale, 'map.status_pending'),
+            'wip': t(locale, 'map.status_wip'),
+            'graveyard': t(locale, 'map.status_graveyard')
+        };
+        const status_colors = {
+            'ranked': '#4ade80',
+            'approved': '#facc15',
+            'loved': '#f472b6',
+            'qualified': '#38bdf8',
+            'pending': '#9ca3af',
+            'wip': '#9ca3af',
+            'graveyard': '#4b5563'
+        };
 
-    const skillsData = {
-        activeMode,
-        stars,
-        baseStars,
-        aimStars: diffAttrs.aimStars || diffAttrs.aim || 0,
-        speedStars: diffAttrs.speedStars || diffAttrs.speed || 0,
-        flashlightStars: diffAttrs.flashlightStars || diffAttrs.flashlight || 0,
-        readingStars: diffAttrs.readingStars || diffAttrs.reading || 0,
-        stamina: diffAttrs.stamina || 0,
-        rhythm: diffAttrs.rhythm || 0,
-        od: od != null ? od : (diffAttrs.od || 0),
-        skillsByAcc
-    };
+        statusName = status_names[beatmap.status] || beatmap.status.toUpperCase();
+        const roleColor = message.member?.roles?.highest?.color || '#ffffff';
+        embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
 
-    // Estilo de estados de mapa con traducciones
-    const status_names = {
-        'ranked': t(locale, 'map.status_ranked'),
-        'approved': t(locale, 'map.status_approved'),
-        'loved': t(locale, 'map.status_loved'),
-        'qualified': t(locale, 'map.status_qualified'),
-        'pending': t(locale, 'map.status_pending'),
-        'wip': t(locale, 'map.status_wip'),
-        'graveyard': t(locale, 'map.status_graveyard')
-    };
-    const status_colors = {
-        'ranked': '#4ade80',
-        'approved': '#facc15',
-        'loved': '#f472b6',
-        'qualified': '#38bdf8',
-        'pending': '#9ca3af',
-        'wip': '#9ca3af',
-        'graveyard': '#4b5563'
-    };
+        csLabel = activeMode === 'mania' ? 'Keys' : 'CS';
 
-    const statusName = status_names[beatmap.status] || beatmap.status.toUpperCase();
-    const roleColor = message.member?.roles?.highest?.color || '#ffffff';
-    const embedColor = roleColor !== 0 && roleColor !== undefined ? roleColor : (status_colors[beatmap.status] || '#ffffff');
-
-    const csLabel = activeMode === 'mania' ? 'Keys' : 'CS';
-
-    let objectsValue = '';
-    if (activeMode === 'osu') {
-        objectsValue = t(locale, 'map.objects_osu', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
-    } else if (activeMode === 'taiko') {
-        objectsValue = t(locale, 'map.objects_taiko', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
-    } else if (activeMode === 'fruits') {
-        const nFruits = difficulty.nFruits !== undefined ? difficulty.nFruits : map.nCircles;
-        const nDroplets = difficulty.nDroplets !== undefined ? difficulty.nDroplets : map.nSliders;
-        const nTinyDroplets = difficulty.nTinyDroplets !== undefined ? difficulty.nTinyDroplets : 0;
-        objectsValue = t(locale, 'map.objects_fruits', { fruits: nFruits, droplets: nDroplets, tiny: nTinyDroplets });
-    } else if (activeMode === 'mania') {
-        objectsValue = t(locale, 'map.objects_mania', { circles: map.nCircles, holds: map.nHolds });
+        objectsValue = '';
+        if (activeMode === 'osu') {
+            objectsValue = t(locale, 'map.objects_osu', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
+        } else if (activeMode === 'taiko') {
+            objectsValue = t(locale, 'map.objects_taiko', { circles: map.nCircles, sliders: map.nSliders, spinners: map.nSpinners });
+        } else if (activeMode === 'fruits') {
+            const nFruits = difficulty.nFruits !== undefined ? difficulty.nFruits : map.nCircles;
+            const nDroplets = difficulty.nDroplets !== undefined ? difficulty.nDroplets : map.nSliders;
+            const nTinyDroplets = difficulty.nTinyDroplets !== undefined ? difficulty.nTinyDroplets : 0;
+            objectsValue = t(locale, 'map.objects_fruits', { fruits: nFruits, droplets: nDroplets, tiny: nTinyDroplets });
+        } else if (activeMode === 'mania') {
+            objectsValue = t(locale, 'map.objects_mania', { circles: map.nCircles, holds: map.nHolds });
+        }
+    } finally {
+        if (map) try { map.free(); } catch (_) {}
     }
-
-    // Liberar memoria del mapa
-    map.free();
 
     // Obtener tags del beatmapset
     let userTags = [];

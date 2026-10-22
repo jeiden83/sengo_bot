@@ -129,8 +129,8 @@ async function run(messages, args) {
   }
 
   // Revisa si es admin O tiene el rol 'Sengo'
-  const hasAdmin = message.member.permissions.has('Administrator');
-  const hasSengoRole = message.member.roles.cache.some(role => role.name === 'Sengo');
+  const hasAdmin = message.member?.permissions?.has('Administrator');
+  const hasSengoRole = message.member?.roles?.cache?.some(role => role.name === 'Sengo');
 
   if (!hasAdmin && !hasSengoRole) {
     return t(locale, 'starboard.no_permission');

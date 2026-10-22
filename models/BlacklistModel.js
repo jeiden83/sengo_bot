@@ -44,6 +44,9 @@ async function getUserBlacklistRecord(discordId) {
 
         if (error) throw error;
 
+        if (blacklistCache.size >= 2000) {
+            blacklistCache.delete(blacklistCache.keys().next().value);
+        }
         blacklistCache.set(discordId, { value: data, timestamp: now });
         return data;
     } catch (err) {

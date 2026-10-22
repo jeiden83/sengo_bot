@@ -35,16 +35,27 @@ class Logger {
         return `${year}-${month}-${day}`;
     }
 
-    // Escribe el log de forma persistente en local (sin caracteres ANSI de color)
+    // Escribe el log de forma persistente en local (sin caracteres ANSI de color) usando un WriteStream diario
     static writeToLogFile(rawText) {
         try {
-            const logsDir = path.join(process.cwd(), 'db/local/logs');
-            if (!fs.existsSync(logsDir)) {
-                fs.mkdirSync(logsDir, { recursive: true });
+            const today = Logger.getLocalDateString();
+            if (Logger.currentLogDate !== today || !Logger.logStream) {
+                if (Logger.logStream) {
+                    try { Logger.logStream.end(); } catch (_) {}
+                }
+                const logsDir = path.join(process.cwd(), 'db/local/logs');
+                if (!fs.existsSync(logsDir)) {
+                    fs.mkdirSync(logsDir, { recursive: true });
+                }
+                const logFile = path.join(logsDir, `${today}.log`);
+                Logger.logStream = fs.createWriteStream(logFile, { flags: 'a', encoding: 'utf8' });
+                Logger.logStream.on('error', (err) => {
+                    console.error("Error en stream de log:", err.message);
+                });
+                Logger.currentLogDate = today;
             }
-            const logFile = path.join(logsDir, `${Logger.getLocalDateString()}.log`);
             const timestamp = Logger.getTimestamp();
-            fs.appendFileSync(logFile, `[${timestamp}] ${rawText}\n`, 'utf8');
+            Logger.logStream.write(`[${timestamp}] ${rawText}\n`);
         } catch (error) {
             console.error("Error escribiendo en el archivo de log:", error);
         }

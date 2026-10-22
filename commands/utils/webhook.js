@@ -7,21 +7,95 @@ const axios = require('axios');
 const Logger = require('../../utils/logger.js');
 const { EmbedBuilder, ActivityType } = require('discord.js');
 const url = require('url');
-const { getRedirectUri, getAuthUrl, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
+const { getRedirectUri, getAuthUrl, verifyAuthState, exchangeCode, fetchOsuMe } = require('../../utils/osuAuth.js');
 const { getOsuUser, getUserTopScores } = require('../utils/osu.js');
 const OsuUserModel = require('../../models/OsuUserModel.js');
 const OsuScoreModel = require('../../models/OsuScoreModel.js');
 const { osuApiQueue } = require('../../utils/OsuApiQueue.js');
 const { getWebhookChannels } = require('../../db/database.js');
 
+// Caché en memoria para plantillas estáticas de Sengo Card / Mapper Studio
+const TEMPLATE_CACHE = new Map();
+function getCachedStaticFile(relativePath, mimeType) {
+    let cached = TEMPLATE_CACHE.get(relativePath);
+    if (!cached) {
+        const fullPath = path.join(process.cwd(), relativePath);
+        if (fs.existsSync(fullPath)) {
+            cached = fs.readFileSync(fullPath);
+            TEMPLATE_CACHE.set(relativePath, cached);
+        }
+    }
+    return cached;
+}
+
 async function fetchPinnedScore(userId, topScores, mode = 'osu') {
     return OsuScoreModel.fetchPinnedScore(userId, topScores, mode, 'bancho');
+}
+
+const crypto = require('crypto');
+
+function escapeHtml(str) {
+    return String(str ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function isAuthorizedAdminRequest(req, parsedUrl, config) {
+    const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
+    if (!expectedToken || typeof expectedToken !== 'string' || !expectedToken.trim()) {
+        return false;
+    }
+    const providedToken = req.headers['authorization'] || parsedUrl?.query?.token;
+    if (!providedToken || typeof providedToken !== 'string') {
+        return false;
+    }
+    const a = Buffer.from(providedToken);
+    const b = Buffer.from(expectedToken);
+    return a.length === b.length && crypto.timingSafeEqual(a, b);
+}
+
+function readRequestBodyWithLimit(req, maxBytes = 2 * 1024 * 1024) {
+    return new Promise((resolve, reject) => {
+        const chunks = [];
+        let totalBytes = 0;
+        let aborted = false;
+
+        req.on('data', (chunk) => {
+            if (aborted) return;
+            totalBytes += chunk.length;
+            if (totalBytes > maxBytes) {
+                aborted = true;
+                const err = new Error('Payload Too Large');
+                err.statusCode = 413;
+                reject(err);
+                req.destroy();
+                return;
+            }
+            chunks.push(chunk);
+        });
+
+        req.on('end', () => {
+            if (!aborted) {
+                resolve(Buffer.concat(chunks).toString('utf8'));
+            }
+        });
+
+        req.on('error', (err) => {
+            if (!aborted) reject(err);
+        });
+    });
 }
 
 /**
  * Intenta obtener estadísticas del push usando la API pública de GitHub.
  */
 async function fetchGithubStats(repoName, before, after) {
+    if (!repoName || !/^[a-zA-Z0-9._-]+\/[a-zA-Z0-9._-]+$/.test(repoName)) {
+        return null;
+    }
     const headers = { 'User-Agent': 'Sengo-Discord-Webhook' };
     if (process.env.GITHUB_TOKEN) {
         headers['Authorization'] = `token ${process.env.GITHUB_TOKEN}`;
@@ -205,17 +279,9 @@ function initWebhookServer(client, dbRes, config) {
 
     if (useSupabase && !ngrokProcess && !isRender && startNgrok) {
         const ngrokCmd = getNgrokCommand();
+        const ngrokToken = process.env.NGROK_AUTHTOKEN;
 
-        // Encapsulamos la ruta entre comillas dobles si contiene espacios o caracteres especiales en Windows
-        const configCmd = `"${ngrokCmd}" config add-authtoken 3DufeqkRJ6frEzAPvMrqpyvC6bL_AbtCvTxdocksrGoc48LJ`;
-
-        exec(configCmd, (err, stdout, stderr) => {
-            if (err) {
-                Logger.system(`Error configurando token de ngrok: ${err.message}`);
-                Logger.system("⚠️ Sengo no pudo ejecutar ngrok. Asegúrate de copiar 'ngrok.exe' directamente a la carpeta raíz del bot o añadirlo a las variables de entorno (PATH) de tu sistema.");
-                return;
-            }
-            
+        const spawnNgrok = () => {
             ngrokProcess = spawn(ngrokCmd, ['http', '80', '--domain', 'stoppable-passcode-riot.ngrok-free.dev'], {
                 shell: true
             });
@@ -237,7 +303,20 @@ function initWebhookServer(client, dbRes, config) {
             });
 
             Logger.system("Túnel de ngrok iniciado en: https://stoppable-passcode-riot.ngrok-free.dev/");
-        });
+        };
+
+        if (ngrokToken) {
+            const configCmd = `"${ngrokCmd}" config add-authtoken ${ngrokToken}`;
+            exec(configCmd, (err) => {
+                if (err) {
+                    Logger.system(`Error configurando token de ngrok: ${err.message}`);
+                    return;
+                }
+                spawnNgrok();
+            });
+        } else {
+            spawnNgrok();
+        }
     }
 }
 
@@ -356,14 +435,15 @@ function startServer(client, dbRes, port, config) {
 
         // Ruta GET /oauth o /link
         if (req.method === 'GET' && (pathname === '/oauth' || pathname === '/link')) {
-            const discordId = parsedUrl.query.state || parsedUrl.query.discord_id;
+            const rawState = parsedUrl.query.state;
+            const discordId = verifyAuthState(rawState);
             if (!discordId) {
-                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end('<h1>Error 400: Discord ID faltante</h1><p>Por favor inicia el proceso desde Discord usando s.link</p>');
+                res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<h1>Error 403: Enlace inválido o expirado</h1><p>Por favor inicia el proceso desde Discord usando <code>s.link</code>.</p>');
                 return;
             }
             const redirectUri = getRedirectUri(req);
-            const authUrl = getAuthUrl(discordId, redirectUri);
+            const authUrl = getAuthUrl(rawState, redirectUri);
             
             res.writeHead(302, { 'Location': authUrl });
             res.end();
@@ -373,11 +453,12 @@ function startServer(client, dbRes, port, config) {
         // Ruta GET /oauth/callback
         if (req.method === 'GET' && pathname === '/oauth/callback') {
             const code = parsedUrl.query.code;
-            const discordId = parsedUrl.query.state;
+            const rawState = parsedUrl.query.state;
+            const discordId = verifyAuthState(rawState);
 
             if (!code || !discordId) {
-                res.writeHead(400, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end('<h1>Error 400: Parámetros inválidos de OAuth</h1>');
+                res.writeHead(403, { 'Content-Type': 'text/html; charset=utf-8' });
+                res.end('<h1>Error 403: Estado de OAuth inválido o expirado</h1><p>Por favor genera un nuevo enlace en Discord usando <code>s.link</code>.</p>');
                 return;
             }
 
@@ -389,6 +470,11 @@ function startServer(client, dbRes, port, config) {
                     const dbResult = await OsuUserModel.saveOAuthToken(discordId, osuUser, tokenData);
 
                     Logger.system(`[OAuth] Vinculación exitosa por OAuth para Discord ID: ${discordId} -> osu!: ${osuUser.username} (${osuUser.id})`);
+
+                    const safeUsername = escapeHtml(osuUser.username);
+                    const safeAvatarUrl = escapeHtml(osuUser.avatar_url);
+                    const safeCountryName = escapeHtml(osuUser.country?.name || '');
+                    const rawCountryCode = /^[a-zA-Z]{2}$/.test(osuUser.country_code || '') ? osuUser.country_code : '';
 
                     // Renderizar página web premium
                     res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -591,11 +677,11 @@ function startServer(client, dbRes, port, config) {
     <div class="container">
         <div class="card">
             <div class="avatar-container">
-                <img class="avatar" src="${osuUser.avatar_url}" alt="${osuUser.username}">
+                <img class="avatar" src="${safeAvatarUrl}" alt="${safeUsername}">
                 ${osuUser.is_supporter ? '<div class="badge-supporter">💖</div>' : ''}
             </div>
             <h1>¡Vinculación Exitosa!</h1>
-            <div class="username">${osuUser.username}</div>
+            <div class="username">${safeUsername}</div>
             
             <div class="status-box">
                 <div class="status-row">
@@ -604,9 +690,9 @@ function startServer(client, dbRes, port, config) {
                 </div>
                 <div class="status-row">
                     <span class="status-label">País</span>
-                    <span class="status-value"${osuUser.country?.name ? ` title="${osuUser.country.name}"` : ''}>
-                        ${osuUser.country_code ? `<img class="flag-icon" src="https://osu.ppy.sh/images/flags/${osuUser.country_code.toUpperCase()}.png" alt="${osuUser.country_code}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src='https://flagcdn.com/w40/${osuUser.country_code.toLowerCase()}.png';">` : ''}
-                        <span>${osuUser.country_code || 'XX'}</span>
+                    <span class="status-value"${safeCountryName ? ` title="${safeCountryName}"` : ''}>
+                        ${rawCountryCode ? `<img class="flag-icon" src="https://osu.ppy.sh/images/flags/${rawCountryCode.toUpperCase()}.png" alt="${rawCountryCode}" referrerpolicy="no-referrer" onerror="this.onerror=null; this.src='https://flagcdn.com/w40/${rawCountryCode.toLowerCase()}.png';">` : ''}
+                        <span>${rawCountryCode || 'XX'}</span>
                     </span>
                 </div>
                 <div class="status-row">
@@ -633,13 +719,18 @@ function startServer(client, dbRes, port, config) {
                     console.error("Error en OAuth callback:", err);
                     Logger.system(`[OAuth] Fallo en la vinculación para Discord ID: ${discordId} -> Error: ${err.message}`);
                     res.writeHead(500, { 'Content-Type': 'text/html; charset=utf-8' });
-                    res.end(`<h1>Error 500: Fallo en la vinculación</h1><p>${err.message}</p>`);
+                    res.end(`<h1>Error 500: Fallo en la vinculación</h1><p>${escapeHtml(err.message)}</p>`);
                 });
             return;
         }
 
         // Endpoint de diagnóstico para verificar conectividad con Discord desde dentro de Render
-        if (req.method === 'GET' && req.url === '/debug-discord') {
+        if (req.method === 'GET' && pathname === '/debug-discord') {
+            if (!isAuthorizedAdminRequest(req, parsedUrl, config)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
             const token = process.env.DISCORD_TOKEN || (config && config.TOKEN);
             const dnsPromises = require('dns').promises;
             const https = require('https');
@@ -680,7 +771,7 @@ function startServer(client, dbRes, port, config) {
                     }, null, 2));
                 } catch (err) {
                     res.writeHead(500, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: err.message, stack: err.stack }));
+                    res.end(JSON.stringify({ error: err.message }));
                 }
             })();
             return;
@@ -688,9 +779,7 @@ function startServer(client, dbRes, port, config) {
 
         // Endpoint seguro para consultar las últimas líneas del archivo de logs de hoy en Render
         if (req.method === 'GET' && req.url.startsWith('/render-logs')) {
-            const token = req.headers['authorization'] || new URL(req.url, 'http://localhost').searchParams.get('token');
-            const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
-            if (token === expectedToken) {
+            if (isAuthorizedAdminRequest(req, parsedUrl, config)) {
                 const logsDir = path.join(process.cwd(), 'db/local/logs');
                 const logFile = path.join(logsDir, `${Logger.getLocalDateString()}.log`);
                 if (fs.existsSync(logFile)) {
@@ -738,9 +827,7 @@ function startServer(client, dbRes, port, config) {
 
         // Soporte para POST /shutdown (apaga la instancia vieja de forma segura antes de que la nueva inicie sesión)
         if (req.method === 'POST' && req.url === '/shutdown') {
-            const token = req.headers['authorization'];
-            const expectedToken = process.env.SHUTDOWN_TOKEN || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
-            if (token === expectedToken) {
+            if (isAuthorizedAdminRequest(req, parsedUrl, config)) {
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({ success: true, message: 'Discord client disconnected and shutting down' }));
                 Logger.system("Petición remota de apagado validada. Desconectando cliente de Discord y apagando instancia anterior...");
@@ -836,39 +923,37 @@ function startServer(client, dbRes, port, config) {
         }
 
         if (req.method === 'POST' && pathname === '/api/worker/submit') {
-            let body = '';
-            req.on('data', chunk => { body += chunk.toString('utf8'); });
-            req.on('end', async () => {
-                try {
-                    const cleanBody = body.replace(/^\uFEFF/, '');
-                    const data = JSON.parse(cleanBody);
-                    const result = await PopulationService.submitBatch(data.key, data.country, data.scores);
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify(result));
-                } catch (err) {
-                    console.error("Error al procesar payload de worker submit:", err.message);
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Payload inválido: ' + err.message }));
-                }
-            });
+            try {
+                const body = await readRequestBodyWithLimit(req, 2 * 1024 * 1024);
+                const cleanBody = body.replace(/^\uFEFF/, '');
+                const data = JSON.parse(cleanBody);
+                const result = await PopulationService.submitBatch(data.key, data.country, data.scores);
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify(result));
+            } catch (err) {
+                console.error("Error al procesar payload de worker submit:", err.message);
+                const statusCode = err.message === 'Payload Too Large' ? 413 : 400;
+                res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Payload inválido: ' + err.message }));
+            }
             return;
         }
 
         // --- ENDPOINTS PARA SENGO CARD STUDIO (EDITOR WEB) ---
         if (req.method === 'GET' && (pathname === '/card' || pathname === '/editor' || pathname === '/card/editor')) {
-            const editorPath = path.join(process.cwd(), 'views/web/yo_card_editor.html');
-            if (fs.existsSync(editorPath)) {
+            const editorBuffer = getCachedStaticFile('views/web/yo_card_editor.html');
+            if (editorBuffer) {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(fs.readFileSync(editorPath));
+                res.end(editorBuffer);
                 return;
             }
         }
 
         if (req.method === 'GET' && (pathname === '/api/card/default-template' || pathname === '/api/card/template')) {
-            const tplPath = path.join(process.cwd(), 'views/templates/yo_card_default.json');
-            if (fs.existsSync(tplPath)) {
+            const tplBuffer = getCachedStaticFile('views/templates/yo_card_default.json');
+            if (tplBuffer) {
                 res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
-                res.end(fs.readFileSync(tplPath));
+                res.end(tplBuffer);
                 return;
             }
         }
@@ -881,7 +966,29 @@ function startServer(client, dbRes, port, config) {
                 return;
             }
             try {
-                const imgRes = await axios.get(targetUrl, { responseType: 'arraybuffer', timeout: 8000 });
+                const parsedTarget = new URL(targetUrl);
+                if (!['http:', 'https:'].includes(parsedTarget.protocol)) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                    res.end('Protocolo no permitido');
+                    return;
+                }
+                const ALLOWED_IMAGE_HOSTS = new Set([
+                    'assets.ppy.sh', 'a.ppy.sh', 'osu.ppy.sh', 's.ppy.sh', 'b.ppy.sh', 'i.ppy.sh',
+                    'cdn.discordapp.com', 'media.discordapp.net', 'flagcdn.com',
+                    'raw.githubusercontent.com', 'avatars.githubusercontent.com'
+                ]);
+                if (!ALLOWED_IMAGE_HOSTS.has(parsedTarget.hostname.toLowerCase())) {
+                    res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                    res.end('Dominio no permitido por el proxy de imágenes');
+                    return;
+                }
+                const imgRes = await axios.get(parsedTarget.toString(), {
+                    responseType: 'arraybuffer',
+                    timeout: 8000,
+                    maxContentLength: 5 * 1024 * 1024,
+                    maxBodyLength: 5 * 1024 * 1024,
+                    maxRedirects: 2
+                });
                 res.writeHead(200, {
                     'Content-Type': imgRes.headers['content-type'] || 'image/jpeg',
                     'Access-Control-Allow-Origin': '*',
@@ -958,10 +1065,10 @@ function startServer(client, dbRes, port, config) {
 
         // --- ENDPOINTS PARA MAPPER CARD STUDIO (EDITOR WEB) ---
         if (req.method === 'GET' && (pathname === '/mapper-card' || pathname === '/editor-mapper' || pathname === '/card/mapper')) {
-            const editorPath = path.join(process.cwd(), 'views/web/mapper_card_editor.html');
-            if (fs.existsSync(editorPath)) {
+            const mapperEditorBuffer = getCachedStaticFile('views/web/mapper_card_editor.html');
+            if (mapperEditorBuffer) {
                 res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
-                res.end(fs.readFileSync(editorPath));
+                res.end(mapperEditorBuffer);
                 return;
             }
         }
@@ -1026,55 +1133,39 @@ function startServer(client, dbRes, port, config) {
             return;
         }
 
-        // Servir archivos de scratch de forma segura para desarrollo de tarjetas
-        if (req.method === 'GET' && pathname.startsWith('/scratch/')) {
-            const scratchPath = path.join(process.cwd(), pathname);
-            if (fs.existsSync(scratchPath)) {
-                const ext = path.extname(scratchPath).toLowerCase();
-                const mimeTypes = {
-                    '.png': 'image/png',
-                    '.jpg': 'image/jpeg',
-                    '.jpeg': 'image/jpeg',
-                    '.svg': 'image/svg+xml'
-                };
-                res.writeHead(200, {
-                    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-                    'Access-Control-Allow-Origin': '*'
-                });
-                res.end(fs.readFileSync(scratchPath));
-                return;
-            }
-        }
-
-        // Servir assets estáticos (ej: /assets/YO.png)
+        // Servir assets estáticos de forma segura (ej: /assets/YO.png)
         if (req.method === 'GET' && pathname.startsWith('/assets/')) {
-            const assetPath = path.join(process.cwd(), pathname);
-            if (fs.existsSync(assetPath)) {
-                const ext = path.extname(assetPath).toLowerCase();
-                const mimeTypes = {
-                    '.png': 'image/png',
-                    '.jpg': 'image/jpeg',
-                    '.jpeg': 'image/jpeg',
-                    '.svg': 'image/svg+xml',
-                    '.ttf': 'font/ttf'
-                };
-                res.writeHead(200, { 
-                    'Content-Type': mimeTypes[ext] || 'application/octet-stream',
-                    'Access-Control-Allow-Origin': '*',
-                    'Cache-Control': 'public, max-age=86400'
-                });
-                res.end(fs.readFileSync(assetPath));
+            const ASSETS_DIR = path.resolve(process.cwd(), 'assets');
+            const safePath = path.resolve(ASSETS_DIR, '.' + pathname.replace(/^\/assets/, ''));
+            if (!safePath.startsWith(ASSETS_DIR + path.sep) || !fs.existsSync(safePath) || !fs.statSync(safePath).isFile()) {
+                res.writeHead(404, { 'Content-Type': 'text/plain' });
+                res.end('Not Found');
                 return;
             }
+            const ext = path.extname(safePath).toLowerCase();
+            const mimeTypes = {
+                '.png': 'image/png',
+                '.jpg': 'image/jpeg',
+                '.jpeg': 'image/jpeg',
+                '.svg': 'image/svg+xml',
+                '.ttf': 'font/ttf'
+            };
+            res.writeHead(200, { 
+                'Content-Type': mimeTypes[ext] || 'application/octet-stream',
+                'Access-Control-Allow-Origin': '*',
+                'Cache-Control': 'public, max-age=86400'
+            });
+            res.end(fs.readFileSync(safePath));
+            return;
         }
 
         // --- ENDPOINT PARA OBTENER TOKEN / ENLACE BBCODE DE USERPAGE ---
         if (req.method === 'GET' && pathname === '/api/card/token') {
             const rawUser = parsedUrl.query.u || parsedUrl.query.user || parsedUrl.query.username;
             const masterKey = parsedUrl.query.key || parsedUrl.query.secret;
-            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET || 'sengo_card_secure_token';
+            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
 
-            if (!masterKey || masterKey !== secretKey) {
+            if (!secretKey || !masterKey || masterKey !== secretKey) {
                 res.writeHead(403, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
                 res.end(JSON.stringify({ error: 'Forbidden: Clave maestra inválida o faltante (?key=...)' }));
                 return;
@@ -1122,7 +1213,12 @@ function startServer(client, dbRes, port, config) {
 
             // Validación de protección por token / HMAC
             const crypto = require('crypto');
-            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET || 'sengo_card_secure_token';
+            const secretKey = process.env.CARD_API_KEY || (config && config.OSU_CLIENT_SECRET) || process.env.OSU_CLIENT_SECRET;
+            if (!secretKey) {
+                res.writeHead(500, { 'Content-Type': 'application/json; charset=utf-8', 'Access-Control-Allow-Origin': '*' });
+                res.end(JSON.stringify({ error: 'Servidor sin clave secreta configurada para generar tarjetas.' }));
+                return;
+            }
             const expectedUserToken = crypto.createHmac('sha256', secretKey).update(username.toLowerCase()).digest('hex').slice(0, 16);
 
             const isAuthorized = token && (token === secretKey || token === expectedUserToken);
@@ -1186,27 +1282,34 @@ function startServer(client, dbRes, port, config) {
             return;
         }
         if (req.method === 'POST' && (pathname === '/github' || pathname === '/webhook' || pathname === '/')) {
-            let body = '';
-            req.on('data', chunk => {
-                body += chunk.toString();
-            });
-            req.on('end', async () => {
-                try {
-                    const payload = JSON.parse(body);
-                    const event = req.headers['x-github-event'];
-
-                    if (event === 'push') {
-                        await handlePushEvent(client, dbRes, payload);
+            try {
+                const body = await readRequestBodyWithLimit(req, 2 * 1024 * 1024);
+                const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+                if (webhookSecret) {
+                    const crypto = require('crypto');
+                    const signature = req.headers['x-hub-signature-256'];
+                    const expectedSig = 'sha256=' + crypto.createHmac('sha256', webhookSecret).update(body).digest('hex');
+                    if (!signature || signature.length !== expectedSig.length || !crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSig))) {
+                        res.writeHead(401, { 'Content-Type': 'application/json' });
+                        res.end(JSON.stringify({ error: 'Invalid GitHub webhook signature' }));
+                        return;
                     }
-
-                    res.writeHead(200, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ success: true }));
-                } catch (err) {
-                    console.error("Error procesando el webhook de GitHub:", err);
-                    res.writeHead(400, { 'Content-Type': 'application/json' });
-                    res.end(JSON.stringify({ error: 'Invalid payload' }));
                 }
-            });
+                const payload = JSON.parse(body);
+                const event = req.headers['x-github-event'];
+
+                if (event === 'push') {
+                    await handlePushEvent(client, dbRes, payload);
+                }
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ success: true }));
+            } catch (err) {
+                console.error("Error procesando el webhook de GitHub:", err);
+                const statusCode = err.message === 'Payload Too Large' ? 413 : 400;
+                res.writeHead(statusCode, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Invalid payload' }));
+            }
         } else {
             res.writeHead(404, { 'Content-Type': 'text/plain' });
             res.end('Not Found');

@@ -14,6 +14,9 @@ const { getJevCommandCriteria, executeCommandFlags, ALIAS_MAP } = require('./com
 const TYPESAFE_API_ENDPOINT = "https://api.typesafe.ai/v1/systemone";
 const TIMEOUT_MS = 3500;
 const MIN_CONFIDENCE_THRESHOLD = 0.50;
+const MAX_INPUT_LENGTH = 400;
+const USER_COOLDOWN_MS = 2500;
+const userCooldowns = new Map();
 
 /**
  * Define el esquema de preguntas SystemOne para clasificar intenciones de osu! y Sengo
@@ -753,15 +756,30 @@ function translateJevToSengoCommand(jevAnswers, entities) {
 /**
  * Consulta la API de TypeSafe AI (Jev) para interpretar el texto en lenguaje natural
  * @param {string} userInput - Texto emitido por el usuario
+ * @param {string} [userId] - ID opcional de Discord para aplicar rate limit de usuario
  * @returns {Promise<{command: string, args: string[], fullCommandString: string, confidence: number}|null>}
  */
-async function parseNaturalLanguage(userInput) {
+async function parseNaturalLanguage(userInput, userId = null) {
     const apiKey = process.env.TYPESAFE_API_KEY;
     if (!apiKey) {
         return null;
     }
 
-    const entities = extractEntities(userInput);
+    if (userId) {
+        const now = Date.now();
+        const lastCall = userCooldowns.get(userId) || 0;
+        if (now - lastCall < USER_COOLDOWN_MS) {
+            return null;
+        }
+        userCooldowns.set(userId, now);
+        if (userCooldowns.size > 2000) {
+            const firstKey = userCooldowns.keys().next().value;
+            userCooldowns.delete(firstKey);
+        }
+    }
+
+    const safeInput = String(userInput || '').slice(0, MAX_INPUT_LENGTH);
+    const entities = extractEntities(safeInput);
     if (!entities.cleanText || entities.cleanText.length < 3) {
         return null;
     }

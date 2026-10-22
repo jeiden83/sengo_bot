@@ -22,11 +22,17 @@ async function run(messages, args) {
     }
 
     if (reply) {
-        reply.reply(textToSay);
+        await reply.reply({
+            content: textToSay,
+            allowedMentions: { parse: [] }
+        });
         return;
     }
 
-    return textToSay;
+    return {
+        content: textToSay,
+        allowedMentions: { parse: [] }
+    };
 }
 
 run.alias = {

@@ -103,6 +103,7 @@ async function run(messages, args) {
         engineMap = await BeatmapModel.getBeatmap_osu(beatmapMetadata.beatmapset_id, beatmapId, beatmapMetadata);
         osuFilePath = await BeatmapModel.downloadBeatmapOsuFile(beatmapMetadata.beatmapset_id, beatmapId, beatmapMetadata);
     } catch (err) {
+        if (engineMap) try { engineMap.free(); } catch (_) {}
         console.error('[analizar.js] Error obteniendo .osu:', err);
         return t(locale, 'analyze.err_osu_file_failed');
     }
@@ -111,6 +112,7 @@ async function run(messages, args) {
     try {
         osuContent = fs.readFileSync(osuFilePath, 'utf8');
     } catch (err) {
+        if (engineMap) try { engineMap.free(); } catch (_) {}
         console.error('[analizar.js] Error leyendo archivo local .osu:', err);
         return t(locale, 'analyze.err_osu_file_failed');
     }
@@ -152,23 +154,30 @@ async function run(messages, args) {
         };
     } catch (err) {
         console.error('[analizar.js] Error calculando PP y strains:', err);
+    } finally {
+        if (engineMap) try { engineMap.free(); } catch (_) {}
     }
 
     // 8. Renderizar Gráfica de Análisis
-    const chartBuffer = renderAnalyzeChart({
-        title: mapData.title || beatmapMetadata.beatmapset?.title,
-        artist: mapData.artist || beatmapMetadata.beatmapset?.artist,
-        version: mapData.version || beatmapMetadata.version,
-        player: replay.playerName,
-        modsStr: replay.modsStr,
-        durationMs: analysis.totalDurationMs,
-        misses: analysis.misses,
-        topSections: analysis.topSections,
-        comboPeak: replay.maxCombo,
-        firstChokeTime: analysis.firstChoke,
-        strains,
-        totalMissCount: replay.countMiss
-    });
+    let chartBuffer;
+    try {
+        chartBuffer = renderAnalyzeChart({
+            title: mapData.title || beatmapMetadata.beatmapset?.title,
+            artist: mapData.artist || beatmapMetadata.beatmapset?.artist,
+            version: mapData.version || beatmapMetadata.version,
+            player: replay.playerName,
+            modsStr: replay.modsStr,
+            durationMs: analysis.totalDurationMs,
+            misses: analysis.misses,
+            topSections: analysis.topSections,
+            comboPeak: replay.maxCombo,
+            firstChokeTime: analysis.firstChoke,
+            strains,
+            totalMissCount: replay.countMiss
+        });
+    } finally {
+        if (strains) try { strains.free(); } catch (_) {}
+    }
 
     const attachment = new AttachmentBuilder(chartBuffer, { name: 'replay_analysis.png' });
 

@@ -1,5 +1,67 @@
+const crypto = require('crypto');
 const fetch = globalThis.fetch;
 const CONFIG = require('../config.js');
+
+const STATE_TTL_MS = 15 * 60 * 1000; // 15 minutos
+
+function getStateSecret() {
+    return process.env.OSU_CLIENT_SECRET || CONFIG.OSU_CLIENT_SECRET || process.env.DISCORD_TOKEN || CONFIG.TOKEN;
+}
+
+/**
+ * Genera un parámetro state firmado con HMAC-SHA256 para prevenir Login CSRF.
+ */
+function generateAuthState(discordId) {
+    const cleanId = String(discordId || '').trim();
+    const secret = getStateSecret();
+    if (!secret) {
+        throw new Error('No hay secreto configurado para firmar el estado OAuth.');
+    }
+    const timestamp = Date.now();
+    const hmac = crypto
+        .createHmac('sha256', secret)
+        .update(`${cleanId}:${timestamp}`)
+        .digest('hex')
+        .slice(0, 16);
+    return `${cleanId}_${timestamp}_${hmac}`;
+}
+
+/**
+ * Verifica un parámetro state firmado y devuelve el discordId si es válido y no ha expirado.
+ */
+function verifyAuthState(state) {
+    if (!state || typeof state !== 'string') return null;
+    const parts = state.split('_');
+    if (parts.length !== 3) return null;
+
+    const [discordId, timestampStr, hmac] = parts;
+    if (!/^\d+$/.test(discordId) || !/^\d+$/.test(timestampStr) || !/^[a-f0-9]{16}$/i.test(hmac)) {
+        return null;
+    }
+
+    const timestamp = Number(timestampStr);
+    const now = Date.now();
+    if (isNaN(timestamp) || now - timestamp > STATE_TTL_MS || timestamp - now > 60000) {
+        return null;
+    }
+
+    const secret = getStateSecret();
+    if (!secret) return null;
+
+    const expectedHmac = crypto
+        .createHmac('sha256', secret)
+        .update(`${discordId}:${timestampStr}`)
+        .digest('hex')
+        .slice(0, 16);
+
+    const a = Buffer.from(hmac.toLowerCase(), 'utf8');
+    const b = Buffer.from(expectedHmac.toLowerCase(), 'utf8');
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+        return null;
+    }
+
+    return discordId;
+}
 
 /**
  * Obtiene la URL de redirección (Callback) de forma dinámica.
@@ -21,7 +83,8 @@ function getRedirectUri(req) {
  */
 function getAuthUrl(discordId, redirectUri) {
     const clientId = CONFIG.OSU_CLIENT_ID;
-    return `https://osu.ppy.sh/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify+public+friends.read&state=${discordId}`;
+    const signedState = verifyAuthState(discordId) ? discordId : generateAuthState(discordId);
+    return `https://osu.ppy.sh/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=identify+public+friends.read&state=${encodeURIComponent(signedState)}`;
 }
 
 /**
@@ -105,6 +168,8 @@ async function fetchOsuMe(accessToken) {
 }
 
 module.exports = {
+    generateAuthState,
+    verifyAuthState,
     getRedirectUri,
     getAuthUrl,
     exchangeCode,

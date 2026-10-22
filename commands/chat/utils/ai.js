@@ -1,6 +1,6 @@
 const { t } = require("../../../utils/i18n.js");
 
-async function run(messages, args) {
+async function run(messages, args, initialized_chat_commands) {
     const { message, res, reply, logger } = messages;
     const locale = message.locale || 'es';
 
@@ -12,14 +12,14 @@ async function run(messages, args) {
     const { parseNaturalLanguage } = require("../../../services/typeSafeRouter.js");
 
     const prompt = cleanArgs.join(' ');
-    const parsed = await parseNaturalLanguage(prompt);
+    const parsed = await parseNaturalLanguage(prompt, message.author?.id);
 
     if (!parsed || !parsed.command) {
         return t(locale, 'ai.err_not_understood', { prompt });
     }
 
     const { chatCommand, loadCommands } = require("../../handler.js");
-    const chat_commands = messages.chat_commands || await loadCommands();
+    const chat_commands = initialized_chat_commands || messages.chat_commands || await loadCommands();
 
     return await chatCommand(chat_commands, {
         command: parsed.command,

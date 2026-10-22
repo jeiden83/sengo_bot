@@ -1190,6 +1190,24 @@ function enrichBeatmapsetMetadata(targetSet = {}, sourceSet = {}) {
     return targetSet;
 }
 
+let cachedApiExtendedToken = null;
+let tokenReadTimestamp = 0;
+
+async function getApiExtendedToken() {
+    const now = Date.now();
+    if (cachedApiExtendedToken && (now - tokenReadTimestamp) < 30000) {
+        return cachedApiExtendedToken;
+    }
+    try {
+        const tokenData = JSON.parse(await fs.promises.readFile('./osu_api_extended_token.json', 'utf8'));
+        cachedApiExtendedToken = tokenData?.access_token || null;
+        tokenReadTimestamp = now;
+    } catch (_) {
+        cachedApiExtendedToken = null;
+    }
+    return cachedApiExtendedToken;
+}
+
 /**
  * Busca beatmapsets en la API de osu! v2 a través de la cola centralizada.
  * @param {string} query
@@ -1198,11 +1216,7 @@ function enrichBeatmapsetMetadata(targetSet = {}, sourceSet = {}) {
  */
 async function searchBeatmapsets(query, options = {}) {
     await OsuUserModel.NewloadToken();
-    let token = null;
-    try {
-        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-        token = tokenData.access_token;
-    } catch {}
+    const token = await getApiExtendedToken();
     if (!token) return [];
 
     const params = {
@@ -1229,11 +1243,7 @@ async function searchBeatmapsets(query, options = {}) {
  */
 async function getDailyChallenge() {
     await OsuUserModel.NewloadToken();
-    let token = null;
-    try {
-        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-        token = tokenData.access_token;
-    } catch {}
+    const token = await getApiExtendedToken();
     if (!token) return null;
 
     const rooms = await osuApiQueue.add(async () => {
@@ -1266,11 +1276,7 @@ async function getDailyChallenge() {
 async function getDailyChallengeLeaderboard(roomId) {
     if (!roomId) return [];
     await OsuUserModel.NewloadToken();
-    let token = null;
-    try {
-        const tokenData = JSON.parse(fs.readFileSync('./osu_api_extended_token.json', 'utf8'));
-        token = tokenData.access_token;
-    } catch {}
+    const token = await getApiExtendedToken();
     if (!token) return [];
 
     return osuApiQueue.add(async () => {

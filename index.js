@@ -80,6 +80,10 @@ async function main(reload) {
                 GatewayIntentBits.GuildMessageReactions
             ],
             partials: [Partials.Channel, Partials.Message, Partials.Reaction],
+            allowedMentions: {
+                parse: ['users'],
+                repliedUser: true
+            },
             rest: {
                 timeout: 15000,
                 retries: 3

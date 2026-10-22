@@ -362,8 +362,8 @@ class PopulationService {
             } catch (eDel) {}
         }
 
-        // Crear clave única
-        const key = `sengo_wk_${crypto.randomBytes(4).toString('hex')}`;
+        // Crear clave única de alta entropía
+        const key = `sengo_wk_${crypto.randomBytes(16).toString('hex')}`;
         const nowIso = new Date().toISOString();
 
         activeWorkerKeys.set(key, {
@@ -472,6 +472,9 @@ class PopulationService {
 
         if (activeWorkerKeys.has(key)) {
             const worker = activeWorkerKeys.get(key);
+            if (worker.countryCode && worker.countryCode.toUpperCase() !== country) {
+                return { error: 'FORBIDDEN_COUNTRY', message: `Esta clave pertenece únicamente al país ${worker.countryCode}.` };
+            }
             worker.lastActiveAt = Date.now();
             worker.batchesRequested = (worker.batchesRequested || 0) + 1;
 
@@ -619,6 +622,8 @@ class PopulationService {
 
         if (pendingMaps.length === 0) {
             await OsuUserModel.setCountryScraped(country);
+            scrapedBeatmapSets.delete(countryKey);
+            assignedInFlightBeatmaps.delete(countryKey);
             return { status: 'completed', message: 'Poblamiento finalizado al 100% para este país.' };
         }
 
@@ -638,6 +643,11 @@ class PopulationService {
         // 1. Validar autenticación por Worker Key previa a cualquier procesamiento
         if (!key || !(await this.isWorkerKeyValid(key))) {
             return { error: 'UNAUTHORIZED', message: 'Clave de trabajador inválida o expirada.', saved: 0 };
+        }
+
+        const workerRecord = activeWorkerKeys.get(key);
+        if (workerRecord && workerRecord.countryCode && workerRecord.countryCode.toUpperCase() !== country) {
+            return { error: 'FORBIDDEN_COUNTRY', message: `Esta clave pertenece únicamente al país ${workerRecord.countryCode}.`, saved: 0 };
         }
 
         // 2. Validar estructura del arreglo de scores
@@ -881,7 +891,9 @@ class PopulationService {
             session.activeWorkers.clear();
         }
 
-        // Invalidar Worker Keys de este país
+        // Invalidar Worker Keys de este país y limpiar cachés en memoria
+        scrapedBeatmapSets.delete(country);
+        assignedInFlightBeatmaps.delete(country);
         for (const [k, v] of activeWorkerKeys.entries()) {
             if (v.countryCode === country) {
                 activeWorkerKeys.delete(k);
@@ -1070,6 +1082,10 @@ class PopulationService {
         }
 
         const country = countryCode ? countryCode.toUpperCase() : 'MX';
+        const worker = activeWorkerKeys.get(key);
+        if (worker && worker.countryCode && worker.countryCode.toUpperCase() !== country) {
+            return { error: 'FORBIDDEN_COUNTRY', scores: [] };
+        }
         let supporterData = await OsuUserModel.getSupporterTokenForCountry(country);
         if (!supporterData || !supporterData.token) {
             return { error: 'Sin supporter token disponible.', scores: [] };
@@ -1135,10 +1151,13 @@ class PopulationService {
     static getPowerShellScript(defaultKey = '', defaultCountry = '', reqHost = '') {
         const filePath = path.join(__dirname, '../assets/worker.ps1');
         let content = fs.readFileSync(filePath, 'utf8');
-        const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
+        const safeKey = String(defaultKey || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeCountry = String(defaultCountry || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+        const safeHost = String(reqHost || '').replace(/[^a-zA-Z0-9.:-]/g, '');
+        const serverUrl = process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
 
-        content = content.replace(/__WORKER_KEY__/g, defaultKey || '');
-        content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry || '');
+        content = content.replace(/__WORKER_KEY__/g, safeKey);
+        content = content.replace(/__WORKER_COUNTRY__/g, safeCountry);
         content = content.replace(/__SERVER_URL__/g, serverUrl);
         content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
         return content;
@@ -1150,10 +1169,13 @@ class PopulationService {
     static getBashScript(defaultKey = '', defaultCountry = '', reqHost = '') {
         const filePath = path.join(__dirname, '../assets/worker.sh');
         let content = fs.readFileSync(filePath, 'utf8');
-        const serverUrl = process.env.RENDER_EXTERNAL_URL || (reqHost ? `https://${reqHost}` : 'https://sengo-bot-q981.onrender.com');
+        const safeKey = String(defaultKey || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeCountry = String(defaultCountry || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+        const safeHost = String(reqHost || '').replace(/[^a-zA-Z0-9.:-]/g, '');
+        const serverUrl = process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
 
-        content = content.replace(/__WORKER_KEY__/g, defaultKey || '');
-        content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry || '');
+        content = content.replace(/__WORKER_KEY__/g, safeKey);
+        content = content.replace(/__WORKER_COUNTRY__/g, safeCountry);
         content = content.replace(/__SERVER_URL__/g, serverUrl);
         content = content.replace(/https:\/\/sengo-bot-tc9l\.onrender\.com/g, serverUrl);
         return content;
@@ -1165,11 +1187,13 @@ class PopulationService {
     static getWebWorkerHtml(defaultKey = '', defaultCountry = '') {
         const filePath = path.join(__dirname, '../assets/worker.html');
         let content = fs.readFileSync(filePath, 'utf8');
-        if (defaultKey) {
-            content = content.replace(/__WORKER_KEY__/g, defaultKey);
+        const safeKey = String(defaultKey || '').replace(/[^a-zA-Z0-9_-]/g, '');
+        const safeCountry = String(defaultCountry || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
+        if (safeKey) {
+            content = content.replace(/__WORKER_KEY__/g, safeKey);
         }
-        if (defaultCountry) {
-            content = content.replace(/__WORKER_COUNTRY__/g, defaultCountry);
+        if (safeCountry) {
+            content = content.replace(/__WORKER_COUNTRY__/g, safeCountry);
         }
         return content;
     }

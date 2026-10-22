@@ -32,6 +32,9 @@ async function getUserLanguage(discordId) {
         if (error) throw error;
 
         const language = (data && data.language) ? data.language : null;
+        if (userLanguageCache.size >= 2000) {
+            userLanguageCache.delete(userLanguageCache.keys().next().value);
+        }
         userLanguageCache.set(discordId, { language, timestamp: now });
         return language;
     } catch (err) {

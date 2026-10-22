@@ -24,7 +24,11 @@ async function run(interaction) {
     console.log(`[${currentDate}] (${authorName}) (Slash) : /say texto: ${texto}`);
 
     try {
-        await interaction.channel.send(texto);
+        if (!interaction.channel) throw new Error("Canal no accesible");
+        await interaction.channel.send({
+            content: texto,
+            allowedMentions: { parse: [] }
+        });
         try {
             await interaction.deleteReply();
         } catch (e) {
@@ -32,7 +36,10 @@ async function run(interaction) {
         }
     } catch (err) {
         try {
-            await interaction.editReply(texto);
+            await interaction.editReply({
+                content: texto,
+                allowedMentions: { parse: [] }
+            });
         } catch (editError) {
             console.error("Error crítico de fallback en /say:", editError);
         }

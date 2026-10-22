@@ -553,9 +553,11 @@ async function run(messages, args) {
         if (recent_scores.beatmap?.id) {
             saveUserscore(recent_scores, pre_calculated, true).catch(err => console.error("❌ [RS-Save] Error al guardar score en segundo plano:", err));
         }
-        const embed = await doOsuEmbed(message, recent_scores, pre_calculated, locale, currentScoreMode);
-        if (map) map.free();
-        return embed;
+        try {
+            return await doOsuEmbed(message, recent_scores, pre_calculated, locale, currentScoreMode);
+        } finally {
+            if (map) try { map.free(); } catch (_) {}
+        }
     }
 
     async function triggerFailStrainEmbed(sentMessageOrInteraction, score, mainEmbed, components, scoreIndex) {

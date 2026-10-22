@@ -42,9 +42,9 @@ async function run(messages, args) {
     }
 
     // Verificar permisos de moderación
-    if (!message.member.permissions.has(PermissionsBitField.Flags.ManageMessages) && 
-        !message.member.permissions.has(PermissionsBitField.Flags.ManageGuild) && 
-        !message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    if (!message.member?.permissions?.has(PermissionsBitField.Flags.ManageMessages) && 
+        !message.member?.permissions?.has(PermissionsBitField.Flags.ManageGuild) && 
+        !message.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
         return t(locale, 'giveaway.no_permissions');
     }
 

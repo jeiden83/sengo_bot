@@ -334,18 +334,23 @@ async function run(messages, args) {
     const requestedModeStr = simOptions.mode || beatmapData.mode;
     const activeMode = modeNameMap[requestedModeStr] !== undefined ? modeNameMap[requestedModeStr] : engine.GameMode.Osu;
 
-    if (map.mode !== activeMode) {
-        map.convert(activeMode);
-    }
-
     const rawActiveMods = simOptions.mods || 'NM';
     const cleanActiveMods = rawActiveMods.toUpperCase().replace(/[^A-Z0-9]/g, '');
     const activeModsStr = (cleanActiveMods === '' || cleanActiveMods === 'NM') ? 'NM' : cleanActiveMods;
 
-    // Obtener DifficultyAttributes y Stars con el motor activo
-    const diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
-    const beatmapMaxCombo = diffAttrs.maxCombo || beatmapData.max_combo || 1;
-    const totalObjects = map.nObjects || (beatmapData.count_circles + beatmapData.count_sliders + beatmapData.count_spinners) || 100;
+    let diffAttrs, beatmapMaxCombo, totalObjects;
+    try {
+        if (map.mode !== activeMode) {
+            map.convert(activeMode);
+        }
+
+        // Obtener DifficultyAttributes y Stars con el motor activo
+        diffAttrs = new engine.Difficulty({ mods: activeModsStr }).calculate(map);
+        beatmapMaxCombo = diffAttrs.maxCombo || beatmapData.max_combo || 1;
+        totalObjects = map.nObjects || (beatmapData.count_circles + beatmapData.count_sliders + beatmapData.count_spinners) || 100;
+    } finally {
+        if (map) try { map.free(); } catch (_) {}
+    }
 
     const perfMax = new engine.Performance({ mods: activeModsStr }).calculate(diffAttrs);
     if (diffAttrs && typeof diffAttrs.stars === 'number') {
@@ -499,8 +504,6 @@ async function run(messages, args) {
         beatmap_max_combo: beatmapMaxCombo,
         maxAttrs: perfMax
     };
-
-    map.free();
 
     const embed = await doOsuEmbed(message, simulatedScores, preCalculated, locale);
 

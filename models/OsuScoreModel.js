@@ -2647,7 +2647,7 @@ async function triggerBackgroundOsuPreload(discordId, beatmapId, gamemode = 'osu
                 try {
                     const mapMeta = await BeatmapModel.getBeatmap(beatmapId);
                     if (mapMeta && mapMeta.beatmapset_id) {
-                        await BeatmapModel.getBeatmap_osu(mapMeta.beatmapset_id, beatmapId, mapMeta);
+                        await BeatmapModel.downloadBeatmapOsuFile(mapMeta.beatmapset_id, beatmapId, mapMeta);
                         console.log(`[BG-PRELOAD] Mapa precargado: ${beatmapId}`);
 
                         // Precargar únicamente el mapa y metadata, evitando saturar cuota con gap en cada link/comando

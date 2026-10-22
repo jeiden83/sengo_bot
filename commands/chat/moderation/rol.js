@@ -147,7 +147,7 @@ async function run(messages, args) {
     ]);
 
     // Revisemos si quien lo ejecuta tiene permisos de admin
-    if (!message.member.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    if (!message.member?.permissions?.has(PermissionsBitField.Flags.Administrator)) {
         return t(locale, 'rol.no_admin');
     }
 

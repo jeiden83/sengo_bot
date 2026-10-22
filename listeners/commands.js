@@ -39,6 +39,9 @@ function getFriendlyErrorMessage(error) {
 }
 
 const userGuildCache = new Set(); // Guarda "userId:guildId"
+let currentChatListener = null;
+let currentSlashListener = null;
+let currentComponentListener = null;
 
 async function trackUserGuild(userId, guildId, res) {
     if (!userId || !guildId || !res?.supabaseClient) return;
@@ -47,6 +50,10 @@ async function trackUserGuild(userId, guildId, res) {
     const cacheKey = `${userId}:${guildId}`;
     if (userGuildCache.has(cacheKey)) return;
 
+    if (userGuildCache.size >= 2000) {
+        const firstKey = userGuildCache.values().next().value;
+        userGuildCache.delete(firstKey);
+    }
     userGuildCache.add(cacheKey);
 
     try {
@@ -143,13 +150,7 @@ function injectLatencyToEmbeds(options, timeOrText, isDirectText = false) {
 async function chat_command_listener(chat_commands, client, config, res) {
     
     const chatMessageListener = async (message) => {
-        if (message.author.bot) {
-            // No responder ni procesar mensajes de otros bots
-            if (message.content.toLowerCase().startsWith(config.BOT_PREFIX)) {
-                await message.channel.send("No me uses con un Bot. Te lo agradezco");
-            }
-            return;
-        }
+        if (message.author.bot) return;
 
         let isNaturalLanguage = false;
         let naturalCommand = null;
@@ -189,7 +190,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
                     const cleanInput = botMentionRegex ? message.content.replace(botMentionRegex, '').trim() : message.content.trim();
 
                     if (cleanInput.length >= 3) {
-                        const parsed = await parseNaturalLanguage(cleanInput);
+                        const parsed = await parseNaturalLanguage(cleanInput, message.author.id);
                         if (parsed && parsed.command) {
                             isNaturalLanguage = true;
                             naturalCommand = parsed.command;
@@ -236,22 +237,6 @@ async function chat_command_listener(chat_commands, client, config, res) {
         } else {
             message_args = message.content.slice(config.BOT_PREFIX.length).trim().split(/ +/);
             message_command = message_args.shift().toLowerCase();
-
-            // Si es s.ai o s.ia o s.?, intentar enrutarlo directamente como lenguaje natural
-            if ((message_command === 'ai' || message_command === 'ia' || message_command === '?') && message_args.length > 0) {
-                try {
-                    const { parseNaturalLanguage } = require("../services/typeSafeRouter.js");
-                    const prompt = message_args.join(' ');
-                    const parsed = await parseNaturalLanguage(prompt);
-                    if (parsed && parsed.command) {
-                        console.log(`[TYPESAFE] Enrutado vía s.${message_command} (${(parsed.confidence * 100).toFixed(0)}%): "${prompt}" -> ${parsed.fullCommandString}`);
-                        message_command = parsed.command;
-                        message_args = parsed.args;
-                    }
-                } catch (nlpErr) {
-                    console.error("[TYPESAFE] Error al procesar s.ai:", nlpErr);
-                }
-            }
         }
 
         // Detectar si el usuario escribió una flag separada por espacio o sin el guión (ej: "- top", "top", "list", "lazer")
@@ -452,7 +437,8 @@ async function chat_command_listener(chat_commands, client, config, res) {
         }
     };
 
-    client.on("messageCreate", chatMessageListener);
+    currentChatListener = chatMessageListener;
+    client.on("messageCreate", currentChatListener);
 
     return client;
 }
@@ -460,7 +446,7 @@ async function chat_command_listener(chat_commands, client, config, res) {
 //---
 
 async function slash_command_listener(chat_commands, slash_commands, client, res) {
-    client.on('interactionCreate', async (interaction) => {
+    currentSlashListener = async (interaction) => {
         if (!interaction.isCommand() && !interaction.isContextMenuCommand?.()) return;
 
         const message_command = interaction.commandName;
@@ -659,13 +645,16 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
                 interaction: interaction
             });
         }
-    });
+    };
+    client.on('interactionCreate', currentSlashListener);
 }
 
 //---
 
 async function load_listeners(res, client, config){
-    client.removeAllListeners();
+    if (currentChatListener) client.off("messageCreate", currentChatListener);
+    if (currentSlashListener) client.off("interactionCreate", currentSlashListener);
+    if (currentComponentListener) client.off("interactionCreate", currentComponentListener);
 
     const chat_commands = await loadCommands();
     const slash_commands = await loadSlashCommands(chat_commands, config);
@@ -674,7 +663,7 @@ async function load_listeners(res, client, config){
     chat_command_listener(chat_commands, client, config, res);
 
     // Intercept component interactions (buttons, select menus) to inject the cached latency
-    client.on('interactionCreate', async (interaction) => {
+    currentComponentListener = async (interaction) => {
         if (!interaction.isMessageComponent()) return;
 
         const messageId = interaction.message.id;
@@ -692,7 +681,8 @@ async function load_listeners(res, client, config){
                 return originalEditReply(injectLatencyToEmbeds(options, cachedLatency, true));
             };
         }
-    });
+    };
+    client.on('interactionCreate', currentComponentListener);
 }
 
 module.exports = { load_listeners };

@@ -771,17 +771,20 @@ async function run(messages, args) {
         const map = await getBeatmap_osu(beatmapData.beatmapset_id || beatmapData.beatmapset?.id, beatmapData.id, beatmapData);
         if (map) {
             try {
-                const builder = new engine.BeatmapAttributesBuilder({ map, mods: activeModsStr });
-                mapAttrs = builder.build();
-            } catch (_) {}
+                try {
+                    const builder = new engine.BeatmapAttributesBuilder({ map, mods: activeModsStr });
+                    mapAttrs = builder.build();
+                } catch (_) {}
 
-            const diff = new engine.Difficulty({ mods: activeModsStr });
-            diffAttrs = diff.calculate(map);
-            perfAttrs = new engine.Performance({ mods: activeModsStr, accuracy: 100 }).calculate(diffAttrs);
-            try {
-                strains = diff.strains(map);
-            } catch (_) {}
-            map.free();
+                const diff = new engine.Difficulty({ mods: activeModsStr });
+                diffAttrs = diff.calculate(map);
+                perfAttrs = new engine.Performance({ mods: activeModsStr, accuracy: 100 }).calculate(diffAttrs);
+                try {
+                    strains = diff.strains(map);
+                } catch (_) {}
+            } finally {
+                map.free();
+            }
         }
     } catch (e) {}
 
@@ -891,6 +894,8 @@ async function run(messages, args) {
         }
     } catch (err) {
         console.error('[s.puedo] Error al generar gráfico de diagnóstico:', err);
+    } finally {
+        if (strains) try { strains.free(); } catch (_) {}
     }
 
     const embed = doOsuPuedoEmbed({
