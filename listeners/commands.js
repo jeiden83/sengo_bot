@@ -97,6 +97,11 @@ function setLatencyCache(messageId, latencyText) {
 function injectLatencyToEmbeds(options, timeOrText, isDirectText = false) {
     if (!options || typeof options !== 'object') return options;
 
+    // Prevenir DiscordjsRangeError [MessageNonceType] si options contiene un nonce nulo o inválido
+    if ('nonce' in options && (options.nonce === null || options.nonce === undefined)) {
+        delete options.nonce;
+    }
+
     let latencyText;
     if (isDirectText) {
         latencyText = timeOrText;

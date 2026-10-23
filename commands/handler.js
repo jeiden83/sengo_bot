@@ -721,11 +721,8 @@ async function slashCommand(chat_commands, slash_commands, interaction, res) {
 			}
 		}
 
-		if (interactionUsed || result === undefined) {
-			if (result !== undefined && result !== null) {
-				await interaction.editReply(result);
-			}
-			return true;
+		if (interactionUsed) {
+			return result !== undefined ? result : true;
 		}
 		return result;
 	}
