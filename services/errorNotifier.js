@@ -16,6 +16,12 @@ if (WEBHOOK_URL) {
     console.warn("[ERROR-NOTIFIER] ERROR_WEBHOOK_URL no está configurado en las variables de entorno. Las notificaciones de error están desactivadas.");
 }
 
+if (NTFY_TOPIC || process.env.NTFY_TOPIC) {
+    Logger.system(`[NOTIFIER] Notificaciones push de ntfy.sh activadas (Tema: ${NTFY_TOPIC || process.env.NTFY_TOPIC})`);
+} else {
+    console.warn("[NOTIFIER] NTFY_TOPIC no está configurado en las variables de entorno. Las alertas push a ntfy.sh están desactivadas.");
+}
+
 // Cooldown para alertas de servicios externos (15 minutos por servicio para evitar spam de notificaciones)
 const serviceAlertCooldowns = new Map();
 const ALERT_COOLDOWN_MS = 15 * 60 * 1000;
@@ -29,10 +35,14 @@ const ALERT_COOLDOWN_MS = 15 * 60 * 1000;
  * @param {string} [options.tags='warning'] Etiquetas o emojis en formato ntfy (ej: 'warning,cloud').
  */
 async function sendNtfyAlert({ title, message, priority = 'default', tags = 'warning' }) {
-    const topic = NTFY_TOPIC || config.NTFY_TOPIC;
-    if (!topic) return;
+    const topic = process.env.NTFY_TOPIC || config.NTFY_TOPIC || NTFY_TOPIC;
+    if (!topic) {
+        console.warn("[NOTIFIER] Alerta omitida: NTFY_TOPIC no está configurado en las variables de entorno.");
+        return;
+    }
 
     try {
+        Logger.system(`[NOTIFIER] Enviando alerta push a ntfy.sh/${topic}: "${title}"`);
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
@@ -46,7 +56,7 @@ async function sendNtfyAlert({ title, message, priority = 'default', tags = 'war
         const numPriority = typeof priority === 'number' ? priority : (priorityMap[priority] || 3);
         const tagsArray = Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean);
 
-        await fetch('https://ntfy.sh', {
+        const response = await fetch('https://ntfy.sh', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -60,6 +70,11 @@ async function sendNtfyAlert({ title, message, priority = 'default', tags = 'war
         });
 
         clearTimeout(timeoutId);
+        if (response.ok) {
+            Logger.system(`[NOTIFIER] Alerta push enviada exitosamente a ntfy.sh/${topic}`);
+        } else {
+            console.error(`[NOTIFIER] ntfy.sh respondió con estado: ${response.status} ${response.statusText}`);
+        }
     } catch (err) {
         console.error("[NTFY] Error al enviar notificación push:", err.message);
     }
