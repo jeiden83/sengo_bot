@@ -435,7 +435,8 @@ const GAMEMODE_DISPLAY_NAMES = {
     'mania': 'mania'
 };
 
-function getDisplayGamemode(mode) {
+function getDisplayGamemode(mode, server) {
+    if (server === 'droid' || mode === 'droid') return 'droid';
     if (!mode) return 'std';
     const m = String(mode).toLowerCase();
     return GAMEMODE_DISPLAY_NAMES[m] || (m === 'ctb' ? 'catch' : m);

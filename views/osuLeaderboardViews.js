@@ -206,7 +206,8 @@ function doOsuLbEmbed(message, scores_chunk, beatmap_metadata, startIndex = 0, t
 function doOsuLbContent(beatmap_metadata, targetGamemode, countryCode = null, friendsUsername = null, isLazerMode = false, locale = "es", serverName = null) {
     const { title } = beatmap_metadata.beatmapset;
     const { difficulty_rating, version, url } = beatmap_metadata;
-    const displayMode = getDisplayGamemode(targetGamemode);
+    const serverKey = serverName && serverName.toLowerCase().includes('droid') ? 'droid' : null;
+    const displayMode = getDisplayGamemode(targetGamemode, serverKey);
     const suffix = isLazerMode ? " (lazer)" : " (stable)";
 
     const starsFormatted = formatDecimal(difficulty_rating || 0, locale, 2);

@@ -375,7 +375,7 @@ async function doOsuListEmbed(message, parsed_args, recent_scores_chunk, startIn
         .setAuthor({
             name: t(locale, 'recent.list_author', {
                 username,
-                mode: getDisplayGamemode(parsed_args.gamemode)
+                mode: getDisplayGamemode(parsed_args.gamemode, parsed_args.server)
             }),
             url: user_url,
             iconURL: avatar_url
@@ -707,7 +707,7 @@ async function doOsuTopListEmbed(message, parsed_args, top_scores_chunk, startIn
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'top.list_embed_author', { username, mode: getDisplayGamemode(parsed_args.gamemode), suffix: authorSuffix }),
+            name: t(locale, 'top.list_embed_author', { username, mode: getDisplayGamemode(parsed_args.gamemode, parsed_args.server), suffix: authorSuffix }),
             url: user_url,
             iconURL: avatar_url
         })
@@ -936,7 +936,7 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
     const embedColor = getEmbedColor(message);
     const userId = user_scores_chunk[0]?.user?.id || parsed_args.username[0];
     const username = user_scores_chunk[0]?.user?.username || parsed_args.username[0] || 'Usuario';
-    const displayMode = getDisplayGamemode(parsed_args.gamemode);
+    const displayMode = getDisplayGamemode(parsed_args.gamemode, parsed_args.server);
     const user_url = getUserUrl(user_scores_chunk[0]?.user, userId);
     const beatmap_url = `https://osu.ppy.sh/b/${beatmap_metadata.id}`;
 
@@ -1972,7 +1972,7 @@ function doOsuProfileEmbed(message, osu_userdata, osu_mode, is_detailed = false,
 
     const embed = new EmbedBuilder()
         .setAuthor({
-            name: t(locale, 'profile.author_title', { mode: getDisplayGamemode(osu_mode), teamPrefix, username: osu_userdata.username }),
+            name: t(locale, 'profile.author_title', { mode: getDisplayGamemode(osu_mode, osu_userdata.server), teamPrefix, username: osu_userdata.username }),
             url: getUserUrl(osu_userdata),
             iconURL: icon_url
         })
@@ -2173,7 +2173,7 @@ function getOsuCompareContent(parsed_args, username, beatmap_metadata, locale = 
 
     const starsVal = customStars !== null ? customStars : difficulty_rating;
     let mapa = `[${title} [${version}] - ${formatDecimal(starsVal || 0, locale, 2) + '★'} ](${url})`;
-    const displayMode = getDisplayGamemode(parsed_args.gamemode);
+    const displayMode = getDisplayGamemode(parsed_args.gamemode, parsed_args.server);
     return t(locale, 'compare.list_embed_content', { username, mode: displayMode, mapa });
 }
 
