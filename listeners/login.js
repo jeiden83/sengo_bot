@@ -48,6 +48,27 @@ async function login(client, config) {
             Logger.system(`[Discord Warn] ${info}`);
         });
 
+        // Registrar eventos de REST para diagnosticar rate-limits o bloqueos de Cloudflare/Discord
+        if (client.rest) {
+            client.rest.on('rateLimited', (info) => {
+                const routeName = info.route || info.url || 'Ruta desconocida';
+                Logger.system(`[Discord REST RateLimit] Ruta: ${routeName} | Espera: ${info.timeToReset}ms | Global: ${info.global}`);
+                if (info.global || info.timeToReset > 10000) {
+                    try {
+                        const { notifyExternalServiceIssue } = require('../services/errorNotifier.js');
+                        notifyExternalServiceIssue(
+                            'Discord REST API',
+                            `Rate-limit impuesto por Discord/Cloudflare (${info.global ? 'Límite Global' : routeName}). Peticiones pausadas por ${Math.round(info.timeToReset / 1000)}s.`
+                        );
+                    } catch {}
+                }
+            });
+
+            client.rest.on('invalidRequestWarning', (info) => {
+                Logger.system(`[Discord REST Advertencia] Solicitudes inválidas consecutivas: ${info.count} (Tiempo restante: ${info.remainingTime}ms)`);
+            });
+        }
+
         if (process.env.DEBUG === 'true') {
             client.on(Events.Debug, (info) => {
                 // Ocultar heartbeats rutinarios de discord para evitar spam en los logs
