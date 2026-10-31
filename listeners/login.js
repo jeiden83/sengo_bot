@@ -12,16 +12,14 @@ function setBotPresence(client) {
     }
 }
 
-let listenersRegistered = false;
-
 const LOGIN_TIMEOUT_MS = 20000;
 
 async function login(client, config) {
     Logger.system("Intentando iniciar sesión en Discord...");
     
-    // Registrar listeners de estado y eventos de red del cliente Discord solo una vez
-    if (!listenersRegistered) {
-        listenersRegistered = true;
+    // Registrar listeners de estado y eventos de red por cada instancia del cliente Discord
+    if (!client._listenersRegistered) {
+        client._listenersRegistered = true;
 
         client.on(Events.Error, (err) => {
             Logger.system(`[Discord Error] ${err.message}`);
@@ -66,6 +64,23 @@ async function login(client, config) {
 
             client.rest.on('invalidRequestWarning', (info) => {
                 Logger.system(`[Discord REST Advertencia] Solicitudes inválidas consecutivas: ${info.count} (Tiempo restante: ${info.remainingTime}ms)`);
+            });
+
+            client.rest.on('restDebug', (info) => {
+                if (typeof info === 'string' && info.includes('429')) {
+                    const retryMatch = info.match(/Retry After\s*:\s*(\d+)ms/i);
+                    const urlMatch = info.match(/URL\s*:\s*([^\n\r]+)/i);
+                    const retrySec = retryMatch ? Math.round(Number(retryMatch[1]) / 1000) : null;
+                    const targetUrl = urlMatch ? urlMatch[1].trim() : 'API de Discord';
+                    Logger.system(`[Discord REST 429] Bloqueo 429 detectado en ${targetUrl}${retrySec !== null ? ` | Retry-After: ${retrySec}s` : ''}`);
+                    try {
+                        const { notifyExternalServiceIssue } = require('../services/errorNotifier.js');
+                        notifyExternalServiceIssue(
+                            'Discord / Cloudflare 429 (IP Compartida Render)',
+                            `Discord o Cloudflare aplicaron un HTTP 429 sobre la IP compartida de Render en ${targetUrl}.${retrySec !== null ? ` Tiempo de espera exigido: ${retrySec}s (~${(retrySec / 60).toFixed(1)} min).` : ''}`
+                        );
+                    } catch {}
+                }
             });
         }
 

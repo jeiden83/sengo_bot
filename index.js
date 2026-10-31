@@ -146,6 +146,8 @@ async function main(reload) {
                     client.destroy();
                 } catch {}
                 client = createDiscordClient();
+                ReworkModel.initClient(client);
+                ReworkRecalcQueue.initClient(client);
                 await load_listeners(res, client, config);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
                 delayMs = Math.min(delayMs * 2, 120000); // 15s -> 30s -> 60s -> 120s máximo
