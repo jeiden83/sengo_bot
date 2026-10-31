@@ -109,17 +109,42 @@ async function main(reload) {
     // 2. Iniciar sesión en Discord e inicializar servicios con reintento continuo y backoff progresivo
     async function startDiscordWithRetry() {
         let delayMs = 15000; // Iniciar en 15s para dar espacio a la API de Discord en caso de 429/bloqueo
+        let retryCount = 0;
+        let alertSent = false;
+
         while (true) {
             try {
                 await login(client, config);
                 const { initializeServices } = require("./services/servicesManager.js");
                 initializeServices(client, res, config, todayLogExists);
+
+                if (alertSent) {
+                    const { sendNtfyAlert } = require("./services/errorNotifier.js");
+                    sendNtfyAlert({
+                        title: "[SENGO] ✅ Conexión Restablecida con Discord",
+                        priority: "default",
+                        tags: "white_check_mark,green_heart",
+                        message: `Sengo logró iniciar sesión y conectarse con éxito a Discord tras ${retryCount} reintento(s).`
+                    }).catch(() => {});
+                }
                 break;
             } catch (err) {
+                retryCount++;
                 Logger.system(`Error al conectar con Discord: ${err.message}. Reintentando en ${Math.round(delayMs / 1000)}s...`);
+
+                // Notificar por ntfy al detectar fallo de conexión con Discord durante el arranque
+                if (!alertSent) {
+                    alertSent = true;
+                    const { notifyExternalServiceIssue } = require("./services/errorNotifier.js");
+                    notifyExternalServiceIssue(
+                        "Conexión Gateway Discord",
+                        `Error al conectar con Discord durante el arranque: ${err.message}. Sengo está reintentando la conexión automáticamente en segundo plano.`
+                    ).catch(() => {});
+                }
+
                 try {
                     client.destroy();
-                } catch (_) {}
+                } catch {}
                 client = createDiscordClient();
                 await load_listeners(res, client, config);
                 await new Promise(resolve => setTimeout(resolve, delayMs));
@@ -155,7 +180,7 @@ async function shutdownGracefully() {
             Logger.system("Servidor de webhook de GitHub cerrado.");
         }
         killNgrok();
-    } catch (e) {
+    } catch {
         // Ignorar errores al cerrar si no existiera
     }
     
