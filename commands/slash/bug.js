@@ -52,8 +52,9 @@ async function run(interaction, res) {
     }
 
     // 2. Construir el modal (formulario)
+    const modalCustomId = `bug_modal_${interaction.id}`;
     const modal = new ModalBuilder()
-        .setCustomId("bug_modal")
+        .setCustomId(modalCustomId)
         .setTitle(t(locale, 'bug.modal_title'));
 
     const titleInput = new TextInputBuilder()
@@ -84,7 +85,7 @@ async function run(interaction, res) {
     let modalSubmit = null;
     try {
         modalSubmit = await interaction.awaitModalSubmit({
-            filter: i => i.customId === 'bug_modal' && i.user.id === interaction.user.id,
+            filter: i => i.customId === modalCustomId && i.user.id === interaction.user.id,
             time: 300000 // 5 minutos
         });
 
@@ -155,7 +156,7 @@ async function run(interaction, res) {
             const isInteractionExpired = err.code === 10062 || (err.message && err.message.toLowerCase().includes("unknown interaction"));
             if (isInteractionExpired) {
                 console.warn("[BUG] La interacción de Discord expiró antes de poder completarse (error 10062).");
-                return false;
+                return true;
             }
 
             const errorMsg = isWebhookError ? t(locale, 'bug.err_webhook_invalid') : t(locale, 'bug.err_send_failed');

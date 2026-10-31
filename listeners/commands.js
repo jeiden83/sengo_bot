@@ -595,10 +595,15 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
                     logger.success(`/${message_command} completado con éxito.`);
                     return;
                 }
-                if (interaction.deferred || interaction.replied) {
-                    await interaction.editReply("El comando no devolvió ningún resultado.");
-                } else {
-                    await interaction.reply({ content: "El comando no devolvió ningún resultado.", ephemeral: true });
+                try {
+                    if (interaction.deferred) {
+                        await interaction.editReply("El comando no devolvió ningún resultado.");
+                    } else if (!interaction.replied) {
+                        await interaction.reply({ content: "El comando no devolvió ningún resultado.", ephemeral: true });
+                    }
+                } catch (fallbackErr) {
+                    // ponytail: si la interacción expiró o fue respondida sin mensaje (ej. modal), silenciar para evitar 10008/10062 innecesario
+                    console.warn(`[SLASH-SAFETY] No se pudo enviar respuesta por defecto para /${message_command}:`, fallbackErr.message);
                 }
                 logger.failed("El comando no devolvió ningún resultado.");
                 return;
