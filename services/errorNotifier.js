@@ -36,14 +36,26 @@ async function sendNtfyAlert({ title, message, priority = 'default', tags = 'war
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 8000);
 
-        await fetch(`https://ntfy.sh/${encodeURIComponent(topic)}`, {
+        const priorityMap = {
+            min: 1,
+            low: 2,
+            default: 3,
+            high: 4,
+            urgent: 5
+        };
+        const numPriority = typeof priority === 'number' ? priority : (priorityMap[priority] || 3);
+        const tagsArray = Array.isArray(tags) ? tags : String(tags || '').split(',').map(t => t.trim()).filter(Boolean);
+
+        await fetch('https://ntfy.sh', {
             method: 'POST',
-            headers: {
-                'Title': title || '[SENGO] Notificación',
-                'Priority': priority,
-                'Tags': tags
-            },
-            body: String(message || ''),
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                topic,
+                title: title || '[SENGO] Notificación',
+                message: String(message || ''),
+                priority: numPriority,
+                tags: tagsArray
+            }),
             signal: controller.signal
         });
 
