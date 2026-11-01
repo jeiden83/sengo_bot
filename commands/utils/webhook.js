@@ -1391,7 +1391,7 @@ function startServer(client, dbRes, port, config) {
         if (req.method === 'POST' && (pathname === '/github' || pathname === '/webhook' || pathname === '/')) {
             try {
                 const body = await readRequestBodyWithLimit(req, 2 * 1024 * 1024);
-                const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET;
+                const webhookSecret = process.env.GITHUB_WEBHOOK_SECRET || process.env.OSU_CLIENT_SECRET;
                 if (webhookSecret) {
                     const crypto = require('crypto');
                     const signature = req.headers['x-hub-signature-256'];
@@ -1406,6 +1406,23 @@ function startServer(client, dbRes, port, config) {
                 const event = req.headers['x-github-event'];
 
                 if (event === 'push') {
+                    // Auto-deploy: actualizar repositorio y recargar en memoria
+                    const { exec } = require('child_process');
+                    exec('git pull origin main', async (gitErr, stdout, stderr) => {
+                        if (gitErr) {
+                            Logger.system(`[Webhook] Error al ejecutar git pull: ${gitErr.message}`);
+                        } else {
+                            Logger.system(`[Webhook] Git pull completado exitosamente: ${stdout.trim()}`);
+                            try {
+                                const { load_listeners } = require("../../listeners/commands.js");
+                                await load_listeners(dbRes, client, config);
+                                Logger.system(`[Webhook] Comandos y listeners recargados en caliente tras deploy.`);
+                            } catch (recErr) {
+                                Logger.system(`[Webhook] Error al recargar listeners tras pull: ${recErr.message}`);
+                            }
+                        }
+                    });
+
                     await handlePushEvent(client, dbRes, payload);
                 }
 
