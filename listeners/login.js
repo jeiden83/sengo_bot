@@ -12,7 +12,7 @@ function setBotPresence(client) {
     }
 }
 
-const LOGIN_TIMEOUT_MS = 20000;
+const LOGIN_TIMEOUT_MS = 60000;
 
 async function login(client, config) {
     Logger.system("Intentando iniciar sesión en Discord...");
@@ -51,6 +51,10 @@ async function login(client, config) {
             client.rest.on('rateLimited', (info) => {
                 const routeName = info.route || info.url || 'Ruta desconocida';
                 Logger.system(`[Discord REST RateLimit] Ruta: ${routeName} | Espera: ${info.timeToReset}ms | Global: ${info.global}`);
+                if (info.timeToReset && typeof client._extendLoginTimeout === 'function') {
+                    client._hadRateLimitOnLogin = true;
+                    client._extendLoginTimeout(Number(info.timeToReset) + 60000);
+                }
                 if (info.global || info.timeToReset > 10000) {
                     try {
                         const { notifyExternalServiceIssue } = require('../services/errorNotifier.js');
@@ -70,27 +74,39 @@ async function login(client, config) {
                 if (typeof info === 'string' && info.includes('429')) {
                     const retryMatch = info.match(/Retry After\s*:\s*(\d+)ms/i);
                     const urlMatch = info.match(/URL\s*:\s*([^\n\r]+)/i);
-                    const retrySec = retryMatch ? Math.round(Number(retryMatch[1]) / 1000) : null;
+                    const retryMs = retryMatch ? Number(retryMatch[1]) : null;
+                    const retrySec = retryMs !== null ? Math.round(retryMs / 1000) : null;
                     const targetUrl = urlMatch ? urlMatch[1].trim() : 'API de Discord';
-                    Logger.system(`[Discord REST 429] Bloqueo 429 detectado en ${targetUrl}${retrySec !== null ? ` | Retry-After: ${retrySec}s` : ''}`);
+                    Logger.system(`[Discord REST 429] Bloqueo 429 detectado en ${targetUrl}${retrySec !== null ? ` | Retry-After: ${retrySec}s (~${(retrySec / 60).toFixed(1)} min)` : ''}`);
+                    if (retryMs && typeof client._extendLoginTimeout === 'function') {
+                        client._hadRateLimitOnLogin = true;
+                        client._extendLoginTimeout(retryMs + 60000);
+                    }
                     try {
                         const { notifyExternalServiceIssue } = require('../services/errorNotifier.js');
                         notifyExternalServiceIssue(
                             'Discord / Cloudflare 429 (IP Compartida Render)',
-                            `Discord o Cloudflare aplicaron un HTTP 429 sobre la IP compartida de Render en ${targetUrl}.${retrySec !== null ? ` Tiempo de espera exigido: ${retrySec}s (~${(retrySec / 60).toFixed(1)} min).` : ''}`
+                            `Discord o Cloudflare aplicaron un HTTP 429 sobre la IP compartida de Render en ${targetUrl}.${retrySec !== null ? ` Tiempo de espera exigido: ${retrySec}s (~${(retrySec / 60).toFixed(1)} min). El bot pausará los intentos hasta que expire.` : ''}`
                         );
                     } catch {}
                 }
             });
         }
 
-        if (process.env.DEBUG === 'true') {
-            client.on(Events.Debug, (info) => {
-                // Ocultar heartbeats rutinarios de discord para evitar spam en los logs
-                if (info.toLowerCase().includes('heartbeat')) return;
-                Logger.system(`[Discord WS] ${info}`);
-            });
-        }
+        client.on(Events.Debug, (info) => {
+            if (typeof info !== 'string') return;
+            if (info.toLowerCase().includes('heartbeat')) return;
+            const isCriticalLoginStep = !client.isReady() && (
+                info.includes('Fetched Gateway Information') ||
+                info.includes('Session Limit Information') ||
+                info.includes('Connecting to') ||
+                info.includes('Identifying') ||
+                info.includes('429')
+            );
+            if (process.env.DEBUG === 'true' || isCriticalLoginStep) {
+                Logger.system(`[Discord WS] ${info.replace(/\n+/g, ' | ')}`);
+            }
+        });
 
         client.on(Events.ClientReady, (c) => {
             setBotPresence(c);
@@ -114,10 +130,25 @@ async function login(client, config) {
         Logger.system(`Ejecutando client.login con token prefijo: ${config.TOKEN.substring(0, 10)}...`);
         
         let timeoutId;
-        const timeoutPromise = new Promise((_, reject) => {
+        let rejectTimeout;
+        const setLoginTimer = (ms) => {
+            if (timeoutId) clearTimeout(timeoutId);
             timeoutId = setTimeout(() => {
-                reject(new Error("Tiempo de espera agotado (20s) al conectar con el Gateway/API de Discord. Posible rate-limit o bloqueo de IP."));
-            }, LOGIN_TIMEOUT_MS);
+                if (rejectTimeout) {
+                    rejectTimeout(new Error(`Tiempo de espera agotado (${Math.round(ms / 1000)}s) al conectar con el Gateway/API de Discord. Posible rate-limit o bloqueo de IP.`));
+                }
+            }, ms);
+        };
+
+        // ponytail: extender el timeout dinámicamente cuando Discord/Cloudflare devuelve Retry-After (429) para no abortar el sleep interno ni reiniciar el baneo
+        client._extendLoginTimeout = (newMs) => {
+            Logger.system(`[Discord Login] Respetando Retry-After de Discord/Cloudflare: esperando ${Math.round(newMs / 1000)}s (~${(newMs / 60000).toFixed(1)} min) sin enviar nuevas peticiones para no extender el bloqueo.`);
+            setLoginTimer(newMs);
+        };
+
+        const timeoutPromise = new Promise((_, reject) => {
+            rejectTimeout = reject;
+            setLoginTimer(LOGIN_TIMEOUT_MS);
         });
 
         const loginResult = await Promise.race([
@@ -125,6 +156,7 @@ async function login(client, config) {
             timeoutPromise
         ]).finally(() => {
             if (timeoutId) clearTimeout(timeoutId);
+            delete client._extendLoginTimeout;
         });
 
         Logger.system(`client.login completado. Resultado de la conexión: ${loginResult ? "Conexión exitosa" : "Sin resultado"}`);

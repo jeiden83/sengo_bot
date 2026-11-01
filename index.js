@@ -118,13 +118,13 @@ async function main(reload) {
                 const { initializeServices } = require("./services/servicesManager.js");
                 initializeServices(client, res, config, todayLogExists);
 
-                if (alertSent) {
+                if (alertSent || client._hadRateLimitOnLogin) {
                     const { sendNtfyAlert } = require("./services/errorNotifier.js");
                     sendNtfyAlert({
                         title: "[SENGO] ✅ Conexión Restablecida con Discord",
                         priority: "default",
                         tags: "white_check_mark,green_heart",
-                        message: `Sengo logró iniciar sesión y conectarse con éxito a Discord tras ${retryCount} reintento(s).`
+                        message: `Sengo logró iniciar sesión y conectarse con éxito a Discord${retryCount > 0 ? ` tras ${retryCount} reintento(s)` : ' tras cumplir el tiempo de espera de rate-limit'}.`
                     }).catch(() => {});
                 }
                 break;
