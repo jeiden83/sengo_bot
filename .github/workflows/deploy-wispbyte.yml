@@ -29,3 +29,4 @@ jobs:
             echo "❌ Error al enviar señal de reinicio (HTTP $RESPONSE). Revisa PANEL_URL, SERVER_ID o API_KEY."
             exit 1
           fi
+
