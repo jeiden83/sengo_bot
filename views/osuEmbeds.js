@@ -1184,7 +1184,7 @@ function buildMapButtonsRows({ beatmap, locale = 'es', activeView = 'overview', 
             .setDisabled(disabled)
     );
 
-    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const redirectBase = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
     const osuDirectPCUrl = `${redirectBase}/osu/${beatmap.beatmapset_id}`;
 
     const rowDownloads = new ActionRowBuilder().addComponents(
@@ -1346,7 +1346,7 @@ function doOsuMapsetEmbed({
         })
         .setTimestamp();
 
-    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const redirectBase = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
     const osuDirectPCUrl = `${redirectBase}/osu/${beatmapset.id}`;
 
     // Construir la fila de botones de descarga

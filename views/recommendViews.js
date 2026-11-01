@@ -27,7 +27,7 @@ function formatRecommendMods(modsStr) {
 function doOsuRecommendEmbed(message, profile, recommendations, params, locale = 'es') {
     const embedColor = getEmbedColor(message);
     const { minPP, maxPP, mods, showPlayed, hasSupporter, style, customUserTag } = params;
-    const redirectBase = process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
+    const redirectBase = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || 'https://stoppable-passcode-riot.ngrok-free.dev';
 
     let description = "";
 

@@ -67,8 +67,9 @@ function verifyAuthState(state) {
  * Obtiene la URL de redirección (Callback) de forma dinámica.
  */
 function getRedirectUri(req) {
-    if (process.env.RENDER_EXTERNAL_URL) {
-        return `${process.env.RENDER_EXTERNAL_URL}/oauth/callback`;
+    const baseUrl = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL;
+    if (baseUrl) {
+        return `${baseUrl.replace(/\/+$/, '')}/oauth/callback`;
     }
     if (req && req.headers && req.headers.host) {
         // En desarrollo local a través de ngrok u otros proxies

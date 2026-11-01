@@ -1,0 +1,31 @@
+name: Deploy to Wispbyte
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Restart Wispbyte Container
+    runs-on: ubuntu-latest
+    if: "${{ secrets.WISPBYTE_API_KEY != '' }}"
+    steps:
+      - name: Restart server via Pterodactyl Client API
+        env:
+          PANEL_URL: ${{ secrets.WISPBYTE_PANEL_URL }}
+          SERVER_ID: ${{ secrets.WISPBYTE_SERVER_ID }}
+          API_KEY: ${{ secrets.WISPBYTE_API_KEY }}
+        run: |
+          echo "Notificando reinicio al servidor de Wispbyte..."
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST "${PANEL_URL%/}/api/client/servers/${SERVER_ID}/power" \
+            -H "Authorization: Bearer ${API_KEY}" \
+            -H "Content-Type: application/json" \
+            -H "Accept: application/json" \
+            -d '{"signal": "restart"}')
+          
+          if [ "$RESPONSE" = "204" ] || [ "$RESPONSE" = "200" ]; then
+            echo "✅ Señal de reinicio enviada exitosamente (HTTP $RESPONSE)."
+          else
+            echo "❌ Error al enviar señal de reinicio (HTTP $RESPONSE). Revisa PANEL_URL, SERVER_ID o API_KEY."
+            exit 1
+          fi

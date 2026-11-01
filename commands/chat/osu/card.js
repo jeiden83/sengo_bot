@@ -347,7 +347,7 @@ async function run(messages, args) {
         const secretKey = process.env.CARD_API_KEY || process.env.OSU_CLIENT_SECRET || (res?.Config && res.Config.OSU_CLIENT_SECRET) || "sengo_card_secure_token";
         const userToken = crypto.createHmac("sha256", secretKey).update(osuUser.username.toLowerCase()).digest("hex").slice(0, 16);
 
-        const rawBaseUrl = process.env.CARD_PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "https://sengo-bot-q981.onrender.com";
+        const rawBaseUrl = process.env.CARD_PUBLIC_URL || process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || "https://sengo-bot-q981.onrender.com";
         const baseUrl = rawBaseUrl.replace(/\/+$/, "");
         const presetParam = explicitPreset ? `&preset=${encodeURIComponent(explicitPreset)}` : "";
         const cardUrl = `${baseUrl}/api/card.png?u=${encodeURIComponent(osuUser.username)}&m=${encodeURIComponent(targetMode)}${presetParam}&token=${userToken}`;

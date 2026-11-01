@@ -22,5 +22,8 @@ module.exports = {
     ERROR_WEBHOOK_URL: process.env.ERROR_WEBHOOK_URL,
 
     // Notificaciones push de alertas y caídas externas (ntfy.sh)
-    NTFY_TOPIC: process.env.NTFY_TOPIC
+    NTFY_TOPIC: process.env.NTFY_TOPIC,
+
+    // URL pública del bot (para OAuth de osu! y endpoints web en Wispbyte/Render)
+    PUBLIC_URL: process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL
 };

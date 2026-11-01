@@ -1154,7 +1154,7 @@ class PopulationService {
         const safeKey = String(defaultKey || '').replace(/[^a-zA-Z0-9_-]/g, '');
         const safeCountry = String(defaultCountry || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
         const safeHost = String(reqHost || '').replace(/[^a-zA-Z0-9.:-]/g, '');
-        const serverUrl = process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
+        const serverUrl = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
 
         content = content.replace(/__WORKER_KEY__/g, safeKey);
         content = content.replace(/__WORKER_COUNTRY__/g, safeCountry);
@@ -1172,7 +1172,7 @@ class PopulationService {
         const safeKey = String(defaultKey || '').replace(/[^a-zA-Z0-9_-]/g, '');
         const safeCountry = String(defaultCountry || '').replace(/[^a-zA-Z]/g, '').toUpperCase().slice(0, 2);
         const safeHost = String(reqHost || '').replace(/[^a-zA-Z0-9.:-]/g, '');
-        const serverUrl = process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
+        const serverUrl = process.env.PUBLIC_URL || process.env.RENDER_EXTERNAL_URL || (safeHost ? `https://${safeHost}` : 'https://sengo-bot-q981.onrender.com');
 
         content = content.replace(/__WORKER_KEY__/g, safeKey);
         content = content.replace(/__WORKER_COUNTRY__/g, safeCountry);

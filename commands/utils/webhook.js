@@ -252,7 +252,7 @@ function getNgrokCommand() {
 function initWebhookServer(client, dbRes, config) {
     const useSupabase = true; // Sengo ahora siempre está en modo Supabase
     // Si es supabase, abrimos el puerto 80 por petición del usuario (a menos que se especifique un PORT de entorno como en Render)
-    const port = process.env.PORT || (useSupabase ? 80 : (config.WEBHOOK_PORT || 3000));
+    const port = process.env.PORT || process.env.SERVER_PORT || (config && config.WEBHOOK_PORT) || (useSupabase ? 80 : 3000);
 
     // Iniciar watchdog proactivo de salud de Discord
     startDiscordWatchdog(client, config);
