@@ -38,5 +38,9 @@
   },
   "overrides": {
     "tar": "^7.5.11"
+  },
+  "allowScripts": {
+    "canvas": true,
+    "sharp": true
   }
 }
