@@ -784,8 +784,19 @@ function startServer(client, dbRes, port, config) {
                 const logFile = path.join(logsDir, `${Logger.getLocalDateString()}.log`);
                 if (fs.existsSync(logFile)) {
                     const content = fs.readFileSync(logFile, 'utf8');
-                    const lines = content.trim().split('\n');
-                    const lastLines = lines.slice(-100);
+                    let lines = content.trim().split('\n');
+                    const filter = parsedUrl?.query?.filter || parsedUrl?.query?.q;
+                    if (filter) {
+                        const filterLower = String(filter).toLowerCase();
+                        if (filterLower === 'error' || filterLower === 'errors') {
+                            const errRegex = /\[ERROR\]|error|exception|rejection|failed|crash|uncaught|unhandled|fatal/i;
+                            lines = lines.filter(l => errRegex.test(l));
+                        } else {
+                            lines = lines.filter(l => l.toLowerCase().includes(filterLower));
+                        }
+                    }
+                    const limit = Math.min(Math.max(parseInt(parsedUrl?.query?.lines, 10) || 100, 1), 1000);
+                    const lastLines = lines.slice(-limit);
                     res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
                     res.end(lastLines.join('\n'));
                     return;
@@ -799,6 +810,102 @@ function startServer(client, dbRes, port, config) {
                 res.end(JSON.stringify({ error: 'Unauthorized' }));
                 return;
             }
+        }
+
+        // Diagnóstico integral seguro de servicios (Discord, Supabase, Turso, RAM)
+        if (req.method === 'GET' && (req.url === '/admin/debug' || req.url === '/debug/services')) {
+            if (!isAuthorizedAdminRequest(req, parsedUrl, config)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+
+            const isDiscordReady = client && typeof client.isReady === 'function' ? client.isReady() : false;
+            const wsStatus = client?.ws ? client.ws.status : -1;
+            const wsPing = client?.ws ? client.ws.ping : -1;
+            const guildsCount = client?.guilds?.cache?.size || 0;
+
+            const mem = process.memoryUsage();
+            const memoryStats = {
+                rssMb: Number((mem.rss / 1024 / 1024).toFixed(2)),
+                heapTotalMb: Number((mem.heapTotal / 1024 / 1024).toFixed(2)),
+                heapUsedMb: Number((mem.heapUsed / 1024 / 1024).toFixed(2)),
+                externalMb: Number((mem.external / 1024 / 1024).toFixed(2)),
+                uptimeMinutes: Math.floor(process.uptime() / 60)
+            };
+
+            let supabaseStatus = 'DISCONNECTED';
+            let supabaseLatencyMs = -1;
+            try {
+                if (dbRes?.User?.findOne) {
+                    const startSupabase = Date.now();
+                    await dbRes.User.findOne({ discord_id: '0' });
+                    supabaseLatencyMs = Date.now() - startSupabase;
+                    supabaseStatus = 'OK';
+                }
+            } catch (err) {
+                supabaseStatus = `ERROR: ${err.message}`;
+            }
+
+            let tursoStatus = 'DISABLED';
+            let tursoLatencyMs = -1;
+            try {
+                const TursoDB = require('../../db/turso.js');
+                if (TursoDB.isTursoAvailable()) {
+                    const startTurso = Date.now();
+                    await TursoDB.executeTurso('SELECT 1');
+                    tursoLatencyMs = Date.now() - startTurso;
+                    tursoStatus = 'OK';
+                }
+            } catch (err) {
+                tursoStatus = `ERROR: ${err.message}`;
+            }
+
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({
+                timestamp: new Date().toISOString(),
+                environment: process.env.NODE_ENV || 'production',
+                nodeVersion: process.version,
+                discord: {
+                    status: (wsStatus === 0 || isDiscordReady) ? 'ONLINE' : 'DEGRADED',
+                    isReady: wsStatus === 0 || isDiscordReady,
+                    wsStatus,
+                    wsPing,
+                    guilds: guildsCount
+                },
+                databases: {
+                    supabase: { status: supabaseStatus, latencyMs: supabaseLatencyMs },
+                    turso: { status: tursoStatus, latencyMs: tursoLatencyMs }
+                },
+                memory: memoryStats
+            }, null, 2));
+            return;
+        }
+
+        // Recarga remota en caliente de comandos y listeners en memoria sin desconectar Discord
+        if (req.method === 'POST' && (req.url === '/admin/reload' || req.url === '/reload')) {
+            if (!isAuthorizedAdminRequest(req, parsedUrl, config)) {
+                res.writeHead(401, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: 'Unauthorized' }));
+                return;
+            }
+
+            try {
+                Logger.system("[ADMIN-API] Solicitud remota de recarga de comandos y listeners recibida...");
+                const { load_listeners } = require("../../listeners/commands.js");
+                await load_listeners(dbRes, client, config);
+
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({
+                    success: true,
+                    message: 'Comandos y listeners recargados en memoria exitosamente sin reiniciar el proceso'
+                }));
+            } catch (err) {
+                Logger.system(`[ADMIN-API] Error al recargar listeners: ${err.message}`);
+                res.writeHead(500, { 'Content-Type': 'application/json' });
+                res.end(JSON.stringify({ error: err.message }));
+            }
+            return;
         }
 
         // Soporte para GET o HEAD en /, /health, /webhook o /github (health check para Render u otros pingers como UptimeRobot)
