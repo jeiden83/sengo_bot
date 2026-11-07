@@ -46,61 +46,9 @@ function analyzeTodayLogs() {
     }
 }
 
-// Sincroniza y sube todos los archivos de logs de días anteriores a Supabase, eliminándolos luego localmente
+// ponytail: en Wispbyte el almacenamiento en disco es persistente; ya no se suben logs a Supabase Storage para evitar consumo innecesario de cuota.
 async function syncOlderLogs(supabaseClient) {
-    if (!supabaseClient) {
-        Logger.system("Sincronización con Supabase omitida (Cliente no disponible).");
-        return;
-    }
-
-    const logsDir = path.join(process.cwd(), 'db/local/logs');
-    if (!fs.existsSync(logsDir)) {
-        return;
-    }
-
-    const todayStr = Logger.getLocalDateString();
-    const files = fs.readdirSync(logsDir).filter(f => f.endsWith('.log') && !f.startsWith(todayStr));
-
-    if (files.length === 0) {
-        Logger.system("No se encontraron archivos de logs antiguos para respaldar.");
-        return;
-    }
-
-    Logger.system(`Detectados ${files.length} archivos de logs de días anteriores. Iniciando subida a Supabase...`);
-
-    // Intentamos crear el bucket 'logs' de forma automática por si acaso
-    try {
-        await supabaseClient.storage.createBucket('logs', { public: false });
-    } catch (e) {
-        // Si ya existe o falla por RLS, continuamos sin problema
-    }
-
-    for (const file of files) {
-        const filePath = path.join(logsDir, file);
-        try {
-            const fileBuffer = fs.readFileSync(filePath);
-            
-            // Subir al bucket 'logs' de Supabase
-            const { data, error } = await supabaseClient
-                .storage
-                .from('logs')
-                .upload(file, fileBuffer, {
-                    contentType: 'text/plain',
-                    upsert: true
-                });
-
-            if (error) throw error;
-
-            Logger.system(`Sincronización exitosa con Supabase Storage para el archivo: ${file}`);
-            
-            // Eliminar el log local para ahorrar espacio una vez respaldado
-            fs.unlinkSync(filePath);
-            Logger.system(`Archivo local eliminado: ${file}`);
-            
-        } catch (err) {
-            Logger.system(`Error al subir el archivo de log ${file} a Supabase: ${err.message}`);
-        }
-    }
+    return;
 }
 
 module.exports = { syncOlderLogs, analyzeTodayLogs };
