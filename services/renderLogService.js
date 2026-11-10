@@ -240,8 +240,8 @@ function initRenderLogService() {
         clearInterval(pollingInterval);
     }
 
-    if (!process.env.RENDER_KEY) {
-        Logger.system('Servicio de Render Logs omitido (RENDER_KEY no configurado).');
+    if (!process.env.RENDER_KEY || !process.env.RENDER_EXTERNAL_URL) {
+        Logger.system('Servicio de Render Logs omitido (no estamos en entorno de Render).');
         return;
     }
 

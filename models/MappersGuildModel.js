@@ -118,12 +118,14 @@ function startBnBackgroundService() {
     const Logger = require("../utils/logger.js");
     Logger.system("Iniciando servicio de actualización periódica de BNs (Mappers' Guild)...");
     
-    // Precarga inicial al iniciar el bot
-    getBnUsers(true).then(() => {
-        Logger.system("Datos de BNs (Mappers' Guild) precargados exitosamente en caché.");
-    }).catch(err => {
-        Logger.system(`Error en precarga inicial de BNs: ${err.message}`);
-    });
+    // ponytail: Precarga inicial diferida 45s para no competir con el login de Discord y la BD
+    setTimeout(() => {
+        getBnUsers(true).then(() => {
+            Logger.system("Datos de BNs (Mappers' Guild) precargados exitosamente en caché.");
+        }).catch(err => {
+            Logger.system(`Error en precarga inicial de BNs: ${err.message}`);
+        });
+    }, 45000);
 
     // Ejecutar cada 1 hora
     setInterval(async () => {

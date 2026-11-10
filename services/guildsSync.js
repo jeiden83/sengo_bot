@@ -116,9 +116,10 @@ async function syncAllGuilds(force = false) {
         for (const [guildId, guild] of discordClient.guilds.cache) {
             const presentInGuild = new Set();
             try {
-                // ponytail: Precargar miembros vía Gateway WebSocket (0 peticiones REST HTTP) si la caché está incompleta
-                if (guild.memberCount && guild.members.cache.size < guild.memberCount) {
-                    await guild.members.fetch().catch(() => null);
+                // ponytail: Solo consultar la membresía de los usuarios vinculados en lugar de descargar miles de miembros ajenos
+                const missingIds = discordIds.filter(id => !guild.members.cache.has(id));
+                if (missingIds.length > 0) {
+                    await guild.members.fetch({ user: missingIds }).catch(() => null);
                 }
 
                 for (const id of discordIds) {
@@ -240,12 +241,12 @@ function initGuildsSync(client, supabaseClient) {
         }
     });
 
-    // Programar comprobación inicial asíncrona a los 15 segundos del encendido
+    // Programar comprobación inicial asíncrona a los 2 minutos del encendido (evitar colisión con el arranque)
     setTimeout(() => {
         syncAllGuilds(false).catch(err => {
             console.error('[guildsSync] Error en syncAllGuilds al arranque:', err);
         });
-    }, 15000);
+    }, 120000);
 
     // Comprobar cada hora si corresponde hacer la sincronización completa (según la marca persistente de la DB)
     setInterval(() => {

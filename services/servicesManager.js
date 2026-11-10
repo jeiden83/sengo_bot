@@ -114,15 +114,17 @@ function initializeServices(client, dbRes, config, todayLogExists) {
             Logger.system(`Error al inicializar almacenamiento de cumpleaños: ${err.message}`);
         }
 
-        // Sincronización de imágenes Yuri
-        try {
-            const { syncYuriImages } = require("./yuriSync.js");
-            syncYuriImages(dbRes.supabaseClient).catch(err => {
+        // Sincronización de imágenes Yuri diferida 3 minutos para no añadir E/S de disco al arranque
+        setTimeout(() => {
+            try {
+                const { syncYuriImages } = require("./yuriSync.js");
+                syncYuriImages(dbRes.supabaseClient).catch(err => {
+                    Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
+                });
+            } catch (err) {
                 Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
-            });
-        } catch (err) {
-            Logger.system(`Error en la tarea de sincronización de imágenes yuri: ${err.message}`);
-        }
+            }
+        }, 180000);
 
         // Sincronización de logs antiguos (solo al primer encendido diario)
         if (!todayLogExists) {

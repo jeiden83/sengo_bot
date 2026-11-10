@@ -278,7 +278,10 @@ async function runMappingTrackerScan() {
 
         for (const osuId of trackedIds) {
             const mapsets = await fetchUserBeatmapsets(osuId);
-            if (!mapsets || mapsets.length === 0) continue;
+            if (!mapsets || mapsets.length === 0) {
+                await new Promise(r => setTimeout(r, 400));
+                continue;
+            }
 
             const lastEvents = await MappingTrackerModel.getLastEventsForOsuId(osuId);
             const prevSnapshot = lastEvents?.status_snapshot || {};
@@ -352,6 +355,8 @@ async function runMappingTrackerScan() {
 
             const latestMapsetId = mapsets[0]?.id;
             await MappingTrackerModel.saveLastEventsForOsuId(osuId, latestMapsetId, newSnapshot);
+            // ponytail: Pausa de 400ms entre mappers para evitar picos de CPU y repartir la carga
+            await new Promise(r => setTimeout(r, 400));
         }
     } catch (scanErr) {
         console.error('[MAPPING-TRACKER-SERVICE] Error durante el ciclo de escaneo profundo:', scanErr.message);
@@ -581,12 +586,12 @@ function initMappingTracker(client) {
     discordClient = client;
     Logger.system("Inicializando servicio de Mapping Tracker (Eventos rápidos: 30s | Escaneo profundo: 5m)...");
 
-    // 1. Escaneo rápido de eventos globales (cada 30s)
+    // 1. Escaneo rápido de eventos globales (cada 30s, primera ejecución a los 60s)
     setTimeout(() => {
         runGlobalEventsScan().catch(err => {
             Logger.system(`Error en primera ejecución de eventos globales: ${err.message}`);
         });
-    }, 10000);
+    }, 60000);
 
     eventsInterval = setInterval(() => {
         runGlobalEventsScan().catch(err => {
@@ -594,12 +599,12 @@ function initMappingTracker(client) {
         });
     }, 30 * 1000);
 
-    // 2. Escaneo profundo de mappers individuales (cada 5m)
+    // 2. Escaneo profundo de mappers individuales (cada 5m, primera ejecución a los 4m)
     setTimeout(() => {
         runMappingTrackerScan().catch(err => {
             Logger.system(`Error en primera ejecución de escaneo profundo: ${err.message}`);
         });
-    }, 30000);
+    }, 240000);
 
     trackerInterval = setInterval(() => {
         runMappingTrackerScan().catch(err => {

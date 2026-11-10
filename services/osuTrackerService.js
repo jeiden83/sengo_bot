@@ -26,17 +26,16 @@ const ACTIVE_DURATION_MS = 10 * 60 * 1000; // 10 minutos activo
 function calculateFastDelay() {
     const n = fastQueue.length;
     if (n === 0) return 15000; // Si no hay activos, re-chequear cada 15s
-    // Delay Rápido = max(15000 / N_activos, 1000) ms
-    return Math.max(15000 / n, 1000);
+    // ponytail: delay rápido mínimo de 2500ms para evitar saturación de CPU y rate-limit de TLS en hosting compartido
+    return Math.max(20000 / n, 2500);
 }
 
 function calculateSlowDelay() {
     const n = slowQueue.length;
     if (n === 0) return 60000; // Si no hay inactivos, re-chequear cada minuto
-    // 3 minutos (180s) si hay menos de 10 usuarios inactivos en total, si no 5 minutos (300s)
-    const tLento = n < 10 ? 180 : 300;
-    // Delay Lento = max(T_lento * 1000 / N_inactivos, 2000) ms
-    return Math.max((tLento * 1000) / n, 2000);
+    // ponytail: ciclo de 10m (600s) con delay mínimo de 4000ms para mantener consumo de CPU < 5% en reposo
+    const tLento = n < 10 ? 300 : 600;
+    return Math.max((tLento * 1000) / n, 4000);
 }
 
 /**
@@ -109,13 +108,18 @@ async function addTrackedUserInMemory(record) {
         await OsuTrackerModel.updateTrackedUser(record.id, { last_score_id: lastScoreId });
     }
 
+    // ponytail: Validar si la actividad reciente de la BD sigue vigente (< 10m). Si el bot reinició, no poner usuarios viejos en cola rápida
+    const now = Date.now();
+    const lastActiveDate = record.last_active_at ? new Date(record.last_active_at) : null;
+    const isStillActive = Boolean(record.is_active && lastActiveDate && (now - lastActiveDate.getTime() < ACTIVE_DURATION_MS));
+
     const userObj = {
         osuId,
         osuUsername: record.osu_username,
         discordId: record.discord_id,
         lastScoreId: lastScoreId,
-        isActive: record.is_active || false,
-        lastActiveAt: record.last_active_at ? new Date(record.last_active_at) : null,
+        isActive: isStillActive,
+        lastActiveAt: isStillActive ? lastActiveDate : null,
         servers: [{
             guildId: record.guild_id,
             channelId: record.channel_id,

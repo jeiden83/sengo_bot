@@ -105,10 +105,10 @@ async function refreshTokenPool(force = false) {
  * Inicializa el planificador en segundo plano para mantener la pool de tokens OAuth actualizada.
  */
 function initTokenPoolScheduler() {
-    // 1. Carga inicial asíncrona a los 10 segundos de arrancar
+    // 1. Carga inicial asíncrona a los 75 segundos de arrancar (no saturar el inicio)
     setTimeout(() => {
         refreshTokenPool(true).catch(() => {});
-    }, 10000);
+    }, 75000);
 
     // 2. Programar actualización periódica cada 6 horas (4 veces al día)
     setInterval(() => {

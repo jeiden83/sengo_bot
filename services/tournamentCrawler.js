@@ -130,10 +130,10 @@ function initTournamentCrawler(client) {
     discordClient = client;
     Logger.system("Inicializando worker de torneos (intervalo de 10 minutos)...");
 
-    // Primera ejecución a los 10 segundos del encendido del bot
+    // Primera ejecución a los 90 segundos del encendido del bot (evitar picos de CPU al arranque)
     setTimeout(() => {
         checkNewTournaments();
-    }, 10000);
+    }, 90000);
 
     // Intervalo de ejecución cada 10 minutos
     setInterval(() => {
