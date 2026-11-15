@@ -2,7 +2,7 @@ const { Client, Auth } = require('osu-web.js');
 const { auth } = require('osu-api-extended');
 const { getSupabaseClient, addUser, deleteUser } = require('../db/database.js');
 const { refreshAccessToken, fetchOsuMe } = require('../utils/osuAuth.js');
-const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { osuApiQueue, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
 const CONFIG = require('../config.js');
 const fs = require('fs/promises');
 const path = require('path');
@@ -63,6 +63,11 @@ async function loadToken() {
             await fs.writeFile(tokenFilePath, JSON.stringify(accessTokenData, null, 2));
             console.log("# Token de Sengo (osu-web.js) recargado");
             return accessTokenData;
+        } catch (err) {
+            if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                osuApiQueue.recordOutage(err, 'OsuWebAuth');
+            }
+            throw err;
         } finally {
             webTokenPromise = null;
         }
@@ -115,6 +120,10 @@ async function NewloadToken() {
                     cachedTokenPath: './osu_api_extended_token.json'
                 });
             } catch (loginErr) {
+                if (isExternalApiOutageError(loginErr, { includeOsuExtendedTransport: true })) {
+                    osuApiQueue.recordOutage(loginErr, 'OsuApiExtendedAuth');
+                    throw loginErr;
+                }
                 console.warn("# Falló login inicial de osu-api-extended con caché, limpiando archivo...", loginErr.message);
                 if (fs.existsSync('./osu_api_extended_token.json')) {
                     try {
@@ -131,7 +140,11 @@ async function NewloadToken() {
             }
             console.log("# Login de osu-api-extended para Sengo inicializado con éxito");
         } catch (err) {
-            console.error("# Error al inicializar login de osu-api-extended para Sengo:", err);
+            if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                osuApiQueue.recordOutage(err, 'OsuApiExtendedAuth');
+            } else {
+                console.error("# Error al inicializar login de osu-api-extended para Sengo:", err);
+            }
             apiExtendedInitialized = null; // Permitir reintento
             throw err;
         }
@@ -402,7 +415,7 @@ async function _getOsuUser(parsed_args) {
             const locale = parsed_args.locale || 'es';
             res = t(locale, 'osu.profile.not_found', { username: parsed_args.username[0] });
         } else {
-            console.error("Error en getOsuUser (no-404):", error);
+            console.error("Error en getOsuUser (no-404):", error.message || error);
             throw error;
         }
     }
@@ -1005,6 +1018,11 @@ async function syncAllSupporterStatuses() {
     const changes = [];
 
     for (const user of oauthUsers) {
+        if (osuApiQueue.isInCooldown()) {
+            console.warn(`[Supporter Sync] Abortando sincronización restante por cooldown activo de la API de osu! (${Math.round(osuApiQueue.getCooldownRemainingMs() / 1000)}s).`);
+            break;
+        }
+
         try {
             const token = await getValidTokenForUser(user.discord_id, 0);
             if (!token) {
@@ -1041,8 +1059,12 @@ async function syncAllSupporterStatuses() {
                 failCount++;
             }
         } catch (err) {
-            console.error(`Error al sincronizar estatus de supporter para ${user.username}:`, err);
+            console.error(`Error al sincronizar estatus de supporter para ${user.username}:`, err.message || err);
             failCount++;
+            if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+                osuApiQueue.recordOutage(err, 'Supporter Sync');
+                break;
+            }
         }
 
         // Delay de 4000ms para no saturar la API

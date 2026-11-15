@@ -2,6 +2,7 @@ const Logger = require('../utils/logger.js');
 const BotSettingsModel = require('../models/BotSettingsModel.js');
 const OsuWebSessionModel = require('../models/OsuWebSessionModel.js');
 const { doOsuFriendsTrackerEmbed } = require('../views/osuUserViews.js');
+const { osuApiQueue } = require('../utils/OsuApiQueue.js');
 
 const CHECK_INTERVAL = 8 * 60 * 60 * 1000; // 8 horas en milisegundos
 
@@ -15,6 +16,11 @@ const CHECK_INTERVAL = 8 * 60 * 60 * 1000; // 8 horas en milisegundos
  * @returns {Promise<{ changed: boolean, followers?: number, error?: string }>}
  */
 async function runOwnerFriendsCheck(client, { force = false, targetChannelId = null } = {}) {
+    if (!force && osuApiQueue.isInCooldown()) {
+        Logger.system('[FRIENDS-TRACKER] Omitido por cooldown activo de la API de osu!.');
+        return { changed: false, reason: 'api_cooldown' };
+    }
+
     const channelId = targetChannelId || await BotSettingsModel.getSetting('owner_friends_tracker_channel');
     if (!channelId) {
         return { changed: false, reason: 'no_channel' };

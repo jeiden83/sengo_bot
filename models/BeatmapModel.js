@@ -8,7 +8,7 @@ const { v2 } = require('osu-api-extended');
 const OsuUserModel = require('./OsuUserModel.js');
 const { localBeatmapStatus } = require("../commands/utils/admin.js");
 const Logger = require("../utils/logger.js");
-const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { osuApiQueue, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
 const { getSupabaseClient } = require("../db/database.js");
 const TursoDB = require('../db/turso.js');
 
@@ -762,10 +762,13 @@ async function getBeatmapsetTagsDetail(beatmapsetId, priority = 0) {
             if (is403) {
                 lastScraperBlockTime = Date.now();
                 Logger.system(`Scraper: Bloqueo 403 por Cloudflare al obtener tags detallados para beatmapset ${beatmapsetId} (cooldown de scraping activado por 15 minutos).`);
+                tagsDetailCache.set(beatmapsetId, { data: null, timestamp: Date.now(), isError: true });
+            } else if (isExternalApiOutageError(e)) {
+                osuApiQueue.recordOutage(e, 'BeatmapScraper');
             } else {
                 Logger.system(`Scraper: Error al obtener tags detallados para beatmapset ${beatmapsetId}: ${e.message}`);
+                tagsDetailCache.set(beatmapsetId, { data: null, timestamp: Date.now(), isError: true });
             }
-            tagsDetailCache.set(beatmapsetId, { data: null, timestamp: Date.now(), isError: true });
             return null;
         }
     }, priority);

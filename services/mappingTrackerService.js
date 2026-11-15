@@ -2,7 +2,7 @@ const Logger = require("../utils/logger.js");
 const MappingTrackerModel = require("../models/MappingTrackerModel.js");
 const OsuUserModel = require("../models/OsuUserModel.js");
 const { doMappingTrackerNotificationEmbed, parseDiscussionMessage } = require("../views/mappingTrackerViews.js");
-const { osuApiQueue } = require("../utils/OsuApiQueue.js");
+const { osuApiQueue, isExternalApiOutageError } = require("../utils/OsuApiQueue.js");
 const axios = require("axios");
 
 let trackerInterval = null;
@@ -39,8 +39,19 @@ async function getOsuApiToken(forceRefresh = false) {
  * Consulta los beatmapsets de un usuario mediante la API v2 de osu!
  */
 async function fetchUserBeatmapsets(osuId, type = null) {
-    const token = await getOsuApiToken();
-    if (!token) return [];
+    if (osuApiQueue.isInCooldown()) return null;
+
+    let token;
+    try {
+        token = await getOsuApiToken();
+    } catch (err) {
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+            osuApiQueue.recordOutage(err, 'MAPPING-TRACKER');
+            return null;
+        }
+        return [];
+    }
+    if (!token) return osuApiQueue.isInCooldown() ? null : [];
 
     try {
         if (type && ['loved', 'graveyard', 'ranked', 'pending'].includes(type.toLowerCase())) {
@@ -66,6 +77,8 @@ async function fetchUserBeatmapsets(osuId, type = null) {
         }), 0);
         const unranked = Array.isArray(res.data) ? res.data : [];
 
+        if (osuApiQueue.isInCooldown()) return null;
+
         // También consultar los ranked más recientes
         const rankedUrl = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/ranked?limit=10`;
         const rankedRes = await osuApiQueue.add(() => axios.get(rankedUrl, {
@@ -77,6 +90,8 @@ async function fetchUserBeatmapsets(osuId, type = null) {
         }), 0);
         const ranked = Array.isArray(rankedRes.data) ? rankedRes.data : [];
 
+        if (osuApiQueue.isInCooldown()) return null;
+
         // También consultar los graveyard más recientes para registrar su estado y detectar revives correctamente
         const graveyardUrl = `https://osu.ppy.sh/api/v2/users/${osuId}/beatmapsets/graveyard?limit=15`;
         const graveyardRes = await osuApiQueue.add(() => axios.get(graveyardUrl, {
@@ -85,13 +100,23 @@ async function fetchUserBeatmapsets(osuId, type = null) {
                 'Content-Type': 'application/json',
                 'User-Agent': 'Sengo/2.0'
             }
-        }), 0).catch(() => ({ data: [] }));
+        }), 0).catch((err) => {
+            if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                osuApiQueue.recordOutage(err, 'MAPPING-TRACKER');
+            }
+            return { data: [] };
+        });
+        if (osuApiQueue.isInCooldown()) return null;
         const graveyard = Array.isArray(graveyardRes.data) ? graveyardRes.data : [];
 
         return [...ranked, ...unranked, ...graveyard];
     } catch (err) {
         if (err.response?.status === 401) {
-            await getOsuApiToken(true);
+            await getOsuApiToken(true).catch(() => null);
+        }
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+            osuApiQueue.recordOutage(err, 'MAPPING-TRACKER');
+            return null;
         }
         if (err.response?.status !== 404) {
             console.error(`[MAPPING-TRACKER-SERVICE] Error al consultar beatmapsets de osu_id ${osuId}:`, err.message);
@@ -104,7 +129,17 @@ async function fetchUserBeatmapsets(osuId, type = null) {
  * Consulta los eventos globales de beatmapsets desde la API v2 de osu!
  */
 async function fetchGlobalBeatmapEvents() {
-    const token = await getOsuApiToken();
+    if (osuApiQueue.isInCooldown()) return [];
+
+    let token;
+    try {
+        token = await getOsuApiToken();
+    } catch (err) {
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+            osuApiQueue.recordOutage(err, 'MAPPING-TRACKER');
+        }
+        return [];
+    }
     if (!token) return [];
 
     try {
@@ -128,9 +163,13 @@ async function fetchGlobalBeatmapEvents() {
         return events;
     } catch (err) {
         if (err.response?.status === 401) {
-            await getOsuApiToken(true);
+            await getOsuApiToken(true).catch(() => null);
         }
-        console.error('[MAPPING-TRACKER-SERVICE] Error al consultar eventos globales de beatmapsets:', err.message);
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+            osuApiQueue.recordOutage(err, 'MAPPING-TRACKER');
+        } else {
+            console.error('[MAPPING-TRACKER-SERVICE] Error al consultar eventos globales de beatmapsets:', err.message);
+        }
         return [];
     }
 }
@@ -139,7 +178,7 @@ async function fetchGlobalBeatmapEvents() {
  * Escaneo rápido (cada 30s): Consulta el feed global de eventos de osu! y notifica al instante cambios mayores.
  */
 async function runGlobalEventsScan() {
-    if (!discordClient || isScanningEvents) return;
+    if (!discordClient || isScanningEvents || osuApiQueue.isInCooldown()) return;
     isScanningEvents = true;
 
     try {
@@ -266,7 +305,7 @@ async function runGlobalEventsScan() {
  * Escaneo profundo (cada 5m): Ejecuta un ciclo completo para todos los mappers rastreados (WIP/Pending/Updates).
  */
 async function runMappingTrackerScan() {
-    if (!discordClient || isScanningDeep) return;
+    if (!discordClient || isScanningDeep || osuApiQueue.isInCooldown()) return;
     isScanningDeep = true;
 
     try {
@@ -277,8 +316,16 @@ async function runMappingTrackerScan() {
         }
 
         for (const osuId of trackedIds) {
+            if (osuApiQueue.isInCooldown()) {
+                Logger.system(`[MAPPING-TRACKER-SERVICE] Escaneo profundo pausado por cooldown de la API de osu! (${Math.round(osuApiQueue.getCooldownRemainingMs() / 1000)}s).`);
+                break;
+            }
             const mapsets = await fetchUserBeatmapsets(osuId);
-            if (!mapsets || mapsets.length === 0) {
+            if (mapsets === null) {
+                Logger.system('[MAPPING-TRACKER-SERVICE] Escaneo profundo abortado por indisponibilidad de la API de osu!.');
+                break;
+            }
+            if (mapsets.length === 0) {
                 await new Promise(r => setTimeout(r, 400));
                 continue;
             }
@@ -546,6 +593,7 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
 function scheduleSrRecheck(sentMsg, mapsetId, mapperUser, eventType, ranksInfo, extraInfo, attempt = 1) {
     const delay = 30000; // 30s para el 1er intento (T+30s), y otros 30s si se requiere un 2do intento (T+60s)
     setTimeout(async () => {
+        if (osuApiQueue.isInCooldown()) return;
         try {
             const token = await getOsuApiToken();
             if (!token) return;

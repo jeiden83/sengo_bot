@@ -3,6 +3,7 @@ const BotSettingsModel = require("../models/BotSettingsModel.js");
 const { getSupabaseClient } = require("../db/database.js");
 const { getUserTopScores, getOsuUser } = require("../commands/utils/osu.js");
 const { analyzeSkills, saveUserSkills } = require("../models/SkillsModel.js");
+const { osuApiQueue, isExternalApiOutageError } = require("../utils/OsuApiQueue.js");
 
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -52,13 +53,27 @@ async function syncUserSkillsBackground() {
         let failCount = 0;
 
         for (const candidate of candidates) {
+            if (osuApiQueue.isInCooldown()) {
+                Logger.system(`[Skills Sync] Sincronización pausada por cooldown activo de la API de osu! (${Math.round(osuApiQueue.getCooldownRemainingMs() / 1000)}s).`);
+                break;
+            }
             try {
                 const targetMode = candidate.main_gamemode || "osu";
                 const scores = await getUserTopScores({
                     username: [String(candidate.osu_id)],
                     gamemode: targetMode,
                     server: "bancho"
-                }).catch(() => []);
+                }).catch((err) => {
+                    if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                        osuApiQueue.recordOutage(err, "Skills Sync");
+                    }
+                    return [];
+                });
+
+                if (osuApiQueue.isInCooldown()) {
+                    Logger.system(`[Skills Sync] Abortando lote por caída detectada en la API de osu!.`);
+                    break;
+                }
 
                 if (!scores || scores.length === 0) {
                     await sleep(600);
@@ -71,7 +86,17 @@ async function syncUserSkillsBackground() {
                         username: [String(candidate.osu_id)],
                         gamemode: targetMode,
                         server: "bancho"
-                    }).catch(() => null);
+                    }).catch((err) => {
+                        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                            osuApiQueue.recordOutage(err, "Skills Sync");
+                        }
+                        return null;
+                    });
+                }
+
+                if (osuApiQueue.isInCooldown()) {
+                    Logger.system(`[Skills Sync] Abortando lote por caída detectada en la API de osu!.`);
+                    break;
                 }
 
                 if (!osuUser || typeof osuUser === "string") {
@@ -92,6 +117,10 @@ async function syncUserSkillsBackground() {
             } catch (err) {
                 failCount++;
                 console.warn(`[Skills Sync] Error al actualizar ${candidate.osu_id}:`, err.message);
+                if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+                    osuApiQueue.recordOutage(err, "Skills Sync");
+                    break;
+                }
             }
 
             // Pausa de cortesía generosa (600ms) para prioridad mínima

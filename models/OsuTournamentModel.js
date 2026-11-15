@@ -1,6 +1,6 @@
 const { getSupabaseClient } = require('../db/database.js');
 const { v2 } = require('osu-api-extended');
-const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { osuApiQueue, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
 const OsuUserModel = require('./OsuUserModel.js');
 const https = require('https');
 const cheerio = require('cheerio');
@@ -853,6 +853,10 @@ async function syncLatestTournaments(limit = 10) {
         return { newTournaments: [], updatedTournaments: [] };
     }
 
+    if (osuApiQueue.isInCooldown()) {
+        return { newTournaments: [], updatedTournaments: [] };
+    }
+
     try {
         await OsuUserModel.NewloadToken();
 
@@ -887,6 +891,10 @@ async function syncLatestTournaments(limit = 10) {
         const syncedUpdatedTournaments = [];
 
         for (const topic of listResult.topics) {
+            if (osuApiQueue.isInCooldown()) {
+                console.warn('[Tournament Sync] Ciclo pausado por cooldown activo de la API de osu!.');
+                break;
+            }
             try {
                 const existingRecord = existingMap[topic.id];
                 const isNew = !existingRecord;
@@ -1039,7 +1047,11 @@ async function syncLatestTournaments(limit = 10) {
                 // Pequeña espera para no saturar APIs
                 await new Promise(r => setTimeout(r, GROQ_API_KEY ? 2000 : 200));
             } catch (topicErr) {
-                console.error(`[Tournament Sync] Error al procesar el torneo ${topic.id}:`, topicErr);
+                console.error(`[Tournament Sync] Error al procesar el torneo ${topic.id}:`, topicErr.message || topicErr);
+                if (isExternalApiOutageError(topicErr, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+                    osuApiQueue.recordOutage(topicErr, 'Tournament Sync');
+                    break;
+                }
             }
         }
 
@@ -1048,7 +1060,11 @@ async function syncLatestTournaments(limit = 10) {
             updatedTournaments: syncedUpdatedTournaments
         };
     } catch (err) {
-        console.error('[Tournament Sync] Error general en syncLatestTournaments:', err);
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+            osuApiQueue.recordOutage(err, 'Tournament Sync');
+        } else {
+            console.error('[Tournament Sync] Error general en syncLatestTournaments:', err);
+        }
         return { newTournaments: [], updatedTournaments: [] };
     }
 }

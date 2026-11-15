@@ -125,13 +125,21 @@ function classifyExternalServiceError(error, context = {}) {
         };
     }
 
-    // 3. Rate-Limits de Discord o Cloudflare (429 / 1015)
+    // 3. Rate-Limits o bloqueos WAF de Discord o Cloudflare (403 / 429 / 1015)
     if (code === 429 || errorStr.includes('rate limit') || errorStr.includes('ratelimit') || errorStr.includes('1015')) {
         return {
             service: 'Discord / Cloudflare Rate Limit',
             isExternal: true,
             reason: 'Discord o Cloudflare aplicaron un límite de peticiones (429 / 1015) temporal a la IP del bot.',
             suggestion: 'Se desbloqueará automáticamente tras el tiempo de enfriamiento impuesto por Cloudflare/Discord.'
+        };
+    }
+    if (code === 403 || errorStr.includes('status code 403') || errorStr.includes('403: forbidden')) {
+        return {
+            service: 'Cloudflare / API Externa (HTTP 403)',
+            isExternal: true,
+            reason: 'Cloudflare o el servidor externo rechazó la petición con HTTP 403 Forbidden (bloqueo temporal de IP o protección anti-bot activa).',
+            suggestion: 'Revisa el estado de osu.ppy.sh o si Cloudflare está bloqueando la IP del servidor de hosting.'
         };
     }
 

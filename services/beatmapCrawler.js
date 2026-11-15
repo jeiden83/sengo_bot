@@ -1,5 +1,5 @@
 const { auth, v2 } = require('osu-api-extended');
-const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { osuApiQueue, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
 const { getSupabaseClient } = require('../db/database.js');
 const CONFIG = require('../config.js');
 const Logger = require('../utils/logger.js');
@@ -28,6 +28,11 @@ async function checkNewBeatmaps() {
         return;
     }
 
+    if (osuApiQueue.isInCooldown()) {
+        Logger.system("Actualización diaria de beatmaps omitida por cooldown activo de la API de osu!.");
+        return;
+    }
+
     try {
         const OsuUserModel = require('../models/OsuUserModel.js');
         await OsuUserModel.NewloadToken();
@@ -36,6 +41,8 @@ async function checkNewBeatmaps() {
         let totalSaved = 0;
 
         for (const status of statuses) {
+            if (osuApiQueue.isInCooldown()) break;
+
             const response = await osuApiQueue.add(() => v2.search({
                 type: 'beatmaps',
                 mode: 0, // standard
@@ -49,6 +56,7 @@ async function checkNewBeatmaps() {
             const beatmapsToInsert = [];
 
             for (const set of response.beatmapsets) {
+                if (osuApiQueue.isInCooldown()) break;
                 // Obtener tags de usuario detallados raspando la web
                 let detail = null;
                 try {
@@ -56,6 +64,7 @@ async function checkNewBeatmaps() {
                 } catch (e) {
                     // Silenciar y continuar
                 }
+                if (osuApiQueue.isInCooldown()) break;
 
                 const genre = GENRES[set.genre_id] || 'Unspecified';
                 const language = LANGUAGES[set.language_id] || 'Unspecified';
@@ -132,7 +141,11 @@ async function checkNewBeatmaps() {
             console.error("Error al escribir el status de beatmap crawler en Supabase:", writeErr);
         }
     } catch (err) {
-        console.error("Error en la sincronización diaria de beatmaps:", err);
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+            osuApiQueue.recordOutage(err, 'Beatmap Crawler');
+        } else {
+            console.error("Error en la sincronización diaria de beatmaps:", err);
+        }
     }
 }
 

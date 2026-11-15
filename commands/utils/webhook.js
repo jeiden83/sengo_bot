@@ -877,6 +877,7 @@ function startServer(client, dbRes, port, config) {
                     supabase: { status: supabaseStatus, latencyMs: supabaseLatencyMs },
                     turso: { status: tursoStatus, latencyMs: tursoLatencyMs }
                 },
+                osuApi: osuApiQueue.getStats(),
                 memory: memoryStats
             }, null, 2));
             return;

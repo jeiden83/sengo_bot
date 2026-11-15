@@ -1,5 +1,6 @@
 const Logger = require("../utils/logger.js");
 const OsuTournamentModel = require("../models/OsuTournamentModel.js");
+const { osuApiQueue } = require("../utils/OsuApiQueue.js");
 
 let isRunning = false;
 let discordClient = null;
@@ -9,7 +10,7 @@ let discordClient = null;
  * y los añade a la base de datos si no existen.
  */
 async function checkNewTournaments() {
-    if (isRunning) return;
+    if (isRunning || osuApiQueue.isInCooldown()) return;
     isRunning = true;
 
     try {

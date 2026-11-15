@@ -2,6 +2,9 @@ const axios = require('axios');
 const fs = require('fs/promises');
 const path = require('path');
 const https = require('https');
+const { ApiBackoff, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
+
+const huismetbenenBackoff = new ApiBackoff({ name: 'Huismetbenen API', baseMs: 30000, maxMs: 5 * 60 * 1000 });
 
 const httpsAgent = new https.Agent({ keepAlive: true });
 
@@ -184,7 +187,7 @@ async function initQueue() {
 function startQueueChecker() {
     if (checkerInterval) return;
     checkerInterval = setInterval(async () => {
-        if (reworkQueue.size === 0 || !clientInstance) return;
+        if (reworkQueue.size === 0 || !clientInstance || huismetbenenBackoff.isInCooldown()) return;
 
         for (const [key, item] of reworkQueue.entries()) {
             try {
@@ -192,8 +195,16 @@ function startQueueChecker() {
                 let res;
                 try {
                     res = await axios.get(url, { timeout: 8000 });
+                    huismetbenenBackoff.recordSuccess();
                 } catch (err) {
-                    // Si la API del rework da 404/error, significa que aún está recalculando o falló
+                    if (isExternalApiOutageError(err)) {
+                        const resBackoff = huismetbenenBackoff.recordFailure(err.message);
+                        if (resBackoff.escalated) {
+                            console.warn(`[Rework Queue] API de Huismetbenen caída (${err.message}). Esperando ${Math.round(resBackoff.cooldownMs / 1000)}s antes de reintentar.`);
+                        }
+                        break;
+                    }
+                    // Si la API del rework da 404/error de negocio, significa que aún está recalculando
                     continue;
                 }
 

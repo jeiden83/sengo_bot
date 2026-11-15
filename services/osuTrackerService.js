@@ -2,7 +2,7 @@ const { getSupabaseClient } = require('../db/database.js');
 const OsuTrackerModel = require('../models/OsuTrackerModel.js');
 const OsuUserModel = require('../models/OsuUserModel.js');
 const OsuScoreModel = require('../models/OsuScoreModel.js');
-const { osuApiQueue } = require('../utils/OsuApiQueue.js');
+const { osuApiQueue, isExternalApiOutageError } = require('../utils/OsuApiQueue.js');
 const { v2 } = require('osu-api-extended');
 const Logger = require('../utils/logger.js');
 const { getGuildLanguage } = require('../models/GuildConfigModel.js');
@@ -38,10 +38,20 @@ function calculateSlowDelay() {
     return Math.max((tLento * 1000) / n, 4000);
 }
 
+function getNextTickDelay(baseDelayMs) {
+    const cooldownRemaining = osuApiQueue.getCooldownRemainingMs();
+    if (cooldownRemaining > 0) {
+        return Math.max(baseDelayMs, cooldownRemaining + 500);
+    }
+    return baseDelayMs;
+}
+
 /**
  * Obtiene el ID del score más alto actual del usuario para inicializar a los nuevos trackeados.
  */
 async function fetchLatestScoreIdForUser(osuId, mode = 'osu') {
+    if (osuApiQueue.isInCooldown()) return "0";
+
     try {
         await OsuUserModel.NewloadToken();
         const best = await osuApiQueue.add(() => v2.scores.list({
@@ -54,6 +64,8 @@ async function fetchLatestScoreIdForUser(osuId, mode = 'osu') {
             return best[0].id.toString();
         }
         
+        if (osuApiQueue.isInCooldown()) return "0";
+
         const recent = await osuApiQueue.add(() => v2.scores.list({
             type: 'user_recent',
             user_id: osuId,
@@ -65,7 +77,11 @@ async function fetchLatestScoreIdForUser(osuId, mode = 'osu') {
             return recent[0].id.toString();
         }
     } catch (err) {
-        console.error(`[TRACKER-SERVICE] Error al obtener score más reciente para inicializar usuario ${osuId}:`, err);
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+            osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+        } else {
+            console.error(`[TRACKER-SERVICE] Error al obtener score más reciente para inicializar usuario ${osuId}:`, err);
+        }
     }
     return "0";
 }
@@ -207,16 +223,28 @@ async function processNewScore(client, userObj, score) {
     // 1. Obtener el Top 200 de mejores puntuaciones del usuario
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
     const activeGamemode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
-    await OsuUserModel.NewloadToken();
-    let bestScores = await osuApiQueue.add(() => v2.scores.list({
-        type: 'user_best',
-        user_id: osuId,
-        mode: activeGamemode,
-        limit: 100,
-        offset: 0
-    }), 0);
+    if (osuApiQueue.isInCooldown()) return;
 
-    if (bestScores && Array.isArray(bestScores) && bestScores.length === 100) {
+    let bestScores;
+    try {
+        await OsuUserModel.NewloadToken();
+        bestScores = await osuApiQueue.add(() => v2.scores.list({
+            type: 'user_best',
+            user_id: osuId,
+            mode: activeGamemode,
+            limit: 100,
+            offset: 0
+        }), 0);
+    } catch (err) {
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+            osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+        } else {
+            console.error(`[TRACKER-SERVICE] Error al obtener top scores de ${userObj.osuUsername}:`, err);
+        }
+        return;
+    }
+
+    if (bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
         try {
             const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
@@ -229,7 +257,11 @@ async function processNewScore(client, userObj, score) {
                 bestScores = bestScores.concat(nextBestScores);
             }
         } catch (err) {
-            console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername}:`, err);
+            if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+            } else {
+                console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername}:`, err);
+            }
         }
     }
 
@@ -300,11 +332,13 @@ async function processNewScore(client, userObj, score) {
                     (s.legacy_total_score === score.legacy_total_score || s.total_score === score.total_score));
         });
         
-        if (positionIndex === -1) {
+        if (positionIndex === -1 && !osuApiQueue.isInCooldown()) {
             // ponytail: reintento simple de 5 segundos para mitigar lag de réplica de la API de osu!; límite de 1 reintento para evitar colas de llamadas.
             Logger.system(`[TRACKER-SERVICE] Score ${score.id} no encontrado por ID en el top 200 de ${userObj.osuUsername}. Reintentando en 5 segundos por posible lag de la API de osu!...`);
             await new Promise(resolve => setTimeout(resolve, 5000));
-            
+
+            if (osuApiQueue.isInCooldown()) return;
+
             bestScores = await osuApiQueue.add(() => v2.scores.list({
                 type: 'user_best',
                 user_id: osuId,
@@ -313,7 +347,7 @@ async function processNewScore(client, userObj, score) {
                 offset: 0
             }), 0);
 
-            if (bestScores && Array.isArray(bestScores) && bestScores.length === 100) {
+            if (bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
                 try {
                     const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
                         type: 'user_best',
@@ -326,7 +360,11 @@ async function processNewScore(client, userObj, score) {
                         bestScores = bestScores.concat(nextBestScores);
                     }
                 } catch (err) {
-                    console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername} en reintento:`, err);
+                    if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                        osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+                    } else {
+                        console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername} en reintento:`, err);
+                    }
                 }
             }
             
@@ -470,6 +508,8 @@ async function processNewScore(client, userObj, score) {
  * @returns {Promise<boolean>} True si hay un nuevo score
  */
 async function checkUserRecentScore(client, userObj) {
+    if (osuApiQueue.isInCooldown()) return false;
+
     const osuId = userObj.osuId;
 
     try {
@@ -525,7 +565,11 @@ async function checkUserRecentScore(client, userObj) {
 
         return hadNewScore;
     } catch (err) {
-        console.error(`[TRACKER-SERVICE] Error al chequear scores recientes para ${userObj.osuUsername}:`, err);
+        if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true }) || osuApiQueue.isInCooldown()) {
+            osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+        } else {
+            console.error(`[TRACKER-SERVICE] Error al chequear scores recientes para ${userObj.osuUsername}:`, err);
+        }
     }
 
     return false;
@@ -535,8 +579,14 @@ async function checkUserRecentScore(client, userObj) {
  * Bucle de sondeo rápido.
  */
 async function tickFast(client) {
+    const preCooldown = osuApiQueue.getCooldownRemainingMs();
+    if (preCooldown > 0) {
+        fastTimeout = setTimeout(() => tickFast(client), preCooldown + 500);
+        return;
+    }
+
     if (fastQueue.length === 0) {
-        fastTimeout = setTimeout(() => tickFast(client), calculateFastDelay());
+        fastTimeout = setTimeout(() => tickFast(client), getNextTickDelay(calculateFastDelay()));
         return;
     }
 
@@ -544,7 +594,7 @@ async function tickFast(client) {
     const userObj = usersMap.get(osuId);
 
     if (!userObj) {
-        fastTimeout = setTimeout(() => tickFast(client), calculateFastDelay());
+        fastTimeout = setTimeout(() => tickFast(client), getNextTickDelay(calculateFastDelay()));
         return;
     }
 
@@ -579,15 +629,21 @@ async function tickFast(client) {
         }
     }
 
-    fastTimeout = setTimeout(() => tickFast(client), calculateFastDelay());
+    fastTimeout = setTimeout(() => tickFast(client), getNextTickDelay(calculateFastDelay()));
 }
 
 /**
  * Bucle de sondeo lento.
  */
 async function tickSlow(client) {
+    const preCooldown = osuApiQueue.getCooldownRemainingMs();
+    if (preCooldown > 0) {
+        slowTimeout = setTimeout(() => tickSlow(client), preCooldown + 500);
+        return;
+    }
+
     if (slowQueue.length === 0) {
-        slowTimeout = setTimeout(() => tickSlow(client), calculateSlowDelay());
+        slowTimeout = setTimeout(() => tickSlow(client), getNextTickDelay(calculateSlowDelay()));
         return;
     }
 
@@ -595,7 +651,7 @@ async function tickSlow(client) {
     const userObj = usersMap.get(osuId);
 
     if (!userObj) {
-        slowTimeout = setTimeout(() => tickSlow(client), calculateSlowDelay());
+        slowTimeout = setTimeout(() => tickSlow(client), getNextTickDelay(calculateSlowDelay()));
         return;
     }
 
@@ -621,7 +677,7 @@ async function tickSlow(client) {
         slowQueue.push(osuId);
     }
 
-    slowTimeout = setTimeout(() => tickSlow(client), calculateSlowDelay());
+    slowTimeout = setTimeout(() => tickSlow(client), getNextTickDelay(calculateSlowDelay()));
 }
 
 /**
