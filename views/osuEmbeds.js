@@ -773,14 +773,23 @@ async function doOsuCompareSingleEmbed(message, score, pre_calculated, index, to
     let isDifferentUser = false;
 
     if (!isDroid) {
-        // Primero verificamos si el jugador de la score existe online
-        const playerOsuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
+        // Primero verificamos si el jugador de la score existe online (por username o fallback por user_id si cambió de nick)
+        let playerOsuUser = await OsuUserModel.getOsuUser({ username: [username], gamemode: 'osu' }).catch(() => null);
+        const scoreUserId = String(score.user_id || score.user?.id || '');
+        if ((!playerOsuUser || typeof playerOsuUser === 'string') && scoreUserId) {
+            playerOsuUser = await OsuUserModel.getOsuUser({ username: [scoreUserId], gamemode: 'osu' }).catch(() => null);
+        }
+        const mapStatus = String(beatmap_metadata?.status || score.beatmap_status || '').toLowerCase();
+        const isRankedMap = mapStatus === 'ranked' || mapStatus === 'approved' || beatmap_metadata?.ranked_status === 1 || beatmap_metadata?.ranked_status === 2;
+        const isRankedPass = isRankedMap && score.passed !== false;
+
         if (!playerOsuUser || typeof playerOsuUser === 'string') {
-            isOffline = true;
-            isDifferentUser = true;
+            if (!isRankedPass) {
+                isOffline = true;
+                isDifferentUser = true;
+            }
         } else {
             resolvedOsuId = playerOsuUser.id;
-            const scoreUserId = String(score.user_id || score.user?.id || '');
             if (scoreUserId && String(resolvedOsuId) !== scoreUserId) {
                 isDifferentUser = true;
             }
@@ -902,16 +911,26 @@ async function doOsuCompareListEmbed(message, parsed_args, user_scores_chunk, st
 
         const OsuUserModel = require("../models/OsuUserModel.js");
         const mainUsername = user_scores_chunk[0]?.user?.username || parsed_args.username[0] || 'Usuario';
+        const mainUserId = String(user_scores_chunk[0]?.user?.id || user_scores_chunk[0]?.user_id || '');
         const scoreUsername = score.user?.username || score.username || '';
-        const isDifferentUser = scoreUsername && scoreUsername.toLowerCase() !== mainUsername.toLowerCase();
+        const scoreUserId = String(score.user_id || score.user?.id || '');
+        const isSameUserId = Boolean(mainUserId && scoreUserId && mainUserId === scoreUserId);
+        const isDifferentUser = !isSameUserId && scoreUsername && scoreUsername.toLowerCase() !== mainUsername.toLowerCase();
+        const mapStatus = String(beatmap_metadata?.status || score.beatmap_status || '').toLowerCase();
+        const isRankedMap = mapStatus === 'ranked' || mapStatus === 'approved' || beatmap_metadata?.ranked_status === 1 || beatmap_metadata?.ranked_status === 2;
+        const isRankedPass = isRankedMap && score.passed !== false;
         
         let playerTag = '';
         if (isDifferentUser) {
             const osuUser = await OsuUserModel.getOsuUser({ username: [scoreUsername], gamemode: 'osu' }).catch(() => null);
             if (!osuUser || typeof osuUser === 'string') {
-                playerTag = `*${scoreUsername}* ▸ `;
-            } else {
-                playerTag = `*offline ▸ [${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id})* ▸ `;
+                if (!isRankedPass) {
+                    playerTag = `*${scoreUsername}* ▸ `;
+                }
+            } else if (!mainUserId || String(osuUser.id) !== mainUserId) {
+                playerTag = isRankedPass
+                    ? `[${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id}) ▸ `
+                    : `*offline ▸ [${scoreUsername}](https://osu.ppy.sh/users/${osuUser.id})* ▸ `;
             }
         }
 

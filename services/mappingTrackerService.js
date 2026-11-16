@@ -237,15 +237,23 @@ async function runGlobalEventsScan() {
 
             const subscriptions = await MappingTrackerModel.getSubscriptionsForOsuId(mapperOsuId);
             if (subscriptions.length > 0) {
-                let nominatorUser = event.user ? {
+                let nominatorUser = event.user?.username ? {
                     id: event.user.id || event.user_id,
-                    username: event.user.username || `BN #${event.user_id}`,
-                    avatar_url: event.user.avatar_url || `https://a.ppy.sh/${event.user_id}`
-                } : (event.user_id ? { id: event.user_id, username: `BN #${event.user_id}`, avatar_url: `https://a.ppy.sh/${event.user_id}` } : null);
+                    username: event.user.username,
+                    avatar_url: event.user.avatar_url || `https://a.ppy.sh/${event.user.id || event.user_id}`
+                } : null;
 
                 // Si es evento de calificado o nominación y nominatorUser es nulo, resolver el BN real de los eventos
                 if (!nominatorUser && (eventType === 'nomination' || eventType === 'qualified')) {
                     nominatorUser = await resolveBeatmapsetNominator(mapset.id, events);
+                }
+
+                if (!nominatorUser && event.user_id) {
+                    nominatorUser = {
+                        id: event.user_id,
+                        username: `BN #${event.user_id}`,
+                        avatar_url: `https://a.ppy.sh/${event.user_id}`
+                    };
                 }
 
                 let commentText = event.comment?.text || (typeof event.comment === 'string' ? event.comment : null);
@@ -532,6 +540,34 @@ function detectBeatmapsetGamemode(beatmapset, mapperUser = null, fallbackPlaymod
 }
 
 /**
+ * Sincroniza mapper_statistics en Supabase desde osu! API v2 antes de calcular rankings de un evento ranked/loved.
+ */
+async function syncTrackedMapperStats(osuId) {
+    if (!osuId || osuApiQueue.isInCooldown()) return null;
+    try {
+        const token = await getOsuApiToken();
+        if (!token) return null;
+
+        const res = await osuApiQueue.add(() => axios.get(`https://osu.ppy.sh/api/v2/users/${osuId}`, {
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Sengo/2.0'
+            }
+        }), 0);
+
+        if (res.data?.id) {
+            return await MappingTrackerModel.syncMapperStatistics(res.data);
+        }
+    } catch (err) {
+        if (err.response?.status === 401) {
+            await getOsuApiToken(true).catch(() => null);
+        }
+    }
+    return null;
+}
+
+/**
  * Envía las notificaciones de eventos a los canales de Discord suscritos.
  */
 async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = null) {
@@ -539,8 +575,18 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
         id: osuId,
         username: mapset.creator || 'Mapper',
         avatar_url: `https://a.ppy.sh/${osuId}`,
-        country_code: mapset.user?.country_code || null
+        country_code: mapset.user?.country_code || null,
+        playmode: mapset.user?.playmode || null
     };
+
+    const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
+    if (isRankedEvent) {
+        const syncedStats = await syncTrackedMapperStats(osuId);
+        if (syncedStats) {
+            if (!mapperUser.country_code && syncedStats.country_code) mapperUser.country_code = syncedStats.country_code;
+            if (!mapperUser.playmode && syncedStats.playmode) mapperUser.playmode = syncedStats.playmode;
+        }
+    }
 
     cleanOldNotifiedEntries();
 
@@ -558,7 +604,6 @@ async function notifyEvent(mapset, osuId, eventType, subscriptions, extraInfo = 
         recentlyNotified.set(notifKey, Date.now());
 
         try {
-            const isRankedEvent = eventType === 'ranked' || eventType === 'approved' || eventType === 'loved';
             const detectedGamemode = detectBeatmapsetGamemode(mapset, mapperUser, mapperUser?.playmode);
             const ranksInfo = isRankedEvent ? await MappingTrackerModel.getMapperRankings(osuId, mapperUser.country_code, sub.guild_id, true, detectedGamemode) : null;
             if (ranksInfo) {
@@ -723,19 +768,18 @@ async function fetchBeatmapsetPraise(beatmapsetId, nominatorUserId = null) {
 
         if (nominatorUserId) {
             const nomDiscussions = activeDiscussions.filter(d => Number(d.user_id) === Number(nominatorUserId));
-            targetDiscussion = nomDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message))
-                || nomDiscussions[0];
-        }
-
-        // Si no se encuentra praise específico del nominador o nominatorUserId es nulo, tomar el más reciente
-        if (!targetDiscussion && activeDiscussions.length > 0) {
-            targetDiscussion = activeDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message))
-                || activeDiscussions[0];
+            targetDiscussion = nomDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message));
+            // Si conocemos al BN nominador y este no dejó praise/reseña, no atribuirle el de otro usuario
+            if (!targetDiscussion) return null;
+        } else if (activeDiscussions.length > 0) {
+            // Solo si no se conoce el nominador, tomar la discusión con texto más reciente
+            targetDiscussion = activeDiscussions.find(d => parseDiscussionMessage(d.starting_post?.message)) || null;
         }
 
         if (!targetDiscussion?.starting_post?.message) return null;
 
         const cleanedMessage = parseDiscussionMessage(targetDiscussion.starting_post.message.trim());
+        if (!cleanedMessage) return null;
         const authorUser = userMap.get(Number(targetDiscussion.user_id));
 
         return {
@@ -762,13 +806,20 @@ async function fetchBeatmapsetPraise(beatmapsetId, nominatorUserId = null) {
 async function resolveBeatmapsetNominator(beatmapsetId, knownEvents = null) {
     if (!beatmapsetId) return null;
 
-    // ponytail: resolver primero en eventos en memoria para ahorrar llamadas a la API de osu!
+    // ponytail: resolver primero en eventos en memoria (de más reciente a más antiguo) para ahorrar llamadas a la API de osu!
     if (Array.isArray(knownEvents) && knownEvents.length > 0) {
-        const match = knownEvents.find(e =>
-            e.beatmapset?.id === Number(beatmapsetId) &&
-            ['nominate', 'approve'].includes((e.type || '').toLowerCase()) &&
-            (e.user || e.user_id)
-        );
+        let match = null;
+        for (let i = knownEvents.length - 1; i >= 0; i--) {
+            const e = knownEvents[i];
+            if (
+                e.beatmapset?.id === Number(beatmapsetId) &&
+                ['nominate', 'approve'].includes((e.type || '').toLowerCase()) &&
+                (e.user || e.user_id)
+            ) {
+                match = e;
+                break;
+            }
+        }
         if (match) {
             const u = match.user || {};
             const uId = u.id || match.user_id;

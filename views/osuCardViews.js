@@ -1466,12 +1466,12 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
         const srPillW = Math.round(srPadX + starW + srGap + numW + srPadX);
 
-        // Truncar nombre de dificultad si es muy largo para asegurar espacio a SR y Score
+        // Truncar nombre de dificultad si es muy largo para asegurar espacio al badge de SR
         const dItalic = diffFont.style === "italic" ? "italic " : "";
         const dWeight = diffFont.weight ? `${diffFont.weight} ` : "";
         const dSize = diffFont.size || 23;
         ctx.font = `${dItalic}${dWeight}${dSize}px ${fontFamily}`;
-        const maxDiffWidth = pb.w - srPillW - 275;
+        const maxDiffWidth = pb.w - srPillW - 44;
         let displayDiff = cleanDiff;
         while (displayDiff.length > 3 && ctx.measureText(displayDiff + "...").width > maxDiffWidth) {
             displayDiff = displayDiff.slice(0, -1);
@@ -1508,8 +1508,6 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
         ctx.fillStyle = textColor;
         ctx.fillText(srValText, pillX + srPadX + starW + srGap, textMidY);
         ctx.restore();
-
-        drawCustomText(ctx, fonts.playScore, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + 76, "right", fontFamily);
 
         // Badges de mods estilo lazer
         const rawPlayMods = Array.isArray(pinnedPlay?.mods)
@@ -1615,8 +1613,11 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             modX += currentModW + 8;
         }
 
-        drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + (isShortBox ? 135 : 148), "right", fontFamily);
-        drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + (isShortBox ? 190 : 218), "right", fontFamily);
+        drawCustomText(ctx, fonts.playStats, `${scoreAcc}%`, pb.x + pb.w - 16, pb.y + (isShortBox ? 114 : 122), "right", fontFamily);
+        drawCustomText(ctx, fonts.playStats, `${scoreCombo}`, pb.x + pb.w - 16, pb.y + (isShortBox ? 150 : 164), "right", fontFamily);
+        const playScoreFont = { ...(fonts.playScore || {}), autoFit: true, minSize: 16 };
+        const maxPlayScoreW = Math.max(180, pb.w - 295);
+        drawCustomText(ctx, playScoreFont, `${scoreVal} ${isEs ? 'Puntuación' : 'Score'}`, pb.x + pb.w - 16, pb.y + (isShortBox ? 186 : 206), "right", fontFamily, maxPlayScoreW);
 
         // 4. Barra de estadísticas convertidas del beatmap con mods
         if (statItems.length > 0) {
@@ -1698,6 +1699,8 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
 
         const isCompact = sb.format === "compact";
 
+        const defaultFullOffsets = [425, 538, 651, 764];
+
         if (!isCompact) {
             const rankedScoreVal = Number(stats.ranked_score || stats.total_score || 0).toLocaleString(numLocale);
             const rankedScoreLabel = user.server === 'droid'
@@ -1705,10 +1708,12 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
                 : (isEs ? "Puntuación Ranked" : "Ranked Score");
             const accLabel = isEs ? "Precisión" : "Accuracy";
             const playcountLabel = isEs ? "Partidas" : "Playcount";
+            const statLabelFont = { ...(fonts.statsLabels || {}), autoFit: true, minSize: 13 };
+            const maxStatLabelW = Math.max(180, defaultFullOffsets[0] - 82);
 
-            drawCustomText(ctx, fonts.statsLabels, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily);
-            drawCustomText(ctx, fonts.statsLabels, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily);
-            drawCustomText(ctx, fonts.statsLabels, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily);
+            drawCustomText(ctx, statLabelFont, `${rankedScoreLabel}: ${rankedScoreVal}`, sb.x + 24, sb.y + 42, "left", fontFamily, maxStatLabelW);
+            drawCustomText(ctx, statLabelFont, `${accLabel}: ${Number(stats.hit_accuracy || 98.12).toFixed(2)}%`, sb.x + 24, sb.y + 88, "left", fontFamily, maxStatLabelW);
+            drawCustomText(ctx, statLabelFont, `${playcountLabel}: ${Number(stats.play_count || 0).toLocaleString(numLocale)}`, sb.x + 24, sb.y + 134, "left", fontFamily, maxStatLabelW);
         }
 
         let rawSkills = [];
@@ -1742,7 +1747,6 @@ async function _renderOsuCardCanvas(user, topScores, options, locale, mode, cach
             ];
         }
 
-        const defaultFullOffsets = [380, 500, 620, 750];
         const skillsList = rawSkills.map((s, idx) => {
             let x;
             if (isCompact) {

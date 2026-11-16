@@ -561,6 +561,41 @@ async function getLinkedGdMappersInfo(beatmapset, guildId = null, gamemode = 'os
     }
 }
 
+/**
+ * Sincroniza las estadísticas de mapping de un usuario en `mapper_statistics` a partir del perfil de osu! API v2.
+ */
+async function syncMapperStatistics(osuUser) {
+    const supabase = getSupabaseClient();
+    if (!supabase || !osuUser?.id) return null;
+
+    const payload = {
+        osu_id: String(osuUser.id),
+        username: osuUser.username || `Mapper #${osuUser.id}`,
+        country_code: (osuUser.country_code || osuUser.country?.code || null)?.toUpperCase() || null,
+        ranked_count: Number(osuUser.ranked_and_approved_beatmapset_count || 0),
+        loved_count: Number(osuUser.loved_beatmapset_count || 0),
+        pending_count: Number(osuUser.pending_beatmapset_count || 0),
+        graveyard_count: Number(osuUser.graveyard_beatmapset_count || 0),
+        guest_count: Number(osuUser.guest_beatmapset_count || 0),
+        kudosu_total: Number(osuUser.kudosu?.total || 0),
+        followers: Number(osuUser.follower_count || 0),
+        subscribers: Number(osuUser.mapping_follower_count || 0),
+        playmode: (osuUser.playmode || 'osu').toLowerCase(),
+        updated_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase
+        .from('mapper_statistics')
+        .upsert(payload, { onConflict: 'osu_id' });
+
+    if (error) {
+        console.error('[MAPPING-TRACKER] Error al sincronizar mapper_statistics:', error.message);
+        return null;
+    }
+
+    return payload;
+}
+
 module.exports = {
     setTrackerChannel,
     deleteTrackerChannel,
@@ -574,5 +609,6 @@ module.exports = {
     getLastEventsForOsuId,
     saveLastEventsForOsuId,
     getMapperRankings,
-    getLinkedGdMappersInfo
+    getLinkedGdMappersInfo,
+    syncMapperStatistics
 };

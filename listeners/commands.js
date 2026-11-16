@@ -97,8 +97,8 @@ function setLatencyCache(messageId, latencyText) {
 function injectLatencyToEmbeds(options, timeOrText, isDirectText = false) {
     if (!options || typeof options !== 'object') return options;
 
-    // Prevenir DiscordjsRangeError [MessageNonceType] si options contiene un nonce nulo o inválido
-    if ('nonce' in options && (options.nonce === null || options.nonce === undefined)) {
+    // Prevenir DiscordjsRangeError [MessageNonceType] si options contiene un nonce inválido
+    if ('nonce' in options && typeof options.nonce !== 'string' && !Number.isInteger(options.nonce)) {
         delete options.nonce;
     }
 

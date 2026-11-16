@@ -280,8 +280,6 @@ function doMappingTrackerNotificationEmbed(beatmapset, mapperUser, eventType = '
             }
             const formattedComment = cleanComment.split('\n').map(line => line.trim() ? `-# ${line}` : '-#').join('\n');
             desc += `${formattedComment}\n`;
-        } else {
-            desc += `-# ${t(locale, 'mapping_tracker.comment_placeholder')}\n`;
         }
     }
 
