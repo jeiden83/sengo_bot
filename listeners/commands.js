@@ -3,7 +3,8 @@ const { PermissionsBitField } = require('discord.js');
 const { reportErrorToWebhook } = require("../services/errorNotifier.js");
 const { getGuildLanguage } = require("../models/GuildConfigModel.js");
 const { getUserLanguage } = require("../models/UserConfigModel.js");
-const { t } = require("../utils/i18n.js");
+const { t, loadTranslations } = require("../utils/i18n.js");
+const path = require("path");
 
 const Logger = require("../utils/logger.js");
 
@@ -661,10 +662,40 @@ async function slash_command_listener(chat_commands, slash_commands, client, res
 
 //---
 
+function purgeHotReloadCache() {
+    loadTranslations();
+
+    const root = process.cwd();
+    const reloadablePrefixes = [
+        path.join(root, "views") + path.sep,
+        path.join(root, "commands", "utils") + path.sep
+    ];
+    const reloadableExact = new Set([
+        path.join(root, "services", "commandRegistry.js"),
+        path.join(root, "services", "typeSafeRouter.js"),
+        path.join(root, "models", "MappingTrackerModel.js"),
+        path.join(root, "models", "MapperCardModel.js"),
+        path.join(root, "models", "SkillsModel.js"),
+        path.join(root, "models", "BlacklistModel.js")
+    ]);
+    const protectedFiles = new Set([
+        path.join(root, "commands", "utils", "webhook.js")
+    ]);
+
+    for (const key of Object.keys(require.cache)) {
+        if (protectedFiles.has(key)) continue;
+        if (reloadableExact.has(key) || reloadablePrefixes.some(p => key.startsWith(p))) {
+            delete require.cache[key];
+        }
+    }
+}
+
 async function load_listeners(res, client, config){
     if (currentChatListener) client.off("messageCreate", currentChatListener);
     if (currentSlashListener) client.off("interactionCreate", currentSlashListener);
     if (currentComponentListener) client.off("interactionCreate", currentComponentListener);
+
+    purgeHotReloadCache();
 
     const chat_commands = await loadCommands();
     const slash_commands = await loadSlashCommands(chat_commands, config);

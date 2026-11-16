@@ -895,11 +895,15 @@ function startServer(client, dbRes, port, config) {
                 Logger.system("[ADMIN-API] Solicitud remota de recarga de comandos y listeners recibida...");
                 const { load_listeners } = require("../../listeners/commands.js");
                 await load_listeners(dbRes, client, config);
+                try {
+                    const { setBotPresence } = require("../../listeners/login.js");
+                    setBotPresence(client);
+                } catch {}
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
                 res.end(JSON.stringify({
                     success: true,
-                    message: 'Comandos y listeners recargados en memoria exitosamente sin reiniciar el proceso'
+                    message: 'Comandos, vistas y listeners recargados en memoria exitosamente sin reiniciar el proceso'
                 }));
             } catch (err) {
                 Logger.system(`[ADMIN-API] Error al recargar listeners: ${err.message}`);
@@ -1407,24 +1411,53 @@ function startServer(client, dbRes, port, config) {
                 const event = req.headers['x-github-event'];
 
                 if (event === 'push') {
-                    // Auto-deploy: actualizar repositorio y recargar en memoria
+                    await handlePushEvent(client, dbRes, payload);
+
+                    res.writeHead(200, { 'Content-Type': 'application/json' });
+                    res.end(JSON.stringify({ success: true }));
+
+                    // Auto-deploy: actualizar repositorio y reiniciar proceso completo en producción (Wispbyte)
                     const { exec } = require('child_process');
-                    exec('git pull origin main', async (gitErr, stdout, stderr) => {
+                    exec('git pull origin main', async (gitErr, stdout) => {
                         if (gitErr) {
                             Logger.system(`[Webhook] Error al ejecutar git pull: ${gitErr.message}`);
-                        } else {
-                            Logger.system(`[Webhook] Git pull completado exitosamente: ${stdout.trim()}`);
                             try {
-                                const { load_listeners } = require("../../listeners/commands.js");
-                                await load_listeners(dbRes, client, config);
-                                Logger.system(`[Webhook] Comandos y listeners recargados en caliente tras deploy.`);
-                            } catch (recErr) {
-                                Logger.system(`[Webhook] Error al recargar listeners tras pull: ${recErr.message}`);
+                                const { setBotPresence } = require("../../listeners/login.js");
+                                setBotPresence(client);
+                            } catch {}
+                            return;
+                        }
+
+                        Logger.system(`[Webhook] Git pull completado exitosamente: ${stdout.trim()}`);
+
+                        const isLocalDev = process.env.START_NGROK === 'true';
+                        if (!isLocalDev && process.env.RENDER !== 'true') {
+                            Logger.system('[Webhook] Reiniciando proceso completo para cargar todos los módulos actualizados...');
+                            try {
+                                if (client) {
+                                    if (client.user) client.user.setActivity(null);
+                                    client.destroy();
+                                }
+                                if (serverInstance) serverInstance.close();
+                            } catch (closeErr) {
+                                Logger.system(`[Webhook] Aviso al cerrar recursos antes de reiniciar: ${closeErr.message}`);
                             }
+                            setTimeout(() => process.exit(0), 1000);
+                            return;
+                        }
+
+                        // Fallback en caliente (entorno local/Render)
+                        try {
+                            const { load_listeners } = require("../../listeners/commands.js");
+                            await load_listeners(dbRes, client, config);
+                            const { setBotPresence } = require("../../listeners/login.js");
+                            setBotPresence(client);
+                            Logger.system(`[Webhook] Comandos, vistas y listeners recargados en caliente tras deploy.`);
+                        } catch (recErr) {
+                            Logger.system(`[Webhook] Error al recargar listeners tras pull: ${recErr.message}`);
                         }
                     });
-
-                    await handlePushEvent(client, dbRes, payload);
+                    return;
                 }
 
                 res.writeHead(200, { 'Content-Type': 'application/json' });
