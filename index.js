@@ -103,6 +103,7 @@ async function main(reload) {
     // 1. Iniciar servidor Webhook inmediatamente para Render (Health Check & Port Binding)
     const { initWebhookServer } = require("./commands/utils/webhook.js");
     initWebhookServer(client, res, config);
+    require("./services/resourceMonitor.js").startResourceMonitor();
 
     await load_listeners(res, client, config);
 

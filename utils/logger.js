@@ -22,6 +22,9 @@ class Logger {
         this.args = args ? (args.filter(Boolean).join(" ") || "(Ninguno)") : "";
     }
 
+    // Comandos en ejecución (para diagnóstico de CPU en resourceMonitor)
+    static active = new Map();
+
     static getTimestamp() {
         const d = new Date();
         return d.toTimeString().split(' ')[0]; // HH:MM:SS
@@ -72,6 +75,7 @@ class Logger {
 
     // PASO 1: Inicio / Trigger del comando
     trigger(planDescription = "Iniciando ejecución") {
+        Logger.active.set(this.id, this);
         const header = `${COLORS.cyan}[TRIGGER]${COLORS.reset}`;
         const time = `${COLORS.gray}[${Logger.getTimestamp()}]${COLORS.reset}`;
         const meta = `[${this.user}] [${this.guild}] [s.${this.command}]`;
@@ -96,6 +100,7 @@ class Logger {
 
     // PASO 3 (ÉXITO): Completado de forma exitosa
     success(details) {
+        Logger.active.delete(this.id);
         const duration = Date.now() - this.startTime;
         const header = `${COLORS.green}[SUCCESS]${COLORS.reset}`;
         const time = `${COLORS.gray}[${Logger.getTimestamp()}]${COLORS.reset}`;
@@ -109,6 +114,7 @@ class Logger {
 
     // PASO 3 (FALLO): Ejecución fallida o controlada
     failed(reason) {
+        Logger.active.delete(this.id);
         const duration = Date.now() - this.startTime;
         const header = `${COLORS.red}[FAILED ]${COLORS.reset}`;
         const time = `${COLORS.gray}[${Logger.getTimestamp()}]${COLORS.reset}`;

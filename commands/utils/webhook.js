@@ -781,7 +781,20 @@ function startServer(client, dbRes, port, config) {
         if (req.method === 'GET' && req.url.startsWith('/render-logs')) {
             if (isAuthorizedAdminRequest(req, parsedUrl, config)) {
                 const logsDir = path.join(process.cwd(), 'db/local/logs');
-                const logFile = path.join(logsDir, `${Logger.getLocalDateString()}.log`);
+                // ?list=1 lista los días disponibles; ?date=YYYY-MM-DD consulta logs pasados
+                if (parsedUrl?.query?.list) {
+                    const days = fs.existsSync(logsDir) ? fs.readdirSync(logsDir).filter(f => f.endsWith('.log')).sort() : [];
+                    res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8' });
+                    res.end(days.map(f => `${f} (${(fs.statSync(path.join(logsDir, f)).size / 1024).toFixed(0)} KB)`).join('\n'));
+                    return;
+                }
+                const dateQ = String(parsedUrl?.query?.date || Logger.getLocalDateString());
+                if (!/^\d{4}-\d{2}-\d{2}$/.test(dateQ)) {
+                    res.writeHead(400, { 'Content-Type': 'text/plain; charset=utf-8' });
+                    res.end('Fecha inválida, usa YYYY-MM-DD');
+                    return;
+                }
+                const logFile = path.join(logsDir, `${dateQ}.log`);
                 if (fs.existsSync(logFile)) {
                     const content = fs.readFileSync(logFile, 'utf8');
                     let lines = content.trim().split('\n');
