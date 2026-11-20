@@ -3313,9 +3313,12 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
 
         const newScoreVal = Number(score.score || score.total_score || score.legacy_total_score || score.classic_total_score || 0);
         const oldScoreVal = currentTop ? Number(currentTop.score || currentTop.total_score || currentTop.legacy_total_score || currentTop.classic_total_score || 0) : 0;
-        const isDifferentUser = currentTop && currentTop.user_id !== sniperId;
+        // ponytail: Solo verificar contra la API cuando puede superar el puntaje actual o existe diferencia de escala Lazer vs Stable
+        const isNewLazer = Boolean(score.build_id);
+        const isTopLazer = Boolean(currentTop && currentTop.build_id);
+        const hasScoreScaleMismatch = Boolean(currentTop) && (isNewLazer !== isTopLazer);
 
-        if (!currentTop || newScoreVal > oldScoreVal || isDifferentUser) {
+        if (!currentTop || newScoreVal > oldScoreVal || hasScoreScaleMismatch) {
             // --- VERIFICACIÓN CON LA API EN TIEMPO REAL ---
             let confirmedScore = null;
             let verifiedSniperId = null;
@@ -3392,9 +3395,12 @@ async function checkAndRecordRealtimeSnipe(score, osuUsername) {
             // 1. El jugador que acaba de jugar (sniperId) DEBE ser el puesto #1 verificado en la API (verifiedSniperId)
             if (verifiedSniperId !== sniperId) {
                 // Si el jugador que jugó no obtuvo el #1, no hubo snipe (el #1 actual era un score antiguo de otro usuario)
-                // Solo actualizamos top_scores si es necesario y salimos limpiamente
+                // Solo actualizamos top_scores si el #1 real difiere de lo que ya tenemos en Turso
                 const finalScoreVal = Number(confirmedScore.score || confirmedScore.total_score || confirmedScore.legacy_total_score || confirmedScore.classic_total_score || 0);
-                if (TursoDB.isTursoAvailable() && confirmedScore) {
+                const topChangedInTurso = !currentTop
+                    || String(currentTop.user_id) !== String(verifiedSniperId)
+                    || Number(currentTop.score || 0) !== finalScoreVal;
+                if (TursoDB.isTursoAvailable() && confirmedScore && topChangedInTurso) {
                     try {
                         await TursoDB.saveTopScore({
                             beatmap_id: beatmapId,

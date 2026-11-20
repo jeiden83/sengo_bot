@@ -4,6 +4,7 @@ const { getSupabaseClient } = require('../db/database.js');
 const CONFIG = require('../config.js');
 const Logger = require('../utils/logger.js');
 const BotSettingsModel = require('../models/BotSettingsModel.js');
+const { waitIfHighCpu } = require('./resourceMonitor.js');
 
 const GENRES = {
     0: 'Any', 1: 'Unspecified', 2: 'Video Game', 3: 'Anime', 4: 'Rock', 5: 'Pop',
@@ -56,6 +57,7 @@ async function checkNewBeatmaps() {
             const beatmapsToInsert = [];
 
             for (const set of response.beatmapsets) {
+                await waitIfHighCpu(10, 60000);
                 if (osuApiQueue.isInCooldown()) break;
                 // Obtener tags de usuario detallados raspando la web
                 let detail = null;
@@ -166,14 +168,12 @@ async function initBeatmapCrawler() {
     const oneDay = 24 * 60 * 60 * 1000;
     const timeSinceLastSync = now - lastSyncTime;
 
-    let delayBeforeNextSync = 0;
+    const initialDelay = 35 * 60 * 1000; // 35 minutos tras el arranque (separado de Skills Sync)
+    let delayBeforeNextSync = initialDelay;
     if (timeSinceLastSync < oneDay) {
-        delayBeforeNextSync = oneDay - timeSinceLastSync;
+        delayBeforeNextSync = Math.max(initialDelay, oneDay - timeSinceLastSync);
         const hoursLeft = (delayBeforeNextSync / (60 * 60 * 1000)).toFixed(2);
         Logger.system(`[Beatmap Sync] La actualización de beatmaps ya se realizó recientemente. Próxima en ${hoursLeft} horas.`);
-    } else {
-        // Ejecutar después de 5 minutos si ha pasado más de 24 horas
-        delayBeforeNextSync = 300000;
     }
 
     // Programar la primera ejecución

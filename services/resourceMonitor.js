@@ -6,8 +6,34 @@ const Logger = require('../utils/logger.js');
 // ponytail: muestreo fijo cada 30s; si hace falta más resolución, bajar INTERVAL_MS.
 const INTERVAL_MS = 30000;
 const CPU_ALERT_PCT = 10; // Wispbyte detiene con promedio ~15%; alertamos antes
+const CPU_NTFY_PCT = 18;  // 2 muestras seguidas >= 18% dispara alerta push
+const NTFY_COOLDOWN_MS = 15 * 60 * 1000;
+
+let started = false;
+let lastCpuPct = 0;
+let consecutiveHighCpu = 0;
+let lastNtfyAlertAt = 0;
+
+function getLastCpuPct() {
+    return lastCpuPct;
+}
+
+/**
+ * Cede tiempo al event loop si la última muestra de CPU supera maxPct.
+ * Usado por trabajos en segundo plano para no acumular picos de CPU.
+ */
+async function waitIfHighCpu(maxPct = CPU_ALERT_PCT, maxWaitMs = 45000) {
+    if (lastCpuPct < maxPct) return;
+    const deadline = Date.now() + maxWaitMs;
+    while (lastCpuPct >= maxPct && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+}
 
 function startResourceMonitor() {
+    if (started) return;
+    started = true;
+
     const loop = monitorEventLoopDelay({ resolution: 20 });
     loop.enable();
     let lastCpu = process.cpuUsage();
@@ -17,7 +43,8 @@ function startResourceMonitor() {
         const nowTime = process.hrtime.bigint();
         const cpu = process.cpuUsage(lastCpu);
         const elapsedUs = Number(nowTime - lastTime) / 1000;
-        const cpuPct = ((cpu.user + cpu.system) / elapsedUs) * 100;
+        const cpuPct = elapsedUs > 0 ? ((cpu.user + cpu.system) / elapsedUs) * 100 : 0;
+        lastCpuPct = cpuPct;
         lastCpu = process.cpuUsage();
         lastTime = nowTime;
 
@@ -36,8 +63,27 @@ function startResourceMonitor() {
             msg = `[ALERTA-CPU] ${msg.slice(11)} | comandos activos: ${active}`;
         }
         Logger.system(msg);
+
+        if (cpuPct >= CPU_NTFY_PCT) {
+            consecutiveHighCpu++;
+            const now = Date.now();
+            if (consecutiveHighCpu >= 2 && (now - lastNtfyAlertAt) >= NTFY_COOLDOWN_MS) {
+                lastNtfyAlertAt = now;
+                try {
+                    const { sendNtfyAlert } = require('./errorNotifier.js');
+                    sendNtfyAlert({
+                        title: `[SENGO] ⚠️ CPU sostenida alta (${cpuPct.toFixed(1)}%)`,
+                        priority: 'high',
+                        tags: 'warning,fire',
+                        message: `${msg}\nRiesgo de detención automática por límite de CPU en Wispbyte.`
+                    }).catch(() => {});
+                } catch (_) {}
+            }
+        } else {
+            consecutiveHighCpu = 0;
+        }
     }, INTERVAL_MS);
     timer.unref();
 }
 
-module.exports = { startResourceMonitor };
+module.exports = { startResourceMonitor, getLastCpuPct, waitIfHighCpu };

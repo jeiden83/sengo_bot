@@ -3,6 +3,7 @@ const MappingTrackerModel = require("../models/MappingTrackerModel.js");
 const OsuUserModel = require("../models/OsuUserModel.js");
 const { doMappingTrackerNotificationEmbed, parseDiscussionMessage } = require("../views/mappingTrackerViews.js");
 const { osuApiQueue, isExternalApiOutageError } = require("../utils/OsuApiQueue.js");
+const { waitIfHighCpu } = require("./resourceMonitor.js");
 const axios = require("axios");
 
 let trackerInterval = null;
@@ -324,6 +325,7 @@ async function runMappingTrackerScan() {
         }
 
         for (const osuId of trackedIds) {
+            await waitIfHighCpu(12, 30000);
             if (osuApiQueue.isInCooldown()) {
                 Logger.system(`[MAPPING-TRACKER-SERVICE] Escaneo profundo pausado por cooldown de la API de osu! (${Math.round(osuApiQueue.getCooldownRemainingMs() / 1000)}s).`);
                 break;
@@ -409,9 +411,15 @@ async function runMappingTrackerScan() {
             }
 
             const latestMapsetId = mapsets[0]?.id;
-            await MappingTrackerModel.saveLastEventsForOsuId(osuId, latestMapsetId, newSnapshot);
-            // ponytail: Pausa de 400ms entre mappers para evitar picos de CPU y repartir la carga
-            await new Promise(r => setTimeout(r, 400));
+            const prevLatestId = lastEvents?.last_beatmapset_id ?? null;
+            const snapshotChanged = !lastEvents
+                || String(prevLatestId) !== String(latestMapsetId ?? null)
+                || JSON.stringify(prevSnapshot) !== JSON.stringify(newSnapshot);
+            if (snapshotChanged) {
+                await MappingTrackerModel.saveLastEventsForOsuId(osuId, latestMapsetId, newSnapshot);
+            }
+            // ponytail: Pausa de 800ms entre mappers para evitar picos de CPU y repartir la carga
+            await new Promise(r => setTimeout(r, 800));
         }
     } catch (scanErr) {
         console.error('[MAPPING-TRACKER-SERVICE] Error durante el ciclo de escaneo profundo:', scanErr.message);
@@ -679,31 +687,31 @@ function initMappingTracker(client) {
     discordClient = client;
     Logger.system("Inicializando servicio de Mapping Tracker (Eventos rápidos: 30s | Escaneo profundo: 5m)...");
 
-    // 1. Escaneo rápido de eventos globales (cada 30s, primera ejecución a los 60s)
+    // 1. Escaneo rápido de eventos globales (primera ejecución a los 60s y luego cada 30s sin solaparse)
     setTimeout(() => {
         runGlobalEventsScan().catch(err => {
             Logger.system(`Error en primera ejecución de eventos globales: ${err.message}`);
         });
+        if (eventsInterval) clearInterval(eventsInterval);
+        eventsInterval = setInterval(() => {
+            runGlobalEventsScan().catch(err => {
+                Logger.system(`Error en escaneo rápido de eventos: ${err.message}`);
+            });
+        }, 30 * 1000);
     }, 60000);
 
-    eventsInterval = setInterval(() => {
-        runGlobalEventsScan().catch(err => {
-            Logger.system(`Error en escaneo rápido de eventos: ${err.message}`);
-        });
-    }, 30 * 1000);
-
-    // 2. Escaneo profundo de mappers individuales (cada 5m, primera ejecución a los 4m)
+    // 2. Escaneo profundo de mappers individuales (primera ejecución a los 4m y luego cada 5m sin solaparse con T+5m)
     setTimeout(() => {
         runMappingTrackerScan().catch(err => {
             Logger.system(`Error en primera ejecución de escaneo profundo: ${err.message}`);
         });
+        if (trackerInterval) clearInterval(trackerInterval);
+        trackerInterval = setInterval(() => {
+            runMappingTrackerScan().catch(err => {
+                Logger.system(`Error en escaneo profundo de Mapping Tracker: ${err.message}`);
+            });
+        }, 5 * 60 * 1000);
     }, 240000);
-
-    trackerInterval = setInterval(() => {
-        runMappingTrackerScan().catch(err => {
-            Logger.system(`Error en escaneo profundo de Mapping Tracker: ${err.message}`);
-        });
-    }, 5 * 60 * 1000);
 }
 
 /**

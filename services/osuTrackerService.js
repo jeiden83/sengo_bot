@@ -220,21 +220,41 @@ async function processNewScore(client, userObj, score) {
         return;
     }
     
-    // 1. Obtener el Top 200 de mejores puntuaciones del usuario
+    // Determinar el límite máximo de top plays configurado entre los servidores que escuchan a este usuario
+    let maxTrackLimit = 0;
+    for (const srv of userObj.servers || []) {
+        if (!srv.channelId) continue;
+        let effectiveLimit = 100;
+        if (srv.topLimit !== null && srv.topLimit !== undefined && !isNaN(srv.topLimit) && srv.topLimit > 0) {
+            effectiveLimit = Number(srv.topLimit);
+        } else {
+            const guildLimit = guildTrackLimits.get(srv.guildId);
+            if (guildLimit !== null && guildLimit !== undefined && !isNaN(guildLimit) && guildLimit > 0) {
+                effectiveLimit = Number(guildLimit);
+            }
+        }
+        if (effectiveLimit > maxTrackLimit) maxTrackLimit = effectiveLimit;
+    }
+    if (maxTrackLimit <= 0) return;
+    maxTrackLimit = Math.min(200, maxTrackLimit);
+
+    // 1. Obtener el Top 100/200 de mejores puntuaciones del usuario (solo 2da página si algún server supera top 100)
     const rulesetMap = { 0: 'osu', 1: 'taiko', 2: 'fruits', 3: 'mania' };
     const activeGamemode = score.mode || (score.ruleset_id !== undefined ? rulesetMap[score.ruleset_id] : null) || score.beatmap?.mode || 'osu';
     if (osuApiQueue.isInCooldown()) return;
 
+    const fetchBestScoresPage = async (offset) => osuApiQueue.add(() => v2.scores.list({
+        type: 'user_best',
+        user_id: osuId,
+        mode: activeGamemode,
+        limit: 100,
+        offset
+    }), 0);
+
     let bestScores;
     try {
         await OsuUserModel.NewloadToken();
-        bestScores = await osuApiQueue.add(() => v2.scores.list({
-            type: 'user_best',
-            user_id: osuId,
-            mode: activeGamemode,
-            limit: 100,
-            offset: 0
-        }), 0);
+        bestScores = await fetchBestScoresPage(0);
     } catch (err) {
         if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
             osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
@@ -244,15 +264,9 @@ async function processNewScore(client, userObj, score) {
         return;
     }
 
-    if (bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
+    if (maxTrackLimit > 100 && bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
         try {
-            const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
-                type: 'user_best',
-                user_id: osuId,
-                mode: activeGamemode,
-                limit: 100,
-                offset: 100
-            }), 0);
+            const nextBestScores = await fetchBestScoresPage(100);
             if (nextBestScores && Array.isArray(nextBestScores)) {
                 bestScores = bestScores.concat(nextBestScores);
             }
@@ -267,12 +281,85 @@ async function processNewScore(client, userObj, score) {
 
     if (!bestScores || !Array.isArray(bestScores)) return;
 
-    // 2. Preparar los datos del beatmap y calcular PP
+    // 2. Descartar rápido SIN descargar .osu ni calcular PP si la jugada no puede entrar al Top del usuario
+    normalizeScore(score);
+    const user_pp = Number(score.pp) || 0;
+
+    // ponytail: En osu! un usuario sólo tiene como máximo 1 score por beatmap en /scores/best.
+    // Si ya posee una jugada en este mapa con igual o mayor PP, este score no puede entrar a sus top plays.
+    const existingMapPlay = bestScores.find(s =>
+        String(s.beatmap?.id) === String(score.beatmap?.id) &&
+        (!score.id || String(s.id) !== String(score.id))
+    );
+    if (existingMapPlay && (existingMapPlay.pp || 0) >= user_pp) {
+        return;
+    }
+
+    const findScoreIndex = (list) => list.findIndex(s => {
+        return (score.id && s.id.toString() === score.id.toString()) ||
+            (new Date(s.ended_at || s.created_at).getTime() === new Date(score.ended_at || score.created_at).getTime() &&
+                (s.legacy_total_score === score.legacy_total_score || s.total_score === score.total_score));
+    });
+
+    let positionIndex = findScoreIndex(bestScores);
+
+    if (positionIndex === -1) {
+        const cutoffIdx = Math.min(maxTrackLimit, bestScores.length) - 1;
+        const minTopPP = cutoffIdx >= 0 ? (Number(bestScores[cutoffIdx]?.pp) || 0) : 0;
+        // Si ya tiene el top lleno y el PP oficial queda debajo del corte (con 2% de margen), no es Top Play: evitar reintento y cálculo PP
+        if (bestScores.length >= maxTrackLimit && user_pp < minTopPP * 0.98) {
+            return;
+        }
+
+        if (!osuApiQueue.isInCooldown()) {
+            // ponytail: reintento simple de 5 segundos solo cuando el PP sí califica para el top, mitigando lag de réplica de la API de osu!
+            Logger.system(`[TRACKER-SERVICE] Score ${score.id} (${user_pp.toFixed(1)}pp) aún no indexada en el top ${maxTrackLimit} de ${userObj.osuUsername}. Reintentando en 5s...`);
+            await new Promise(resolve => setTimeout(resolve, 5000));
+
+            if (osuApiQueue.isInCooldown()) return;
+
+            try {
+                bestScores = await fetchBestScoresPage(0);
+                if (maxTrackLimit > 100 && bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
+                    const nextBestScores = await fetchBestScoresPage(100);
+                    if (nextBestScores && Array.isArray(nextBestScores)) {
+                        bestScores = bestScores.concat(nextBestScores);
+                    }
+                }
+            } catch (err) {
+                if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
+                    osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
+                }
+                return;
+            }
+
+            if (bestScores && Array.isArray(bestScores)) {
+                positionIndex = findScoreIndex(bestScores);
+            }
+        }
+    }
+
+    // ponytail: Fallback predictivo por PP si la API de osu! aún no indexó la jugada en /scores/best
+    if (positionIndex === -1 && user_pp > 0 && !OsuScoreModel.hasUnrankedPPMods(score) && score.ranked !== false && bestScores && Array.isArray(bestScores) && bestScores.length > 0) {
+        const cutoffIdx = Math.min(maxTrackLimit, bestScores.length) - 1;
+        const minTopPP = cutoffIdx >= 0 ? (Number(bestScores[cutoffIdx]?.pp) || 0) : 0;
+        if (user_pp >= minTopPP || bestScores.length < maxTrackLimit) {
+            const higherPlays = bestScores.filter(s => String(s.beatmap?.id) !== String(score.beatmap?.id) && (s.pp || 0) > user_pp).length;
+            if (higherPlays < maxTrackLimit) {
+                positionIndex = higherPlays;
+                Logger.system(`[TRACKER-SERVICE] Top Play #${positionIndex + 1} identificada predictivamente para ${userObj.osuUsername} (${user_pp.toFixed(2)}pp).`);
+            }
+        }
+    }
+
+    if (positionIndex === -1 || (positionIndex + 1) > maxTrackLimit) {
+        return;
+    }
+
+    // 3. Confirmado que es Top Play: ahora sí descargar .osu y calcular atributos para el embed
     let mapObj = null;
     let pre_calculated = null;
-    let user_pp = 0;
     try {
-        normalizeScore(score);
         const beatmapData = await getBeatmap(score.beatmap.id);
         const mapStatus = (beatmapData?.status || score.beatmap?.status || score.beatmapset?.status || '').toLowerCase();
         if (mapStatus && !['ranked', 'approved'].includes(mapStatus)) {
@@ -280,7 +367,7 @@ async function processNewScore(client, userObj, score) {
         }
 
         mapObj = await getBeatmap_osu(score.beatmap.beatmapset_id, score.beatmap.id, beatmapData);
-        
+
         let maxAttrs = null;
         try {
             maxAttrs = calculatePP(score, mapObj, "maximo_pp");
@@ -288,7 +375,6 @@ async function processNewScore(client, userObj, score) {
             console.error("[TRACKER-SERVICE] Error calculating maxAttrs:", err);
         }
 
-        user_pp = score.pp ? score.pp : calculatePP(score, mapObj, null, maxAttrs).pp;
         const beatmap_max_combo = beatmapData.max_combo || (maxAttrs && maxAttrs.difficulty ? maxAttrs.difficulty.maxCombo : 0);
 
         const statistics = score.statistics || {};
@@ -313,85 +399,6 @@ async function processNewScore(client, userObj, score) {
             } catch (err) {
                 console.error("[TRACKER-SERVICE] Error calculating pp_fc:", err);
             }
-        }
-
-        // ponytail: En osu! un usuario sólo tiene como máximo 1 score por beatmap en /scores/best.
-        // Si ya posee una jugada en este mapa con igual o mayor PP, este score no puede entrar a sus top plays.
-        const existingMapPlay = bestScores.find(s =>
-            String(s.beatmap?.id) === String(score.beatmap?.id) &&
-            (!score.id || String(s.id) !== String(score.id))
-        );
-        if (existingMapPlay && (existingMapPlay.pp || 0) >= user_pp) {
-            return;
-        }
-
-        // 3. Buscar si el score reciente está en el top 200
-        let positionIndex = bestScores.findIndex(s => {
-            return (score.id && s.id.toString() === score.id.toString()) ||
-                (new Date(s.ended_at || s.created_at).getTime() === new Date(score.ended_at || score.created_at).getTime() &&
-                    (s.legacy_total_score === score.legacy_total_score || s.total_score === score.total_score));
-        });
-        
-        if (positionIndex === -1 && !osuApiQueue.isInCooldown()) {
-            // ponytail: reintento simple de 5 segundos para mitigar lag de réplica de la API de osu!; límite de 1 reintento para evitar colas de llamadas.
-            Logger.system(`[TRACKER-SERVICE] Score ${score.id} no encontrado por ID en el top 200 de ${userObj.osuUsername}. Reintentando en 5 segundos por posible lag de la API de osu!...`);
-            await new Promise(resolve => setTimeout(resolve, 5000));
-
-            if (osuApiQueue.isInCooldown()) return;
-
-            bestScores = await osuApiQueue.add(() => v2.scores.list({
-                type: 'user_best',
-                user_id: osuId,
-                mode: activeGamemode,
-                limit: 100,
-                offset: 0
-            }), 0);
-
-            if (bestScores && Array.isArray(bestScores) && bestScores.length === 100 && !osuApiQueue.isInCooldown()) {
-                try {
-                    const nextBestScores = await osuApiQueue.add(() => v2.scores.list({
-                        type: 'user_best',
-                        user_id: osuId,
-                        mode: activeGamemode,
-                        limit: 100,
-                        offset: 100
-                    }), 0);
-                    if (nextBestScores && Array.isArray(nextBestScores)) {
-                        bestScores = bestScores.concat(nextBestScores);
-                    }
-                } catch (err) {
-                    if (isExternalApiOutageError(err, { includeOsuExtendedTransport: true })) {
-                        osuApiQueue.recordOutage(err, 'TRACKER-SERVICE');
-                    } else {
-                        console.error(`[TRACKER-SERVICE] Error al obtener la segunda página del top 200 para ${userObj.osuUsername} en reintento:`, err);
-                    }
-                }
-            }
-            
-            if (bestScores && Array.isArray(bestScores)) {
-                positionIndex = bestScores.findIndex(s => {
-                    return (score.id && s.id.toString() === score.id.toString()) ||
-                        (new Date(s.ended_at || s.created_at).getTime() === new Date(score.ended_at || score.created_at).getTime() &&
-                            (s.legacy_total_score === score.legacy_total_score || s.total_score === score.total_score));
-                });
-            }
-        }
-
-        // ponytail: Fallback predictivo por PP si la API de osu! aún no indexó la jugada en /scores/best
-        if (positionIndex === -1 && user_pp > 0 && !OsuScoreModel.hasUnrankedPPMods(score) && score.ranked !== false && bestScores && Array.isArray(bestScores) && bestScores.length > 0) {
-            const minTopPP = bestScores[bestScores.length - 1]?.pp || 0;
-            if (user_pp >= minTopPP || bestScores.length < 100) {
-                const higherPlays = bestScores.filter(s => String(s.beatmap?.id) !== String(score.beatmap?.id) && (s.pp || 0) > user_pp).length;
-                if (higherPlays < 100) {
-                    positionIndex = higherPlays;
-                    Logger.system(`[TRACKER-SERVICE] Top Play #${positionIndex + 1} identificada predictivamente para ${userObj.osuUsername} (${user_pp.toFixed(2)}pp).`);
-                }
-            }
-        }
-        
-        if (positionIndex === -1) {
-            // No es una top play, no se anuncia
-            return;
         }
 
         Logger.system(`[TRACKER-SERVICE] ¡Nueva Top Play #${positionIndex + 1} detectada para ${userObj.osuUsername}!`);
